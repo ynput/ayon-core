@@ -1,26 +1,42 @@
+from __future__ import annotations
+
+from typing import Optional
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
+from ayon_core.pipeline.actions import LoaderActionResult
 from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
+    MessageOverlayObject,
     ErrorMessageBox,
     ThumbnailPainterWidget,
     RefreshButton,
     GoToCurrentButton,
+    ProjectsCombobox,
+    get_qt_icon,
+    FoldersFiltersWidget,
 )
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.lib import center_window
-from ayon_core.tools.utils import ProjectsCombobox
+from ayon_core.tools.common_models import StatusItem
+from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
 
 from .folders_widget import LoaderFoldersWidget
 from .tasks_widget import LoaderTasksWidget
 from .products_widget import ProductsWidget
-from .product_types_combo import ProductTypesCombobox
 from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
-from .statuses_combo import StatusesCombobox
+from .search_bar import FiltersBar, FilterDefinition
+
+FIND_KEY_SEQUENCE = QtGui.QKeySequence(
+    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
+)
+GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
+    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
+)
 
 
 class LoadErrorMessageBox(ErrorMessageBox):
@@ -131,6 +147,8 @@ class LoaderWindow(QtWidgets.QWidget):
         if controller is None:
             controller = LoaderController()
 
+        overlay_object = MessageOverlayObject(self)
+
         main_splitter = QtWidgets.QSplitter(self)
 
         context_splitter = QtWidgets.QSplitter(main_splitter)
@@ -160,15 +178,14 @@ class LoaderWindow(QtWidgets.QWidget):
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
 
-        folders_filter_input = PlaceholderLineEdit(context_widget)
-        folders_filter_input.setPlaceholderText("Folder name filter...")
+        filters_widget = FoldersFiltersWidget(context_widget)
 
         folders_widget = LoaderFoldersWidget(controller, context_widget)
 
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
         context_layout.addWidget(context_top_widget, 0)
-        context_layout.addWidget(folders_filter_input, 0)
+        context_layout.addWidget(filters_widget, 0)
         context_layout.addWidget(folders_widget, 1)
 
         tasks_widget = LoaderTasksWidget(controller, context_widget)
@@ -182,28 +199,18 @@ class LoaderWindow(QtWidgets.QWidget):
         products_wrap_widget = QtWidgets.QWidget(main_splitter)
 
         products_inputs_widget = QtWidgets.QWidget(products_wrap_widget)
-
-        products_filter_input = PlaceholderLineEdit(products_inputs_widget)
-        products_filter_input.setPlaceholderText("Product name filter...")
-
-        product_types_filter_combo = ProductTypesCombobox(
-            controller, products_inputs_widget
-        )
-
-        product_status_filter_combo = StatusesCombobox(controller, self)
+        search_bar = FiltersBar(products_inputs_widget)
 
         product_group_checkbox = QtWidgets.QCheckBox(
             "Enable grouping", products_inputs_widget)
         product_group_checkbox.setChecked(True)
 
-        products_widget = ProductsWidget(controller, products_wrap_widget)
-
         products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
-        products_inputs_layout.addWidget(products_filter_input, 1)
-        products_inputs_layout.addWidget(product_types_filter_combo, 1)
-        products_inputs_layout.addWidget(product_status_filter_combo, 1)
+        products_inputs_layout.addWidget(search_bar, 1)
         products_inputs_layout.addWidget(product_group_checkbox, 0)
+
+        products_widget = ProductsWidget(controller, products_wrap_widget)
 
         products_wrap_layout = QtWidgets.QVBoxLayout(products_wrap_widget)
         products_wrap_layout.setContentsMargins(0, 0, 0, 0)
@@ -247,18 +254,13 @@ class LoaderWindow(QtWidgets.QWidget):
         projects_combobox.refreshed.connect(self._on_projects_refresh)
         folders_widget.refreshed.connect(self._on_folders_refresh)
         products_widget.refreshed.connect(self._on_products_refresh)
-        folders_filter_input.textChanged.connect(
+        filters_widget.text_changed.connect(
             self._on_folder_filter_change
         )
-        products_filter_input.textChanged.connect(
-            self._on_product_filter_change
+        filters_widget.my_tasks_changed.connect(
+            self._on_my_tasks_checkbox_state_changed
         )
-        product_types_filter_combo.value_changed.connect(
-            self._on_product_type_filter_change
-        )
-        product_status_filter_combo.value_changed.connect(
-            self._on_status_filter_change
-        )
+        search_bar.filter_changed.connect(self._on_filter_change)
         product_group_checkbox.stateChanged.connect(
             self._on_product_group_change
         )
@@ -302,6 +304,12 @@ class LoaderWindow(QtWidgets.QWidget):
             "controller.reset.finished",
             self._on_controller_reset_finish,
         )
+        controller.register_event_callback(
+            "loader.action.finished",
+            self._on_loader_action_finished,
+        )
+
+        self._overlay_object = overlay_object
 
         self._group_dialog = ProductGroupDialog(controller, self)
 
@@ -311,14 +319,12 @@ class LoaderWindow(QtWidgets.QWidget):
         self._refresh_btn = refresh_btn
         self._projects_combobox = projects_combobox
 
-        self._folders_filter_input = folders_filter_input
+        self._filters_widget = filters_widget
         self._folders_widget = folders_widget
 
         self._tasks_widget = tasks_widget
 
-        self._products_filter_input = products_filter_input
-        self._product_types_filter_combo = product_types_filter_combo
-        self._product_status_filter_combo = product_status_filter_combo
+        self._search_bar = search_bar
         self._product_group_checkbox = product_group_checkbox
         self._products_widget = products_widget
 
@@ -336,6 +342,8 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_project_name = None
         self._selected_folder_ids = set()
         self._selected_version_ids = set()
+
+        self._set_product_type_filters = True
 
         self._products_widget.set_enable_grouping(
             self._product_group_checkbox.isChecked()
@@ -356,22 +364,24 @@ class LoaderWindow(QtWidgets.QWidget):
     def closeEvent(self, event):
         super().closeEvent(event)
 
-        (
-            self
-            ._product_types_filter_combo
-            .reset_product_types_filter_on_refresh()
-        )
-
         self._reset_on_show = True
 
     def keyPressEvent(self, event):
-        modifiers = event.modifiers()
-        ctrl_pressed = QtCore.Qt.ControlModifier & modifiers
+        if hasattr(event, "keyCombination"):
+            combination = event.keyCombination()
+        else:
+            combination = QtGui.QKeySequence(event.modifiers() | event.key())
+        if (
+            FIND_KEY_SEQUENCE == combination
+            and not event.isAutoRepeat()
+        ):
+            self._search_bar.show_filters_popup()
+            event.setAccepted(True)
+            return
 
         # Grouping products on pressing Ctrl + G
         if (
-            ctrl_pressed
-            and event.key() == QtCore.Qt.Key_G
+            GROUP_KEY_SEQUENCE == combination
             and not event.isAutoRepeat()
         ):
             self._show_group_dialog()
@@ -412,6 +422,20 @@ class LoaderWindow(QtWidgets.QWidget):
         if self._reset_on_show:
             self.refresh()
 
+    def _show_toast_message(
+        self,
+        message: str,
+        success: bool = True,
+        message_id: Optional[str] = None,
+    ):
+        message_type = None
+        if not success:
+            message_type = "error"
+
+        self._overlay_object.add_message(
+            message, message_type, message_id=message_id
+        )
+
     def _show_group_dialog(self):
         project_name = self._projects_combobox.get_selected_project_name()
         if not project_name:
@@ -427,27 +451,49 @@ class LoaderWindow(QtWidgets.QWidget):
         self._group_dialog.set_product_ids(project_name, product_ids)
         self._group_dialog.show()
 
-    def _on_folder_filter_change(self, text):
+    def _on_folder_filter_change(self, text: str) -> None:
         self._folders_widget.set_name_filter(text)
+
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
+        folder_ids = None
+        task_ids = None
+        if enabled:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._selected_project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)
 
     def _on_product_group_change(self):
         self._products_widget.set_enable_grouping(
             self._product_group_checkbox.isChecked()
         )
 
-    def _on_product_filter_change(self, text):
-        self._products_widget.set_name_filter(text)
+    def _on_filter_change(self, filter_name):
+        if filter_name == "product_name":
+            self._products_widget.set_name_filter(
+                self._search_bar.get_filter_value("product_name")
+            )
+        elif filter_name == "product_types":
+            product_types = self._search_bar.get_filter_value("product_types")
+            self._products_widget.set_product_type_filter(product_types)
+
+        elif filter_name == "statuses":
+            status_names = self._search_bar.get_filter_value("statuses")
+            self._products_widget.set_statuses_filter(status_names)
+
+        elif filter_name == "version_tags":
+            version_tags = self._search_bar.get_filter_value("version_tags")
+            self._products_widget.set_version_tags_filter(version_tags)
+
+        elif filter_name == "task_tags":
+            task_tags = self._search_bar.get_filter_value("task_tags")
+            self._products_widget.set_task_tags_filter(task_tags)
 
     def _on_tasks_selection_change(self, event):
         self._products_widget.set_tasks_filter(event["task_ids"])
-
-    def _on_status_filter_change(self):
-        status_names = self._product_status_filter_combo.get_value()
-        self._products_widget.set_statuses_filter(status_names)
-
-    def _on_product_type_filter_change(self):
-        product_types = self._product_types_filter_combo.get_value()
-        self._products_widget.set_product_type_filter(product_types)
 
     def _on_merged_products_selection_change(self):
         items = self._products_widget.get_selected_merged_products()
@@ -480,6 +526,11 @@ class LoaderWindow(QtWidgets.QWidget):
         self._projects_combobox.set_current_context_project(project_name)
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
+        self._update_filters()
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_load_finished(self, event):
         error_info = event["error_info"]
@@ -489,8 +540,197 @@ class LoaderWindow(QtWidgets.QWidget):
         box = LoadErrorMessageBox(error_info, self)
         box.show()
 
+    def _on_loader_action_finished(self, event):
+        crashed = event["crashed"]
+        if crashed:
+            self._show_toast_message(
+                "Action failed",
+                success=False,
+            )
+            return
+
+        result: Optional[LoaderActionResult] = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            self._show_toast_message(
+                result.message, result.success
+            )
+
+        if result.form is None:
+            return
+
+        form = result.form
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if result.form_values:
+            dialog.set_values(result.form_values)
+        submit_label = form.submit_label
+        submit_icon = form.submit_icon
+        cancel_label = form.cancel_label
+        cancel_icon = form.cancel_icon
+
+        if submit_icon:
+            submit_icon = get_qt_icon(submit_icon)
+        if cancel_icon:
+            cancel_icon = get_qt_icon(cancel_icon)
+
+        if submit_label:
+            dialog.set_submit_label(submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if submit_icon:
+            dialog.set_submit_icon(submit_icon)
+
+        if cancel_label:
+            dialog.set_cancel_label(cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if cancel_icon:
+            dialog.set_cancel_icon(cancel_icon)
+
+        dialog.setMinimumSize(300, 140)
+        result = dialog.exec_()
+        if result != QtWidgets.QDialog.Accepted:
+            return
+
+        form_values = dialog.get_values()
+        self._controller.trigger_action_item(
+            identifier=event["identifier"],
+            project_name=event["project_name"],
+            selected_ids=event["selected_ids"],
+            selected_entity_type=event["selected_entity_type"],
+            options={},
+            data=event["data"],
+            form_values=form_values,
+        )
+
     def _on_project_selection_changed(self, event):
         self._selected_project_name = event["project_name"]
+        self._update_filters()
+
+    def _update_filters(self):
+        project_name = self._selected_project_name
+        if not project_name:
+            self._search_bar.set_search_items([])
+            return
+
+        product_type_items: list[ProductTypeItem] = (
+            self._controller.get_product_type_items(project_name)
+        )
+        status_items: list[StatusItem] = (
+            self._controller.get_project_status_items(project_name)
+        )
+        tags_by_entity_type = (
+            self._controller.get_available_tags_by_entity_type(project_name)
+        )
+        tag_items = self._controller.get_project_anatomy_tags(project_name)
+        tag_color_by_name = {
+            tag_item.name: tag_item.color
+            for tag_item in tag_items
+        }
+
+        filter_product_type_items = [
+            {
+                "value": item.name,
+                "icon": item.icon,
+            }
+            for item in product_type_items
+        ]
+        filter_status_items = [
+            {
+                "icon": {
+                    "type": "material-symbols",
+                    "name": status_item.icon,
+                    "color": status_item.color
+                },
+                "color": status_item.color,
+                "value": status_item.name,
+            }
+            for status_item in status_items
+        ]
+        version_tags = [
+            {
+                "value": tag_name,
+                "color": tag_color_by_name.get(tag_name),
+            }
+            for tag_name in tags_by_entity_type.get("versions") or []
+        ]
+        task_tags = [
+            {
+                "value": tag_name,
+                "color": tag_color_by_name.get(tag_name),
+            }
+            for tag_name in tags_by_entity_type.get("tasks") or []
+        ]
+
+        self._search_bar.set_search_items([
+            FilterDefinition(
+                name="product_name",
+                title="Product name",
+                filter_type="text",
+                icon=None,
+                placeholder="Product name filter...",
+                items=None,
+            ),
+            FilterDefinition(
+                name="product_types",
+                title="Product type",
+                filter_type="list",
+                icon=None,
+                items=filter_product_type_items,
+            ),
+            FilterDefinition(
+                name="statuses",
+                title="Statuses",
+                filter_type="list",
+                icon=None,
+                items=filter_status_items,
+            ),
+            FilterDefinition(
+                name="version_tags",
+                title="Version tags",
+                filter_type="list",
+                icon=None,
+                items=version_tags,
+            ),
+            FilterDefinition(
+                name="task_tags",
+                title="Task tags",
+                filter_type="list",
+                icon=None,
+                items=task_tags,
+            ),
+        ])
+
+        # Set product types filter from settings
+        if self._set_product_type_filters:
+            self._set_product_type_filters = False
+            product_types_filter = self._controller.get_product_types_filter()
+            product_types = []
+            for item in filter_product_type_items:
+                product_type = item["value"]
+                matching = (
+                    int(product_type in product_types_filter.product_types)
+                    + int(product_types_filter.is_allow_list)
+                )
+                if matching % 2 == 0:
+                    product_types.append(product_type)
+
+            if (
+                product_types
+                and len(product_types) < len(filter_product_type_items)
+            ):
+                self._search_bar.set_filter_value(
+                    "product_types",
+                    product_types
+                )
 
     def _on_folders_selection_changed(self, event):
         self._selected_folder_ids = set(event["folder_ids"])

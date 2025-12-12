@@ -108,6 +108,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._ext_value = None
         self._filename = None
         self._workdir = None
+        self._rootless_workdir = None
 
         self._result = None
 
@@ -144,8 +145,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         version_layout.addWidget(last_version_check)
 
         # Artist note widget
-        artist_note_input = PlaceholderPlainTextEdit(inputs_widget)
-        artist_note_input.setPlaceholderText(
+        description_input = PlaceholderPlainTextEdit(inputs_widget)
+        description_input.setPlaceholderText(
             "Provide a note about this workfile.")
 
         # Preview widget
@@ -166,7 +167,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_label = QtWidgets.QLabel("Subversion:", inputs_widget)
         extension_label = QtWidgets.QLabel("Extension:", inputs_widget)
         preview_label = QtWidgets.QLabel("Preview:", inputs_widget)
-        artist_note_label = QtWidgets.QLabel("Artist Note:", inputs_widget)
+        description_label = QtWidgets.QLabel("Artist Note:", inputs_widget)
 
         # Build inputs
         inputs_layout = QtWidgets.QGridLayout(inputs_widget)
@@ -178,8 +179,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(extension_combobox, 2, 1)
         inputs_layout.addWidget(preview_label, 3, 0)
         inputs_layout.addWidget(preview_widget, 3, 1)
-        inputs_layout.addWidget(artist_note_label, 4, 0, 1, 2)
-        inputs_layout.addWidget(artist_note_input, 5, 0, 1, 2)
+        inputs_layout.addWidget(description_label, 4, 0, 1, 2)
+        inputs_layout.addWidget(description_input, 5, 0, 1, 2)
 
         # Build layout
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -214,13 +215,13 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_combobox = extension_combobox
         self._subversion_input = subversion_input
         self._preview_widget = preview_widget
-        self._artist_note_input = artist_note_input
+        self._description_input = description_input
 
         self._version_label = version_label
         self._subversion_label = subversion_label
         self._extension_label = extension_label
         self._preview_label = preview_label
-        self._artist_note_label = artist_note_label
+        self._description_label = description_label
 
         # Post init setup
 
@@ -255,6 +256,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._folder_id = folder_id
         self._task_id = task_id
         self._workdir = data["workdir"]
+        self._rootless_workdir = data["rootless_workdir"]
         self._comment_value = data["comment"]
         self._ext_value = data["ext"]
         self._template_key = data["template_key"]
@@ -329,10 +331,13 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._result = {
             "filename": self._filename,
             "workdir": self._workdir,
+            "rootless_workdir": self._rootless_workdir,
             "folder_id": self._folder_id,
             "task_id": self._task_id,
             "template_key": self._template_key,
-            "artist_note": self._artist_note_input.toPlainText(),
+            "version": self._version_value,
+            "comment": self._comment_value,
+            "description": self._description_input.toPlainText(),
         }
         self.close()
 

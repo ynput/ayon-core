@@ -7,6 +7,8 @@ import collections
 import tempfile
 import subprocess
 import platform
+import warnings
+import functools
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -68,6 +70,56 @@ VIDEO_EXTENSIONS = {
     ".mpv", ".mxf", ".nsv", ".ogg", ".ogv", ".qt", ".rm", ".rmvb",
     ".roq", ".svi", ".vob", ".webm", ".wmv", ".yuv"
 }
+
+
+def deprecated(new_destination):
+    """Mark functions as deprecated.
+
+    It will result in a warning being emitted when the function is used.
+    """
+
+    func = None
+    if callable(new_destination):
+        func = new_destination
+        new_destination = None
+
+    def _decorator(decorated_func):
+        if new_destination is None:
+            warning_message = (
+                " Please check content of deprecated function to figure out"
+                " possible replacement."
+            )
+        else:
+            warning_message = " Please replace your usage with '{}'.".format(
+                new_destination
+            )
+
+        @functools.wraps(decorated_func)
+        def wrapper(*args, **kwargs):
+            warnings.simplefilter("always", DeprecationWarning)
+            warnings.warn(
+                (
+                    "Call to deprecated function '{}'"
+                    "\nFunction was moved or removed.{}"
+                ).format(decorated_func.__name__, warning_message),
+                category=DeprecationWarning,
+                stacklevel=4
+            )
+            return decorated_func(*args, **kwargs)
+        return wrapper
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
+
+
+class MissingRGBAChannelsError(ValueError):
+    """Raised when we can't find channels to use as RGBA for conversion in
+    input media.
+
+    This may be other channels than solely RGBA, like Z-channel. The error is
+    raised when no matching 'reviewable' channel was found.
+    """
 
 
 def get_transcode_temp_directory():
@@ -348,6 +400,10 @@ def get_review_info_by_layer_name(channel_names):
             ...
         ]
 
+    This tries to find suitable outputs good for review purposes, by
+    searching for channel names like RGBA, but also XYZ, Z, N, AR, AG, AB
+    channels.
+
     Args:
         channel_names (list[str]): List of channel names.
 
@@ -356,7 +412,6 @@ def get_review_info_by_layer_name(channel_names):
     """
 
     layer_names_order = []
-    rgba_by_layer_name = collections.defaultdict(dict)
     channels_by_layer_name = collections.defaultdict(dict)
 
     for channel_name in channel_names:
@@ -365,42 +420,95 @@ def get_review_info_by_layer_name(channel_names):
         if "." in channel_name:
             layer_name, last_part = channel_name.rsplit(".", 1)
 
-        channels_by_layer_name[layer_name][channel_name] = last_part
-        if last_part.lower() not in {
-            "r", "red",
-            "g", "green",
-            "b", "blue",
-            "a", "alpha"
+        # R, G, B, A or X, Y, Z, N, AR, AG, AB, RED, GREEN, BLUE, ALPHA
+        channel = last_part.upper()
+        if channel not in {
+            # Detect RGBA channels
+            "R", "G", "B", "A",
+            # Support fully written out rgba channel names
+            "RED", "GREEN", "BLUE", "ALPHA",
+            # Allow detecting of x, y and z channels, and normal channels
+            "X", "Y", "Z", "N",
+            # red, green and blue alpha/opacity, for colored mattes
+            "AR", "AG", "AB"
         }:
             continue
 
         if layer_name not in layer_names_order:
             layer_names_order.append(layer_name)
-        # R, G, B or A
-        channel = last_part[0].upper()
-        rgba_by_layer_name[layer_name][channel] = channel_name
 
-    # Put empty layer to the beginning of the list
+        channels_by_layer_name[layer_name][channel] = channel_name
+
+    # Put empty layer or 'rgba' to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
-    if "" in layer_names_order:
-        layer_names_order.remove("")
-        layer_names_order.insert(0, "")
+    def _sort(_layer_name: str) -> int:
+        # Prioritize "" layer name
+        # Prioritize layers with RGB channels
+        if _layer_name == "rgba":
+            return 0
+
+        if _layer_name == "":
+            return 1
+
+        channels = channels_by_layer_name[_layer_name]
+        if all(channel in channels for channel in "RGB"):
+            return 2
+        return 10
+    layer_names_order.sort(key=_sort)
 
     output = []
     for layer_name in layer_names_order:
-        rgba_layer_info = rgba_by_layer_name[layer_name]
-        red = rgba_layer_info.get("R")
-        green = rgba_layer_info.get("G")
-        blue = rgba_layer_info.get("B")
-        if not red or not green or not blue:
+        channel_info = channels_by_layer_name[layer_name]
+
+        alpha = channel_info.get("A")
+
+        # RGB channels
+        if all(channel in channel_info for channel in "RGB"):
+            rgb = "R", "G", "B"
+
+        # RGB channels using fully written out channel names
+        elif all(
+            channel in channel_info
+            for channel in ("RED", "GREEN", "BLUE")
+        ):
+            rgb = "RED", "GREEN", "BLUE"
+            alpha = channel_info.get("ALPHA")
+
+        # XYZ channels (position pass)
+        elif all(channel in channel_info for channel in "XYZ"):
+            rgb = "X", "Y", "Z"
+
+        # Colored mattes (as defined in OpenEXR Channel Name standards)
+        elif all(channel in channel_info for channel in ("AR", "AG", "AB")):
+            rgb = "AR", "AG", "AB"
+
+        # Luminance channel (as defined in OpenEXR Channel Name standards)
+        elif "Y" in channel_info:
+            rgb = "Y", "Y", "Y"
+
+        # Has only Z channel (Z-depth layer)
+        elif "Z" in channel_info:
+            rgb = "Z", "Z", "Z"
+
+        # Has only A channel (Alpha layer)
+        elif "A" in channel_info:
+            rgb = "A", "A", "A"
+            alpha = None
+
+        else:
+            # No reviewable channels found
             continue
+
+        red = channel_info[rgb[0]]
+        green = channel_info[rgb[1]]
+        blue = channel_info[rgb[2]]
         output.append({
             "name": layer_name,
             "review_channels": {
                 "R": red,
                 "G": green,
                 "B": blue,
-                "A": rgba_layer_info.get("A"),
+                "A": alpha,
             }
         })
     return output
@@ -1003,6 +1111,8 @@ def convert_ffprobe_fps_to_float(value):
     return dividend / divisor
 
 
+# --- Deprecated functions ---
+@deprecated("oiio_color_convert")
 def convert_colorspace(
     input_path,
     output_path,
@@ -1017,7 +1127,62 @@ def convert_colorspace(
     parallel_frames=False,
     logger=None,
 ):
-    """Convert source file from one color space to another.
+    """DEPRECATED function use `oiio_color_convert` instead
+
+    Args:
+        input_path (str): Path to input file that should be converted.
+        output_path (str): Path to output file where result will be stored.
+        config_path (str): Path to OCIO config file.
+        source_colorspace (str): OCIO valid color space of source files.
+        target_colorspace (str, optional): OCIO valid target color space.
+            If filled, 'view' and 'display' must be empty.
+        view (str, optional): Name for target viewer space (OCIO valid).
+            Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        display (str, optional): Name for target display-referred
+            reference space. Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        additional_command_args (list, optional): Additional arguments
+            for oiiotool (like binary depth for .dpx).
+        logger (logging.Logger, optional): Logger used for logging.
+
+    Returns:
+        None: Function returns None.
+
+    Raises:
+        ValueError: If parameters are misconfigured.
+    """
+    return oiio_color_convert(
+        input_path,
+        output_path,
+        config_path,
+        source_colorspace,
+        target_colorspace=target_colorspace,
+        target_display=display,
+        target_view=view,
+        additional_command_args=additional_command_args,
+        logger=logger,
+    )
+
+
+def oiio_color_convert(
+    input_path,
+    output_path,
+    config_path,
+    source_colorspace,
+    source_display=None,
+    source_view=None,
+    target_colorspace=None,
+    target_display=None,
+    target_view=None,
+    additional_command_args=None,
+    logger=None,
+):
+    """Transcode source file to other with colormanagement.
+
+    Oiiotool also support additional arguments for transcoding.
+    For more information, see the official documentation:
+    https://openimageio.readthedocs.io/en/latest/oiiotool.html
 
     Args:
         input_path (str): Path that should be converted. It is expected that
@@ -1029,11 +1194,18 @@ def convert_colorspace(
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
         config_path (str): path to OCIO config file
         source_colorspace (str): ocio valid color space of source files
+        source_display (str, optional): name for source display-referred
+            reference space (ocio valid). If provided, source_view must also be
+            provided, and source_colorspace will be ignored
+        source_view (str, optional): name for source viewer space (ocio valid)
+            If provided, source_display must also be provided, and
+            source_colorspace will be ignored
         target_colorspace (str): ocio valid target color space
                     if filled, 'view' and 'display' must be empty
-        view (str): name for viewer space (ocio valid)
-            both 'view' and 'display' must be filled (if 'target_colorspace')
-        display (str): name for display-referred reference space (ocio valid)
+        target_display (str): name for target display-referred reference space
+            (ocio valid) both 'view' and 'display' must be filled (if
+            'target_colorspace')
+        target_view (str): name for target viewer space (ocio valid)
             both 'view' and 'display' must be filled (if 'target_colorspace')
         additional_command_args (list): arguments for oiiotool (like binary
             depth for .dpx)
@@ -1045,8 +1217,10 @@ def convert_colorspace(
         frame_padding (Optional[int]): Frame padding to use for the input and
             output when using a sequence filepath.
         logger (logging.Logger): Logger used for logging.
+
     Raises:
         ValueError: if misconfigured
+
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -1098,46 +1272,101 @@ def convert_colorspace(
         "--ch", channels_arg
     ])
 
-    if all([target_colorspace, view, display]):
-        raise ValueError("Colorspace and both screen and display"
-                         " cannot be set together."
-                         "Choose colorspace or screen and display")
-    if not target_colorspace and not all([view, display]):
-        raise ValueError("Both screen and display must be set.")
+    # Validate input parameters
+    if target_colorspace and target_view and target_display:
+        raise ValueError(
+            "Colorspace and both view and display cannot be set together."
+            "Choose colorspace or screen and display"
+        )
+
+    if not target_colorspace and not target_view and not target_display:
+        raise ValueError(
+            "Both view and display must be set if target_colorspace is not "
+            "provided."
+        )
+
+    if (
+        (source_view and not source_display)
+        or (source_display and not source_view)
+    ):
+        raise ValueError(
+            "Both source_view and source_display must be provided if using "
+            "display/view inputs."
+        )
+
+    if source_view and source_display and source_colorspace:
+        logger.warning(
+            "Both source display/view and source_colorspace provided. "
+            "Using source display/view pair and ignoring source_colorspace."
+        )
 
     if additional_command_args:
         oiio_cmd.extend(additional_command_args)
 
-    if target_colorspace:
-        oiio_cmd.extend(["--colorconvert:subimages=0",
-                         source_colorspace,
-                         target_colorspace])
-    if view and display:
-        oiio_cmd.extend(["--iscolorspace", source_colorspace])
-        oiio_cmd.extend(["--ociodisplay:subimages=0", display, view])
+    # Handle the different conversion cases
+    # Source view and display are known
+    if source_view and source_display:
+        color_convert_args = None
+        ocio_display_args = None
+        if target_colorspace:
+            # This is a two-step conversion process since there's no direct
+            # display/view to colorspace command
+            # This could be a config parameter or determined from OCIO config
+            # Use temporary role space 'scene_linear'
+            color_convert_args = ("scene_linear", target_colorspace)
+        elif source_display != target_display or source_view != target_view:
+            # Complete display/view pair conversion
+            # - go through a reference space
+            ocio_display_args = (target_display, target_view)
+        else:
+            logger.debug(
+                "Source and target display/view pairs are identical."
+                " No color conversion needed."
+            )
+
+        if color_convert_args or ocio_display_args:
+            # Invert source display/view so that we can go from there to the
+            # target colorspace or display/view
+            oiio_cmd.extend([
+                "--ociodisplay:inverse=1:subimages=0",
+                source_display,
+                source_view,
+            ])
+
+        if color_convert_args:
+            # Use colorconvert for colorspace target
+            oiio_cmd.extend([
+                "--colorconvert:subimages=0",
+                *color_convert_args
+            ])
+        elif ocio_display_args:
+            # Use ociodisplay for display/view target
+            oiio_cmd.extend([
+                "--ociodisplay:subimages=0",
+                *ocio_display_args
+            ])
+
+    elif target_colorspace:
+        # Standard color space to color space conversion
+        oiio_cmd.extend([
+            "--colorconvert:subimages=0",
+            source_colorspace,
+            target_colorspace,
+        ])
+    else:
+        # Standard conversion from colorspace to display/view
+        oiio_cmd.extend([
+            "--iscolorspace",
+            source_colorspace,
+            "--ociodisplay:subimages=0",
+            target_display,
+            target_view,
+        ])
 
     oiio_cmd.extend(["-o", output_path])
 
     logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
     run_subprocess(oiio_cmd, logger=logger)
-
-
-def split_cmd_args(in_args):
-    """Makes sure all entered arguments are separated in individual items.
-
-    Split each argument string with " -" to identify if string contains
-    one or more arguments.
-    Args:
-        in_args (list): of arguments ['-n', '-d uint10']
-    Returns
-        (list): ['-n', '-d', 'unint10']
-    """
-    splitted_args = []
-    for arg in in_args:
-        if not arg.strip():
-            continue
-        splitted_args.extend(arg.split(" "))
-    return splitted_args
 
 
 def get_rescaled_command_arguments(
@@ -1370,8 +1599,9 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     review_channels = get_convert_rgb_channels(channel_names)
 
     if review_channels is None:
-        raise ValueError(
-            "Couldn't find channels that can be used for conversion."
+        raise MissingRGBAChannelsError(
+            "Couldn't find channels that can be used for conversion "
+            f"among channels: {channel_names}."
         )
 
     red, green, blue, alpha = review_channels
@@ -1385,7 +1615,8 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
         channels_arg += ",A={}".format(float(alpha_default))
         input_channels.append("A")
 
-    input_channels_str = ",".join(input_channels)
+    # Make sure channels are unique, but preserve order to avoid oiiotool crash
+    input_channels_str = ",".join(list(dict.fromkeys(input_channels)))
 
     subimages = oiio_input_info.get("subimages")
     input_arg = "-i"
@@ -1425,11 +1656,26 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
         Optional[str]: Mime type or None if is unknown mime type.
 
     """
+    # The implementation is identical or better with ayon_api >=1.1.0,
+    #   which is used in AYON launcher >=1.3.0.
+    # NOTE Remove safe import when AYON launcher >=1.2.0.
+    try:
+        from ayon_api.utils import (
+            get_media_mime_type_for_content as _ayon_api_func
+        )
+    except ImportError:
+        _ayon_api_func = None
+
     if not filepath or not os.path.exists(filepath):
         return None
 
     with open(filepath, "rb") as stream:
         content = stream.read()
+
+    if _ayon_api_func is not None:
+        mime_type = _ayon_api_func(content)
+        if mime_type is not None:
+            return mime_type
 
     content_len = len(content)
     # Pre-validation (largest definition check)
@@ -1457,11 +1703,13 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
     if b'xmlns="http://www.w3.org/2000/svg"' in content:
         return "image/svg+xml"
 
-    # JPEG, JFIF or Exif
-    if (
-        content[0:4] == b"\xff\xd8\xff\xdb"
-        or content[6:10] in (b"JFIF", b"Exif")
-    ):
+    # JPEG
+    # - [0:2] is constant b"\xff\xd8"
+    #   (ref. https://www.file-recovery.com/jpg-signature-format.htm)
+    # - [2:4] Marker identifier b"\xff{?}"
+    #   (ref. https://www.disktuna.com/list-of-jpeg-markers/)
+    # NOTE: File ends with b"\xff\xd9"
+    if content[0:3] == b"\xff\xd8\xff":
         return "image/jpeg"
 
     # Webp
