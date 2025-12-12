@@ -310,9 +310,6 @@ class CreateWidget(QtWidgets.QWidget):
         folder_path = None
         if self._context_change_is_enabled():
             folder_path = self._context_widget.get_selected_folder_path()
-
-        if folder_path is None:
-            folder_path = self.get_current_folder_path()
         return folder_path or None
 
     def _get_folder_id(self):
@@ -328,9 +325,6 @@ class CreateWidget(QtWidgets.QWidget):
             folder_path = self._context_widget.get_selected_folder_path()
             if folder_path:
                 task_name = self._context_widget.get_selected_task_name()
-
-        if not task_name:
-            task_name = self.get_current_task_name()
         return task_name
 
     def _set_context_enabled(self, enabled):
