@@ -138,7 +138,14 @@ def discover_plugins(
         for item in modules:
             filepath, module = item
             result.add_module(module)
-            all_plugins.extend(classes_from_module(base_class, module))
+            for cls in classes_from_module(base_class, module):
+                if cls is base_class:
+                    continue
+                # Class has defined 'skip_discovery = True'
+                skip_discovery = cls.__dict__.get("skip_discovery")
+                if skip_discovery is True:
+                    continue
+                all_plugins.append(cls)
 
     if base_class not in ignored_classes:
         ignored_classes.append(base_class)
