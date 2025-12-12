@@ -147,6 +147,8 @@ class BaseCreator(ABC):
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
+    skip_discovery = True
+
     # Label shown in UI
     label = None
     group_label = None
@@ -642,7 +644,7 @@ class Creator(BaseCreator):
 
     Creation requires prepared product name and instance data.
     """
-    is_base_class = True
+    skip_discovery = True
     # GUI Purposes
     # - default_variants may not be used if `get_default_variants`
     #   is overridden
@@ -931,7 +933,7 @@ class Creator(BaseCreator):
 
 
 class HiddenCreator(BaseCreator):
-    is_base_class = True
+    skip_discovery = True
 
     @abstractmethod
     def create(self, instance_data, source_data):
@@ -943,7 +945,7 @@ class AutoCreator(BaseCreator):
 
     Can be used e.g. for `workfile`.
     """
-    is_base_class = True
+    skip_discovery = True
 
     def remove_instances(self, instances):
         """Skip removal."""
