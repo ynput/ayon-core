@@ -733,7 +733,7 @@ def convert_input_paths_for_ffmpeg(
     )
     input_items = list(input_collections)
     input_items.extend(input_remainder)
-    for _input in input_items:
+    for input_item in input_items:
         # Prepare subprocess arguments
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
@@ -746,21 +746,21 @@ def convert_input_paths_for_ffmpeg(
 
         # Convert a sequence of files using a single oiiotool command
         # using its sequence syntax
-        if isinstance(_input, clique.Collection):
-            frames = _input.format("{head}#{tail}").replace(" ", "")
+        if isinstance(input_item, clique.Collection):
+            frames = input_item.format("{head}#{tail}").replace(" ", "")
             oiio_cmd.extend([
-                "--framepadding", _input.padding,
+                "--framepadding", input_item.padding,
                 "--frames", frames,
                 "--parallel-frames"
             ])
-            _input: str = _input.format("{head}#{tail}")
-        elif not isinstance(_input, str):
+            input_item: str = input_item.format("{head}#{tail}")
+        elif not isinstance(input_item, str):
             raise TypeError(
-                f"Input is not a string or Collection: {_input}"
+                f"Input is not a string or Collection: {input_item}"
             )
 
         oiio_cmd.extend([
-            input_arg, _input,
+            input_arg, input_item,
             # Tell oiiotool which channels should be put to top stack
             #   (and output)
             "--ch", channels_arg,
@@ -772,7 +772,7 @@ def convert_input_paths_for_ffmpeg(
             oiio_cmd.extend(["--eraseattrib", attr_name])
 
         # Add last argument - path to output
-        base_filename = os.path.basename(_input)
+        base_filename = os.path.basename(input_item)
         output_path = os.path.join(output_dir, base_filename)
         oiio_cmd.extend([
             "-o", output_path
