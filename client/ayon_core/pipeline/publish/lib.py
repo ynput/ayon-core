@@ -122,7 +122,8 @@ def get_publish_template_name(
     task_type,
     project_settings=None,
     hero=False,
-    logger=None
+    product_base_type: Optional[str] = None,
+    logger=None,
 ):
     """Get template name which should be used for passed context.
 
@@ -140,17 +141,29 @@ def get_publish_template_name(
         task_type (str): Task type on which is instance working.
         project_settings (Dict[str, Any]): Prepared project settings.
         hero (bool): Template is for hero version publishing.
+        product_base_type (Optional[str]): Product type for which should
+            be found template.
         logger (logging.Logger): Custom logger used for 'filter_profiles'
             function.
 
     Returns:
         str: Template name which should be used for integration.
     """
+    if not product_base_type:
+        msg = (
+            "Argument 'product_base_type' is not provided to"
+            " 'get_publish_template_name' function. This argument"
+            " will be required in future versions."
+        )
+        warnings.warn(msg, DeprecationWarning)
+        if logger:
+            logger.warning(msg)
 
     template = None
     filter_criteria = {
         "hosts": host_name,
         "product_types": product_type,
+        "product_base_types": product_base_type,
         "task_names": task_name,
         "task_types": task_type,
     }
@@ -179,7 +192,9 @@ class HelpContent:
         self.detail = detail
 
 
-def load_help_content_from_filepath(filepath):
+def load_help_content_from_filepath(
+    filepath: str
+) -> dict[str, dict[str, HelpContent]]:
     """Load help content from xml file.
     Xml file may contain errors and warnings.
     """
@@ -214,15 +229,20 @@ def load_help_content_from_filepath(filepath):
     return output
 
 
-def load_help_content_from_plugin(plugin):
+def load_help_content_from_plugin(
+    plugin: pyblish.api.Plugin,
+    help_filename: Optional[str] = None,
+) -> dict[str, dict[str, HelpContent]]:
     cls = plugin
     if not inspect.isclass(plugin):
         cls = plugin.__class__
+
     plugin_filepath = inspect.getfile(cls)
     plugin_dir = os.path.dirname(plugin_filepath)
-    basename = os.path.splitext(os.path.basename(plugin_filepath))[0]
-    filename = basename + ".xml"
-    filepath = os.path.join(plugin_dir, "help", filename)
+    if help_filename is None:
+        basename = os.path.splitext(os.path.basename(plugin_filepath))[0]
+        help_filename = basename + ".xml"
+    filepath = os.path.join(plugin_dir, "help", help_filename)
     return load_help_content_from_filepath(filepath)
 
 

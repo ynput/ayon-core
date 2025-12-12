@@ -221,6 +221,7 @@ class CreateContextWidget(QtWidgets.QWidget):
         filters_widget.text_changed.connect(self._on_folder_filter_change)
         filters_widget.my_tasks_changed.connect(self._on_my_tasks_change)
 
+        self._filters_widget = filters_widget
         self._current_context_btn = current_context_btn
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
@@ -289,6 +290,10 @@ class CreateContextWidget(QtWidgets.QWidget):
         self._folders_widget.set_project_name(self._last_project_name)
         self._hierarchy_controller.set_expected_selection(
             self._last_project_name, folder_id, task_name
+        )
+        # Update my tasks
+        self._on_my_tasks_change(
+            self._filters_widget.is_my_tasks_checked()
         )
 
     def _clear_selection(self):
