@@ -190,7 +190,7 @@ def _convert_extract_thumbnail(overrides):
         "ffmpeg_args",
     ):
         if key in extract_thumbnail_overrides:
-            base_value[key] = extract_thumbnail_overrides[key]
+            base_value[key] = extract_thumbnail_overrides.pop(key)
 
     extract_thumbnail_profiles = extract_thumbnail_overrides.setdefault(
         "profiles", []
