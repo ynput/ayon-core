@@ -99,7 +99,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
         for container in containers:
             missing = [key for key in required_keys if key not in container]
             if missing:
-                self.log.debug(
+                self.log.warning(
                     "Skipping invalid container, missing required keys:"
                     " {}. {}".format(", ".join(missing), container)
                 )
