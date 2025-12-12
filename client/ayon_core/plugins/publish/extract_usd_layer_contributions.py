@@ -340,8 +340,9 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             attr_values[key] = attr_values[key].format(**data)
 
         # Define contribution
-        order = self.contribution_layers.get(
-            attr_values["contribution_layer"], 0
+        scope: str = attr_values["contribution_target_product_init"]
+        order: int = (
+            self.contribution_layers[scope][attr_values["contribution_layer"]]
         )
 
         if attr_values["contribution_apply_as_variant"]:
