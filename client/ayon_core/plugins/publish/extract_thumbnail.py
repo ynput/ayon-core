@@ -136,8 +136,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         if not self.profiles:
             self.log.debug("No profiles present for extract review thumbnail.")
             return
-        profile_config = self._get_config_from_profile(instance)
-        if not profile_config:
+        thumbnail_def = self._get_config_from_profile(instance)
+        if not thumbnail_def:
             return
 
         product_name = instance.data["productName"]
@@ -217,7 +217,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     file_path = self._create_frame_from_video(
                         video_file_path,
                         dst_staging,
-                        profile_config
+                        thumbnail_def
                     )
                     if file_path:
                         src_staging, input_file = os.path.split(file_path)
@@ -230,7 +230,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 if "slate-frame" in repre.get("tags", []):
                     repre_files_thumb = repre_files_thumb[1:]
                 file_index = int(
-                    float(len(repre_files_thumb)) * profile_config.duration_split  # noqa: E501
+                    float(len(repre_files_thumb)) * thumbnail_def.duration_split  # noqa: E501
                 )
                 input_file = repre_files[file_index]
 
@@ -268,13 +268,13 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             #   colorspace data
             if not repre_thumb_created:
                 repre_thumb_created = self._create_thumbnail_ffmpeg(
-                    full_input_path, full_output_path, profile_config
+                    full_input_path, full_output_path, thumbnail_def
                 )
 
             # Skip representation and try next one if wasn't created
             if not repre_thumb_created and oiio_supported:
                 repre_thumb_created = self._create_thumbnail_oiio(
-                    full_input_path, full_output_path, profile_config
+                    full_input_path, full_output_path, thumbnail_def
                 )
 
             if not repre_thumb_created:
@@ -302,7 +302,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             new_repre_tags = ["thumbnail"]
             # for workflows which needs to have thumbnails published as
             # separate representations `delete` tag should not be added
-            if not profile_config.integrate_thumbnail:
+            if not thumbnail_def.integrate_thumbnail:
                 new_repre_tags.append("delete")
 
             new_repre = {
@@ -442,7 +442,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             str: path to created thumbnail
         """
         self.log.info("Extracting thumbnail {}".format(dst_path))
-        resolution_arg = self._get_resolution_arg(
+        resolution_arg = self._get_resolution_args(
             "oiiotool", src_path, profile_config
         )
 
@@ -500,7 +500,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
 
         try:
-            resolution_arg = self._get_resolution_arg(
+            resolution_arg = self._get_resolution_args(
                 "oiiotool", src_path, profile_config
             )
         except RuntimeError:
@@ -544,7 +544,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     def _create_thumbnail_ffmpeg(self, src_path, dst_path, profile_config):
         try:
-            resolution_arg = self._get_resolution_arg(
+            resolution_arg = self._get_resolution_args(
                 "ffmpeg", src_path, profile_config
             )
         except RuntimeError:
@@ -698,7 +698,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             ):
                 os.remove(output_thumb_file_path)
 
-    def _get_resolution_arg(
+    def _get_resolution_args(
         self,
         application,
         input_path,
