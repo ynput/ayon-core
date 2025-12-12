@@ -424,7 +424,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         src_path,
         dst_path,
         colorspace_data,
-        profile_config
+        thumbnail_def
     ):
         """Create thumbnail using OIIO tool oiiotool
 
@@ -443,7 +443,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         """
         self.log.info("Extracting thumbnail {}".format(dst_path))
         resolution_arg = self._get_resolution_args(
-            "oiiotool", src_path, profile_config
+            "oiiotool", src_path, thumbnail_def
         )
 
         repre_display = colorspace_data.get("display")
@@ -463,8 +463,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
         # if representation doesn't have display and view then use
         #   oiiotool_defaults
-        elif profile_config.oiiotool_defaults:
-            oiiotool_defaults = profile_config.oiiotool_defaults
+        elif thumbnail_def.oiiotool_defaults:
+            oiiotool_defaults = thumbnail_def.oiiotool_defaults
             oiio_default_type = oiiotool_defaults["type"]
             if "colorspace" == oiio_default_type:
                 oiio_default_colorspace = oiiotool_defaults["colorspace"]
@@ -496,12 +496,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return True
 
-    def _create_thumbnail_oiio(self, src_path, dst_path, profile_config):
+    def _create_thumbnail_oiio(self, src_path, dst_path, thumbnail_def):
         self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
 
         try:
             resolution_arg = self._get_resolution_args(
-                "oiiotool", src_path, profile_config
+                "oiiotool", src_path, thumbnail_def
             )
         except RuntimeError:
             self.log.warning(
@@ -542,10 +542,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-    def _create_thumbnail_ffmpeg(self, src_path, dst_path, profile_config):
+    def _create_thumbnail_ffmpeg(self, src_path, dst_path, thumbnail_def):
         try:
             resolution_arg = self._get_resolution_args(
-                "ffmpeg", src_path, profile_config
+                "ffmpeg", src_path, thumbnail_def
             )
         except RuntimeError:
             self.log.warning(
@@ -554,7 +554,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             return False
 
         ffmpeg_path_args = get_ffmpeg_tool_args("ffmpeg")
-        ffmpeg_args = profile_config.ffmpeg_args or {}
+        ffmpeg_args = thumbnail_def.ffmpeg_args or {}
 
         jpeg_items = [
             subprocess.list2cmdline(ffmpeg_path_args)
@@ -598,7 +598,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         self,
         video_file_path,
         output_dir,
-        profile_config
+        thumbnail_def
     ):
         """Convert video file to one frame image via ffmpeg"""
         # create output file path
@@ -624,7 +624,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         seek_position = 0.0
         # Only use timestamp calculation for videos longer than 0.1 seconds
         if duration > 0.1:
-            seek_position = duration * profile_config.duration_split
+            seek_position = duration * thumbnail_def.duration_split
 
         # Build command args
         cmd_args = []
@@ -702,13 +702,13 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         self,
         application,
         input_path,
-        profile_config
+        thumbnail_def
     ):
         # get settings
-        if profile_config.target_size["type"] == "source":
+        if thumbnail_def.target_size["type"] == "source":
             return []
 
-        resize = profile_config.target_size["resize"]
+        resize = thumbnail_def.target_size["resize"]
         target_width = resize["width"]
         target_height = resize["height"]
 
@@ -718,7 +718,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             input_path,
             target_width,
             target_height,
-            bg_color=profile_config.background_color,
+            bg_color=thumbnail_def.background_color,
             log=self.log
         )
 
