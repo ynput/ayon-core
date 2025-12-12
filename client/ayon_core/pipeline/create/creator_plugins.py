@@ -146,7 +146,13 @@ class BaseCreator(ABC):
         project_settings (dict[str, Any]): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
+
     """
+    # Attribute 'skip_discovery' is used during discovery phase to skip
+    #   plugins, which can be used to mark base plugins that should not be
+    #   considered as plugins "to use". The discovery logic does NOT use
+    #   the attribute value from parent classes. Each base class has to define
+    #   the attribute again.
     skip_discovery = True
 
     # Label shown in UI
