@@ -926,9 +926,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         optionals = [
             "frameStart", "frameEnd",
             "handleEnd", "handleStart",
+            "step",
             "resolutionWidth", "resolutionHeight",
             "pixelAspect",
-            "step",
             "sourceHashes"
         ]
         for key in optionals:
