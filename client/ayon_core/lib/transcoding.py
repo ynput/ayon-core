@@ -1261,9 +1261,7 @@ def oiio_color_convert(
         ])
 
     if parallel_frames:
-        oiio_cmd.extend([
-            "--parallel-frames"
-        ])
+        oiio_cmd.append("--parallel-frames")
 
     oiio_cmd.extend([
         input_arg, input_path,
