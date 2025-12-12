@@ -755,6 +755,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     host_name, product_type, product_name, task_name, task_type
                 )
             )
-            return
+            return None
 
         return ThumbnailDef.from_dict(profile)
