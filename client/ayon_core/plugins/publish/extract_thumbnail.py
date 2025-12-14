@@ -40,6 +40,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "fusion",
         "resolve",
         "traypublisher",
+        "mari",
         "substancepainter",
         "substancedesigner",
         "nuke",

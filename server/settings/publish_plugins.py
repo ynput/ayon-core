@@ -1329,7 +1329,8 @@ DEFAULT_PUBLISH_VALUES = {
             "photoshop",
             "resolve",
             "tvpaint",
-            "substancepainter"
+            "substancepainter",
+            "mari",
         ],
         "skip_hosts_headless_publish": []
     },
@@ -1424,6 +1425,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "photoshop",
                     "substancepainter",
                     "silhouette",
+                    "mari",
                 ],
                 "enabled": True,
                 "optional": False,

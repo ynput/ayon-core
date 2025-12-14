@@ -16,6 +16,7 @@ class OCIOEnvHook(PreLaunchHook):
         "aftereffects",
         "max",
         "houdini",
+        "mari",
         "maya",
         "nuke",
         "hiero",
