@@ -136,6 +136,7 @@ def get_transcode_temp_directory():
 
 def get_oiio_info_for_input(
     filepath: str,
+    *,
     subimages: bool = False,
     verbose: bool = True,
     logger: logging.Logger = None,
