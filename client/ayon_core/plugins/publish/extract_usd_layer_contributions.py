@@ -14,6 +14,7 @@ except ImportError:
 from ayon_core.lib import (
     TextDef,
     BoolDef,
+    NumberDef,
     UISeparatorDef,
     UILabelDef,
     EnumDef,
@@ -340,11 +341,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             attr_values[key] = attr_values[key].format(**data)
 
         # Define contribution
-        scope: str = attr_values["contribution_target_product_init"]
-        order: int = (
-            self.contribution_layers[scope][attr_values["contribution_layer"]]
-        )
-
+        in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
             contribution = VariantContribution(
                 instance=instance,
@@ -353,19 +350,23 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
                 variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
-                order=order
+                order=in_layer_order
             )
         else:
             contribution = SublayerContribution(
                 instance=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
-                order=order
+                order=in_layer_order
             )
 
         asset_product = contribution.target_product
         layer_product = "{}_{}".format(asset_product, contribution.layer_id)
 
+        scope: str = attr_values["contribution_target_product_init"]
+        layer_order: int = (
+            self.contribution_layers[scope][attr_values["contribution_layer"]]
+        )
         # Layer contribution instance
         layer_instance = self.get_or_create_instance(
             product_name=layer_product,
@@ -377,7 +378,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution
         )
         layer_instance.data["usd_layer_id"] = contribution.layer_id
-        layer_instance.data["usd_layer_order"] = contribution.order
+        layer_instance.data["usd_layer_order"] = layer_order
 
         layer_instance.data["productGroup"] = (
             instance.data.get("productGroup") or "USD Layer"
@@ -574,6 +575,19 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     items=list(contribution_layers.keys()),
                     default=default_contribution_layer,
                     visible=visible),
+            # TODO: We may want to make the visibility of this optional
+            #  based on studio preference, to avoid complexity when not needed
+            NumberDef("contribution_in_layer_order",
+                    label="Strength order",
+                    tooltip=(
+                        "The contribution inside the department layer will be "
+                        "made with this offset applied. A higher number means "
+                        "a stronger opinion."
+                    ),
+                    default=0,
+                    minimum=-99999,
+                    maximum=99999,
+                    visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
                     tooltip=(
@@ -746,7 +760,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
                     layer=sdf_layer,
                     contribution_path=path,
                     layer_id=product_name,
-                    order=None,  # unordered
+                    order=contribution.order,
                     add_sdf_arguments_metadata=True
                 )
             else:
