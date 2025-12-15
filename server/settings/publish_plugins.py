@@ -83,14 +83,21 @@ def usd_contribution_layer_types():
 
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
-    name: str = SettingsField(title="Name")
+    name: str = SettingsField(
+        default="",
+        regex="[A-Za-z0-9_-]+",
+        title="Name")
     scope: list[str] = SettingsField(
+        default_factory=list,
         title="Scope",
         enum_resolver=usd_contribution_layer_types)
-    order: str = SettingsField(
+    order: int = SettingsField(
+        default=0,
         title="Order",
-        description="Higher order means a higher strength and stacks the "
-                    "layer on top.")
+        description=(
+            "Higher order means a higher strength and stacks the layer on top."
+        )
+    )
 
 
 class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
