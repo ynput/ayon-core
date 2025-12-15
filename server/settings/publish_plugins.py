@@ -1261,8 +1261,8 @@ class PublishPuginsModel(BaseSettingsModel):
         title="Extract Thumbnail from source",
         description=(
             "Extract thumbnails from explicit file set in "
-            "instance.data['thumbnailSource'] using ffmpeg "
-            "and oiiotool."
+            "instance.data['thumbnailSource'] using oiiotool"
+            " or ffmpeg."
             "Used when artist provided thumbnail source."
         )
     )
