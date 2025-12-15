@@ -582,7 +582,7 @@ def get_review_layer_name(src_filepath):
         return None
 
     # Load info about file from oiio tool
-    input_info = get_oiio_info_for_input(src_filepath)
+    input_info = get_oiio_info_for_input(src_filepath, verbose=False)
     if not input_info:
         return None
 
@@ -1389,7 +1389,11 @@ def get_rescaled_command_arguments(
         command_args.extend(["-vf", "{0},{1}".format(scale, pad)])
 
     elif application == "oiiotool":
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            logger=log,
+            verbose=False,
+        )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
             input_info, alpha_default=1.0)
@@ -1529,10 +1533,13 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
-            Should be output of function `get_oiio_info_for_input`.
+            Should be output of function 'get_oiio_info_for_input' (can be
+            called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
+
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.
+
     """
     channel_names = oiio_input_info["channelnames"]
     review_channels = get_convert_rgb_channels(channel_names)
