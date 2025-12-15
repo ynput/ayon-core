@@ -1263,8 +1263,7 @@ class PublishPuginsModel(BaseSettingsModel):
             "Extract thumbnails from explicit file set in "
             "instance.data['thumbnailSource'] using ffmpeg "
             "and oiiotool."
-            "Used when host does not provide thumbnail, but artist could set "
-            "custom thumbnail source file."
+            "Used when artist provided thumbnail source."
         )
     )
     ExtractOIIOTranscode: ExtractOIIOTranscodeModel = SettingsField(
