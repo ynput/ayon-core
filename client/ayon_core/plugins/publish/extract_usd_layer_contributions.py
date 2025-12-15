@@ -18,7 +18,7 @@ from ayon_core.lib import (
     UISeparatorDef,
     UILabelDef,
     EnumDef,
-    filter_profiles
+    filter_profiles,
 )
 try:
     from ayon_core.pipeline.usdlib import (
