@@ -145,9 +145,9 @@ def get_oiio_info_for_input(
 
     Args:
         filepath (str): Path to file.
-        logger (logging.Logger): Logger used for logging.
         subimages (bool): include info about subimages in the output.
         verbose (bool): get the full metadata about each input image.
+        logger (logging.Logger): Logger used for logging.
 
     Stdout should contain xml format string.
     """
@@ -1252,8 +1252,8 @@ def oiio_color_convert(
 
     input_info = get_oiio_info_for_input(
         first_input_path,
-        logger=logger,
         verbose=False,
+        logger=logger,
     )
 
     # Collect channels to export
