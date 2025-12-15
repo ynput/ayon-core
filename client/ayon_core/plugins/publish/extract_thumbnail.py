@@ -478,7 +478,11 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-        input_info = get_oiio_info_for_input(src_path, logger=self.log)
+        input_info = get_oiio_info_for_input(
+            src_path,
+            logger=self.log,
+            verbose=False,
+        )
         try:
             input_arg, channels_arg = get_oiio_input_and_channel_args(
                 input_info
