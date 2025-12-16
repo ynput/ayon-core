@@ -13,7 +13,7 @@ def get_versioning_start(
     product_type: Optional[str] = None,
     product_name: Optional[str] = None,
     project_settings: Optional[dict[str, Any]] = None,
-):
+) -> int:
     """Get anatomy versioning start"""
     if not project_settings:
         project_settings = get_project_settings(project_name)
