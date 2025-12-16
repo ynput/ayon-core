@@ -501,6 +501,18 @@ class UseDisplayViewModel(BaseSettingsModel):
     )
 
 
+class ExtractThumbnailFromSourceModel(BaseSettingsModel):
+    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
+    enabled: bool = SettingsField(True)
+
+    target_size: ResizeModel = SettingsField(
+        default_factory=ResizeModel, title="Target size"
+    )
+    background_color: ColorRGBA_uint8 = SettingsField(
+        (0, 0, 0, 0.0), title="Background color"
+    )
+
+
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     _layout = "expanded"
     name: str = SettingsField(
@@ -1276,6 +1288,16 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractThumbnailModel,
         title="Extract Thumbnail"
     )
+    ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(  # noqa: E501
+        default_factory=ExtractThumbnailFromSourceModel,
+        title="Extract Thumbnail from source",
+        description=(
+            "Extract thumbnails from explicit file set in "
+            "instance.data['thumbnailSource'] using oiiotool"
+            " or ffmpeg."
+            "Used when artist provided thumbnail source."
+        )
+    )
     ExtractOIIOTranscode: ExtractOIIOTranscodeModel = SettingsField(
         default_factory=ExtractOIIOTranscodeModel,
         title="Extract OIIO Transcode"
@@ -1514,6 +1536,16 @@ DEFAULT_PUBLISH_VALUES = {
                 }
             }
         ]
+    },
+    "ExtractThumbnailFromSource": {
+        "enabled": True,
+        "target_size": {
+            "type": "resize",
+            "resize": {
+                "width": 300,
+                "height": 170
+            }
+        },
     },
     "ExtractOIIOTranscode": {
         "enabled": True,
