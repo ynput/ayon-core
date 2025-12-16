@@ -246,6 +246,65 @@ def load_help_content_from_plugin(
     return load_help_content_from_filepath(filepath)
 
 
+def filter_crashed_publish_paths(
+    project_name: str,
+    crashed_paths: set[str],
+    *,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> set[str]:
+    """Filter crashed paths happened during plugins discovery.
+
+    Check if plugins discovery has enabled strict mode and filter crashed
+        paths that happened during discover based on regexes from settings.
+
+    Publishing should not start if any paths are returned.
+
+    Args:
+        project_name (str): Project name in which context plugins discovery
+            happened.
+        crashed_paths (set[str]): Crashed paths from plugins discovery report.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+
+    Returns:
+        set[str]: Filtered crashed paths.
+
+    """
+    filtered_paths = set()
+    # Nothing crashed all good...
+    if not crashed_paths:
+        return filtered_paths
+
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+
+    discover_validation = project_settings["core"]["discover_validation"]
+    # Strict mode is not enabled.
+    if not discover_validation["enabled"]:
+        return filtered_paths
+
+    regexes = [
+        re.compile(value, re.IGNORECASE)
+        for value in discover_validation["ignore_paths"]
+        if value
+    ]
+    is_windows = platform.system().lower() == "windows"
+    # Fitler path with regexes from settings
+    for path in crashed_paths:
+        # Normalize paths to use forward slashes on windows
+        if is_windows:
+            path = path.replace("\\", "/")
+        is_invalid = True
+        for regex in regexes:
+            if regex.match(path):
+                is_invalid = False
+                break
+
+        if is_invalid:
+            filtered_paths.add(path)
+
+    return filtered_paths
+
+
 def publish_plugins_discover(
         paths: Optional[list[str]] = None) -> DiscoverResult:
     """Find and return available pyblish plug-ins.

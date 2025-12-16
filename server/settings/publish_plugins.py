@@ -34,6 +34,28 @@ class ValidateBaseModel(BaseSettingsModel):
     active: bool = SettingsField(True, title="Active")
 
 
+class DiscoverValidationModel(BaseSettingsModel):
+    """Strictly validate publish plugins discovery.
+
+    Artist won't be able to publish if path to publish plugin fails to be
+        imported.
+
+    """
+    _isGroup = True
+    enabled: bool = SettingsField(
+        False,
+        description="Enable strict mode of plugins discovery",
+    )
+    ignore_paths: list[str] = SettingsField(
+        default_factory=list,
+        title="Ignored paths (regex)",
+        description=(
+            "Paths that do match regex will be skipped in validation."
+        ),
+    )
+
+
+
 class CollectAnatomyInstanceDataModel(BaseSettingsModel):
     _isGroup = True
     follow_workfile_version: bool = SettingsField(
@@ -1188,6 +1210,11 @@ class CleanUpFarmModel(BaseSettingsModel):
 
 
 class PublishPuginsModel(BaseSettingsModel):
+    discover_validation: DiscoverValidationModel = SettingsField(
+        default_factory=DiscoverValidationModel,
+        title="Validate plugins discovery",
+    )
+
     CollectAnatomyInstanceData: CollectAnatomyInstanceDataModel = (
         SettingsField(
             default_factory=CollectAnatomyInstanceDataModel,
@@ -1308,6 +1335,10 @@ class PublishPuginsModel(BaseSettingsModel):
 
 
 DEFAULT_PUBLISH_VALUES = {
+    "discover_validation": {
+        "enabled": False,
+        "ignore_paths": [],
+    },
     "CollectAnatomyInstanceData": {
         "follow_workfile_version": False
     },
