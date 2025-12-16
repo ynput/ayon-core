@@ -1,6 +1,8 @@
 """Library functions for publishing."""
 from __future__ import annotations
 import os
+import platform
+import re
 import sys
 import inspect
 import copy
