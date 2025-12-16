@@ -90,7 +90,6 @@ def addon(ctx):
     pass
 
 
-
 @main_cli.command()
 @click.pass_context
 @click.argument("path", required=True)
