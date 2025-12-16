@@ -299,7 +299,6 @@ def add_ordered_sublayer(layer, contribution_path, layer_id, order=None,
             sdf format args metadata if enabled)
 
     """
-
     # Add the order with the contribution path so that for future
     # contributions we can again use it to magically fit into the
     # ordering. We put this in the path because sublayer paths do
@@ -317,20 +316,25 @@ def add_ordered_sublayer(layer, contribution_path, layer_id, order=None,
     # If the layer was already in the layers, then replace it
     for index, existing_path in enumerate(layer.subLayerPaths):
         args = get_sdf_format_args(existing_path)
-        existing_layer = args.get("layer_id")
-        if existing_layer == layer_id:
+        existing_layer_id = args.get("layer_id")
+        if existing_layer_id == layer_id:
+            existing_layer = layer.subLayerPaths[index]
+            existing_order = args.get("order")
+            existing_order = int(existing_order) if existing_order else None
+            if order is not None and order != existing_order:
+                # We need to move the layer, so we will remove this index
+                # and then re-insert it below at the right order
+                log.debug(f"Removing existing layer: {existing_layer}")
+                del layer.subLayerPaths[index]
+                break
+
             # Put it in the same position where it was before when swapping
             # it with the original, also take over its order metadata
-            order = args.get("order")
-            if order is not None:
-                order = int(order)
-            else:
-                order = None
             contribution_path = _format_path(contribution_path,
-                                             order=order,
+                                             order=existing_order,
                                              layer_id=layer_id)
             log.debug(
-                f"Replacing existing layer: {layer.subLayerPaths[index]} "
+                f"Replacing existing layer: {existing_layer} "
                 f"-> {contribution_path}"
             )
             layer.subLayerPaths[index] = contribution_path

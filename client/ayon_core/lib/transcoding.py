@@ -134,16 +134,29 @@ def get_transcode_temp_directory():
     )
 
 
-def get_oiio_info_for_input(filepath, logger=None, subimages=False):
+def get_oiio_info_for_input(
+    filepath: str,
+    *,
+    subimages: bool = False,
+    verbose: bool = True,
+    logger: logging.Logger = None,
+):
     """Call oiiotool to get information about input and return stdout.
+
+    Args:
+        filepath (str): Path to file.
+        subimages (bool): include info about subimages in the output.
+        verbose (bool): get the full metadata about each input image.
+        logger (logging.Logger): Logger used for logging.
 
     Stdout should contain xml format string.
     """
     args = get_oiio_tool_args(
         "oiiotool",
         "--info",
-        "-v"
     )
+    if verbose:
+        args.append("-v")
     if subimages:
         args.append("-a")
 
@@ -573,7 +586,10 @@ def get_review_layer_name(src_filepath):
         return None
 
     # Load info about file from oiio tool
-    input_info = get_oiio_info_for_input(src_filepath)
+    input_info = get_oiio_info_for_input(
+        src_filepath,
+        verbose=False,
+    )
     if not input_info:
         return None
 
@@ -1234,7 +1250,11 @@ def oiio_color_convert(
         for token in ["#", "%d"]:
             first_input_path = first_input_path.replace(token, first_frame)
 
-    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
+    input_info = get_oiio_info_for_input(
+        first_input_path,
+        verbose=False,
+        logger=logger,
+    )
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
@@ -1448,7 +1468,11 @@ def get_rescaled_command_arguments(
         command_args.extend(["-vf", "{0},{1}".format(scale, pad)])
 
     elif application == "oiiotool":
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            verbose=False,
+            logger=log,
+        )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
             input_info, alpha_default=1.0)
@@ -1539,7 +1563,11 @@ def _get_image_dimensions(application, input_path, log):
     # fallback for weird files with width=0, height=0
     if (input_width == 0 or input_height == 0) and application == "oiiotool":
         # Load info about file from oiio tool
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            verbose=False,
+            logger=log,
+        )
         if input_info:
             input_width = int(input_info["width"])
             input_height = int(input_info["height"])
@@ -1588,10 +1616,13 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
-            Should be output of function `get_oiio_info_for_input`.
+            Should be output of function 'get_oiio_info_for_input' (can be
+            called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
+
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.
+
     """
     channel_names = oiio_input_info["channelnames"]
     review_channels = get_convert_rgb_channels(channel_names)
