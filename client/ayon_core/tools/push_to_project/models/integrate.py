@@ -1129,8 +1129,6 @@ class ProjectPushItemProcess:
             self.host_name
         )
         formatting_data.update({
-            "subset": self._product_name,
-            "family": self._product_type,
             "product": {
                 "name": self._product_name,
                 "type": self._product_type,
