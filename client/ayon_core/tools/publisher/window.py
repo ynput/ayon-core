@@ -887,6 +887,9 @@ class PublisherWindow(QtWidgets.QDialog):
         if not blocked:
             return
 
+        self.set_tab_on_reset("details")
+        self._go_to_details_tab()
+
         QtWidgets.QMessageBox.critical(
             self,
             "Failed to load plugins",
