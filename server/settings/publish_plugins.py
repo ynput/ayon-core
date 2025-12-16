@@ -55,7 +55,6 @@ class DiscoverValidationModel(BaseSettingsModel):
     )
 
 
-
 class CollectAnatomyInstanceDataModel(BaseSettingsModel):
     _isGroup = True
     follow_workfile_version: bool = SettingsField(
