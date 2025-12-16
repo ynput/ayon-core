@@ -134,6 +134,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
                 })
         return cls._blocking_icon
 
+
 class DetailWidget(QtWidgets.QTextEdit):
     def __init__(self, text, *args, **kwargs):
         super().__init__(*args, **kwargs)
