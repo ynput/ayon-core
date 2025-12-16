@@ -45,47 +45,52 @@ class DiscoverResult:
         """Add dynamically loaded python module to keep it in memory."""
         self._modules.add(module)
 
-    def get_report(self, only_errors=True, exc_info=True, full_report=False):
+    def get_report(
+        self,
+        only_errors: bool = True,
+        exc_info: bool = True,
+        full_report: bool = False,
+    ):
         lines = []
         if not only_errors:
             # Successfully discovered plugins
             if self.plugins or full_report:
-                lines.append(
-                    "*** Discovered {} plugins".format(len(self.plugins))
-                )
+                lines.append(f"*** Discovered {len(self.plugins)} plugins")
                 for cls in self.plugins:
-                    lines.append("- {}".format(cls.__name__))
+                    lines.append(f"- {cls.__name__}")
 
             # Plugin that were defined to be ignored
             if self.ignored_plugins or full_report:
-                lines.append("*** Ignored plugins {}".format(len(
-                    self.ignored_plugins
-                )))
+                lines.append(
+                    f"*** Ignored plugins {len(self.ignored_plugins)}"
+                )
                 for cls in self.ignored_plugins:
-                    lines.append("- {}".format(cls.__name__))
+                    lines.append(f"- {cls.__name__}")
 
         # Abstract classes
         if self.abstract_plugins or full_report:
-            lines.append("*** Discovered {} abstract plugins".format(len(
-                self.abstract_plugins
-            )))
+            lines.append(
+                f"*** Discovered {len(self.abstract_plugins)}"
+                " abstract plugins"
+            )
             for cls in self.abstract_plugins:
-                lines.append("- {}".format(cls.__name__))
+                lines.append(f"- {cls.__name__}")
 
         # Abstract classes
         if self.duplicated_plugins or full_report:
-            lines.append("*** There were {} duplicated plugins".format(len(
-                self.duplicated_plugins
-            )))
+            lines.append(
+                f"*** There were {len(self.duplicated_plugins)}"
+                " duplicated plugins"
+            )
             for cls in self.duplicated_plugins:
-                lines.append("- {}".format(cls.__name__))
+                lines.append(f"- {cls.__name__}")
 
         if self.crashed_file_paths or full_report:
-            lines.append("*** Failed to load {} files".format(len(
-                self.crashed_file_paths
-            )))
+            lines.append(
+                f"*** Failed to load {len(self.crashed_file_paths)} files"
+            )
             for path, exc_info_args in self.crashed_file_paths.items():
-                lines.append("- {}".format(path))
+                lines.append(f"- {path}")
                 if exc_info:
                     lines.append(10 * "*")
                     lines.extend(traceback.format_exception(*exc_info_args))
