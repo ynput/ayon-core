@@ -8,19 +8,19 @@ import warnings
 import hashlib
 import xml.etree.ElementTree
 from typing import TYPE_CHECKING, Optional, Union, List, Any
-import clique
-import speedcopy
 import logging
-
-import pyblish.util
-import pyblish.plugin
-import pyblish.api
 
 from ayon_api import (
     get_server_api_connection,
     get_representations,
     get_last_version_by_product_name
 )
+import clique
+import pyblish.util
+import pyblish.plugin
+import pyblish.api
+import speedcopy
+
 from ayon_core.lib import (
     import_filepath,
     Logger,
@@ -1158,14 +1158,16 @@ def main_cli_publish(
         except ValueError:
             pass
 
+    context = get_global_context()
+    project_settings = get_project_settings(context["project_name"])
+
     install_ayon_plugins()
 
     if addons_manager is None:
-        addons_manager = AddonsManager()
+        addons_manager = AddonsManager(project_settings)
 
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
-        context = get_global_context()
         env = applications_addon.get_farm_publish_environment_variables(
             context["project_name"],
             context["folder_path"],
@@ -1188,17 +1190,33 @@ def main_cli_publish(
     log.info("Running publish ...")
 
     discover_result = publish_plugins_discover()
-    publish_plugins = discover_result.plugins
     print(discover_result.get_report(only_errors=False))
 
+    filtered_crashed_paths = filter_crashed_publish_paths(
+        context["project_name"],
+        set(discover_result.crashed_file_paths),
+        project_settings=project_settings,
+    )
+    if filtered_crashed_paths:
+        joined_paths = "\n".join([
+            f"- {path}"
+            for path in filtered_crashed_paths
+        ])
+        log.error(
+            "Plugin discovery strict mode is enabled."
+            " Crashed plugin paths that prevent from publishing:"
+            f"\n{joined_paths}"
+        )
+        sys.exit(1)
+
+    publish_plugins = discover_result.plugins
+
     # Error exit as soon as any error occurs.
-    error_format = ("Failed {plugin.__name__}: "
-                    "{error} -- {error.traceback}")
+    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
 
     for result in pyblish.util.publish_iter(plugins=publish_plugins):
         if result["error"]:
             log.error(error_format.format(**result))
-            # uninstall()
             sys.exit(1)
 
     log.info("Publish finished.")
