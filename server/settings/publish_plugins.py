@@ -422,24 +422,30 @@ class ExtractThumbnailOIIODefaultsModel(BaseSettingsModel):
     )
 
 
-class ExtractThumbnailModel(BaseSettingsModel):
-    _isGroup = True
-    enabled: bool = SettingsField(True)
+class ExtractThumbnailProfileModel(BaseSettingsModel):
+    product_types: list[str] = SettingsField(
+        default_factory=list, title="Product types"
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list, title="Task types", enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list, title="Task names"
+    )
     product_names: list[str] = SettingsField(
-        default_factory=list,
-        title="Product names"
+        default_factory=list, title="Product names"
     )
     integrate_thumbnail: bool = SettingsField(
-        True,
-        title="Integrate Thumbnail Representation"
+        True, title="Integrate Thumbnail Representation"
     )
     target_size: ResizeModel = SettingsField(
-        default_factory=ResizeModel,
-        title="Target size"
+        default_factory=ResizeModel, title="Target size"
     )
     background_color: ColorRGBA_uint8 = SettingsField(
-        (0, 0, 0, 0.0),
-        title="Background color"
+        (0, 0, 0, 0.0), title="Background color"
     )
     duration_split: float = SettingsField(
         0.5,
@@ -453,6 +459,15 @@ class ExtractThumbnailModel(BaseSettingsModel):
     )
     ffmpeg_args: ExtractThumbnailFFmpegModel = SettingsField(
         default_factory=ExtractThumbnailFFmpegModel
+    )
+
+
+class ExtractThumbnailModel(BaseSettingsModel):
+    _isGroup = True
+    enabled: bool = SettingsField(True)
+
+    profiles: list[ExtractThumbnailProfileModel] = SettingsField(
+        default_factory=list, title="Profiles"
     )
 
 
@@ -488,6 +503,18 @@ class UseDisplayViewModel(BaseSettingsModel):
             "View of the target transform. If left empty, the"
             " scene View value will be used."
         )
+    )
+
+
+class ExtractThumbnailFromSourceModel(BaseSettingsModel):
+    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
+    enabled: bool = SettingsField(True)
+
+    target_size: ResizeModel = SettingsField(
+        default_factory=ResizeModel, title="Target size"
+    )
+    background_color: ColorRGBA_uint8 = SettingsField(
+        (0, 0, 0, 0.0), title="Background color"
     )
 
 
@@ -1271,6 +1298,16 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractThumbnailModel,
         title="Extract Thumbnail"
     )
+    ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(  # noqa: E501
+        default_factory=ExtractThumbnailFromSourceModel,
+        title="Extract Thumbnail from source",
+        description=(
+            "Extract thumbnails from explicit file set in "
+            "instance.data['thumbnailSource'] using oiiotool"
+            " or ffmpeg."
+            "Used when artist provided thumbnail source."
+        )
+    )
     ExtractOIIOTranscode: ExtractOIIOTranscodeModel = SettingsField(
         default_factory=ExtractOIIOTranscodeModel,
         title="Extract OIIO Transcode"
@@ -1489,22 +1526,40 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractThumbnail": {
         "enabled": True,
-        "product_names": [],
-        "integrate_thumbnail": True,
+        "profiles": [
+            {
+                "product_types": [],
+                "host_names": [],
+                "task_types": [],
+                "task_names": [],
+                "product_names": [],
+                "integrate_thumbnail": True,
+                "target_size": {
+                    "type": "source"
+                },
+                "duration_split": 0.5,
+                "oiiotool_defaults": {
+                    "type": "colorspace",
+                    "colorspace": "color_picking"
+                },
+                "ffmpeg_args": {
+                    "input": [
+                        "-apply_trc gamma22"
+                    ],
+                    "output": []
+                }
+            }
+        ]
+    },
+    "ExtractThumbnailFromSource": {
+        "enabled": True,
         "target_size": {
-            "type": "source"
+            "type": "resize",
+            "resize": {
+                "width": 300,
+                "height": 170
+            }
         },
-        "duration_split": 0.5,
-        "oiiotool_defaults": {
-            "type": "colorspace",
-            "colorspace": "color_picking"
-        },
-        "ffmpeg_args": {
-            "input": [
-                "-apply_trc gamma22"
-            ],
-            "output": []
-        }
     },
     "ExtractOIIOTranscode": {
         "enabled": True,
