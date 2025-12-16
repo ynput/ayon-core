@@ -90,53 +90,6 @@ def addon(ctx):
     pass
 
 
-@main_cli.command()
-@click.pass_context
-@click.argument("output_json_path")
-@click.option("--project", help="Project name", default=None)
-@click.option("--asset", help="Folder path", default=None)
-@click.option("--task", help="Task name", default=None)
-@click.option("--app", help="Application name", default=None)
-@click.option(
-    "--envgroup", help="Environment group (e.g. \"farm\")", default=None
-)
-def extractenvironments(
-    ctx, output_json_path, project, asset, task, app, envgroup
-):
-    """Extract environment variables for entered context to a json file.
-
-    Entered output filepath will be created if does not exists.
-
-    All context options must be passed otherwise only AYON's global
-    environments will be extracted.
-
-    Context options are "project", "asset", "task", "app"
-
-    Deprecated:
-        This function is deprecated and will be removed in future. Please use
-        'addon applications extractenvironments ...' instead.
-    """
-    warnings.warn(
-        (
-            "Command 'extractenvironments' is deprecated and will be"
-            " removed in future. Please use"
-            " 'addon applications extractenvironments ...' instead."
-        ),
-        DeprecationWarning
-    )
-
-    addons_manager = ctx.obj["addons_manager"]
-    applications_addon = addons_manager.get_enabled_addon("applications")
-    if applications_addon is None:
-        raise RuntimeError(
-            "Applications addon is not available or enabled."
-        )
-
-    # Please ignore the fact this is using private method
-    applications_addon._cli_extract_environments(
-        output_json_path, project, asset, task, app, envgroup
-    )
-
 
 @main_cli.command()
 @click.pass_context
