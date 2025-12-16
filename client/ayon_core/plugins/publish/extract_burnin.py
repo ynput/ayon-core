@@ -318,20 +318,6 @@ class ExtractBurnin(publish.Extractor):
                     value = burnin_def.get(key)
                     if not value:
                         continue
-                    # TODO remove replacements
-                    burnin_values[key] = (
-                        value
-                        .replace("{task}", "{task[name]}")
-                        .replace("{product[name]}", "{subset}")
-                        .replace("{Product[name]}", "{Subset}")
-                        .replace("{PRODUCT[NAME]}", "{SUBSET}")
-                        .replace("{product[type]}", "{family}")
-                        .replace("{Product[type]}", "{Family}")
-                        .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-                        .replace("{folder[name]}", "{asset}")
-                        .replace("{Folder[name]}", "{Asset}")
-                        .replace("{FOLDER[NAME]}", "{ASSET}")
-                    )
 
                 # Remove "delete" tag from new representation
                 if "delete" in new_repre["tags"]:
