@@ -316,8 +316,8 @@ class ExtractBurnin(publish.Extractor):
                 burnin_values = {}
                 for key in self.positions:
                     value = burnin_def.get(key)
-                    if not value:
-                        continue
+                    if value:
+                        burnin_values[key] = value
 
                 # Remove "delete" tag from new representation
                 if "delete" in new_repre["tags"]:
