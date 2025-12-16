@@ -393,6 +393,9 @@ class PublisherWindow(QtWidgets.QDialog):
         self._publish_frame_visible = None
         self._tab_on_reset = None
 
+        self._create_context_valid: bool = True
+        self._blocked_by_crashed_paths: bool = False
+
         self._error_messages_to_show = collections.deque()
         self._errors_dialog_message_timer = errors_dialog_message_timer
 
@@ -405,6 +408,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._comment_invalid_timer = comment_invalid_timer
         self._show_counter = 0
         self._window_is_visible = False
+
+        self._update_footer_state()
 
     @property
     def controller(self) -> AbstractPublisherFrontend:
@@ -664,12 +669,27 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._tab_on_reset = tab
 
+    def set_current_tab(self, tab):
+        if tab == "create":
+            self._go_to_create_tab()
+        elif tab == "publish":
+            self._go_to_publish_tab()
+        elif tab == "report":
+            self._go_to_report_tab()
+        elif tab == "details":
+            self._go_to_details_tab()
+
+        if not self._window_is_visible:
+            self.set_tab_on_reset(tab)
+
     def _update_publish_details_widget(self, force=False):
         if not force and not self._is_on_details_tab():
             return
 
         report_data = self._controller.get_publish_report()
+        blocked = bool(report_data["blocking_crashed_paths"])
         self._publish_details_widget.set_report_data(report_data)
+        self._set_blocked(blocked)
 
     def _on_help_click(self):
         if self._help_dialog.isVisible():
@@ -751,19 +771,6 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _set_current_tab(self, identifier):
         self._tabs_widget.set_current_tab(identifier)
-
-    def set_current_tab(self, tab):
-        if tab == "create":
-            self._go_to_create_tab()
-        elif tab == "publish":
-            self._go_to_publish_tab()
-        elif tab == "report":
-            self._go_to_report_tab()
-        elif tab == "details":
-            self._go_to_details_tab()
-
-        if not self._window_is_visible:
-            self.set_tab_on_reset(tab)
 
     def _is_current_tab(self, identifier):
         return self._tabs_widget.is_current_tab(identifier)
@@ -865,8 +872,39 @@ class PublisherWindow(QtWidgets.QDialog):
         # Reset style
         self._comment_input.setStyleSheet("")
 
-    def _set_footer_enabled(self, enabled):
-        self._save_btn.setEnabled(True)
+    def _set_create_context_valid(self, valid: bool) -> None:
+        if self._create_context_valid is valid:
+            return
+        self._create_context_valid = valid
+        self._update_footer_state()
+
+    def _set_blocked(self, blocked: bool) -> None:
+        if self._blocked_by_crashed_paths is blocked:
+            return
+        self._blocked_by_crashed_paths = blocked
+        self._overview_widget.setEnabled(not blocked)
+        self._update_footer_state()
+        if not blocked:
+            return
+
+        QtWidgets.QMessageBox.critical(
+            self,
+            "Failed to load plugins",
+            (
+                "Failed to load plugins that do prevent you from"
+                " using publish tool."
+                " Please contact your TD or administrator."
+            )
+        )
+
+    def _update_footer_state(self) -> None:
+        enabled = (
+            not self._blocked_by_crashed_paths
+            and self._create_context_valid
+        )
+        save_enabled = not self._blocked_by_crashed_paths
+
+        self._save_btn.setEnabled(save_enabled)
         self._reset_btn.setEnabled(True)
         if enabled:
             self._stop_btn.setEnabled(False)
@@ -885,6 +923,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._update_publish_details_widget()
 
     def _on_controller_reset(self):
+        self._update_publish_details_widget(force=True)
         self._first_reset, first_reset = False, self._first_reset
         if self._tab_on_reset is not None:
             self._tab_on_reset, new_tab = None, self._tab_on_reset
@@ -952,7 +991,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _validate_create_instances(self):
         if not self._controller.is_host_valid():
-            self._set_footer_enabled(True)
+            self._set_create_context_valid(True)
             return
 
         active_instances_by_id = {
@@ -973,7 +1012,7 @@ class PublisherWindow(QtWidgets.QDialog):
             if all_valid is None:
                 all_valid = True
 
-        self._set_footer_enabled(bool(all_valid))
+        self._set_create_context_valid(bool(all_valid))
 
     def _on_create_model_reset(self):
         self._validate_create_instances()
