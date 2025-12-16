@@ -25,8 +25,6 @@ def get_versioning_start(
     if not profiles:
         return version_start
 
-    # TODO use 'product_types' and 'product_name' instead of
-    #   'families' and 'subsets'
     filtering_criteria = {
         "host_names": host_name,
         "product_types": product_type,
