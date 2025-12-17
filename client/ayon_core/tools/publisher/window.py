@@ -909,14 +909,9 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._save_btn.setEnabled(save_enabled)
         self._reset_btn.setEnabled(True)
-        if enabled:
-            self._stop_btn.setEnabled(False)
-            self._validate_btn.setEnabled(True)
-            self._publish_btn.setEnabled(True)
-        else:
-            self._stop_btn.setEnabled(enabled)
-            self._validate_btn.setEnabled(enabled)
-            self._publish_btn.setEnabled(enabled)
+        self._stop_btn.setEnabled(False)
+        self._validate_btn.setEnabled(enabled)
+        self._publish_btn.setEnabled(enabled)
 
     def _on_publish_reset(self):
         self._create_tab.setEnabled(True)
