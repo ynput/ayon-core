@@ -7,7 +7,7 @@ from .publish_plugins import DEFAULT_PUBLISH_VALUES
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 
-def _convert_imageio_configs_1_6_5(overrides):
+def _convert_product_name_templates_1_6_5(overrides):
     product_name_profiles = (
         overrides
         .get("tools", {})
@@ -204,7 +204,7 @@ def convert_settings_overrides(
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
-    _convert_imageio_configs_1_6_5(overrides)
+    _convert_product_name_templates_1_6_5(overrides)
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
     return overrides
