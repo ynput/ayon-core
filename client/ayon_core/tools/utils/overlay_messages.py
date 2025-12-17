@@ -82,6 +82,11 @@ class OverlayMessageWidget(QtWidgets.QFrame):
     ):
         super(OverlayMessageWidget, self).__init__(parent)
         self.setObjectName("OverlayMessageWidget")
+        # Set size policy to not expand unnecessarily - size to content
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Minimum,
+            QtWidgets.QSizePolicy.Minimum
+        )
 
         if message_type:
             set_style_property(self, "type", message_type)
@@ -190,6 +195,80 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         self._progress_bar.setValue(int(progress))
         if message:
             self._label_widget.setText(message)
+
+    def sizeHint(self):
+        """Calculate size hint accounting for margins and content."""
+        # Get the layout
+        layout = self.layout()
+        if not layout:
+            return super(OverlayMessageWidget, self).sizeHint()
+        
+        # Get margins
+        margins = layout.contentsMargins()
+        spacing = layout.spacing()
+        
+        # Get close button size
+        close_btn = None
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), CloseButton):
+                close_btn = item.widget()
+                break
+        
+        close_btn_width = close_btn.sizeHint().width() if close_btn else 0
+        
+        # Calculate maximum available width for content (for word wrapping)
+        max_width = self.maximumWidth()
+        if max_width <= 0:
+            max_width = 500  # Default if no max width set
+        max_available_width = max_width - margins.left() - margins.right() - spacing - close_btn_width
+        max_available_width = max(max_available_width, 100)  # Minimum width for content
+        
+        # Calculate label size
+        label = self._label_widget
+        font_metrics = label.fontMetrics()
+        
+        # First, calculate the natural width needed for the text (without word wrap)
+        # Use boundingRect to get the width of the text
+        natural_text_rect = font_metrics.boundingRect(label.text())
+        natural_text_width = natural_text_rect.width()
+        
+        # Determine actual content width needed:
+        # - Use natural width if it fits within max_available_width (with some padding)
+        # - Otherwise use max_available_width and calculate height with word wrap
+        if natural_text_width <= max_available_width:
+            # Text fits without wrapping, use natural width (add small padding for safety)
+            content_width = min(natural_text_width + 10, max_available_width)
+            label_height = font_metrics.height()
+        else:
+            # Text needs wrapping, use max_available_width and calculate wrapped height
+            content_width = max_available_width
+            text_rect = font_metrics.boundingRect(
+                QtCore.QRect(0, 0, content_width, 0),
+                QtCore.Qt.TextWordWrap | QtCore.Qt.AlignCenter,
+                label.text()
+            )
+            label_height = max(text_rect.height(), font_metrics.height())
+        
+        # Add progress bar height if visible
+        progress_height = 0
+        if self._progress_bar.isVisible():
+            progress_height = self._progress_bar.sizeHint().height()
+        
+        # Content layout spacing (from content_layout.setSpacing(8))
+        content_spacing = 8 if self._progress_bar.isVisible() else 0
+        
+        # Calculate content height: label + spacing + progress
+        content_height = label_height + content_spacing + progress_height
+        
+        # Calculate total height: top margin + content height + bottom margin
+        total_height = margins.top() + content_height + margins.bottom()
+        
+        # Total width: left margin + content width + spacing + close button + right margin
+        # This gives us the actual size needed (content + margins), not full width
+        total_width = margins.left() + content_width + spacing + close_btn_width + margins.right()
+        
+        return QtCore.QSize(total_width, total_height)
 
     def showEvent(self, event):
         """Start timeout on show."""
@@ -412,12 +491,18 @@ class MessageOverlayObject(QtCore.QObject):
             if all_at_place and dst_pos_y != pos_y:
                 all_at_place = False
 
-            # Set maximum width constraint and let Qt's layout system handle sizing
+            # Set maximum width constraint so sizeHint() can calculate properly
             widget.setMaximumWidth(max_widget_width)
-            # Update geometry to ensure layout respects maximum width
+            # Update geometry to ensure sizeHint() uses the correct maximum width
             widget.updateGeometry()
-            # Let the widget size itself based on content and size policies
-            widget.adjustSize()
+            # Get the size hint which now properly accounts for margins and content
+            size_hint = widget.sizeHint()
+            # Use the size hint, ensuring width doesn't exceed maximum
+            # The sizeHint() already includes margins, so we use it directly
+            final_width = min(max_widget_width, size_hint.width())
+            final_height = size_hint.height()
+            # Resize widget to the calculated size (content + margins, not full width)
+            widget.resize(final_width, final_height)
 
             # Center message widget
             size = widget.size()

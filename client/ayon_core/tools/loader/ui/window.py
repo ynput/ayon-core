@@ -17,10 +17,9 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     ProjectsCombobox,
     RefreshButton,
+    ThumbnailPainterWidget,
 )
 from ayon_core.tools.utils.lib import center_window
-
-from ayon_core.tools.utils import ThumbnailPainterWidget
 
 from .folders_widget import LoaderFoldersWidget
 from .info_widget import InfoWidget
@@ -708,6 +707,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         try:
             import ayon_api
+
             from ayon_core.pipeline import Anatomy
             from ayon_core.pipeline.load import (
                 get_representation_path_with_anatomy,
