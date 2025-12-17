@@ -280,7 +280,7 @@ def filter_crashed_publish_paths(
         project_settings = get_project_settings(project_name)
 
     discover_validation = (
-        project_settings["core"]["publish"]["discover_validation"]
+        project_settings["core"]["tools"]["publish"]["discover_validation"]
     )
     # Strict mode is not enabled.
     if not discover_validation["enabled"]:
