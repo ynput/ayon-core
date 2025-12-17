@@ -352,6 +352,27 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     )
 
 
+class DiscoverValidationModel(BaseSettingsModel):
+    """Strictly validate publish plugins discovery.
+
+    Artist won't be able to publish if path to publish plugin fails to be
+        imported.
+
+    """
+    _isGroup = True
+    enabled: bool = SettingsField(
+        False,
+        description="Enable strict mode of plugins discovery",
+    )
+    ignore_paths: list[str] = SettingsField(
+        default_factory=list,
+        title="Ignored paths (regex)",
+        description=(
+            "Paths that do match regex will be skipped in validation."
+        ),
+    )
+
+
 class PublishToolModel(BaseSettingsModel):
     template_name_profiles: list[PublishTemplateNameProfile] = SettingsField(
         default_factory=list,
@@ -368,6 +389,10 @@ class PublishToolModel(BaseSettingsModel):
             default_factory=list,
             title="Custom Staging Dir Profiles"
         )
+    )
+    discover_validation: DiscoverValidationModel = SettingsField(
+        default_factory=DiscoverValidationModel,
+        title="Validate plugins discovery",
     )
     comment_minimum_required_chars: int = SettingsField(
         0,
@@ -691,6 +716,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTextureHero"
             }
         ],
+        "discover_validation": {
+            "enabled": False,
+            "ignore_paths": [],
+        },
         "comment_minimum_required_chars": 0,
     }
 }
