@@ -88,7 +88,11 @@ class ContributionLayersModel(BaseSettingsModel):
         regex="[A-Za-z0-9_-]+",
         title="Name")
     scope: list[str] = SettingsField(
-        default_factory=list,
+        # This should actually be returned from a callable to `default_factory`
+        # because lists are mutable. However, the frontend can't interpret
+        # the callable. It will fail to apply it as the default. Specifying
+        # this default directly did not show any ill side effects.
+        default=["asset", "shot"],
         title="Scope",
         enum_resolver=usd_contribution_layer_types)
     order: int = SettingsField(
