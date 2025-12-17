@@ -24,6 +24,10 @@ class ProductTypeSmartSelectModel(BaseSettingsModel):
 class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
 
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
     product_types: list[str] = SettingsField(
         default_factory=list,
         title="Product types",
