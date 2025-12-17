@@ -103,11 +103,11 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
                 new_items_by_filepath[filepath] = item
                 self._items_by_filepath[filepath] = item
 
+            icon = None
             if filepath.replace("\\", "/") in self._blocking_crashed_paths:
-                item.setData(
-                    self._get_blocking_icon(),
-                    QtCore.Qt.DecorationRole
-                )
+                icon = self._get_blocking_icon()
+
+            item.setData(icon, QtCore.Qt.DecorationRole)
 
         if new_items:
             parent.appendRows(new_items)
