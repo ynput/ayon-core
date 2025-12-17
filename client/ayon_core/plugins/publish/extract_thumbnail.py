@@ -259,7 +259,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
-                    colorspace_data
+                    colorspace_data,
+                    thumbnail_def,
                 )
 
             # Try to use FFMPEG if OIIO is not supported or for cases when
