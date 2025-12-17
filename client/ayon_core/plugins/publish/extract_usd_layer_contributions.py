@@ -318,6 +318,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 contribution_layers[scope][entry["name"]] = int(entry["order"])
         if contribution_layers:
             cls.contribution_layers = dict(contribution_layers)
+        else:
+            cls.log.warning(
+                "No scoped contribution layers found in settings, falling back"
+                " to CollectUSDLayerContributions plug-in defaults..."
+            )
 
         cls.profiles = plugin_settings.get("profiles", [])
 
