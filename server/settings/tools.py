@@ -447,6 +447,7 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "product_name_profiles": [
             {
+                "product_base_types": [],
                 "product_types": [],
                 "host_names": [],
                 "task_types": [],
@@ -454,28 +455,31 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{product[type]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "workfile"
                 ],
+                "product_types": [],
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "render"
                 ],
+                "product_types": [],
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "renderLayer",
                     "renderPass"
                 ],
+                "product_types": [],
                 "host_names": [
                     "tvpaint"
                 ],
@@ -486,10 +490,11 @@ DEFAULT_TOOLS_VALUES = {
                 )
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "workfile"
                 ],
+                "product_types": [],
                 "host_names": [
                     "aftereffects",
                     "tvpaint"
@@ -499,7 +504,8 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": ["render"],
+                "product_base_types": ["render"],
+                "product_types": [],
                 "host_names": [
                     "aftereffects"
                 ],
@@ -508,9 +514,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{product[type]}{Task[name]}{Composition}{Variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh"
                 ],
+                "product_types": [],
                 "host_names": [
                     "maya"
                 ],
@@ -519,9 +526,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "S_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "skeletalMesh"
                 ],
+                "product_types": [],
                 "host_names": [
                     "maya"
                 ],
@@ -530,9 +538,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "SK_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "hda"
                 ],
+                "product_types": [],
                 "host_names": [
                     "houdini"
                 ],
@@ -541,9 +550,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{folder[name]}_{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "textureSet"
                 ],
+                "product_types": [],
                 "host_names": [
                     "substancedesigner"
                 ],
