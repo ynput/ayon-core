@@ -202,11 +202,11 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         layout = self.layout()
         if not layout:
             return super(OverlayMessageWidget, self).sizeHint()
-        
+
         # Get margins
         margins = layout.contentsMargins()
         spacing = layout.spacing()
-        
+
         # Get close button size
         close_btn = None
         for i in range(layout.count()):
@@ -214,25 +214,25 @@ class OverlayMessageWidget(QtWidgets.QFrame):
             if item and item.widget() and isinstance(item.widget(), CloseButton):
                 close_btn = item.widget()
                 break
-        
+
         close_btn_width = close_btn.sizeHint().width() if close_btn else 0
-        
+
         # Calculate maximum available width for content (for word wrapping)
         max_width = self.maximumWidth()
         if max_width <= 0:
             max_width = 500  # Default if no max width set
         max_available_width = max_width - margins.left() - margins.right() - spacing - close_btn_width
         max_available_width = max(max_available_width, 100)  # Minimum width for content
-        
+
         # Calculate label size
         label = self._label_widget
         font_metrics = label.fontMetrics()
-        
+
         # First, calculate the natural width needed for the text (without word wrap)
         # Use boundingRect to get the width of the text
         natural_text_rect = font_metrics.boundingRect(label.text())
         natural_text_width = natural_text_rect.width()
-        
+
         # Determine actual content width needed:
         # - Use natural width if it fits within max_available_width (with some padding)
         # - Otherwise use max_available_width and calculate height with word wrap
@@ -249,25 +249,25 @@ class OverlayMessageWidget(QtWidgets.QFrame):
                 label.text()
             )
             label_height = max(text_rect.height(), font_metrics.height())
-        
+
         # Add progress bar height if visible
         progress_height = 0
         if self._progress_bar.isVisible():
             progress_height = self._progress_bar.sizeHint().height()
-        
+
         # Content layout spacing (from content_layout.setSpacing(8))
         content_spacing = 8 if self._progress_bar.isVisible() else 0
-        
+
         # Calculate content height: label + spacing + progress
         content_height = label_height + content_spacing + progress_height
-        
+
         # Calculate total height: top margin + content height + bottom margin
         total_height = margins.top() + content_height + margins.bottom()
-        
+
         # Total width: left margin + content width + spacing + close button + right margin
         # This gives us the actual size needed (content + margins), not full width
         total_width = margins.left() + content_width + spacing + close_btn_width + margins.right()
-        
+
         return QtCore.QSize(total_width, total_height)
 
     def showEvent(self, event):
