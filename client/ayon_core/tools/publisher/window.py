@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import os
 import json
 import time
 import collections
 import copy
-from typing import Optional
+from typing import Optional, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -682,14 +684,21 @@ class PublisherWindow(QtWidgets.QDialog):
         if not self._window_is_visible:
             self.set_tab_on_reset(tab)
 
-    def _update_publish_details_widget(self, force=False):
-        if not force and not self._is_on_details_tab():
+    def _update_publish_details_widget(
+        self,
+        force: bool = False,
+        report_data: Optional[dict[str, Any]] = None,
+    ) -> None:
+        if (
+            report_data is None
+            and not force
+            and not self._is_on_details_tab()
+        ):
             return
 
-        report_data = self._controller.get_publish_report()
-        blocked = bool(report_data["blocking_crashed_paths"])
+        if report_data is None:
+            report_data = self._controller.get_publish_report()
         self._publish_details_widget.set_report_data(report_data)
-        self._set_blocked(blocked)
 
     def _on_help_click(self):
         if self._help_dialog.isVisible():
@@ -918,7 +927,11 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_comment_input_visiblity(True)
         self._set_publish_overlay_visibility(False)
         self._set_publish_visibility(False)
-        self._update_publish_details_widget()
+
+        report_data = self._controller.get_publish_report()
+        blocked = bool(report_data["blocking_crashed_paths"])
+        self._set_blocked(blocked)
+        self._update_publish_details_widget(report_data=report_data)
 
     def _on_controller_reset(self):
         self._update_publish_details_widget(force=True)
