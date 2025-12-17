@@ -882,14 +882,10 @@ class PublisherWindow(QtWidgets.QDialog):
         self._comment_input.setStyleSheet("")
 
     def _set_create_context_valid(self, valid: bool) -> None:
-        if self._create_context_valid is valid:
-            return
         self._create_context_valid = valid
         self._update_footer_state()
 
     def _set_blocked(self, blocked: bool) -> None:
-        if self._blocked_by_crashed_paths is blocked:
-            return
         self._blocked_by_crashed_paths = blocked
         self._overview_widget.setEnabled(not blocked)
         self._update_footer_state()
