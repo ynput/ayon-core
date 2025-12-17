@@ -94,6 +94,7 @@ class ContributionLayersModel(BaseSettingsModel):
         # this default directly did not show any ill side effects.
         default=["asset", "shot"],
         title="Scope",
+        min_items=1,
         enum_resolver=usd_contribution_layer_types)
     order: int = SettingsField(
         default=0,
