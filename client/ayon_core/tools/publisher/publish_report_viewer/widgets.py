@@ -88,6 +88,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         parent = self.invisibleRootItem()
         if not self._traceback_by_filepath:
             parent.removeRows(0, parent.rowCount())
+            self._items_by_filepath = {}
             return
 
         new_items = []
