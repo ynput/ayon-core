@@ -7,6 +7,30 @@ from .publish_plugins import DEFAULT_PUBLISH_VALUES
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 
+def _convert_product_name_templates_1_7_0(overrides):
+    product_name_profiles = (
+        overrides
+        .get("tools", {})
+        .get("creator", {})
+        .get("product_name_profiles")
+    )
+    if (
+        not product_name_profiles
+        or not isinstance(product_name_profiles, list)
+    ):
+        return
+
+    # Already converted
+    item = product_name_profiles[0]
+    if "product_base_types" in item or "product_types" not in item:
+        return
+
+    # Move product base types to product types
+    for item in product_name_profiles:
+        item["product_base_types"] = item["product_types"]
+        item["product_types"] = []
+
+
 def _convert_product_name_templates_1_6_5(overrides):
     product_name_profiles = (
         overrides
@@ -205,6 +229,7 @@ def convert_settings_overrides(
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
     _convert_product_name_templates_1_6_5(overrides)
+    _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
     return overrides
