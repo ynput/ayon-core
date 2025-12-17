@@ -895,8 +895,8 @@ class PublisherWindow(QtWidgets.QDialog):
             "Failed to load plugins",
             (
                 "Failed to load plugins that do prevent you from"
-                " using publish tool."
-                " Please contact your TD or administrator."
+                " using publish tool.\n"
+                "Please contact your TD or administrator."
             )
         )
 
