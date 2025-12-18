@@ -137,7 +137,7 @@ class HostBase(AbstractHost):
     def get_current_folder_path(self) -> Optional[str]:
         """
         Returns:
-            Optional[str]: Current asset name.
+            Optional[str]: Current folder path.
 
         """
         return os.environ.get("AYON_FOLDER_PATH")

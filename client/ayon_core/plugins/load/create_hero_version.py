@@ -62,8 +62,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
 
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
-        "project", "folder", "asset", "hierarchy", "task", "product",
-        "subset", "family", "representation", "username", "user", "output"
+        "project", "folder", "hierarchy", "task", "product",
+        "representation", "username", "user", "output"
     ]
     use_hardlinks = False
 
