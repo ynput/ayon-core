@@ -556,6 +556,10 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Product names"
     )
+    representations: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names"
+    )
     delete_original: bool = SettingsField(
         True,
         title="Delete Original Representation",

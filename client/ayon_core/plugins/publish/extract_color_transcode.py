@@ -1,4 +1,5 @@
 import os
+import re
 import copy
 import clique
 import pyblish.api
@@ -101,7 +102,7 @@ class ExtractOIIOTranscode(publish.Extractor):
 
         for idx, repre in enumerate(list(repres)):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
-            if not self._repre_is_valid(repre):
+            if not self._repre_is_valid(repre, profile):
                 continue
 
             added_representations = False
@@ -382,7 +383,7 @@ class ExtractOIIOTranscode(publish.Extractor):
 
         return profile
 
-    def _repre_is_valid(self, repre):
+    def _repre_is_valid(self, repre, profile):
         """Validation if representation should be processed.
 
         Args:
@@ -409,7 +410,23 @@ class ExtractOIIOTranscode(publish.Extractor):
                            "Skipped.".format(repre["name"]))
             return False
 
-        return True
+        representations = profile["representations"]
+        repre_name = repre["name"]
+
+        # make sure if not representations than it will return True
+        result = [True]
+
+        # check if any of representation patterns match in repre_name
+        if representations:
+            result = []
+            for r_pattern in representations:
+                if re.match(r_pattern, repre_name):
+                    result.append(True)
+                    break
+            else:
+                result.append(False)
+
+        return any(result)
 
     def _mark_original_repre_for_deletion(self, repre, profile, added_review):
         """If new transcoded representation created, delete old."""
