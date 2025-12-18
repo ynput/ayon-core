@@ -160,9 +160,14 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         dst_path: str,
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
-        resolution_args = self._get_resolution_args(
-            "oiiotool", src_path
-        )
+        try:
+            resolution_args = self._get_resolution_args(
+                "oiiotool", src_path
+            )
+        except Exception:
+            self.log.warning("Failed to get resolution args for OIIO.")
+            return False
+
         oiio_cmd = get_oiio_tool_args("oiiotool", "-a", src_path)
         if resolution_args:
             # resize must be before -o
@@ -188,9 +193,14 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         src_path: str,
         dst_path: str,
     ) -> bool:
-        resolution_args = self._get_resolution_args(
-            "ffmpeg", src_path
-        )
+        try:
+            resolution_args = self._get_resolution_args(
+                "ffmpeg", src_path
+            )
+        except Exception:
+            self.log.warning("Failed to get resolution args for ffmpeg.")
+            return False
+
 
         max_int = str(2147483647)
         ffmpeg_cmd = get_ffmpeg_tool_args(
