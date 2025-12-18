@@ -32,8 +32,6 @@ class TextureCopy:
         product_type = "texture"
         template_data = get_template_data(project_entity, folder_entity)
         template_data.update({
-            "family": product_type,
-            "subset": product_name,
             "product": {
                 "name": product_name,
                 "type": product_type,

@@ -948,7 +948,7 @@ def get_representation_by_names(
     version_name: Union[int, str],
     representation_name: str,
 ) -> Optional[dict]:
-    """Get representation entity for asset and subset.
+    """Get representation entity for folder and product.
 
     If version_name is "hero" then return the hero version
     If version_name is "latest" then return the latest version
@@ -966,7 +966,7 @@ def get_representation_by_names(
         return None
 
     if isinstance(product_name, dict) and "name" in product_name:
-        # Allow explicitly passing subset document
+        # Allow explicitly passing product entity document
         product_entity = product_name
     else:
         product_entity = ayon_api.get_product_by_name(
