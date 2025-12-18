@@ -123,10 +123,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "representation",
         "username",
         "output",
-        # OpenPype keys - should be removed
-        "asset",  # folder[name]
-        "subset",  # product[name]
-        "family",  # product[type]
     ]
 
     def process(self, instance):
