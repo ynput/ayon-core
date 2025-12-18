@@ -1146,24 +1146,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
             log.info("Nothing to update.")
             return
 
-        # Generate unique message ID for this operation
-        message_id = str(uuid.uuid4())
-        total = len(item_ids)
-
-        # Start heartbeat BEFORE emitting started event for smooth animation
+        # Start heartbeat for smooth animation
         self._start_operation_heartbeat()
-
-        # Emit started event
-        self._controller.emit_event(
-            "update_all.started",
-            {
-                "id": message_id,
-                "message": f"Updating all {total} outdated item(s)...",
-                "total": total,
-            }
-        )
-        # Process Qt events to show the toast immediately
-        self._process_qt_events()
 
         # Trigger update to latest
         # Note: _update_containers will use the same heartbeat, so we don't

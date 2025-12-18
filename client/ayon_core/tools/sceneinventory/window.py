@@ -120,7 +120,6 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         controller.register_event_callback("update.started", self._on_update_started)
         controller.register_event_callback("update.progress", self._on_update_progress)
         controller.register_event_callback("update.finished", self._on_update_finished)
-        controller.register_event_callback("update_all.started", self._on_update_all_started)
         # Register event callbacks for remove notifications
         controller.register_event_callback("remove.started", self._on_remove_started)
         controller.register_event_callback("remove.progress", self._on_remove_progress)
@@ -254,19 +253,6 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         else:
             self._overlay_object.add_message(
                 "Container(s) updated", message_id=message_id
-            )
-
-    def _on_update_all_started(self, event):
-        """Handle update_all.started event and show toast notification with progress."""
-        message_id = event.get("id")
-        message = event.get("message", "Updating all outdated items...")
-
-        if message_id:
-            self._overlay_object.add_message(
-                message, message_id=message_id
-            )
-            self._overlay_object.set_progress_visible(
-                message_id, True
             )
 
     def _on_remove_started(self, event):
