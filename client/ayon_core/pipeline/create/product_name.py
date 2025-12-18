@@ -60,11 +60,11 @@ def get_product_name_template(
     tools_settings = project_settings["core"]["tools"]
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
+        "product_base_types": product_base_type or product_type,
         "product_types": product_type,
         "host_names": host_name,
         "task_names": task_name,
         "task_types": task_type,
-        "product_base_types": product_base_type,
     }
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
