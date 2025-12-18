@@ -1045,10 +1045,15 @@ class ProjectPushItemProcess:
         copied_tags = self._get_transferable_tags(src_version_entity)
         copied_status = self._get_transferable_status(src_version_entity)
 
+        description = self._create_src_version_description(
+            self._item.src_project_name,
+            src_version_entity
+        )
+        dst_attrib["description"] = dst_attrib.get("description", "") + description
+
         version_entity = new_version_entity(
             dst_version,
             product_id,
-            author=src_version_entity["author"],
             status=copied_status,
             tags=copied_tags,
             task_id=self._task_info.get("id"),
@@ -1371,6 +1376,22 @@ class ProjectPushItemProcess:
         if copied_status:
             return copied_status["name"]
         return None
+
+    def _create_src_version_description(
+            self,
+            src_project_name: str,
+            src_version_entity: dict[str, Any]
+    ) -> str:
+        """Creates description text about source version."""
+        src_version_id = src_version_entity["id"]
+        src_author = src_version_entity["author"]
+        version_url = f"{ayon_api.get_base_url()}/projects/{src_project_name}/products?project={src_project_name}&type=version&id={src_version_id}"  # noqa: E501
+        description = (
+            f"Version copied from from  {version_url}  "
+            f"created by '{src_author}', "
+        )
+
+        return description
 
 
 class IntegrateModel:
