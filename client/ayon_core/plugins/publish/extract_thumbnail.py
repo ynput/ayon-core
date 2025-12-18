@@ -259,7 +259,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
-                    colorspace_data
+                    colorspace_data,
+                    thumbnail_def,
                 )
 
             # Try to use FFMPEG if OIIO is not supported or for cases when
@@ -400,7 +401,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return review_repres + other_repres
 
-    def _is_valid_images_repre(self, repre):
+    def _is_valid_images_repre(self, repre: dict) -> bool:
         """Check if representation contains valid image files
 
         Args:
@@ -420,10 +421,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     def _create_colorspace_thumbnail(
         self,
-        src_path,
-        dst_path,
-        colorspace_data,
-        thumbnail_def
+        src_path: str,
+        dst_path: str,
+        colorspace_data: dict,
+        thumbnail_def: ThumbnailDef,
     ):
         """Create thumbnail using OIIO tool oiiotool
 
@@ -436,11 +437,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     config (dict)
                     display (Optional[str])
                     view (Optional[str])
+            thumbnail_def (ThumbnailDefinition): Thumbnail definition.
 
         Returns:
             str: path to created thumbnail
         """
-        self.log.info("Extracting thumbnail {}".format(dst_path))
+        self.log.info(f"Extracting thumbnail {dst_path}")
         resolution_arg = self._get_resolution_args(
             "oiiotool", src_path, thumbnail_def
         )
@@ -599,10 +601,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     def _create_frame_from_video(
         self,
-        video_file_path,
-        output_dir,
-        thumbnail_def
-    ):
+        video_file_path: str,
+        output_dir: str,
+        thumbnail_def: ThumbnailDef,
+    ) -> Optional[str]:
         """Convert video file to one frame image via ffmpeg"""
         # create output file path
         base_name = os.path.basename(video_file_path)
@@ -703,10 +705,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     def _get_resolution_args(
         self,
-        application,
-        input_path,
-        thumbnail_def
-    ):
+        application: str,
+        input_path: str,
+        thumbnail_def: ThumbnailDef,
+    ) -> list:
         # get settings
         if thumbnail_def.target_size["type"] == "source":
             return []
