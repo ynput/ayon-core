@@ -1385,7 +1385,7 @@ class ProjectPushItemProcess:
         src_author = src_version_entity["author"]
         version_url = f"{ayon_api.get_base_url()}/projects/{src_project_name}/products?project={src_project_name}&type=version&id={src_version_id}"  # noqa: E501
         description = (
-            f"Version copied from from  {version_url}  "
+            f"\n\nVersion copied from from  {version_url}  "
             f"created by '{src_author}', "
         )
 
