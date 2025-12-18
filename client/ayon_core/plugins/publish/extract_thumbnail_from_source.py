@@ -201,7 +201,6 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             self.log.warning("Failed to get resolution args for ffmpeg.")
             return False
 
-
         max_int = str(2147483647)
         ffmpeg_cmd = get_ffmpeg_tool_args(
             "ffmpeg",
