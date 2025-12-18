@@ -7,6 +7,7 @@ from ayon_core.tools.utils import (
     SeparatorWidget,
     IconButton,
     paint_image_with_color,
+    get_qt_icon,
 )
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
@@ -46,10 +47,13 @@ def get_pretty_milliseconds(value):
 
 
 class PluginLoadReportModel(QtGui.QStandardItemModel):
+    _blocking_icon = None
+
     def __init__(self):
         super().__init__()
         self._traceback_by_filepath = {}
         self._items_by_filepath = {}
+        self._blocking_crashed_paths = set()
         self._is_active = True
         self._need_refresh = False
 
@@ -75,6 +79,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
 
         for filepath in to_remove:
             self._traceback_by_filepath.pop(filepath)
+        self._blocking_crashed_paths = set(report.blocking_crashed_paths)
         self._update_items()
 
     def _update_items(self):
@@ -83,6 +88,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         parent = self.invisibleRootItem()
         if not self._traceback_by_filepath:
             parent.removeRows(0, parent.rowCount())
+            self._items_by_filepath = {}
             return
 
         new_items = []
@@ -91,12 +97,18 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
             set(self._items_by_filepath) - set(self._traceback_by_filepath)
         )
         for filepath in self._traceback_by_filepath:
-            if filepath in self._items_by_filepath:
-                continue
-            item = QtGui.QStandardItem(filepath)
-            new_items.append(item)
-            new_items_by_filepath[filepath] = item
-            self._items_by_filepath[filepath] = item
+            item = self._items_by_filepath.get(filepath)
+            if item is None:
+                item = QtGui.QStandardItem(filepath)
+                new_items.append(item)
+                new_items_by_filepath[filepath] = item
+                self._items_by_filepath[filepath] = item
+
+            icon = None
+            if filepath.replace("\\", "/") in self._blocking_crashed_paths:
+                icon = self._get_blocking_icon()
+
+            item.setData(icon, QtCore.Qt.DecorationRole)
 
         if new_items:
             parent.appendRows(new_items)
@@ -112,6 +124,16 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         for filepath in to_remove:
             item = self._items_by_filepath.pop(filepath)
             parent.removeRow(item.row())
+
+    @classmethod
+    def _get_blocking_icon(cls):
+        if cls._blocking_icon is None:
+            cls._blocking_icon = get_qt_icon({
+                    "type": "material-symbols",
+                    "name": "block",
+                    "color": "red",
+                })
+        return cls._blocking_icon
 
 
 class DetailWidget(QtWidgets.QTextEdit):
@@ -856,7 +878,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         report = PublishReport(report_data)
         self.set_report(report)
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport) -> None:
         self._ignore_selection_changes = True
 
         self._report_item = report
@@ -866,6 +888,10 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
         self._plugins_details_widget.set_report(report)
+        if report.blocking_crashed_paths:
+            self._details_tab_widget.setCurrentWidget(
+                self._plugin_load_report_widget
+            )
 
         self._ignore_selection_changes = False
 
