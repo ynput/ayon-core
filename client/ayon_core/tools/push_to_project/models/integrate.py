@@ -1394,7 +1394,7 @@ class ProjectPushItemProcess:
         query = "&".join([
             f"project={src_project_name}",
             f"type=version",
-            f"id={src_version_id},
+            f"id={src_version_id}"
         ])
         version_url = (
             f"{ayon_api.get_base_url()}"
