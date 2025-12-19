@@ -1401,7 +1401,7 @@ class ProjectPushItemProcess:
             f"/projects/{src_project_name}/products?{query}"
         )
         description = (
-            f"\n\nVersion copied from from  {version_url}  "
+            f"Version copied from from  {version_url} "
             f"created by '{src_author}', "
         )
 
