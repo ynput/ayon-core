@@ -1393,7 +1393,7 @@ class ProjectPushItemProcess:
         src_author = src_version_entity["author"]
         query = "&".join([
             f"project={src_project_name}",
-            f"type=version",
+            "type=version",
             f"id={src_version_id}"
         ])
         version_url = (
