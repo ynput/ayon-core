@@ -1045,11 +1045,19 @@ class ProjectPushItemProcess:
         copied_tags = self._get_transferable_tags(src_version_entity)
         copied_status = self._get_transferable_status(src_version_entity)
 
+        description_parts = []
+        dst_attr_description = dst_attrib.get("description")
+        if dst_attr_description:
+            description_parts.append(dst_attr_description)
+
         description = self._create_src_version_description(
             self._item.src_project_name,
             src_version_entity
         )
-        dst_attrib["description"] = dst_attrib.get("description", "") + description
+        if description:
+            description_parts.append(description)
+
+        dst_attrib["description"] = "\n\n".join(description_parts)
 
         version_entity = new_version_entity(
             dst_version,
