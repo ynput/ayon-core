@@ -448,8 +448,7 @@ class IntegrateHeroVersion(
                 raise KnownPublishError(exc).with_traceback(sys.exc_info()[2])
 
             except Exception as exc:
-                # clean destination
-                # todo: preferably we'd also rollback *any* changes to the database
+                # Rollback the transactions
                 file_transactions.rollback()
                 self.log.critical("Error when copying files", exc_info=True)
                 raise exc
