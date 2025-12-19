@@ -1391,7 +1391,15 @@ class ProjectPushItemProcess:
         """Creates description text about source version."""
         src_version_id = src_version_entity["id"]
         src_author = src_version_entity["author"]
-        version_url = f"{ayon_api.get_base_url()}/projects/{src_project_name}/products?project={src_project_name}&type=version&id={src_version_id}"  # noqa: E501
+        query = "&".join([
+            f"project={src_project_name}",
+            f"type=version",
+            f"id={src_version_id},
+        ])
+        version_url = (
+            f"{ayon_api.get_base_url()}"
+            f"/projects/{src_project_name}/products?{query}"
+        )
         description = (
             f"\n\nVersion copied from from  {version_url}  "
             f"created by '{src_author}', "
