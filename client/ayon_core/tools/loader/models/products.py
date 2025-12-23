@@ -595,6 +595,24 @@ class ProductsModel:
             kwargs["product_ids"] = product_ids
 
         products = list(ayon_api.get_products(project_name, **kwargs))
+        
+        # Apply product type filtering based on loader settings
+        product_types_filter = self._controller.get_product_types_filter()
+        if product_types_filter.product_types:
+            filtered_products = []
+            filter_types_set = set(product_types_filter.product_types)
+            for product in products:
+                product_type = product.get("productType", "")
+                if product_types_filter.is_allow_list:
+                    # Allow list: only include products in the list
+                    if product_type in filter_types_set:
+                        filtered_products.append(product)
+                else:
+                    # Deny list: exclude products in the list
+                    if product_type not in filter_types_set:
+                        filtered_products.append(product)
+            products = filtered_products
+        
         product_ids = {product["id"] for product in products}
 
         # Add 'status' to fields -> fixed in ayon-python-api 1.0.4
