@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 import arrow
 import ayon_api
-from ayon_api.graphql_queries import project_graphql_query
 from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
@@ -203,14 +202,92 @@ class ProductsModel:
         cache = self._product_type_items_cache[project_name]
         if not cache.is_valid:
             icons_mapping = self._get_product_type_icons(project_name)
-            product_types = self._get_project_product_types(project_name)
-            cache.update_data([
-                ProductTypeItem(
-                    product_type["name"],
-                    icons_mapping.get_icon(product_type=product_type["name"]),
+            
+            # Get registered product types from API
+            registered_product_types = ayon_api.get_project_product_types(project_name)
+            registered_type_names = {
+                product_type["name"] for product_type in registered_product_types
+            }
+            
+            # Get product types from anatomy settings
+            # This includes custom product types defined in anatomy.product_types.definitions
+            anatomy_product_types = {}
+            try:
+                from ayon_core.pipeline import Anatomy
+                anatomy = Anatomy(project_name)
+                product_types_data = anatomy.get("product_types")
+                if product_types_data:
+                    definitions = product_types_data.get("definitions", [])
+                    for pt_def in definitions:
+                        pt_name = pt_def.get("name")
+                        if pt_name:
+                            anatomy_product_types[pt_name] = pt_def
+            except Exception:
+                # If anatomy access fails, continue with API types only
+                pass
+            
+            # Also get product types from actual products in the project
+            # This ensures all product types that exist are included
+            actual_product_types = set()
+            try:
+                products = ayon_api.get_products(
+                    project_name,
+                    fields=["productType"]
                 )
-                for product_type in product_types
-            ])
+                actual_product_types = {
+                    product["productType"]
+                    for product in products
+                    if product.get("productType")
+                }
+            except Exception:
+                # If query fails, continue without actual product types
+                pass
+            
+            # Merge: start with registered types, then add anatomy types, then actual product types
+            all_product_type_names = (
+                registered_type_names 
+                | set(anatomy_product_types.keys()) 
+                | actual_product_types
+            )
+            
+            # Create product type items, preserving registered ones first
+            product_type_items = []
+            seen_names = set()
+            
+            # Add registered product types first (preserves order and any API-specific data)
+            for product_type in registered_product_types:
+                name = product_type["name"]
+                if name in all_product_type_names:
+                    product_type_items.append(
+                        ProductTypeItem(
+                            name,
+                            icons_mapping.get_icon(product_type=name),
+                        )
+                    )
+                    seen_names.add(name)
+            
+            # Add anatomy product types that aren't in registered types
+            for pt_name in sorted(anatomy_product_types.keys()):
+                if pt_name not in seen_names:
+                    product_type_items.append(
+                        ProductTypeItem(
+                            pt_name,
+                            icons_mapping.get_icon(product_type=pt_name),
+                        )
+                    )
+                    seen_names.add(pt_name)
+            
+            # Add actual product types that aren't in registered or anatomy types
+            for pt_name in sorted(actual_product_types):
+                if pt_name not in seen_names:
+                    product_type_items.append(
+                        ProductTypeItem(
+                            pt_name,
+                            icons_mapping.get_icon(product_type=pt_name),
+                        )
+                    )
+            
+            cache.update_data(product_type_items)
         return cache.get_data()
 
     def get_product_base_type_items(
@@ -446,7 +523,7 @@ class ProductsModel:
                 project_name,
                 "product",
                 product_item.product_id,
-                {"attrib": {"productGroup": group_name or None}}
+                {"attrib": {"productGroup": group_name}}
             )
             folder_ids.add(product_item.folder_id)
             product_item.group_name = group_name
@@ -462,24 +539,6 @@ class ProductsModel:
             },
             PRODUCTS_MODEL_SENDER
         )
-
-    def _get_project_product_types(self, project_name: str) -> list[dict]:
-        """This is a temporary solution for product types fetching.
-
-        There was a bug in ayon_api.get_project(...) which did not use GraphQl
-            but REST instead. That is fixed in ayon-python-api 1.2.6 that will
-            be as part of ayon launcher 1.4.3 release.
-
-        """
-        if not project_name:
-            return []
-        query = project_graphql_query({"productTypes.name"})
-        query.set_variable_value("projectName", project_name)
-        parsed_data = query.query(ayon_api.get_server_api_connection())
-        project = parsed_data["project"]
-        if project is None:
-            return []
-        return project["productTypes"]
 
     def _get_product_type_icons(
         self, project_name: Optional[str]
