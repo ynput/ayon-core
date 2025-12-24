@@ -258,7 +258,7 @@ def _product_types_enum():
         "redshiftproxy",
         "reference",
         "render",
-        "renderLayer",
+        "renderlayer",
         "review",
         "rig",
         "setdress",
