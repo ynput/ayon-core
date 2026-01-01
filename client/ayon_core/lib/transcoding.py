@@ -763,7 +763,7 @@ def convert_input_paths_for_ffmpeg(
         # Convert a sequence of files using a single oiiotool command
         # using its sequence syntax
         if isinstance(input_item, clique.Collection):
-            frames = input_item.format("{head}#{tail}").replace(" ", "")
+            frames = input_item.format("{ranges}")
             oiio_cmd.extend([
                 "--framepadding", str(input_item.padding),
                 "--frames", frames,
