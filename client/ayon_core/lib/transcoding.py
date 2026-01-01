@@ -765,7 +765,7 @@ def convert_input_paths_for_ffmpeg(
         if isinstance(input_item, clique.Collection):
             frames = input_item.format("{head}#{tail}").replace(" ", "")
             oiio_cmd.extend([
-                "--framepadding", input_item.padding,
+                "--framepadding", str(input_item.padding),
                 "--frames", frames,
                 "--parallel-frames"
             ])
