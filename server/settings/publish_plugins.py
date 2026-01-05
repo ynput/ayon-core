@@ -558,7 +558,10 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
     )
     representation_names: list[str] = SettingsField(
         default_factory=list,
-        title="Representation names"
+        title="Representation names",
+        description=(
+            "Filter representations by names supporting regex pattern inputs"
+        )
     )
     delete_original: bool = SettingsField(
         True,
