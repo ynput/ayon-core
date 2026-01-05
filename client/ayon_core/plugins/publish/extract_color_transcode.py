@@ -405,22 +405,20 @@ class ExtractOIIOTranscode(publish.Extractor):
             return False
 
         representations_names = profile["representation_names"]
+
+        # make sure that positive will be returned if no representations_names
+        if not representations_names:
+            return True
+
         repre_name = repre["name"]
 
-        # make sure if not representations than it will return True
-        result = [True]
-
         # check if any of representation patterns match in repre_name
-        if representations_names:
-            result = []
-            for r_pattern in representations_names:
-                if re.match(r_pattern, repre_name):
-                    result.append(True)
-                    break
-            else:
-                result.append(False)
+        for r_pattern in representations_names:
+            if re.match(r_pattern, repre_name):
+                return True
 
-        return any(result)
+        return False
+
 
     def _mark_original_repre_for_deletion(self, repre, profile, added_review):
         """If new transcoded representation created, delete old."""
