@@ -280,12 +280,6 @@ class ExtractOIIOTranscode(publish.Extractor):
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
 
-            if (
-                added_review
-                and "review" not in instance.data["families"]
-            ):
-                instance.data["families"].append("review")
-
         instance.data["representations"].extend(new_representations)
 
     def _rename_in_representation(self, new_repre, files_to_convert,
