@@ -556,7 +556,7 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Product names"
     )
-    representations: list[str] = SettingsField(
+    representation_names: list[str] = SettingsField(
         default_factory=list,
         title="Representation names"
     )
