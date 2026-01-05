@@ -25,6 +25,7 @@ from ayon_core.lib.file_transaction import (
     DuplicateDestinationError
 )
 from ayon_core.pipeline.publish import (
+    has_trait_representations,
     KnownPublishError,
     get_publish_template_name,
 )
@@ -170,15 +171,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         file_transactions.finalize()
 
     def filter_representations(self, instance):
-        # Prepare repsentations that should be integrated
+        """Filter representations to be integrated."""
         repres = instance.data.get("representations")
-        # Raise error if instance don't have any representations
         if not repres:
-            raise KnownPublishError(
-                "Instance {} has no representations to integrate".format(
-                    instance.data["productType"]
-                )
-            )
+            return []
 
         # Validate type of stored representations
         if not isinstance(repres, (list, tuple)):
