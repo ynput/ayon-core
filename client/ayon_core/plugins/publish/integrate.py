@@ -25,7 +25,6 @@ from ayon_core.lib.file_transaction import (
     DuplicateDestinationError
 )
 from ayon_core.pipeline.publish import (
-    has_trait_representations,
     KnownPublishError,
     get_publish_template_name,
 )
