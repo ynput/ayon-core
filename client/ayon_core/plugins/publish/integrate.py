@@ -123,10 +123,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "representation",
         "username",
         "output",
-        # OpenPype keys - should be removed
-        "asset",  # folder[name]
-        "subset",  # product[name]
-        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -924,8 +920,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Include optional data if present in
         optionals = [
-            "frameStart", "frameEnd", "step",
-            "handleEnd", "handleStart", "sourceHashes"
+            "frameStart", "frameEnd",
+            "handleEnd", "handleStart",
+            "step",
+            "resolutionWidth", "resolutionHeight",
+            "pixelAspect",
+            "sourceHashes"
         ]
         for key in optionals:
             if key in instance.data:

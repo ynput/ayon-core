@@ -14,6 +14,7 @@ Todos:
 
 import os
 import tempfile
+from typing import List, Optional
 
 import pyblish.api
 from ayon_core.lib import (
@@ -22,6 +23,7 @@ from ayon_core.lib import (
     is_oiio_supported,
 
     run_subprocess,
+    get_rescaled_command_arguments,
 )
 
 
@@ -31,17 +33,20 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     Thumbnail source must be a single image or video filepath.
     """
 
-    label = "Extract Thumbnail (from source)"
+    label = "Extract Thumbnail from source"
     # Before 'ExtractThumbnail' in global plugins
     order = pyblish.api.ExtractorOrder - 0.00001
 
-    def process(self, instance):
+    # Settings
+    target_size = {
+        "type": "resize",
+        "resize": {"width": 1920, "height": 1080}
+    }
+    background_color = (0, 0, 0, 0.0)
+
+    def process(self, instance: pyblish.api.Instance):
         self._create_context_thumbnail(instance.context)
 
-        product_name = instance.data["productName"]
-        self.log.debug(
-            "Processing instance with product name {}".format(product_name)
-        )
         thumbnail_source = instance.data.get("thumbnailSource")
         if not thumbnail_source:
             self.log.debug("Thumbnail source not filled. Skipping.")
@@ -69,6 +74,8 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             "outputName": "thumbnail",
         }
 
+        new_repre["tags"].append("delete")
+
         # adding representation
         self.log.debug(
             "Adding thumbnail representation: {}".format(new_repre)
@@ -76,7 +83,11 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         instance.data["representations"].append(new_repre)
         instance.data["thumbnailPath"] = dst_filepath
 
-    def _create_thumbnail(self, context, thumbnail_source):
+    def _create_thumbnail(
+        self,
+        context: pyblish.api.Context,
+        thumbnail_source: str,
+    ) -> Optional[str]:
         if not thumbnail_source:
             self.log.debug("Thumbnail source not filled. Skipping.")
             return
@@ -131,7 +142,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
         self.log.warning("Thumbnail has not been created.")
 
-    def _instance_has_thumbnail(self, instance):
+    def _instance_has_thumbnail(self, instance: pyblish.api.Instance) -> bool:
         if "representations" not in instance.data:
             self.log.warning(
                 "Instance does not have 'representations' key filled"
@@ -143,14 +154,29 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
                 return True
         return False
 
-    def create_thumbnail_oiio(self, src_path, dst_path):
+    def create_thumbnail_oiio(
+        self,
+        src_path: str,
+        dst_path: str,
+    ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
-        oiio_cmd = get_oiio_tool_args(
-            "oiiotool",
-            "-a", src_path,
-            "--ch", "R,G,B",
-            "-o", dst_path
-        )
+        try:
+            resolution_args = self._get_resolution_args(
+                "oiiotool", src_path
+            )
+        except Exception:
+            self.log.warning("Failed to get resolution args for OIIO.")
+            return False
+
+        oiio_cmd = get_oiio_tool_args("oiiotool", "-a", src_path)
+        if resolution_args:
+            # resize must be before -o
+            oiio_cmd.extend(resolution_args)
+        else:
+            # resize provides own -ch, must be only one
+            oiio_cmd.extend(["--ch", "R,G,B"])
+
+        oiio_cmd.extend(["-o", dst_path])
         self.log.debug("Running: {}".format(" ".join(oiio_cmd)))
         try:
             run_subprocess(oiio_cmd, logger=self.log)
@@ -162,7 +188,19 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             )
             return False
 
-    def create_thumbnail_ffmpeg(self, src_path, dst_path):
+    def create_thumbnail_ffmpeg(
+        self,
+        src_path: str,
+        dst_path: str,
+    ) -> bool:
+        try:
+            resolution_args = self._get_resolution_args(
+                "ffmpeg", src_path
+            )
+        except Exception:
+            self.log.warning("Failed to get resolution args for ffmpeg.")
+            return False
+
         max_int = str(2147483647)
         ffmpeg_cmd = get_ffmpeg_tool_args(
             "ffmpeg",
@@ -171,8 +209,12 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             "-probesize", max_int,
             "-i", src_path,
             "-frames:v", "1",
-            dst_path
         )
+
+        ffmpeg_cmd.extend(resolution_args)
+
+        # possible resize must be before output args
+        ffmpeg_cmd.append(dst_path)
 
         self.log.debug("Running: {}".format(" ".join(ffmpeg_cmd)))
         try:
@@ -185,10 +227,37 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             )
             return False
 
-    def _create_context_thumbnail(self, context):
+    def _create_context_thumbnail(
+        self,
+        context: pyblish.api.Context,
+    ):
         if "thumbnailPath" in context.data:
             return
 
         thumbnail_source = context.data.get("thumbnailSource")
-        thumbnail_path = self._create_thumbnail(context, thumbnail_source)
-        context.data["thumbnailPath"] = thumbnail_path
+        context.data["thumbnailPath"] = self._create_thumbnail(
+            context, thumbnail_source
+        )
+
+    def _get_resolution_args(
+        self,
+        application: str,
+        input_path: str,
+    ) -> List[str]:
+        # get settings
+        if self.target_size["type"] == "source":
+            return []
+
+        resize = self.target_size["resize"]
+        target_width = resize["width"]
+        target_height = resize["height"]
+
+        # form arg string per application
+        return get_rescaled_command_arguments(
+            application,
+            input_path,
+            target_width,
+            target_height,
+            bg_color=self.background_color,
+            log=self.log,
+        )
