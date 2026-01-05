@@ -14,15 +14,8 @@ def _nuke_main_window():
 def _nuke_main_menubar():
     """Retrieve the main menubar of the Nuke window"""
     nuke_window = _nuke_main_window()
-    menubar = [i for i in nuke_window.children()
-               if isinstance(i, QtWidgets.QMenuBar)]
 
-    # OSX fix - nuke_window.children() can't find menubars
-    if not menubar:
-        menubar = [nuke_window.menuBar()]
-
-    assert len(menubar) == 1, "Error, could not find menu bar!"
-    return menubar[0]
+    return nuke_window.menuBar()
 
 
 def main(title="Scripts"):
