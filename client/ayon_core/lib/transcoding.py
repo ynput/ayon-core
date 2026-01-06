@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import logging
@@ -11,6 +12,8 @@ import functools
 from typing import Optional
 
 import xml.etree.ElementTree
+
+import clique
 
 from .execute import run_subprocess
 from .vendor_bin_utils import (
@@ -131,16 +134,29 @@ def get_transcode_temp_directory():
     )
 
 
-def get_oiio_info_for_input(filepath, logger=None, subimages=False):
+def get_oiio_info_for_input(
+    filepath: str,
+    *,
+    subimages: bool = False,
+    verbose: bool = True,
+    logger: logging.Logger = None,
+):
     """Call oiiotool to get information about input and return stdout.
+
+    Args:
+        filepath (str): Path to file.
+        subimages (bool): include info about subimages in the output.
+        verbose (bool): get the full metadata about each input image.
+        logger (logging.Logger): Logger used for logging.
 
     Stdout should contain xml format string.
     """
     args = get_oiio_tool_args(
         "oiiotool",
         "--info",
-        "-v"
     )
+    if verbose:
+        args.append("-v")
     if subimages:
         args.append("-a")
 
@@ -570,7 +586,10 @@ def get_review_layer_name(src_filepath):
         return None
 
     # Load info about file from oiio tool
-    input_info = get_oiio_info_for_input(src_filepath)
+    input_info = get_oiio_info_for_input(
+        src_filepath,
+        verbose=False,
+    )
     if not input_info:
         return None
 
@@ -634,6 +653,37 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
+def _get_attributes_to_erase(
+    input_info: dict, logger: logging.Logger
+) -> list[str]:
+    """FFMPEG does not support some attributes in metadata."""
+    erase_attrs: dict[str, str] = {}  # Attr name to reason mapping
+    for attr_name, attr_value in input_info["attribs"].items():
+        if not isinstance(attr_value, str):
+            continue
+
+        # Remove attributes that have string value longer than allowed length
+        #   for ffmpeg or when contain prohibited symbols
+        if len(attr_value) > MAX_FFMPEG_STRING_LEN:
+            reason = f"has too long value ({len(attr_value)} chars)."
+            erase_attrs[attr_name] = reason
+            continue
+
+        for char in NOT_ALLOWED_FFMPEG_CHARS:
+            if char not in attr_value:
+                continue
+            reason = f"contains unsupported character \"{char}\"."
+            erase_attrs[attr_name] = reason
+            break
+
+    for attr_name, reason in erase_attrs.items():
+        logger.info(
+            f"Removed attribute \"{attr_name}\" from metadata"
+            f" because {reason}."
+        )
+    return list(erase_attrs.keys())
+
+
 def convert_input_paths_for_ffmpeg(
     input_paths,
     output_dir,
@@ -659,7 +709,7 @@ def convert_input_paths_for_ffmpeg(
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
+            Currently, only ".exr" extension is supported.
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -684,7 +734,22 @@ def convert_input_paths_for_ffmpeg(
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
-    for input_path in input_paths:
+    # Find which attributes to strip
+    erase_attributes: list[str] = _get_attributes_to_erase(
+        input_info, logger=logger
+    )
+
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    input_collections, input_remainder = clique.assemble(
+        input_paths,
+        patterns=[pattern],
+        assume_padded_when_ambiguous=True,
+    )
+    input_items = list(input_collections)
+    input_items.extend(input_remainder)
+    for input_item in input_items:
         # Prepare subprocess arguments
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
@@ -695,8 +760,23 @@ def convert_input_paths_for_ffmpeg(
         if compression:
             oiio_cmd.extend(["--compression", compression])
 
+        # Convert a sequence of files using a single oiiotool command
+        # using its sequence syntax
+        if isinstance(input_item, clique.Collection):
+            frames = input_item.format("{ranges}")
+            oiio_cmd.extend([
+                "--framepadding", str(input_item.padding),
+                "--frames", frames,
+                "--parallel-frames"
+            ])
+            input_item: str = input_item.format("{head}#{tail}")
+        elif not isinstance(input_item, str):
+            raise TypeError(
+                f"Input is not a string or Collection: {input_item}"
+            )
+
         oiio_cmd.extend([
-            input_arg, input_path,
+            input_arg, input_item,
             # Tell oiiotool which channels should be put to top stack
             #   (and output)
             "--ch", channels_arg,
@@ -704,38 +784,11 @@ def convert_input_paths_for_ffmpeg(
             "--subimage", "0"
         ])
 
-        for attr_name, attr_value in input_info["attribs"].items():
-            if not isinstance(attr_value, str):
-                continue
-
-            # Remove attributes that have string value longer than allowed
-            #   length for ffmpeg or when containing prohibited symbols
-            erase_reason = "Missing reason"
-            erase_attribute = False
-            if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-                erase_reason = "has too long value ({} chars).".format(
-                    len(attr_value)
-                )
-                erase_attribute = True
-
-            if not erase_attribute:
-                for char in NOT_ALLOWED_FFMPEG_CHARS:
-                    if char in attr_value:
-                        erase_attribute = True
-                        erase_reason = (
-                            "contains unsupported character \"{}\"."
-                        ).format(char)
-                        break
-
-            if erase_attribute:
-                # Set attribute to empty string
-                logger.info((
-                    "Removed attribute \"{}\" from metadata because {}."
-                ).format(attr_name, erase_reason))
-                oiio_cmd.extend(["--eraseattrib", attr_name])
+        for attr_name in erase_attributes:
+            oiio_cmd.extend(["--eraseattrib", attr_name])
 
         # Add last argument - path to output
-        base_filename = os.path.basename(input_path)
+        base_filename = os.path.basename(input_item)
         output_path = os.path.join(output_dir, base_filename)
         oiio_cmd.extend([
             "-o", output_path
@@ -1136,7 +1189,10 @@ def oiio_color_convert(
     target_display=None,
     target_view=None,
     additional_command_args=None,
-    logger=None,
+    frames: Optional[str] = None,
+    frame_padding: Optional[int] = None,
+    parallel_frames: bool = False,
+    logger: Optional[logging.Logger] = None,
 ):
     """Transcode source file to other with colormanagement.
 
@@ -1148,7 +1204,7 @@ def oiio_color_convert(
         input_path (str): Path that should be converted. It is expected that
             contains single file or image sequence of same type
             (sequence in format 'file.FRAMESTART-FRAMEEND#.ext', see oiio docs,
-            eg `big.1-3#.tif`)
+            eg `big.1-3#.tif` or `big.1-3%d.ext` with `frames` argument)
         output_path (str): Path to output filename.
             (must follow format of 'input_path', eg. single file or
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
@@ -1169,6 +1225,13 @@ def oiio_color_convert(
             both 'view' and 'display' must be filled (if 'target_colorspace')
         additional_command_args (list): arguments for oiiotool (like binary
             depth for .dpx)
+        frames (Optional[str]): Complex frame range to process. This requires
+            input path and output path to use frame token placeholder like
+            `#` or `%d`, e.g. file.#.exr
+        frame_padding (Optional[int]): Frame padding to use for the input and
+            output when using a sequence filepath.
+        parallel_frames (bool): If True, process frames in parallel inside
+            the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
 
     Raises:
@@ -1178,7 +1241,20 @@ def oiio_color_convert(
     if logger is None:
         logger = logging.getLogger(__name__)
 
-    input_info = get_oiio_info_for_input(input_path, logger=logger)
+    # Get oiioinfo only from first image, otherwise file can't be found
+    first_input_path = input_path
+    if frames:
+        frames: str
+        first_frame = int(re.split("[ x-]", frames, 1)[0])
+        first_frame = str(first_frame).zfill(frame_padding or 0)
+        for token in ["#", "%d"]:
+            first_input_path = first_input_path.replace(token, first_frame)
+
+    input_info = get_oiio_info_for_input(
+        first_input_path,
+        verbose=False,
+        logger=logger,
+    )
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
@@ -1190,6 +1266,22 @@ def oiio_color_convert(
         "--nosoftwareattrib",
         "--colorconfig", config_path
     )
+
+    if frames:
+        # If `frames` is specified, then process the input and output
+        # as if it's a sequence of frames (must contain `%04d` as frame
+        # token placeholder in filepaths)
+        oiio_cmd.extend([
+            "--frames", frames,
+        ])
+
+    if frame_padding:
+        oiio_cmd.extend([
+            "--framepadding", str(frame_padding),
+        ])
+
+    if parallel_frames:
+        oiio_cmd.append("--parallel-frames")
 
     oiio_cmd.extend([
         input_arg, input_path,
@@ -1376,7 +1468,11 @@ def get_rescaled_command_arguments(
         command_args.extend(["-vf", "{0},{1}".format(scale, pad)])
 
     elif application == "oiiotool":
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            verbose=False,
+            logger=log,
+        )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
             input_info, alpha_default=1.0)
@@ -1467,7 +1563,11 @@ def _get_image_dimensions(application, input_path, log):
     # fallback for weird files with width=0, height=0
     if (input_width == 0 or input_height == 0) and application == "oiiotool":
         # Load info about file from oiio tool
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            verbose=False,
+            logger=log,
+        )
         if input_info:
             input_width = int(input_info["width"])
             input_height = int(input_info["height"])
@@ -1516,10 +1616,13 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
-            Should be output of function `get_oiio_info_for_input`.
+            Should be output of function 'get_oiio_info_for_input' (can be
+            called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
+
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.
+
     """
     channel_names = oiio_input_info["channelnames"]
     review_channels = get_convert_rgb_channels(channel_names)
