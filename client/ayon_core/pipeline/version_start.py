@@ -1,16 +1,19 @@
+from __future__ import annotations
+from typing import Optional, Any
+
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.settings import get_project_settings
 
 
 def get_versioning_start(
-    project_name,
-    host_name,
-    task_name=None,
-    task_type=None,
-    product_type=None,
-    product_name=None,
-    project_settings=None,
-):
+    project_name: str,
+    host_name: str,
+    task_name: Optional[str] = None,
+    task_type: Optional[str] = None,
+    product_type: Optional[str] = None,
+    product_name: Optional[str] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> int:
     """Get anatomy versioning start"""
     if not project_settings:
         project_settings = get_project_settings(project_name)
@@ -22,14 +25,12 @@ def get_versioning_start(
     if not profiles:
         return version_start
 
-    # TODO use 'product_types' and 'product_name' instead of
-    #   'families' and 'subsets'
     filtering_criteria = {
         "host_names": host_name,
-        "families": product_type,
+        "product_types": product_type,
+        "product_names": product_name,
         "task_names": task_name,
         "task_types": task_type,
-        "subsets": product_name
     }
     profile = filter_profiles(profiles, filtering_criteria)
 
