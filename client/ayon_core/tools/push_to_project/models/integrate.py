@@ -1172,17 +1172,15 @@ class ProjectPushItemProcess:
         self, anatomy, template_name, formatting_data, file_template
     ):
         processed_repre_items = []
-        repre_context = None
         for repre_item in self._src_repre_items:
             repre_entity = repre_item.repre_entity
             repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
 
-            if not repre_context:
-                repre_context = self._update_repre_context(
-                    copy.deepcopy(repre_entity),
-                    formatting_data
-                )
+            repre_context = self._update_repre_context(
+                copy.deepcopy(repre_entity),
+                formatting_data
+            )
 
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
