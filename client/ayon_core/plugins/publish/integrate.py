@@ -141,7 +141,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Skip instance if there are not representations to integrate
         #   all representations should not be integrated
         if not filtered_repres:
-            self.log.warning((
+            self.log.info((
                 "Skipping, there are no representations"
                 " to integrate for instance {}"
             ).format(instance.data["productType"]))
