@@ -527,6 +527,10 @@ class LoaderWindow(QtWidgets.QWidget):
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
         self._update_filters()
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_load_finished(self, event):
         error_info = event["error_info"]

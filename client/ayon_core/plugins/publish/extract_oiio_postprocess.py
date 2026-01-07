@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Any, Optional
 import os
 import copy
 import clique
@@ -9,70 +11,44 @@ from ayon_core.pipeline import (
 )
 from ayon_core.lib import (
     is_oiio_supported,
+    get_oiio_tool_args,
+    run_subprocess
 )
-from ayon_core.lib.transcoding import (
-    MissingRGBAChannelsError,
-    oiio_color_convert,
-)
-
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.lib.profiles_filtering import filter_profiles
 
 
-class ExtractOIIOTranscode(publish.Extractor):
-    """
-    Extractor to convert colors from one colorspace to different.
-
-    Expects "colorspaceData" on representation. This dictionary is collected
-    previously and denotes that representation files should be converted.
-    This dict contains source colorspace information, collected by hosts.
-
-    Target colorspace is selected by profiles in the Settings, based on:
-    - host names
-    - product types
-    - product names
-    - task types
-    - task names
-
-    Can produce one or more representations (with different extensions) based
-    on output definition in format:
-        "output_name: {
-            "extension": "png",
-            "colorspace": "ACES - ACEScg",
-            "display": "",
-            "view": "",
-            "tags": [],
-            "custom_tags": []
-        }
-
-    If 'extension' is empty original representation extension is used.
-    'output_name' will be used as name of new representation. In case of value
-        'passthrough' name of original representation will be used.
-
-    'colorspace' denotes target colorspace to be transcoded into. Could be
-    empty if transcoding should be only into display and viewer colorspace.
-    (In that case both 'display' and 'view' must be filled.)
+class ExtractOIIOPostProcess(publish.Extractor):
+    """Process representations through `oiiotool` with profile defined
+    settings so that e.g. color space conversions can be applied or images
+    could be converted to scanline, resized, etc. regardless of colorspace
+    data.
     """
 
-    label = "Transcode color spaces"
-    order = pyblish.api.ExtractorOrder + 0.019
+    label = "OIIO Post Process"
+    order = pyblish.api.ExtractorOrder + 0.020
 
     settings_category = "core"
 
     optional = True
 
     # Supported extensions
-    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
+    supported_exts = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
 
     # Configurable by Settings
     profiles = None
     options = None
 
     def process(self, instance):
-        if not self.profiles:
-            self.log.debug("No profiles present for color transcode")
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
             return
 
-        if "representations" not in instance.data:
+        if not self.profiles:
+            self.log.debug("No profiles present for OIIO Post Process")
+            return
+
+        if not instance.data.get("representations"):
             self.log.debug("No representations, skipping.")
             return
 
@@ -80,40 +56,20 @@ class ExtractOIIOTranscode(publish.Extractor):
             self.log.warning("OIIO not supported, no transcoding possible.")
             return
 
-        profile = self._get_profile(instance)
-        if not profile:
-            return
-
-        profile_output_defs = profile["outputs"]
         new_representations = []
-        repres = instance.data["representations"]
-
-        scene_display = instance.data.get(
-            "sceneDisplay",
-            # Backward compatibility
-            instance.data.get("colorspaceDisplay")
-        )
-        scene_view = instance.data.get(
-            "sceneView",
-            # Backward compatibility
-            instance.data.get("colorspaceView")
-        )
-
-        for idx, repre in enumerate(list(repres)):
+        for idx, repre in enumerate(list(instance.data["representations"])):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre):
                 continue
 
-            added_representations = False
-            added_review = False
-
-            colorspace_data = repre["colorspaceData"]
-            source_colorspace = colorspace_data["colorspace"]
-            source_display = colorspace_data.get("display")
-            source_view = colorspace_data.get("view")
-            config_path = colorspace_data.get("config", {}).get("path")
-            if not config_path or not os.path.exists(config_path):
-                self.log.warning("Config file doesn't exist, skipping")
+            # We check profile per representation name and extension because
+            # it's included in the profile check. As such, an instance may have
+            # a different profile applied per representation.
+            profile = self._get_profile(
+                instance,
+                repre
+            )
+            if not profile:
                 continue
 
             # Get representation files to convert
@@ -122,8 +78,12 @@ class ExtractOIIOTranscode(publish.Extractor):
             else:
                 repre_files_to_convert = [repre["files"]]
 
+            added_representations = False
+            added_review = False
+
             # Process each output definition
-            for output_def in profile_output_defs:
+            for output_def in profile["outputs"]:
+
                 # Local copy to avoid accidental mutable changes
                 files_to_convert = list(repre_files_to_convert)
 
@@ -144,93 +104,46 @@ class ExtractOIIOTranscode(publish.Extractor):
                                                output_name,
                                                output_extension)
 
-                transcoding_type = output_def["transcoding_type"]
-
-                # Set target colorspace/display/view based on transcoding type
-                target_colorspace = None
-                target_view = None
-                target_display = None
-                if transcoding_type == "colorspace":
-                    target_colorspace = output_def["colorspace"]
-                elif transcoding_type == "display_view":
-                    display_view = output_def["display_view"]
-                    # If empty values are provided in output definition,
-                    # fallback to scene display/view that is collected from DCC
-                    target_view = display_view["view"] or scene_view
-                    target_display = display_view["display"] or scene_display
-
-                # both could be already collected by DCC,
-                # but could be overwritten when transcoding
-                if target_view:
-                    new_repre["colorspaceData"]["view"] = target_view
-                if target_display:
-                    new_repre["colorspaceData"]["display"] = target_display
-                if target_colorspace:
-                    new_repre["colorspaceData"]["colorspace"] = \
-                        target_colorspace
-
-                additional_command_args = (output_def["oiiotool_args"]
-                                           ["additional_command_args"])
-
-                sequence_files = self._translate_to_sequence(
-                    files_to_convert)
+                sequence_files = self._translate_to_sequence(files_to_convert)
                 self.log.debug("Files to convert: {}".format(sequence_files))
-                missing_rgba_review_channels = False
                 for file_name in sequence_files:
                     if isinstance(file_name, clique.Collection):
-                        # Support sequences with holes by supplying
-                        # dedicated `--frames` argument to `oiiotool`
-                        # Create `frames` string like "1001-1002,1004,1010-1012
-                        # Create `filename` string like "file.#.exr"
-                        frames = file_name.format("{ranges}").replace(" ", "")
-                        frame_padding = file_name.padding
-                        file_name = file_name.format("{head}#{tail}")
-                        parallel_frames = True
-                    elif isinstance(file_name, str):
-                        # Single file
-                        frames = None
-                        frame_padding = None
-                        parallel_frames = False
-                    else:
-                        raise TypeError(
-                            f"Unsupported file name type: {type(file_name)}."
-                            " Expected str or clique.Collection."
+                        # Convert to filepath that can be directly converted
+                        # by oiio like `frame.1001-1025%04d.exr`
+                        file_name: str = file_name.format(
+                            "{head}{range}{padding}{tail}"
                         )
 
                     self.log.debug("Transcoding file: `{}`".format(file_name))
-                    input_path = os.path.join(original_staging_dir, file_name)
+                    input_path = os.path.join(original_staging_dir,
+                                              file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
-                    try:
-                        oiio_color_convert(
-                            input_path=input_path,
-                            output_path=output_path,
-                            config_path=config_path,
-                            source_colorspace=source_colorspace,
-                            target_colorspace=target_colorspace,
-                            target_display=target_display,
-                            target_view=target_view,
-                            source_display=source_display,
-                            source_view=source_view,
-                            additional_command_args=additional_command_args,
-                            frames=frames,
-                            frame_padding=frame_padding,
-                            parallel_frames=parallel_frames,
-                            logger=self.log
-                        )
-                    except MissingRGBAChannelsError as exc:
-                        missing_rgba_review_channels = True
-                        self.log.error(exc)
-                        self.log.error(
-                            "Skipping OIIO Transcode. Unknown RGBA channels"
-                            f" for colorspace conversion in file: {input_path}"
-                        )
-                        break
 
-                if missing_rgba_review_channels:
-                    # Stop processing this representation
-                    break
+                    # TODO: Support formatting with dynamic keys from the
+                    #  representation, like e.g. colorspace config, display,
+                    #  view, etc.
+                    input_arguments: list[str] = output_def.get(
+                        "input_arguments", []
+                    )
+                    output_arguments: list[str] = output_def.get(
+                        "output_arguments", []
+                    )
+
+                    # Prepare subprocess arguments
+                    oiio_cmd = get_oiio_tool_args(
+                        "oiiotool",
+                        *input_arguments,
+                        input_path,
+                        *output_arguments,
+                        "-o",
+                        output_path
+                    )
+
+                    self.log.debug(
+                        "Conversion command: {}".format(" ".join(oiio_cmd)))
+                    run_subprocess(oiio_cmd, logger=self.log)
 
                 # cleanup temporary transcoded files
                 for file_name in new_repre["files"]:
@@ -310,18 +223,16 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_repre["files"] = renamed_files
 
     def _translate_to_sequence(self, files_to_convert):
-        """Returns original individual filepaths or list of clique.Collection.
+        """Returns original list or a clique.Collection of a sequence.
 
-        Uses clique to find frame sequence, and return the collections instead.
-        If sequence not detected in input filenames, it returns original list.
+        Uses clique to find frame sequence Collection.
+        If sequence not found, it returns original list.
 
         Args:
-            files_to_convert (list[str]): list of file names
+            files_to_convert (list): list of file names
         Returns:
-            list[str | clique.Collection]: List of
-                filepaths ['fileA.exr', 'fileB.exr']
-                or clique.Collection for a sequence.
-
+            list[str | clique.Collection]: List of filepaths or a list
+                of Collections (usually one, unless there are holes)
         """
         pattern = [clique.PATTERNS["frames"]]
         collections, _ = clique.assemble(
@@ -332,7 +243,14 @@ class ExtractOIIOTranscode(publish.Extractor):
                 raise ValueError(
                     "Too many collections {}".format(collections))
 
-            return collections
+            collection = collections[0]
+            # TODO: Technically oiiotool supports holes in the sequence as well
+            #  using the dedicated --frames argument to specify the frames.
+            #  We may want to use that too so conversions of sequences with
+            #  holes will perform faster as well.
+            # Separate the collection so that we have no holes/gaps per
+            # collection.
+            return collection.separate()
 
         return files_to_convert
 
@@ -347,36 +265,46 @@ class ExtractOIIOTranscode(publish.Extractor):
                                        output_extension)
         return os.path.join(output_dir, new_file_name)
 
-    def _get_profile(self, instance):
-        """Returns profile if and how repre should be color transcoded."""
+    def _get_profile(
+            self,
+            instance: pyblish.api.Instance,
+            repre: dict
+    ) -> Optional[dict[str, Any]]:
+        """Returns profile if it should process this instance."""
         host_name = instance.context.data["hostName"]
         product_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
+        repre_name: str = repre["name"]
+        repre_ext: str = repre["ext"]
         filtering_criteria = {
-            "hosts": host_name,
+            "host_names": host_name,
             "product_types": product_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
+            "representation_names": repre_name,
+            "representation_exts": repre_ext,
         }
         profile = filter_profiles(self.profiles, filtering_criteria,
                                   logger=self.log)
 
         if not profile:
-            self.log.debug((
+            self.log.debug(
               "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Product types: \"{}\" | Product names: \"{}\""
-              " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+              f" Host: \"{host_name}\" |"
+              f" Product types: \"{product_type}\" |"
+              f" Product names: \"{product_name}\" |"
+              f" Task name \"{task_name}\" |"
+              f" Task type \"{task_type}\" |"
+              f" Representation: \"{repre_name}\" (.{repre_ext})"
+            )
 
         return profile
 
-    def _repre_is_valid(self, repre):
+    def _repre_is_valid(self, repre: dict) -> bool:
         """Validation if representation should be processed.
 
         Args:
@@ -385,7 +313,6 @@ class ExtractOIIOTranscode(publish.Extractor):
         Returns:
             bool: False if can't be processed else True.
         """
-
         if repre.get("ext") not in self.supported_exts:
             self.log.debug((
                 "Representation '{}' has unsupported extension: '{}'. Skipped."
@@ -398,14 +325,20 @@ class ExtractOIIOTranscode(publish.Extractor):
             ).format(repre["name"]))
             return False
 
-        if not repre.get("colorspaceData"):
-            self.log.debug("Representation '{}' has no colorspace data. "
-                           "Skipped.".format(repre["name"]))
+        if "delete" in repre.get("tags", []):
+            self.log.debug((
+                "Representation '{}' has 'delete' tag. Skipped."
+            ).format(repre["name"]))
             return False
 
         return True
 
-    def _mark_original_repre_for_deletion(self, repre, profile, added_review):
+    def _mark_original_repre_for_deletion(
+        self,
+        repre: dict,
+        profile: dict,
+        added_review: bool
+    ):
         """If new transcoded representation created, delete old."""
         if not repre.get("tags"):
             repre["tags"] = []
