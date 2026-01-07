@@ -65,7 +65,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
 
     _data: dict[str, T]
     _module_blacklist: ClassVar[list[str]] = [
-        "_", "builtins", "pydantic",
+        "_", "builtins", "pydantic", "six",
     ]
     name: str
     representation_id: str
