@@ -4,7 +4,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 
 import scriptsmenu
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets, QT6
 
 log = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ def main(title="Scripts", parent=None, objectName=None):
 
     # Register control + shift callback to add to shelf (maya behavior)
     modifiers = QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
-    if int(cmds.about(version=True)) < 2025:
+    if not QT6:
         modifiers = int(modifiers)
 
     menu.register_callback(modifiers, to_shelf)

@@ -1,8 +1,18 @@
 import inspect
 from abc import ABCMeta
+import typing
+from typing import Optional, Any
+
 import pyblish.api
+import pyblish.logic
 from pyblish.plugin import MetaPlugin, ExplicitMetaPlugin
+
 from ayon_core.lib import BoolDef
+
+from ayon_core.pipeline.colorspace import (
+    get_colorspace_settings_from_publish_context,
+    set_colorspace_data_to_representation
+)
 
 from .lib import (
     load_help_content_from_plugin,
@@ -11,10 +21,8 @@ from .lib import (
     get_instance_staging_dir,
 )
 
-from ayon_core.pipeline.colorspace import (
-    get_colorspace_settings_from_publish_context,
-    set_colorspace_data_to_representation
-)
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.create import CreateContext, CreatedInstance
 
 
 class AbstractMetaInstancePlugin(ABCMeta, MetaPlugin):
@@ -25,56 +33,101 @@ class AbstractMetaContextPlugin(ABCMeta, ExplicitMetaPlugin):
     pass
 
 
-class PublishValidationError(Exception):
-    """Validation error happened during publishing.
+class KnownPublishError(Exception):
+    """Publishing crashed because of known error.
 
-    This exception should be used when validation publishing failed.
+    Artist can't affect source of the error.
 
-    Has additional UI specific attributes that may be handy for artist.
+    Deprecated:
+        Please use `PublishError` instead. Marked as deprecated 24/09/02.
+
+    """
+    pass
+
+
+class PublishError(Exception):
+    """Publishing crashed because of known error.
+
+    Message will be shown in UI for artist.
 
     Args:
-        message(str): Message of error. Short explanation an issue.
-        title(str): Title showed in UI. All instances are grouped under
-            single title.
-        description(str): Detailed description of an error. It is possible
-            to use Markdown syntax.
-    """
+        message (str): Message of error. Short explanation an issue.
+        title (Optional[str]): Title showed in UI.
+        description (Optional[str]): Detailed description of an error.
+            It is possible to use Markdown syntax.
 
+    """
     def __init__(self, message, title=None, description=None, detail=None):
         self.message = message
         self.title = title
         self.description = description or message
         self.detail = detail
-        super(PublishValidationError, self).__init__(message)
+        super().__init__(message)
+
+
+class PublishValidationError(PublishError):
+    """Validation error happened during publishing.
+
+    This exception should be used when validation publishing failed.
+
+    Publishing does not stop during validation order if this
+        exception is raised.
+
+    Has additional UI specific attributes that may be handy for artist.
+
+    Argument 'title' is used to group errors.
+
+    """
+    pass
 
 
 class PublishXmlValidationError(PublishValidationError):
+    """Raise an error from a dedicated xml file.
+
+    Can be useful to have one xml file with different possible messages that
+        helps to avoid flood code with dedicated artist messages.
+
+    XML files should live relative to the plugin file location:
+        '{plugin dir}/help/some_plugin.xml'.
+
+    Args:
+        plugin (pyblish.api.Plugin): Plugin that raised an error. Is used
+            to get path to xml file.
+        message (str): Exception message, can be technical, is used for
+            console output.
+        key (Optional[str]): XML file can contain multiple error messages, key
+            is used to get one of them. By default is used 'main'.
+        formatting_data (Optional[dict[str, Any]): Error message can have
+            variables to fill.
+        help_filename (Optional[str]): Name of xml file with messages. By
+            default, is used filename where plugin lives with .xml extension.
+
+    """
     def __init__(
-        self, plugin, message, key=None, formatting_data=None
-    ):
+        self,
+        plugin: pyblish.api.Plugin,
+        message: str,
+        key: Optional[str] = None,
+        formatting_data: Optional[dict[str, Any]] = None,
+        help_filename: Optional[str] = None,
+    ) -> None:
         if key is None:
             key = "main"
 
         if not formatting_data:
             formatting_data = {}
-        result = load_help_content_from_plugin(plugin)
+        result = load_help_content_from_plugin(plugin, help_filename)
         content_obj = result["errors"][key]
         description = content_obj.description.format(**formatting_data)
         detail = content_obj.detail
         if detail:
             detail = detail.format(**formatting_data)
-        super(PublishXmlValidationError, self).__init__(
-            message, content_obj.title, description, detail
+        super().__init__(
+            message,
+            content_obj.title,
+            description,
+            detail
         )
-
-
-class KnownPublishError(Exception):
-    """Publishing crashed because of known error.
-
-    Message will be shown in UI for artist.
-    """
-
-    pass
 
 
 class AYONPyblishPluginMixin:
@@ -110,31 +163,117 @@ class AYONPyblishPluginMixin:
     #         callback(self)
 
     @classmethod
+    def register_create_context_callbacks(
+        cls, create_context: "CreateContext"
+    ):
+        """Register callbacks for create context.
+
+        It is possible to register callbacks listening to changes happened
+        in create context.
+
+        Methods available on create context:
+        - add_instances_added_callback
+        - add_instances_removed_callback
+        - add_value_changed_callback
+        - add_pre_create_attr_defs_change_callback
+        - add_create_attr_defs_change_callback
+        - add_publish_attr_defs_change_callback
+
+        Args:
+            create_context (CreateContext): Create context.
+
+        """
+        pass
+
+    @classmethod
     def get_attribute_defs(cls):
         """Publish attribute definitions.
 
         Attributes available for all families in plugin's `families` attribute.
-        Returns:
-            list<AbstractAttrDef>: Attribute definitions for plugin.
-        """
 
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
         return []
 
     @classmethod
-    def convert_attribute_values(cls, attribute_values):
-        if cls.__name__ not in attribute_values:
-            return attribute_values
+    def get_attr_defs_for_context(cls, create_context: "CreateContext"):
+        """Publish attribute definitions for context.
 
-        plugin_values = attribute_values[cls.__name__]
+        Attributes available for all families in plugin's `families` attribute.
 
-        attr_defs = cls.get_attribute_defs()
-        for attr_def in attr_defs:
-            key = attr_def.key
-            if key in plugin_values:
-                plugin_values[key] = attr_def.convert_value(
-                    plugin_values[key]
-                )
-        return attribute_values
+        Args:
+            create_context (CreateContext): Create context.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if cls.__instanceEnabled__:
+            return []
+        return cls.get_attribute_defs()
+
+    @classmethod
+    def instance_matches_plugin_families(
+        cls, instance: Optional["CreatedInstance"]
+    ):
+        """Check if instance matches families.
+
+        Args:
+            instance (Optional[CreatedInstance]): Instance to check. Or None
+                for context.
+
+        Returns:
+            bool: True if instance matches plugin families.
+
+        """
+        if instance is None:
+            return not cls.__instanceEnabled__
+
+        if not cls.__instanceEnabled__:
+            return False
+
+        families = [instance.product_type]
+        families.extend(instance.get("families", []))
+        for _ in pyblish.logic.plugins_by_families([cls], families):
+            return True
+        return False
+
+    @classmethod
+    def get_attr_defs_for_instance(
+        cls, create_context: "CreateContext", instance: "CreatedInstance"
+    ):
+        """Publish attribute definitions for an instance.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                collected.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+        return cls.get_attribute_defs()
+
+    @classmethod
+    def convert_attribute_values(
+        cls, create_context: "CreateContext", instance: "CreatedInstance"
+    ):
+        """Convert attribute values for instance.
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                converted.
+
+        """
+        return
 
     @staticmethod
     def get_attr_values_from_data_for_plugin(plugin, data):
@@ -182,6 +321,9 @@ class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
     ```
     """
 
+    # Allow exposing tooltip from class with `optional_tooltip` attribute
+    optional_tooltip: Optional[str] = None
+
     @classmethod
     def get_attribute_defs(cls):
         """Attribute definitions based on plugin's optional attribute."""
@@ -194,8 +336,14 @@ class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
         active = getattr(cls, "active", True)
         # Return boolean stored under 'active' key with label of the class name
         label = cls.label or cls.__name__
+
         return [
-            BoolDef("active", default=active, label=label)
+            BoolDef(
+                "active",
+                default=active,
+                label=label,
+                tooltip=cls.optional_tooltip,
+            )
         ]
 
     def is_active(self, data):

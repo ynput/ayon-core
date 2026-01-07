@@ -226,11 +226,26 @@ class _CacheItems:
     thumbnails_cache = ThumbnailsCache()
 
 
-def get_thumbnail_path(project_name, thumbnail_id):
+def get_thumbnail_path(
+    project_name: str,
+    entity_type: str,
+    entity_id: str,
+    thumbnail_id: str
+):
     """Get path to thumbnail image.
+
+    Thumbnail is cached by thumbnail id but is received using entity type and
+        entity id.
+
+    Notes:
+        Function 'get_thumbnail_by_id' can't be used because does not work
+            for artists. The endpoint can't validate artist permissions.
 
     Args:
         project_name (str): Project where thumbnail belongs to.
+        entity_type (str): Entity type "folder", "task", "version"
+            and "workfile".
+        entity_id (str): Entity id.
         thumbnail_id (Union[str, None]): Thumbnail id.
 
     Returns:
@@ -251,7 +266,7 @@ def get_thumbnail_path(project_name, thumbnail_id):
     #   'get_thumbnail_by_id' did not return output of
     #   'ServerAPI' method.
     con = ayon_api.get_server_api_connection()
-    result = con.get_thumbnail_by_id(project_name, thumbnail_id)
+    result = con.get_thumbnail(project_name, entity_type, entity_id)
 
     if result is not None and result.is_valid:
         return _CacheItems.thumbnails_cache.store_thumbnail(

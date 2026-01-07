@@ -1,13 +1,35 @@
+from __future__ import annotations
+
 import os
 import logging
 import contextlib
-from abc import ABC, abstractproperty
+import typing
+from typing import Optional, Any
+from dataclasses import dataclass
 
-# NOTE can't import 'typing' because of issues in Maya 2020
-#   - shiboken crashes on 'typing' module import
+import ayon_api
+
+from ayon_core.lib import emit_event
+
+from .constants import ContextChangeReason
+from .abstract import AbstractHost, ApplicationInformation
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
+
+    from .typing import HostContextData
 
 
-class HostBase(ABC):
+@dataclass
+class ContextChangeData:
+    project_entity: dict[str, Any]
+    folder_entity: dict[str, Any]
+    task_entity: dict[str, Any]
+    reason: ContextChangeReason
+    anatomy: Anatomy
+
+
+class HostBase(AbstractHost):
     """Base of host implementation class.
 
     Host is pipeline implementation of DCC application. This class should help
@@ -74,6 +96,18 @@ class HostBase(ABC):
 
         pass
 
+    def get_app_information(self) -> ApplicationInformation:
+        """Running application information.
+
+        Host integration should override this method and return correct
+            information.
+
+        Returns:
+            ApplicationInformation: Application information.
+
+        """
+        return ApplicationInformation()
+
     def install(self):
         """Install host specific functionality.
 
@@ -82,47 +116,41 @@ class HostBase(ABC):
 
         It is called automatically when 'ayon_core.pipeline.install_host' is
         triggered.
-        """
 
+        """
         pass
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         if self._log is None:
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
-    @abstractproperty
-    def name(self):
-        """Host name."""
-
-        pass
-
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> str:
         """
         Returns:
-            Union[str, None]: Current project name.
+            str: Current project name.
+
         """
+        return os.environ["AYON_PROJECT_NAME"]
 
-        return os.environ.get("AYON_PROJECT_NAME")
-
-    def get_current_folder_path(self):
+    def get_current_folder_path(self) -> Optional[str]:
         """
         Returns:
-            Union[str, None]: Current asset name.
-        """
+            Optional[str]: Current folder path.
 
+        """
         return os.environ.get("AYON_FOLDER_PATH")
 
-    def get_current_task_name(self):
+    def get_current_task_name(self) -> Optional[str]:
         """
         Returns:
-            Union[str, None]: Current task name.
-        """
+            Optional[str]: Current task name.
 
+        """
         return os.environ.get("AYON_TASK_NAME")
 
-    def get_current_context(self):
+    def get_current_context(self) -> HostContextData:
         """Get current context information.
 
         This method should be used to get current context of host. Usage of
@@ -131,15 +159,84 @@ class HostBase(ABC):
         can't be caught properly.
 
         Returns:
-            Dict[str, Union[str, None]]: Context with 3 keys 'project_name',
-                'folder_path' and 'task_name'. All of them can be 'None'.
-        """
+            HostContextData: Current context with 'project_name',
+                'folder_path' and 'task_name'.
 
+        """
         return {
             "project_name": self.get_current_project_name(),
             "folder_path": self.get_current_folder_path(),
             "task_name": self.get_current_task_name()
         }
+
+    def set_current_context(
+        self,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        *,
+        reason: ContextChangeReason = ContextChangeReason.undefined,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional[Anatomy] = None,
+    ) -> HostContextData:
+        """Set current context information.
+
+        This method should be used to set current context of host. Usage of
+        this method can be crucial for host implementations in DCCs where
+        can be opened multiple workfiles at one moment and change of context
+        can't be caught properly.
+
+        Notes:
+            This method should not care about change of workdir and expect any
+                of the arguments.
+
+        Args:
+            folder_entity (Optional[dict[str, Any]]): Folder entity.
+            task_entity (Optional[dict[str, Any]]): Task entity.
+            reason (ContextChangeReason): Reason for context change.
+            project_entity (Optional[dict[str, Any]]): Project entity data.
+            anatomy (Optional[Anatomy]): Anatomy instance for the project.
+
+        Returns:
+            dict[str, Optional[str]]: Context information with project name,
+                folder path and task name.
+
+        """
+        from ayon_core.pipeline import Anatomy
+
+        folder_path = folder_entity["path"]
+        task_name = task_entity["name"]
+
+        context = self.get_current_context()
+        # Don't do anything if context did not change
+        if (
+            context["folder_path"] == folder_path
+            and context["task_name"] == task_name
+        ):
+            return context
+
+        project_name = self.get_current_project_name()
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+
+        if anatomy is None:
+            anatomy = Anatomy(project_name, project_entity=project_entity)
+
+        context_change_data = ContextChangeData(
+            project_entity,
+            folder_entity,
+            task_entity,
+            reason,
+            anatomy,
+        )
+        self._before_context_change(context_change_data)
+        self._set_current_context(context_change_data)
+        self._after_context_change(context_change_data)
+
+        return self._emit_context_change_event(
+            project_name,
+            folder_path,
+            task_name,
+        )
 
     def get_context_title(self):
         """Context title shown for UI purposes.
@@ -187,3 +284,91 @@ class HostBase(ABC):
             yield
         finally:
             pass
+
+    def _emit_context_change_event(
+        self,
+        project_name: str,
+        folder_path: Optional[str],
+        task_name: Optional[str],
+    ) -> HostContextData:
+        """Emit context change event.
+
+        Args:
+            project_name (str): Name of the project.
+            folder_path (Optional[str]): Path of the folder.
+            task_name (Optional[str]): Name of the task.
+
+        Returns:
+            HostContextData: Data send to context change event.
+
+        """
+        data: HostContextData = {
+            "project_name": project_name,
+            "folder_path": folder_path,
+            "task_name": task_name,
+        }
+        emit_event("taskChanged", data)
+        return data
+
+    def _set_current_context(
+        self, context_change_data: ContextChangeData
+    ) -> None:
+        """Method that changes the context in host.
+
+        Can be overriden for hosts that do need different handling of context
+            than using environment variables.
+
+        Args:
+            context_change_data (ContextChangeData): Context change related
+                data.
+
+        """
+        project_name = self.get_current_project_name()
+        folder_path = None
+        task_name = None
+        if context_change_data.folder_entity:
+            folder_path = context_change_data.folder_entity["path"]
+            if context_change_data.task_entity:
+                task_name = context_change_data.task_entity["name"]
+
+        envs = {
+            "AYON_PROJECT_NAME": project_name,
+            "AYON_FOLDER_PATH": folder_path,
+            "AYON_TASK_NAME": task_name,
+        }
+
+        # Update the Session and environments. Pop from environments all
+        #   keys with value set to None.
+        for key, value in envs.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def _before_context_change(self, context_change_data: ContextChangeData):
+        """Before context is changed.
+
+        This method is called before the context is changed in the host.
+
+        Can be overridden to implement host specific logic.
+
+        Args:
+            context_change_data (ContextChangeData): Object with information
+                about context change.
+
+        """
+        pass
+
+    def _after_context_change(self, context_change_data: ContextChangeData):
+        """After context is changed.
+
+        This method is called after the context is changed in the host.
+
+        Can be overridden to implement host specific logic.
+
+        Args:
+            context_change_data (ContextChangeData): Object with information
+                about context change.
+
+        """
+        pass

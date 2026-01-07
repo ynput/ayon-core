@@ -3,7 +3,7 @@ name="core"
 description="AYON core addon."
 
 [tool.poetry.dependencies]
-python = ">=3.9.1,<3.10"
+markdown = "^3.4.1"
 clique = "1.6.*"
 jsonschema = "^2.6.0"
 pyblish-base = "^1.8.11"
@@ -15,6 +15,9 @@ qtawesome = "0.7.3"
 aiohttp-middlewares = "^2.0.0"
 Click = "^8"
 OpenTimelineIO = "0.16.0"
-opencolorio = "^2.3.2"
+opencolorio = "^2.3.2,<2.4.0"
 Pillow = "9.5.0"
 websocket-client = ">=0.40.0,<2"
+
+[ayon.runtimeDependencies.darwin]
+pyobjc-core = "^11.1"

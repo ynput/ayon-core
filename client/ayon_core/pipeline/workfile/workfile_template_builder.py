@@ -8,7 +8,7 @@ targeted by task types and names.
 
 Placeholders are created using placeholder plugins which should care about
 logic and data of placeholder items. 'PlaceholderItem' is used to keep track
-about it's progress.
+about its progress.
 """
 
 import os
@@ -16,7 +16,9 @@ import re
 import collections
 import copy
 from abc import ABC, abstractmethod
+from typing import Optional
 
+import ayon_api
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -28,7 +30,7 @@ from ayon_api import (
 )
 
 from ayon_core.settings import get_project_settings
-from ayon_core.host import IWorkfileHost, HostBase
+from ayon_core.host import IWorkfileHost, AbstractHost
 from ayon_core.lib import (
     Logger,
     StringTemplate,
@@ -52,11 +54,37 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from ayon_core.pipeline.create import (
-    discover_legacy_creator_plugins,
     CreateContext,
+    HiddenCreator,
 )
 
 _NOT_SET = object()
+
+
+class EntityResolutionError(Exception):
+    """Exception raised when entity URI resolution fails."""
+
+
+def resolve_entity_uri(entity_uri: str) -> str:
+    """Resolve AYON entity URI to a filesystem path for local system."""
+    response = ayon_api.post(
+        "resolve",
+        resolveRoots=True,
+        uris=[entity_uri]
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Unable to resolve AYON entity URI filepath for "
+            f"'{entity_uri}': {response.text}"
+        )
+
+    entities = response.data[0]["entities"]
+    if len(entities) != 1:
+        raise EntityResolutionError(
+            f"Unable to resolve AYON entity URI '{entity_uri}' to a "
+            f"single filepath. Received data: {response.data}"
+        )
+    return entities[0]["filePath"]
 
 
 class TemplateNotFound(Exception):
@@ -98,15 +126,14 @@ class AbstractTemplateBuilder(ABC):
     placeholder population.
 
     Args:
-        host (Union[HostBase, ModuleType]): Implementation of host.
+        host (Union[AbstractHost, ModuleType]): Implementation of host.
     """
 
     _log = None
-    use_legacy_creators = False
 
     def __init__(self, host):
         # Get host name
-        if isinstance(host, HostBase):
+        if isinstance(host, AbstractHost):
             host_name = host.name
         else:
             host_name = os.environ.get("AYON_HOST_NAME")
@@ -134,24 +161,24 @@ class AbstractTemplateBuilder(ABC):
 
     @property
     def project_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_project_name()
         return os.getenv("AYON_PROJECT_NAME")
 
     @property
     def current_folder_path(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_folder_path()
         return os.getenv("AYON_FOLDER_PATH")
 
     @property
     def current_task_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_task_name()
         return os.getenv("AYON_TASK_NAME")
 
     def get_current_context(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
@@ -172,12 +199,6 @@ class AbstractTemplateBuilder(ABC):
                 self.project_name, self.current_folder_path
             )
         return self._current_folder_entity
-
-    @property
-    def linked_folder_entities(self):
-        if self._linked_folder_entities is _NOT_SET:
-            self._linked_folder_entities = self._get_linked_folder_entities()
-        return self._linked_folder_entities
 
     @property
     def current_task_entity(self):
@@ -233,7 +254,7 @@ class AbstractTemplateBuilder(ABC):
         """Access to host implementation.
 
         Returns:
-            Union[HostBase, ModuleType]: Implementation of host.
+            Union[AbstractHost, ModuleType]: Implementation of host.
         """
 
         return self._host
@@ -279,13 +300,20 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def _get_linked_folder_entities(self):
+    def get_linked_folder_entities(
+        self,
+        link_type: Optional[str],
+        folder_path_regex: Optional[str],
+    ):
+        if not link_type:
+            return []
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
             return []
         links = get_folder_links(
-            project_name, folder_entity["id"], link_direction="in"
+            project_name,
+            folder_entity["id"], link_types=[link_type], link_direction="in"
         )
         linked_folder_ids = {
             link["entityId"]
@@ -293,30 +321,24 @@ class AbstractTemplateBuilder(ABC):
             if link["entityType"] == "folder"
         }
 
-        return list(get_folders(project_name, folder_ids=linked_folder_ids))
-
-    def _collect_legacy_creators(self):
-        creators_by_name = {}
-        for creator in discover_legacy_creator_plugins():
-            if not creator.enabled:
-                continue
-            creator_name = creator.__name__
-            if creator_name in creators_by_name:
-                raise KeyError(
-                    "Duplicated creator name {} !".format(creator_name)
-                )
-            creators_by_name[creator_name] = creator
-        self._creators_by_name = creators_by_name
+        return list(get_folders(
+            project_name,
+            folder_path_regex=folder_path_regex,
+            folder_ids=linked_folder_ids,
+        ))
 
     def _collect_creators(self):
-        self._creators_by_name = dict(self.create_context.creators)
+        self._creators_by_name = {
+            identifier: creator
+            for identifier, creator
+            in self.create_context.manual_creators.items()
+            # Do not list HiddenCreator even though it is a 'manual creator'
+            if not isinstance(creator, HiddenCreator)
+        }
 
     def get_creators_by_name(self):
         if self._creators_by_name is None:
-            if self.use_legacy_creators:
-                self._collect_legacy_creators()
-            else:
-                self._collect_creators()
+            self._collect_creators()
 
         return self._creators_by_name
 
@@ -506,55 +528,61 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholders (bool): Add flag to placeholder data for
                 hosts to decide if they want to remove
                 placeholder after it is used.
-            create_first_version (bool): create first version of a workfile
-            workfile_creation_enabled (bool): If True, it might create
-                                              first version but ignore
-                                              process if version is created
+            create_first_version (bool): Create first version of a workfile.
+                 When set to True, this option initiates the saving of the
+                 workfile for an initial version. It will skip saving if
+                 a version already exists.
+            workfile_creation_enabled (bool): Whether the call is part of
+                creating a new workfile.
+                When True, we only build if the current file is not
+                an existing saved workfile but a "new" file. Basically when
+                enabled we assume the user tries to load it only into a
+                "New File" (unsaved empty workfile).
+                When False, the default value, we assume we explicitly want to
+                build the template in our current scene regardless of current
+                scene state.
 
         """
-        if any(
-            value is None
-            for value in [
-                template_path,
-                keep_placeholders,
-                create_first_version,
-            ]
-        ):
-            template_preset = self.get_template_preset()
-            if template_path is None:
-                template_path = template_preset["path"]
-            if keep_placeholders is None:
-                keep_placeholders = template_preset["keep_placeholder"]
-            if create_first_version is None:
-                create_first_version = template_preset["create_first_version"]
+        # More accurate variable name
+        # - logic related to workfile creation should be moved out in future
+        explicit_build_requested = not workfile_creation_enabled
 
-        # check if first version is created
-        created_version_workfile = False
-        if create_first_version:
-            created_version_workfile = self.create_first_workfile_version()
-
-        # if first version is created, import template
-        # and populate placeholders
+        # Get default values if not provided
         if (
-            create_first_version
-            and workfile_creation_enabled
-            and created_version_workfile
+            template_path is None
+            or keep_placeholders is None
+            or create_first_version is None
         ):
+            preset = self.get_template_preset()
+            template_path: str = template_path or preset["path"]
+            if keep_placeholders is None:
+                keep_placeholders: bool = preset["keep_placeholder"]
+            if create_first_version is None:
+                create_first_version: bool = preset["create_first_version"]
+
+        # Build the template if we are explicitly requesting it or if it's
+        # an unsaved "new file".
+        is_new_file = not self.host.get_current_workfile()
+        if is_new_file or explicit_build_requested:
+            self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
-            # save workfile after template is populated
-            self.save_workfile(created_version_workfile)
-
-        # ignore process if first workfile is enabled
-        # but a version is already created
-        if workfile_creation_enabled:
+        # Do not consider saving a first workfile version, if this is not set
+        # to be a "workfile creation" or `create_first_version` is disabled.
+        if explicit_build_requested or not create_first_version:
             return
 
-        self.import_template(template_path)
-        self.populate_scene_placeholders(
-            level_limit, keep_placeholders)
+        # If there is no existing workfile, save the first version
+        workfile_path = self.get_workfile_path()
+        if not os.path.exists(workfile_path):
+            self.log.info("Saving first workfile: %s", workfile_path)
+            self.save_workfile(workfile_path)
+        else:
+            self.log.info(
+                "A workfile already exists. Skipping save of workfile as "
+                "initial version.")
 
     def rebuild_template(self):
         """Go through existing placeholders in scene and update them.
@@ -591,7 +619,7 @@ class AbstractTemplateBuilder(ABC):
         """Open template file with registered host."""
         template_preset = self.get_template_preset()
         template_path = template_preset["path"]
-        self.host.open_file(template_path)
+        self.host.open_workfile(template_path)
 
     @abstractmethod
     def import_template(self, template_path):
@@ -608,29 +636,16 @@ class AbstractTemplateBuilder(ABC):
 
         pass
 
-    def create_first_workfile_version(self):
-        """
-        Create first version of workfile.
+    def get_workfile_path(self):
+        """Return last known workfile path or the first workfile path create.
 
-        Should load the content of template into scene so
-        'populate_scene_placeholders' can be started.
-
-        Args:
-            template_path (str): Fullpath for current task and
-                host's template file.
+        Return:
+            str: Last workfile path, or first version to create if none exist.
         """
+        # AYON_LAST_WORKFILE will be set to the last existing workfile OR
+        # if none exist it will be set to the first version.
         last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
-        if os.path.exists(last_workfile_path):
-            # ignore in case workfile existence
-            self.log.info("Workfile already exists, skipping creation.")
-            return False
-
-        # Create first version
-        self.log.info("Creating first version of workfile.")
-        self.save_workfile(last_workfile_path)
-
-        # Confirm creation of first version
         return last_workfile_path
 
     def save_workfile(self, workfile_path):
@@ -823,19 +838,27 @@ class AbstractTemplateBuilder(ABC):
         """
 
         host_name = self.host_name
-        project_name = self.project_name
         task_name = self.current_task_name
         task_type = self.current_task_type
+        folder_path = self.current_folder_path
+        folder_type = None
+        folder_entity = self.current_folder_entity
+        if folder_entity:
+            folder_type = folder_entity["folderType"]
+
+        filter_data = {
+            "task_types": task_type,
+            "task_names": task_name,
+            "folder_types": folder_type,
+            "folder_paths": folder_path,
+        }
 
         build_profiles = self._get_build_profiles()
         profile = filter_profiles(
             build_profiles,
-            {
-                "task_types": task_type,
-                "task_names": task_name
-            }
+            filter_data,
+            logger=self.log
         )
-
         if not profile:
             raise TemplateProfileNotFound((
                 "No matching profile found for task '{}' of type '{}' "
@@ -843,6 +866,22 @@ class AbstractTemplateBuilder(ABC):
             ).format(task_name, task_type, host_name))
 
         path = profile["path"]
+        if not path:
+            raise TemplateLoadFailed((
+                "Template path is not set.\n"
+                "Path need to be set in {}\\Template Workfile Build "
+                "Settings\\Profiles"
+            ).format(host_name.title()))
+
+        resolved_path = self.resolve_template_path(path)
+        if not resolved_path or not os.path.exists(resolved_path):
+            raise TemplateNotFound(
+                "Template file found in AYON settings for task '{}' with host "
+                "'{}' does not exists. (Not found : {})".format(
+                    task_name, host_name, resolved_path)
+            )
+
+        self.log.info(f"Found template at: '{resolved_path}'")
 
         # switch to remove placeholders after they are used
         keep_placeholder = profile.get("keep_placeholder")
@@ -852,44 +891,86 @@ class AbstractTemplateBuilder(ABC):
         if keep_placeholder is None:
             keep_placeholder = True
 
-        if not path:
-            raise TemplateLoadFailed((
-                "Template path is not set.\n"
-                "Path need to be set in {}\\Template Workfile Build "
-                "Settings\\Profiles"
-            ).format(host_name.title()))
-
-        # Try to fill path with environments and anatomy roots
-        anatomy = Anatomy(project_name)
-        fill_data = {
-            key: value
-            for key, value in os.environ.items()
+        return {
+            "path": resolved_path,
+            "keep_placeholder": keep_placeholder,
+            "create_first_version": create_first_version
         }
 
-        fill_data["root"] = anatomy.roots
-        fill_data["project"] = {
-            "name": project_name,
-            "code": anatomy.project_code,
-        }
+    def resolve_template_path(self, path, fill_data=None) -> str:
+        """Resolve the template path.
 
-        path = self.resolve_template_path(path, fill_data)
+        By default, this:
+          - Resolves AYON entity URI to a filesystem path
+          - Returns path directly if it exists on disk.
+          - Resolves template keys through anatomy and environment variables.
 
+        This can be overridden in host integrations to perform additional
+        resolving over the template. Like, `hou.text.expandString` in Houdini.
+        It's recommended to still call the super().resolve_template_path()
+        to ensure the basic resolving is done across all integrations.
+
+        Arguments:
+            path (str): The input path.
+            fill_data (dict[str, str]): Deprecated. This is computed inside
+                the method using the current environment and project settings.
+                Used to be the data to use for template formatting.
+
+        Returns:
+            str: The resolved path.
+
+        """
+
+        # If the path is an AYON entity URI, then resolve the filepath
+        # through the backend
+        if path.startswith("ayon+entity://") or path.startswith("ayon://"):
+            # This is a special case where the path is an AYON entity URI
+            # We need to resolve it to a filesystem path
+            resolved_path = resolve_entity_uri(path)
+            return resolved_path
+
+        # If the path is set and it's found on disk, return it directly
         if path and os.path.exists(path):
-            self.log.info("Found template at: '{}'".format(path))
-            return {
-                "path": path,
-                "keep_placeholder": keep_placeholder,
-                "create_first_version": create_first_version
+            return path
+
+        # We may have path for another platform, like C:/path/to/file
+        # or a path with template keys, like {project[code]} or both.
+        # Try to fill path with environments and anatomy roots
+        project_name = self.project_name
+        anatomy = Anatomy(project_name)
+
+        # Simple check whether the path contains any template keys
+        if "{" in path:
+            fill_data = {
+                key: value
+                for key, value in os.environ.items()
+            }
+            fill_data["root"] = anatomy.roots
+            fill_data["project"] = {
+                "name": project_name,
+                "code": anatomy.project_code,
             }
 
-        solved_path = None
+            # Format the template using local fill data
+            result = StringTemplate.format_template(path, fill_data)
+            if not result.solved:
+                return path
+
+            path = result.normalized()
+            if os.path.exists(path):
+                return path
+
+        # If the path were set in settings using a Windows path and we
+        # are now on a Linux system, we try to convert the solved path to
+        # the current platform.
         while True:
             try:
                 solved_path = anatomy.path_remapper(path)
             except KeyError as missing_key:
                 raise KeyError(
-                    "Could not solve key '{}' in template path '{}'".format(
-                        missing_key, path))
+                    f"Could not solve key '{missing_key}'"
+                    f" in template path '{path}'"
+                )
 
             if solved_path is None:
                 solved_path = path
@@ -898,40 +979,7 @@ class AbstractTemplateBuilder(ABC):
             path = solved_path
 
         solved_path = os.path.normpath(solved_path)
-        if not os.path.exists(solved_path):
-            raise TemplateNotFound(
-                "Template found in AYON settings for task '{}' with host "
-                "'{}' does not exists. (Not found : {})".format(
-                    task_name, host_name, solved_path))
-
-        self.log.info("Found template at: '{}'".format(solved_path))
-
-        return {
-            "path": solved_path,
-            "keep_placeholder": keep_placeholder,
-            "create_first_version": create_first_version
-        }
-
-    def resolve_template_path(self, path, fill_data) -> str:
-        """Resolve the template path.
-
-        By default, this does nothing except returning the path directly.
-
-        This can be overridden in host integrations to perform additional
-        resolving over the template. Like, `hou.text.expandString` in Houdini.
-
-        Arguments:
-            path (str): The input path.
-            fill_data (dict[str, str]): Data to use for template formatting.
-
-        Returns:
-            str: The resolved path.
-
-        """
-        result = StringTemplate.format_template(path, fill_data)
-        if result.solved:
-            path = result.normalized()
-        return path
+        return solved_path
 
     def emit_event(self, topic, data=None, source=None) -> Event:
         return self._event_system.emit(topic, data, source)
@@ -1379,10 +1427,27 @@ class PlaceholderLoadMixin(object):
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
-            # TODO implement linked folders
-            # {"label": "Linked folders", "value": "linked_folders"},
+            {"label": "Linked folders", "value": "linked_folders"},
             {"label": "All folders", "value": "all_folders"},
         ]
+
+        link_types = ayon_api.get_link_types(self.builder.project_name)
+
+        # Filter link types for folder to folder links
+        link_types_enum_items = [
+            {"label": link_type["name"], "value": link_type["linkType"]}
+            for link_type in link_types
+            if (
+                    link_type["inputType"] == "folder"
+                    and link_type["outputType"] == "folder"
+            )
+        ]
+
+        if not link_types_enum_items:
+            link_types_enum_items.append(
+                {"label": "<No link types>", "value": None}
+            )
+
         build_type_label = "Folder Builder Type"
         build_type_help = (
             "Folder Builder Type\n"
@@ -1410,6 +1475,16 @@ class PlaceholderLoadMixin(object):
                 default=options.get("builder_type"),
                 items=builder_type_enum_items,
                 tooltip=build_type_help
+            ),
+            attribute_definitions.EnumDef(
+                "link_type",
+                label="Link Type",
+                items=link_types_enum_items,
+                tooltip=(
+                    "Link Type\n"
+                    "\nDefines what type of link will be used to"
+                    " link the product to the current folder."
+                )
             ),
             attribute_definitions.EnumDef(
                 "product_type",
@@ -1557,10 +1632,7 @@ class PlaceholderLoadMixin(object):
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
-        if builder_type == "context_folder":
-            folder_ids = [current_folder_entity["id"]]
-
-        elif builder_type == "all_folders":
+        if builder_type == "all_folders":
             folder_ids = {
                 folder_entity["id"]
                 for folder_entity in get_folders(
@@ -1569,6 +1641,26 @@ class PlaceholderLoadMixin(object):
                     fields={"id"}
                 )
             }
+
+        elif builder_type == "context_folder":
+            folder_ids = [current_folder_entity["id"]]
+
+        elif builder_type == "linked_folders":
+            # link type from placeholder data or default to "template"
+            link_type = placeholder.data.get("link_type", "template")
+            # Get all linked folders for the current folder
+            if hasattr(self, "builder") and isinstance(
+                    self.builder, AbstractTemplateBuilder):
+                # self.builder: AbstractTemplateBuilder
+                folder_ids = [
+                    linked_folder_entity["id"]
+                    for linked_folder_entity in (
+                        self.builder.get_linked_folder_entities(
+                            link_type=link_type,
+                            folder_path_regex=folder_path_regex
+                        )
+                    )
+                ]
 
         if not folder_ids:
             return []
@@ -1595,6 +1687,8 @@ class PlaceholderLoadMixin(object):
             for version in get_last_versions(
                 project_name, filtered_product_ids, fields={"id"}
             ).values()
+            # Version may be none if a product has no versions
+            if version is not None
         )
         return list(get_representations(
             project_name,
@@ -1849,8 +1943,6 @@ class PlaceholderCreateMixin(object):
             pre_create_data (dict): dictionary of configuration from Creator
                 configuration in UI
         """
-
-        legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
         active = placeholder.data.get("active")
@@ -1890,20 +1982,14 @@ class PlaceholderCreateMixin(object):
 
         # compile product name from variant
         try:
-            if legacy_create:
-                creator_instance = creator_plugin(
-                    product_name,
-                    folder_path
-                ).process()
-            else:
-                creator_instance = self.builder.create_context.create(
-                    creator_plugin.identifier,
-                    create_variant,
-                    folder_entity,
-                    task_entity,
-                    pre_create_data=pre_create_data,
-                    active=active
-                )
+            creator_instance = self.builder.create_context.create(
+                creator_plugin.identifier,
+                create_variant,
+                folder_entity,
+                task_entity,
+                pre_create_data=pre_create_data,
+                active=active
+            )
 
         except:  # noqa: E722
             failed = True

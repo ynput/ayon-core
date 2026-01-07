@@ -99,7 +99,7 @@ class OpenTaskPath(LauncherAction):
         if platform_name == "windows":
             args = ["start", path]
         elif platform_name == "darwin":
-            args = ["open", "-na", path]
+            args = ["open", "-R", path]
         elif platform_name == "linux":
             args = ["xdg-open", path]
         else:

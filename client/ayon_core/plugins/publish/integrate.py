@@ -28,6 +28,7 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_template_name,
 )
+from ayon_core.pipeline import is_product_base_type_supported
 
 log = logging.getLogger(__name__)
 
@@ -121,12 +122,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "version",
         "representation",
         "username",
-        "user",
         "output",
-        # OpenPype keys - should be removed
-        "asset",  # folder[name]
-        "subset",  # product[name]
-        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -145,7 +141,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Skip instance if there are not representations to integrate
         #   all representations should not be integrated
         if not filtered_repres:
-            self.log.warning((
+            self.log.info((
                 "Skipping, there are no representations"
                 " to integrate for instance {}"
             ).format(instance.data["productType"]))
@@ -174,15 +170,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         file_transactions.finalize()
 
     def filter_representations(self, instance):
-        # Prepare repsentations that should be integrated
+        """Filter representations to be integrated."""
         repres = instance.data.get("representations")
-        # Raise error if instance don't have any representations
         if not repres:
-            raise KnownPublishError(
-                "Instance {} has no representations to integrate".format(
-                    instance.data["productType"]
-                )
-            )
+            return []
 
         # Validate type of stored representations
         if not isinstance(repres, (list, tuple)):
@@ -368,6 +359,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         folder_entity = instance.data["folderEntity"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+
         self.log.debug("Product: {}".format(product_name))
 
         # Get existing product if it exists
@@ -395,14 +388,33 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-        product_entity = new_product_entity(
-            product_name,
-            product_type,
-            folder_entity["id"],
-            data=data,
-            attribs=attributes,
-            entity_id=product_id
-        )
+
+        new_product_entity_kwargs = {
+            "name": product_name,
+            "product_type": product_type,
+            "folder_id": folder_entity["id"],
+            "data": data,
+            "attribs": attributes,
+            "entity_id": product_id,
+            "product_base_type": product_base_type,
+        }
+
+        if not is_product_base_type_supported():
+            new_product_entity_kwargs.pop("product_base_type")
+            if (
+                    product_base_type is not None
+                    and product_base_type != product_type):
+                self.log.warning((
+                    "Product base type %s is not supported by the server, "
+                    "but it's defined - and it differs from product type %s. "
+                    "Using product base type as product type."
+                ), product_base_type, product_type)
+
+                new_product_entity_kwargs["product_type"] = (
+                    product_base_type
+                )
+
+        product_entity = new_product_entity(**new_product_entity_kwargs)
 
         if existing_product_entity is None:
             # Create a new product
@@ -458,6 +470,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             else:
                 version_data[key] = value
 
+        host_name = instance.context.data["hostName"]
+        version_data["host_name"] = host_name
+
         version_entity = new_version_entity(
             version_number,
             product_entity["id"],
@@ -509,8 +524,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             files = [files]
 
-        if any(os.path.isabs(fname) for fname in files):
-            raise KnownPublishError("Given file names contain full paths")
+        for fname in files:
+            if os.path.isabs(fname):
+                raise KnownPublishError(
+                    f"Representation file names contains full paths: {fname}"
+                )
 
         if not is_sequence_representation:
             return
@@ -616,8 +634,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # used for all represe
             # from temp to final
             original_directory = (
-                instance.data.get("originalDirname") or instance_stagingdir)
-
+                instance.data.get("originalDirname") or stagingdir)
             _rootless = self.get_rootless_path(anatomy, original_directory)
             if _rootless == original_directory:
                 raise KnownPublishError((
@@ -681,7 +698,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, remainders = clique.assemble(files)
+            src_collections, _remainders = clique.assemble(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -703,7 +720,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # In case source are published in place we need to
                 # skip renumbering
                 repre_frame_start = repre.get("frameStart")
-                if repre_frame_start is not None:
+                explicit_frames = instance.data.get("hasExplicitFrames", False)
+                if not explicit_frames and repre_frame_start is not None:
                     index_frame_start = int(repre_frame_start)
                     # Shift destination sequence to the start frame
                     destination_indexes = [
@@ -792,6 +810,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             value = template_data.get(key)
             if value is not None:
                 repre_context[key] = value
+
+        # Keep only username
+        # NOTE This is to avoid storing all user attributes and data
+        #   to representation
+        if "user" not in repre_context:
+            repre_context["user"] = {
+                "name": template_data["user"]["name"]
+            }
 
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())
@@ -889,8 +915,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Include optional data if present in
         optionals = [
-            "frameStart", "frameEnd", "step",
-            "handleEnd", "handleStart", "sourceHashes"
+            "frameStart", "frameEnd",
+            "handleEnd", "handleStart",
+            "step",
+            "resolutionWidth", "resolutionHeight",
+            "pixelAspect",
+            "sourceHashes"
         ]
         for key in optionals:
             if key in instance.data:
@@ -914,6 +944,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
@@ -923,7 +954,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
-            logger=self.log
+            logger=self.log,
+            product_base_type=product_base_type
         )
 
     def get_rootless_path(self, anatomy, path):

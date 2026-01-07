@@ -1,20 +1,38 @@
+"""Functions for handling product names."""
+from __future__ import annotations
+
+import warnings
+from functools import wraps
+from typing import Any, Optional, Union, overload
+from warnings import warn
+
 import ayon_api
-from ayon_core.lib import StringTemplate, filter_profiles, prepare_template_data
+from ayon_core.lib import (
+    StringTemplate,
+    filter_profiles,
+    prepare_template_data,
+    Logger,
+    is_func_signature_supported,
+)
+from ayon_core.lib.path_templates import TemplateResult
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
 
+log = Logger.get_logger(__name__)
+
 
 def get_product_name_template(
-    project_name,
-    product_type,
-    task_name,
-    task_type,
-    host_name,
-    default_template=None,
-    project_settings=None
-):
+    project_name: str,
+    product_type: str,
+    task_name: Optional[str],
+    task_type: Optional[str],
+    host_name: str,
+    default_template: Optional[str] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    product_base_type: Optional[str] = None
+) -> str:
     """Get product name template based on passed context.
 
     Args:
@@ -22,41 +40,47 @@ def get_product_name_template(
         product_type (str): Product type for which the product name is
             calculated.
         host_name (str): Name of host in which the product name is calculated.
-        task_name (str): Name of task in which context the product is created.
-        task_type (str): Type of task in which context the product is created.
-        default_template (Union[str, None]): Default template which is used if
+        task_name (Optional[str]): Name of task in which context the
+            product is created.
+        task_type (Optional[str]): Type of task in which context the
+            product is created.
+        default_template (Optional[str]): Default template which is used if
             settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
-        project_settings (Union[Dict[str, Any], None]): Prepared settings for
+        project_settings (Optional[dict[str, Any]]): Prepared settings for
             project. Settings are queried if not passed.
-    """
+        product_base_type (Optional[str]): Base type of product.
 
+    Returns:
+        str: Product name template.
+
+    """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
     tools_settings = project_settings["core"]["tools"]
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
+        "product_base_types": product_base_type or product_type,
         "product_types": product_type,
-        "hosts": host_name,
-        "tasks": task_name,
-        "task_types": task_type
+        "host_names": host_name,
+        "task_names": task_name,
+        "task_types": task_type,
     }
-
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
     if matching_profile:
         # TODO remove formatting keys replacement
         template = (
             matching_profile["template"]
-            .replace("{task[name]}", "{task}")
-            .replace("{Task[name]}", "{Task}")
-            .replace("{TASK[NAME]}", "{TASK}")
-            .replace("{product[type]}", "{family}")
-            .replace("{Product[type]}", "{Family}")
-            .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-            .replace("{folder[name]}", "{asset}")
-            .replace("{Folder[name]}", "{Asset}")
-            .replace("{FOLDER[NAME]}", "{ASSET}")
+            .replace("{task}", "{task[name]}")
+            .replace("{Task}", "{Task[name]}")
+            .replace("{TASK}", "{TASK[NAME]}")
+            .replace("{family}", "{product[type]}")
+            .replace("{Family}", "{Product[type]}")
+            .replace("{FAMILY}", "{PRODUCT[TYPE]}")
+            .replace("{asset}", "{folder[name]}")
+            .replace("{Asset}", "{Folder[name]}")
+            .replace("{ASSET}", "{FOLDER[NAME]}")
         )
 
     # Make sure template is set (matching may have empty string)
@@ -65,6 +89,214 @@ def get_product_name_template(
     return template
 
 
+def _get_product_name_old(
+    project_name: str,
+    task_name: Optional[str],
+    task_type: Optional[str],
+    host_name: str,
+    product_type: str,
+    variant: str,
+    default_template: Optional[str] = None,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    product_type_filter: Optional[str] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    product_base_type: Optional[str] = None,
+) -> TemplateResult:
+    warnings.warn(
+        "Used deprecated 'task_name' and 'task_type' arguments."
+        " Please use new signature with 'folder_entity' and 'task_entity'.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    if not product_type:
+        return StringTemplate("").format({})
+
+    template = get_product_name_template(
+        project_name=project_name,
+        product_type=product_type_filter or product_type,
+        task_name=task_name,
+        task_type=task_type,
+        host_name=host_name,
+        default_template=default_template,
+        project_settings=project_settings,
+        product_base_type=product_base_type,
+    )
+
+    template_low = template.lower()
+    # Simple check of task name existence for template with {task[name]} in
+    if not task_name and "{task" in template_low:
+        raise TaskNotSetError()
+
+    task_value = {
+        "name": task_name,
+        "type": task_type,
+    }
+    if "{task}" in template_low:
+        task_value = task_name
+        # NOTE this is message for TDs and Admins -> not really for users
+        # TODO validate this in settings and not allow it
+        log.warning(
+            "Found deprecated task key '{task}' in product name template."
+            " Please use '{task[name]}' instead."
+        )
+
+    elif "{task[short]}" in template_low:
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+        task_types_by_name = {
+            task["name"]: task for task in
+            project_entity["taskTypes"]
+        }
+        task_short = task_types_by_name.get(task_type, {}).get("shortName")
+        task_value["short"] = task_short
+
+    if not product_base_type and "{product[basetype]}" in template.lower():
+        warn(
+            "You have Product base type in product name template, "
+            "but it is not provided by the creator, please update your "
+            "creation code to include it. It will be required in "
+            "the future.",
+            DeprecationWarning,
+            stacklevel=2)
+
+    fill_pairs: dict[str, Union[str, dict[str, str]]] = {
+        "variant": variant,
+        "family": product_type,
+        "task": task_value,
+        "product": {
+            "type": product_type,
+            "basetype": product_base_type or product_type,
+        }
+    }
+
+    if dynamic_data:
+        # Dynamic data may override default values
+        for key, value in dynamic_data.items():
+            fill_pairs[key] = value
+
+    try:
+        return StringTemplate.format_strict_template(
+            template=template,
+            data=prepare_template_data(fill_pairs)
+        )
+    except KeyError as exp:
+        msg = (
+            f"Value for {exp} key is missing in template '{template}'."
+            f" Available values are {fill_pairs}"
+        )
+        raise TemplateFillError(msg) from exp
+
+
+def _backwards_compatibility_product_name(func):
+    """Helper to decide which variant of 'get_product_name' to use.
+
+    The old version expected 'task_name' and 'task_type' arguments. The new
+        version expects 'folder_entity' and 'task_entity' arguments instead.
+
+    The function is also marked with an attribute 'version' so other addons
+        can check if the function is using the new signature or is using
+        the old signature. That should allow addons to adapt to new signature.
+        >>> if getattr(get_product_name, "use_entities", None):
+        >>>     # New signature is used
+        >>>     path = get_product_name(project_name, folder_entity, ...)
+        >>> else:
+        >>>     # Old signature is used
+        >>>     path = get_product_name(project_name, taks_name, ...)
+    """
+    # Add attribute to function to identify it as the new function
+    #   so other addons can easily identify it.
+    # >>> geattr(get_product_name, "use_entities", False)
+    setattr(func, "use_entities", True)
+
+    @wraps(func)
+    def inner(*args, **kwargs):
+        # ---
+        # Decide which variant of the function is used based on
+        #   passed arguments.
+        # ---
+
+        # Entities in key-word arguments mean that the new function is used
+        if "folder_entity" in kwargs or "task_entity" in kwargs:
+            return func(*args, **kwargs)
+
+        # Using more than 7 positional arguments is not allowed
+        #   in the new function
+        if len(args) > 7:
+            return _get_product_name_old(*args, **kwargs)
+
+        if len(args) > 1:
+            arg_2 = args[1]
+            # The second argument is a string -> task name
+            if isinstance(arg_2, str):
+                return _get_product_name_old(*args, **kwargs)
+
+        if is_func_signature_supported(func, *args, **kwargs):
+            return func(*args, **kwargs)
+        return _get_product_name_old(*args, **kwargs)
+
+    return inner
+
+
+@overload
+def get_product_name(
+    project_name: str,
+    folder_entity: dict[str, Any],
+    task_entity: Optional[dict[str, Any]],
+    product_base_type: str,
+    product_type: str,
+    host_name: str,
+    variant: str,
+    *,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    default_template: Optional[str] = None,
+    product_base_type_filter: Optional[str] = None,
+) -> TemplateResult:
+    """Calculate product name based on passed context and AYON settings.
+
+    Subst name templates are defined in `project_settings/global/tools/creator
+    /product_name_profiles` where are profiles with host name, product type,
+    task name and task type filters. If context does not match any profile
+    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+
+    That's main reason why so many arguments are required to calculate product
+    name.
+
+    Args:
+        project_name (str): Project name.
+        folder_entity (Optional[dict[str, Any]]): Folder entity.
+        task_entity (Optional[dict[str, Any]]): Task entity.
+        host_name (str): Host name.
+        product_base_type (str): Product base type.
+        product_type (str): Product type.
+        variant (str): In most of the cases it is user input during creation.
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data specific for
+            a creator which creates instance.
+        project_settings (Optional[dict[str, Any]]): Prepared settings
+            for project. Settings are queried if not passed.
+        project_entity (Optional[dict[str, Any]]): Project entity used when
+            task short name is required by template.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        product_base_type_filter (Optional[str]): Use different product base
+            type for product template filtering. Value of
+            `product_base_type_filter` is used when not passed.
+
+    Returns:
+        TemplateResult: Product name.
+
+    Raises:
+        TaskNotSetError: If template requires task which is not provided.
+        TemplateFillError: If filled template contains placeholder key which
+            is not collected.
+
+    """
+
+
+@overload
 def get_product_name(
     project_name,
     task_name,
@@ -77,25 +309,25 @@ def get_product_name(
     project_settings=None,
     product_type_filter=None,
     project_entity=None,
-):
+) -> TemplateResult:
     """Calculate product name based on passed context and AYON settings.
 
-    Subst name templates are defined in `project_settings/global/tools/creator
-    /product_name_profiles` where are profiles with host name, product type,
-    task name and task type filters. If context does not match any profile
-    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+    Product name templates are defined in `project_settings/global/tools
+    /creator/product_name_profiles` where are profiles with host name,
+    product type, task name and task type filters. If context does not match
+    any profile then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
 
     That's main reason why so many arguments are required to calculate product
     name.
 
-    Todos:
-        Find better filtering options to avoid requirement of
-            argument 'family_filter'.
+    Deprecated:
+        This function is using deprecated signature that does not support
+            folder entity data to be used.
 
     Args:
         project_name (str): Project name.
-        task_name (Union[str, None]): Task name.
-        task_type (Union[str, None]): Task type.
+        task_name (Optional[str]): Task name.
+        task_type (Optional[str]): Task type.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
@@ -113,7 +345,63 @@ def get_product_name(
             task short name is required by template.
 
     Returns:
-        str: Product name.
+        TemplateResult: Product name.
+
+    """
+    pass
+
+
+@_backwards_compatibility_product_name
+def get_product_name(
+    project_name: str,
+    folder_entity: dict[str, Any],
+    task_entity: Optional[dict[str, Any]],
+    product_base_type: str,
+    product_type: str,
+    host_name: str,
+    variant: str,
+    *,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    default_template: Optional[str] = None,
+    product_base_type_filter: Optional[str] = None,
+) -> TemplateResult:
+    """Calculate product name based on passed context and AYON settings.
+
+    Product name templates are defined in `project_settings/global/tools
+        /creator/product_name_profiles` where are profiles with host name,
+        product base type, product type, task name and task type filters.
+
+    If context does not match any profile then `DEFAULT_PRODUCT_TEMPLATE`
+        is used as default template.
+
+    That's main reason why so many arguments are required to calculate product
+        name.
+
+    Args:
+        project_name (str): Project name.
+        folder_entity (Optional[dict[str, Any]]): Folder entity.
+        task_entity (Optional[dict[str, Any]]): Task entity.
+        host_name (str): Host name.
+        product_base_type (str): Product base type.
+        product_type (str): Product type.
+        variant (str): In most of the cases it is user input during creation.
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data specific for
+            a creator which creates instance.
+        project_settings (Optional[dict[str, Any]]): Prepared settings
+            for project. Settings are queried if not passed.
+        project_entity (Optional[dict[str, Any]]): Project entity used when
+            task short name is required by template.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        product_base_type_filter (Optional[str]): Use different product base
+            type for product template filtering. Value of
+            `product_base_type_filter` is used when not passed.
+
+    Returns:
+        TemplateResult: Product name.
 
     Raises:
         TaskNotSetError: If template requires task which is not provided.
@@ -122,47 +410,68 @@ def get_product_name(
 
     """
     if not product_type:
-        return ""
+        return StringTemplate("").format({})
+
+    task_name = task_type = None
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
 
     template = get_product_name_template(
-        project_name,
-        product_type_filter or product_type,
-        task_name,
-        task_type,
-        host_name,
+        project_name=project_name,
+        product_base_type=product_base_type_filter or product_base_type,
+        product_type=product_type,
+        task_name=task_name,
+        task_type=task_type,
+        host_name=host_name,
         default_template=default_template,
-        project_settings=project_settings
+        project_settings=project_settings,
     )
-    # Simple check of task name existence for template with {task} in
-    #   - missing task should be possible only in Standalone publisher
-    if not task_name and "{task" in template.lower():
+
+    template_low = template.lower()
+    # Simple check of task name existence for template with {task[name]} in
+    if not task_name and "{task" in template_low:
         raise TaskNotSetError()
 
     task_value = {
         "name": task_name,
         "type": task_type,
     }
-    if "{task}" in template.lower():
+    if "{task}" in template_low:
         task_value = task_name
+        # NOTE this is message for TDs and Admins -> not really for users
+        # TODO validate this in settings and not allow it
+        log.warning(
+            "Found deprecated task key '{task}' in product name template."
+            " Please use '{task[name]}' instead."
+        )
 
-    elif "{task[short]}" in template.lower():
+    elif "{task[short]}" in template_low:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
-            task["name"]: task for task in
-            project_entity["taskTypes"]
+            task["name"]: task
+            for task in project_entity["taskTypes"]
         }
         task_short = task_types_by_name.get(task_type, {}).get("shortName")
         task_value["short"] = task_short
 
     fill_pairs = {
         "variant": variant,
+        # TODO We should stop support 'family' key.
         "family": product_type,
         "task": task_value,
         "product": {
-            "type": product_type
+            "type": product_type,
+            "basetype": product_base_type,
         }
     }
+    if folder_entity:
+        fill_pairs["folder"] = {
+            "name": folder_entity["name"],
+            "type": folder_entity["folderType"],
+        }
+
     if dynamic_data:
         # Dynamic data may override default values
         for key, value in dynamic_data.items():
@@ -174,7 +483,8 @@ def get_product_name(
             data=prepare_template_data(fill_pairs)
         )
     except KeyError as exp:
-        raise TemplateFillError(
-            "Value for {} key is missing in template '{}'."
-            " Available values are {}".format(str(exp), template, fill_pairs)
+        msg = (
+            f"Value for {exp} key is missing in template '{template}'."
+            f" Available values are {fill_pairs}"
         )
+        raise TemplateFillError(msg)

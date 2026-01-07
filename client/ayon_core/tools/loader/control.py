@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import logging
 import uuid
+from typing import Optional, Any
 
 import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
+from ayon_core.lib import (
+    NestedCacheItem,
+    CacheItem,
+    filter_profiles,
+)
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
@@ -13,12 +20,16 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     ThumbnailsModel,
+    TagItem,
+    ProductTypeIconMapping,
+    UsersModel,
 )
 
 from .abstract import (
     BackendLoaderController,
     FrontendLoaderController,
-    ProductTypesFilter
+    ProductTypesFilter,
+    ActionItem,
 )
 from .models import (
     SelectionModel,
@@ -26,6 +37,8 @@ from .models import (
     LoaderActionsModel,
     SiteSyncModel
 )
+
+NOT_SET = object()
 
 
 class ExpectedSelection:
@@ -119,6 +132,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -155,6 +169,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._projects_model.reset()
         self._thumbnails_model.reset()
         self._sitesync_model.reset()
+        self._users_model.reset()
 
         self._projects_model.refresh()
 
@@ -195,8 +210,61 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, sender
         )
 
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        return self._projects_model.get_product_type_icons_mapping(
+            project_name
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
+
+    def get_task_items(self, project_name, folder_ids, sender=None):
+        output = []
+        for folder_id in folder_ids:
+            output.extend(self._hierarchy_model.get_task_items(
+                project_name, folder_id, sender
+            ))
+        return output
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
+    def get_folder_labels(self, project_name, folder_ids):
+        folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
+            project_name, folder_ids
+        )
+        output = {}
+        for folder_id, folder_item in folder_items_by_id.items():
+            label = None
+            if folder_item is not None:
+                label = folder_item.label
+            output[folder_id] = label
+        return output
+
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        return self._hierarchy_model.get_available_tags_by_entity_type(
+            project_name
+        )
+
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        return self._projects_model.get_project_anatomy_tags(project_name)
 
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
@@ -234,9 +302,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids
         )
 
-    def get_thumbnail_path(self, project_name, thumbnail_id):
-        return self._thumbnails_model.get_thumbnail_path(
-            project_name, thumbnail_id
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids
         )
 
     def get_folder_product_group_names(
@@ -256,45 +329,47 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, product_ids, group_name
         )
 
-    def get_versions_action_items(self, project_name, version_ids):
-        return self._loader_actions_model.get_versions_action_items(
-            project_name, version_ids)
-
-    def get_representations_action_items(
-            self, project_name, representation_ids):
-        action_items = (
-            self._loader_actions_model.get_representations_action_items(
-                project_name, representation_ids)
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        action_items = self._loader_actions_model.get_action_items(
+            project_name, entity_ids, entity_type
         )
 
-        action_items.extend(self._sitesync_model.get_sitesync_action_items(
-            project_name, representation_ids)
+        site_sync_items = self._sitesync_model.get_sitesync_action_items(
+            project_name, entity_ids, entity_type
         )
-
+        action_items.extend(site_sync_items)
         return action_items
 
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(
-                identifier,
                 project_name,
-                representation_ids
+                data,
             )
             return
 
         self._loader_actions_model.trigger_action_item(
-            identifier,
-            options,
-            project_name,
-            version_ids,
-            representation_ids
+            identifier=identifier,
+            project_name=project_name,
+            selected_ids=selected_ids,
+            selected_entity_type=selected_entity_type,
+            data=data,
+            options=options,
+            form_values=form_values,
         )
 
     # Selection model wrappers
@@ -310,6 +385,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def set_selected_folders(self, folder_ids):
         self._selection_model.set_selected_folders(folder_ids)
+
+    def get_selected_task_ids(self):
+        return self._selection_model.get_selected_task_ids()
+
+    def set_selected_tasks(self, task_ids):
+        self._selection_model.set_selected_tasks(task_ids)
 
     def get_selected_version_ids(self):
         return self._selection_model.get_selected_version_ids()
@@ -384,17 +465,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
             repre_ids = set()
             for container in containers:
-                repre_id = container.get("representation")
-                # Ignore invalid representation ids.
-                # - invalid representation ids may be available if e.g. is
-                #   opened scene from OpenPype whe 'ObjectId' was used instead
-                #   of 'uuid'.
-                # NOTE: Server call would crash if there is any invalid id.
-                #   That would cause crash we won't get any information.
                 try:
+                    repre_id = container.get("representation")
+                    # Ignore invalid representation ids.
+                    # - invalid representation ids may be available if e.g. is
+                    #   opened scene from OpenPype whe 'ObjectId' was used
+                    #   instead of 'uuid'.
+                    # NOTE: Server call would crash if there is any invalid id.
+                    #   That would cause crash we won't get any information.
                     uuid.UUID(repre_id)
                     repre_ids.add(repre_id)
-                except ValueError:
+                except (ValueError, TypeError, AttributeError):
                     pass
 
             product_ids = self._products_model.get_product_ids_by_repre_ids(
@@ -429,20 +510,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
-
-    def _get_project_anatomy(self, project_name):
-        if not project_name:
-            return None
-        cache = self._project_anatomy_cache[project_name]
-        if not cache.is_valid:
-            cache.update_data(Anatomy(project_name))
-        return cache.get_data()
-
-    def _create_event_system(self):
-        return QueuedEventSystem()
-
-    def _emit_event(self, topic, data=None):
-        self._event_system.emit(topic, data or {}, "controller")
 
     def get_product_types_filter(self):
         output = ProductTypesFilter(
@@ -499,3 +566,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 product_types=profile["filter_product_types"]
             )
         return output
+
+    def _create_event_system(self):
+        return QueuedEventSystem()
+
+    def _emit_event(self, topic, data=None):
+        self._event_system.emit(topic, data or {}, "controller")
+
+    def _get_project_anatomy(self, project_name):
+        if not project_name:
+            return None
+        cache = self._project_anatomy_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(Anatomy(project_name))
+        return cache.get_data()

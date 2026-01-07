@@ -17,6 +17,7 @@ from ayon_core.tools.utils.lib import (
     format_version,
     preserve_expanded_rows,
     preserve_selection,
+    get_qt_icon,
 )
 from ayon_core.tools.utils.delegates import StatusDelegate
 
@@ -46,7 +47,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
     hierarchy_view_changed = QtCore.Signal(bool)
 
     def __init__(self, controller, parent):
-        super(SceneInventoryView, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         # view settings
         self.setIndentation(12)
@@ -192,29 +193,46 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 container_item = container_items_by_id[item_id]
                 active_repre_id = container_item.representation_id
                 break
+        repre_ids_by_project = collections.defaultdict(set)
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            project_name = container_item.project_name
+            repre_ids_by_project[project_name].add(repre_id)
 
-        repre_info_by_id = self._controller.get_representation_info_items({
-            container_item.representation_id
-            for container_item in container_items_by_id.values()
-        })
-        valid_repre_ids = {
-            repre_id
-            for repre_id, repre_info in repre_info_by_id.items()
-            if repre_info.is_valid
-        }
+        repre_info_by_project = {}
+        repre_ids_by_project_name = {}
+        version_ids_by_project = {}
+        product_ids_by_project = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repres_info = self._controller.get_representation_info_items(
+                project_name, repre_ids
+            )
+
+            repre_info_by_project[project_name] = repres_info
+            repre_ids = set()
+            version_ids = set()
+            product_ids = set()
+            for repre_id, repre_info in repres_info.items():
+                if not repre_info.is_valid:
+                    continue
+                repre_ids.add(repre_id)
+                version_ids.add(repre_info.version_id)
+                product_ids.add(repre_info.product_id)
+
+            repre_ids_by_project_name[project_name] = repre_ids
+            version_ids_by_project[project_name] = version_ids
+            product_ids_by_project[project_name] = product_ids
 
         # Exclude items that are "NOT FOUND" since setting versions, updating
         # and removal won't work for those items.
         filtered_items = []
-        product_ids = set()
-        version_ids = set()
         for container_item in container_items_by_id.values():
+            project_name = container_item.project_name
             repre_id = container_item.representation_id
+            repre_info_by_id = repre_info_by_project.get(project_name, {})
             repre_info = repre_info_by_id.get(repre_id)
             if repre_info and repre_info.is_valid:
                 filtered_items.append(container_item)
-                version_ids.add(repre_info.version_id)
-                product_ids.add(repre_info.product_id)
 
         # remove
         remove_icon = qtawesome.icon("fa.remove", color=DEFAULT_COLOR)
@@ -227,43 +245,51 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu.addAction(remove_action)
             return
 
-        version_items_by_product_id = self._controller.get_version_items(
-            product_ids
-        )
+        version_items_by_project = {
+            project_name: self._controller.get_version_items(
+                project_name, product_ids
+            )
+            for project_name, product_ids in product_ids_by_project.items()
+        }
+
         has_outdated = False
         has_loaded_hero_versions = False
         has_available_hero_version = False
         has_outdated_approved = False
         last_version_by_product_id = {}
-        for product_id, version_items_by_id in (
-            version_items_by_product_id.items()
+        for project_name, version_items_by_product_id in (
+            version_items_by_project.items()
         ):
-            _has_outdated_approved = False
-            _last_approved_version_item = None
-            for version_item in version_items_by_id.values():
-                if version_item.is_hero:
-                    has_available_hero_version = True
-
-                elif version_item.is_last_approved:
-                    _last_approved_version_item = version_item
-                    _has_outdated_approved = True
-
-                if version_item.version_id not in version_ids:
-                    continue
-
-                if version_item.is_hero:
-                    has_loaded_hero_versions = True
-                elif not version_item.is_latest:
-                    has_outdated = True
-
-            if (
-                _has_outdated_approved
-                and _last_approved_version_item is not None
+            version_ids = version_ids_by_project[project_name]
+            for product_id, version_items_by_id in (
+                version_items_by_product_id.items()
             ):
-                last_version_by_product_id[product_id] = (
-                    _last_approved_version_item
-                )
-                has_outdated_approved = True
+                _has_outdated_approved = False
+                _last_approved_version_item = None
+                for version_item in version_items_by_id.values():
+                    if version_item.is_hero:
+                        has_available_hero_version = True
+
+                    elif version_item.is_last_approved:
+                        _last_approved_version_item = version_item
+                        _has_outdated_approved = True
+
+                    if version_item.version_id not in version_ids:
+                        continue
+
+                    if version_item.is_hero:
+                        has_loaded_hero_versions = True
+                    elif not version_item.is_latest:
+                        has_outdated = True
+
+                if (
+                    _has_outdated_approved
+                    and _last_approved_version_item is not None
+                ):
+                    last_version_by_product_id[product_id] = (
+                        _last_approved_version_item
+                    )
+                    has_outdated_approved = True
 
         switch_to_versioned = None
         if has_loaded_hero_versions:
@@ -284,8 +310,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         approved_version_by_item_id = {}
         if has_outdated_approved:
             for container_item in container_items_by_id.values():
+                project_name = container_item.project_name
                 repre_id = container_item.representation_id
-                repre_info = repre_info_by_id.get(repre_id)
+                repre_info = repre_info_by_project[project_name][repre_id]
                 if not repre_info or not repre_info.is_valid:
                     continue
                 version_item = last_version_by_product_id.get(
@@ -397,14 +424,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         menu.addAction(remove_action)
 
-        self._handle_sitesync(menu, valid_repre_ids)
+        self._handle_sitesync(menu, repre_ids_by_project_name)
 
-    def _handle_sitesync(self, menu, repre_ids):
+    def _handle_sitesync(self, menu, repre_ids_by_project_name):
         """Adds actions for download/upload when SyncServer is enabled
 
         Args:
             menu (OptionMenu)
-            repre_ids (list) of object_ids
+            repre_ids_by_project_name (Dict[str, Set[str]]): Representation
+                ids by project name.
 
         Returns:
             (OptionMenu)
@@ -413,7 +441,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if not self._controller.is_sitesync_enabled():
             return
 
-        if not repre_ids:
+        if not repre_ids_by_project_name:
             return
 
         menu.addSeparator()
@@ -425,7 +453,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu
         )
         download_active_action.triggered.connect(
-            lambda: self._add_sites(repre_ids, "active_site"))
+            lambda: self._add_sites(
+                repre_ids_by_project_name, "active_site"
+            )
+        )
 
         upload_icon = qtawesome.icon("fa.upload", color=DEFAULT_COLOR)
         upload_remote_action = QtWidgets.QAction(
@@ -434,23 +465,30 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu
         )
         upload_remote_action.triggered.connect(
-            lambda: self._add_sites(repre_ids, "remote_site"))
+            lambda: self._add_sites(
+                repre_ids_by_project_name, "remote_site"
+            )
+        )
 
         menu.addAction(download_active_action)
         menu.addAction(upload_remote_action)
 
-    def _add_sites(self, repre_ids, site_type):
+    def _add_sites(self, repre_ids_by_project_name, site_type):
         """(Re)sync all 'repre_ids' to specific site.
 
         It checks if opposite site has fully available content to limit
         accidents. (ReSync active when no remote >> losing active content)
 
         Args:
-            repre_ids (list)
+            repre_ids_by_project_name (Dict[str, Set[str]]): Representation
+                ids by project name.
             site_type (Literal[active_site, remote_site]): Site type.
-        """
 
-        self._controller.resync_representations(repre_ids, site_type)
+        """
+        for project_name, repre_ids in repre_ids_by_project_name.items():
+            self._controller.resync_representations(
+                project_name, repre_ids, site_type
+            )
 
         self.data_changed.emit()
 
@@ -487,7 +525,14 @@ class SceneInventoryView(QtWidgets.QTreeView):
             submenu = QtWidgets.QMenu("Actions", self)
             for action in custom_actions:
                 color = action.color or DEFAULT_COLOR
-                icon = qtawesome.icon("fa.%s" % action.icon, color=color)
+                icon_def = action.icon
+                if not isinstance(action.icon, dict):
+                    icon_def = {
+                        "type": "awesome-font",
+                        "name": icon_def,
+                        "color": color,
+                    }
+                icon = get_qt_icon(icon_def)
                 action_item = QtWidgets.QAction(icon, action.label, submenu)
                 action_item.triggered.connect(
                     partial(
@@ -585,7 +630,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             if isinstance(result, (list, set)):
                 self._select_items_by_action(result)
 
-            if isinstance(result, dict):
+            elif isinstance(result, dict):
                 self._select_items_by_action(
                     result["objectNames"], result["options"]
                 )
@@ -735,42 +780,68 @@ class SceneInventoryView(QtWidgets.QTreeView):
         container_items_by_id = self._controller.get_container_items_by_id(
             item_ids
         )
-        repre_ids = {
-            container_item.representation_id
-            for container_item in container_items_by_id.values()
-        }
-        repre_info_by_id = self._controller.get_representation_info_items(
-            repre_ids
-        )
+        project_names = set()
+        repre_ids_by_project = collections.defaultdict(set)
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            project_name = container_item.project_name
+            project_names.add(project_name)
+            repre_ids_by_project[project_name].add(repre_id)
 
-        product_ids = {
-            repre_info.product_id
-            for repre_info in repre_info_by_id.values()
-        }
-        active_repre_info = repre_info_by_id[active_repre_id]
+        # active_project_name = None
+        active_repre_info = None
+        repre_info_by_project = {}
+        version_items_by_project = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repres_info = self._controller.get_representation_info_items(
+                project_name, repre_ids
+            )
+            if active_repre_info is None:
+                # active_project_name = project_name
+                active_repre_info = repres_info.get(active_repre_id)
+
+            product_ids = {
+                repre_info.product_id
+                for repre_info in repres_info.values()
+                if repre_info.is_valid
+            }
+            version_items_by_product_id = self._controller.get_version_items(
+                project_name, product_ids
+            )
+
+            repre_info_by_project[project_name] = repres_info
+            version_items_by_project[project_name] = (
+                version_items_by_product_id
+            )
+
         active_version_id = active_repre_info.version_id
-        active_product_id = active_repre_info.product_id
-        version_items_by_product_id = self._controller.get_version_items(
-            product_ids
-        )
-        version_items = list(
-            version_items_by_product_id[active_product_id].values()
-        )
-        versions = {version_item.version for version_item in version_items}
-        product_ids_by_version = collections.defaultdict(set)
-        for version_items_by_id in version_items_by_product_id.values():
-            for version_item in version_items_by_id.values():
-                version = version_item.version
-                _prod_version = version
-                if _prod_version < 0:
-                    _prod_version = -1
-                product_ids_by_version[_prod_version].add(
-                    version_item.product_id
-                )
-                if version in versions:
-                    continue
-                versions.add(version)
-                version_items.append(version_item)
+        # active_product_id = active_repre_info.product_id
+
+        versions = set()
+        product_ids = set()
+        version_items = []
+        product_ids_by_version_by_project = {}
+        for project_name, version_items_by_product_id in (
+            version_items_by_project.items()
+        ):
+            product_ids_by_version = collections.defaultdict(set)
+            product_ids_by_version_by_project[project_name] = (
+                product_ids_by_version
+            )
+            for version_items_by_id in version_items_by_product_id.values():
+                for version_item in version_items_by_id.values():
+                    version = version_item.version
+                    _prod_version = version
+                    if _prod_version < 0:
+                        _prod_version = -1
+                    product_ids_by_version[_prod_version].add(
+                        version_item.product_id
+                    )
+                    product_ids.add(version_item.product_id)
+                    if version in versions:
+                        continue
+                    versions.add(version)
+                    version_items.append(version_item)
 
         def version_sorter(item):
             hero_value = 0
@@ -831,12 +902,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
             product_version = -1
             version = HeroVersionType(version)
 
-        product_ids = product_ids_by_version[product_version]
-
         filtered_item_ids = set()
         for container_item in container_items_by_id.values():
+            project_name = container_item.project_name
+            product_ids_by_version = (
+                product_ids_by_version_by_project[project_name]
+            )
+            product_ids = product_ids_by_version[product_version]
             repre_id = container_item.representation_id
-            repre_info = repre_info_by_id[repre_id]
+            repre_info = repre_info_by_project[project_name][repre_id]
             if repre_info.product_id in product_ids:
                 filtered_item_ids.add(container_item.item_id)
 
@@ -846,14 +920,28 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
     def _show_switch_dialog(self, item_ids):
         """Display Switch dialog"""
-        containers_by_id = self._controller.get_containers_by_item_ids(
+        container_items_by_id = self._controller.get_container_items_by_id(
             item_ids
         )
-        dialog = SwitchAssetDialog(
-            self._controller, self, list(containers_by_id.values())
-        )
-        dialog.switched.connect(self.data_changed.emit)
-        dialog.show()
+        container_ids_by_project_name = collections.defaultdict(set)
+        for container_id, container_item in container_items_by_id.items():
+            project_name = container_item.project_name
+            container_ids_by_project_name[project_name].add(container_id)
+
+        for project_name, container_ids in (
+            container_ids_by_project_name.items()
+        ):
+            containers_by_id = self._controller.get_containers_by_item_ids(
+                container_ids
+            )
+            dialog = SwitchAssetDialog(
+                self._controller,
+                project_name,
+                list(containers_by_id.values()),
+                self
+            )
+            dialog.switched.connect(self.data_changed.emit)
+            dialog.show()
 
     def _show_remove_warning_dialog(self, item_ids):
         """Prompt a dialog to inform the user the action will remove items"""
@@ -879,11 +967,13 @@ class SceneInventoryView(QtWidgets.QTreeView):
             remove_container(container)
         self.data_changed.emit()
 
-    def _show_version_error_dialog(self, version, item_ids):
+    def _show_version_error_dialog(self, version, item_ids, exception):
         """Shows QMessageBox when version switch doesn't work
 
         Args:
             version: str or int or None
+            item_ids (Iterable[str]): List of item ids to run the
+            exception (Exception): Exception that occurred
         """
         if version == -1:
             version_str = "latest"
@@ -908,10 +998,11 @@ class SceneInventoryView(QtWidgets.QTreeView):
         dialog.addButton(QtWidgets.QMessageBox.Cancel)
 
         msg = (
-            "Version update to '{}' failed as representation doesn't exist."
+            "Version update to '{}' failed with the following error:\n"
+            "{}."
             "\n\nPlease update to version with a valid representation"
             " OR \n use 'Switch Folder' button to change folder."
-        ).format(version_str)
+        ).format(version_str, exception)
         dialog.setText(msg)
         dialog.exec_()
 
@@ -927,38 +1018,58 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self._update_containers_to_version(item_ids, version=-1)
 
     def _on_switch_to_versioned(self, item_ids):
+        # Get container items by ID
         containers_items_by_id = self._controller.get_container_items_by_id(
-            item_ids
-        )
-        repre_ids = {
-            container_item.representation_id
-            for container_item in containers_items_by_id.values()
-        }
-        repre_info_by_id = self._controller.get_representation_info_items(
-            repre_ids
-        )
-        product_ids = {
-            repre_info.product_id
-            for repre_info in repre_info_by_id.values()
-            if repre_info.is_valid
-        }
-        version_items_by_product_id = self._controller.get_version_items(
-            product_ids
-        )
+            item_ids)
+        # Extract project names and their corresponding representation IDs
+        repre_ids_by_project = collections.defaultdict(set)
+        for container_item in containers_items_by_id.values():
+            project_name = container_item.project_name
+            repre_id = container_item.representation_id
+            repre_ids_by_project[project_name].add(repre_id)
+
+        # Get representation info items by ID
+        repres_info_by_project = {}
+        version_items_by_project = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repre_info_by_id = self._controller.get_representation_info_items(
+                project_name, repre_ids
+            )
+            repres_info_by_project[project_name] = repre_info_by_id
+
+            product_ids = {
+                repre_info.product_id
+                for repre_info in repre_info_by_id.values()
+                if repre_info.is_valid
+            }
+            version_items_by_product_id = self._controller.get_version_items(
+                project_name, product_ids
+            )
+            version_items_by_project[project_name] = (
+                version_items_by_product_id
+            )
 
         update_containers = []
         update_versions = []
-        for item_id, container_item in containers_items_by_id.items():
+        for container_item in containers_items_by_id.values():
+            project_name = container_item.project_name
             repre_id = container_item.representation_id
+
+            repre_info_by_id = repres_info_by_project[project_name]
             repre_info = repre_info_by_id[repre_id]
+
+            version_items_by_product_id = (
+                version_items_by_project[project_name]
+            )
             product_id = repre_info.product_id
-            version_items_id = version_items_by_product_id[product_id]
-            version_item = version_items_id.get(repre_info.version_id, {})
+            version_items_by_id = version_items_by_product_id[product_id]
+            version_item = version_items_by_id.get(repre_info.version_id, {})
             if not version_item or not version_item.is_hero:
                 continue
+
             version = abs(version_item.version)
             version_found = False
-            for version_item in version_items_id.values():
+            for version_item in version_items_by_id.values():
                 if version_item.is_hero:
                     continue
                 if version_item.version == version:
@@ -971,8 +1082,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
             update_containers.append(container_item.item_id)
             update_versions.append(version)
 
-        # Specify version per item to update to
-        self._update_containers(update_containers, update_versions)
+            # Specify version per item to update to
+            self._update_containers(update_containers, update_versions)
 
     def _update_containers(self, item_ids, versions):
         """Helper to update items to given version (or version per item)
@@ -1003,12 +1114,14 @@ class SceneInventoryView(QtWidgets.QTreeView):
         try:
             for item_id, item_version in zip(item_ids, versions):
                 container = containers_by_id[item_id]
+                if container.get("version_locked"):
+                    continue
                 try:
                     update_container(container, item_version)
-                except AssertionError:
+                except Exception as exc:
                     log.warning("Update failed", exc_info=True)
                     self._show_version_error_dialog(
-                        item_version, [item_id]
+                        item_version, [item_id], exc
                     )
         finally:
             # Always update the scene inventory view, even if errors occurred

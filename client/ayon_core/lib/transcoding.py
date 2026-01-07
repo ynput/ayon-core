@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import logging
@@ -6,9 +7,13 @@ import collections
 import tempfile
 import subprocess
 import platform
+import warnings
+import functools
 from typing import Optional
 
 import xml.etree.ElementTree
+
+import clique
 
 from .execute import run_subprocess
 from .vendor_bin_utils import (
@@ -53,7 +58,7 @@ IMAGE_EXTENSIONS = {
     ".kra", ".logluv", ".mng", ".miff", ".nrrd", ".ora",
     ".pam", ".pbm", ".pgm", ".ppm", ".pnm", ".pcx", ".pgf",
     ".pictor", ".png", ".psd", ".psb", ".psp", ".qtvr",
-    ".ras", ".rgbe", ".sgi", ".tga",
+    ".ras", ".rgbe", ".sgi", ".sxr", ".tga",
     ".tif", ".tiff", ".tiff/ep", ".tiff/it", ".ufo", ".ufp",
     ".wbmp", ".webp", ".xr", ".xt", ".xbm", ".xcf", ".xpm", ".xwd"
 }
@@ -65,6 +70,56 @@ VIDEO_EXTENSIONS = {
     ".mpv", ".mxf", ".nsv", ".ogg", ".ogv", ".qt", ".rm", ".rmvb",
     ".roq", ".svi", ".vob", ".webm", ".wmv", ".yuv"
 }
+
+
+def deprecated(new_destination):
+    """Mark functions as deprecated.
+
+    It will result in a warning being emitted when the function is used.
+    """
+
+    func = None
+    if callable(new_destination):
+        func = new_destination
+        new_destination = None
+
+    def _decorator(decorated_func):
+        if new_destination is None:
+            warning_message = (
+                " Please check content of deprecated function to figure out"
+                " possible replacement."
+            )
+        else:
+            warning_message = " Please replace your usage with '{}'.".format(
+                new_destination
+            )
+
+        @functools.wraps(decorated_func)
+        def wrapper(*args, **kwargs):
+            warnings.simplefilter("always", DeprecationWarning)
+            warnings.warn(
+                (
+                    "Call to deprecated function '{}'"
+                    "\nFunction was moved or removed.{}"
+                ).format(decorated_func.__name__, warning_message),
+                category=DeprecationWarning,
+                stacklevel=4
+            )
+            return decorated_func(*args, **kwargs)
+        return wrapper
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
+
+
+class MissingRGBAChannelsError(ValueError):
+    """Raised when we can't find channels to use as RGBA for conversion in
+    input media.
+
+    This may be other channels than solely RGBA, like Z-channel. The error is
+    raised when no matching 'reviewable' channel was found.
+    """
 
 
 def get_transcode_temp_directory():
@@ -79,16 +134,29 @@ def get_transcode_temp_directory():
     )
 
 
-def get_oiio_info_for_input(filepath, logger=None, subimages=False):
+def get_oiio_info_for_input(
+    filepath: str,
+    *,
+    subimages: bool = False,
+    verbose: bool = True,
+    logger: logging.Logger = None,
+):
     """Call oiiotool to get information about input and return stdout.
+
+    Args:
+        filepath (str): Path to file.
+        subimages (bool): include info about subimages in the output.
+        verbose (bool): get the full metadata about each input image.
+        logger (logging.Logger): Logger used for logging.
 
     Stdout should contain xml format string.
     """
     args = get_oiio_tool_args(
         "oiiotool",
         "--info",
-        "-v"
     )
+    if verbose:
+        args.append("-v")
     if subimages:
         args.append("-a")
 
@@ -345,6 +413,10 @@ def get_review_info_by_layer_name(channel_names):
             ...
         ]
 
+    This tries to find suitable outputs good for review purposes, by
+    searching for channel names like RGBA, but also XYZ, Z, N, AR, AG, AB
+    channels.
+
     Args:
         channel_names (list[str]): List of channel names.
 
@@ -353,7 +425,6 @@ def get_review_info_by_layer_name(channel_names):
     """
 
     layer_names_order = []
-    rgba_by_layer_name = collections.defaultdict(dict)
     channels_by_layer_name = collections.defaultdict(dict)
 
     for channel_name in channel_names:
@@ -362,42 +433,95 @@ def get_review_info_by_layer_name(channel_names):
         if "." in channel_name:
             layer_name, last_part = channel_name.rsplit(".", 1)
 
-        channels_by_layer_name[layer_name][channel_name] = last_part
-        if last_part.lower() not in {
-            "r", "red",
-            "g", "green",
-            "b", "blue",
-            "a", "alpha"
+        # R, G, B, A or X, Y, Z, N, AR, AG, AB, RED, GREEN, BLUE, ALPHA
+        channel = last_part.upper()
+        if channel not in {
+            # Detect RGBA channels
+            "R", "G", "B", "A",
+            # Support fully written out rgba channel names
+            "RED", "GREEN", "BLUE", "ALPHA",
+            # Allow detecting of x, y and z channels, and normal channels
+            "X", "Y", "Z", "N",
+            # red, green and blue alpha/opacity, for colored mattes
+            "AR", "AG", "AB"
         }:
             continue
 
         if layer_name not in layer_names_order:
             layer_names_order.append(layer_name)
-        # R, G, B or A
-        channel = last_part[0].upper()
-        rgba_by_layer_name[layer_name][channel] = channel_name
 
-    # Put empty layer to the beginning of the list
+        channels_by_layer_name[layer_name][channel] = channel_name
+
+    # Put empty layer or 'rgba' to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
-    if "" in layer_names_order:
-        layer_names_order.remove("")
-        layer_names_order.insert(0, "")
+    def _sort(_layer_name: str) -> int:
+        # Prioritize "" layer name
+        # Prioritize layers with RGB channels
+        if _layer_name == "rgba":
+            return 0
+
+        if _layer_name == "":
+            return 1
+
+        channels = channels_by_layer_name[_layer_name]
+        if all(channel in channels for channel in "RGB"):
+            return 2
+        return 10
+    layer_names_order.sort(key=_sort)
 
     output = []
     for layer_name in layer_names_order:
-        rgba_layer_info = rgba_by_layer_name[layer_name]
-        red = rgba_layer_info.get("R")
-        green = rgba_layer_info.get("G")
-        blue = rgba_layer_info.get("B")
-        if not red or not green or not blue:
+        channel_info = channels_by_layer_name[layer_name]
+
+        alpha = channel_info.get("A")
+
+        # RGB channels
+        if all(channel in channel_info for channel in "RGB"):
+            rgb = "R", "G", "B"
+
+        # RGB channels using fully written out channel names
+        elif all(
+            channel in channel_info
+            for channel in ("RED", "GREEN", "BLUE")
+        ):
+            rgb = "RED", "GREEN", "BLUE"
+            alpha = channel_info.get("ALPHA")
+
+        # XYZ channels (position pass)
+        elif all(channel in channel_info for channel in "XYZ"):
+            rgb = "X", "Y", "Z"
+
+        # Colored mattes (as defined in OpenEXR Channel Name standards)
+        elif all(channel in channel_info for channel in ("AR", "AG", "AB")):
+            rgb = "AR", "AG", "AB"
+
+        # Luminance channel (as defined in OpenEXR Channel Name standards)
+        elif "Y" in channel_info:
+            rgb = "Y", "Y", "Y"
+
+        # Has only Z channel (Z-depth layer)
+        elif "Z" in channel_info:
+            rgb = "Z", "Z", "Z"
+
+        # Has only A channel (Alpha layer)
+        elif "A" in channel_info:
+            rgb = "A", "A", "A"
+            alpha = None
+
+        else:
+            # No reviewable channels found
             continue
+
+        red = channel_info[rgb[0]]
+        green = channel_info[rgb[1]]
+        blue = channel_info[rgb[2]]
         output.append({
             "name": layer_name,
             "review_channels": {
                 "R": red,
                 "G": green,
                 "B": blue,
-                "A": rgba_layer_info.get("A"),
+                "A": alpha,
             }
         })
     return output
@@ -462,7 +586,10 @@ def get_review_layer_name(src_filepath):
         return None
 
     # Load info about file from oiio tool
-    input_info = get_oiio_info_for_input(src_filepath)
+    input_info = get_oiio_info_for_input(
+        src_filepath,
+        verbose=False,
+    )
     if not input_info:
         return None
 
@@ -526,135 +653,35 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
-# Deprecated since 2022 4 20
-# - Reason - Doesn't convert sequences right way: Can't handle gaps, reuse
-#       first frame for all frames and changes filenames when input
-#       is sequence.
-# - use 'convert_input_paths_for_ffmpeg' instead
-def convert_for_ffmpeg(
-    first_input_path,
-    output_dir,
-    input_frame_start=None,
-    input_frame_end=None,
-    logger=None
-):
-    """Convert source file to format supported in ffmpeg.
-
-    Currently can convert only exrs.
-
-    Args:
-        first_input_path (str): Path to first file of a sequence or a single
-            file path for non-sequential input.
-        output_dir (str): Path to directory where output will be rendered.
-            Must not be same as input's directory.
-        input_frame_start (int): Frame start of input.
-        input_frame_end (int): Frame end of input.
-        logger (logging.Logger): Logger used for logging.
-
-    Raises:
-        ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
-    logger.warning((
-        "DEPRECATED: 'ayon_core.lib.transcoding.convert_for_ffmpeg' is"
-        " deprecated function of conversion for FFMpeg. Please replace usage"
-        " with 'ayon_core.lib.transcoding.convert_input_paths_for_ffmpeg'"
-    ))
-
-    ext = os.path.splitext(first_input_path)[1].lower()
-    if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
-
-    is_sequence = False
-    if input_frame_start is not None and input_frame_end is not None:
-        is_sequence = int(input_frame_end) != int(input_frame_start)
-
-    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
-
-    # Change compression only if source compression is "dwaa" or "dwab"
-    #   - they're not supported in ffmpeg
-    compression = input_info["attribs"].get("compression")
-    if compression in ("dwaa", "dwab"):
-        compression = "none"
-
-    # Prepare subprocess arguments
-    oiio_cmd = get_oiio_tool_args(
-        "oiiotool",
-        # Don't add any additional attributes
-        "--nosoftwareattrib",
-    )
-    # Add input compression if available
-    if compression:
-        oiio_cmd.extend(["--compression", compression])
-
-    # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
-
-    oiio_cmd.extend([
-        input_arg, first_input_path,
-        # Tell oiiotool which channels should be put to top stack (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
-    ])
-
-    # Add frame definitions to arguments
-    if is_sequence:
-        oiio_cmd.extend([
-            "--frames", "{}-{}".format(input_frame_start, input_frame_end)
-        ])
-
+def _get_attributes_to_erase(
+    input_info: dict, logger: logging.Logger
+) -> list[str]:
+    """FFMPEG does not support some attributes in metadata."""
+    erase_attrs: dict[str, str] = {}  # Attr name to reason mapping
     for attr_name, attr_value in input_info["attribs"].items():
         if not isinstance(attr_value, str):
             continue
 
         # Remove attributes that have string value longer than allowed length
         #   for ffmpeg or when contain prohibited symbols
-        erase_reason = "Missing reason"
-        erase_attribute = False
         if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-            erase_reason = "has too long value ({} chars).".format(
-                len(attr_value)
-            )
-            erase_attribute = True
+            reason = f"has too long value ({len(attr_value)} chars)."
+            erase_attrs[attr_name] = reason
+            continue
 
-        if not erase_attribute:
-            for char in NOT_ALLOWED_FFMPEG_CHARS:
-                if char in attr_value:
-                    erase_attribute = True
-                    erase_reason = (
-                        "contains unsupported character \"{}\"."
-                    ).format(char)
-                    break
+        for char in NOT_ALLOWED_FFMPEG_CHARS:
+            if char not in attr_value:
+                continue
+            reason = f"contains unsupported character \"{char}\"."
+            erase_attrs[attr_name] = reason
+            break
 
-        if erase_attribute:
-            # Set attribute to empty string
-            logger.info((
-                "Removed attribute \"{}\" from metadata because {}."
-            ).format(attr_name, erase_reason))
-            oiio_cmd.extend(["--eraseattrib", attr_name])
-
-    # Add last argument - path to output
-    if is_sequence:
-        ext = os.path.splitext(first_input_path)[1]
-        base_filename = "tmp.%{:0>2}d{}".format(
-            len(str(input_frame_end)), ext
+    for attr_name, reason in erase_attrs.items():
+        logger.info(
+            f"Removed attribute \"{attr_name}\" from metadata"
+            f" because {reason}."
         )
-    else:
-        base_filename = os.path.basename(first_input_path)
-    output_path = os.path.join(output_dir, base_filename)
-    oiio_cmd.extend([
-        "-o", output_path
-    ])
-
-    logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
-    run_subprocess(oiio_cmd, logger=logger)
+    return list(erase_attrs.keys())
 
 
 def convert_input_paths_for_ffmpeg(
@@ -664,7 +691,7 @@ def convert_input_paths_for_ffmpeg(
 ):
     """Convert source file to format supported in ffmpeg.
 
-    Currently can convert only exrs. The input filepaths should be files
+    Can currently convert only EXRs. The input filepaths should be files
     with same type. Information about input is loaded only from first found
     file.
 
@@ -682,7 +709,7 @@ def convert_input_paths_for_ffmpeg(
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
+            Currently, only ".exr" extension is supported.
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -691,10 +718,10 @@ def convert_input_paths_for_ffmpeg(
     ext = os.path.splitext(first_input_path)[1].lower()
 
     if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
+        raise ValueError(
+            "Function 'convert_input_paths_for_ffmpeg' currently supports"
+            f" only \".exr\" extension. Got \"{ext}\"."
+        )
 
     input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
@@ -707,7 +734,22 @@ def convert_input_paths_for_ffmpeg(
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
-    for input_path in input_paths:
+    # Find which attributes to strip
+    erase_attributes: list[str] = _get_attributes_to_erase(
+        input_info, logger=logger
+    )
+
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    input_collections, input_remainder = clique.assemble(
+        input_paths,
+        patterns=[pattern],
+        assume_padded_when_ambiguous=True,
+    )
+    input_items = list(input_collections)
+    input_items.extend(input_remainder)
+    for input_item in input_items:
         # Prepare subprocess arguments
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
@@ -718,8 +760,23 @@ def convert_input_paths_for_ffmpeg(
         if compression:
             oiio_cmd.extend(["--compression", compression])
 
+        # Convert a sequence of files using a single oiiotool command
+        # using its sequence syntax
+        if isinstance(input_item, clique.Collection):
+            frames = input_item.format("{ranges}")
+            oiio_cmd.extend([
+                "--framepadding", str(input_item.padding),
+                "--frames", frames,
+                "--parallel-frames"
+            ])
+            input_item: str = input_item.format("{head}#{tail}")
+        elif not isinstance(input_item, str):
+            raise TypeError(
+                f"Input is not a string or Collection: {input_item}"
+            )
+
         oiio_cmd.extend([
-            input_arg, input_path,
+            input_arg, input_item,
             # Tell oiiotool which channels should be put to top stack
             #   (and output)
             "--ch", channels_arg,
@@ -727,38 +784,11 @@ def convert_input_paths_for_ffmpeg(
             "--subimage", "0"
         ])
 
-        for attr_name, attr_value in input_info["attribs"].items():
-            if not isinstance(attr_value, str):
-                continue
-
-            # Remove attributes that have string value longer than allowed
-            #   length for ffmpeg or when containing prohibited symbols
-            erase_reason = "Missing reason"
-            erase_attribute = False
-            if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-                erase_reason = "has too long value ({} chars).".format(
-                    len(attr_value)
-                )
-                erase_attribute = True
-
-            if not erase_attribute:
-                for char in NOT_ALLOWED_FFMPEG_CHARS:
-                    if char in attr_value:
-                        erase_attribute = True
-                        erase_reason = (
-                            "contains unsupported character \"{}\"."
-                        ).format(char)
-                        break
-
-            if erase_attribute:
-                # Set attribute to empty string
-                logger.info((
-                    "Removed attribute \"{}\" from metadata because {}."
-                ).format(attr_name, erase_reason))
-                oiio_cmd.extend(["--eraseattrib", attr_name])
+        for attr_name in erase_attributes:
+            oiio_cmd.extend(["--eraseattrib", attr_name])
 
         # Add last argument - path to output
-        base_filename = os.path.basename(input_path)
+        base_filename = os.path.basename(input_item)
         output_path = os.path.join(output_dir, base_filename)
         oiio_cmd.extend([
             "-o", output_path
@@ -1097,6 +1127,8 @@ def convert_ffprobe_fps_to_float(value):
     return dividend / divisor
 
 
+# --- Deprecated functions ---
+@deprecated("oiio_color_convert")
 def convert_colorspace(
     input_path,
     output_path,
@@ -1108,34 +1140,121 @@ def convert_colorspace(
     additional_command_args=None,
     logger=None,
 ):
-    """Convert source file from one color space to another.
+    """DEPRECATED function use `oiio_color_convert` instead
+
+    Args:
+        input_path (str): Path to input file that should be converted.
+        output_path (str): Path to output file where result will be stored.
+        config_path (str): Path to OCIO config file.
+        source_colorspace (str): OCIO valid color space of source files.
+        target_colorspace (str, optional): OCIO valid target color space.
+            If filled, 'view' and 'display' must be empty.
+        view (str, optional): Name for target viewer space (OCIO valid).
+            Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        display (str, optional): Name for target display-referred
+            reference space. Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        additional_command_args (list, optional): Additional arguments
+            for oiiotool (like binary depth for .dpx).
+        logger (logging.Logger, optional): Logger used for logging.
+
+    Returns:
+        None: Function returns None.
+
+    Raises:
+        ValueError: If parameters are misconfigured.
+    """
+    return oiio_color_convert(
+        input_path,
+        output_path,
+        config_path,
+        source_colorspace,
+        target_colorspace=target_colorspace,
+        target_display=display,
+        target_view=view,
+        additional_command_args=additional_command_args,
+        logger=logger,
+    )
+
+
+def oiio_color_convert(
+    input_path,
+    output_path,
+    config_path,
+    source_colorspace,
+    source_display=None,
+    source_view=None,
+    target_colorspace=None,
+    target_display=None,
+    target_view=None,
+    additional_command_args=None,
+    frames: Optional[str] = None,
+    frame_padding: Optional[int] = None,
+    parallel_frames: bool = False,
+    logger: Optional[logging.Logger] = None,
+):
+    """Transcode source file to other with colormanagement.
+
+    Oiiotool also support additional arguments for transcoding.
+    For more information, see the official documentation:
+    https://openimageio.readthedocs.io/en/latest/oiiotool.html
 
     Args:
         input_path (str): Path that should be converted. It is expected that
             contains single file or image sequence of same type
             (sequence in format 'file.FRAMESTART-FRAMEEND#.ext', see oiio docs,
-            eg `big.1-3#.tif`)
+            eg `big.1-3#.tif` or `big.1-3%d.ext` with `frames` argument)
         output_path (str): Path to output filename.
             (must follow format of 'input_path', eg. single file or
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
         config_path (str): path to OCIO config file
         source_colorspace (str): ocio valid color space of source files
+        source_display (str, optional): name for source display-referred
+            reference space (ocio valid). If provided, source_view must also be
+            provided, and source_colorspace will be ignored
+        source_view (str, optional): name for source viewer space (ocio valid)
+            If provided, source_display must also be provided, and
+            source_colorspace will be ignored
         target_colorspace (str): ocio valid target color space
                     if filled, 'view' and 'display' must be empty
-        view (str): name for viewer space (ocio valid)
-            both 'view' and 'display' must be filled (if 'target_colorspace')
-        display (str): name for display-referred reference space (ocio valid)
+        target_display (str): name for target display-referred reference space
+            (ocio valid) both 'view' and 'display' must be filled (if
+            'target_colorspace')
+        target_view (str): name for target viewer space (ocio valid)
             both 'view' and 'display' must be filled (if 'target_colorspace')
         additional_command_args (list): arguments for oiiotool (like binary
             depth for .dpx)
+        frames (Optional[str]): Complex frame range to process. This requires
+            input path and output path to use frame token placeholder like
+            `#` or `%d`, e.g. file.#.exr
+        frame_padding (Optional[int]): Frame padding to use for the input and
+            output when using a sequence filepath.
+        parallel_frames (bool): If True, process frames in parallel inside
+            the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
+
     Raises:
         ValueError: if misconfigured
+
     """
     if logger is None:
         logger = logging.getLogger(__name__)
 
-    input_info = get_oiio_info_for_input(input_path, logger=logger)
+    # Get oiioinfo only from first image, otherwise file can't be found
+    first_input_path = input_path
+    if frames:
+        frames: str
+        first_frame = int(re.split("[ x-]", frames, 1)[0])
+        first_frame = str(first_frame).zfill(frame_padding or 0)
+        for token in ["#", "%d"]:
+            first_input_path = first_input_path.replace(token, first_frame)
+
+    input_info = get_oiio_info_for_input(
+        first_input_path,
+        verbose=False,
+        logger=logger,
+    )
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
@@ -1148,55 +1267,124 @@ def convert_colorspace(
         "--colorconfig", config_path
     )
 
+    if frames:
+        # If `frames` is specified, then process the input and output
+        # as if it's a sequence of frames (must contain `%04d` as frame
+        # token placeholder in filepaths)
+        oiio_cmd.extend([
+            "--frames", frames,
+        ])
+
+    if frame_padding:
+        oiio_cmd.extend([
+            "--framepadding", str(frame_padding),
+        ])
+
+    if parallel_frames:
+        oiio_cmd.append("--parallel-frames")
+
     oiio_cmd.extend([
         input_arg, input_path,
         # Tell oiiotool which channels should be put to top stack
         #   (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
+        "--ch", channels_arg
     ])
 
-    if all([target_colorspace, view, display]):
-        raise ValueError("Colorspace and both screen and display"
-                         " cannot be set together."
-                         "Choose colorspace or screen and display")
-    if not target_colorspace and not all([view, display]):
-        raise ValueError("Both screen and display must be set.")
+    # Validate input parameters
+    if target_colorspace and target_view and target_display:
+        raise ValueError(
+            "Colorspace and both view and display cannot be set together."
+            "Choose colorspace or screen and display"
+        )
+
+    if not target_colorspace and not target_view and not target_display:
+        raise ValueError(
+            "Both view and display must be set if target_colorspace is not "
+            "provided."
+        )
+
+    if (
+        (source_view and not source_display)
+        or (source_display and not source_view)
+    ):
+        raise ValueError(
+            "Both source_view and source_display must be provided if using "
+            "display/view inputs."
+        )
+
+    if source_view and source_display and source_colorspace:
+        logger.warning(
+            "Both source display/view and source_colorspace provided. "
+            "Using source display/view pair and ignoring source_colorspace."
+        )
 
     if additional_command_args:
         oiio_cmd.extend(additional_command_args)
 
-    if target_colorspace:
-        oiio_cmd.extend(["--colorconvert",
-                         source_colorspace,
-                         target_colorspace])
-    if view and display:
-        oiio_cmd.extend(["--iscolorspace", source_colorspace])
-        oiio_cmd.extend(["--ociodisplay", display, view])
+    # Handle the different conversion cases
+    # Source view and display are known
+    if source_view and source_display:
+        color_convert_args = None
+        ocio_display_args = None
+        if target_colorspace:
+            # This is a two-step conversion process since there's no direct
+            # display/view to colorspace command
+            # This could be a config parameter or determined from OCIO config
+            # Use temporary role space 'scene_linear'
+            color_convert_args = ("scene_linear", target_colorspace)
+        elif source_display != target_display or source_view != target_view:
+            # Complete display/view pair conversion
+            # - go through a reference space
+            ocio_display_args = (target_display, target_view)
+        else:
+            logger.debug(
+                "Source and target display/view pairs are identical."
+                " No color conversion needed."
+            )
+
+        if color_convert_args or ocio_display_args:
+            # Invert source display/view so that we can go from there to the
+            # target colorspace or display/view
+            oiio_cmd.extend([
+                "--ociodisplay:inverse=1:subimages=0",
+                source_display,
+                source_view,
+            ])
+
+        if color_convert_args:
+            # Use colorconvert for colorspace target
+            oiio_cmd.extend([
+                "--colorconvert:subimages=0",
+                *color_convert_args
+            ])
+        elif ocio_display_args:
+            # Use ociodisplay for display/view target
+            oiio_cmd.extend([
+                "--ociodisplay:subimages=0",
+                *ocio_display_args
+            ])
+
+    elif target_colorspace:
+        # Standard color space to color space conversion
+        oiio_cmd.extend([
+            "--colorconvert:subimages=0",
+            source_colorspace,
+            target_colorspace,
+        ])
+    else:
+        # Standard conversion from colorspace to display/view
+        oiio_cmd.extend([
+            "--iscolorspace",
+            source_colorspace,
+            "--ociodisplay:subimages=0",
+            target_display,
+            target_view,
+        ])
 
     oiio_cmd.extend(["-o", output_path])
 
     logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
     run_subprocess(oiio_cmd, logger=logger)
-
-
-def split_cmd_args(in_args):
-    """Makes sure all entered arguments are separated in individual items.
-
-    Split each argument string with " -" to identify if string contains
-    one or more arguments.
-    Args:
-        in_args (list): of arguments ['-n', '-d uint10']
-    Returns
-        (list): ['-n', '-d', 'unint10']
-    """
-    splitted_args = []
-    for arg in in_args:
-        if not arg.strip():
-            continue
-        splitted_args.extend(arg.split(" "))
-    return splitted_args
 
 
 def get_rescaled_command_arguments(
@@ -1280,7 +1468,11 @@ def get_rescaled_command_arguments(
         command_args.extend(["-vf", "{0},{1}".format(scale, pad)])
 
     elif application == "oiiotool":
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            verbose=False,
+            logger=log,
+        )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
             input_info, alpha_default=1.0)
@@ -1371,7 +1563,11 @@ def _get_image_dimensions(application, input_path, log):
     # fallback for weird files with width=0, height=0
     if (input_width == 0 or input_height == 0) and application == "oiiotool":
         # Load info about file from oiio tool
-        input_info = get_oiio_info_for_input(input_path, logger=log)
+        input_info = get_oiio_info_for_input(
+            input_path,
+            verbose=False,
+            logger=log,
+        )
         if input_info:
             input_width = int(input_info["width"])
             input_height = int(input_info["height"])
@@ -1420,17 +1616,21 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
-            Should be output of function `get_oiio_info_for_input`.
+            Should be output of function 'get_oiio_info_for_input' (can be
+            called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
+
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.
+
     """
     channel_names = oiio_input_info["channelnames"]
     review_channels = get_convert_rgb_channels(channel_names)
 
     if review_channels is None:
-        raise ValueError(
-            "Couldn't find channels that can be used for conversion."
+        raise MissingRGBAChannelsError(
+            "Couldn't find channels that can be used for conversion "
+            f"among channels: {channel_names}."
         )
 
     red, green, blue, alpha = review_channels
@@ -1444,7 +1644,8 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
         channels_arg += ",A={}".format(float(alpha_default))
         input_channels.append("A")
 
-    input_channels_str = ",".join(input_channels)
+    # Make sure channels are unique, but preserve order to avoid oiiotool crash
+    input_channels_str = ",".join(list(dict.fromkeys(input_channels)))
 
     subimages = oiio_input_info.get("subimages")
     input_arg = "-i"
@@ -1484,11 +1685,26 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
         Optional[str]: Mime type or None if is unknown mime type.
 
     """
+    # The implementation is identical or better with ayon_api >=1.1.0,
+    #   which is used in AYON launcher >=1.3.0.
+    # NOTE Remove safe import when AYON launcher >=1.2.0.
+    try:
+        from ayon_api.utils import (
+            get_media_mime_type_for_content as _ayon_api_func
+        )
+    except ImportError:
+        _ayon_api_func = None
+
     if not filepath or not os.path.exists(filepath):
         return None
 
     with open(filepath, "rb") as stream:
         content = stream.read()
+
+    if _ayon_api_func is not None:
+        mime_type = _ayon_api_func(content)
+        if mime_type is not None:
+            return mime_type
 
     content_len = len(content)
     # Pre-validation (largest definition check)
@@ -1516,11 +1732,13 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
     if b'xmlns="http://www.w3.org/2000/svg"' in content:
         return "image/svg+xml"
 
-    # JPEG, JFIF or Exif
-    if (
-        content[0:4] == b"\xff\xd8\xff\xdb"
-        or content[6:10] in (b"JFIF", b"Exif")
-    ):
+    # JPEG
+    # - [0:2] is constant b"\xff\xd8"
+    #   (ref. https://www.file-recovery.com/jpg-signature-format.htm)
+    # - [2:4] Marker identifier b"\xff{?}"
+    #   (ref. https://www.disktuna.com/list-of-jpeg-markers/)
+    # NOTE: File ends with b"\xff\xd9"
+    if content[0:3] == b"\xff\xd8\xff":
         return "image/jpeg"
 
     # Webp
