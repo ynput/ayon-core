@@ -1483,7 +1483,7 @@ class PlaceholderLoadMixin(object):
                 tooltip=(
                     "Link Type\n"
                     "\nDefines what type of link will be used to"
-                    " link the asset to the current folder."
+                    " link the product to the current folder."
                 )
             ),
             attribute_definitions.EnumDef(
