@@ -2,6 +2,7 @@
 
 from .cache import CacheItem, NestedCacheItem
 from .projects import (
+    TagItem,
     StatusItem,
     StatusStates,
     ProjectItem,
@@ -9,6 +10,7 @@ from .projects import (
     PROJECTS_MODEL_SENDER,
     FolderTypeItem,
     TaskTypeItem,
+    ProductTypeIconMapping,
 )
 from .hierarchy import (
     FolderItem,
@@ -25,6 +27,7 @@ __all__ = (
     "CacheItem",
     "NestedCacheItem",
 
+    "TagItem",
     "StatusItem",
     "StatusStates",
     "ProjectItem",
@@ -32,6 +35,7 @@ __all__ = (
     "PROJECTS_MODEL_SENDER",
     "FolderTypeItem",
     "TaskTypeItem",
+    "ProductTypeIconMapping",
 
     "FolderItem",
     "TaskItem",

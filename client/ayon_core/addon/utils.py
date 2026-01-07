@@ -37,7 +37,7 @@ def _handle_error(
     if process_context.headless:
         if detail:
             print(detail)
-        print(f"{10*'*'}\n{message}\n{10*'*'}")
+        print(f"{10 * '*'}\n{message}\n{10 * '*'}")
         return
 
     current_dir = os.path.dirname(os.path.abspath(__file__))

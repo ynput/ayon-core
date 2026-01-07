@@ -1,9 +1,15 @@
 import logging
+import math
 from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
+
+try:
+    import markdown
+except Exception:
+    markdown = None
 
 from ayon_core.style import (
     get_objected_colors,
@@ -54,7 +60,7 @@ class ComboBox(QtWidgets.QComboBox):
     """
 
     def __init__(self, *args, **kwargs):
-        super(ComboBox, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         delegate = QtWidgets.QStyledItemDelegate()
         self.setItemDelegate(delegate)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
@@ -63,7 +69,7 @@ class ComboBox(QtWidgets.QComboBox):
 
     def wheelEvent(self, event):
         if self.hasFocus():
-            return super(ComboBox, self).wheelEvent(event)
+            return super().wheelEvent(event)
 
 
 class CustomTextComboBox(ComboBox):
@@ -71,7 +77,7 @@ class CustomTextComboBox(ComboBox):
 
     def __init__(self, *args, **kwargs):
         self._custom_text = None
-        super(CustomTextComboBox, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def set_custom_text(self, text=None):
         if self._custom_text != text:
@@ -88,21 +94,77 @@ class CustomTextComboBox(ComboBox):
         painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, option)
 
 
-class PlaceholderLineEdit(QtWidgets.QLineEdit):
-    """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
-    def __init__(self, *args, **kwargs):
-        super(PlaceholderLineEdit, self).__init__(*args, **kwargs)
-        # Change placeholder palette color
-        if hasattr(QtGui.QPalette, "PlaceholderText"):
-            filter_palette = self.palette()
+class _Cache:
+    _placeholder_color = None
+
+    @classmethod
+    def get_placeholder_color(cls):
+        if cls._placeholder_color is None:
             color_obj = get_objected_colors("font")
             color = color_obj.get_qcolor()
             color.setAlpha(67)
+            cls._placeholder_color = color
+        return cls._placeholder_color
+
+
+class PlaceholderLineEdit(QtWidgets.QLineEdit):
+    """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Change placeholder palette color
+        if hasattr(QtGui.QPalette, "PlaceholderText"):
+            filter_palette = self.palette()
             filter_palette.setColor(
                 QtGui.QPalette.PlaceholderText,
-                color
+                _Cache.get_placeholder_color()
             )
             self.setPalette(filter_palette)
+
+
+class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
+    """Set placeholder color of QPlainTextEdit in Qt 5.12 and higher."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Change placeholder palette color
+        if hasattr(QtGui.QPalette, "PlaceholderText"):
+            viewport = self.viewport()
+            filter_palette = viewport.palette()
+            filter_palette.setColor(
+                QtGui.QPalette.PlaceholderText,
+                _Cache.get_placeholder_color()
+            )
+            viewport.setPalette(filter_palette)
+
+
+class MarkdownLabel(QtWidgets.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Enable word wrap by default
+        self.setWordWrap(True)
+
+        text_format_available = hasattr(QtCore.Qt, "MarkdownText")
+        if text_format_available:
+            self.setTextFormat(QtCore.Qt.MarkdownText)
+
+        self._text_format_available = text_format_available
+
+        self.setText(self.text())
+
+    def setText(self, text):
+        if not self._text_format_available:
+            text = self._md_to_html(text)
+        super().setText(text)
+
+    @staticmethod
+    def _md_to_html(text):
+        if markdown is None:
+            # This does add style definition to the markdown which does not
+            #   feel natural in the UI (but still better than raw MD).
+            doc = QtGui.QTextDocument()
+            doc.setMarkdown(text)
+            return doc.toHtml()
+        return markdown.markdown(text)
 
 
 class ElideLabel(QtWidgets.QLabel):
@@ -356,7 +418,7 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
     """QTextEdit which does not have sroll area but expands height."""
 
     def __init__(self, parent=None):
-        super(ExpandingTextEdit, self).__init__(parent)
+        super().__init__(parent)
 
         size_policy = self.sizePolicy()
         size_policy.setHeightForWidth(True)
@@ -379,16 +441,22 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
         margins = self.contentsMargins()
 
         document_width = 0
-        if width >= margins.left() + margins.right():
-            document_width = width - margins.left() - margins.right()
+        margins_size = margins.left() + margins.right()
+        if width >= margins_size:
+            document_width = width - margins_size
 
         document = self.document().clone()
         document.setTextWidth(document_width)
 
-        return margins.top() + document.size().height() + margins.bottom()
+        return math.ceil(
+            margins.top()
+            + document.size().height()
+            + margins.bottom()
+            + 2
+        )
 
     def sizeHint(self):
-        width = super(ExpandingTextEdit, self).sizeHint().width()
+        width = super().sizeHint().width()
         return QtCore.QSize(width, self.heightForWidth(width))
 
 
@@ -398,7 +466,7 @@ class BaseClickableFrame(QtWidgets.QFrame):
     Callback is defined by overriding `_mouse_release_callback`.
     """
     def __init__(self, parent):
-        super(BaseClickableFrame, self).__init__(parent)
+        super().__init__(parent)
 
         self._mouse_pressed = False
 
@@ -406,17 +474,23 @@ class BaseClickableFrame(QtWidgets.QFrame):
         pass
 
     def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.isAccepted():
+            return
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(BaseClickableFrame, self).mousePressEvent(event)
+            event.accept()
 
     def mouseReleaseEvent(self, event):
-        if self._mouse_pressed:
-            self._mouse_pressed = False
-            if self.rect().contains(event.pos()):
-                self._mouse_release_callback()
+        pressed, self._mouse_pressed = self._mouse_pressed, False
+        super().mouseReleaseEvent(event)
+        if event.isAccepted():
+            return
 
-        super(BaseClickableFrame, self).mouseReleaseEvent(event)
+        accepted = pressed and self.rect().contains(event.pos())
+        if accepted:
+            event.accept()
+            self._mouse_release_callback()
 
 
 class ClickableFrame(BaseClickableFrame):
@@ -431,15 +505,15 @@ class ClickableLabel(QtWidgets.QLabel):
     """Label that catch left mouse click and can trigger 'clicked' signal."""
     clicked = QtCore.Signal()
 
-    def __init__(self, parent):
-        super(ClickableLabel, self).__init__(parent)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self._mouse_pressed = False
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(ClickableLabel, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -447,7 +521,7 @@ class ClickableLabel(QtWidgets.QLabel):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(ClickableLabel, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
 
 class ExpandBtnLabel(QtWidgets.QLabel):
@@ -540,11 +614,36 @@ class ClassicExpandBtnLabel(ExpandBtnLabel):
     right_arrow_path = get_style_image_path("right_arrow")
     down_arrow_path = get_style_image_path("down_arrow")
 
+    def _normalize_pixmap(self, pixmap):
+        if pixmap.width() == pixmap.height():
+            return pixmap
+        width = pixmap.width()
+        height = pixmap.height()
+        size = max(width, height)
+        pos_x = 0
+        pos_y = 0
+        if width > height:
+            pos_y = (size - height) // 2
+        else:
+            pos_x = (size - width) // 2
+
+        new_pix = QtGui.QPixmap(size, size)
+        new_pix.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(new_pix)
+        render_hints = (
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        painter.setRenderHints(render_hints)
+        painter.drawPixmap(QtCore.QPoint(pos_x, pos_y), pixmap)
+        painter.end()
+        return new_pix
+
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(self.right_arrow_path)
+        return self._normalize_pixmap(QtGui.QPixmap(self.right_arrow_path))
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(self.down_arrow_path)
+        return self._normalize_pixmap(QtGui.QPixmap(self.down_arrow_path))
 
 
 class ClassicExpandBtn(ExpandBtn):
@@ -649,7 +748,7 @@ class PixmapLabel(QtWidgets.QLabel):
 
     def resizeEvent(self, event):
         self._set_resized_pix()
-        super(PixmapLabel, self).resizeEvent(event)
+        super().resizeEvent(event)
 
 
 class PixmapButtonPainter(QtWidgets.QWidget):
@@ -697,8 +796,6 @@ class PixmapButtonPainter(QtWidgets.QWidget):
             QtGui.QPainter.Antialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-            render_hints |= QtGui.QPainter.HighQualityAntialiasing
 
         painter.setRenderHints(render_hints)
         if self._cached_pixmap is None:
@@ -768,24 +865,26 @@ class OptionalMenu(QtWidgets.QMenu):
     def mouseReleaseEvent(self, event):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())
-        if active and active.use_option:
+        if isinstance(active, OptionalAction) and active.use_option:
             option = active.widget.option
             if option.is_hovered(event.globalPos()):
                 option.clicked.emit()
-        super(OptionalMenu, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         """Add highlight to active action"""
         active = self.actionAt(event.pos())
         for action in self.actions():
-            action.set_highlight(action is active, event.globalPos())
-        super(OptionalMenu, self).mouseMoveEvent(event)
+            if isinstance(action, OptionalAction):
+                action.set_highlight(action is active, event.globalPos())
+        super().mouseMoveEvent(event)
 
     def leaveEvent(self, event):
         """Remove highlight from all actions"""
         for action in self.actions():
-            action.set_highlight(False)
-        super(OptionalMenu, self).leaveEvent(event)
+            if isinstance(action, OptionalAction):
+                action.set_highlight(False)
+        super().leaveEvent(event)
 
 
 class OptionalAction(QtWidgets.QWidgetAction):
@@ -797,7 +896,7 @@ class OptionalAction(QtWidgets.QWidgetAction):
     """
 
     def __init__(self, label, icon, use_option, parent):
-        super(OptionalAction, self).__init__(parent)
+        super().__init__(parent)
         self.label = label
         self.icon = icon
         self.use_option = use_option
@@ -858,7 +957,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
     """Main widget class for `OptionalAction`"""
 
     def __init__(self, label, parent=None):
-        super(OptionalActionWidget, self).__init__(parent)
+        super().__init__(parent)
 
         body_widget = QtWidgets.QWidget(self)
         body_widget.setObjectName("OptionalActionBody")
@@ -1098,7 +1197,7 @@ class SquareButton(QtWidgets.QPushButton):
     """
 
     def __init__(self, *args, **kwargs):
-        super(SquareButton, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         sp = self.sizePolicy()
         sp.setVerticalPolicy(QtWidgets.QSizePolicy.Minimum)
@@ -1107,17 +1206,17 @@ class SquareButton(QtWidgets.QPushButton):
         self._ideal_width = None
 
     def showEvent(self, event):
-        super(SquareButton, self).showEvent(event)
+        super().showEvent(event)
         self._ideal_width = self.height()
         self.updateGeometry()
 
     def resizeEvent(self, event):
-        super(SquareButton, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._ideal_width = self.height()
         self.updateGeometry()
 
     def sizeHint(self):
-        sh = super(SquareButton, self).sizeHint()
+        sh = super().sizeHint()
         ideal_width = self._ideal_width
         if ideal_width is None:
             ideal_width = sh.height()

@@ -1,4 +1,6 @@
+from __future__ import annotations
 import collections
+from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
@@ -13,6 +15,8 @@ from ayon_core.tools.common_models import (
 from .models import RecursiveSortFilterProxyModel
 from .views import TreeView
 from .lib import RefreshThread, get_qt_icon
+from .widgets import PlaceholderLineEdit
+from .nice_checkbox import NiceCheckbox
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -33,7 +37,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
-        super(FoldersQtModel, self).__init__()
+        super().__init__()
+
+        self.setColumnCount(1)
+        self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
 
         self._controller = controller
         self._items_by_id = {}
@@ -334,6 +341,31 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self.refreshed.emit()
 
 
+class FoldersProxyModel(RecursiveSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
+        self._folder_ids_filter = None
+
+    def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
+        if self._folder_ids_filter == folder_ids:
+            return
+        self._folder_ids_filter = folder_ids
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, row, parent_index):
+        if self._folder_ids_filter is not None:
+            if not self._folder_ids_filter:
+                return False
+            source_index = self.sourceModel().index(row, 0, parent_index)
+            folder_id = source_index.data(FOLDER_ID_ROLE)
+            if folder_id not in self._folder_ids_filter:
+                return False
+        return super().filterAcceptsRow(row, parent_index)
+
+
 class FoldersWidget(QtWidgets.QWidget):
     """Folders widget.
 
@@ -369,13 +401,13 @@ class FoldersWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller, parent, handle_expected_selection=False):
-        super(FoldersWidget, self).__init__(parent)
+        super().__init__(parent)
 
         folders_view = TreeView(self)
         folders_view.setHeaderHidden(True)
 
         folders_model = FoldersQtModel(controller)
-        folders_proxy_model = RecursiveSortFilterProxyModel()
+        folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -445,6 +477,18 @@ class FoldersWidget(QtWidgets.QWidget):
         self._folders_proxy_model.setFilterFixedString(name)
         if name:
             self._folders_view.expandAll()
+
+    def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            folder_ids (list[str]): The list of folder ids.
+
+        """
+        self._folders_proxy_model.set_folder_ids_filter(folder_ids)
+
+    def set_header_visible(self, visible: bool):
+        self._folders_view.setHeaderHidden(not visible)
 
     def refresh(self):
         """Refresh folders model.
@@ -754,3 +798,53 @@ class SimpleFoldersWidget(FoldersWidget):
             event (Event): Triggered event.
         """
         pass
+
+
+class FoldersFiltersWidget(QtWidgets.QWidget):
+    """Helper widget for most commonly used filters in context selection."""
+    text_changed = QtCore.Signal(str)
+    my_tasks_changed = QtCore.Signal(bool)
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+
+        folders_filter_input = PlaceholderLineEdit(self)
+        folders_filter_input.setPlaceholderText("Folder name filter...")
+
+        my_tasks_tooltip = (
+            "Filter folders and task to only those you are assigned to."
+        )
+        my_tasks_label = QtWidgets.QLabel("My tasks", self)
+        my_tasks_label.setToolTip(my_tasks_tooltip)
+
+        my_tasks_checkbox = NiceCheckbox(self)
+        my_tasks_checkbox.setChecked(False)
+        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        layout.addWidget(folders_filter_input, 1)
+        layout.addWidget(my_tasks_label, 0)
+        layout.addWidget(my_tasks_checkbox, 0)
+
+        folders_filter_input.textChanged.connect(self.text_changed)
+        my_tasks_checkbox.stateChanged.connect(self._on_my_tasks_change)
+
+        self._folders_filter_input = folders_filter_input
+        self._my_tasks_checkbox = my_tasks_checkbox
+
+    def is_my_tasks_checked(self) -> bool:
+        return self._my_tasks_checkbox.isChecked()
+
+    def text(self) -> str:
+        return self._folders_filter_input.text()
+
+    def set_text(self, text: str) -> None:
+        self._folders_filter_input.setText(text)
+
+    def set_my_tasks_checked(self, checked: bool) -> None:
+        self._my_tasks_checkbox.setChecked(checked)
+
+    def _on_my_tasks_change(self, _state: int) -> None:
+        self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())

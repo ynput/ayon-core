@@ -1,4 +1,5 @@
 from pydantic import validator
+from typing import Any
 
 from ayon_server.settings import (
     BaseSettingsModel,
@@ -7,9 +8,23 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
-
+from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
+
+
+def _handle_missing_frames_enum():
+    return [
+        {"value": "closest_existing", "label": "Use closest existing"},
+        {"value": "blank", "label": "Generate blank frame"},
+        {"value": "previous_version", "label": "Use previous version"},
+        {"value": "only_rendered", "label": "Use only rendered"},
+    ]
+
+
+class EnabledModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
 
 
 class ValidateBaseModel(BaseSettingsModel):
@@ -59,13 +74,96 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
+def usd_contribution_layer_types():
+    return [
+        {"value": "asset", "label": "Asset"},
+        {"value": "shot", "label": "Shot"},
+    ]
+
+
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
-    name: str = SettingsField(title="Name")
-    order: str = SettingsField(
+    name: str = SettingsField(
+        default="",
+        regex="[A-Za-z0-9_-]+",
+        title="Name")
+    scope: list[str] = SettingsField(
+        # This should actually be returned from a callable to `default_factory`
+        # because lists are mutable. However, the frontend can't interpret
+        # the callable. It will fail to apply it as the default. Specifying
+        # this default directly did not show any ill side effects.
+        default=["asset", "shot"],
+        title="Scope",
+        min_items=1,
+        enum_resolver=usd_contribution_layer_types)
+    order: int = SettingsField(
+        default=0,
         title="Order",
-        description="Higher order means a higher strength and stacks the "
-                    "layer on top.")
+        description=(
+            "Higher order means a higher strength and stacks the layer on top."
+        )
+    )
+
+
+class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
+    """Profiles to define instance attribute defaults for USD contribution."""
+    _layout = "expanded"
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        description=(
+            "The product types to match this profile to. When matched, the"
+            " settings below would apply to the instance as default"
+            " attributes."
+        ),
+        section="Filter"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
+    )
+    contribution_enabled: bool = SettingsField(
+        True,
+        title="Contribution Enabled (default)",
+        description=(
+            "The default state for USD Contribution being marked enabled or"
+            " disabled for this profile."
+        ),
+        section="Instance attribute defaults",
+    )
+    contribution_layer: str = SettingsField(
+        "",
+        title="Contribution Department Layer",
+        description=(
+            "The default contribution layer to apply the contribution to when"
+            " matching this profile. The layer name should be in the"
+            " 'Department Layer Orders' list to get a sensible order."
+        ),
+    )
+    contribution_apply_as_variant: bool = SettingsField(
+        True,
+        title="Apply as variant",
+        description=(
+            "The default 'Apply as variant' state for instances matching this"
+            " profile. Usually enabled for asset contributions and disabled"
+            " for shot contributions."
+        ),
+    )
+    contribution_target_product: str = SettingsField(
+        "usdAsset",
+        title="Target Product",
+        description=(
+            "The default destination product name to apply the contribution to"
+            " when matching this profile."
+            " Usually e.g. 'usdAsset' or 'usdShot'."
+        ),
+    )
 
 
 class CollectUSDLayerContributionsModel(BaseSettingsModel):
@@ -77,10 +175,90 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
             "ordering inside the USD contribution workflow."
         )
     )
+    profiles: list[CollectUSDLayerContributionsProfileModel] = SettingsField(
+        default_factory=list,
+        title="Profiles",
+        description=(
+            "Define attribute defaults for USD Contributions on publish"
+            " instances."
+        )
+    )
 
     @validator("contribution_layers")
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
+        return value
+
+
+class ResolutionOptionsModel(BaseSettingsModel):
+    _layout = "compact"
+    width: int = SettingsField(
+        1920,
+        ge=0,
+        le=100000,
+        title="Width",
+        description=(
+            "Width resolution number value"),
+        placeholder="Width"
+    )
+    height: int = SettingsField(
+        1080,
+        title="Height",
+        ge=0,
+        le=100000,
+        description=(
+            "Height resolution number value"),
+        placeholder="Height"
+    )
+    pixel_aspect: float = SettingsField(
+        1.0,
+        title="Pixel aspect",
+        ge=0.0,
+        le=100000.0,
+        description=(
+            "Pixel Aspect resolution decimal number value"),
+        placeholder="Pixel aspect"
+    )
+
+
+def ensure_unique_resolution_option(
+        objects: list[Any], field_name: str | None = None) -> None:  # noqa: C901
+    """Ensure a list of objects have unique option attributes.
+
+    This function checks if the list of objects has unique 'width',
+    'height' and 'pixel_aspect' properties.
+    """
+    options = set()
+    for obj in objects:
+        item_test_text = f"{obj.width}x{obj.height}x{obj.pixel_aspect}"
+        if item_test_text in options:
+            raise BadRequestException(
+                f"Duplicate option '{item_test_text}'")
+
+        options.add(item_test_text)
+
+
+class CollectExplicitResolutionModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        description=(
+            "Only activate the attribute for following product types."
+        )
+    )
+    options: list[ResolutionOptionsModel] = SettingsField(
+        default_factory=list,
+        title="Resolution choices",
+        description=(
+            "Available resolution choices to be displayed in "
+            "the publishers attribute."
+        )
+    )
+
+    @validator("options")
+    def validate_unique_resolution_options(cls, value):
+        ensure_unique_resolution_option(value)
         return value
 
 
@@ -91,6 +269,19 @@ class AyonEntityURIModel(BaseSettingsModel):
             "When enabled the USD paths written using the contribution "
             "workflow will use ayon entity URIs instead of resolved published "
             "paths. You can only load these if you use the AYON USD Resolver."
+        )
+    )
+
+
+class ExtractUSDLayerContributionModel(AyonEntityURIModel):
+    enforce_default_prim: bool = SettingsField(
+        title="Always set default prim to folder name.",
+        description=(
+            "When enabled ignore any default prim specified on older "
+            "published versions of a layer and always override it to the "
+            "AYON standard default prim. When disabled, preserve default prim "
+            "on the layer and then only the initial version would be setting "
+            "the AYON standard default prim."
         )
     )
 
@@ -184,7 +375,7 @@ class ResizeModel(BaseSettingsModel):
         title="Type",
         description="Type of resizing",
         enum_resolver=lambda: _resize_types_enum,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="source"
     )
 
@@ -217,7 +408,7 @@ class ExtractThumbnailOIIODefaultsModel(BaseSettingsModel):
         title="Type",
         description="Transcoding type",
         enum_resolver=lambda: _thumbnail_oiio_transcoding_type,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="colorspace"
     )
 
@@ -231,24 +422,30 @@ class ExtractThumbnailOIIODefaultsModel(BaseSettingsModel):
     )
 
 
-class ExtractThumbnailModel(BaseSettingsModel):
-    _isGroup = True
-    enabled: bool = SettingsField(True)
+class ExtractThumbnailProfileModel(BaseSettingsModel):
+    product_types: list[str] = SettingsField(
+        default_factory=list, title="Product types"
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list, title="Task types", enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list, title="Task names"
+    )
     product_names: list[str] = SettingsField(
-        default_factory=list,
-        title="Product names"
+        default_factory=list, title="Product names"
     )
     integrate_thumbnail: bool = SettingsField(
-        True,
-        title="Integrate Thumbnail Representation"
+        True, title="Integrate Thumbnail Representation"
     )
     target_size: ResizeModel = SettingsField(
-        default_factory=ResizeModel,
-        title="Target size"
+        default_factory=ResizeModel, title="Target size"
     )
     background_color: ColorRGBA_uint8 = SettingsField(
-        (0, 0, 0, 0.0),
-        title="Background color"
+        (0, 0, 0, 0.0), title="Background color"
     )
     duration_split: float = SettingsField(
         0.5,
@@ -265,16 +462,60 @@ class ExtractThumbnailModel(BaseSettingsModel):
     )
 
 
+class ExtractThumbnailModel(BaseSettingsModel):
+    _isGroup = True
+    enabled: bool = SettingsField(True)
+
+    profiles: list[ExtractThumbnailProfileModel] = SettingsField(
+        default_factory=list, title="Profiles"
+    )
+
+
 def _extract_oiio_transcoding_type():
     return [
         {"value": "colorspace", "label": "Use Colorspace"},
-        {"value": "display", "label": "Use Display&View"}
+        {"value": "display_view", "label": "Use Display&View"}
     ]
 
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
     additional_command_args: list[str] = SettingsField(
-        default_factory=list, title="Arguments")
+        default_factory=list,
+        title="Arguments",
+        description="Additional command line arguments for *oiiotool*."
+    )
+
+
+class UseDisplayViewModel(BaseSettingsModel):
+    _layout = "expanded"
+    display: str = SettingsField(
+        "",
+        title="Target Display",
+        description=(
+            "Display of the target transform. If left empty, the"
+            " scene Display value will be used."
+        )
+    )
+    view: str = SettingsField(
+        "",
+        title="Target View",
+        description=(
+            "View of the target transform. If left empty, the"
+            " scene View value will be used."
+        )
+    )
+
+
+class ExtractThumbnailFromSourceModel(BaseSettingsModel):
+    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
+    enabled: bool = SettingsField(True)
+
+    target_size: ResizeModel = SettingsField(
+        default_factory=ResizeModel, title="Target size"
+    )
+    background_color: ColorRGBA_uint8 = SettingsField(
+        (0, 0, 0, 0.0), title="Background color"
+    )
 
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
@@ -285,22 +526,60 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         description="Output name (no space)",
         regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
     )
-    extension: str = SettingsField("", title="Extension")
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
     transcoding_type: str = SettingsField(
         "colorspace",
         title="Transcoding type",
-        enum_resolver=_extract_oiio_transcoding_type
+        enum_resolver=_extract_oiio_transcoding_type,
+        conditional_enum=True,
+        description=(
+            "Select the transcoding type for your output, choosing either "
+            "*Colorspace* or *Display&View* transform."
+            " Only one option can be applied per output definition."
+        ),
     )
-    colorspace: str = SettingsField("", title="Colorspace")
-    display: str = SettingsField("", title="Display")
-    view: str = SettingsField("", title="View")
+    colorspace: str = SettingsField(
+        "",
+        title="Target Colorspace",
+        description=(
+            "Choose the desired target colorspace, confirming its availability"
+            " in the active OCIO config. If left empty, the"
+            " source colorspace value will be used, resulting in no"
+            " colorspace conversion."
+        )
+    )
+    display_view: UseDisplayViewModel = SettingsField(
+        title="Use Display&View",
+        default_factory=UseDisplayViewModel
+    )
+
     oiiotool_args: OIIOToolArgumentsModel = SettingsField(
         default_factory=OIIOToolArgumentsModel,
         title="OIIOtool arguments")
 
-    tags: list[str] = SettingsField(default_factory=list, title="Tags")
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
     custom_tags: list[str] = SettingsField(
-        default_factory=list, title="Custom Tags"
+        default_factory=list,
+        title="Custom Tags",
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
     )
 
 
@@ -328,7 +607,13 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
     )
     delete_original: bool = SettingsField(
         True,
-        title="Delete Original Representation"
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
     )
     outputs: list[ExtractOIIOTranscodeOutputModel] = SettingsField(
         default_factory=list,
@@ -342,8 +627,121 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
 
 
 class ExtractOIIOTranscodeModel(BaseSettingsModel):
+    """Color conversion transcoding using OIIO for images mostly aimed at
+    transcoding for reviewables (it'll process and output only RGBA channels).
+    """
     enabled: bool = SettingsField(True)
     profiles: list[ExtractOIIOTranscodeProfileModel] = SettingsField(
+        default_factory=list, title="Profiles"
+    )
+
+
+class ExtractOIIOPostProcessOutputModel(BaseSettingsModel):
+    _layout = "expanded"
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Output name (no space)",
+        regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
+    )
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
+    input_arguments: list[str] = SettingsField(
+        default_factory=list,
+        title="Input arguments",
+        description="Arguments passed prior to the input file argument.",
+    )
+    output_arguments: list[str] = SettingsField(
+        default_factory=list,
+        title="Output arguments",
+        description="Arguments passed prior to the -o argument.",
+    )
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
+    custom_tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Custom Tags",
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
+    )
+
+
+class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
+    host_names: list[str] = SettingsField(
+        section="Profile",
+        default_factory=list,
+        title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types"
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names"
+    )
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+    )
+    representation_exts: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation extensions",
+    )
+    delete_original: bool = SettingsField(
+        True,
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
+        section="Conversion Outputs",
+    )
+    outputs: list[ExtractOIIOPostProcessOutputModel] = SettingsField(
+        default_factory=list,
+        title="Output Definitions",
+    )
+
+    @validator("outputs")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
+class ExtractOIIOPostProcessModel(BaseSettingsModel):
+    """Process representation images with `oiiotool` on publish.
+
+    This could be used to convert images to different formats, convert to
+    scanline images or flatten deep images.
+    """
+    enabled: bool = SettingsField(True)
+    profiles: list[ExtractOIIOPostProcessProfileModel] = SettingsField(
         default_factory=list, title="Profiles"
     )
 
@@ -371,7 +769,7 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
 def extract_review_filter_enum():
     return [
         {
-            "value": "everytime",
+            "value": "everytime",  # codespell:ignore everytime
             "label": "Always"
         },
         {
@@ -393,10 +791,10 @@ class ExtractReviewFilterModel(BaseSettingsModel):
         default_factory=list, title="Custom Tags"
     )
     single_frame_filter: str = SettingsField(
-        "everytime",
+        "everytime",  # codespell:ignore everytime
         description=(
-            "Use output <b>always</b> / only if input <b>is 1 frame</b>"
-            " image / only if has <b>2+ frames</b> or <b>is video</b>"
+            "Use output **always** / only if input **is 1 frame**"
+            " image / only if has **2+ frames** or **is video**"
         ),
         enum_resolver=extract_review_filter_enum
     )
@@ -502,6 +900,12 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         default_factory=ExtractReviewLetterBox,
         title="Letter Box"
     )
+    fill_missing_frames: str = SettingsField(
+        title="Handle missing frames",
+        default="closest_existing",
+        description="How to handle gaps in sequence frame ranges.",
+        enum_resolver=_handle_missing_frames_enum
+    )
 
     @validator("name")
     def validate_name(cls, value):
@@ -517,6 +921,11 @@ class ExtractReviewProfileModel(BaseSettingsModel):
     # TODO use hosts enum
     hosts: list[str] = SettingsField(
         default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
     )
     outputs: list[ExtractReviewOutputDefModel] = SettingsField(
         default_factory=list, title="Output Definitions"
@@ -749,7 +1158,11 @@ class IntegrateANTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
 
 
 class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
@@ -770,7 +1183,11 @@ class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="hero")
+    )
 
 
 class IntegrateHeroVersionModel(BaseSettingsModel):
@@ -789,9 +1206,23 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
                     "hero versions.")
 
 
+class CollectRenderedFilesModel(BaseSettingsModel):
+    remove_files: bool = SettingsField(
+        False,
+        title="Remove rendered files",
+        description=(
+            "Remove rendered files and metadata json on publish.\n\n"
+            "Note that when enabled but the render is to a configured "
+            "persistent staging directory the files will not be removed. "
+            "However with this disabled the files will **not** be removed in "
+            "either case."
+        )
+    )
+
+
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(
+    paterns: list[str] = SettingsField(  # codespell:ignore paterns
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -828,9 +1259,15 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
     )
-    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
-        default_factory=CollectUSDLayerContributionsModel,
-        title="Collect USD Layer Contributions",
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = (
+        SettingsField(
+            default_factory=CollectUSDLayerContributionsModel,
+            title="Collect USD Layer Contributions",
+        )
+    )
+    CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
+        default_factory=CollectExplicitResolutionModel,
+        title="Collect Explicit Resolution"
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -856,9 +1293,23 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractThumbnailModel,
         title="Extract Thumbnail"
     )
+    ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(  # noqa: E501
+        default_factory=ExtractThumbnailFromSourceModel,
+        title="Extract Thumbnail from source",
+        description=(
+            "Extract thumbnails from explicit file set in "
+            "instance.data['thumbnailSource'] using oiiotool"
+            " or ffmpeg."
+            "Used when artist provided thumbnail source."
+        )
+    )
     ExtractOIIOTranscode: ExtractOIIOTranscodeModel = SettingsField(
         default_factory=ExtractOIIOTranscodeModel,
         title="Extract OIIO Transcode"
+    )
+    ExtractOIIOPostProcess: ExtractOIIOPostProcessModel = SettingsField(
+        default_factory=ExtractOIIOPostProcessModel,
+        title="Extract OIIO Post Process"
     )
     ExtractReview: ExtractReviewModel = SettingsField(
         default_factory=ExtractReviewModel,
@@ -872,9 +1323,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=AyonEntityURIModel,
         title="Extract USD Asset Contribution",
     )
-    ExtractUSDLayerContribution: AyonEntityURIModel = SettingsField(
-        default_factory=AyonEntityURIModel,
-        title="Extract USD Layer Contribution",
+    ExtractUSDLayerContribution: ExtractUSDLayerContributionModel = (
+        SettingsField(
+            default_factory=ExtractUSDLayerContributionModel,
+            title="Extract USD Layer Contribution",
+        )
     )
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
@@ -887,6 +1340,21 @@ class PublishPuginsModel(BaseSettingsModel):
     IntegrateHeroVersion: IntegrateHeroVersionModel = SettingsField(
         default_factory=IntegrateHeroVersionModel,
         title="Integrate Hero Version"
+    )
+    AttachReviewables: EnabledModel = SettingsField(
+        default_factory=EnabledModel,
+        title="Attach Reviewables",
+        description=(
+            "When enabled, expose an 'Attach Reviewables' attribute on review"
+            " and render instances in the publisher to allow including the"
+            " media to be attached to another instance.\n\n"
+            "If a reviewable is attached to another instance it will not be "
+            "published as a render/review product of its own."
+        )
+    )
+    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
+        default_factory=CollectRenderedFilesModel,
+        title="Clean up farm rendered files"
     )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
@@ -936,18 +1404,67 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "contribution_layers": [
             # Asset layers
-            {"name": "model", "order": 100},
-            {"name": "assembly", "order": 150},
-            {"name": "groom", "order": 175},
-            {"name": "look", "order": 300},
-            {"name": "rig", "order": 100},
+            {"name": "model", "order": 100, "scope": ["asset"]},
+            {"name": "assembly", "order": 150, "scope": ["asset"]},
+            {"name": "groom", "order": 175, "scope": ["asset"]},
+            {"name": "look", "order": 200, "scope": ["asset"]},
+            {"name": "rig", "order": 300, "scope": ["asset"]},
             # Shot layers
-            {"name": "layout", "order": 200},
-            {"name": "animation", "order": 300},
-            {"name": "simulation", "order": 400},
-            {"name": "fx", "order": 500},
-            {"name": "lighting", "order": 600},
+            {"name": "layout", "order": 200, "scope": ["shot"]},
+            {"name": "animation", "order": 300, "scope": ["shot"]},
+            {"name": "simulation", "order": 400, "scope": ["shot"]},
+            {"name": "fx", "order": 500, "scope": ["shot"]},
+            {"name": "lighting", "order": 600, "scope": ["shot"]},
         ],
+        "profiles": [
+            {
+                "product_types": ["model"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "model",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["look"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "look",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["groom"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "groom",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["rig"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "rig",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["usd"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "assembly",
+                "contribution_apply_as_variant": False,
+                "contribution_target_product": "usdShot"
+            },
+        ]
+    },
+    "CollectExplicitResolution": {
+        "enabled": True,
+        "product_types": [
+            "shot"
+        ],
+        "options": []
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
@@ -964,7 +1481,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
-                    "substancepainter"
+                    "substancepainter",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": False,
@@ -984,7 +1502,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "harmony",
                     "photoshop",
                     "aftereffects",
-                    "fusion"
+                    "fusion",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": True,
@@ -998,24 +1517,46 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractThumbnail": {
         "enabled": True,
-        "product_names": [],
-        "integrate_thumbnail": True,
+        "profiles": [
+            {
+                "product_types": [],
+                "host_names": [],
+                "task_types": [],
+                "task_names": [],
+                "product_names": [],
+                "integrate_thumbnail": True,
+                "target_size": {
+                    "type": "source"
+                },
+                "duration_split": 0.5,
+                "oiiotool_defaults": {
+                    "type": "colorspace",
+                    "colorspace": "color_picking"
+                },
+                "ffmpeg_args": {
+                    "input": [
+                        "-apply_trc gamma22"
+                    ],
+                    "output": []
+                }
+            }
+        ]
+    },
+    "ExtractThumbnailFromSource": {
+        "enabled": True,
         "target_size": {
-            "type": "source"
+            "type": "resize",
+            "resize": {
+                "width": 300,
+                "height": 170
+            }
         },
-        "duration_split": 0.5,
-        "oiiotool_defaults": {
-            "type": "colorspace",
-            "colorspace": "color_picking"
-        },
-        "ffmpeg_args": {
-            "input": [
-                "-apply_trc gamma22"
-            ],
-            "output": []
-        }
     },
     "ExtractOIIOTranscode": {
+        "enabled": True,
+        "profiles": []
+    },
+    "ExtractOIIOPostProcess": {
         "enabled": True,
         "profiles": []
     },
@@ -1025,6 +1566,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": [],
                 "hosts": [],
+                "task_types": [],
                 "outputs": [
                     {
                         "name": "png",
@@ -1064,7 +1606,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     },
                     {
                         "name": "h264",
@@ -1114,7 +1657,107 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
+                    }
+                ]
+            },
+            {
+                "product_types": [],
+                "hosts": ["substancepainter"],
+                "task_types": [],
+                "outputs": [
+                    {
+                        "name": "png",
+                        "ext": "png",
+                        "tags": [
+                            "ftrackreview",
+                            "kitsureview",
+                            "webreview"
+                        ],
+                        "burnins": [],
+                        "ffmpeg_args": {
+                            "video_filters": [],
+                            "audio_filters": [],
+                            "input": [],
+                            "output": []
+                        },
+                        "filter": {
+                            "families": [
+                                "render",
+                                "review",
+                                "ftrack"
+                            ],
+                            "product_names": [],
+                            "custom_tags": [],
+                            "single_frame_filter": "single_frame"
+                        },
+                        "overscan_crop": "",
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
+                        "width": 1920,
+                        "height": 1080,
+                        "scale_pixel_aspect": True,
+                        "bg_color": [0, 0, 0, 0.0],
+                        "letter_box": {
+                            "enabled": False,
+                            "ratio": 0.0,
+                            "fill_color": [0, 0, 0, 1.0],
+                            "line_thickness": 0,
+                            "line_color": [255, 0, 0, 1.0]
+                        },
+                        "fill_missing_frames": "only_rendered"
+                    },
+                    {
+                        "name": "h264",
+                        "ext": "mp4",
+                        "tags": [
+                            "burnin",
+                            "ftrackreview",
+                            "kitsureview",
+                            "webreview"
+                        ],
+                        "burnins": [],
+                        "ffmpeg_args": {
+                            "video_filters": [],
+                            "audio_filters": [],
+                            "input": [
+                                "-apply_trc gamma22"
+                            ],
+                            "output": [
+                                "-pix_fmt yuv420p",
+                                "-crf 18",
+                                "-c:a aac",
+                                "-b:a 192k",
+                                "-g 1",
+                                "-movflags faststart"
+                            ]
+                        },
+                        "filter": {
+                            "families": [
+                                "render",
+                                "review",
+                                "ftrack"
+                            ],
+                            "product_names": [],
+                            "custom_tags": [],
+                            "single_frame_filter": "multi_frame"
+                        },
+                        "overscan_crop": "",
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
+                        "width": 0,
+                        "height": 0,
+                        "scale_pixel_aspect": True,
+                        "bg_color": [0, 0, 0, 0.0],
+                        "letter_box": {
+                            "enabled": False,
+                            "ratio": 0.0,
+                            "fill_color": [0, 0, 0, 1.0],
+                            "line_thickness": 0,
+                            "line_color": [255, 0, 0, 1.0]
+                        },
+                        "fill_missing_frames": "only_rendered"
                     }
                 ]
             }
@@ -1150,7 +1793,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1176,7 +1821,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1191,6 +1838,7 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractUSDLayerContribution": {
         "use_ayon_entity_uri": False,
+        "enforce_default_prim": False,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,
@@ -1224,8 +1872,14 @@ DEFAULT_PUBLISH_VALUES = {
         ],
         "use_hardlinks": False
     },
+    "AttachReviewables": {
+        "enabled": True,
+    },
+    "CollectRenderedFiles": {
+        "remove_files": False
+    },
     "CleanUp": {
-        "paterns": [],
+        "paterns": [],  # codespell:ignore paterns
         "remove_temp_renders": False
     },
     "CleanUpFarm": {

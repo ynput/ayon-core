@@ -10,21 +10,35 @@ class OCIOEnvHook(PreLaunchHook):
     order = 0
     hosts = {
         "substancepainter",
+        "substancedesigner",
         "fusion",
         "blender",
         "aftereffects",
-        "3dsmax",
+        "max",
         "houdini",
         "maya",
         "nuke",
         "hiero",
         "resolve",
-        "openrv"
+        "openrv",
+        "cinema4d",
+        "silhouette",
+        "gaffer",
+        "loki",
     }
     launch_types = set()
 
     def execute(self):
         """Hook entry method."""
+
+        task_entity = self.data.get("task_entity")
+
+        if not task_entity:
+            self.log.info(
+                "Skipping OCIO Environment preparation."
+                "Task Entity is not available."
+            )
+            return
 
         folder_entity = self.data["folder_entity"]
 

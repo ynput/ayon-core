@@ -74,9 +74,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             otio_range (opentime.TimeRange): range to trim to
 
         """
-        # Not all hosts can import this module.
-        from ayon_core.pipeline.editorial import frames_to_seconds
-
         # create path to destination
         output_path = self._get_ffmpeg_output(input_file_path)
 
@@ -84,11 +81,8 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         command = get_ffmpeg_tool_args("ffmpeg")
 
         video_path = input_file_path
-        frame_start = otio_range.start_time.value
-        input_fps = otio_range.start_time.rate
-        frame_duration = otio_range.duration.value - 1
-        sec_start = frames_to_seconds(frame_start, input_fps)
-        sec_duration = frames_to_seconds(frame_duration, input_fps)
+        sec_start = otio_range.start_time.to_seconds()
+        sec_duration = otio_range.duration.to_seconds()
 
         # form command for rendering gap files
         command.extend([

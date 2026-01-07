@@ -1,12 +1,20 @@
+from __future__ import annotations
+
 import sys
 import traceback
 import inspect
 import collections
 import uuid
+from typing import Optional, Callable, Any
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem
+from ayon_core.lib import NestedCacheItem, Logger
+from ayon_core.pipeline.actions import (
+    LoaderActionsContext,
+    LoaderActionSelection,
+    SelectionEntitiesCache,
+)
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     ProductLoaderPlugin,
@@ -21,6 +29,7 @@ from ayon_core.pipeline.load import (
 from ayon_core.tools.loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"
+LOADER_PLUGIN_ID = "__loader_plugin__"
 NOT_SET = object()
 
 
@@ -42,6 +51,7 @@ class LoaderActionsModel:
     loaders_cache_lifetime = 30
 
     def __init__(self, controller):
+        self._log = Logger.get_logger(self.__class__.__name__)
         self._controller = controller
         self._current_context_project = NOT_SET
         self._loaders_by_identifier = NestedCacheItem(
@@ -50,6 +60,15 @@ class LoaderActionsModel:
             levels=1, lifetime=self.loaders_cache_lifetime)
         self._repre_loaders = NestedCacheItem(
             levels=1, lifetime=self.loaders_cache_lifetime)
+        self._loader_actions = LoaderActionsContext()
+
+        self._projects_cache = NestedCacheItem(levels=1, lifetime=60)
+        self._folders_cache = NestedCacheItem(levels=2, lifetime=300)
+        self._tasks_cache = NestedCacheItem(levels=2, lifetime=300)
+        self._products_cache = NestedCacheItem(levels=2, lifetime=300)
+        self._versions_cache = NestedCacheItem(levels=2, lifetime=1200)
+        self._representations_cache = NestedCacheItem(levels=2, lifetime=1200)
+        self._repre_parents_cache = NestedCacheItem(levels=2, lifetime=1200)
 
     def reset(self):
         """Reset the model with all cached items."""
@@ -58,64 +77,58 @@ class LoaderActionsModel:
         self._loaders_by_identifier.reset()
         self._product_loaders.reset()
         self._repre_loaders.reset()
+        self._loader_actions.reset()
 
-    def get_versions_action_items(self, project_name, version_ids):
-        """Get action items for given version ids.
+        self._folders_cache.reset()
+        self._tasks_cache.reset()
+        self._products_cache.reset()
+        self._versions_cache.reset()
+        self._representations_cache.reset()
+        self._repre_parents_cache.reset()
 
-        Args:
-            project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        version_context_by_id = {}
+        repre_context_by_id = {}
+        if entity_type == "representation":
+            (
+                version_context_by_id,
+                repre_context_by_id
+            ) = self._contexts_for_representations(project_name, entity_ids)
 
-        Returns:
-            list[ActionItem]: List of action items.
-        """
+        if entity_type == "version":
+            (
+                version_context_by_id,
+                repre_context_by_id
+            ) = self._contexts_for_versions(project_name, entity_ids)
 
-        (
+        action_items = self._get_action_items_for_contexts(
+            project_name,
             version_context_by_id,
             repre_context_by_id
-        ) = self._contexts_for_versions(
-            project_name,
-            version_ids
         )
-        return self._get_action_items_for_contexts(
+        action_items.extend(self._get_loader_action_items(
             project_name,
+            entity_ids,
+            entity_type,
             version_context_by_id,
-            repre_context_by_id
-        )
-
-    def get_representations_action_items(
-        self, project_name, representation_ids
-    ):
-        """Get action items for given representation ids.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            list[ActionItem]: List of action items.
-        """
-
-        (
-            product_context_by_id,
-            repre_context_by_id
-        ) = self._contexts_for_representations(
-            project_name,
-            representation_ids
-        )
-        return self._get_action_items_for_contexts(
-            project_name,
-            product_context_by_id,
-            repre_context_by_id
-        )
+            repre_context_by_id,
+        ))
+        return action_items
 
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         """Trigger action by identifier.
 
@@ -126,15 +139,21 @@ class LoaderActionsModel:
             happened.
 
         Args:
-            identifier (str): Loader identifier.
-            options (dict[str, Any]): Loader option values.
+            identifier (str): Plugin identifier.
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            selected_ids (set[str]): Selected entity ids.
+            selected_entity_type (str): Selected entity type.
+            data (Optional[dict[str, Any]]): Additional action item data.
+            options (dict[str, Any]): Loader option values.
+            form_values (dict[str, Any]): Form values.
 
+        """
         event_data = {
             "identifier": identifier,
+            "project_name": project_name,
+            "selected_ids": list(selected_ids),
+            "selected_entity_type": selected_entity_type,
+            "data": data,
             "id": uuid.uuid4().hex,
         }
         self._controller.emit_event(
@@ -142,24 +161,60 @@ class LoaderActionsModel:
             event_data,
             ACTIONS_MODEL_SENDER,
         )
-        loader = self._get_loader_by_identifier(project_name, identifier)
-        if representation_ids is not None:
-            error_info = self._trigger_representation_loader(
-                loader,
-                options,
-                project_name,
-                representation_ids,
+        if identifier != LOADER_PLUGIN_ID:
+            result = None
+            crashed = False
+            try:
+                result = self._loader_actions.execute_action(
+                    identifier=identifier,
+                    selection=LoaderActionSelection(
+                        project_name,
+                        selected_ids,
+                        selected_entity_type,
+                    ),
+                    data=data,
+                    form_values=form_values,
+                )
+
+            except Exception:
+                crashed = True
+                self._log.warning(
+                    f"Failed to execute action '{identifier}'",
+                    exc_info=True,
+                )
+
+            event_data["result"] = result
+            event_data["crashed"] = crashed
+            self._controller.emit_event(
+                "loader.action.finished",
+                event_data,
+                ACTIONS_MODEL_SENDER,
             )
-        elif version_ids is not None:
+            return
+
+        loader = self._get_loader_by_identifier(
+            project_name, data["loader"]
+        )
+        entity_type = data["entity_type"]
+        entity_ids = data["entity_ids"]
+        if entity_type == "version":
             error_info = self._trigger_version_loader(
                 loader,
                 options,
                 project_name,
-                version_ids,
+                entity_ids,
+            )
+        elif entity_type == "representation":
+            error_info = self._trigger_representation_loader(
+                loader,
+                options,
+                project_name,
+                entity_ids,
             )
         else:
             raise NotImplementedError(
-                "Invalid arguments to trigger action item")
+                f"Invalid entity type '{entity_type}' to trigger action item"
+            )
 
         event_data["error_info"] = error_info
         self._controller.emit_event(
@@ -274,28 +329,26 @@ class LoaderActionsModel:
         self,
         loader,
         contexts,
-        project_name,
-        folder_ids=None,
-        product_ids=None,
-        version_ids=None,
-        representation_ids=None,
+        entity_ids,
+        entity_type,
         repre_name=None,
     ):
         label = self._get_action_label(loader)
         if repre_name:
-            label = "{} ({})".format(label, repre_name)
+            label = f"{label} ({repre_name})"
         return ActionItem(
-            get_loader_identifier(loader),
+            LOADER_PLUGIN_ID,
+            data={
+                "entity_ids": entity_ids,
+                "entity_type": entity_type,
+                "loader": get_loader_identifier(loader),
+            },
             label=label,
+            group_label=None,
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
-            options=loader.get_options(contexts),
             order=loader.order,
-            project_name=project_name,
-            folder_ids=folder_ids,
-            product_ids=product_ids,
-            version_ids=version_ids,
-            representation_ids=representation_ids,
+            options=loader.get_options(contexts),
         )
 
     def _get_loaders(self, project_name):
@@ -322,7 +375,6 @@ class LoaderActionsModel:
         available_loaders = self._filter_loaders_by_tool_name(
             project_name, discover_loader_plugins(project_name)
         )
-
         repre_loaders = []
         product_loaders = []
         loaders_by_identifier = {}
@@ -340,6 +392,7 @@ class LoaderActionsModel:
         loaders_by_identifier_c.update_data(loaders_by_identifier)
         product_loaders_c.update_data(product_loaders)
         repre_loaders_c.update_data(repre_loaders)
+
         return product_loaders, repre_loaders
 
     def _get_loader_by_identifier(self, project_name, identifier):
@@ -348,15 +401,6 @@ class LoaderActionsModel:
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
         loaders_by_identifier = loaders_by_identifier_c.get_data()
         return loaders_by_identifier.get(identifier)
-
-    def _actions_sorter(self, action_item):
-        """Sort the Loaders by their order and then their name.
-
-        Returns:
-            tuple[int, str]: Sort keys.
-        """
-
-        return action_item.order, action_item.label
 
     def _contexts_for_versions(self, project_name, version_ids):
         """Get contexts for given version ids.
@@ -383,8 +427,8 @@ class LoaderActionsModel:
         if not project_name and not version_ids:
             return version_context_by_id, repre_context_by_id
 
-        version_entities = ayon_api.get_versions(
-            project_name, version_ids=version_ids
+        version_entities = self._get_versions(
+            project_name, version_ids
         )
         version_entities_by_id = {}
         version_entities_by_product_id = collections.defaultdict(list)
@@ -395,18 +439,18 @@ class LoaderActionsModel:
             version_entities_by_product_id[product_id].append(version_entity)
 
         _product_ids = set(version_entities_by_product_id.keys())
-        _product_entities = ayon_api.get_products(
-            project_name, product_ids=_product_ids
+        _product_entities = self._get_products(
+            project_name, _product_ids
         )
         product_entities_by_id = {p["id"]: p for p in _product_entities}
 
         _folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
-        _folder_entities = ayon_api.get_folders(
-            project_name, folder_ids=_folder_ids
+        _folder_entities = self._get_folders(
+            project_name, _folder_ids
         )
         folder_entities_by_id = {f["id"]: f for f in _folder_entities}
 
-        project_entity = ayon_api.get_project(project_name)
+        project_entity = self._get_project(project_name)
 
         for version_id, version_entity in version_entities_by_id.items():
             product_id = version_entity["productId"]
@@ -420,8 +464,15 @@ class LoaderActionsModel:
                 "version": version_entity,
             }
 
-        repre_entities = ayon_api.get_representations(
-            project_name, version_ids=version_ids)
+        all_repre_ids = set()
+        for repre_ids in self._get_repre_ids_by_version_ids(
+            project_name, version_ids
+        ).values():
+            all_repre_ids |= repre_ids
+
+        repre_entities = self._get_representations(
+            project_name, all_repre_ids
+        )
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
             version_entity = version_entities_by_id[version_id]
@@ -457,49 +508,54 @@ class LoaderActionsModel:
         Returns:
             tuple[list[dict[str, Any]], list[dict[str, Any]]]: Version and
                 representation contexts.
-        """
 
-        product_context_by_id = {}
+        """
+        version_context_by_id = {}
         repre_context_by_id = {}
         if not project_name and not repre_ids:
-            return product_context_by_id, repre_context_by_id
+            return version_context_by_id, repre_context_by_id
 
-        repre_entities = list(ayon_api.get_representations(
-            project_name, representation_ids=repre_ids
-        ))
+        repre_entities = self._get_representations(
+            project_name, repre_ids
+        )
         version_ids = {r["versionId"] for r in repre_entities}
-        version_entities = ayon_api.get_versions(
-            project_name, version_ids=version_ids
+        version_entities = self._get_versions(
+            project_name, version_ids
         )
         version_entities_by_id = {
             v["id"]: v for v in version_entities
         }
 
         product_ids = {v["productId"] for v in version_entities_by_id.values()}
-        product_entities = ayon_api.get_products(
-            project_name, product_ids=product_ids
+        product_entities = self._get_products(
+            project_name, product_ids
+
         )
         product_entities_by_id = {
             p["id"]: p for p in product_entities
         }
 
         folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
-        folder_entities = ayon_api.get_folders(
-            project_name, folder_ids=folder_ids
+        folder_entities = self._get_folders(
+            project_name, folder_ids
         )
         folder_entities_by_id = {
             f["id"]: f for f in folder_entities
         }
 
-        project_entity = ayon_api.get_project(project_name)
+        project_entity = self._get_project(project_name)
 
-        for product_id, product_entity in product_entities_by_id.items():
+        version_context_by_id = {}
+        for version_id, version_entity in version_entities_by_id.items():
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
-            product_context_by_id[product_id] = {
+            version_context_by_id[version_id] = {
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
+                "version": version_entity,
             }
 
         for repre_entity in repre_entities:
@@ -517,7 +573,125 @@ class LoaderActionsModel:
                 "version": version_entity,
                 "representation": repre_entity,
             }
-        return product_context_by_id, repre_context_by_id
+        return version_context_by_id, repre_context_by_id
+
+    def _get_project(self, project_name: str) -> dict[str, Any]:
+        cache = self._projects_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(ayon_api.get_project(project_name))
+        return cache.get_data()
+
+    def _get_folders(
+        self, project_name: str, folder_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get folders by ids."""
+        return self._get_entities(
+            project_name,
+            folder_ids,
+            self._folders_cache,
+            ayon_api.get_folders,
+            "folder_ids",
+        )
+
+    def _get_products(
+        self, project_name: str, product_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get products by ids."""
+        return self._get_entities(
+            project_name,
+            product_ids,
+            self._products_cache,
+            ayon_api.get_products,
+            "product_ids",
+        )
+
+    def _get_versions(
+        self, project_name: str, version_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get versions by ids."""
+        return self._get_entities(
+            project_name,
+            version_ids,
+            self._versions_cache,
+            ayon_api.get_versions,
+            "version_ids",
+        )
+
+    def _get_representations(
+        self, project_name: str, representation_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get representations by ids."""
+        return self._get_entities(
+            project_name,
+            representation_ids,
+            self._representations_cache,
+            ayon_api.get_representations,
+            "representation_ids",
+        )
+
+    def _get_repre_ids_by_version_ids(
+        self, project_name: str, version_ids: set[str]
+    ) -> dict[str, set[str]]:
+        output = {}
+        if not version_ids:
+            return output
+
+        project_cache = self._repre_parents_cache[project_name]
+        missing_ids = set()
+        for version_id in version_ids:
+            cache = project_cache[version_id]
+            if cache.is_valid:
+                output[version_id] = cache.get_data()
+            else:
+                missing_ids.add(version_id)
+
+        if missing_ids:
+            repre_cache = self._representations_cache[project_name]
+            repres_by_parent_id = collections.defaultdict(list)
+            for repre in ayon_api.get_representations(
+                project_name, version_ids=missing_ids
+            ):
+                version_id = repre["versionId"]
+                repre_cache[repre["id"]].update_data(repre)
+                repres_by_parent_id[version_id].append(repre)
+
+            for version_id, repres in repres_by_parent_id.items():
+                repre_ids = {
+                    repre["id"]
+                    for repre in repres
+                }
+                output[version_id] = set(repre_ids)
+                project_cache[version_id].update_data(repre_ids)
+
+        return output
+
+    def _get_entities(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        cache: NestedCacheItem,
+        getter: Callable,
+        filter_arg: str,
+    ) -> list[dict[str, Any]]:
+        entities = []
+        if not entity_ids:
+            return entities
+
+        missing_ids = set()
+        project_cache = cache[project_name]
+        for entity_id in entity_ids:
+            entity_cache = project_cache[entity_id]
+            if entity_cache.is_valid:
+                entities.append(entity_cache.get_data())
+            else:
+                missing_ids.add(entity_id)
+
+        if missing_ids:
+            for entity in getter(project_name, **{filter_arg: missing_ids}):
+                entities.append(entity)
+                entity_id = entity["id"]
+                project_cache[entity_id].update_data(entity)
+        return entities
 
     def _get_action_items_for_contexts(
         self,
@@ -555,50 +729,136 @@ class LoaderActionsModel:
                 if not filtered_repre_contexts:
                     continue
 
-                repre_ids = set()
-                repre_version_ids = set()
-                repre_product_ids = set()
-                repre_folder_ids = set()
-                for repre_context in filtered_repre_contexts:
-                    repre_ids.add(repre_context["representation"]["id"])
-                    repre_product_ids.add(repre_context["product"]["id"])
-                    repre_version_ids.add(repre_context["version"]["id"])
-                    repre_folder_ids.add(repre_context["folder"]["id"])
+                repre_ids = {
+                    repre_context["representation"]["id"]
+                    for repre_context in filtered_repre_contexts
+                }
 
                 item = self._create_loader_action_item(
                     loader,
                     repre_contexts,
-                    project_name=project_name,
-                    folder_ids=repre_folder_ids,
-                    product_ids=repre_product_ids,
-                    version_ids=repre_version_ids,
-                    representation_ids=repre_ids,
+                    repre_ids,
+                    "representation",
                     repre_name=repre_name,
                 )
                 action_items.append(item)
 
         # Product Loaders.
-        version_ids = set(version_context_by_id.keys())
         product_folder_ids = set()
         product_ids = set()
         for product_context in version_context_by_id.values():
             product_ids.add(product_context["product"]["id"])
             product_folder_ids.add(product_context["folder"]["id"])
 
+        version_ids = set(version_context_by_id.keys())
         version_contexts = list(version_context_by_id.values())
         for loader in product_loaders:
             item = self._create_loader_action_item(
                 loader,
                 version_contexts,
-                project_name=project_name,
-                folder_ids=product_folder_ids,
-                product_ids=product_ids,
-                version_ids=version_ids,
+                version_ids,
+                "version",
             )
             action_items.append(item)
-
-        action_items.sort(key=self._actions_sorter)
         return action_items
+
+    def _get_loader_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        version_context_by_id: dict[str, dict[str, Any]],
+        repre_context_by_id: dict[str, dict[str, Any]],
+    ) -> list[ActionItem]:
+        """
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (set[str]): Selected entity ids.
+            entity_type (str): Selected entity type.
+            version_context_by_id (dict[str, dict[str, Any]]): Version context
+                by id.
+            repre_context_by_id (dict[str, dict[str, Any]]): Representation
+                context by id.
+
+        Returns:
+            list[ActionItem]: List of action items.
+
+        """
+        entities_cache = self._prepare_entities_cache(
+            project_name,
+            entity_type,
+            version_context_by_id,
+            repre_context_by_id,
+        )
+        selection = LoaderActionSelection(
+            project_name,
+            entity_ids,
+            entity_type,
+            entities_cache=entities_cache
+        )
+        items = []
+        for action in self._loader_actions.get_action_items(selection):
+            items.append(ActionItem(
+                action.identifier,
+                label=action.label,
+                group_label=action.group_label,
+                icon=action.icon,
+                tooltip=None,  # action.tooltip,
+                order=action.order,
+                data=action.data,
+                options=None,  # action.options,
+            ))
+        return items
+
+    def _prepare_entities_cache(
+        self,
+        project_name: str,
+        entity_type: str,
+        version_context_by_id: dict[str, dict[str, Any]],
+        repre_context_by_id: dict[str, dict[str, Any]],
+    ):
+        project_entity = None
+        folders_by_id = {}
+        products_by_id = {}
+        versions_by_id = {}
+        representations_by_id = {}
+        for context in version_context_by_id.values():
+            if project_entity is None:
+                project_entity = context["project"]
+            folder_entity = context["folder"]
+            product_entity = context["product"]
+            version_entity = context["version"]
+            folders_by_id[folder_entity["id"]] = folder_entity
+            products_by_id[product_entity["id"]] = product_entity
+            versions_by_id[version_entity["id"]] = version_entity
+
+        for context in repre_context_by_id.values():
+            repre_entity = context["representation"]
+            representations_by_id[repre_entity["id"]] = repre_entity
+
+        # Mapping has to be for all child entities which is available for
+        #   representations only if version is selected
+        representation_ids_by_version_id = {}
+        if entity_type == "version":
+            representation_ids_by_version_id = {
+                version_id: set()
+                for version_id in versions_by_id
+            }
+            for context in repre_context_by_id.values():
+                repre_entity = context["representation"]
+                v_id = repre_entity["versionId"]
+                representation_ids_by_version_id[v_id].add(repre_entity["id"])
+
+        return SelectionEntitiesCache(
+            project_name,
+            project_entity=project_entity,
+            folders_by_id=folders_by_id,
+            products_by_id=products_by_id,
+            versions_by_id=versions_by_id,
+            representations_by_id=representations_by_id,
+            representation_ids_by_version_id=representation_ids_by_version_id,
+        )
 
     def _trigger_version_loader(
         self,
@@ -632,12 +892,12 @@ class LoaderActionsModel:
             project_name, version_ids=version_ids
         ))
         product_ids = {v["productId"] for v in version_entities}
-        product_entities = ayon_api.get_products(
-            project_name, product_ids=product_ids
+        product_entities = self._get_products(
+            project_name, product_ids
         )
         product_entities_by_id = {p["id"]: p for p in product_entities}
         folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
-        folder_entities = ayon_api.get_folders(
+        folder_entities = self._get_folders(
             project_name, folder_ids=folder_ids
         )
         folder_entities_by_id = {f["id"]: f for f in folder_entities}
@@ -719,7 +979,12 @@ class LoaderActionsModel:
             loader, repre_contexts, options
         )
 
-    def _load_representations_by_loader(self, loader, repre_contexts, options):
+    def _load_representations_by_loader(
+        self,
+        loader,
+        repre_contexts,
+        options
+    ):
         """Loops through list of repre_contexts and loads them with one loader
 
         Args:
@@ -770,7 +1035,12 @@ class LoaderActionsModel:
                 ))
         return error_info
 
-    def _load_products_by_loader(self, loader, version_contexts, options):
+    def _load_products_by_loader(
+        self,
+        loader,
+        version_contexts,
+        options
+    ):
         """Triggers load with ProductLoader type of loaders.
 
         Warning:
@@ -796,7 +1066,6 @@ class LoaderActionsModel:
                     version_contexts,
                     options=options
                 )
-
             except Exception as exc:
                 formatted_traceback = None
                 if not isinstance(exc, LoadError):

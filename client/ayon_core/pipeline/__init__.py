@@ -3,10 +3,13 @@ from .constants import (
     AVALON_INSTANCE_ID,
     AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
-    HOST_WORKFILE_EXTENSIONS,
 )
 
 from .anatomy import Anatomy
+
+from .tempdir import get_temp_dir
+
+from .staging_dir import get_staging_dir_info
 
 from .create import (
     BaseCreator,
@@ -16,11 +19,7 @@ from .create import (
     CreatedInstance,
     CreatorError,
 
-    LegacyCreator,
-    legacy_create,
-
     discover_creator_plugins,
-    discover_legacy_creator_plugins,
     register_creator_plugin,
     deregister_creator_plugin,
     register_creator_plugin_path,
@@ -51,9 +50,10 @@ from .load import (
 )
 
 from .publish import (
+    KnownPublishError,
+    PublishError,
     PublishValidationError,
     PublishXmlValidationError,
-    KnownPublishError,
     AYONPyblishPluginMixin,
     OptionalPyblishPluginMixin,
 )
@@ -96,6 +96,10 @@ from .context_tools import (
     get_current_task_name
 )
 
+from .compatibility import (
+    is_product_base_type_supported,
+)
+
 from .workfile import (
     discover_workfile_build_plugins,
     register_workfile_build_plugin,
@@ -113,10 +117,15 @@ __all__ = (
     "AVALON_INSTANCE_ID",
     "AYON_CONTAINER_ID",
     "AYON_INSTANCE_ID",
-    "HOST_WORKFILE_EXTENSIONS",
 
     # --- Anatomy ---
     "Anatomy",
+
+    # --- Temp dir ---
+    "get_temp_dir",
+
+    # --- Staging dir ---
+    "get_staging_dir_info",
 
     # --- Create ---
     "BaseCreator",
@@ -128,12 +137,7 @@ __all__ = (
 
     "CreatorError",
 
-    # - legacy creation
-    "LegacyCreator",
-    "legacy_create",
-
     "discover_creator_plugins",
-    "discover_legacy_creator_plugins",
     "register_creator_plugin",
     "deregister_creator_plugin",
     "register_creator_plugin_path",
@@ -162,9 +166,10 @@ __all__ = (
     "get_repres_contexts",
 
     # --- Publish ---
+    "KnownPublishError",
+    "PublishError",
     "PublishValidationError",
     "PublishXmlValidationError",
-    "KnownPublishError",
     "AYONPyblishPluginMixin",
     "OptionalPyblishPluginMixin",
 
@@ -213,4 +218,7 @@ __all__ = (
     # Backwards compatible function names
     "install",
     "uninstall",
+
+    # Feature detection
+    "is_product_base_type_supported",
 )

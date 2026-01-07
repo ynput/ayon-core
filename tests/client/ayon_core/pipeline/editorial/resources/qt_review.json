@@ -1,0 +1,356 @@
+{
+    "OTIO_SCHEMA": "Clip.2",
+    "metadata": {
+        "Resolve_OTIO": {}
+    },
+    "name": "3 jours dans les coulisses du ZEvent 2024.mp4",
+    "source_range": {
+        "OTIO_SCHEMA": "TimeRange.1",
+        "duration": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 25.0,
+            "value": 50.0
+        },
+        "start_time": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 25.0,
+            "value": 0.0
+        }
+    },
+    "effects": [
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Transform",
+                    "Enabled": true,
+                    "Name": "Transform",
+                    "Parameters": [],
+                    "Type": 2
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Cropping",
+                    "Enabled": true,
+                    "Name": "Cropping",
+                    "Parameters": [],
+                    "Type": 3
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Dynamic Zoom",
+                    "Enabled": false,
+                    "Name": "Dynamic Zoom",
+                    "Parameters": [
+                        {
+                            "Default Parameter Value": [
+                                0.0,
+                                0.0
+                            ],
+                            "Key Frames": {
+                                "0": {
+                                    "Value": [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Variant Type": "POINTF"
+                                },
+                                "1000": {
+                                    "Value": [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Variant Type": "POINTF"
+                                }
+                            },
+                            "Parameter ID": "dynamicZoomCenter",
+                            "Parameter Value": [
+                                0.0,
+                                0.0
+                            ],
+                            "Variant Type": "POINTF"
+                        },
+                        {
+                            "Default Parameter Value": 1.0,
+                            "Key Frames": {
+                                "0": {
+                                    "Value": 0.8,
+                                    "Variant Type": "Double"
+                                },
+                                "1000": {
+                                    "Value": 1.0,
+                                    "Variant Type": "Double"
+                                }
+                            },
+                            "Parameter ID": "dynamicZoomScale",
+                            "Parameter Value": 1.0,
+                            "Variant Type": "Double",
+                            "maxValue": 100.0,
+                            "minValue": 0.01
+                        }
+                    ],
+                    "Type": 59
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Composite",
+                    "Enabled": true,
+                    "Name": "Composite",
+                    "Parameters": [],
+                    "Type": 1
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Lens Correction",
+                    "Enabled": true,
+                    "Name": "Lens Correction",
+                    "Parameters": [],
+                    "Type": 43
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Retime and Scaling",
+                    "Enabled": true,
+                    "Name": "Retime and Scaling",
+                    "Parameters": [],
+                    "Type": 22
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Video Faders",
+                    "Enabled": true,
+                    "Name": "Video Faders",
+                    "Parameters": [],
+                    "Type": 36
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        }
+    ],
+    "markers": [
+        {
+            "OTIO_SCHEMA": "Marker.2",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Keywords": [],
+                    "Note": "{\"resolve_sub_products\": {\"io.ayon.creators.resolve.shot\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"shot\", \"productName\": \"shotMain\", \"active\": true, \"creator_identifier\": \"io.ayon.creators.resolve.shot\", \"variant\": \"Main\", \"folderPath\": \"/shots/seq_qt_no_tc/sh010\", \"task\": \"Generic\", \"clip_variant\": \"<track_name>\", \"clip_index\": \"c3d9fb4f-afdf-49e3-9733-bf80e40e0de3\", \"clip_source_resolution\": {\"width\": \"640\", \"height\": \"360\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_qt_no_tc\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_qt_no_tc\", \"sourceResolution\": true, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_qt_no_tc\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_qt_no_tc\", \"track\": \"Video1\", \"shot\": \"sh010\"}, \"heroTrack\": true, \"uuid\": \"5ab44838-a173-422a-8750-d5265e5a4ab5\", \"reviewTrack\": \"Video1\", \"label\": \"/shots/seq_qt_no_tc/sh010 shot\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"ba8e76cd-7319-449d-93b5-93fd65cf3e83\", \"creator_attributes\": {\"folderPath\": \"/shots/seq_qt_no_tc/sh010\", \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"frameStart\": 1001, \"frameEnd\": 1051, \"clipIn\": 86477, \"clipOut\": 86527, \"clipDuration\": 50, \"sourceIn\": 0, \"sourceOut\": 50, \"fps\": \"from_selection\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}, \"io.ayon.creators.resolve.plate\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"plate\", \"productName\": \"plateVideo1\", \"active\": true, \"creator_identifier\": \"io.ayon.creators.resolve.plate\", \"variant\": \"Video1\", \"folderPath\": \"/shots/seq_qt_no_tc/sh010\", \"task\": \"Generic\", \"clip_variant\": \"<track_name>\", \"clip_index\": \"c3d9fb4f-afdf-49e3-9733-bf80e40e0de3\", \"clip_source_resolution\": {\"width\": \"640\", \"height\": \"360\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_qt_no_tc\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_qt_no_tc\", \"sourceResolution\": true, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_qt_no_tc\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_qt_no_tc\", \"track\": \"Video1\", \"shot\": \"sh010\"}, \"heroTrack\": true, \"uuid\": \"5ab44838-a173-422a-8750-d5265e5a4ab5\", \"reviewTrack\": \"Video1\", \"parent_instance_id\": \"ba8e76cd-7319-449d-93b5-93fd65cf3e83\", \"label\": \"/shots/seq_qt_no_tc/sh010 plate\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"4a1cd220-c638-4e77-855c-cebd43b5dbc3\", \"creator_attributes\": {\"parentInstance\": \"/shots/seq_qt_no_tc/sh010 shot\", \"vSyncOn\": true, \"vSyncTrack\": \"Video1\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}}, \"clip_index\": \"c3d9fb4f-afdf-49e3-9733-bf80e40e0de3\", \"publish\": true}"
+                },
+                "clip_index": "c3d9fb4f-afdf-49e3-9733-bf80e40e0de3",
+                "publish": true,
+                "resolve_sub_products": {
+                    "io.ayon.creators.resolve.plate": {
+                        "active": true,
+                        "clip_index": "c3d9fb4f-afdf-49e3-9733-bf80e40e0de3",
+                        "clip_source_resolution": {
+                            "height": "360",
+                            "pixelAspect": 1.0,
+                            "width": "640"
+                        },
+                        "clip_variant": "<track_name>",
+                        "creator_attributes": {
+                            "parentInstance": "/shots/seq_qt_no_tc/sh010 shot",
+                            "vSyncOn": true,
+                            "vSyncTrack": "Video1"
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.plate",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_qt_no_tc/sh010",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_qt_no_tc",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_qt_no_tc",
+                            "shot": "sh010",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "4a1cd220-c638-4e77-855c-cebd43b5dbc3",
+                        "label": "/shots/seq_qt_no_tc/sh010 plate",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parent_instance_id": "ba8e76cd-7319-449d-93b5-93fd65cf3e83",
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_qt_no_tc",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "plateVideo1",
+                        "productType": "plate",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_qt_no_tc",
+                        "shot": "sh###",
+                        "sourceResolution": true,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "5ab44838-a173-422a-8750-d5265e5a4ab5",
+                        "variant": "Video1",
+                        "workfileFrameStart": 1001
+                    },
+                    "io.ayon.creators.resolve.shot": {
+                        "active": true,
+                        "clip_index": "c3d9fb4f-afdf-49e3-9733-bf80e40e0de3",
+                        "clip_source_resolution": {
+                            "height": "360",
+                            "pixelAspect": 1.0,
+                            "width": "640"
+                        },
+                        "clip_variant": "<track_name>",
+                        "creator_attributes": {
+                            "clipDuration": 50,
+                            "clipIn": 86477,
+                            "clipOut": 86527,
+                            "folderPath": "/shots/seq_qt_no_tc/sh010",
+                            "fps": "from_selection",
+                            "frameEnd": 1051,
+                            "frameStart": 1001,
+                            "handleEnd": 10,
+                            "handleStart": 10,
+                            "sourceIn": 0,
+                            "sourceOut": 50,
+                            "workfileFrameStart": 1001
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.shot",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_qt_no_tc/sh010",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_qt_no_tc",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_qt_no_tc",
+                            "shot": "sh010",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "ba8e76cd-7319-449d-93b5-93fd65cf3e83",
+                        "label": "/shots/seq_qt_no_tc/sh010 shot",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_qt_no_tc",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "shotMain",
+                        "productType": "shot",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_qt_no_tc",
+                        "shot": "sh###",
+                        "sourceResolution": true,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "5ab44838-a173-422a-8750-d5265e5a4ab5",
+                        "variant": "Main",
+                        "workfileFrameStart": 1001
+                    }
+                }
+            },
+            "name": "AyonData",
+            "color": "GREEN",
+            "marked_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 1.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 25.0
+                }
+            },
+            "comment": ""
+        }
+    ],
+    "enabled": true,
+    "media_references": {
+        "DEFAULT_MEDIA": {
+            "OTIO_SCHEMA": "ExternalReference.1",
+            "metadata": {},
+            "name": "3 jours dans les coulisses du ZEvent 2024.mp4",
+            "available_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 30822.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 0.0
+                }
+            },
+            "available_image_bounds": null,
+            "target_url": "C:\\data\\movie.mp4"
+        }
+    },
+    "active_media_reference_key": "DEFAULT_MEDIA"
+}

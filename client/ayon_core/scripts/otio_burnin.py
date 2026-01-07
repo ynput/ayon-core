@@ -6,7 +6,12 @@ import json
 import tempfile
 from string import Formatter
 
-import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+try:
+    from otio_burnins_adapter import ffmpeg_burnins
+except ImportError:
+    import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+from PIL import ImageFont
+
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffmpeg_codec_args,
@@ -34,6 +39,39 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
+
+
+def _drawtext(align, resolution, text, options):
+    """
+    :rtype: {'x': int, 'y': int}
+    """
+    x_pos = "0"
+    if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
+        x_pos = "w/2-tw/2"
+
+    elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
+        ifont = ImageFont.truetype(options["font"], options["font_size"])
+        if hasattr(ifont, "getbbox"):
+            left, top, right, bottom = ifont.getbbox(text)
+            box_size = right - left, bottom - top
+        else:
+            box_size = ifont.getsize(text)
+        x_pos = resolution[0] - (box_size[0] + options["x_offset"])
+    elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
+        x_pos = options["x_offset"]
+
+    if align in (
+        ffmpeg_burnins.TOP_CENTERED,
+        ffmpeg_burnins.TOP_RIGHT,
+        ffmpeg_burnins.TOP_LEFT
+    ):
+        y_pos = "%d" % options["y_offset"]
+    else:
+        y_pos = "h-text_h-%d" % (options["y_offset"])
+    return {"x": x_pos, "y": y_pos}
+
+
+ffmpeg_burnins._drawtext = _drawtext
 
 
 def _get_ffprobe_data(source):
@@ -79,7 +117,8 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     - Datatypes explanation:
     <color> string format must be supported by FFmpeg.
         Examples: "#000000", "0x000000", "black"
-    <font> must be accesible by ffmpeg = name of registered Font in system or path to font file.
+    <font> must be accesible by ffmpeg = name of registered Font in system
+        or path to font file.
         Examples: "Arial", "C:/Windows/Fonts/arial.ttf"
 
     - Possible keys:
@@ -87,17 +126,21 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     "bg_opacity" - Opacity of background (box around text) - <float, Range:0-1>
     "bg_color" - Background color - <color>
     "bg_padding" - Background padding in pixels - <int>
-    "x_offset" - offsets burnin vertically by entered pixels from border - <int>
-    "y_offset" - offsets burnin horizontally by entered pixels from border - <int>
+    "x_offset" - offsets burnin vertically by entered pixels
+        from border - <int>
+    "y_offset" - offsets burnin horizontally by entered pixels
+        from border - <int>
     - x_offset & y_offset should be set at least to same value as bg_padding!!
     "font" - Font Family for text - <font>
     "font_size" - Font size in pixels - <int>
     "font_color" - Color of text - <color>
     "frame_offset" - Default start frame - <int>
-        - required IF start frame is not set when using frames or timecode burnins
+        - required IF start frame is not set when using frames
+          or timecode burnins
 
-    On initializing class can be set General options through "options_init" arg.
-    General can be overridden when adding burnin
+    On initializing class can be set General options through
+        "options_init" arg.
+    General options can be overridden when adding burnin.
 
     '''
     TOP_CENTERED = ffmpeg_burnins.TOP_CENTERED
@@ -167,7 +210,6 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         # `frame_end` is only for meassurements of text position
         if frame_end is not None:
             options["frame_end"] = frame_end
-
 
         options["label"] = align
         self._add_burnin(text, align, options, DRAWTEXT)

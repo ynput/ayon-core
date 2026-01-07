@@ -58,12 +58,38 @@ def _ocio_config_profile_types():
     return [
         {"value": "builtin_path", "label": "AYON built-in OCIO config"},
         {"value": "custom_path", "label": "Path to OCIO config"},
-        {"value": "product_name", "label": "Published product"},
+        {"value": "published_product", "label": "Published product"},
+        {"value": "disabled", "label": "Disable OCIO management"},
+    ]
+
+
+def _fallback_ocio_config_profile_types():
+    return [
+        {"value": "builtin_path", "label": "AYON built-in OCIO config"},
+        {"value": "custom_path", "label": "Path to OCIO config"},
     ]
 
 
 def _ocio_built_in_paths():
     return [
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_2.0/studio-config-v3.0.0_aces-v2.0_ocio-v2.4.ocio",  # noqa: E501
+            "label": "ACES 2.0 Studio (OCIO v2.4)",
+            "description": (
+                "Aces 2.0 Studio OCIO config file. Requires OCIO v2.4.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.1.ocio",  # noqa: E501
+            "label": "ACES 1.3 Studio (OCIO v2.1)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.1.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.0.ocio",  # noqa: E501
+            "label": "ACES 1.3 Studio (OCIO v2)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.")
+        },
         {
             "value": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
             "label": "ACES 1.2",
@@ -74,6 +100,49 @@ def _ocio_built_in_paths():
             "label": "Nuke default",
         },
     ]
+
+
+class FallbackProductModel(BaseSettingsModel):
+    _layout = "expanded"
+    fallback_type: str = SettingsField(
+        title="Fallback config type",
+        enum_resolver=_fallback_ocio_config_profile_types,
+        conditional_enum=True,
+        default="builtin_path",
+        description=(
+            "Type of config which needs to be used in case published "
+            "product is not found."
+        ),
+    )
+    builtin_path: str = SettingsField(
+        "ACES 1.2",
+        title="Built-in OCIO config",
+        enum_resolver=_ocio_built_in_paths,
+        description=(
+            "AYON ocio addon distributed OCIO config. "
+            "Activated addon in bundle is required: 'ayon_ocio' >= 1.1.1"
+        ),
+    )
+    custom_path: str = SettingsField(
+        "",
+        title="OCIO config path",
+        description="Path to OCIO config. Anatomy formatting is supported.",
+    )
+
+
+class PublishedProductModel(BaseSettingsModel):
+    _layout = "expanded"
+    product_name: str = SettingsField(
+        "",
+        title="Product name",
+        description=(
+            "Context related published product name to get OCIO config from. "
+            "Partial match is supported via use of regex expression."
+        ),
+    )
+    fallback: FallbackProductModel = SettingsField(
+        default_factory=FallbackProductModel,
+    )
 
 
 class CoreImageIOConfigProfilesModel(BaseSettingsModel):
@@ -94,7 +163,7 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     type: str = SettingsField(
         title="Profile type",
         enum_resolver=_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         section="---",
     )
@@ -102,19 +171,19 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
         "ACES 1.2",
         title="Built-in OCIO config",
         enum_resolver=_ocio_built_in_paths,
+        description=(
+            "AYON ocio addon distributed OCIO config. "
+            "Activated addon in bundle is required: 'ayon_ocio' >= 1.1.1"
+        ),
     )
     custom_path: str = SettingsField(
         "",
         title="OCIO config path",
         description="Path to OCIO config. Anatomy formatting is supported.",
     )
-    product_name: str = SettingsField(
-        "",
-        title="Product name",
-        description=(
-            "Published product name to get OCIO config from. "
-            "Partial match is supported."
-        ),
+    published_product: PublishedProductModel = SettingsField(
+        default_factory=PublishedProductModel,
+        title="Published product",
     )
 
 
@@ -251,6 +320,10 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description=(
+            "Defines project folders to create on disk"
+            " for 'Create project folders' action."
+        ),
         section="---"
     )
     project_environments: str = SettingsField(
@@ -294,7 +367,14 @@ DEFAULT_VALUES = {
                 "type": "builtin_path",
                 "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
                 "custom_path": "",
-                "product_name": "",
+                "published_product": {
+                    "product_name": "",
+                    "fallback": {
+                        "fallback_type": "builtin_path",
+                        "builtin_path": "ACES 1.2",
+                        "custom_path": ""
+                    }
+                }
             }
         ],
         "file_rules": {

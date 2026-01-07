@@ -8,4 +8,5 @@ ValidateMeshOrder = pyblish.api.ValidatorOrder + 0.3
 
 DEFAULT_PUBLISH_TEMPLATE = "default"
 DEFAULT_HERO_PUBLISH_TEMPLATE = "default"
-TRANSIENT_DIR_TEMPLATE = "default"
+
+FARM_JOB_ENV_DATA_KEY: str = "farmJobEnv"

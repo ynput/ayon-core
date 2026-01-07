@@ -23,6 +23,7 @@ class CollectFramesFixDef(
     targets = ["local"]
     hosts = ["nuke"]
     families = ["render", "prerender"]
+    settings_category = "core"
 
     rewrite_version_enable = False
 

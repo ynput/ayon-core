@@ -84,8 +84,11 @@ class UserPublishValuesModel:
             return
 
         self._new_folder_name = folder_name
-        is_valid = True
-        if folder_name:
+        if folder_name is None:
+            is_valid = True
+        elif not folder_name:
+            is_valid = False
+        else:
             is_valid = (
                 self.folder_name_regex.match(folder_name) is not None
             )

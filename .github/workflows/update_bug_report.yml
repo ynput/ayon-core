@@ -1,10 +1,11 @@
 name: 🐞 Update Bug Report
 
 on:
+  workflow_run:
+    workflows: ["🚀 Release Trigger"]
+    types:
+      - completed
   workflow_dispatch:
-  release:
-    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
-    types: [published]
 
 jobs:
   update-bug-report:
