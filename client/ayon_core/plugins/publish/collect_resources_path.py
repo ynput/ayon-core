@@ -70,7 +70,7 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
                 "usd",
                 "oxrig",
                 "sbsar",
-                "zfab"
+                "zfab",
                 ]
 
     def process(self, instance):
