@@ -794,7 +794,8 @@ def convert_input_paths_for_ffmpeg(
             "-o", output_path
         ])
 
-        logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
+        logger.debug(
+            "Conversion command: %s", " ".join(map(str, oiio_cmd)))
         run_subprocess(oiio_cmd, logger=logger)
 
 
