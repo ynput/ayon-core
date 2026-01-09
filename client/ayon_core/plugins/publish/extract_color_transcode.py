@@ -419,7 +419,6 @@ class ExtractOIIOTranscode(publish.Extractor):
 
         return False
 
-
     def _mark_original_repre_for_deletion(self, repre, profile, added_review):
         """If new transcoded representation created, delete old."""
         if not repre.get("tags"):
