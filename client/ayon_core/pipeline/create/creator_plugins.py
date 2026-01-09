@@ -192,6 +192,8 @@ class BaseCreator(ABC):
     # Name of plugin in create settings > class name is used if not set
     settings_name: Optional[str] = None
 
+    product_type_items: Optional[list[tuple[str, str]]] = None
+
     def __init__(
         self, project_settings, create_context, headless=False
     ):
@@ -644,6 +646,22 @@ class BaseCreator(ABC):
             self.create_context.project_name, instances
         )
 
+    def get_product_type_items(self) -> Optional[list[tuple[str, str]]]:
+        """Get product type the Creator can work with.
+
+        By default, it returns `product_type_items` attribute value that
+        can be set by Creator settings. This can be overridden to provide
+        different source.
+
+        Product type items are list of tuples with (product_type, label) that
+        Creator can create. Label is used in UI to show user-friendly name.
+
+        Returns:
+            Optional[list[tuple[str, str]]]: List of tuples with
+                (product_type, label) or None.
+        """
+        return self.product_type_items
+
 
 class Creator(BaseCreator):
     """Creator that has more information for artist to show in UI.
@@ -936,7 +954,6 @@ class Creator(BaseCreator):
         self.create_context.create_plugin_pre_create_attr_defs_changed(
             self.identifier
         )
-
 
 class HiddenCreator(BaseCreator):
     skip_discovery = True
