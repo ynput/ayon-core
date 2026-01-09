@@ -24,6 +24,10 @@ class ProductTypeSmartSelectModel(BaseSettingsModel):
 class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
 
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
     product_types: list[str] = SettingsField(
         default_factory=list,
         title="Product types",
@@ -352,6 +356,27 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     )
 
 
+class DiscoverValidationModel(BaseSettingsModel):
+    """Strictly validate publish plugins discovery.
+
+    Artist won't be able to publish if path to publish plugin fails to be
+        imported.
+
+    """
+    _isGroup = True
+    enabled: bool = SettingsField(
+        False,
+        description="Enable strict mode of plugins discovery",
+    )
+    ignore_paths: list[str] = SettingsField(
+        default_factory=list,
+        title="Ignored paths (regex)",
+        description=(
+            "Paths that do match regex will be skipped in validation."
+        ),
+    )
+
+
 class PublishToolModel(BaseSettingsModel):
     template_name_profiles: list[PublishTemplateNameProfile] = SettingsField(
         default_factory=list,
@@ -368,6 +393,10 @@ class PublishToolModel(BaseSettingsModel):
             default_factory=list,
             title="Custom Staging Dir Profiles"
         )
+    )
+    discover_validation: DiscoverValidationModel = SettingsField(
+        default_factory=DiscoverValidationModel,
+        title="Validate plugins discovery",
     )
     comment_minimum_required_chars: int = SettingsField(
         0,
@@ -443,6 +472,7 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "product_name_profiles": [
             {
+                "product_base_types": [],
                 "product_types": [],
                 "host_names": [],
                 "task_types": [],
@@ -450,28 +480,31 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{product[type]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "workfile"
                 ],
+                "product_types": [],
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "render"
                 ],
+                "product_types": [],
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "renderLayer",
                     "renderPass"
                 ],
+                "product_types": [],
                 "host_names": [
                     "tvpaint"
                 ],
@@ -482,10 +515,11 @@ DEFAULT_TOOLS_VALUES = {
                 )
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "workfile"
                 ],
+                "product_types": [],
                 "host_names": [
                     "aftereffects",
                     "tvpaint"
@@ -495,7 +529,8 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": ["render"],
+                "product_base_types": ["render"],
+                "product_types": [],
                 "host_names": [
                     "aftereffects"
                 ],
@@ -504,9 +539,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{product[type]}{Task[name]}{Composition}{Variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh"
                 ],
+                "product_types": [],
                 "host_names": [
                     "maya"
                 ],
@@ -515,9 +551,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "S_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "skeletalMesh"
                 ],
+                "product_types": [],
                 "host_names": [
                     "maya"
                 ],
@@ -526,9 +563,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "SK_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "hda"
                 ],
+                "product_types": [],
                 "host_names": [
                     "houdini"
                 ],
@@ -537,9 +575,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template": "{folder[name]}_{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "textureSet"
                 ],
+                "product_types": [],
                 "host_names": [
                     "substancedesigner"
                 ],
@@ -664,6 +703,18 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "task_names": [],
                 "template_name": "tycache"
+            },
+            {
+                "product_types": [
+                    "uasset",
+                    "umap"
+                ],
+                "hosts": [
+                    "unreal"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "unrealuasset"
             }
         ],
         "hero_template_name_profiles": [
@@ -691,6 +742,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTextureHero"
             }
         ],
+        "discover_validation": {
+            "enabled": False,
+            "ignore_paths": [],
+        },
         "comment_minimum_required_chars": 0,
     }
 }

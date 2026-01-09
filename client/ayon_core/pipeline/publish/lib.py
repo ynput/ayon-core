@@ -1,6 +1,8 @@
 """Library functions for publishing."""
 from __future__ import annotations
 import os
+import platform
+import re
 import sys
 import inspect
 import copy
@@ -8,19 +10,19 @@ import warnings
 import hashlib
 import xml.etree.ElementTree
 from typing import TYPE_CHECKING, Optional, Union, List, Any
-import clique
-import speedcopy
 import logging
-
-import pyblish.util
-import pyblish.plugin
-import pyblish.api
 
 from ayon_api import (
     get_server_api_connection,
     get_representations,
     get_last_version_by_product_name
 )
+import clique
+import pyblish.util
+import pyblish.plugin
+import pyblish.api
+import speedcopy
+
 from ayon_core.lib import (
     import_filepath,
     Logger,
@@ -244,6 +246,67 @@ def load_help_content_from_plugin(
         help_filename = basename + ".xml"
     filepath = os.path.join(plugin_dir, "help", help_filename)
     return load_help_content_from_filepath(filepath)
+
+
+def filter_crashed_publish_paths(
+    project_name: str,
+    crashed_paths: set[str],
+    *,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> set[str]:
+    """Filter crashed paths happened during plugins discovery.
+
+    Check if plugins discovery has enabled strict mode and filter crashed
+        paths that happened during discover based on regexes from settings.
+
+    Publishing should not start if any paths are returned.
+
+    Args:
+        project_name (str): Project name in which context plugins discovery
+            happened.
+        crashed_paths (set[str]): Crashed paths from plugins discovery report.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+
+    Returns:
+        set[str]: Filtered crashed paths.
+
+    """
+    filtered_paths = set()
+    # Nothing crashed all good...
+    if not crashed_paths:
+        return filtered_paths
+
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+
+    discover_validation = (
+        project_settings["core"]["tools"]["publish"]["discover_validation"]
+    )
+    # Strict mode is not enabled.
+    if not discover_validation["enabled"]:
+        return filtered_paths
+
+    regexes = [
+        re.compile(value, re.IGNORECASE)
+        for value in discover_validation["ignore_paths"]
+        if value
+    ]
+    is_windows = platform.system().lower() == "windows"
+    # Fitler path with regexes from settings
+    for path in crashed_paths:
+        # Normalize paths to use forward slashes on windows
+        if is_windows:
+            path = path.replace("\\", "/")
+        is_invalid = True
+        for regex in regexes:
+            if regex.match(path):
+                is_invalid = False
+                break
+
+        if is_invalid:
+            filtered_paths.add(path)
+
+    return filtered_paths
 
 
 def publish_plugins_discover(
@@ -1099,14 +1162,16 @@ def main_cli_publish(
         except ValueError:
             pass
 
+    context = get_global_context()
+    project_settings = get_project_settings(context["project_name"])
+
     install_ayon_plugins()
 
     if addons_manager is None:
-        addons_manager = AddonsManager()
+        addons_manager = AddonsManager(project_settings)
 
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
-        context = get_global_context()
         env = applications_addon.get_farm_publish_environment_variables(
             context["project_name"],
             context["folder_path"],
@@ -1129,17 +1194,33 @@ def main_cli_publish(
     log.info("Running publish ...")
 
     discover_result = publish_plugins_discover()
-    publish_plugins = discover_result.plugins
     print(discover_result.get_report(only_errors=False))
 
+    filtered_crashed_paths = filter_crashed_publish_paths(
+        context["project_name"],
+        set(discover_result.crashed_file_paths),
+        project_settings=project_settings,
+    )
+    if filtered_crashed_paths:
+        joined_paths = "\n".join([
+            f"- {path}"
+            for path in filtered_crashed_paths
+        ])
+        log.error(
+            "Plugin discovery strict mode is enabled."
+            " Crashed plugin paths that prevent from publishing:"
+            f"\n{joined_paths}"
+        )
+        sys.exit(1)
+
+    publish_plugins = discover_result.plugins
+
     # Error exit as soon as any error occurs.
-    error_format = ("Failed {plugin.__name__}: "
-                    "{error} -- {error.traceback}")
+    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
 
     for result in pyblish.util.publish_iter(plugins=publish_plugins):
         if result["error"]:
             log.error(error_format.format(**result))
-            # uninstall()
             sys.exit(1)
 
     log.info("Publish finished.")

@@ -1045,10 +1045,23 @@ class ProjectPushItemProcess:
         copied_tags = self._get_transferable_tags(src_version_entity)
         copied_status = self._get_transferable_status(src_version_entity)
 
+        description_parts = []
+        dst_attr_description = dst_attrib.get("description")
+        if dst_attr_description:
+            description_parts.append(dst_attr_description)
+
+        description = self._create_src_version_description(
+            self._item.src_project_name,
+            src_version_entity
+        )
+        if description:
+            description_parts.append(description)
+
+        dst_attrib["description"] = "\n\n".join(description_parts)
+
         version_entity = new_version_entity(
             dst_version,
             product_id,
-            author=src_version_entity["author"],
             status=copied_status,
             tags=copied_tags,
             task_id=self._task_info.get("id"),
@@ -1129,8 +1142,6 @@ class ProjectPushItemProcess:
             self.host_name
         )
         formatting_data.update({
-            "subset": self._product_name,
-            "family": self._product_type,
             "product": {
                 "name": self._product_name,
                 "type": self._product_type,
@@ -1161,17 +1172,15 @@ class ProjectPushItemProcess:
         self, anatomy, template_name, formatting_data, file_template
     ):
         processed_repre_items = []
-        repre_context = None
         for repre_item in self._src_repre_items:
             repre_entity = repre_item.repre_entity
             repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
 
-            if not repre_context:
-                repre_context = self._update_repre_context(
-                    copy.deepcopy(repre_entity),
-                    formatting_data
-                )
+            repre_context = self._update_repre_context(
+                copy.deepcopy(repre_entity),
+                formatting_data
+            )
 
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
@@ -1371,6 +1380,30 @@ class ProjectPushItemProcess:
         if copied_status:
             return copied_status["name"]
         return None
+
+    def _create_src_version_description(
+            self,
+            src_project_name: str,
+            src_version_entity: dict[str, Any]
+    ) -> str:
+        """Creates description text about source version."""
+        src_version_id = src_version_entity["id"]
+        src_author = src_version_entity["author"]
+        query = "&".join([
+            f"project={src_project_name}",
+            "type=version",
+            f"id={src_version_id}"
+        ])
+        version_url = (
+            f"{ayon_api.get_base_url()}"
+            f"/projects/{src_project_name}/products?{query}"
+        )
+        description = (
+            f"Version copied from from  {version_url} "
+            f"created by '{src_author}', "
+        )
+
+        return description
 
 
 class IntegrateModel:

@@ -34,6 +34,7 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "silhouette",
         "gaffer",
         "loki",
+        "marvelousdesigner",
     }
     launch_types = {LaunchTypes.local}
 
