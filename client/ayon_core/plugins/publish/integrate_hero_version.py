@@ -429,7 +429,7 @@ class IntegrateHeroVersion(
             )
             mode = FileTransaction.MODE_COPY
             if self.use_hardlinks:
-                mode = FileTransaction.MODE_LINK
+                mode = FileTransaction.MODE_HARDLINK
 
             try:
                 for src_path, dst_path in itertools.chain(
