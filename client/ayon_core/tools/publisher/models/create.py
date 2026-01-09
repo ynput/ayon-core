@@ -9,7 +9,7 @@ from typing import (
     Any,
     Optional,
     Iterable,
-    Pattern,
+    Pattern, Generator,
 )
 
 from ayon_core.lib.attribute_definitions import (
@@ -123,6 +123,22 @@ class CreatorItem:
 
     def get_group_label(self) -> str:
         return self.group_label
+
+    @classmethod
+    def from_creator_product_types(
+            cls, creator: BaseCreator) -> Generator["CreatorItem", Any, None]:
+        """Create CreatorItems for all product types of the creator."""
+        product_type_items: Optional[list[tuple[str, str]]] = (
+                creator.get_product_type_items())
+
+        if not product_type_items:
+            yield cls.from_creator(creator)
+
+        for product_type, label in product_type_items:
+            creator_item = cls.from_creator(creator)
+            creator_item.product_type = product_type
+            creator_item.label = label or creator_item.label
+            yield creator_item
 
     @classmethod
     def from_creator(cls, creator: BaseCreator):
@@ -1075,12 +1091,19 @@ class CreateModel:
         for identifier in identifiers:
             if identifier not in self._creator_items:
                 continue
-            creator = self._create_context.creators.get(identifier)
+            creator: BaseCreator = self._create_context.creators.get(identifier)
             if creator is None:
                 continue
-            self._creator_items[identifier] = (
-                CreatorItem.from_creator(creator)
-            )
+            if creator.get_product_type_items():
+                for product_type_item in creator.get_product_type_items():
+                    new_id = f"{identifier}|{product_type_item[0]}"
+                    self._creator_items[new_id] = (
+                        CreatorItem.from_creator_product_types(creator)
+                    )
+            else:
+                self._creator_items[identifier] = (
+                    CreatorItem.from_creator(creator)
+                )
 
     def _set_instances_create_attr_values(self, instance_ids, key, value):
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
