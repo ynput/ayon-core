@@ -969,12 +969,6 @@ SearchItemDisplayWidget #ValueWidget {
     background: {color:bg-buttons};
 }
 
-/* Subset Manager */
-#SubsetManagerDetailsText {}
-#SubsetManagerDetailsText[state="invalid"] {
-    border: 1px solid #ff0000;
-}
-
 /* Creator */
 #CreatorsView::item {
     padding: 1px 5px;

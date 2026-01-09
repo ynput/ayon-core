@@ -2,6 +2,7 @@ from operator import attrgetter
 import dataclasses
 import os
 import platform
+from collections import defaultdict
 from typing import Any, Dict, List
 
 import pyblish.api
@@ -13,10 +14,11 @@ except ImportError:
 from ayon_core.lib import (
     TextDef,
     BoolDef,
+    NumberDef,
     UISeparatorDef,
     UILabelDef,
     EnumDef,
-    filter_profiles
+    filter_profiles,
 )
 try:
     from ayon_core.pipeline.usdlib import (
@@ -275,22 +277,26 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     # the contributions so that we can design a system where custom
     # contributions outside the predefined orders are possible to be
     # managed. So that if a particular asset requires an extra contribution
-    # level, you can add itdirectly from the publisher at that particular
+    # level, you can add it directly from the publisher at that particular
     # order. Future publishes will then see the existing contribution and will
     # persist adding it to future bootstraps at that order
-    contribution_layers: Dict[str, int] = {
+    contribution_layers: Dict[str, Dict[str, int]] = {
         # asset layers
-        "model": 100,
-        "assembly": 150,
-        "groom": 175,
-        "look": 200,
-        "rig": 300,
+        "asset": {
+            "model": 100,
+            "assembly": 150,
+            "groom": 175,
+            "look": 200,
+            "rig": 300,
+        },
         # shot layers
-        "layout": 200,
-        "animation": 300,
-        "simulation": 400,
-        "fx": 500,
-        "lighting": 600,
+        "shot": {
+            "layout": 200,
+            "animation": 300,
+            "simulation": 400,
+            "fx": 500,
+            "lighting": 600,
+        }
     }
     # Default profiles to set certain instance attribute defaults based on
     # profiles in settings
@@ -305,12 +311,18 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
 
         cls.enabled = plugin_settings.get("enabled", cls.enabled)
 
-        # Define contribution layers via settings
-        contribution_layers = {}
+        # Define contribution layers via settings by their scope
+        contribution_layers = defaultdict(dict)
         for entry in plugin_settings.get("contribution_layers", []):
-            contribution_layers[entry["name"]] = int(entry["order"])
+            for scope in entry.get("scope", []):
+                contribution_layers[scope][entry["name"]] = int(entry["order"])
         if contribution_layers:
-            cls.contribution_layers = contribution_layers
+            cls.contribution_layers = dict(contribution_layers)
+        else:
+            cls.log.warning(
+                "No scoped contribution layers found in settings, falling back"
+                " to CollectUSDLayerContributions plug-in defaults..."
+            )
 
         cls.profiles = plugin_settings.get("profiles", [])
 
@@ -334,10 +346,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             attr_values[key] = attr_values[key].format(**data)
 
         # Define contribution
-        order = self.contribution_layers.get(
-            attr_values["contribution_layer"], 0
-        )
-
+        in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
             contribution = VariantContribution(
                 instance=instance,
@@ -346,19 +355,23 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
                 variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
-                order=order
+                order=in_layer_order
             )
         else:
             contribution = SublayerContribution(
                 instance=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
-                order=order
+                order=in_layer_order
             )
 
         asset_product = contribution.target_product
         layer_product = "{}_{}".format(asset_product, contribution.layer_id)
 
+        scope: str = attr_values["contribution_target_product_init"]
+        layer_order: int = (
+            self.contribution_layers[scope][attr_values["contribution_layer"]]
+        )
         # Layer contribution instance
         layer_instance = self.get_or_create_instance(
             product_name=layer_product,
@@ -370,7 +383,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution
         )
         layer_instance.data["usd_layer_id"] = contribution.layer_id
-        layer_instance.data["usd_layer_order"] = contribution.order
+        layer_instance.data["usd_layer_order"] = layer_order
 
         layer_instance.data["productGroup"] = (
             instance.data.get("productGroup") or "USD Layer"
@@ -489,14 +502,14 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             profile = {}
 
         # Define defaults
-        default_enabled = profile.get("contribution_enabled", True)
+        default_enabled: bool = profile.get("contribution_enabled", True)
         default_contribution_layer = profile.get(
             "contribution_layer", None)
-        default_apply_as_variant = profile.get(
+        default_apply_as_variant: bool = profile.get(
             "contribution_apply_as_variant", False)
-        default_target_product = profile.get(
+        default_target_product: str = profile.get(
             "contribution_target_product", "usdAsset")
-        default_init_as = (
+        default_init_as: str = (
             "asset"
             if profile.get("contribution_target_product") == "usdAsset"
             else "shot")
@@ -509,6 +522,12 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         visible = publish_attributes.get("contribution_enabled", True)
         variant_visible = visible and publish_attributes.get(
             "contribution_apply_as_variant", True)
+        init_as: str = publish_attributes.get(
+            "contribution_target_product_init", default_init_as)
+
+        contribution_layers = cls.contribution_layers.get(
+            init_as, {}
+        )
 
         return [
             UISeparatorDef("usd_container_settings1"),
@@ -558,8 +577,21 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "predefined ordering.\nA higher order (further down "
                         "the list) will contribute as a stronger opinion."
                     ),
-                    items=list(cls.contribution_layers.keys()),
+                    items=list(contribution_layers.keys()),
                     default=default_contribution_layer,
+                    visible=visible),
+            # TODO: We may want to make the visibility of this optional
+            #  based on studio preference, to avoid complexity when not needed
+            NumberDef("contribution_in_layer_order",
+                    label="Strength order",
+                    tooltip=(
+                        "The contribution inside the department layer will be "
+                        "made with this offset applied. A higher number means "
+                        "a stronger opinion."
+                    ),
+                    default=0,
+                    minimum=-99999,
+                    maximum=99999,
                     visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
@@ -606,7 +638,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
 
         # Update attributes if any of the following plug-in attributes
         # change:
-        keys = ["contribution_enabled", "contribution_apply_as_variant"]
+        keys = {
+            "contribution_enabled",
+            "contribution_apply_as_variant",
+            "contribution_target_product_init",
+        }
 
         for instance_change in event["changes"]:
             instance = instance_change["instance"]
@@ -729,7 +765,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
                     layer=sdf_layer,
                     contribution_path=path,
                     layer_id=product_name,
-                    order=None,  # unordered
+                    order=contribution.order,
                     add_sdf_arguments_metadata=True
                 )
             else:

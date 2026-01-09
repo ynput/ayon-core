@@ -123,10 +123,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "representation",
         "username",
         "output",
-        # OpenPype keys - should be removed
-        "asset",  # folder[name]
-        "subset",  # product[name]
-        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -145,7 +141,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Skip instance if there are not representations to integrate
         #   all representations should not be integrated
         if not filtered_repres:
-            self.log.warning((
+            self.log.info((
                 "Skipping, there are no representations"
                 " to integrate for instance {}"
             ).format(instance.data["productType"]))
@@ -174,15 +170,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         file_transactions.finalize()
 
     def filter_representations(self, instance):
-        # Prepare repsentations that should be integrated
+        """Filter representations to be integrated."""
         repres = instance.data.get("representations")
-        # Raise error if instance don't have any representations
         if not repres:
-            raise KnownPublishError(
-                "Instance {} has no representations to integrate".format(
-                    instance.data["productType"]
-                )
-            )
+            return []
 
         # Validate type of stored representations
         if not isinstance(repres, (list, tuple)):
@@ -924,8 +915,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Include optional data if present in
         optionals = [
-            "frameStart", "frameEnd", "step",
-            "handleEnd", "handleStart", "sourceHashes"
+            "frameStart", "frameEnd",
+            "handleEnd", "handleStart",
+            "step",
+            "resolutionWidth", "resolutionHeight",
+            "pixelAspect",
+            "sourceHashes"
         ]
         for key in optionals:
             if key in instance.data:
