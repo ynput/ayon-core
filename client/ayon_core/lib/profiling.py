@@ -2,6 +2,7 @@
 """Provide profiling decorator."""
 import os
 import cProfile
+import functools
 
 
 def do_profile(to_file=None):
@@ -16,6 +17,7 @@ def do_profile(to_file=None):
         to_file = to_file.format(pid=os.getpid())
 
     def _do_profile(fn):
+        @functools.wraps(fn)
         def profiled(*args, **kwargs):
             profiler = cProfile.Profile()
             try:
