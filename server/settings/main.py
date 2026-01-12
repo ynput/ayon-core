@@ -239,7 +239,7 @@ class VersionStartCategoryModel(BaseSettingsModel):
 
 
 class EnvironmentReplacementModel(BaseSettingsModel):
-    environment_key: str = SettingsField("", title="Enviroment variable")
+    environment_key: str = SettingsField("", title="Environment variable")
     pattern: str = SettingsField("", title="Pattern")
     replacement: str = SettingsField("", title="Replacement")
 
