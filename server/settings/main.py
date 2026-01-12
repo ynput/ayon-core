@@ -408,22 +408,24 @@ DEFAULT_VALUES = {
     "publish": DEFAULT_PUBLISH_VALUES,
     "project_folder_structure": json.dumps(
         {
-            "__project_root__": {
-                "prod": {},
-                "resources": {
-                    "footage": {
-                        "plates": {},
-                        "offline": {}
+            "{root[work]}": {
+                "{project[name]}": {
+                    "prod": {},
+                    "resources": {
+                        "footage": {
+                            "plates": {},
+                            "offline": {}
+                        },
+                        "audio": {},
+                        "art_dept": {}
                     },
-                    "audio": {},
-                    "art_dept": {}
-                },
-                "editorial": {},
-                "assets": {
-                    "characters": {},
-                    "locations": {}
-                },
-                "shots": {}
+                    "editorial": {},
+                    "assets": {
+                        "characters": {},
+                        "locations": {}
+                    },
+                    "shots": {}
+                }
             }
         },
         indent=4
