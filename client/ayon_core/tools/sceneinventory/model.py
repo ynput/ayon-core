@@ -103,7 +103,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         project_col: 150,
     }
 
-    OUTDATED_COLOR = QtGui.QColor(235, 30, 30)
+    OUTDATED_COLOR = QtGui.QColor(200, 160, 30)
     CHILD_OUTDATED_COLOR = QtGui.QColor(200, 160, 30)
     GRAYOUT_COLOR = QtGui.QColor(160, 160, 160)
 
