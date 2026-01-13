@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+from pprint import pformat
 from typing import TYPE_CHECKING, Any
 
 import pyblish.api
@@ -25,6 +26,7 @@ from ayon_core.lib import source_hash
 from ayon_core.lib.file_transaction import (
     FileTransaction,
 )
+from ayon_core.pipeline import is_product_base_type_supported
 from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
@@ -389,6 +391,11 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         for transfer in transfers:
             transfer.related_trait.file_path = transfer.destination
 
+        # 8.5) Get attributes for representation
+        attributes = (
+            self.get_attributes_by_type(instance.context)["representation"]
+        )
+
         # 9) Create representation entities
         for representation in representations:
             representation_entity = new_representation_entity(
@@ -398,8 +405,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     transfers,
                     representation,
                     anatomy=instance.context.data["anatomy"]),
-                attribs={},
-                data="",
+                attribs=attributes,
+                data={"context": self.get_template_data_from_representation(
+                    representation, instance)},
                 tags=[],
                 status="",
             )
@@ -412,7 +420,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             )
 
         # 10) Commit the session to AYON
-        self.log.debug("{}".format(op_session.to_data()))
+        self.log.debug(pformat(op_session.to_data()))
         op_session.commit()
 
     def get_transfers_from_representations(
@@ -570,6 +578,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
@@ -579,7 +588,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
-            logger=self.log
+            logger=self.log,
+            product_base_type=product_base_type,
         )
 
     def get_publish_template(self, instance: pyblish.api.Instance) -> str:
@@ -635,6 +645,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         folder_entity = instance.data["folderEntity"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
         self.log.debug("Product: %s", product_name)
 
         # Get existing product if it exists
@@ -643,9 +654,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
 
         # Define product data
-        data = {
-            "families": get_instance_families(instance)
-        }
+        data = {"families": get_instance_families(instance)}
         attributes = {}
 
         product_group = instance.data.get("productGroup")
@@ -660,14 +669,33 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 attributes["productGroup"] = product_group
 
         product_id = existing_product_entity["id"] if existing_product_entity else None  # noqa: E501
-        product_entity = new_product_entity(
-            product_name,
-            product_type,
-            folder_entity["id"],
-            data=data,
-            attribs=attributes,
-            entity_id=product_id
-        )
+
+        new_product_entity_kwargs = {
+            "name": product_name,
+            "product_type": product_type,
+            "folder_id": folder_entity["id"],
+            "data": data,
+            "attribs": attributes,
+            "entity_id": product_id,
+            "product_base_type": product_base_type,
+        }
+
+        if not is_product_base_type_supported():
+            new_product_entity_kwargs.pop("product_base_type")
+            if (
+                    product_base_type is not None
+                    and product_base_type != product_type):
+                self.log.warning((
+                    "Product base type %s is not supported by the server, "
+                    "but it's defined - and it differs from product type %s. "
+                    "Using product base type as product type."
+                ), product_base_type, product_type)
+
+                new_product_entity_kwargs["product_type"] = (
+                    product_base_type
+                )
+
+        product_entity = new_product_entity(**new_product_entity_kwargs)
 
         if existing_product_entity is None:
             # Create a new product
