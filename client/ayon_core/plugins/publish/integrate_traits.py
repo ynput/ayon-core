@@ -411,7 +411,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             # This should be avoided - we need to identify anything that
             # is broken by this and move it to traits. Representation
             # context in data is already handled by TemplateData trait, so
-            # the line above and any usage should be removed in future.
+            # the line above and any usage should be removed in the future.
 
             representation_entity = new_representation_entity(
                 representation.name,
@@ -971,34 +971,35 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "config": colorspace_data.config
             }
 
-            # add explicit list of traits properties to template data
-            # there must be some better way to handle this.
-            try:
-                # resolution from PixelBased trait
-                template_data["resolution_width"] = representation.get_trait(
-                    PixelBased).display_window_width
-                template_data["resolution_height"] = representation.get_trait(
-                    PixelBased).display_window_height
-                # get fps from representation traits
-                template_data["fps"] = representation.get_trait(
-                    FrameRanged).frames_per_second
-                template_data["ext"] = representation.get_trait(
-                    FileLocation).file_path.suffix.lstrip(".")
-                if not template_data.get("ext"):
-                    # Try FileLocations trait if FileLocation ext is empty
-                    file_locations_trait = representation.get_trait(
-                        FileLocations)
-                    if file_locations_trait.file_paths:
-                        first_file_loc = file_locations_trait.file_paths[0]
-                        template_data["ext"] = (
-                            first_file_loc.file_path.suffix.lstrip(".")
+        # add explicit list of traits properties to template data
+        # there must be some better way to handle this.
+
+        with contextlib.suppress(MissingTraitError):
+            # resolution from PixelBased trait
+            template_data["resolution_width"] = representation.get_trait(
+                PixelBased).display_window_width
+            template_data["resolution_height"] = representation.get_trait(
+                PixelBased).display_window_height
+
+        with contextlib.suppress(MissingTraitError):
+            # get fps from representation traits
+            template_data["fps"] = representation.get_trait(
+                FrameRanged).frames_per_second
+
+        with contextlib.suppress(MissingTraitError):
+            template_data["ext"] = representation.get_trait(
+                FileLocation).file_path.suffix.lstrip(".")
+        if not template_data.get("ext"):
+            with contextlib.suppress(MissingTraitError):
+                # Try FileLocations trait if FileLocation ext is empty
+                file_locations_trait = representation.get_trait(
+                    FileLocations)
+                if file_locations_trait.file_paths:
+                    first_file_loc = file_locations_trait.file_paths[0]
+                    template_data["ext"] = (
+                        first_file_loc.file_path.suffix.lstrip(".")
                         )
-
-                # Note: handle "output" and "originalBasename"
-
-            except MissingTraitError as e:
-                self.log.debug("Missing traits: %s", e)
-
+            # Note: handle "output" and "originalBasename"
         return template_data
 
     @staticmethod
