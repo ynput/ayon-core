@@ -313,11 +313,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         )
 
     def get_folder_product_group_names(
-        self, project_name, folder_ids
+        self, product_items
     ):
-        product_items = self.get_product_items(
-            project_name=project_name,
-            folder_ids=folder_ids)
         product_groups = {
             product_item.group_name for product_item in product_items
         }

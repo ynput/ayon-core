@@ -442,14 +442,14 @@ class LoaderWindow(QtWidgets.QWidget):
             return
 
         product_ids = set()
-        folder_ids = set()
         for version_info in self._products_widget.get_selected_version_info():
             product_ids.add(version_info["product_id"])
-            folder_ids.add(version_info["folder_id"])
-
         if not product_ids:
             return
 
+        folder_ids = set(
+            self._folders_widget._get_selected_item_ids()
+        )
         self._group_dialog.set_product_ids(
             project_name, folder_ids, product_ids
         )

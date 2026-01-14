@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing
 
 from qtpy import QtWidgets
@@ -41,16 +42,35 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._group_btn = group_btn
         self._name_line_edit = name_line_edit
 
-    def set_product_ids(self, project_name, folder_ids, product_ids):
+    def set_product_ids(
+        self, project_name: str, folder_ids: set[str], product_ids: set[str]
+    ):
         self._project_name = project_name
         self._product_ids = product_ids
 
         # Update the product groups
-        product_groups = self._controller.get_folder_product_group_names(
-            project_name=project_name,
-            folder_ids=folder_ids
+        product_items = self._controller.get_product_items(
+            self._project_name, folder_ids
         )
-        self._name_line_edit.setText("")
+        product_groups = self._controller.get_folder_product_group_names(
+            product_items=product_items
+        )
+
+        # Group names among product ids to pre-set the group name if they
+        # all share the same product id
+        product_ids_group_names: set[str] = set()
+        for product_item in product_items:
+            if not product_item.group_name:
+                continue
+
+            if product_item.product_id in product_ids:
+                product_ids_group_names.add(product_item.group_name)
+
+        text: str = ""
+        if len(product_ids_group_names) == 1:
+            text: str = next(iter(product_ids_group_names))
+
+        self._name_line_edit.setText(text)
         self._name_line_edit.set_options(list(sorted(product_groups)))
 
     def _on_apply_click(self):
