@@ -125,7 +125,7 @@ class FileTransaction:
                 executor, transfer_futures, logger=self.log)
 
     def _backup_file(self, dst, src):
-        self.log.debug(f"Checking file ... {src} -> {dst}")
+        self.log.debug(f"Checking file destination ... {src} -> {dst}")
         path_same = self._same_paths(src, dst)
         if path_same or not os.path.exists(dst):
             return
