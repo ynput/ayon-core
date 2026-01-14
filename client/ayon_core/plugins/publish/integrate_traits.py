@@ -392,12 +392,27 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             transfer.related_trait.file_path = transfer.destination
 
         # 8.5) Get attributes for representation
-        attributes = (
-            self.get_attributes_by_type(instance.context)["representation"]
-        )
+        attr_defs = self.get_attributes_by_type(instance.context)[
+            "representation"
+        ]
 
         # 9) Create representation entities
         for representation in representations:
+            attributes = {
+                "path": transfers[0].destination,
+                "template": transfers[0].template,
+            }
+
+            data={"context": self.get_template_data_from_representation(
+                representation, instance)}
+
+            # Original integrator at this moment took all additional data
+            # on the representation and added them into either attribs or data.
+            # This should be avoided - we need to identify anything that
+            # is broken by this and move it to traits. Representation
+            # context in data is already handled by TemplateData trait, so
+            # the line above and any usage should be removed in future.
+
             representation_entity = new_representation_entity(
                 representation.name,
                 version_entity["id"],
@@ -406,8 +421,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     representation,
                     anatomy=instance.context.data["anatomy"]),
                 attribs=attributes,
-                data={"context": self.get_template_data_from_representation(
-                    representation, instance)},
+                data=data,
                 tags=[],
                 status="",
             )
