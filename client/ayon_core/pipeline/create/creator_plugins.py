@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import collections
 import copy
+from dataclasses import dataclass, fields
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Optional
@@ -27,6 +28,20 @@ if TYPE_CHECKING:
 
     # Avoid cyclic imports
     from .context import CreateContext, UpdateData  # noqa: F401
+
+
+@dataclass
+class ProductTypeItem:
+    product_type: str
+    label: str
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ProductTypeItem":
+
+        validat_keys = {f.name for f in fields(cls)}
+
+        filtered_data = {k: v for k, v in data.items() if k in validat_keys}
+        return cls(**filtered_data)
 
 
 class ProductConvertorPlugin(ABC):
@@ -192,7 +207,7 @@ class BaseCreator(ABC):
     # Name of plugin in create settings > class name is used if not set
     settings_name: Optional[str] = None
 
-    product_type_items: Optional[list[tuple[str, str]]] = None
+    product_type_items: list[ProductTypeItem] = None
 
     def __init__(
         self, project_settings, create_context, headless=False
@@ -646,18 +661,20 @@ class BaseCreator(ABC):
             self.create_context.project_name, instances
         )
 
-    def get_product_type_items(self) -> Optional[list[tuple[str, str]]]:
+    def get_product_type_items(self) -> list[ProductTypeItem]:
         """Get product type the Creator can work with.
 
         By default, it returns `product_type_items` attribute value that
         can be set by Creator settings. This can be overridden to provide
         different source.
 
-        Product type items are list of tuples with (product_type, label) that
+        Product type items are list of ProductTypeItem that
         Creator can create. Label is used in UI to show user-friendly name.
+        This dataclass can be easily expanded with data in the future. New
+        fields must have default values to not break existing implementations.
 
         Returns:
-            Optional[list[tuple[str, str]]]: List of tuples with
+            list[ProductTypeItem]: List of tuples with
                 (product_type, label) or None.
         """
         return self.product_type_items
