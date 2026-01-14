@@ -5,11 +5,11 @@ from qtpy import QtWidgets
 from ayon_core.tools.utils import HintedLineEdit
 
 if typing.TYPE_CHECKING:
-    from ayon_core.tools.loader.control import LoaderController
+    from ayon_core.tools.loader.abstract import FrontendLoaderController
 
 
 class ProductGroupDialog(QtWidgets.QDialog):
-    def __init__(self, controller: "LoaderController", parent):
+    def __init__(self, controller: "FrontendLoaderController", parent):
         super(ProductGroupDialog, self).__init__(parent)
         self.setWindowTitle("Grouping products")
         self.setMinimumWidth(250)
@@ -37,7 +37,7 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._project_name = None
         self._product_ids = set()
 
-        self._controller: "LoaderController" = controller
+        self._controller: "FrontendLoaderController" = controller
         self._group_btn = group_btn
         self._name_line_edit = name_line_edit
 
