@@ -38,9 +38,9 @@ class ProductTypeItem:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ProductTypeItem":
 
-        validat_keys = {f.name for f in fields(cls)}
+        valid_keys = {f.name for f in fields(cls)}
 
-        filtered_data = {k: v for k, v in data.items() if k in validat_keys}
+        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
         return cls(**filtered_data)
 
 
