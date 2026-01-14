@@ -207,7 +207,7 @@ class BaseCreator(ABC):
     # Name of plugin in create settings > class name is used if not set
     settings_name: Optional[str] = None
 
-    product_type_items: list[ProductTypeItem] = None
+    product_type_items: list[ProductTypeItem] = []
 
     def __init__(
         self, project_settings, create_context, headless=False
