@@ -252,6 +252,28 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
     assert template_name == "default"
 
 
+@pytest.mark.server
+def test_get_template_data_from_representation(mock_context: pyblish.api.Context) -> None:
+    """Test get_template_data_from_representation."""
+    integrator = IntegrateTraits()
+    instance = mock_context[0]
+    representations: list[Representation] = instance.data[
+        "representations_with_traits"]
+
+    for representation in representations:
+        template_data = integrator.get_template_data_from_representation(
+            representation, instance)
+
+        assert template_data["project"]["name"] == instance.context.data[
+            "projectName"]
+        assert template_data["task"]["name"] == instance.data[
+            "anatomyData"]["task"]["name"]
+        assert template_data["product"]["name"] == instance.data[
+            "productName"]
+        if template_data.get("ext"):
+            assert template_data["ext"] == "png"
+
+
 class TestGetSize:
     @staticmethod
     def get_size(file_path: Path) -> int:
