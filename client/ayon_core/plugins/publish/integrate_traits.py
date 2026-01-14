@@ -972,7 +972,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             }
 
             # add explicit list of traits properties to template data
-            # there must be some better way to handle this
+            # there must be some better way to handle this.
             try:
                 # resolution from PixelBased trait
                 template_data["resolution_width"] = representation.get_trait(
@@ -982,6 +982,17 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 # get fps from representation traits
                 template_data["fps"] = representation.get_trait(
                     FrameRanged).frames_per_second
+                template_data["ext"] = representation.get_trait(
+                    FileLocation).file_path.suffix.lstrip(".")
+                if not template_data.get("ext"):
+                    # Try FileLocations trait if FileLocation ext is empty
+                    file_locations_trait = representation.get_trait(
+                        FileLocations)
+                    if file_locations_trait.file_paths:
+                        first_file_loc = file_locations_trait.file_paths[0]
+                        template_data["ext"] = (
+                            first_file_loc.file_path.suffix.lstrip(".")
+                        )
 
                 # Note: handle "output" and "originalBasename"
 
