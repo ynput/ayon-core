@@ -391,11 +391,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         for transfer in transfers:
             transfer.related_trait.file_path = transfer.destination
 
-        # 8.5) Get attributes for representation
-        attr_defs = self.get_attributes_by_type(instance.context)[
-            "representation"
-        ]
-
         # 9) Create representation entities
         for representation in representations:
             attributes = {
@@ -403,7 +398,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "template": transfers[0].template,
             }
 
-            data={"context": self.get_template_data_from_representation(
+            data = {"context": self.get_template_data_from_representation(
                 representation, instance)}
 
             # Original integrator at this moment took all additional data

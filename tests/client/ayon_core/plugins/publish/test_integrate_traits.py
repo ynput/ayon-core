@@ -253,7 +253,8 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
 
 
 @pytest.mark.server
-def test_get_template_data_from_representation(mock_context: pyblish.api.Context) -> None:
+def test_get_template_data_from_representation(
+        mock_context: pyblish.api.Context) -> None:
     """Test get_template_data_from_representation."""
     integrator = IntegrateTraits()
     instance = mock_context[0]
