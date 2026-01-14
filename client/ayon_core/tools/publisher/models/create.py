@@ -35,6 +35,7 @@ from ayon_core.pipeline.create import (
     ConvertorsOperationFailed,
     ConvertorItem,
 )
+from ayon_core.pipeline.create.creator_plugins import ProductTypeItem
 
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
@@ -128,7 +129,7 @@ class CreatorItem:
     def from_creator_product_types(
             cls, creator: BaseCreator) -> Generator["CreatorItem", Any, None]:
         """Create CreatorItems for all product types of the creator."""
-        product_type_items: Optional[list[tuple[str, str]]] = (
+        product_type_items: list[ProductTypeItem] = (
                 creator.get_product_type_items())
 
         if not product_type_items:
@@ -1083,7 +1084,8 @@ class CreateModel:
 
         return output
 
-    def _refresh_creator_items(self, identifiers=None):
+    def _refresh_creator_items(
+            self, identifiers: Optional[list[str]] = None) -> None:
         if identifiers is None:
             self._creator_items = self._collect_creator_items()
             return
@@ -1096,7 +1098,7 @@ class CreateModel:
                 continue
             if creator.get_product_type_items():
                 for product_type_item in creator.get_product_type_items():
-                    new_id = f"{identifier}|{product_type_item[0]}"
+                    new_id = f"{identifier}|{product_type_item.product_type}"
                     self._creator_items[new_id] = (
                         CreatorItem.from_creator_product_types(creator)
                     )
