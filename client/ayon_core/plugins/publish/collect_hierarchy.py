@@ -1,6 +1,7 @@
 import pyblish.api
-from ayon_core.lib import BoolDef
 import ayon_api
+
+from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
 
 
