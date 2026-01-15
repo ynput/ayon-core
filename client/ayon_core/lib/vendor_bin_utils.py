@@ -51,7 +51,7 @@ def is_file_executable(filepath):
     return False
 
 
-def find_executable(executable, optional_paths:list[str]=None):
+def find_executable(executable, env:dict[str,str]=None):
     """Find full path to executable.
 
     Also tries additional extensions if passed executable does not contain one.
@@ -106,8 +106,11 @@ def find_executable(executable, optional_paths:list[str]=None):
             ):
                 return filepath
 
+    if env is None:
+        env = os.environ
+
     # Get paths where to look for executable
-    path_str = os.environ.get("PATH", None)
+    path_str = env.get("PATH", None)
     if path_str is None:
         if hasattr(os, "confstr"):
             path_str = os.confstr("CS_PATH")
@@ -118,8 +121,6 @@ def find_executable(executable, optional_paths:list[str]=None):
         return None
 
     paths = path_str.split(os.pathsep)
-    if optional_paths:
-        paths.extend(optional_paths)
     for path in paths:
         if not os.path.isdir(path):
             continue
