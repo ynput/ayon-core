@@ -51,7 +51,7 @@ def is_file_executable(filepath):
     return False
 
 
-def find_executable(executable):
+def find_executable(executable, optional_paths:list[str]=None):
     """Find full path to executable.
 
     Also tries additional extensions if passed executable does not contain one.
@@ -118,6 +118,8 @@ def find_executable(executable):
         return None
 
     paths = path_str.split(os.pathsep)
+    if optional_paths:
+        paths.extend(optional_paths)
     for path in paths:
         if not os.path.isdir(path):
             continue
