@@ -301,8 +301,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             product_name = instance.data["productName"]
             product_type = instance.data["productType"]
             anatomy_data.update({
-                "family": product_type,
-                "subset": product_name,
                 "product": {
                     "name": product_name,
                     "type": product_type,

@@ -1,7 +1,56 @@
+import re
 import copy
 from typing import Any
 
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
+
+PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
+
+
+def _convert_product_name_templates_1_7_0(overrides):
+    product_name_profiles = (
+        overrides
+        .get("tools", {})
+        .get("creator", {})
+        .get("product_name_profiles")
+    )
+    if (
+        not product_name_profiles
+        or not isinstance(product_name_profiles, list)
+    ):
+        return
+
+    # Already converted
+    item = product_name_profiles[0]
+    if "product_base_types" in item or "product_types" not in item:
+        return
+
+    # Move product base types to product types
+    for item in product_name_profiles:
+        item["product_base_types"] = item["product_types"]
+        item["product_types"] = []
+
+
+def _convert_product_name_templates_1_6_5(overrides):
+    product_name_profiles = (
+        overrides
+        .get("tools", {})
+        .get("creator", {})
+        .get("product_name_profiles")
+    )
+    if isinstance(product_name_profiles, list):
+        for item in product_name_profiles:
+            # Remove unsupported product name characters
+            template = item.get("template")
+            if isinstance(template, str):
+                item["template"] = PRODUCT_NAME_REPL_REGEX.sub("", template)
+
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in item:
+                    item[new_key] = item.get(old_key)
 
 
 def _convert_imageio_configs_0_4_5(overrides):
@@ -133,11 +182,54 @@ def _convert_publish_plugins(overrides):
     _convert_oiio_transcode_0_4_5(overrides["publish"])
 
 
+def _convert_extract_thumbnail(overrides):
+    """ExtractThumbnail config settings did change to profiles."""
+    extract_thumbnail_overrides = (
+        overrides.get("publish", {}).get("ExtractThumbnail")
+    )
+    if extract_thumbnail_overrides is None:
+        return
+
+    base_value = {
+        "product_types": [],
+        "host_names": [],
+        "task_types": [],
+        "task_names": [],
+        "product_names": [],
+        "integrate_thumbnail": True,
+        "target_size": {"type": "source"},
+        "duration_split": 0.5,
+        "oiiotool_defaults": {
+            "type": "colorspace",
+            "colorspace": "color_picking",
+        },
+        "ffmpeg_args": {"input": ["-apply_trc gamma22"], "output": []},
+    }
+    for key in (
+        "product_names",
+        "integrate_thumbnail",
+        "target_size",
+        "duration_split",
+        "oiiotool_defaults",
+        "ffmpeg_args",
+    ):
+        if key in extract_thumbnail_overrides:
+            base_value[key] = extract_thumbnail_overrides.pop(key)
+
+    extract_thumbnail_profiles = extract_thumbnail_overrides.setdefault(
+        "profiles", []
+    )
+    extract_thumbnail_profiles.append(base_value)
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
+    _convert_product_name_templates_1_6_5(overrides)
+    _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
+    _convert_extract_thumbnail(overrides)
     return overrides

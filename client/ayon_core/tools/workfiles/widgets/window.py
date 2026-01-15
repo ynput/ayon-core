@@ -6,12 +6,11 @@ from ayon_core.tools.utils import (
     FoldersWidget,
     GoToCurrentButton,
     MessageOverlayObject,
-    NiceCheckbox,
     PlaceholderLineEdit,
     RefreshButton,
     TasksWidget,
+    FoldersFiltersWidget,
 )
-from ayon_core.tools.utils.lib import checkstate_int_to_enum
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 
 from .files_widget import FilesWidget
@@ -69,7 +68,6 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._default_window_flags = flags
 
         self._folders_widget = None
-        self._folder_filter_input = None
 
         self._files_widget = None
 
@@ -178,49 +176,36 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         col_widget = QtWidgets.QWidget(parent)
         header_widget = QtWidgets.QWidget(col_widget)
 
-        folder_filter_input = PlaceholderLineEdit(header_widget)
-        folder_filter_input.setPlaceholderText("Filter folders..")
+        filters_widget = FoldersFiltersWidget(header_widget)
 
         go_to_current_btn = GoToCurrentButton(header_widget)
         refresh_btn = RefreshButton(header_widget)
 
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(filters_widget, 1)
+        header_layout.addWidget(go_to_current_btn, 0)
+        header_layout.addWidget(refresh_btn, 0)
+
         folder_widget = FoldersWidget(
             controller, col_widget, handle_expected_selection=True
         )
-
-        my_tasks_tooltip = (
-            "Filter folders and task to only those you are assigned to."
-        )
-
-        my_tasks_label = QtWidgets.QLabel("My tasks")
-        my_tasks_label.setToolTip(my_tasks_tooltip)
-
-        my_tasks_checkbox = NiceCheckbox(folder_widget)
-        my_tasks_checkbox.setChecked(False)
-        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
-
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(folder_filter_input, 1)
-        header_layout.addWidget(go_to_current_btn, 0)
-        header_layout.addWidget(refresh_btn, 0)
-        header_layout.addWidget(my_tasks_label, 0)
-        header_layout.addWidget(my_tasks_checkbox, 0)
 
         col_layout = QtWidgets.QVBoxLayout(col_widget)
         col_layout.setContentsMargins(0, 0, 0, 0)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(folder_widget, 1)
 
-        folder_filter_input.textChanged.connect(self._on_folder_filter_change)
-        go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
-        refresh_btn.clicked.connect(self._on_refresh_clicked)
-        my_tasks_checkbox.stateChanged.connect(
+        filters_widget.text_changed.connect(self._on_folder_filter_change)
+        filters_widget.my_tasks_changed.connect(
             self._on_my_tasks_checkbox_state_changed
         )
+        go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
+        refresh_btn.clicked.connect(self._on_refresh_clicked)
 
-        self._folder_filter_input = folder_filter_input
         self._folders_widget = folder_widget
+
+        self._filters_widget = filters_widget
 
         return col_widget
 
@@ -358,8 +343,11 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if not self._host_is_valid:
             return
 
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
+        self._project_name = self._controller.get_current_project_name()
+        self._folders_widget.set_project_name(self._project_name)
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
         )
 
     def _on_save_as_finished(self, event):
@@ -404,11 +392,10 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         else:
             self.close()
 
-    def _on_my_tasks_checkbox_state_changed(self, state):
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
         folder_ids = None
         task_ids = None
-        state = checkstate_int_to_enum(state)
-        if state == QtCore.Qt.Checked:
+        if enabled:
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
             )

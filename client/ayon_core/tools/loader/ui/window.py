@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
+from ayon_core.pipeline.actions import LoaderActionResult
 from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
+    MessageOverlayObject,
     ErrorMessageBox,
     ThumbnailPainterWidget,
     RefreshButton,
     GoToCurrentButton,
+    ProjectsCombobox,
+    get_qt_icon,
+    FoldersFiltersWidget,
 )
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.lib import center_window
-from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
@@ -141,6 +147,8 @@ class LoaderWindow(QtWidgets.QWidget):
         if controller is None:
             controller = LoaderController()
 
+        overlay_object = MessageOverlayObject(self)
+
         main_splitter = QtWidgets.QSplitter(self)
 
         context_splitter = QtWidgets.QSplitter(main_splitter)
@@ -170,15 +178,14 @@ class LoaderWindow(QtWidgets.QWidget):
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
 
-        folders_filter_input = PlaceholderLineEdit(context_widget)
-        folders_filter_input.setPlaceholderText("Folder name filter...")
+        filters_widget = FoldersFiltersWidget(context_widget)
 
         folders_widget = LoaderFoldersWidget(controller, context_widget)
 
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
         context_layout.addWidget(context_top_widget, 0)
-        context_layout.addWidget(folders_filter_input, 0)
+        context_layout.addWidget(filters_widget, 0)
         context_layout.addWidget(folders_widget, 1)
 
         tasks_widget = LoaderTasksWidget(controller, context_widget)
@@ -247,8 +254,11 @@ class LoaderWindow(QtWidgets.QWidget):
         projects_combobox.refreshed.connect(self._on_projects_refresh)
         folders_widget.refreshed.connect(self._on_folders_refresh)
         products_widget.refreshed.connect(self._on_products_refresh)
-        folders_filter_input.textChanged.connect(
+        filters_widget.text_changed.connect(
             self._on_folder_filter_change
+        )
+        filters_widget.my_tasks_changed.connect(
+            self._on_my_tasks_checkbox_state_changed
         )
         search_bar.filter_changed.connect(self._on_filter_change)
         product_group_checkbox.stateChanged.connect(
@@ -294,6 +304,12 @@ class LoaderWindow(QtWidgets.QWidget):
             "controller.reset.finished",
             self._on_controller_reset_finish,
         )
+        controller.register_event_callback(
+            "loader.action.finished",
+            self._on_loader_action_finished,
+        )
+
+        self._overlay_object = overlay_object
 
         self._group_dialog = ProductGroupDialog(controller, self)
 
@@ -303,7 +319,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._refresh_btn = refresh_btn
         self._projects_combobox = projects_combobox
 
-        self._folders_filter_input = folders_filter_input
+        self._filters_widget = filters_widget
         self._folders_widget = folders_widget
 
         self._tasks_widget = tasks_widget
@@ -406,6 +422,20 @@ class LoaderWindow(QtWidgets.QWidget):
         if self._reset_on_show:
             self.refresh()
 
+    def _show_toast_message(
+        self,
+        message: str,
+        success: bool = True,
+        message_id: Optional[str] = None,
+    ):
+        message_type = None
+        if not success:
+            message_type = "error"
+
+        self._overlay_object.add_message(
+            message, message_type, message_id=message_id
+        )
+
     def _show_group_dialog(self):
         project_name = self._projects_combobox.get_selected_project_name()
         if not project_name:
@@ -421,8 +451,20 @@ class LoaderWindow(QtWidgets.QWidget):
         self._group_dialog.set_product_ids(project_name, product_ids)
         self._group_dialog.show()
 
-    def _on_folder_filter_change(self, text):
+    def _on_folder_filter_change(self, text: str) -> None:
         self._folders_widget.set_name_filter(text)
+
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
+        folder_ids = None
+        task_ids = None
+        if enabled:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._selected_project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)
 
     def _on_product_group_change(self):
         self._products_widget.set_enable_grouping(
@@ -485,6 +527,10 @@ class LoaderWindow(QtWidgets.QWidget):
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
         self._update_filters()
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_load_finished(self, event):
         error_info = event["error_info"]
@@ -493,6 +539,77 @@ class LoaderWindow(QtWidgets.QWidget):
 
         box = LoadErrorMessageBox(error_info, self)
         box.show()
+
+    def _on_loader_action_finished(self, event):
+        crashed = event["crashed"]
+        if crashed:
+            self._show_toast_message(
+                "Action failed",
+                success=False,
+            )
+            return
+
+        result: Optional[LoaderActionResult] = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            self._show_toast_message(
+                result.message, result.success
+            )
+
+        if result.form is None:
+            return
+
+        form = result.form
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if result.form_values:
+            dialog.set_values(result.form_values)
+        submit_label = form.submit_label
+        submit_icon = form.submit_icon
+        cancel_label = form.cancel_label
+        cancel_icon = form.cancel_icon
+
+        if submit_icon:
+            submit_icon = get_qt_icon(submit_icon)
+        if cancel_icon:
+            cancel_icon = get_qt_icon(cancel_icon)
+
+        if submit_label:
+            dialog.set_submit_label(submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if submit_icon:
+            dialog.set_submit_icon(submit_icon)
+
+        if cancel_label:
+            dialog.set_cancel_label(cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if cancel_icon:
+            dialog.set_cancel_icon(cancel_icon)
+
+        dialog.setMinimumSize(300, 140)
+        result = dialog.exec_()
+        if result != QtWidgets.QDialog.Accepted:
+            return
+
+        form_values = dialog.get_values()
+        self._controller.trigger_action_item(
+            identifier=event["identifier"],
+            project_name=event["project_name"],
+            selected_ids=event["selected_ids"],
+            selected_entity_type=event["selected_entity_type"],
+            options={},
+            data=event["data"],
+            form_values=form_values,
+        )
 
     def _on_project_selection_changed(self, event):
         self._selected_project_name = event["project_name"]
