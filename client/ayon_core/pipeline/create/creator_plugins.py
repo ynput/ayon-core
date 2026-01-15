@@ -972,6 +972,7 @@ class Creator(BaseCreator):
             self.identifier
         )
 
+
 class HiddenCreator(BaseCreator):
     skip_discovery = True
 

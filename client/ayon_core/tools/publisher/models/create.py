@@ -9,7 +9,8 @@ from typing import (
     Any,
     Optional,
     Iterable,
-    Pattern, Generator,
+    Pattern,
+    Generator,
 )
 
 from ayon_core.lib.attribute_definitions import (
@@ -1093,7 +1094,8 @@ class CreateModel:
         for identifier in identifiers:
             if identifier not in self._creator_items:
                 continue
-            creator: BaseCreator = self._create_context.creators.get(identifier)
+            creator: BaseCreator = self._create_context.creators.get(
+                identifier)
             if creator is None:
                 continue
             if creator.get_product_type_items():
