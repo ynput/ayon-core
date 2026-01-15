@@ -51,9 +51,9 @@ class CollectAudioModel(BaseSettingsModel):
 
 class CollectHierarchyModel(BaseSettingsModel):
     _isGroup = True
-    ignore_shot_attributes_on_update: bool = SettingsField(
-        False,
-        title="Ignore shot attributes on update"
+    edit_shot_attributes_on_update: bool = SettingsField(
+        True,
+        title="Edit shot attributes on update"
     )
 
 
@@ -1486,7 +1486,7 @@ DEFAULT_PUBLISH_VALUES = {
         "options": []
     },
     "CollectHierarchy": {
-        "ignore_shot_attributes_on_update": False,
+        "edit_shot_attributes_on_update": True,
     },
     "ValidateEditorialAssetName": {
         "enabled": True,

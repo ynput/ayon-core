@@ -4,6 +4,19 @@ import ayon_api
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
 
+SHOT_ATTRS = (
+    "handleStart",
+    "handleEnd",
+    "frameStart",
+    "frameEnd",
+    "clipIn",
+    "clipOut",
+    "fps",
+    "resolutionWidth",
+    "resolutionHeight",
+    "pixelAspect",
+)
+
 
 class CollectHierarchy(
     pyblish.api.ContextPlugin,
@@ -22,25 +35,25 @@ class CollectHierarchy(
     order = pyblish.api.CollectorOrder - 0.076
     settings_category = "core"
 
-    ignore_shot_attributes_on_update = False
+    edit_shot_attributes_on_update = True
 
     @classmethod
     def get_attr_defs_for_context(cls, create_context):
         return [
             BoolDef(
-                "ignore_shot_attributes_on_update",
-                label="Ignore shot attributes on update",
-                default=cls.ignore_shot_attributes_on_update
+                "edit_shot_attributes_on_update",
+                label="Edit shot attributes on update",
+                default=cls.edit_shot_attributes_on_update
             )
         ]
 
     @classmethod
     def apply_settings(cls, project_settings):
-        cls.ignore_shot_attributes_on_update = (
+        cls.edit_shot_attributes_on_update = (
             project_settings
                 ["core"]
                 ["CollectHierarchy"]
-                ["ignore_shot_attributes_on_update"]
+                ["edit_shot_attributes_on_update"]
         )
 
     def _get_shot_instances(self, context):
@@ -110,8 +123,8 @@ class CollectHierarchy(
 
         # get user input
         values = self.get_attr_values_from_data(context.data)
-        ignore_shot_attributes_on_update = values.get(
-            "ignore_shot_attributes_on_update", None)
+        edit_shot_attributes_on_update = values.get(
+            "edit_shot_attributes_on_update", None)
 
         project_name = context.data["projectName"]
         final_context = {
@@ -144,20 +157,8 @@ class CollectHierarchy(
             # is disabled by settings
             if (
                 existing_entities.get(folder_path)
-                and not ignore_shot_attributes_on_update
+                and edit_shot_attributes_on_update
             ):
-                SHOT_ATTRS = (
-                    "handleStart",
-                    "handleEnd",
-                    "frameStart",
-                    "frameEnd",
-                    "clipIn",
-                    "clipOut",
-                    "fps",
-                    "resolutionWidth",
-                    "resolutionHeight",
-                    "pixelAspect",
-                )
                 for shot_attr in SHOT_ATTRS:
                     attr_value = instance.data.get(shot_attr)
                     if attr_value is None:
