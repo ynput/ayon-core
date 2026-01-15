@@ -88,7 +88,12 @@ class PythonCodeEditor(QtWidgets.QPlainTextEdit):
         self.setObjectName("PythonCodeEditor")
 
         self._indent = 4
-        _ = PythonSyntaxHighlighter(self.document())
+        self._highlighter = PythonSyntaxHighlighter(self.document())
+
+        if self._highlighter.style:
+            if background_color := self._highlighter.style.background_color:
+                self.setStyleSheet(f"QPlainTextEdit {{background-color: {background_color};}}")
+
 
     def _tab_shift_right(self):
         cursor = self.textCursor()
