@@ -62,8 +62,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
 
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
-        "project", "folder", "asset", "hierarchy", "task", "product",
-        "subset", "family", "representation", "username", "user", "output"
+        "project", "folder", "hierarchy", "task", "product",
+        "representation", "username", "user", "output"
     ]
     use_hardlinks = False
 
@@ -75,6 +75,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         msgBox.setStyleSheet(style.load_stylesheet())
         msgBox.setWindowFlags(
             msgBox.windowFlags() | QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
         )
         msgBox.exec_()
 

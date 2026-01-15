@@ -163,12 +163,15 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "flame",
         "unreal",
         "batchdelivery",
-        "photoshop"
+        "photoshop",
+        "substancepainter",
     ]
 
     settings_category = "core"
     # Supported extensions
-    image_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif"}
+    image_exts = {
+        "exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif", "psd"
+    }
     video_exts = {"mov", "mp4"}
     supported_exts = image_exts | video_exts
 
@@ -361,14 +364,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not filtered_output_defs:
                 self.log.debug((
                     "Repre: {} - All output definitions were filtered"
-                    " out by single frame filter. Skipping"
+                    " out by single frame filter. Skipped."
                 ).format(repre["name"]))
                 continue
 
             # Skip if file is not set
             if first_input_path is None:
                 self.log.warning((
-                    "Representation \"{}\" have empty files. Skipped."
+                    "Representation \"{}\" has empty files. Skipped."
                 ).format(repre["name"]))
                 continue
 
@@ -400,6 +403,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     new_staging_dir,
                     self.log
                 )
+                # The OIIO conversion will remap the RGBA channels just to
+                # `R,G,B,A` so we will pass the intermediate file to FFMPEG
+                # without layer name.
+                layer_name = ""
 
             try:
                 self._render_output_definitions(

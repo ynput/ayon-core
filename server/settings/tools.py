@@ -24,17 +24,32 @@ class ProductTypeSmartSelectModel(BaseSettingsModel):
 class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
 
-    product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
     )
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
-        enum_resolver=task_types_enum
+        enum_resolver=task_types_enum,
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
-    template: str = SettingsField("", title="Template")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    template: str = SettingsField(
+        "",
+        title="Template",
+        regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$",
+    )
 
 
 class FilterCreatorProfile(BaseSettingsModel):
@@ -341,6 +356,27 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     )
 
 
+class DiscoverValidationModel(BaseSettingsModel):
+    """Strictly validate publish plugins discovery.
+
+    Artist won't be able to publish if path to publish plugin fails to be
+        imported.
+
+    """
+    _isGroup = True
+    enabled: bool = SettingsField(
+        False,
+        description="Enable strict mode of plugins discovery",
+    )
+    ignore_paths: list[str] = SettingsField(
+        default_factory=list,
+        title="Ignored paths (regex)",
+        description=(
+            "Paths that do match regex will be skipped in validation."
+        ),
+    )
+
+
 class PublishToolModel(BaseSettingsModel):
     template_name_profiles: list[PublishTemplateNameProfile] = SettingsField(
         default_factory=list,
@@ -357,6 +393,10 @@ class PublishToolModel(BaseSettingsModel):
             default_factory=list,
             title="Custom Staging Dir Profiles"
         )
+    )
+    discover_validation: DiscoverValidationModel = SettingsField(
+        default_factory=DiscoverValidationModel,
+        title="Validate plugins discovery",
     )
     comment_minimum_required_chars: int = SettingsField(
         0,
@@ -432,108 +472,118 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "product_name_profiles": [
             {
+                "product_base_types": [],
                 "product_types": [],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "workfile"
                 ],
-                "hosts": [],
+                "product_types": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "render"
                 ],
-                "hosts": [],
+                "product_types": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "renderLayer",
                     "renderPass"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "tvpaint"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": (
                     "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
                 )
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "workfile"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "aftereffects",
                     "tvpaint"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": ["render"],
-                "hosts": [
+                "product_base_types": ["render"],
+                "product_types": [],
+                "host_names": [
                     "aftereffects"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}{Composition}{Variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "S_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "skeletalMesh"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "SK_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "hda"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "houdini"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{folder[name]}_{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "textureSet"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "T_{folder[name]}{variant}"
             }
         ],
@@ -653,6 +703,18 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "task_names": [],
                 "template_name": "tycache"
+            },
+            {
+                "product_types": [
+                    "uasset",
+                    "umap"
+                ],
+                "hosts": [
+                    "unreal"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "unrealuasset"
             }
         ],
         "hero_template_name_profiles": [
@@ -680,6 +742,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTextureHero"
             }
         ],
+        "discover_validation": {
+            "enabled": False,
+            "ignore_paths": [],
+        },
         "comment_minimum_required_chars": 0,
     }
 }
