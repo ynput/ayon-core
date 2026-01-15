@@ -92,8 +92,11 @@ class PythonCodeEditor(QtWidgets.QPlainTextEdit):
 
         if self._highlighter.style:
             if background_color := self._highlighter.style.background_color:
-                self.setStyleSheet(f"QPlainTextEdit {{background-color: {background_color};}}")
-
+                self.setStyleSheet((
+                    "QPlainTextEdit {"
+                    f"background-color: {background_color};"
+                    "}"
+                ))
 
     def _tab_shift_right(self):
         cursor = self.textCursor()
