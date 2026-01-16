@@ -8,6 +8,8 @@ import pygments.lexers
 import pygments.styles
 import pygments.token
 
+from ..code_style import AYONStyle
+
 
 def style_to_formats(
     style: pygments.styles.Style
@@ -48,13 +50,19 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
     def __init__(self, document, style_name: str = ""):
         super().__init__(document)
         self.lexer = pygments.lexers.PythonLexer()
+        self.style = AYONStyle
 
-        style_name = os.getenv("AYON_CONSOLE_INTERPRETER_STYLE", "github-dark")
-        self.style = pygments.styles.get_style_by_name(style_name)
-        if not self.style:
-            all_styles = ", ".join(pygments.styles.get_all_styles())
-            msg = f"'{style_name}' not found. Installed styles: {all_styles}"
-            raise ValueError(msg)
+        # Allow to override style by environment variable
+        override_style_name = os.getenv("AYON_CONSOLE_INTERPRETER_STYLE")
+        if override_style_name:
+            style = pygments.styles.get_style_by_name(override_style_name)
+            if not style:
+                all_styles = ", ".join(pygments.styles.get_all_styles())
+                raise ValueError(
+                    f"'{override_style_name}' not found. "
+                    f"Installed styles: {all_styles}"
+                )
+            self.style = style
 
         self.formats = style_to_formats(self.style)
 
@@ -91,7 +99,8 @@ class PythonCodeEditor(QtWidgets.QPlainTextEdit):
         self._highlighter = PythonSyntaxHighlighter(self.document())
 
         if self._highlighter.style:
-            if background_color := self._highlighter.style.background_color:
+            background_color = self._highlighter.style.background_color
+            if background_color:
                 self.setStyleSheet((
                     "QPlainTextEdit {"
                     f"background-color: {background_color};"
