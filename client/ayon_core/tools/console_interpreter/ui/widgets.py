@@ -8,7 +8,7 @@ import pygments.lexers
 import pygments.styles
 import pygments.token
 
-from ..code_style import AYONStyle
+from .code_style import AYONCodeStyle
 
 
 def style_to_formats(
@@ -50,7 +50,7 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
     def __init__(self, document, style_name: str = ""):
         super().__init__(document)
         self.lexer = pygments.lexers.PythonLexer()
-        self.style = AYONStyle
+        self.style = AYONCodeStyle
 
         # Allow to override style by environment variable
         override_style_name = os.getenv("AYON_CONSOLE_INTERPRETER_STYLE")

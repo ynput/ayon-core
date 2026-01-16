@@ -50,7 +50,7 @@ pl = {
 }
 
 
-class AYONStyle(Style):
+class AYONCodeStyle(Style):
     """A Pygments style similar to GitHub's pretty lights dark theme"""
 
     background_color = None
