@@ -1,90 +1,12 @@
 from __future__ import annotations
 
 from code import InteractiveInterpreter
-import os
-
 from qtpy import QtCore, QtWidgets, QtGui
-import pygments.lexers
-import pygments.styles
-import pygments.token
 
-from .code_style import AYONCodeStyle
-
-
-def style_to_formats(
-    style: pygments.styles.Style
-) -> dict[pygments.token.Token, QtGui.QTextCharFormat]:
-    """Convert a Pygments style to a dictionary of Qt formats.
-
-    Args:
-        style: The Pygments style to convert.
-
-    Returns:
-        token_format = QTextCharFormat for each token in the style.
-
-    """
-    formats = {}
-    for token, _ in style.styles.items():
-
-        token_style = style.style_for_token(token)
-        if not token_style:
-            continue
-
-        token_format = QtGui.QTextCharFormat()
-        if color := token_style.get("color"):
-            color = f"#{color}"
-            token_format.setForeground(QtGui.QColor(color))
-        if token_style.get("bold"):
-            token_format.setFontWeight(QtGui.QFont.Bold)
-        if token_style.get("italic"):
-            token_format.setFontItalic(True)
-        if token_style.get("underline"):
-            token_format.setFontUnderline(True)
-
-        formats[token] = token_format
-
-    return formats
-
-
-class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
-    def __init__(self, document, style_name: str = ""):
-        super().__init__(document)
-        self.lexer = pygments.lexers.PythonLexer()
-        self.style = AYONCodeStyle
-
-        # Allow to override style by environment variable
-        override_style_name = os.getenv("AYON_CONSOLE_INTERPRETER_STYLE")
-        if override_style_name:
-            style = pygments.styles.get_style_by_name(override_style_name)
-            if not style:
-                all_styles = ", ".join(pygments.styles.get_all_styles())
-                raise ValueError(
-                    f"'{override_style_name}' not found. "
-                    f"Installed styles: {all_styles}"
-                )
-            self.style = style
-
-        self.formats = style_to_formats(self.style)
-
-    def highlightBlock(self, text: str) -> None:
-        index = 0
-        for token, value in self.lexer.get_tokens(text):
-            length = len(value)
-
-            fmt = self.formats.get(token)
-            if fmt:
-                self.setFormat(index, length, fmt)
-
-            index += length
-
-    def _format_for_token(self, token):
-        if token is None:
-            return None
-        if token in self.formats:
-            return self.formats[token]
-        if token.parent:
-            return self._format_for_token(token.parent)
-        return None
+try:
+    from .syntax_highlight import PythonSyntaxHighlighter
+except ImportError:
+    PythonSyntaxHighlighter = None  # type: ignore
 
 
 class PythonCodeEditor(QtWidgets.QPlainTextEdit):
@@ -96,16 +18,25 @@ class PythonCodeEditor(QtWidgets.QPlainTextEdit):
         self.setObjectName("PythonCodeEditor")
 
         self._indent = 4
-        self._highlighter = PythonSyntaxHighlighter(self.document())
+        self._apply_syntax_highlighter()
 
-        if self._highlighter.style:
-            background_color = self._highlighter.style.background_color
-            if background_color:
-                self.setStyleSheet((
-                    "QPlainTextEdit {"
-                    f"background-color: {background_color};"
-                    "}"
-                ))
+    def _apply_syntax_highlighter(self):
+        if PythonSyntaxHighlighter is None:
+            return
+
+        try:
+            highlighter = PythonSyntaxHighlighter(self.document())
+        except ValueError as e:
+            print(f"Error applying syntax highlighter: {e!s}")
+            return
+
+        # Apply background color from the style
+        if background_color := highlighter.style.background_color:
+            self.setStyleSheet((
+                "QPlainTextEdit {"
+                f"background-color: {background_color};"
+                "}"
+            ))
 
     def _tab_shift_right(self):
         cursor = self.textCursor()
