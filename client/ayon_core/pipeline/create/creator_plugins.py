@@ -5,9 +5,13 @@ import collections
 import copy
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from ayon_core.lib import Logger, get_version_from_path
+from ayon_core.lib import (
+    Logger,
+    get_version_from_path,
+    is_func_signature_supported,
+)
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -387,7 +391,7 @@ class BaseCreator(ABC):
     def _create_instance(
         self,
         product_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         product_type: Optional[str] = None,
         product_base_type: Optional[str] = None
     ) -> CreatedInstance:
@@ -395,7 +399,7 @@ class BaseCreator(ABC):
 
         Args:
             product_name (str): Product name.
-            data (Dict[str, Any]): Instance data.
+            data (dict[str, Any]): Instance data.
             product_type (Optional[str]): Product type, object attribute
                 'product_type' is used if not passed.
             product_base_type (Optional[str]): Product base type, object
@@ -510,13 +514,15 @@ class BaseCreator(ABC):
 
     def get_dynamic_data(
         self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name,
-        instance
-    ):
+        project_name: str,
+        folder_entity: Optional[dict[str, Any]],
+        task_entity: Optional[dict[str, Any]],
+        variant: str,
+        host_name: str,
+        instance: Optional[CreatedInstance] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
+    ) -> dict[str, Any]:
         """Dynamic data for product name filling.
 
         These may be dynamically created based on current context of workfile.
@@ -532,6 +538,7 @@ class BaseCreator(ABC):
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
         project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
     ) -> str:
         """Return product name for passed context.
 
@@ -549,30 +556,51 @@ class BaseCreator(ABC):
                 for which is product name updated. Passed only on product name
                 update.
             project_entity (Optional[dict[str, Any]]): Project entity.
+            product_type (Optional[str]): Product type.
 
         """
         if host_name is None:
             host_name = self.create_context.host_name
 
-        dynamic_data = self.get_dynamic_data(
+        if product_type is None:
+            for product_type_item in self.get_product_type_items():
+                product_type = product_type_item.product_type
+                break
+            else:
+                product_type = self.product_base_type
+
+        cur_project_name = self.create_context.get_current_project_name()
+        if not project_entity and project_name == cur_project_name:
+            project_entity = self.create_context.get_current_project_entity()
+
+        args = (
             project_name,
             folder_entity,
             task_entity,
             variant,
             host_name,
-            instance
         )
+        kwargs = dict(
+            instance=instance,
+            project_entity=project_entity,
+            product_type=product_type,
+        )
+        # NOTE 'project_entity' and 'product_type' were added at the same time
+        #   26/01/19
+        if not is_func_signature_supported(
+            self.get_dynamic_data, *args, **kwargs
+        ):
+            kwargs.pop("project_entity")
+            kwargs.pop("product_type")
 
-        cur_project_name = self.create_context.get_current_project_name()
-        if not project_entity and project_name == cur_project_name:
-            project_entity = self.create_context.get_current_project_entity()
+        dynamic_data = self.get_dynamic_data(*args, **kwargs)
 
         return get_product_name(
             project_name,
             folder_entity=folder_entity,
             task_entity=task_entity,
             product_base_type=self.product_base_type,
-            product_type=self.product_type,
+            product_type=product_type,
             host_name=host_name,
             variant=variant,
             dynamic_data=dynamic_data,
@@ -659,8 +687,8 @@ class BaseCreator(ABC):
         fields must have default values to not break existing implementations.
 
         Returns:
-            list[ProductTypeItem]: List of tuples with
-                (product_type, label) or None.
+            list[ProductTypeItem]: List of product type items.
+
         """
         return self.product_type_items
 
