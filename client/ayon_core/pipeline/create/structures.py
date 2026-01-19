@@ -1,17 +1,18 @@
 import copy
 import collections
 from uuid import uuid4
+from dataclasses import dataclass, fields
 from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
-
 
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
@@ -23,6 +24,8 @@ from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
     from .creator_plugins import BaseCreator
+
+log = Logger.get_logger(__name__)
 
 
 class IntEnum(int, Enum):
@@ -41,6 +44,20 @@ class ParentFlags(IntEnum):
     #   active state for instances
     share_active = 1 << 1
 
+
+@dataclass
+class ProductTypeItem:
+    product_type: str
+    label: str
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ProductTypeItem":
+
+        valid_keys = {f.name for f in fields(cls)}
+
+        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
+        return cls(**filtered_data)
+    
 
 class ConvertorItem:
     """Item representing convertor plugin.

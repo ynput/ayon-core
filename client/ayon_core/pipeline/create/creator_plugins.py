@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import collections
 import copy
-from dataclasses import dataclass, fields
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Optional
@@ -21,27 +20,13 @@ from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
-from .structures import CreatedInstance
+from .structures import CreatedInstance, ProductTypeItem
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
 
     # Avoid cyclic imports
     from .context import CreateContext, UpdateData  # noqa: F401
-
-
-@dataclass
-class ProductTypeItem:
-    product_type: str
-    label: str
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProductTypeItem":
-
-        valid_keys = {f.name for f in fields(cls)}
-
-        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
-        return cls(**filtered_data)
 
 
 class ProductConvertorPlugin(ABC):
