@@ -47,17 +47,46 @@ class ParentFlags(IntEnum):
 
 @dataclass
 class ProductTypeItem:
+    """Structure to define product types for a create plugin.
+
+    Product types can be used as studio definitions of a product base type.
+
+    It is expected that attributes will be added/removed in the future,
+        in that regards it is recommended to use pre-defined methods
+        'new' and 'from_data' that do safely handle those cases and
+        can contain backwards/forwards compatibility if needed.
+
+    Attributes:
+        product_type (str): Name of a product type.
+        label (str): Product type label shown in Create view.
+
+    """
     product_type: str
-    label: str
+    label: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProductTypeItem":
+    def new(
+        cls,
+        *,
+        product_type: str,
+        label: str,
+        **unknown,
+    ) -> "ProductTypeItem":
+        if unknown:
+            unknown_keys = ", ".join(f"'{k}'" for k in unknown.keys())
+            log.info(
+                f"Unknown keys in ProductTypeItem: {unknown_keys}"
+            )
 
-        valid_keys = {f.name for f in fields(cls)}
+        return cls(
+            product_type=product_type,
+            label=label,
+        )
 
-        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
-        return cls(**filtered_data)
-    
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ProductTypeItem":
+        return cls.new(**data)
+
 
 class ConvertorItem:
     """Item representing convertor plugin.
