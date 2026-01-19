@@ -66,10 +66,11 @@ class OverviewWidget(QtWidgets.QFrame):
         change_view_btn = ChangeViewBtn(product_views_widget)
 
         # --- Overview ---
-        # pProduct details widget
+        # Product details widget
         product_attributes_wrap = BorderedLabelWidget(
             "Publish options", product_content_widget
         )
+        product_attributes_wrap.setVisible(False)
         product_attributes_widget = ProductInfoWidget(
             controller, product_attributes_wrap
         )
