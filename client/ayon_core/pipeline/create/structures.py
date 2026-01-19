@@ -1,7 +1,7 @@
 import copy
 import collections
 from uuid import uuid4
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
