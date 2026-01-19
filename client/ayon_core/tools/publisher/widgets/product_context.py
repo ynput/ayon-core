@@ -875,7 +875,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 editable = False
 
             variants.add(item.variant or self.unknown_value)
-            product_base_types.add(item.product_base_type or self.unknown_value)
+            product_base_types.add(
+                item.product_base_type or self.unknown_value
+            )
             folder_path = item.folder_path or self.unknown_value
             task_name = item.task_name or ""
             folder_paths.add(folder_path)
