@@ -23,11 +23,12 @@ INSTANCE_ID_ROLE = QtCore.Qt.UserRole + 1
 SORT_VALUE_ROLE = QtCore.Qt.UserRole + 2
 IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
 CREATOR_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 4
-CREATOR_THUMBNAIL_ENABLED_ROLE = QtCore.Qt.UserRole + 5
-PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 6
-GROUP_ROLE = QtCore.Qt.UserRole + 7
-CONVERTER_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 8
-CREATOR_SORT_ROLE = QtCore.Qt.UserRole + 9
+PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 5
+PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 6
+CREATOR_THUMBNAIL_ENABLED_ROLE = QtCore.Qt.UserRole + 7
+GROUP_ROLE = QtCore.Qt.UserRole + 8
+CONVERTER_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 9
+CREATOR_SORT_ROLE = QtCore.Qt.UserRole + 10
 
 ResetKeySequence = QtGui.QKeySequence(
     QtCore.Qt.ControlModifier | QtCore.Qt.Key_R
