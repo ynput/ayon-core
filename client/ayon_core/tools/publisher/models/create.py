@@ -183,7 +183,9 @@ class CreatorItem:
             show_order = creator.show_order
 
         ui_items = []
-        product_type_items = creator.get_product_type_items() or []
+        product_type_items: list[ProductTypeItem] = (
+            creator.get_product_type_items() or []
+        )
         for item in product_type_items:
             ui_item = CreatorUIItem(
                 item.product_type,
