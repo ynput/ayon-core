@@ -732,7 +732,7 @@ class CreateModel:
         # Backwards compatibility for 'product_type' argument (26/01/19)
         for kwarg in (
             "product_type",
-            "project_entity", 
+            "project_entity",
         ):
             if not is_func_signature_supported(
                 creator.get_product_name, *args, **kwargs
