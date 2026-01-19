@@ -700,22 +700,26 @@ class CreatedInstance:
     # ------
 
     @property
-    def product_type(self):
+    def product_base_type(self) -> str:
+        return self._data["productBaseType"]
+
+    @property
+    def product_type(self) -> str:
         return self._data["productType"]
 
     @property
-    def product_name(self):
+    def product_name(self) -> str:
         return self._data["productName"]
 
     @property
-    def label(self):
+    def label(self) -> str:
         label = self._data.get("label")
         if not label:
             label = self.product_name
         return label
 
     @property
-    def group_label(self):
+    def group_label(self) -> str:
         label = self._data.get("group")
         if label:
             return label
