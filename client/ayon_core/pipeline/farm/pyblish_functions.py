@@ -849,20 +849,13 @@ def _create_instances_for_aov(
 
         project_settings = instance.context.data.get("project_settings")
 
-        try:
-            use_legacy_product_name = (
-                project_settings
-                ["core"]
-                ["tools"]
-                ["creator"]
-                ["use_legacy_product_names_for_renders"]
-            )
-        except KeyError:
-            warnings.warn(
-                ("use_legacy_for_renders not found in project settings. "
-                 "Using legacy product name for renders. Please update "
-                 "your ayon-core version."), DeprecationWarning)
-            use_legacy_product_name = True
+        use_legacy_product_name = (
+            project_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["use_legacy_product_names_for_renders"]
+        )
 
         if use_legacy_product_name:
             product_name, group_name = _get_legacy_product_name_and_group(
