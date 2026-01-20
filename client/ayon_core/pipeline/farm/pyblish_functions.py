@@ -17,6 +17,8 @@ from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
 
+log = Logger.get_logger(__name__)
+
 
 @attr.s
 class TimeData(object):
@@ -154,7 +156,6 @@ def get_transferable_representations(instance):
             try:
                 trans_rep["stagingDir"] = remap_source(staging_dir, anatomy)
             except ValueError:
-                log = Logger.get_logger("farm_publishing")
                 log.warning(
                     ("Could not find root path for remapping \"{}\". "
                      "This may cause issues on farm.").format(staging_dir))
@@ -210,7 +211,6 @@ def create_skeleton_instance(
         source = rootless_path
     else:
         # `rootless_path` is not set to `source` if none of roots match
-        log = Logger.get_logger("farm_publishing")
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
@@ -349,8 +349,6 @@ def prepare_representations(
     representations = []
     host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
-
-    log = Logger.get_logger("farm_publishing")
 
     if frames_to_render is not None:
         frames_to_render = convert_frames_str_to_list(frames_to_render)
@@ -602,7 +600,6 @@ def create_instances_for_aov(
     """
     # we cannot attach AOVs to other products as we consider every
     # AOV product of its own.
-    log = Logger.get_logger("farm_publishing")
 
     # if there are product to attach to and more than one AOV,
     # we cannot proceed.
@@ -800,12 +797,10 @@ def _create_instances_for_aov(
         ValueError:
 
     """
-
     anatomy = instance.context.data["anatomy"]
     source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
     expected_files = instance.data["expectedFiles"]
-    log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
@@ -1124,7 +1119,6 @@ def create_skeleton_instance_cache(instance):
         source = rootless_path
     else:
         # `rootless_path` is not set to `source` if none of roots match
-        log = Logger.get_logger("farm_publishing")
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
@@ -1189,8 +1183,6 @@ def prepare_cache_representations(skeleton_data, exp_files, anatomy):
     representations = []
     collections, _remainders = clique.assemble(exp_files)
 
-    log = Logger.get_logger("farm_publishing")
-
     # create representation for every collected sequence
     for collection in collections:
         ext = collection.tail.lstrip(".")
@@ -1247,7 +1239,6 @@ def create_instances_for_cache(instance, skeleton):
     product_name = skeleton["productName"]
     product_type = skeleton["productType"]
     exp_files = instance.data["expectedFiles"]
-    log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
@@ -1332,7 +1323,6 @@ def copy_extend_frames(instance, representation):
     R_FRAME_NUMBER = re.compile(
         r".+\.(?P<frame>[0-9]+)\..+")
 
-    log = Logger.get_logger("farm_publishing")
     log.info("Preparing to copy ...")
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
@@ -1437,8 +1427,6 @@ def create_metadata_path(instance, anatomy):
     # Ensure output dir exists
     output_dir = ins_data.get(
         "publishRenderMetadataFolder", ins_data["outputDir"])
-
-    log = Logger.get_logger("farm_publishing")
 
     try:
         if not os.path.isdir(output_dir):
