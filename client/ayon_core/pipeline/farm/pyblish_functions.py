@@ -4,6 +4,7 @@ import os
 import re
 import warnings
 from copy import deepcopy
+from typing import Any, Optional
 
 import attr
 import ayon_api
@@ -165,7 +166,10 @@ def get_transferable_representations(instance):
 
 
 def create_skeleton_instance(
-        instance, families_transfer=None, instance_transfer=None):
+    instance,
+    families_transfer=None,
+    instance_transfer=None,
+):
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -214,16 +218,21 @@ def create_skeleton_instance(
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    product_type = ("render"
-              if "prerender.farm" not in instance.data["families"]
-              else "prerender")
-    families = [product_type]
+    product_base_type = (
+        "render"
+        if "prerender.farm" not in instance.data["families"]
+        else "prerender"
+    )
+    families = [product_base_type]
+    # TODO find out how to get 'product_type'
+    product_type = product_base_type
 
     # pass review to families if marked as review
     if data.get("review"):
         families.append("review")
 
     instance_skeleton_data = {
+        "productBaseType": product_base_type,
         "productType": product_type,
         "productName": data["productName"],
         "task": data["task"],
@@ -649,7 +658,7 @@ def create_instances_for_aov(
 
 
 def _get_legacy_product_name_and_group(
-        product_type,
+        product_base_type,
         source_product_name,
         task_name,
         dynamic_data):
@@ -665,7 +674,7 @@ def _get_legacy_product_name_and_group(
         since 0.4.4
 
     Args:
-        product_type (str): Product type.
+        product_base_type (str): Product type.
         source_product_name (str): Source product name.
         task_name (str): Task name.
         dynamic_data (dict): Dynamic data (camera, aov, ...)
@@ -674,13 +683,20 @@ def _get_legacy_product_name_and_group(
         tuple: product name and group name
 
     """
-    warnings.warn("Using legacy product name for renders",
-                  DeprecationWarning)
+    log.warning(
+        "Using legacy product name logic for renders. The logic is coming"
+        " from OpenPype please change 'ayon+settings://core/tools/creator/"
+        "use_legacy_product_names_for_renders' and will be removed."
+    )
+    warnings.warn(
+        "Using legacy product name for renders",
+        DeprecationWarning
+    )
 
     # create product name `<product type><Task><Product name>`
-    if not source_product_name.startswith(product_type):
+    if not source_product_name.startswith(product_base_type):
         resulting_group_name = '{}{}{}{}{}'.format(
-            product_type,
+            product_base_type,
             task_name[0].upper(), task_name[1:],
             source_product_name[0].upper(), source_product_name[1:])
     else:
@@ -708,12 +724,17 @@ def _get_legacy_product_name_and_group(
 
 
 def get_product_name_and_group_from_template(
-        project_name,
-        task_entity,
-        product_type,
-        variant,
-        host_name,
-        dynamic_data=None):
+    project_name: str,
+    task_entity: dict[str, Any],
+    product_type: str,
+    variant: str,
+    host_name: str,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    # These should be required but were added afterward
+    project_entity: Optional[dict[str, Any]] = None,
+    folder_entity: Optional[dict[str, Any]] = None,
+    product_base_type: Optional[str] = None,
+) -> tuple[str, str]:
     """Get product name and group name from template.
 
     This will get product name and group name from template based on
@@ -728,12 +749,15 @@ def get_product_name_and_group_from_template(
         Maybe we should introduce templates for the groups themselves.
 
     Args:
-        task_entity (dict): Task entity.
         project_name (str): Project name.
+        task_entity (dict): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): Variant.
         dynamic_data (dict): Dynamic data (aov, renderlayer, camera, ...).
+        project_entity (dict): Project entity.
+        folder_entity (dict): Folder entity.
+        product_base_type (str): Product base type.
 
     Returns:
         tuple: product name and group name.
@@ -741,26 +765,39 @@ def get_product_name_and_group_from_template(
     """
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.
-    _dynamic_data = deepcopy(dynamic_data) or {}
+    if dynamic_data is None:
+        dynamic_data = {}
+    _dynamic_data = deepcopy(dynamic_data)
     _dynamic_data.pop("aov", None)
+    if product_base_type is None:
+        log.warning(
+            f"DEPRECATION WARNING: Product base type not provided,"
+            f" using product type: {product_type}"
+        )
+        product_base_type = product_type
+
     resulting_group_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=_dynamic_data,
         variant=variant,
+        project_entity=project_entity,
     )
 
     resulting_product_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=dynamic_data,
         variant=variant,
+        project_entity=project_entity,
     )
     return resulting_product_name, resulting_group_name
 
@@ -854,7 +891,7 @@ def _create_instances_for_aov(
 
         if use_legacy_product_name:
             product_name, group_name = _get_legacy_product_name_and_group(
-                product_type=skeleton["productType"],
+                product_base_type=skeleton["productBaseType"],
                 source_product_name=source_product_name,
                 task_name=instance.data["task"],
                 dynamic_data=dynamic_data)
@@ -863,12 +900,14 @@ def _create_instances_for_aov(
             (
                 product_name, group_name
             ) = get_product_name_and_group_from_template(
-                task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
+                project_entity=instance.context.data["projectEntity"],
+                folder_entity=instance.data["folderEntity"],
+                task_entity=instance.data["taskEntity"],
                 host_name=instance.context.data["hostName"],
                 product_type=skeleton["productType"],
                 variant=instance.data.get("variant", source_product_name),
-                dynamic_data=dynamic_data
+                dynamic_data=dynamic_data,
             )
 
         try:
