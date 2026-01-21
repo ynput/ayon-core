@@ -312,15 +312,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, entity_type, entity_ids
         )
 
-    def get_folder_product_group_names(
-        self, product_items
-    ):
-        product_groups = {
-            product_item.group_name for product_item in product_items
-        }
-        product_groups.discard(None)
-        return product_groups
-
     def change_products_group(self, project_name, product_ids, group_name):
         self._products_model.change_products_group(
             project_name, product_ids, group_name

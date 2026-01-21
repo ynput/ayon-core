@@ -52,9 +52,11 @@ class ProductGroupDialog(QtWidgets.QDialog):
         product_items = self._controller.get_product_items(
             self._project_name, folder_ids
         )
-        product_groups = self._controller.get_folder_product_group_names(
-            product_items=product_items
-        )
+        product_groups = {
+            product_item.group_name
+            for product_item in product_items
+        }
+        product_groups.discard(None)
 
         # Group names among product ids to pre-set the group name if they
         # all share the same product id
