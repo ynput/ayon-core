@@ -1050,7 +1050,12 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def change_products_group(self, project_name, product_ids, group_name):
+    def change_products_group(
+        self,
+        project_name: str,
+        product_ids: set[str],
+        group_name: str,
+    ):
         """Change group of products.
 
         Triggers event "products.group.changed" with data:
@@ -1065,8 +1070,8 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
             product_ids (Iterable[str]): Product ids.
             group_name (str): New group name.
-        """
 
+        """
         pass
 
     @abstractmethod
