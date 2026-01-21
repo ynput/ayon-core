@@ -849,20 +849,6 @@ class FrontendLoaderController(_BaseLoaderController):
 
         pass
 
-    def get_folder_product_group_names(
-        self, product_items
-    ):
-        """Return all used product group names for products under folder ids.
-
-        Args:
-            product_items (list[ProductItem]): Product items.
-
-        Returns:
-            set[str]: Product group names set for products under given folders.
-
-        """
-        pass
-
     # Selection model wrapper calls
     @abstractmethod
     def get_selected_project_name(self):
