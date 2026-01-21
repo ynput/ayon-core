@@ -441,9 +441,12 @@ class LoaderWindow(QtWidgets.QWidget):
         if not project_name:
             return
 
-        product_ids = set()
-        for version_info in self._products_widget.get_selected_version_info():
-            product_ids.add(version_info["product_id"])
+        product_ids = {
+            version_info["product_id"]
+            for version_info in (
+                self._products_widget.get_selected_version_info()
+            )
+        }
         if not product_ids:
             return
 
