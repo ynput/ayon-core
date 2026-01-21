@@ -451,7 +451,9 @@ class LoaderWindow(QtWidgets.QWidget):
             return
 
         self._group_dialog.set_product_ids(
-            project_name, self._selected_folder_ids, product_ids
+            project_name,
+            self._selected_folder_ids,
+            product_ids,
         )
         self._group_dialog.show()
 

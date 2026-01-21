@@ -43,7 +43,10 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._name_line_edit = name_line_edit
 
     def set_product_ids(
-        self, project_name: str, folder_ids: set[str], product_ids: set[str]
+        self,
+        project_name: str,
+        folder_ids: set[str],
+        product_ids: set[str],
     ):
         self._project_name = project_name
         self._product_ids = product_ids
