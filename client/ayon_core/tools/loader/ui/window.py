@@ -447,11 +447,8 @@ class LoaderWindow(QtWidgets.QWidget):
         if not product_ids:
             return
 
-        folder_ids = set(
-            self._folders_widget._get_selected_item_ids()
-        )
         self._group_dialog.set_product_ids(
-            project_name, folder_ids, product_ids
+            project_name, self._selected_folder_ids, product_ids
         )
         self._group_dialog.show()
 
