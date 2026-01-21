@@ -74,8 +74,10 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._name_line_edit.set_options(list(sorted(product_groups)))
 
     def _on_apply_click(self):
-        group_name = self._name_line_edit.text().strip() or None
+        group_name = self._name_line_edit.text().strip()
         self._controller.change_products_group(
-            self._project_name, self._product_ids, group_name
+            self._project_name,
+            self._product_ids,
+            group_name,
         )
         self.close()

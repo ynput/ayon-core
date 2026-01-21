@@ -446,7 +446,7 @@ class ProductsModel:
                 project_name,
                 "product",
                 product_item.product_id,
-                {"attrib": {"productGroup": group_name}}
+                {"attrib": {"productGroup": group_name or None}}
             )
             folder_ids.add(product_item.folder_id)
             product_item.group_name = group_name
