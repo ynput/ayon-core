@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Any, Optional
+from typing import Iterable, Any, Optional, Union
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -83,7 +83,7 @@ class ProductItem:
         product_name (str): Product name.
         product_icon (dict[str, Any]): Product icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
-        group_name (str): Group name.
+        group_name (Union[str, None]): Group name.
         folder_id (str): Folder id.
         folder_label (str): Folder label.
         version_items (dict[str, VersionItem]): Version items by id.
@@ -96,7 +96,7 @@ class ProductItem:
         product_base_type: str,
         product_name: str,
         product_icon: dict[str, Any],
-        group_name: str,
+        group_name: Union[str, None],
         folder_id: str,
         folder_label: str,
         version_items: dict[str, VersionItem],
