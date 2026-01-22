@@ -15,6 +15,9 @@ from ayon_core.pipeline.traits import (
     Representation,
     TraitBase,
 )
+from ayon_core.pipeline.traits.representation import (
+    IncompatibleTraitVersionError
+)
 
 REPRESENTATION_DATA: dict = {
         FileLocation.id: {
@@ -284,7 +287,11 @@ def test_from_dict() -> None:
         },
     }
 
-    with pytest.raises(ValueError, match=r"Trait model with ID .* not found."):
+    with pytest.raises(
+            IncompatibleTraitVersionError,
+            match=(
+                r"Requested trait version .* is higher than "
+                r"the found trait version .*\.")):
         representation = Representation.from_dict(
             "test", trait_data=traits_data)
 
