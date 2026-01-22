@@ -2,14 +2,9 @@
 from __future__ import annotations
 
 import contextlib
-import inspect
 import re
-import sys
 import uuid
-from functools import lru_cache
-from types import GenericAlias
 from typing import (
-    ClassVar,
     Generic,
     ItemsView,
     Optional,
@@ -559,7 +554,6 @@ class Representation(Generic[T]):  # noqa: PLR0904
             return None  # type: ignore[return-value]
 
         return found_trait
-
 
     @classmethod
     def from_dict(
