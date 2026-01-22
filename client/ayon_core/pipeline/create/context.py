@@ -1219,6 +1219,7 @@ class CreateContext:
         task_entity: Optional[dict[str, Any]] = None,
         pre_create_data: Optional[dict[str, Any]] = None,
         active: Optional[bool] = None,
+        product_type: Optional[str] = None,
     ) -> Any:
         """Trigger create of plugins with standartized arguments.
 
@@ -1238,6 +1239,7 @@ class CreateContext:
             pre_create_data (dict[str, Any]): Pre-create attribute values.
             active (Optional[bool]): Whether the created instance defaults
                 to be active or not.
+            product_type (str): Specific product type to use.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -1265,6 +1267,9 @@ class CreateContext:
                 task_entity = ayon_api.get_task_by_name(
                     project_name, folder_entity["id"], current_task_name
                 )
+
+        if not product_type:
+            product_type = creator.product_base_type
 
         if pre_create_data is None:
             pre_create_data = {}
