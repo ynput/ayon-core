@@ -1293,7 +1293,18 @@ class CreateContext:
             variant,
             self.host_name,
         )
-        kwargs = {"project_entity": project_entity}
+        kwargs = {
+            # Backwards compatibility for 'project_entity' argument (24/07/08)
+            "project_entity": project_entity,
+            # Backwards compatibility for 'product_type' argument (25/01/19)
+            "product_type": product_type,
+        }
+        for kwarg in ("product_type", "project_entity"):
+            if not is_func_signature_supported(
+                creator.get_product_name, *args, **kwargs
+            ):
+                kwargs.pop(kwarg)
+
         # Backwards compatibility for 'project_entity' argument
         # - 'get_product_name' signature changed 24/07/08
         if not is_func_signature_supported(
@@ -1305,7 +1316,7 @@ class CreateContext:
         instance_data = {
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
-            "productType": creator.product_type,
+            "productType": product_type,
             # Add product base type if supported. Fallback to product type
             "productBaseType": (
                 creator.product_base_type or creator.product_type),
