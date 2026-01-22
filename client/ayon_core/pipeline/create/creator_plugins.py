@@ -569,7 +569,6 @@ class BaseCreator(ABC):
         cur_project_name = self.create_context.get_current_project_name()
         if not project_entity and project_name == cur_project_name:
             project_entity = self.create_context.get_current_project_entity()
-            
         args = (
             project_name,
             folder_entity,
