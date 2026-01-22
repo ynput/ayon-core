@@ -20,7 +20,6 @@ from typing import (
 
 from .trait import (
     IncompatibleTraitVersionError,
-    LooseMatchingTraitError,
     MissingTraitError,
     TraitBase,
     TraitValidationError,
@@ -64,9 +63,6 @@ class Representation(Generic[T]):  # noqa: PLR0904
     """
 
     _data: dict[str, T]
-    _module_blacklist: ClassVar[list[str]] = [
-        "_", "builtins", "pydantic", "six",
-    ]
     name: str
     representation_id: str
 
@@ -470,104 +466,6 @@ class Representation(Generic[T]):  # noqa: PLR0904
         return True
 
     @classmethod
-    @lru_cache(maxsize=64)
-    def _get_possible_trait_classes_from_modules(
-            cls,
-            trait_id: str) -> set[type[T]]:
-        """Get possible trait classes from modules.
-
-        Args:
-            trait_id (str): Trait ID.
-
-        Returns:
-            set[type[T]]: Set of trait classes.
-
-        """
-        modules = sys.modules.copy()
-        filtered_modules = modules.copy()
-        for module_name in modules:
-            for bl_module in cls._module_blacklist:
-                if module_name.startswith(bl_module):
-                    filtered_modules.pop(module_name)
-
-        trait_candidates = set()
-        for module in filtered_modules.values():
-            if not module:
-                continue
-
-            for attr_name in dir(module):
-                klass = getattr(module, attr_name)
-                if not inspect.isclass(klass):
-                    continue
-                # This needs to be done because of the bug? In
-                # python ABCMeta, where ``issubclass`` is not working
-                # if it hits the GenericAlias (that is in fact
-                # tuple[int, int]). This is added to the scope by
-                # the ``types`` module.
-                if type(klass) is GenericAlias:
-                    continue
-                if issubclass(klass, TraitBase) \
-                        and str(klass.id).startswith(trait_id):
-                    trait_candidates.add(klass)
-        # I
-        return trait_candidates  # type: ignore[return-value]
-
-    @classmethod
-    @lru_cache(maxsize=64)
-    def _get_trait_class(
-            cls, trait_id: str) -> Union[Type[T], None]:
-        """Get the trait class with corresponding to given ID.
-
-        This method will search for the trait class in all the modules except
-        the blocklisted modules. There is some issue in Pydantic where
-        ``issubclass`` is not working properly, so we are excluding explicit
-        modules with offending classes. This list can be updated as needed to
-        speed up the search.
-
-        Args:
-            trait_id (str): Trait ID.
-
-        Returns:
-            Type[TraitBase]: Trait class.
-
-        """
-        version = cls._get_version_from_id(trait_id)
-
-        trait_candidates = cls._get_possible_trait_classes_from_modules(
-            trait_id
-        )
-        if not trait_candidates:
-            return None
-
-        for trait_class in trait_candidates:
-            if trait_class.id == trait_id:
-                # we found a direct match
-                return trait_class
-
-        # if we didn't find direct match, we will search for the highest
-        # version of the trait.
-        if not version:
-            # sourcery skip: use-named-expression
-            trait_versions = [
-                trait_class for trait_class in trait_candidates
-                if re.match(
-                    rf"{trait_id}.v(\d+)$", str(trait_class.id))
-            ]
-            if trait_versions:
-                def _get_version_by_id(trait_klass: Type[T]) -> int:
-                    match = re.search(r"v(\d+)$", str(trait_klass.id))
-                    return int(match[1]) if match else 0
-
-                error: LooseMatchingTraitError = LooseMatchingTraitError(
-                    "Found trait that might match.")
-                error.found_trait = max(
-                    trait_versions, key=_get_version_by_id)
-                error.expected_id = trait_id
-                raise error
-
-        return None
-
-    @classmethod
     def get_trait_class_by_trait_id(cls, trait_id: str) -> Type[T]:
         """Get the trait class for the given trait ID.
 
@@ -580,49 +478,88 @@ class Representation(Generic[T]):  # noqa: PLR0904
         Raises:
             IncompatibleTraitVersionError: If the trait version is incompatible
                 with the current version of the trait.
+            UpgradableTraitError: If the trait version is upgradable to a newer
+                version.
 
         """
-        try:
-            trait_class = cls._get_trait_class(trait_id=trait_id)
-        except LooseMatchingTraitError as e:
-            requested_version = _get_version_from_id(trait_id)
-            found_version = _get_version_from_id(e.found_trait.id)
-            if found_version is None and not requested_version:
-                msg = (
-                    "Trait found with no version and requested version "
-                    "is not specified."
+
+        def _get_subclasses(c):
+            return set(c.__subclasses__()).union(
+                [s for c in c.__subclasses__() for s in _get_subclasses(c)]
+            )
+
+        trait_classes = _get_subclasses(TraitBase)
+
+        # 1. Search for exact match
+        for trait_class in trait_classes:
+            if getattr(trait_class, "id", None) == trait_id:
+                return trait_class
+
+        # 2. Search for fuzzy matches (same base ID, different version)
+        req_version = _get_version_from_id(trait_id)
+        # Determine base ID (e.g., 'ayon.trait' from 'ayon.trait.v1')
+        if req_version is not None:
+            base_id = re.sub(r"\.v\d+$", "", trait_id)
+        else:
+            base_id = trait_id
+
+        candidates = []
+        for trait_class in trait_classes:
+            t_id = getattr(trait_class, "id", "")
+            if not t_id:
+                continue
+
+            t_ver = _get_version_from_id(t_id)
+            t_base = (
+                re.sub(r"\.v\d+$", "", t_id) if t_ver is not None else t_id
+            )
+
+            if t_base == base_id:
+                candidates.append(
+                    (trait_class, t_ver if t_ver is not None else 0)
                 )
-                raise IncompatibleTraitVersionError(msg) from e
 
-            if found_version is None:
-                msg = (
-                    f"Trait {e.found_trait.id} found with no version, "
-                    "but requested version is specified."
-                )
-                raise IncompatibleTraitVersionError(msg) from e
+        if not candidates:
+            return None  # type: ignore[return-value]
 
-            if requested_version is None:
-                trait_class = e.found_trait
-                requested_version = found_version
+        # Find the highest version among candidates
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        found_trait, found_version = candidates[0]
 
-            if requested_version > found_version:
-                error_msg = (
-                    f"Requested trait version {requested_version} is "
-                    f"higher than the found trait version {found_version}."
-                )
-                raise IncompatibleTraitVersionError(error_msg) from e
+        if req_version is None:
+            return found_trait
 
-            if requested_version < found_version and hasattr(
-                    e.found_trait, "upgrade"):
+        if found_version == 0:
+            msg = (
+                f"Trait {found_trait.id} found with no version, "
+                "but requested version is specified."
+            )
+            raise IncompatibleTraitVersionError(msg)
+
+        if req_version > found_version:
+            error_msg = (
+                f"Requested trait version {req_version} is "
+                f"higher than the found trait version {found_version}."
+            )
+            raise IncompatibleTraitVersionError(error_msg)
+
+        if req_version < found_version:
+            if hasattr(found_trait, "upgrade"):
                 error_msg = (
                     "Requested trait version "
-                    f"{requested_version} is lower "
+                    f"{req_version} is lower "
                     f"than the found trait version {found_version}."
                 )
                 error: UpgradableTraitError = UpgradableTraitError(error_msg)
-                error.trait = e.found_trait
-                raise error from e
-        return trait_class  # type: ignore[return-value]
+                error.trait = found_trait
+                raise error
+            # If explicit version was requested, matches failed, and no upgrade
+            # path exists, we return None (effectively "Not Found" for that
+            # version)
+            return None  # type: ignore[return-value]
+
+        return found_trait
+
 
     @classmethod
     def from_dict(
