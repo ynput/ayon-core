@@ -19,6 +19,8 @@ from ayon_core.pipeline.traits.representation import (
     IncompatibleTraitVersionError
 )
 
+from typing import Optional, Type, TypeVar
+
 REPRESENTATION_DATA: dict = {
         FileLocation.id: {
             "file_path": Path("/path/to/file"),
@@ -38,6 +40,8 @@ REPRESENTATION_DATA: dict = {
             # "persistent": True,
         },
     }
+
+T = TypeVar("T", bound="TraitBase")
 
 
 class UpgradedImage(Image):
@@ -259,6 +263,49 @@ def test_get_versionless_id() -> None:
 
     assert TestMimeType(mime_type="foo/bar").get_versionless_id() == \
            "ayon.content.MimeType"
+
+def test_get_trait_class_by_trait_id() -> None:
+    """Test getting trait class by trait ID."""
+    # this will return Image because the explicit version is requested
+    trait_class: Optional[Type[T]] = Representation.get_trait_class_by_trait_id(
+        "ayon.2d.Image.v1")
+    assert trait_class == Image
+
+    # This will return UpgradedImage because the highest version is available,
+    # and it is defined in the test
+    trait_class = Representation.get_trait_class_by_trait_id("ayon.2d.Image")
+    assert trait_class == UpgradedImage
+
+    # These both will return FileLocation because only one version exists
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.content.FileLocation.v1")
+    assert trait_class == FileLocation
+
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.content.FileLocation")
+    assert trait_class == FileLocation
+
+    # Nonexistent trait should return None
+    no_trait: Optional[Type[T]] = Representation.get_trait_class_by_trait_id(
+        "ayon.test.NonExistent.v1")
+    assert no_trait is None
+
+    class NewTestTrait(TraitBase):
+        """New test trait."""
+        id = "ayon.test.NewTestTrait.v1"
+
+    class AnotherCaseTrait(TraitBase):
+        """Mixed case trait."""
+
+        id = "Ayon.Test.AnotherCaseTrait.v1"
+
+    class MixedCaseTrait(NewTestTrait, AnotherCaseTrait):
+        """Mixed case trait."""
+        id = "ayon.test.MixedCaseTrait.v1"
+
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.test.MixedCaseTrait")
+    assert trait_class == MixedCaseTrait
 
 
 def test_from_dict() -> None:

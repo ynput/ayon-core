@@ -461,7 +461,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
         return True
 
     @classmethod
-    def get_trait_class_by_trait_id(cls, trait_id: str) -> Type[T]:
+    def get_trait_class_by_trait_id(cls, trait_id: str) -> Optional[Type[T]]:
         """Get the trait class for the given trait ID.
 
         Args:
@@ -469,6 +469,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
 
         Returns:
             type[TraitBase]: Trait class.
+            None: If the trait class is not found.
 
         Raises:
             IncompatibleTraitVersionError: If the trait version is incompatible
@@ -477,7 +478,6 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 version.
 
         """
-
         def _get_subclasses(c):
             return set(c.__subclasses__()).union(
                 [s for c in c.__subclasses__() for s in _get_subclasses(c)]
@@ -493,10 +493,9 @@ class Representation(Generic[T]):  # noqa: PLR0904
         # 2. Search for fuzzy matches (same base ID, different version)
         req_version = _get_version_from_id(trait_id)
         # Determine base ID (e.g., 'ayon.trait' from 'ayon.trait.v1')
+        base_id = trait_id
         if req_version is not None:
             base_id = re.sub(r"\.v\d+$", "", trait_id)
-        else:
-            base_id = trait_id
 
         candidates = []
         for trait_class in trait_classes:
@@ -511,15 +510,14 @@ class Representation(Generic[T]):  # noqa: PLR0904
 
             if t_base == base_id:
                 candidates.append(
-                    (trait_class, t_ver if t_ver is not None else 0)
+                    (trait_class, t_ver or 0)
                 )
 
         if not candidates:
             return None  # type: ignore[return-value]
 
         # Find the highest version among candidates
-        candidates.sort(key=lambda x: x[1], reverse=True)
-        found_trait, found_version = candidates[0]
+        found_trait, found_version = max(candidates, key=lambda x: x[1])
 
         if req_version is None:
             return found_trait
