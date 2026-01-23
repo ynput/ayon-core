@@ -830,7 +830,7 @@ def _create_instances_for_aov(
             aov_frames_to_render = list(range(frame_start, frame_end + 1))
 
         dynamic_data = {
-            "aov": aov,
+            "aov": aov or None,
             "renderlayer": instance.data.get("renderlayer"),
         }
 
