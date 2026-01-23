@@ -921,28 +921,27 @@ class OptionalAction(QtWidgets.QWidgetAction):
         return widget
 
     def set_option_tip(self, options):
-        sep = "\n\n"
-        if not options or not isinstance(options[0], AbstractAttrDef):
-            def mak(opt):
-                return opt["name"] + " :\n    " + opt["help"]
-            self.option_tip = sep.join(mak(opt) for opt in options)
+        if not options:
+            self.option_tip = ""
             return
-
-        option_items = []
-        for option in options:
-            option_lines = []
-            if option.label:
-                option_lines.append(
-                    "{} ({}) :".format(option.label, option.key)
-                )
-            else:
-                option_lines.append("{} :".format(option.key))
-
-            if option.tooltip:
-                option_lines.append("    - {}".format(option.tooltip))
-            option_items.append("\n".join(option_lines))
-
-        self.option_tip = sep.join(option_items)
+        
+        # Simple tooltip: just explain what the button does and list option names
+        option_names = []
+        if isinstance(options[0], AbstractAttrDef):
+            for option in options:
+                if option.label:
+                    option_names.append(option.label)
+                else:
+                    option_names.append(option.key)
+        else:
+            # Legacy qargparse format
+            for opt in options:
+                option_names.append(opt.get("name", opt.get("label", "Option")))
+        
+        if option_names:
+            self.option_tip = "Load with options:\n  • " + "\n  • ".join(option_names)
+        else:
+            self.option_tip = "Load with options"
 
     def on_option(self):
         self.optioned = True
