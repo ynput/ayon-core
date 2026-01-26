@@ -293,6 +293,40 @@ class BaseCreator(ABC):
                 )
             setattr(self, key, value)
 
+        self.product_type_items = self._convert_product_type_items(
+            self.product_type_items
+        )
+
+    def _convert_product_type_items(
+        self, product_type_items: list
+    ) -> list[ProductTypeItem]:
+        """Helper method to convert product type items from settings."""
+        if not product_type_items:
+            return []
+
+        first_item = product_type_items[0]
+        if isinstance(first_item, ProductTypeItem):
+            return product_type_items
+
+        if not isinstance(first_item, dict):
+            self.log.warning(
+                f"Invalid product type item. Expected 'dict' or"
+                f" 'ProductTypeItem', got '{type(first_item)}'."
+            )
+            return []
+
+        try:
+            return [
+                ProductTypeItem.from_data(item)
+                for item in self.product_type_items
+            ]
+        except Exception:
+            self.log.warning(
+                "Failed to convert product type items"
+                " to ProductTypeItem instances"
+            )
+            return []
+
     def register_callbacks(self):
         """Register callbacks for creator.
 
