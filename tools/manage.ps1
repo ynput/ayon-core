@@ -3,10 +3,7 @@
   Helper script to run various tasks on ayon-core addon repository.
 
 .DESCRIPTION
-  This script will detect Python installation, and build OpenPype to `build`
-  directory using existing virtual environment created by uv (or
-  by running `/tools/create_venv.ps1`). It will then shuffle dependencies in
-  build folder to optimize for different Python versions (2/3) in Python host.
+  This script helps to setup development environment, run code checks and tests.
 
 .EXAMPLE
 
@@ -32,7 +29,7 @@ $CurrentDir = Get-Location
 $ScriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 $RepoRoot = (Get-Item $ScriptDir).parent.FullName
 & git submodule update --init --recursive
-$env:PSModulePath = $env:PSModulePath + ";$($openpype_root)\tools\modules\powershell"
+$env:PSModulePath = $env:PSModulePath + ";$($ayon_root)\tools\modules\powershell"
 
 $FunctionName=$ARGS[0]
 $Arguments=@()
