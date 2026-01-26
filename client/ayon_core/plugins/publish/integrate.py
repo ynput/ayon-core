@@ -369,9 +369,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         )
 
         # Define product data
-        data = {
-            "families": get_instance_families(instance)
-        }
         attributes = {}
 
         product_group = instance.data.get("productGroup")
@@ -393,7 +390,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             "name": product_name,
             "product_type": product_type,
             "folder_id": folder_entity["id"],
-            "data": data,
             "attribs": attributes,
             "entity_id": product_id,
             "product_base_type": product_base_type,
