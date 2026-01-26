@@ -48,7 +48,7 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
             instance.data["projectEntity"] = project_entity
 
     def fill_folder_entities(self, context):
-        self.log.debug("Querying folder entities for instances.")
+        self.log.debug("Fetching folder entities for instances.")
 
         project_name = context.data["projectName"]
         context_folder_entity = context.data.get("folderEntity")
@@ -121,7 +121,7 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
             )
 
     def fill_task_entities(self, context):
-        self.log.debug("Querying task entities for instances.")
+        self.log.debug("Fetching task entities for instances.")
         project_name = context.data["projectName"]
 
         context_folder_entity = context.data.get("folderEntity")
@@ -136,15 +136,24 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
         instances_missing_task = {}
         folder_path_by_id = {}
         for instance in context:
+            task_entity = instance.data.get("taskEntity")
+            # Make sure 'taskEntity' key is available in 'instance.data'
+            if task_entity is None:
+                instance.data["taskEntity"] = None
+
+            # Skip instances without task
+            task_name = instance.data.get("task")
+            if not task_name:
+                continue
+
+            # Skip instances without available folder entity
             folder_entity = instance.data.get("folderEntity")
             # Skip if instance does not have filled folder entity
             if not folder_entity:
                 continue
+
             folder_id = folder_entity["id"]
             folder_path_by_id[folder_id] = folder_entity["path"]
-
-            task_entity = instance.data.get("taskEntity")
-            _task_name = instance.data.get("task")
 
             # There is possibility that taskEntity on instance is set
             if task_entity:
@@ -152,7 +161,7 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
                 instance_task_name = task_entity["name"]
                 if (
                     folder_id == task_parent_id
-                    and instance_task_name == _task_name
+                    and instance_task_name == task_name
                 ):
                     continue
 
@@ -160,20 +169,20 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
             # - they may be different, e.g. in NukeStudio
             if (
                 context_folder_id == folder_id
-                and context_task_name == _task_name
+                and context_task_name == task_name
             ):
                 instance.data["taskEntity"] = context_task_entity
                 continue
 
-            _by_folder_id = instances_missing_task.setdefault(folder_id, {})
-            _by_task_name = _by_folder_id.setdefault(_task_name, [])
-            _by_task_name.append(instance)
+            by_folder_id = instances_missing_task.setdefault(folder_id, {})
+            by_task_name = by_folder_id.setdefault(task_name, [])
+            by_task_name.append(instance)
 
         if not instances_missing_task:
             self.log.debug("All instances already had right task entity.")
             return
 
-        self.log.debug("Querying task entities")
+        self.log.debug("Fetching task entities")
 
         all_folder_ids = set(instances_missing_task.keys())
         all_task_names = set()
@@ -192,8 +201,8 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
         for task_entity in task_entities:
             folder_id = task_entity["folderId"]
             task_name = task_entity["name"]
-            _by_folder_id = task_entity_by_ids.setdefault(folder_id, {})
-            _by_folder_id[task_name] = task_entity
+            by_folder_id = task_entity_by_ids.setdefault(folder_id, {})
+            by_folder_id[task_name] = task_entity
 
         not_found_task_paths = []
         for folder_id, by_task in instances_missing_task.items():
