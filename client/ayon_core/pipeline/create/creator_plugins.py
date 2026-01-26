@@ -7,7 +7,11 @@ import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from ayon_core.lib import Logger, get_version_from_path
+from ayon_core.lib import (
+    Logger,
+    get_version_from_path,
+    is_func_signature_supported,
+)
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -508,16 +512,21 @@ class BaseCreator(ABC):
 
     def get_dynamic_data(
         self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name,
-        instance
-    ):
+        project_name: str,
+        folder_entity: Optional[dict[str, Any]],
+        task_entity: Optional[dict[str, Any]],
+        variant: str,
+        host_name: str,
+        instance: Optional[CreatedInstance] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
+    ) -> dict[str, Any]:
         """Dynamic data for product name filling.
 
         These may be dynamically created based on current context of workfile.
+
+        Default implementation will always return empty dictionary.
+
         """
         return {}
 
@@ -530,6 +539,7 @@ class BaseCreator(ABC):
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
         project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
     ) -> str:
         """Return product name for passed context.
 
@@ -547,30 +557,46 @@ class BaseCreator(ABC):
                 for which is product name updated. Passed only on product name
                 update.
             project_entity (Optional[dict[str, Any]]): Project entity.
+            product_type (Optional[str]): Product type.
 
         """
         if host_name is None:
             host_name = self.create_context.host_name
 
-        dynamic_data = self.get_dynamic_data(
+        if not product_type:
+            product_type = self.product_base_type
+
+        cur_project_name = self.create_context.get_current_project_name()
+        if not project_entity and project_name == cur_project_name:
+            project_entity = self.create_context.get_current_project_entity()
+        args = (
             project_name,
             folder_entity,
             task_entity,
             variant,
             host_name,
-            instance
+            instance,
         )
+        kwargs = dict(
+            project_entity=project_entity,
+            product_type=product_type,
+        )
+        # NOTE 'project_entity' and 'product_type' were added at the same time
+        #   26/01/19
+        if not is_func_signature_supported(
+            self.get_dynamic_data, *args, **kwargs
+        ):
+            kwargs.pop("project_entity")
+            kwargs.pop("product_type")
 
-        cur_project_name = self.create_context.get_current_project_name()
-        if not project_entity and project_name == cur_project_name:
-            project_entity = self.create_context.get_current_project_entity()
+        dynamic_data = self.get_dynamic_data(*args, **kwargs)
 
         return get_product_name(
             project_name,
             folder_entity=folder_entity,
             task_entity=task_entity,
             product_base_type=self.product_base_type,
-            product_type=self.product_type,
+            product_type=product_type,
             host_name=host_name,
             variant=variant,
             dynamic_data=dynamic_data,
