@@ -829,10 +829,13 @@ def _create_instances_for_aov(
             frame_end = int(skeleton.get("frameEndHandle"))
             aov_frames_to_render = list(range(frame_start, frame_end + 1))
 
-        dynamic_data = {
-            "aov": aov or None,
-            "renderlayer": instance.data.get("renderlayer"),
-        }
+        dynamic_data = {}
+        render_layer = instance.data.get("renderlayer")
+        if render_layer:
+            dynamic_data["renderlayer"] = render_layer
+
+        if aov:
+            dynamic_data["aov"] = aov
 
         # find if camera is used in the file path
         # TODO: this must be changed to be more robust. Any coincidence
