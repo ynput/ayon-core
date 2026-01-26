@@ -1219,6 +1219,7 @@ class CreateContext:
         task_entity: Optional[dict[str, Any]] = None,
         pre_create_data: Optional[dict[str, Any]] = None,
         active: Optional[bool] = None,
+        product_type: Optional[str] = None,
     ) -> Any:
         """Trigger create of plugins with standartized arguments.
 
@@ -1238,6 +1239,7 @@ class CreateContext:
             pre_create_data (dict[str, Any]): Pre-create attribute values.
             active (Optional[bool]): Whether the created instance defaults
                 to be active or not.
+            product_type (str): Specific product type to use.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -1266,6 +1268,9 @@ class CreateContext:
                     project_name, folder_entity["id"], current_task_name
                 )
 
+        if not product_type:
+            product_type = creator.product_base_type
+
         if pre_create_data is None:
             pre_create_data = {}
 
@@ -1288,7 +1293,18 @@ class CreateContext:
             variant,
             self.host_name,
         )
-        kwargs = {"project_entity": project_entity}
+        kwargs = {
+            # Backwards compatibility for 'project_entity' argument (24/07/08)
+            "project_entity": project_entity,
+            # Backwards compatibility for 'product_type' argument (25/01/19)
+            "product_type": product_type,
+        }
+        for kwarg in ("product_type", "project_entity"):
+            if not is_func_signature_supported(
+                creator.get_product_name, *args, **kwargs
+            ):
+                kwargs.pop(kwarg)
+
         # Backwards compatibility for 'project_entity' argument
         # - 'get_product_name' signature changed 24/07/08
         if not is_func_signature_supported(
@@ -1300,7 +1316,7 @@ class CreateContext:
         instance_data = {
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
-            "productType": creator.product_type,
+            "productType": product_type,
             # Add product base type if supported. Fallback to product type
             "productBaseType": (
                 creator.product_base_type or creator.product_type),
