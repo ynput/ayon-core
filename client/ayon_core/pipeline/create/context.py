@@ -1219,7 +1219,6 @@ class CreateContext:
         task_entity: Optional[dict[str, Any]] = None,
         pre_create_data: Optional[dict[str, Any]] = None,
         active: Optional[bool] = None,
-        # TODO 'product_type' should be after 'creator_identifier'
         product_type: Optional[str] = None,
     ) -> Any:
         """Trigger create of plugins with standartized arguments.
@@ -1308,6 +1307,7 @@ class CreateContext:
                 creator.get_product_name, *args, **kwargs
             ):
                 kwargs.pop(kwarg)
+
         product_name = creator.get_product_name(*args, **kwargs)
 
         instance_data = {

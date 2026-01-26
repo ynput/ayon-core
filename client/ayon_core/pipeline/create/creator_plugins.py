@@ -526,6 +526,9 @@ class BaseCreator(ABC):
         """Dynamic data for product name filling.
 
         These may be dynamically created based on current context of workfile.
+
+        Default implementation will always return empty dictionary.
+
         """
         return {}
 
