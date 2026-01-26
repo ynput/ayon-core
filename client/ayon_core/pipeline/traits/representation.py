@@ -477,18 +477,25 @@ class Representation(Generic[T]):  # noqa: PLR0904
             UpgradableTraitError: If the trait version is upgradable to a newer
                 version.
 
+        Note:
+            `ignore[return-value]` can be removed in future versions of Python
+            where the Generics support is better.
+
         """
-        def _get_subclasses(c):
-            return set(c.__subclasses__()).union(
-                [s for c in c.__subclasses__() for s in _get_subclasses(c)]
-            )
+        # Iteratively collect all subclasses
+        trait_classes = set()
+        to_process = [TraitBase]
 
-        trait_classes = _get_subclasses(TraitBase)
+        while to_process:
+            current = to_process.pop()
+            subclasses = current.__subclasses__()
+            trait_classes.update(subclasses)
+            to_process.extend(subclasses)
 
-        # 1. Search for exact match
+        # 1. Search for the exact match
         for trait_class in trait_classes:
             if getattr(trait_class, "id", None) == trait_id:
-                return trait_class
+                return trait_class  # type: ignore[return-value]
 
         # 2. Search for fuzzy matches (same base ID, different version)
         req_version = _get_version_from_id(trait_id)
@@ -520,7 +527,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
         found_trait, found_version = max(candidates, key=lambda x: x[1])
 
         if req_version is None:
-            return found_trait
+            return found_trait  # type: ignore[return-value]
 
         if found_version == 0:
             msg = (
@@ -546,12 +553,12 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 error: UpgradableTraitError = UpgradableTraitError(error_msg)
                 error.trait = found_trait
                 raise error
-            # If explicit version was requested, matches failed, and no upgrade
-            # path exists, we return None (effectively "Not Found" for that
-            # version)
+            # If the explicit version was requested, matches failed,
+            # and no upgrade path exists, we return None (effectively
+            # "Not Found" for thatversion)
             return None  # type: ignore[return-value]
 
-        return found_trait
+        return found_trait  # type: ignore[return-value]
 
     @classmethod
     def from_dict(
