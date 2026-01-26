@@ -19,7 +19,7 @@ from ayon_core.pipeline.traits.representation import (
     IncompatibleTraitVersionError
 )
 
-from typing import Optional, Type, TypeVar
+from typing import TypeVar
 
 REPRESENTATION_DATA: dict = {
         FileLocation.id: {
@@ -264,10 +264,11 @@ def test_get_versionless_id() -> None:
     assert TestMimeType(mime_type="foo/bar").get_versionless_id() == \
            "ayon.content.MimeType"
 
+
 def test_get_trait_class_by_trait_id() -> None:
     """Test getting trait class by trait ID."""
     # this will return Image because the explicit version is requested
-    trait_class: Optional[Type[T]] = Representation.get_trait_class_by_trait_id(
+    trait_class = Representation.get_trait_class_by_trait_id(
         "ayon.2d.Image.v1")
     assert trait_class == Image
 
@@ -286,7 +287,7 @@ def test_get_trait_class_by_trait_id() -> None:
     assert trait_class == FileLocation
 
     # Nonexistent trait should return None
-    no_trait: Optional[Type[T]] = Representation.get_trait_class_by_trait_id(
+    no_trait = Representation.get_trait_class_by_trait_id(
         "ayon.test.NonExistent.v1")
     assert no_trait is None
 
