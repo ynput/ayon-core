@@ -471,6 +471,11 @@ def get_product_name(
             "name": folder_entity["name"],
             "type": folder_entity["folderType"],
         }
+        # Folder label was added ad-hoc and might not be passed from create
+        #   plugins that do fake entities
+        folder_label = folder_entity.get("label")
+        if folder_label:
+            fill_pairs["folder"]["label"] = folder_label
 
     if dynamic_data:
         # Dynamic data may override default values
