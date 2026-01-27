@@ -49,6 +49,14 @@ class CollectAudioModel(BaseSettingsModel):
     )
 
 
+class CollectHierarchyModel(BaseSettingsModel):
+    _isGroup = True
+    edit_shot_attributes_on_update: bool = SettingsField(
+        True,
+        title="Edit shot attributes on update"
+    )
+
+
 class CollectSceneVersionModel(BaseSettingsModel):
     _isGroup = True
     hosts: list[str] = SettingsField(
@@ -604,6 +612,13 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
     product_names: list[str] = SettingsField(
         default_factory=list,
         title="Product names"
+    )
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+        description=(
+            "Filter representations by names supporting regex pattern inputs"
+        )
     )
     delete_original: bool = SettingsField(
         True,
@@ -1269,6 +1284,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectExplicitResolutionModel,
         title="Collect Explicit Resolution"
     )
+    CollectHierarchy: CollectHierarchyModel = SettingsField(
+        default_factory=CollectHierarchyModel,
+        title="Collect Hierarchy"
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1465,6 +1484,9 @@ DEFAULT_PUBLISH_VALUES = {
             "shot"
         ],
         "options": []
+    },
+    "CollectHierarchy": {
+        "edit_shot_attributes_on_update": True,
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
