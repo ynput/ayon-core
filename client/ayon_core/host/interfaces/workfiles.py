@@ -13,7 +13,7 @@ from typing import Optional, Any
 import ayon_api
 import arrow
 
-from ayon_core.lib import emit_event
+from ayon_core.lib import emit_event, is_func_signature_supported
 from ayon_core.settings import get_project_settings
 from ayon_core.host.abstract import AbstractHost
 from ayon_core.host.constants import ContextChangeReason
@@ -186,11 +186,22 @@ class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
     ]:
         product_entities = self.product_entities
         if product_entities is None:
-            product_entities = list(ayon_api.get_products(
-                project_name,
+            kwargs = dict(
                 folder_ids={folder_id},
-                product_types={"workfile"},
+                product_base_type={"workfile"},
                 fields={"id", "name"},
+            )
+            # Backwards compatibility
+            # - use product_types instead of product_base_types for filtering
+            #   if
+            # TODO validate how 'product_base_types' fitlering works...
+            # - what if 'product_base_type' is not filled on product entity?
+            if not is_func_signature_supported(
+                ayon_api.get_products, project_name, **kwargs
+            ):
+                kwargs["product_types"] = kwargs.pop("product_base_types")
+            product_entities = list(ayon_api.get_products(
+                project_name, **kwargs
             ))
 
         version_entities = self.version_entities
@@ -1182,7 +1193,7 @@ class IWorkfileHost(AbstractHost):
         """List published workfiles for the given folder.
 
         The default implementation looks for products with the 'workfile'
-            product type.
+            product base type.
 
         Pre-fetched entities have mandatory fields to be fetched:
             - Version: 'id', 'author', 'taskId'
