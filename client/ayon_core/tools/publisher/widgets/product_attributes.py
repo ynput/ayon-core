@@ -279,8 +279,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     Widgets are disabled if context of instance is not valid.
 
     Definitions are shown for all instance no matter if they have different
-    product types. Similar definitions are merged into one (different label
-    does not count).
+    product base types. Similar definitions are merged into one (different
+    label does not count).
     """
 
     def __init__(

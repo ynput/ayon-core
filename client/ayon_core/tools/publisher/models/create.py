@@ -89,7 +89,7 @@ class CreatorItem:
         self,
         identifier: str,
         creator_type: CreatorType,
-        product_type: str,
+        product_base_type: str,
         label: str,
         group_label: str,
         icon: Union[str, Dict[str, Any], None],
@@ -104,7 +104,7 @@ class CreatorItem:
     ):
         self.identifier: str = identifier
         self.creator_type: CreatorType = creator_type
-        self.product_type: str = product_type
+        self.product_base_type: str = product_base_type
         self.label: str = label
         self.group_label: str = group_label
         self.icon: Union[str, Dict[str, Any], None] = icon
@@ -156,7 +156,7 @@ class CreatorItem:
         return cls(
             identifier,
             creator_type,
-            creator.product_type,
+            creator.product_base_type,
             creator.label or identifier,
             creator.get_group_label(),
             creator.get_icon(),
@@ -180,7 +180,7 @@ class CreatorItem:
         return {
             "identifier": self.identifier,
             "creator_type": str(self.creator_type),
-            "product_type": self.product_type,
+            "product_base_type": self.product_base_type,
             "label": self.label,
             "group_label": self.group_label,
             "icon": self.icon,
@@ -213,7 +213,7 @@ class InstanceItem:
         creator_identifier: str,
         label: str,
         group_label: str,
-        product_type: str,
+        product_base_type: str,
         product_name: str,
         variant: str,
         folder_path: Optional[str],
@@ -228,7 +228,7 @@ class InstanceItem:
         self._creator_identifier: str = creator_identifier
         self._label: str = label
         self._group_label: str = group_label
-        self._product_type: str = product_type
+        self._product_base_type: str = product_base_type
         self._product_name: str = product_name
         self._variant: str = variant
         self._folder_path: Optional[str] = folder_path
@@ -256,8 +256,8 @@ class InstanceItem:
         return self._group_label
 
     @property
-    def product_type(self):
-        return self._product_type
+    def product_base_type(self):
+        return self._product_base_type
 
     @property
     def is_mandatory(self):
@@ -318,7 +318,7 @@ class InstanceItem:
             instance.creator_identifier,
             instance.label or "N/A",
             instance.group_label,
-            instance.product_type,
+            instance.product_base_type,
             instance.product_name,
             instance["variant"],
             instance["folderPath"],
