@@ -595,7 +595,7 @@ def get_last_workfile(
             data["app"],
             task_name=data["task"]["name"],
             task_type=data["task"]["type"],
-            product_type="workfile"
+            product_base_type="workfile"
         )
         data.pop("comment", None)
         if data.get("ext") is None:
