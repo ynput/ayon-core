@@ -196,6 +196,7 @@ def _get_staging_dir_info_wrap(func):
     return wrapper
 
 
+@_get_staging_dir_info_wrap
 def get_staging_dir_info(
     project_entity: dict[str, Any],
     folder_entity: Optional[dict[str, Any]],
