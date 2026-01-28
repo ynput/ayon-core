@@ -511,9 +511,9 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 continue
 
             t_ver = _get_version_from_id(t_id)
-            t_base = (
-                re.sub(r"\.v\d+$", "", t_id) if t_ver is not None else t_id
-            )
+            t_base = t_id
+            if t_ver is not None:
+                t_base = re.sub(r"\.v\d+$", "", t_id)
 
             if t_base == base_id:
                 candidates.append(
