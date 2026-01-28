@@ -7,6 +7,29 @@ from .publish_plugins import DEFAULT_PUBLISH_VALUES
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 
+def _convert_product_base_types_1_8_0(overrides):
+    # Staging dir
+    staging_dir_s = overrides
+    for key in (
+        "tools",
+        "publish",
+        "custom_staging_dir_profiles",
+    ):
+        if key not in staging_dir_s:
+            staging_dir_s = None
+            break
+        staging_dir_s = staging_dir_s[key]
+
+    if staging_dir_s:
+        for profile in staging_dir_s:
+            if (
+                "product_base_types" not in profile
+                and "product_types" in profile
+            ):
+                profile["product_base_types"] = profile.pop("product_types")
+
+            if "host_names" not in profile and "hosts" in profile:
+                profile["host_names"] = profile.pop("hosts")
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
         overrides
@@ -230,6 +253,7 @@ def convert_settings_overrides(
     _convert_imageio_configs_0_4_5(overrides)
     _convert_product_name_templates_1_6_5(overrides)
     _convert_product_name_templates_1_7_0(overrides)
+    _convert_product_base_types_1_8_0(overrides)
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
     return overrides
