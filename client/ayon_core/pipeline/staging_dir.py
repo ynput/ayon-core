@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 import warnings
-from typing import Optional, Dict, Any
+import functools
+from typing import Optional, Any
 from dataclasses import dataclass
 
 from ayon_core.lib import Logger, filter_profiles
@@ -9,6 +12,8 @@ from ayon_core.settings import get_project_settings
 from .template_data import get_template_data
 from .anatomy import Anatomy
 from .tempdir import get_temp_dir
+
+log = Logger.get_logger(__name__)
 
 
 @dataclass
@@ -20,35 +25,70 @@ class StagingDir:
 
     def __setattr__(self, key, value):
         if key == "persistent":
-            warnings.warn(
+            msg = (
                 "'StagingDir.persistent' is deprecated."
-                " Use 'StagingDir.is_persistent' instead.",
-                DeprecationWarning
+                " Use 'StagingDir.is_persistent' instead."
             )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
             key = "is_persistent"
         super().__setattr__(key, value)
 
     @property
     def persistent(self):
-        warnings.warn(
+        msg = (
             "'StagingDir.persistent' is deprecated."
-            " Use 'StagingDir.is_persistent' instead.",
-            DeprecationWarning
+            " Use 'StagingDir.is_persistent' instead."
         )
+        log.warning(msg)
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         return self.is_persistent
 
 
+def _get_staging_dir_config_wrap(func):
+    """Change 'product_type' kwarg to 'product_base_type' compatibility."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if "product_type" in kwargs:
+            msg = (
+                "Found 'product_type' kwarg in 'get_staging_dir_config',"
+                " use 'product_base_type' instead."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+            kwargs["product_base_type"] = kwargs.pop("product_type")
+
+        if len(args) > 6:
+            msg = (
+                "Got more positional arguments for 'get_staging_dir_config'"
+                " than expected. Please use explicit kwargs instead."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            args, rem = args[:6], args[6:]
+            for kwarg in ("project_settings", "anatomy", "log"):
+                if not rem:
+                    break
+                kwargs[kwarg] = rem.pop(0)
+
+        return func(*args, **kwargs)
+    return wrapper
+
+
+@_get_staging_dir_config_wrap
 def get_staging_dir_config(
     project_name: str,
     task_type: Optional[str],
     task_name: Optional[str],
-    product_type: str,
+    product_base_type: str,
     product_name: str,
     host_name: str,
-    project_settings: Optional[Dict[str, Any]] = None,
+    *,
+    project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional[Anatomy] = None,
     log: Optional[logging.Logger] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """Get matching staging dir profile.
 
     Args:
@@ -56,14 +96,14 @@ def get_staging_dir_config(
         project_name (str): Name of project.
         task_type (Optional[str]): Type of task.
         task_name (Optional[str]): Name of task.
-        product_type (str): Type of product.
+        product_base_type (str): Product base type.
         product_name (str): Name of product.
-        project_settings(Dict[str, Any]): Prepared project settings.
-        anatomy (Dict[str, Any])
+        project_settings(dict[str, Any]): Prepared project settings.
+        anatomy (dict[str, Any])
         log (Optional[logging.Logger])
 
     Returns:
-        Dict or None: Data with directory template and is_persistent or None
+        dict or None: Data with directory template and is_persistent or None
 
     Raises:
         KeyError - if misconfigured template should be used
@@ -82,10 +122,10 @@ def get_staging_dir_config(
         log = Logger.get_logger("get_staging_dir_config")
 
     filtering_criteria = {
-        "hosts": host_name,
+        "host_names": host_name,
         "task_types": task_type,
         "task_names": task_name,
-        "product_types": product_type,
+        "product_base_types": product_base_type,
         "product_names": product_name,
     }
     profile = filter_profiles(
@@ -115,16 +155,58 @@ def get_staging_dir_config(
     return {"template": template, "persistence": data_persistence}
 
 
+def _get_staging_dir_info_wrap(func):
+    """Change 'product_type' kwarg to 'product_base_type' compatibility."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if "product_type" in kwargs:
+            msg = (
+                "Found 'product_type' kwarg in 'get_staging_dir_info',"
+                " use 'product_base_type' instead."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+            kwargs["product_base_type"] = kwargs.pop("product_type")
+
+        if len(args) > 7:
+            msg = (
+                "Got more positional arguments for 'get_staging_dir_info'"
+                " than expected. Please use explicit kwargs instead."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            args, rem = args[:6], args[6:]
+            for kwarg in (
+                "anatomy",
+                "project_settings",
+                "template_data",
+                "always_return_path",
+                "force_tmp_dir",
+                "logger",
+                "prefix",
+                "suffix",
+                "username",
+            ):
+                if not rem:
+                    break
+                kwargs[kwarg] = rem.pop(0)
+
+        return func(*args, **kwargs)
+    return wrapper
+
+
 def get_staging_dir_info(
-    project_entity: Dict[str, Any],
-    folder_entity: Optional[Dict[str, Any]],
-    task_entity: Optional[Dict[str, Any]],
-    product_type: str,
+    project_entity: dict[str, Any],
+    folder_entity: Optional[dict[str, Any]],
+    task_entity: Optional[dict[str, Any]],
+    product_base_type: str,
     product_name: str,
     host_name: str,
+    *,
     anatomy: Optional[Anatomy] = None,
-    project_settings: Optional[Dict[str, Any]] = None,
-    template_data: Optional[Dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    template_data: Optional[dict[str, Any]] = None,
     always_return_path: bool = True,
     force_tmp_dir: bool = False,
     logger: Optional[logging.Logger] = None,
@@ -140,15 +222,15 @@ def get_staging_dir_info(
     If `prefix` or `suffix` is not set, default values will be used.
 
     Arguments:
-        project_entity (Dict[str, Any]): Project entity.
-        folder_entity (Optional[Dict[str, Any]]): Folder entity.
-        task_entity (Optional[Dict[str, Any]]): Task entity.
-        product_type (str): Type of product.
+        project_entity (dict[str, Any]): Project entity.
+        folder_entity (Optional[dict[str, Any]]): Folder entity.
+        task_entity (Optional[dict[str, Any]]): Task entity.
+        product_base_type (str): Type of product.
         product_name (str): Name of product.
         host_name (str): Name of host.
         anatomy (Optional[Anatomy]): Anatomy object.
-        project_settings (Optional[Dict[str, Any]]): Prepared project settings.
-        template_data (Optional[Dict[str, Any]]): Additional data for
+        project_settings (Optional[dict[str, Any]]): Prepared project settings.
+        template_data (Optional[dict[str, Any]]): Additional data for
             formatting staging dir template.
         always_return_path (Optional[bool]): If True, staging dir will be
             created as tempdir if no staging dir profile is found. Input value
@@ -185,15 +267,21 @@ def get_staging_dir_info(
 
     # making few queries to database
     ctx_data = get_template_data(
-        project_entity, folder_entity, task_entity, host_name,
+        project_entity,
+        folder_entity,
+        task_entity,
+        host_name,
         settings=project_settings,
         username=username
     )
 
     # add additional data
     ctx_data["product"] = {
-        "type": product_type,
-        "name": product_name
+        "basetype": product_base_type,
+        "name": product_name,
+        # This might be confusing as product type is not passed
+        #   to the function
+        "type": product_base_type,
     }
 
     # add additional template formatting data
@@ -210,7 +298,7 @@ def get_staging_dir_info(
         project_entity["name"],
         task_type,
         task_name,
-        product_type,
+        product_base_type,
         product_name,
         host_name,
         project_settings=project_settings,
