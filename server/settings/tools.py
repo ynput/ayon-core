@@ -84,7 +84,7 @@ class CreatorToolModel(BaseSettingsModel):
     )
     # TODO: change to False in next releases
     use_legacy_product_names_for_renders: bool = SettingsField(
-        True,
+        False,
         title="Use legacy product names for renders",
         description="Use product naming templates for renders. "
                     "This is for backwards compatibility enabled by default."
@@ -285,12 +285,11 @@ class LoaderToolModel(BaseSettingsModel):
 
 class PublishTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
-    # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(default_factory=list, title="Hosts")
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -308,12 +307,12 @@ class PublishTemplateNameProfile(BaseSettingsModel):
 
 class HeroTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(default_factory=list, title="Hosts")
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -630,28 +629,28 @@ DEFAULT_TOOLS_VALUES = {
     "publish": {
         "template_name_profiles": [
             {
-                "product_types": [],
-                "hosts": [],
+                "product_base_types": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "default"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "render",
                     "prerender"
                 ],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "render"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "simpleUnrealTexture"
                 ],
-                "hosts": [
+                "host_names": [
                     "standalonepublisher"
                 ],
                 "task_types": [],
@@ -659,11 +658,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTexture"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "image",
                     "textures",
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
@@ -671,11 +670,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTexture"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh",
                     "skeletalMesh"
                 ],
-                "hosts": [
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
@@ -683,10 +682,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "maya2unreal"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "online"
                 ],
-                "hosts": [
+                "host_names": [
                     "traypublisher"
                 ],
                 "task_types": [],
@@ -694,10 +693,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "online"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "tycache"
                 ],
-                "hosts": [
+                "host_names": [
                     "max"
                 ],
                 "task_types": [],
@@ -705,11 +704,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "tycache"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "uasset",
                     "umap"
                 ],
-                "hosts": [
+                "host_names": [
                     "unreal"
                 ],
                 "task_types": [],
@@ -719,10 +718,10 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "hero_template_name_profiles": [
             {
-                "product_types": [
+                "product_base_types": [
                     "simpleUnrealTexture"
                 ],
-                "hosts": [
+                "host_names": [
                     "standalonepublisher"
                 ],
                 "task_types": [],
@@ -730,11 +729,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTextureHero"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "image",
                     "textures"
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],

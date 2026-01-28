@@ -9,19 +9,14 @@ PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 def _convert_product_base_types_1_8_0(overrides):
     # Staging dir
-    staging_dir_s = overrides
-    for key in (
-        "tools",
-        "publish",
+    publish_settings = overrides.get("tools", {}).get("publish", {})
+    for profile_name in (
         "custom_staging_dir_profiles",
+        "template_name_profiles",
+        "hero_template_name_profiles",
     ):
-        if key not in staging_dir_s:
-            staging_dir_s = None
-            break
-        staging_dir_s = staging_dir_s[key]
-
-    if staging_dir_s:
-        for profile in staging_dir_s:
+        profiles_settings = publish_settings.get(profile_name) or []
+        for profile in profiles_settings:
             if (
                 "product_base_types" not in profile
                 and "product_types" in profile
