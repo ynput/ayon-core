@@ -163,7 +163,7 @@ class PushToContextController:
         """Checks if original product names must be used.
 
         Currently simple check if multiple versions, but if multiple products
-        with different product_type were used, it wouldn't be necessary.
+        with different product_base_type were used, it wouldn't be necessary.
         """
         return len(self._src_version_entities) > 1
 
@@ -310,10 +310,13 @@ class PushToContextController:
         )
 
         project_settings = get_project_settings(project_name)
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         template = get_product_name_template(
             self._src_project_name,
-            product_type,
+            product_base_type,
             task_name,
             task_type,
             None,
@@ -331,9 +334,10 @@ class PushToContextController:
         template_s = template[:idx]
         template_e = template[idx + len(variant_placeholder):]
         fill_data = prepare_template_data({
-            "family": product_type,
+            "family": product_base_type,
             "product": {
                 "type": product_type,
+                "basetype": product_base_type,
             },
             "task": task_name
         })
