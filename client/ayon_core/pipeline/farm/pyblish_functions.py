@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 import copy
 import os
+import functools
 import re
 import warnings
 from copy import deepcopy
+from typing import Any, Union, Optional
 
 import attr
 import ayon_api
@@ -214,17 +217,21 @@ def create_skeleton_instance(
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    product_type = ("render"
-              if "prerender.farm" not in instance.data["families"]
-              else "prerender")
-    families = [product_type]
+    # QUESTION why is 'render' product base type enforced here?
+    product_base_type = "render"
+    if "prerender.farm" in instance.data["families"]:
+        product_base_type = "prerender"
+
+    families = [product_base_type]
 
     # pass review to families if marked as review
     if data.get("review"):
         families.append("review")
 
     instance_skeleton_data = {
-        "productType": product_type,
+        # TODO find out how to define product type
+        "productType": product_base_type,
+        "productBaseType": product_base_type,
         "productName": data["productName"],
         "task": data["task"],
         "families": families,
@@ -652,11 +659,16 @@ def create_instances_for_aov(
 
 
 def _get_legacy_product_name_and_group(
-        product_type,
-        source_product_name,
-        task_name,
-        dynamic_data):
+    product_type,
+    source_product_name,
+    task_name,
+    dynamic_data
+):
     """Get product name with legacy logic.
+
+    NOTE: This function is imported and used in houdini. Change 'product_type'
+        to 'product_base_type' when it is not used there (and maybe remove the
+        function).
 
     This function holds legacy behaviour of creating product name
     that is deprecated. This wasn't using product name templates
@@ -668,7 +680,7 @@ def _get_legacy_product_name_and_group(
         since 0.4.4
 
     Args:
-        product_type (str): Product type.
+        product_type (str): Product base type.
         source_product_name (str): Source product name.
         task_name (str): Task name.
         dynamic_data (dict): Dynamic data (camera, aov, ...)
@@ -711,13 +723,23 @@ def _get_legacy_product_name_and_group(
 
 
 def get_product_name_and_group_from_template(
-        project_name,
-        task_entity,
-        product_type,
-        variant,
-        host_name,
-        dynamic_data=None):
+    project_name: str,
+    task_entity: Union[dict[str, Any], None],
+    product_type: str,
+    variant: str,
+    host_name: str,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    *,
+    folder_entity: Union[dict[str, Any], None],
+    product_base_type: str = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> tuple[str, str]:
     """Get product name and group name from template.
+
+    NOTE: This function is/was used only in ayon-houdini which uses/d kwargs
+        for all arguments. When houdini starts to use 'folder_entity' and
+        'product_base_type' this should change order of arguments.
 
     This will get product name and group name from template based on
     data provided. It is doing similar work as
@@ -731,39 +753,60 @@ def get_product_name_and_group_from_template(
         Maybe we should introduce templates for the groups themselves.
 
     Args:
-        task_entity (dict): Task entity.
         project_name (str): Project name.
+        task_entity (Union[dict[str, Any], None]): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): Variant.
-        dynamic_data (dict): Dynamic data (aov, renderlayer, camera, ...).
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data
+            (aov, renderlayer, camera, ...).
+        folder_entity (Union[dict[str, Any], None]): Folder entity.
+        product_base_type (str): Product base type.
+        project_entity (Optional[dict[str, Any]]): Project entity.
+        project_settings (Optional[dict[str, Any]]): Project settings.
 
     Returns:
         tuple: product name and group name.
 
     """
+    if not folder_entity and task_entity:
+        folder_entity = None
+        if task_entity:
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, task_entity["folderId"]
+            )
+
+    if not product_base_type:
+        product_base_type = product_type
+
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.
     _dynamic_data = deepcopy(dynamic_data) or {}
     _dynamic_data.pop("aov", None)
     resulting_group_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=_dynamic_data,
         variant=variant,
+        project_entity=project_entity,
+        project_settings=project_settings,
     )
 
     resulting_product_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=dynamic_data,
         variant=variant,
+        project_entity=project_entity,
+        project_settings=project_settings,
     )
     return resulting_product_name, resulting_group_name
 
@@ -801,6 +844,7 @@ def _create_instances_for_aov(
 
     """
 
+    project_entity = instance.context.data["projectEntity"]
     anatomy = instance.context.data["anatomy"]
     source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
@@ -867,23 +911,32 @@ def _create_instances_for_aov(
                  "your ayon-core version."), DeprecationWarning)
             use_legacy_product_name = True
 
+        product_base_type = skeleton.get("productBaseType")
+        product_type = skeleton["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         if use_legacy_product_name:
             product_name, group_name = _get_legacy_product_name_and_group(
-                product_type=skeleton["productType"],
+                product_type=product_base_type,
                 source_product_name=source_product_name,
                 task_name=instance.data["task"],
-                dynamic_data=dynamic_data)
+                dynamic_data=dynamic_data,
+            )
 
         else:
             (
                 product_name, group_name
             ) = get_product_name_and_group_from_template(
-                task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
+                folder_entity=instance.data["folderEntity"],
+                task_entity=instance.data["taskEntity"],
                 host_name=instance.context.data["hostName"],
-                product_type=skeleton["productType"],
+                product_base_type=product_base_type,
+                product_type=product_type,
                 variant=instance.data.get("variant", source_product_name),
-                dynamic_data=dynamic_data
+                dynamic_data=dynamic_data,
+                project_entity=project_entity,
+                project_settings=project_settings,
             )
 
         try:
@@ -1139,15 +1192,19 @@ def create_skeleton_instance_cache(instance):
                      "This may cause issues.").format(source))
 
     product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     # Make sure "render" is in the families to go through
     # validating expected and rendered files
     # during publishing job.
-    families = ["render", product_type]
+    families = ["render", product_base_type]
 
     instance_skeleton_data = {
         "productName": data["productName"],
         "productType": product_type,
-        "family": product_type,
+        "productBaseType": product_base_type,
+        "family": product_base_type,
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -1256,6 +1313,9 @@ def create_instances_for_cache(instance, skeleton):
     anatomy = instance.context.data["anatomy"]
     product_name = skeleton["productName"]
     product_type = skeleton["productType"]
+    product_base_type = skeleton.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     exp_files = instance.data["expectedFiles"]
     log = Logger.get_logger("farm_publishing")
 
@@ -1295,6 +1355,7 @@ def create_instances_for_cache(instance, skeleton):
         new_instance["productName"] = product_name
         log.info("Creating data for: {}".format(product_name))
         new_instance["productType"] = product_type
+        new_instance["productBaseType"] = product_base_type
         new_instance["families"] = skeleton["families"]
         # create representation
         if isinstance(col, (list, tuple)):
@@ -1434,6 +1495,9 @@ def attach_instances_to_product(attach_to, instances):
             new_inst["version"] = attach_instance.get("version")
             new_inst["productName"] = attach_instance.get("productName")
             new_inst["productType"] = attach_instance.get("productType")
+            new_inst["productBaseType"] = attach_instance.get(
+                "productBaseType"
+            )
             new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
             # don't set productGroup if we are attaching
