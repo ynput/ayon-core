@@ -30,6 +30,24 @@ def _convert_product_base_types_1_8_0(overrides):
 
             if "host_names" not in profile and "hosts" in profile:
                 profile["host_names"] = profile.pop("hosts")
+
+    # Version start
+    version_start_s = overrides
+    for key in (
+        "version_start_category",
+        "profiles",
+    ):
+        if key not in version_start_s:
+            version_start_s = None
+            break
+        version_start_s = version_start_s[key]
+
+    if version_start_s:
+        for profile in version_start_s:
+            if "product_types" in profile:
+                profile["product_base_types"] = profile.pop("product_types")
+
+
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
         overrides
