@@ -863,7 +863,9 @@ class Creator(BaseCreator):
         """
         create_ctx = self.create_context
         product_name = instance.get("productName")
-        product_type = instance.get("productType")
+        product_base_type = instance.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.get("productType")
         folder_path = instance.get("folderPath")
 
         # this can only work if product name and folder path are available
@@ -911,7 +913,7 @@ class Creator(BaseCreator):
             create_ctx.get_current_project_entity(),
             create_ctx.get_folder_entity(folder_path),
             create_ctx.get_task_entity(folder_path, instance.get("task")),
-            product_type,
+            product_base_type,
             product_name,
             create_ctx.host_name,
             anatomy=create_ctx.get_current_project_anatomy(),
