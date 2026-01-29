@@ -158,12 +158,12 @@ def get_publish_template_name(
         warnings.warn(msg, DeprecationWarning)
         if logger:
             logger.warning(msg)
+        product_base_type = product_type
 
     template = None
     filter_criteria = {
         "hosts": host_name,
         "product_types": product_type,
-        "product_base_types": product_base_type,
         "task_names": task_name,
         "task_types": task_type,
     }
