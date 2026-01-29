@@ -210,7 +210,6 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             task_type = src_task_entity["taskType"]
 
         product_base_type = template_data["product"]["basetype"]
-        product_type = template_data["product"]["type"]
 
         # TODO how to get host name?
         host_name = None
