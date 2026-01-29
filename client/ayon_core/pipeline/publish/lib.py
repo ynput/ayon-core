@@ -115,16 +115,16 @@ def get_hero_template_name_profiles(
 
 
 def get_publish_template_name(
-    project_name,
-    host_name,
-    product_type,
-    task_name,
-    task_type,
-    project_settings=None,
-    hero=False,
+    project_name: str,
+    host_name: str,
+    product_type: str,
+    task_name: Union[str, None],
+    task_type: Union[str, None],
+    project_settings: Optional[dict] = None,
+    hero: bool = False,
     product_base_type: Optional[str] = None,
-    logger=None,
-):
+    logger: Optional[logging.Logger] = None,
+) -> str:
     """Get template name which should be used for passed context.
 
     Publish templates are filtered by host name, family, task name and
