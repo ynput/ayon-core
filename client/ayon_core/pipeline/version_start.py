@@ -1,8 +1,13 @@
 from __future__ import annotations
+
+import warnings
 from typing import Optional, Any
 
+from ayon_core.lib import Logger
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.settings import get_project_settings
+
+log = Logger.get_logger(__name__)
 
 
 def get_versioning_start(
