@@ -92,9 +92,10 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         product = context["product"]
         version = context["version"]
 
-        task_entity = ayon_api.get_task_by_id(
-            project_name, version["taskId"],
-        )
+        task_id = version_entity["taskId"]
+        task_entity = None
+        if task_id:
+            task_entity = ayon_api.get_task_by_id(project_name, task_id)
 
         anatomy = Anatomy(project_entity, project_entity=project_entity)
 
