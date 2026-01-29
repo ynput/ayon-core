@@ -127,8 +127,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             published_representations[repre["id"]] = {
                 "representation": repre,
                 "published_files": [
-                    file_info["path"] for
-                    file_info in repre.get("files", [])
+                    file_info["path"]
+                    for file_info in repre.get("files", [])
                 ],
                 "template_data": repre_template_data
             }
