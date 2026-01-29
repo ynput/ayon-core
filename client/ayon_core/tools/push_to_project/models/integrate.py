@@ -21,6 +21,7 @@ from ayon_api.operations import (
 from ayon_core.lib import (
     StringTemplate,
     source_hash,
+    is_func_signature_supported,
 )
 from ayon_core.lib.file_transaction import FileTransaction
 from ayon_core.pipeline.thumbnails import get_thumbnail_path
@@ -450,6 +451,7 @@ class ProjectPushItemProcess:
         self._product_entity = None
         self._version_entity = None
 
+        self._product_base_type = None
         self._product_type = None
         self._product_name = None
 
@@ -485,7 +487,7 @@ class ProjectPushItemProcess:
             self._log_info("Destination folder was determined")
             self._fill_or_create_destination_task()
             self._log_info("Destination task was determined")
-            self._determine_product_type()
+            self._determine_product_base_type()
             self._determine_publish_template_name()
             self._determine_product_name()
             self._make_sure_product_exists()
@@ -872,29 +874,34 @@ class ProjectPushItemProcess:
         task_info.update(task_type_info)
         self._task_info = task_info
 
-    def _determine_product_type(self):
+    def _determine_product_base_type(self):
         product_entity = self._src_product_entity
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
-        if not product_type:
+        if not product_base_type:
+            product_base_type = product_type
+        if not product_base_type:
             self._status.set_failed(
                 "Couldn't figure out product type from source product"
             )
             raise PushToProjectError(self._status.fail_reason)
 
         self._log_debug(
-            f"Publishing product type is '{product_type}'"
+            f"Publishing product type is '{product_base_type}'"
             f" (Based on source product)"
         )
         self._product_type = product_type
+        self._product_base_type = product_base_type
 
     def _determine_publish_template_name(self):
         template_name = get_publish_template_name(
-            self._item.dst_project_name,
-            self.host_name,
-            self._product_type,
-            self._task_info.get("name"),
-            self._task_info.get("type"),
-            project_settings=self._project_settings
+            project_name=self._item.dst_project_name,
+            host_name=self.host_name,
+            product_base_type=self._product_base_type,
+            product_type=self._product_base_type,
+            task_name=self._task_info.get("name"),
+            task_type=self._task_info.get("type"),
+            project_settings=self._project_settings,
         )
         self._log_debug(
             f"Using template '{template_name}' for integration"
@@ -905,28 +912,22 @@ class ProjectPushItemProcess:
         if self._item.use_original_name:
             product_name = self._src_product_entity["name"]
         else:
-            product_type = self._product_type
-            task_info = self._task_info
-            task_name = task_type = None
-            if task_info:
-                task_name = task_info["name"]
-                task_type = task_info["taskType"]
-
             try:
                 product_name = get_product_name(
                     self._item.dst_project_name,
-                    task_name,
-                    task_type,
-                    self.host_name,
-                    product_type,
-                    self._item.variant,
+                    folder_entity=self._folder_entity,
+                    task_entity=self._task_info,
+                    host_name=self.host_name,
+                    product_base_type=self._product_base_type,
+                    variant=self._item.variant,
                     project_settings=self._project_settings
                 )
             except TaskNotSetError:
                 self._status.set_failed(
-                    "Target product name template requires task name. To "
-                    "continue you have to select target task or change settings "  # noqa: E501
-                    " <b>ayon+settings://core/tools/creator/product_name_profiles"  # noqa: E501
+                    "Target product name template requires task name. To"
+                    " continue you have to select target task or change"
+                    " settings <b>ayon+settings://core/tools/creator/"
+                    "product_name_profiles"
                     f"?project={self._item.dst_project_name}</b>."
                 )
                 raise PushToProjectError(self._status.fail_reason)
@@ -940,7 +941,6 @@ class ProjectPushItemProcess:
         project_name = self._item.dst_project_name
         folder_id = self._folder_entity["id"]
         product_name = self._product_name
-        product_type = self._product_type
         product_entity = ayon_api.get_product_by_name(
             project_name, product_name, folder_id
         )
@@ -959,12 +959,21 @@ class ProjectPushItemProcess:
             if value:
                 dst_attrib[key] = value
 
-        product_entity = new_product_entity(
-            product_name,
-            product_type,
-            folder_id,
-            attribs=dst_attrib
+        kwargs = dict(
+            name=product_name,
+            product_type=self._product_type,
+            product_base_type=self._product_base_type,
+            folder_id=folder_id,
+            attribs=dst_attrib,
         )
+        # Backwards compatibility 26/01/28
+        # Check if 'product_base_type' is supported argument
+        if not is_func_signature_supported(
+            new_product_entity, **kwargs
+        ):
+            kwargs["product_type"] = kwargs.pop("product_base_type")
+
+        product_entity = new_product_entity(**kwargs)
         self._operations.create_entity(
             project_name, "product", product_entity
         )
@@ -978,7 +987,10 @@ class ProjectPushItemProcess:
         src_version_entity = self._src_version_entity
         product_entity = self._product_entity
         product_id = product_entity["id"]
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         src_attrib = src_version_entity["attrib"]
 
         dst_attrib = {}
@@ -1015,7 +1027,7 @@ class ProjectPushItemProcess:
                 self.host_name,
                 task_name=self._task_info.get("name"),
                 task_type=self._task_info.get("taskType"),
-                product_type=product_type,
+                product_type=product_base_type,
                 product_name=product_entity["name"],
             )
         else:
@@ -1145,6 +1157,7 @@ class ProjectPushItemProcess:
             "product": {
                 "name": self._product_name,
                 "type": self._product_type,
+                "basetype": self._product_base_type,
             },
             "version": version_entity["version"]
         })
