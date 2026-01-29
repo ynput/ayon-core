@@ -97,7 +97,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         if task_id:
             task_entity = ayon_api.get_task_by_id(project_name, task_id)
 
-        anatomy = Anatomy(project_entity, project_entity=project_entity)
+        anatomy = Anatomy(project_name, project_entity=project_entity)
 
         template_data = get_template_data(
             project_entity=project_entity,
