@@ -109,9 +109,14 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         if not product_type:
             product_type = product_entity["type"]
 
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
+
         template_data["product"] = {
             "name": product_entity["name"],
             "type": product_type,
+            "basetype": product_base_type,
         }
         template_data["version"] = version_entity["version"]
 
@@ -204,6 +209,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             task_name = src_task_entity["name"]
             task_type = src_task_entity["taskType"]
 
+        product_base_type = template_data["product"]["basetype"]
         product_type = template_data["product"]["type"]
 
         # TODO how to get host name?
@@ -215,7 +221,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         publish_template_key = get_publish_template_name(
             project_name,
             host_name,
-            product_type,
+            product_base_type=product_base_type,
+            product_type=product_base_type,
             task_name=task_name,
             task_type=task_type,
             project_settings=project_settings,
@@ -233,7 +240,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         hero_template_key = get_publish_template_name(
             project_name,
             host_name,
-            product_type,
+            product_base_type=product_base_type,
+            product_type=product_base_type,
             task_name=task_name,
             task_type=task_type,
             project_settings=project_settings,
