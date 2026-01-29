@@ -1296,7 +1296,7 @@ class CreateContext:
         kwargs = {
             # Backwards compatibility for 'project_entity' argument (24/07/08)
             "project_entity": project_entity,
-            # Backwards compatibility for 'product_type' argument (25/01/19)
+            # Backwards compatibility for 'product_type' argument (26/01/19)
             "product_type": product_type,
         }
         for kwarg in ("product_type", "project_entity"):
