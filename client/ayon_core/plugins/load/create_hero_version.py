@@ -5,7 +5,7 @@ import copy
 import shutil
 import errno
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from speedcopy import copyfile
 import clique
@@ -89,8 +89,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         project_entity = context["project"]
         project_name = project_entity["name"]
         folder_entity = context["folder"]
-        product = context["product"]
-        version = context["version"]
+        product_entity = context["product"]
+        version_entity = context["version"]
 
         task_id = version_entity["taskId"]
         task_entity = None
@@ -99,26 +99,25 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
 
         anatomy = Anatomy(project_entity, project_entity=project_entity)
 
-        version_id = version["id"]
         template_data = get_template_data(
             project_entity=project_entity,
             folder_entity=folder_entity,
             task_entity=task_entity,
         )
 
-        product_type = product.get("productType")
+        product_type = product_entity.get("productType")
         if not product_type:
-            product_type = product["type"]
+            product_type = product_entity["type"]
 
         template_data["product"] = {
-            "name": product["name"],
+            "name": product_entity["name"],
             "type": product_type,
         }
-        template_data["version"] = version["version"]
+        template_data["version"] = version_entity["version"]
 
         src_representations = {}
         for repre in ayon_api.get_representations(
-            project_name, version_ids={version_id}
+            project_name, version_ids={version_entity["id"]}
         ):
             repre_template_data = copy.deepcopy(template_data)
             ext = repre.get("context", {}).get("ext")
@@ -137,8 +136,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         try:
             self.create_hero_version(
                 anatomy,
-                version,
                 task_entity,
+                version_entity,
                 src_representations,
                 template_data,
             )
@@ -154,8 +153,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
     def create_hero_version(
         self,
         anatomy: Anatomy,
-        src_version_entity: dict[str, Any],
         src_task_entity: Union[dict[str, Any], None],
+        src_version_entity: dict[str, Any],
         src_representations: dict[str, dict],
         template_data: dict[str, Any],
     ) -> None:
