@@ -409,7 +409,7 @@ def get_product_name(
             is not collected.
 
     """
-    if not product_type:
+    if not product_base_type:
         return StringTemplate("").format({})
 
     task_name = task_type = None
@@ -459,7 +459,7 @@ def get_product_name(
     fill_pairs = {
         "variant": variant,
         # TODO We should stop support 'family' key.
-        "family": product_type,
+        "family": product_base_type,
         "task": task_value,
         "product": {
             "type": product_type,
