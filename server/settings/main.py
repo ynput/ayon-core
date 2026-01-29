@@ -216,9 +216,9 @@ class VersionStartCategoryProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    product_base_types: list[str] = SettingsField(
+    product_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product base types"
+        title="Product types"
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
