@@ -47,8 +47,9 @@ log = logging.getLogger(__name__)
 
 
 def get_template_name_profiles(
-    project_name, project_settings=None, logger=None
-):
+    project_name: str,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> list[dict]:
     """Receive profiles for publish template keys.
 
     At least one of arguments must be passed.
@@ -56,8 +57,6 @@ def get_template_name_profiles(
     Args:
         project_name (str): Name of project where to look for templates.
         project_settings (Dict[str, Any]): Prepared project settings.
-        logger (Optional[logging.Logger]): Logger object to be used instead
-            of default logger.
 
     Returns:
         List[Dict[str, Any]]: Publish template profiles.
@@ -82,8 +81,9 @@ def get_template_name_profiles(
 
 
 def get_hero_template_name_profiles(
-    project_name, project_settings=None, logger=None
-):
+    project_name: str,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> list[dict]:
     """Receive profiles for hero publish template keys.
 
     At least one of arguments must be passed.
@@ -91,8 +91,6 @@ def get_hero_template_name_profiles(
     Args:
         project_name (str): Name of project where to look for templates.
         project_settings (Dict[str, Any]): Prepared project settings.
-        logger (Optional[logging.Logger]): Logger object to be used instead
-            of default logger.
 
     Returns:
         List[Dict[str, Any]]: Publish template profiles.
@@ -172,12 +170,12 @@ def get_publish_template_name(
     if hero:
         default_template = DEFAULT_HERO_PUBLISH_TEMPLATE
         profiles = get_hero_template_name_profiles(
-            project_name, project_settings, logger
+            project_name, project_settings
         )
 
     else:
         profiles = get_template_name_profiles(
-            project_name, project_settings, logger
+            project_name, project_settings
         )
         default_template = DEFAULT_PUBLISH_TEMPLATE
 
