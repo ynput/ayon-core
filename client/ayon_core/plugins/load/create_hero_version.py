@@ -536,7 +536,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             "name": os.path.basename(path),
             "path": path,
             "size": os.path.getsize(realpath),
-            "hash": source_hash(path),
+            "hash": source_hash(realpath),
             "hash_type": "op3",
         }
 
