@@ -115,7 +115,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         }
         template_data["version"] = version["version"]
 
-        published_representations = {}
+        src_representations = {}
         for repre in ayon_api.get_representations(
             project_name, version_ids={version_id}
         ):
@@ -124,7 +124,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             if ext:
                 repre_template_data["ext"] = ext
 
-            published_representations[repre["id"]] = {
+            src_representations[repre["id"]] = {
                 "representation": repre,
                 "published_files": [
                     file_info["path"]
@@ -138,7 +138,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 anatomy,
                 version,
                 task_entity,
-                published_representations,
+                src_representations,
                 template_data,
             )
         except Exception as exc:
@@ -154,33 +154,35 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         self,
         anatomy: Anatomy,
         src_version_entity: dict[str, Any],
-        src_task_entity: dict[str, Any],
-        published_representations: dict[str, dict],
+        src_task_entity: Union[dict[str, Any], None],
+        src_representations: dict[str, dict],
         template_data: dict[str, Any],
     ) -> None:
         """Create hero version from instance data.
 
         Args:
             anatomy (Anatomy): Anatomy object for the project.
-            src_version_entity (dict): Instance data with keys:
-            context (dict): Context data with keys:
-                - hostName (str): Name of the host application.
-                - project_settings (dict): Project settings.
+            src_version_entity (dict): Source version entity.
+            src_task_entity (Union[dict[str, Any], None]): Source task entity
+                if there was any.
+            src_representations (dict[str, dict]): Representations by id.
+            template_data (dict[str, Any]): Base template data of source
+                context.
 
         Raises:
             RuntimeError: If any required data is missing or an error occurs
                 during the hero version creation process.
 
         """
-        if not published_representations:
+        if not src_representations:
             raise RuntimeError("No published representations found.")
 
-        for repre_id, repre_info in tuple(published_representations.items()):
+        for repre_id, repre_info in tuple(src_representations.items()):
             repre = repre_info["representation"]
             if repre["name"].lower() in self.ignored_representation_names:
-                published_representations.pop(repre_id, None)
+                src_representations.pop(repre_id, None)
 
-        if not published_representations:
+        if not src_representations:
             raise RuntimeError(
                 "All published representations were filtered by name."
             )
@@ -188,7 +190,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         project_name = anatomy.project_name
         if src_version_entity is None:
             src_version_entity = self.version_from_representations(
-                project_name, published_representations
+                project_name, src_representations
             )
 
         if not src_version_entity:
@@ -258,7 +260,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         self.log.info(f"Hero publish dir: {hero_publish_dir}")
 
         all_repre_file_paths = []
-        for repre_info in published_representations.values():
+        for repre_info in src_representations.values():
             for file_path in repre_info["published_files"]:
                 file_path = os.path.normpath(file_path)
                 if file_path not in all_repre_file_paths:
@@ -305,7 +307,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             )
 
         old_repres_to_replace = {}
-        for repre_info in published_representations.values():
+        for repre_info in src_representations.values():
             repre = repre_info["representation"]
             repre_name_low = repre["name"].lower()
             if repre_name_low in old_repres_by_name:
@@ -343,7 +345,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             src_to_dst_file_paths = []
             repre_integrate_data = []
             anatomy_root = {"root": anatomy.roots}
-            for repre_info in published_representations.values():
+            for repre_info in src_representations.values():
                 published_files = repre_info["published_files"]
                 if len(published_files) == 0:
                     continue
