@@ -778,13 +778,18 @@ def get_instance_staging_dir(instance):
         workfile_name, _ = os.path.splitext(workfile)
         template_data["workfile_name"] = workfile_name
 
+    product_type = instance.data["productType"]
+    product_base_type = instance.data["productBaseType"]
+    if not product_base_type:
+        product_base_type = product_type
     staging_dir_info = get_staging_dir_info(
         context.data["projectEntity"],
         instance.data.get("folderEntity"),
         instance.data.get("taskEntity"),
-        instance.data["productType"],
-        instance.data["productName"],
-        context.data["hostName"],
+        product_base_type=product_base_type,
+        product_type=product_type,
+        product_name=instance.data["productName"],
+        host_name=context.data["hostName"],
         anatomy=context.data["anatomy"],
         project_settings=context.data["project_settings"],
         template_data=template_data,
