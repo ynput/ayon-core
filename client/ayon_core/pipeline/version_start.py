@@ -12,22 +12,33 @@ def get_versioning_start(
     task_type: Optional[str] = None,
     product_type: Optional[str] = None,
     product_name: Optional[str] = None,
+    product_base_type: Optional[str] = None,
+    *,
     project_settings: Optional[dict[str, Any]] = None,
 ) -> int:
     """Get anatomy versioning start"""
     if not project_settings:
         project_settings = get_project_settings(project_name)
 
+    if product_base_type is None and product_type:
+        msg = (
+            "Found 'product_type' kwarg in 'get_versioning_start',"
+            " use 'product_base_type' instead."
+        )
+        log.warning(msg)
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        product_base_type = product_type
+
     version_start = 1
     settings = project_settings["core"]
-    profiles = settings.get("version_start_category", {}).get("profiles", [])
+    profiles = settings["version_start_category"]["profiles"]
 
     if not profiles:
         return version_start
 
     filtering_criteria = {
         "host_names": host_name,
-        "product_types": product_type,
+        "product_base_types": product_base_type,
         "product_names": product_name,
         "task_names": task_name,
         "task_types": task_type,
