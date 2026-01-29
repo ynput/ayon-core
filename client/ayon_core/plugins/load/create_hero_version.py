@@ -99,9 +99,6 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         anatomy = Anatomy(project_entity, project_entity=project_entity)
 
         version_id = version["id"]
-        repres = list(ayon_api.get_representations(
-            project_name, version_ids={version_id}
-        ))
         template_data = get_template_data(
             project_entity=project_entity,
             folder_entity=folder_entity,
@@ -119,10 +116,12 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         template_data["version"] = version["version"]
 
         published_representations = {}
-        for repre in repres:
+        for repre in ayon_api.get_representations(
+            project_name, version_ids={version_id}
+        ):
             repre_template_data = copy.deepcopy(template_data)
             ext = repre.get("context", {}).get("ext")
-            if "ext" not in repre_template_data and ext:
+            if ext:
                 repre_template_data["ext"] = ext
 
             published_representations[repre["id"]] = {
