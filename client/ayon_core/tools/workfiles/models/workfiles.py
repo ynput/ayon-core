@@ -877,6 +877,7 @@ class WorkfilesModel:
             task_name=task_entity["name"],
             task_type=task_entity["taskType"],
             product_type="workfile",
+            product_base_type="workfile",
             project_settings=self._controller.project_settings,
         )
 

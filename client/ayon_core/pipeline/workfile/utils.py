@@ -538,7 +538,8 @@ def save_next_version(
             host.name,
             task_name=task_entity["name"],
             task_type=task_entity["taskType"],
-            product_type="workfile"
+            product_base_type="workfile",
+            product_type="workfile",
         )
 
     # Re-use comment from the current workfile if is not passed in
@@ -665,7 +666,8 @@ def copy_workfile_to_context(
                 host.name,
                 task_name=task_entity["name"],
                 task_type=task_entity["taskType"],
-                product_type="workfile"
+                product_base_type="workfile",
+                product_type="workfile",
             )
 
     task_type = task_entity["taskType"]
