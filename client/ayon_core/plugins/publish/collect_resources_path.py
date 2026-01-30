@@ -96,7 +96,6 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
             project_name=instance.context.data["projectName"],
             host_name=instance.context.data["hostName"],
             product_base_type=product_base_type,
-            product_type=product_base_type,
             task_name=task_name,
             task_type=task_type,
             project_settings=instance.context.data["project_settings"],

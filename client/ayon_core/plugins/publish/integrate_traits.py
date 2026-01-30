@@ -596,7 +596,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             project_name,
             host_name,
             product_base_type=product_base_type,
-            product_type=product_base_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
