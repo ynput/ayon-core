@@ -4,8 +4,12 @@ import os
 def get_published_workfile_instance(context):
     """Find workfile instance in context"""
     for i in context:
+        product_base_type = i.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = i.data["productType"]
+
         is_workfile = (
-            i.data["productType"] == "workfile"
+            product_base_type == "workfile"
             or "workfile" in i.data.get("families", [])
 
         )
