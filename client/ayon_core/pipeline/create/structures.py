@@ -683,6 +683,10 @@ class CreatedInstance:
     # ------
 
     @property
+    def product_base_type(self) -> str:
+        return self._data["productBaseType"]
+
+    @property
     def product_type(self):
         return self._data["productType"]
 

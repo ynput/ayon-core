@@ -12,7 +12,7 @@ from ayon_core.pipeline.create import (
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     VARIANT_TOOLTIP,
-    PRODUCT_TYPE_ROLE,
+    PRODUCT_BASE_TYPE_ROLE,
     CREATOR_IDENTIFIER_ROLE,
     CREATOR_THUMBNAIL_ENABLED_ROLE,
     CREATOR_SORT_ROLE,
@@ -50,8 +50,8 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --- Short description inputs ---
         short_desc_input_widget = QtWidgets.QWidget(self)
 
-        product_type_label = QtWidgets.QLabel(short_desc_input_widget)
-        product_type_label.setAlignment(
+        product_base_type_label = QtWidgets.QLabel(short_desc_input_widget)
+        product_base_type_label.setAlignment(
             QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft
         )
 
@@ -64,7 +64,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
             short_desc_input_widget
         )
         short_desc_input_layout.setSpacing(0)
-        short_desc_input_layout.addWidget(product_type_label)
+        short_desc_input_layout.addWidget(product_base_type_label)
         short_desc_input_layout.addWidget(description_label)
         # --------------------------------
 
@@ -75,13 +75,13 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --------------------------------
 
         self._icon_widget = icon_widget
-        self._product_type_label = product_type_label
+        self._product_base_type_label = product_base_type_label
         self._description_label = description_label
 
     def set_creator_item(self, creator_item=None):
         if not creator_item:
             self._icon_widget.set_icon_def(None)
-            self._product_type_label.setText("")
+            self._product_base_type_label.setText("")
             self._description_label.setText("")
             return
 
@@ -89,8 +89,12 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         description = creator_item.description or ""
 
         self._icon_widget.set_icon_def(plugin_icon)
-        self._product_type_label.setText("<b>{}</b>".format(creator_item.product_type))
-        self._product_type_label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self._product_base_type_label.setText(
+            f"<b>{creator_item.product_base_type}</b>"
+        )
+        self._product_base_type_label.setTextInteractionFlags(
+            QtCore.Qt.NoTextInteraction
+        )
         self._description_label.setText(description)
 
 
@@ -445,7 +449,7 @@ class CreateWidget(QtWidgets.QWidget):
             self.product_name_input.setText("< Folder is not set >")
 
     def _refresh_creators(self):
-        # Refresh creators and add their product types to list
+        # Refresh creators and add their product base types to list
         existing_items = {}
         old_creators = set()
         for row in range(self._creators_model.rowCount()):
@@ -480,7 +484,10 @@ class CreateWidget(QtWidgets.QWidget):
                 creator_item.create_allow_thumbnail,
                 CREATOR_THUMBNAIL_ENABLED_ROLE
             )
-            item.setData(creator_item.product_type, PRODUCT_TYPE_ROLE)
+            item.setData(
+                creator_item.product_base_type,
+                PRODUCT_BASE_TYPE_ROLE
+            )
             if is_new:
                 self._creators_model.appendRow(item)
 
@@ -733,7 +740,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         index = indexes[0]
         creator_identifier = index.data(CREATOR_IDENTIFIER_ROLE)
-        product_type = index.data(PRODUCT_TYPE_ROLE)
+        product_base_type = index.data(PRODUCT_BASE_TYPE_ROLE)
         variant = self._variant_widget.text()
         # Care about product name only if context change is enabled
         product_name = None
@@ -756,7 +763,8 @@ class CreateWidget(QtWidgets.QWidget):
             "folderPath": folder_path,
             "task": task_name,
             "variant": variant,
-            "productType": product_type
+            "productType": product_base_type,
+            "productBaseType": product_base_type,
         }
 
         success = self._controller.create(
