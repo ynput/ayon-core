@@ -764,22 +764,28 @@ def get_product_name_and_group_from_template(
     _dynamic_data.pop("aov", None)
     resulting_group_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=_dynamic_data,
         variant=variant,
+        project_entity=project_entity,
+        project_settings=project_settings,
     )
 
     resulting_product_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=dynamic_data,
         variant=variant,
+        project_entity=project_entity,
+        project_settings=project_settings,
     )
     return resulting_product_name, resulting_group_name
 
