@@ -21,7 +21,7 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
 
     checked_template_names = ["source"]
     # validate instances might have interim family, needs to be mapped to final
-    product_type_mapping = {
+    product_base_type_mapping = {
         "renderLayer": "render",
         "renderLocal": "render"
     }
@@ -66,7 +66,7 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
         if not product_base_type:
             product_base_type = instance.data["productType"]
         mapped_product_base_type = (
-            self.product_type_mapping.get(product_base_type)
+            self.product_base_type_mapping.get(product_base_type)
             or product_base_type
         )
         anatomy_data = instance.data["anatomyData"]
