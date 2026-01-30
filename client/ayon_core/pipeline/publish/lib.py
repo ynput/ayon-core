@@ -190,13 +190,12 @@ def get_publish_template_name(
     Args:
         project_name (str): Name of project where to look for settings.
         host_name (str): Name of host integration.
-        product_type (str): Product type for which should be found template.
+        product_base_type (str): Product base type for which should be
+            found template.
         task_name (str): Task name on which is instance working.
         task_type (str): Task type on which is instance working.
         project_settings (Dict[str, Any]): Prepared project settings.
         hero (bool): Template is for hero version publishing.
-        product_base_type (Optional[str]): Product type for which should
-            be found template.
         logger (logging.Logger): Custom logger used for 'filter_profiles'
             function.
 
