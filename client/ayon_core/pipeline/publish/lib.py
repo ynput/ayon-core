@@ -779,7 +779,7 @@ def get_instance_staging_dir(instance):
         template_data["workfile_name"] = workfile_name
 
     product_type = instance.data["productType"]
-    product_base_type = instance.data["productBaseType"]
+    product_base_type = instance.data.get("productBaseType")
     if not product_base_type:
         product_base_type = product_type
     staging_dir_info = get_staging_dir_info(
