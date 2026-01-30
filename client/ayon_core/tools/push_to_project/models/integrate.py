@@ -917,6 +917,7 @@ class ProjectPushItemProcess:
                     folder_entity=self._folder_entity,
                     task_entity=self._task_info,
                     host_name=self.host_name,
+                    product_type=self._product_type,
                     product_base_type=self._product_base_type,
                     variant=self._item.variant,
                     project_settings=self._project_settings
