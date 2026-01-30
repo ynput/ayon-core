@@ -741,12 +741,17 @@ def get_product_name_and_group_from_template(
         Maybe we should introduce templates for the groups themselves.
 
     Args:
-        task_entity (dict): Task entity.
         project_name (str): Project name.
+        task_entity (Union[dict[str, Any], None]): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): Variant.
-        dynamic_data (dict): Dynamic data (aov, renderlayer, camera, ...).
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data
+            (aov, renderlayer, camera, ...).
+        folder_entity (Union[dict[str, Any], None]): Folder entity.
+        product_base_type (str): Product base type.
+        project_entity (Optional[dict[str, Any]]): Project entity.
+        project_settings (Optional[dict[str, Any]]): Project settings.
 
     Returns:
         tuple: product name and group name.
