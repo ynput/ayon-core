@@ -838,6 +838,7 @@ def _create_instances_for_aov(
 
     """
 
+    project_entity = instance.context.data["projectEntity"]
     anatomy = instance.context.data["anatomy"]
     source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
@@ -904,23 +905,32 @@ def _create_instances_for_aov(
                  "your ayon-core version."), DeprecationWarning)
             use_legacy_product_name = True
 
+        product_base_type = skeleton.get("productBaseType")
+        product_type = skeleton["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         if use_legacy_product_name:
             product_name, group_name = _get_legacy_product_name_and_group(
-                product_type=skeleton["productType"],
+                product_type=product_base_type,
                 source_product_name=source_product_name,
                 task_name=instance.data["task"],
-                dynamic_data=dynamic_data)
+                dynamic_data=dynamic_data,
+            )
 
         else:
             (
                 product_name, group_name
             ) = get_product_name_and_group_from_template(
-                task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
+                folder_entity=instance.data["folderEntity"],
+                task_entity=instance.data["taskEntity"],
                 host_name=instance.context.data["hostName"],
-                product_type=skeleton["productType"],
+                product_base_type=product_base_type,
+                product_type=product_type,
                 variant=instance.data.get("variant", source_product_name),
-                dynamic_data=dynamic_data
+                dynamic_data=dynamic_data,
+                project_entity=project_entity,
+                project_settings=project_settings,
             )
 
         try:
