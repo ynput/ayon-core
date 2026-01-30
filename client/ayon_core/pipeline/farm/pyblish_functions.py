@@ -711,12 +711,18 @@ def _get_legacy_product_name_and_group(
 
 
 def get_product_name_and_group_from_template(
-        project_name,
-        task_entity,
-        product_type,
-        variant,
-        host_name,
-        dynamic_data=None):
+    project_name: str,
+    task_entity: Union[dict[str, Any], None],
+    product_type: str,
+    variant: str,
+    host_name: str,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    *,
+    folder_entity: Union[dict[str, Any], None],
+    product_base_type: str = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> tuple[str, str]:
     """Get product name and group name from template.
 
     This will get product name and group name from template based on
