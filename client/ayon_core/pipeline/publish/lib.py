@@ -749,47 +749,6 @@ def get_publish_repre_path(instance, repre, only_published=False):
     return None
 
 
-# deprecated: backward compatibility only (2024-09-12)
-# TODO: remove in the future
-def get_custom_staging_dir_info(
-    project_name,
-    host_name,
-    product_type,
-    task_name,
-    task_type,
-    product_name,
-    project_settings=None,
-    anatomy=None,
-    log=None,
-):
-    from ayon_core.pipeline.staging_dir import get_staging_dir_config
-    warnings.warn(
-        (
-            "Function 'get_custom_staging_dir_info' in"
-            " 'ayon_core.pipeline.publish' is deprecated. Please use"
-            " 'get_custom_staging_dir_info'"
-            " in 'ayon_core.pipeline.stagingdir'."
-        ),
-        DeprecationWarning,
-    )
-    tr_data = get_staging_dir_config(
-        project_name,
-        task_type,
-        task_name,
-        product_type,
-        product_name,
-        host_name,
-        project_settings=project_settings,
-        anatomy=anatomy,
-        log=log,
-    )
-
-    if not tr_data:
-        return None, None
-
-    return tr_data["template"], tr_data["persistence"]
-
-
 def get_instance_staging_dir(instance):
     """Unified way how staging dir is stored and created on instances.
 
@@ -817,13 +776,18 @@ def get_instance_staging_dir(instance):
         workfile_name, _ = os.path.splitext(workfile)
         template_data["workfile_name"] = workfile_name
 
+    product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     staging_dir_info = get_staging_dir_info(
         context.data["projectEntity"],
         instance.data.get("folderEntity"),
         instance.data.get("taskEntity"),
-        instance.data["productType"],
-        instance.data["productName"],
-        context.data["hostName"],
+        product_base_type=product_base_type,
+        product_type=product_type,
+        product_name=instance.data["productName"],
+        host_name=context.data["hostName"],
         anatomy=context.data["anatomy"],
         project_settings=context.data["project_settings"],
         template_data=template_data,
