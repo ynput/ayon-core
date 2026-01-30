@@ -1015,7 +1015,7 @@ class ProjectPushItemProcess:
                 self.host_name,
                 task_name=self._task_info.get("name"),
                 task_type=self._task_info.get("taskType"),
-                product_type=product_type,
+                product_base_type=product_type,
                 product_name=product_entity["name"],
             )
         else:
