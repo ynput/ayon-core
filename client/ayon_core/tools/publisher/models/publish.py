@@ -315,6 +315,7 @@ class PublishReportMaker:
             "name": instance.data.get("name"),
             "label": get_publish_instance_label(instance),
             "product_type": instance.data.get("productType"),
+            "product_base_type": instance.data.get("productBaseType"),
             "family": instance.data.get("family"),
             "families": instance.data.get("families") or [],
             "exists": exists,
