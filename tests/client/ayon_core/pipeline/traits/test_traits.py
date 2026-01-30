@@ -15,6 +15,11 @@ from ayon_core.pipeline.traits import (
     Representation,
     TraitBase,
 )
+from ayon_core.pipeline.traits.representation import (
+    IncompatibleTraitVersionError
+)
+
+from typing import TypeVar
 
 REPRESENTATION_DATA: dict = {
         FileLocation.id: {
@@ -35,6 +40,8 @@ REPRESENTATION_DATA: dict = {
             # "persistent": True,
         },
     }
+
+T = TypeVar("T", bound="TraitBase")
 
 
 class UpgradedImage(Image):
@@ -258,6 +265,50 @@ def test_get_versionless_id() -> None:
            "ayon.content.MimeType"
 
 
+def test_get_trait_class_by_trait_id() -> None:
+    """Test getting trait class by trait ID."""
+    # this will return Image because the explicit version is requested
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.2d.Image.v1")
+    assert trait_class == Image
+
+    # This will return UpgradedImage because the highest version is available,
+    # and it is defined in the test
+    trait_class = Representation.get_trait_class_by_trait_id("ayon.2d.Image")
+    assert trait_class == UpgradedImage
+
+    # These both will return FileLocation because only one version exists
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.content.FileLocation.v1")
+    assert trait_class == FileLocation
+
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.content.FileLocation")
+    assert trait_class == FileLocation
+
+    # Nonexistent trait should return None
+    no_trait = Representation.get_trait_class_by_trait_id(
+        "ayon.test.NonExistent.v1")
+    assert no_trait is None
+
+    class NewTestTrait(TraitBase):
+        """New test trait."""
+        id = "ayon.test.NewTestTrait.v1"
+
+    class AnotherCaseTrait(TraitBase):
+        """Mixed case trait."""
+
+        id = "Ayon.Test.AnotherCaseTrait.v1"
+
+    class MixedCaseTrait(NewTestTrait, AnotherCaseTrait):
+        """Mixed case trait."""
+        id = "ayon.test.MixedCaseTrait.v1"
+
+    trait_class = Representation.get_trait_class_by_trait_id(
+        "ayon.test.MixedCaseTrait")
+    assert trait_class == MixedCaseTrait
+
+
 def test_from_dict() -> None:
     """Test creating representation from dictionary."""
     traits_data = {
@@ -284,7 +335,11 @@ def test_from_dict() -> None:
         },
     }
 
-    with pytest.raises(ValueError, match=r"Trait model with ID .* not found."):
+    with pytest.raises(
+            IncompatibleTraitVersionError,
+            match=(
+                r"Requested trait version .* is higher than "
+                r"the found trait version .*\.")):
         representation = Representation.from_dict(
             "test", trait_data=traits_data)
 
