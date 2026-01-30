@@ -651,10 +651,14 @@ class AbstractTemplateBuilder(ABC):
     def save_workfile(self, workfile_path):
         """Save workfile in current host."""
         # Save current scene, continue to open file
-        if isinstance(self.host, IWorkfileHost):
-            self.host.save_workfile(workfile_path)
-        else:
+        if not isinstance(self.host, IWorkfileHost):
             self.host.save_file(workfile_path)
+            return
+        self.host.save_workfile_with_context(
+            workfile_path,
+            self.current_folder_entity,
+            self.current_task_entity,
+        )
 
     def _prepare_placeholders(self, placeholders):
         """Run preparation part for placeholders on plugins.
