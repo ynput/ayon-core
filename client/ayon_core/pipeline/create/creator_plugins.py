@@ -865,10 +865,10 @@ class Creator(BaseCreator):
         product_name = instance.get("productName")
         product_base_type = instance.get("productBaseType")
         product_type = instance.get("productType")
-        if not product_base_type:
-            product_base_type =  product_type
-
         folder_path = instance.get("folderPath")
+
+        if not product_base_type:
+            product_base_type = product_type
 
         # this can only work if product name and folder path are available
         if not product_name or not folder_path:
