@@ -184,7 +184,7 @@ def _get_staging_dir_info_wrap(func):
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if len(args) > 7:
+        if len(args) > 6:
             msg = (
                 "Got more positional arguments for 'get_staging_dir_info'"
                 " than expected. Please use explicit kwargs instead."
