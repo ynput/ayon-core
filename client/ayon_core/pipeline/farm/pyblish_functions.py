@@ -725,6 +725,10 @@ def get_product_name_and_group_from_template(
 ) -> tuple[str, str]:
     """Get product name and group name from template.
 
+    NOTE: This function is/was used only in ayon-houdini which uses/d kwargs
+        for all arguments. When houdini starts to use 'folder_entity' and
+        'product_base_type' this should change order of arguments.
+
     This will get product name and group name from template based on
     data provided. It is doing similar work as
     `func::_get_legacy_product_name_and_group` but using templates.
