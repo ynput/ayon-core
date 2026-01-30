@@ -76,7 +76,6 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
             project_name,
             host_name,
             product_base_type=mapped_product_base_type,
-            product_type=mapped_product_base_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=instance.context.data["project_settings"],
