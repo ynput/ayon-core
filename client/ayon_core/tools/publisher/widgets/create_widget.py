@@ -57,8 +57,8 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --- Short description inputs ---
         short_desc_input_widget = QtWidgets.QWidget(self)
 
-        product_type_label = QtWidgets.QLabel(short_desc_input_widget)
-        product_type_label.setAlignment(
+        product_base_type_label = QtWidgets.QLabel(short_desc_input_widget)
+        product_base_type_label.setAlignment(
             QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft
         )
 
@@ -71,7 +71,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
             short_desc_input_widget
         )
         short_desc_input_layout.setSpacing(0)
-        short_desc_input_layout.addWidget(product_type_label)
+        short_desc_input_layout.addWidget(product_base_type_label)
         short_desc_input_layout.addWidget(description_label)
         # --------------------------------
 
@@ -82,7 +82,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --------------------------------
 
         self._icon_widget = icon_widget
-        self._product_type_label = product_type_label
+        self._product_base_type_label = product_base_type_label
         self._description_label = description_label
 
     def set_creator_item(
@@ -92,7 +92,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
     ) -> None:
         if not creator_item:
             self._icon_widget.set_icon_def(None)
-            self._product_type_label.setText("")
+            self._product_base_type_label.setText("")
             self._description_label.setText("")
             return
 
@@ -103,10 +103,12 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         if product_base_type != product_type:
             product_base_label = f" [<i>{product_base_type}</i>]"
         self._icon_widget.set_icon_def(plugin_icon)
-        self._product_type_label.setText(
+        self._product_base_type_label.setText(
             f"<b>{product_type}{product_base_label}</b>"
         )
-        self._product_type_label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self._product_base_type_label.setTextInteractionFlags(
+            QtCore.Qt.NoTextInteraction
+        )
         self._description_label.setText(description)
 
 
