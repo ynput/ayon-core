@@ -1,5 +1,7 @@
 """Library functions for publishing."""
 from __future__ import annotations
+
+import functools
 import os
 import platform
 import re
@@ -114,15 +116,67 @@ def get_hero_template_name_profiles(
     )
 
 
+def _get_publish_template_name_wrap(func):
+    """Handle backwards compatibility of 'get_versioning_start'.
+
+    Replace 'product_type' with 'product_base_type'. The function did support
+        both in past so that case is handled too.
+
+    And some positional arguments are now required as kwargs.
+
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # 'product_type' was passed as positional argument and
+        #   'product_base_type' as kwarg
+        if "product_base_type" in kwargs and len(args) > 2:
+            args = list(args)
+            args[2] = kwargs.pop("product_base_type")
+
+        # 'product_type' in kwargs
+        if "product_type" in kwargs:
+            product_type = kwargs.pop("product_type")
+            # Set 'product_base_type' if was not passed in
+            if "product_base_type" not in kwargs:
+                kwargs["product_base_type"] = product_type
+            msg = (
+                "Found 'product_type' kwarg in 'get_publish_template_name',"
+                " use 'product_base_type' instead."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+        if len(args) > 5:
+            args = list(args)
+            msg = (
+                "Found positional arguments that should be passed as kwargs"
+                "  ('get_publish_template_name')."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            for kwarg in (
+                "project_settings",
+                "hero",
+                "logger",
+            ):
+                if not args:
+                    break
+                kwargs[kwarg] = args.pop(5)
+
+        return func(*args, **kwargs)
+    return wrapper
+
+
+@_get_publish_template_name_wrap
 def get_publish_template_name(
     project_name: str,
     host_name: str,
-    product_type: str,
+    product_base_type: str,
     task_name: Union[str, None],
     task_type: Union[str, None],
+    *,
     project_settings: Optional[dict] = None,
     hero: bool = False,
-    product_base_type: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
 ) -> str:
     """Get template name which should be used for passed context.
@@ -148,22 +202,12 @@ def get_publish_template_name(
 
     Returns:
         str: Template name which should be used for integration.
-    """
-    if not product_base_type:
-        msg = (
-            "Argument 'product_base_type' is not provided to"
-            " 'get_publish_template_name' function. This argument"
-            " will be required in future versions."
-        )
-        warnings.warn(msg, DeprecationWarning)
-        if logger:
-            logger.warning(msg)
-        product_base_type = product_type
 
+    """
     template = None
     filter_criteria = {
         "hosts": host_name,
-        "product_types": product_type,
+        "product_types": product_base_type,
         "task_names": task_name,
         "task_types": task_type,
     }
@@ -873,7 +917,6 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
         project_name=project_name,
         host_name=instance.context.data["hostName"],
         product_base_type=product_base_type,
-        product_type=product_base_type,
         task_name=task_name,
         task_type=task_type,
         project_settings=project_settings,
@@ -1064,7 +1107,6 @@ def get_instance_expected_output_path(
         project_name=instance.context.data["projectName"],
         host_name=instance.context.data["hostName"],
         product_base_type=product_base_type,
-        product_type=product_base_type,
         task_name=task_name,
         task_type=task_type,
         project_settings=instance.context.data["project_settings"],
