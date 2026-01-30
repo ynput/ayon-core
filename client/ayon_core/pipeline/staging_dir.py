@@ -132,7 +132,7 @@ def get_staging_dir_config(
     if not product_base_type:
         msg = (
             "Missing 'product_base_type' in 'get_staging_dir_config'."
-            " Will be soon required."
+            " Will soon be required."
         )
         logger.warning(msg)
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
