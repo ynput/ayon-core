@@ -4,6 +4,7 @@ import os
 import re
 import warnings
 from copy import deepcopy
+from typing import Any, Union, Optional
 
 import attr
 import ayon_api
@@ -652,11 +653,16 @@ def create_instances_for_aov(
 
 
 def _get_legacy_product_name_and_group(
-        product_type,
-        source_product_name,
-        task_name,
-        dynamic_data):
+    product_type,
+    source_product_name,
+    task_name,
+    dynamic_data
+):
     """Get product name with legacy logic.
+
+    NOTE: This function is imported and used in houdini. Change 'product_type'
+        to 'product_base_type' when it is not used there (and maybe remove the
+        function).
 
     This function holds legacy behaviour of creating product name
     that is deprecated. This wasn't using product name templates
@@ -668,7 +674,7 @@ def _get_legacy_product_name_and_group(
         since 0.4.4
 
     Args:
-        product_type (str): Product type.
+        product_type (str): Product base type.
         source_product_name (str): Source product name.
         task_name (str): Task name.
         dynamic_data (dict): Dynamic data (camera, aov, ...)
