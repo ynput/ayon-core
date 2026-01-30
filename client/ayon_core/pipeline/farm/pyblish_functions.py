@@ -230,6 +230,8 @@ def create_skeleton_instance(
 
     instance_skeleton_data = {
         # TODO find out how to define product type
+        # - Right now product base type is hardcoded, from where should be
+        #   product type taken?
         "productType": product_base_type,
         "productBaseType": product_base_type,
         "productName": data["productName"],
@@ -917,10 +919,10 @@ def _create_instances_for_aov(
             product_base_type = product_type
         if use_legacy_product_name:
             product_name, group_name = _get_legacy_product_name_and_group(
-                product_type=product_base_type,
-                source_product_name=source_product_name,
-                task_name=instance.data["task"],
-                dynamic_data=dynamic_data,
+                product_base_type,
+                source_product_name,
+                instance.data["task"],
+                dynamic_data,
             )
 
         else:
@@ -946,13 +948,15 @@ def _create_instances_for_aov(
 
         log.info("Creating data for: {}".format(product_name))
 
-        app = os.environ.get("AYON_HOST_NAME", "")
+        host_name = os.environ.get("AYON_HOST_NAME", "")
 
         render_file_name = os.path.basename(first_filepath)
 
         aov_patterns = aov_filter
 
-        preview = match_aov_pattern(app, aov_patterns, render_file_name)
+        preview = match_aov_pattern(
+            host_name, aov_patterns, render_file_name
+        )
 
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
@@ -1352,11 +1356,10 @@ def create_instances_for_cache(instance, skeleton):
 
         new_instance = deepcopy(skeleton)
 
-        new_instance["productName"] = product_name
         log.info("Creating data for: {}".format(product_name))
+        new_instance["productName"] = product_name
         new_instance["productType"] = product_type
         new_instance["productBaseType"] = product_base_type
-        new_instance["families"] = skeleton["families"]
         # create representation
         if isinstance(col, (list, tuple)):
             files = [os.path.basename(f) for f in col]
