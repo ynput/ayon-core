@@ -748,6 +748,16 @@ def get_product_name_and_group_from_template(
         tuple: product name and group name.
 
     """
+    if not folder_entity and task_entity:
+        folder_entity = None
+        if task_entity:
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, task_entity["folderId"]
+            )
+
+    if not product_base_type:
+        product_base_type = product_type
+
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.
     _dynamic_data = deepcopy(dynamic_data) or {}
