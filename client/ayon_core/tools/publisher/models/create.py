@@ -214,6 +214,7 @@ class InstanceItem:
         label: str,
         group_label: str,
         product_base_type: str,
+        product_type: str,
         product_name: str,
         variant: str,
         folder_path: Optional[str],
@@ -229,6 +230,7 @@ class InstanceItem:
         self._label: str = label
         self._group_label: str = group_label
         self._product_base_type: str = product_base_type
+        self._product_type: str = product_type
         self._product_name: str = product_name
         self._variant: str = variant
         self._folder_path: Optional[str] = folder_path
@@ -258,6 +260,10 @@ class InstanceItem:
     @property
     def product_base_type(self):
         return self._product_base_type
+
+    @property
+    def product_type(self):
+        return self._product_type
 
     @property
     def is_mandatory(self):
@@ -319,6 +325,7 @@ class InstanceItem:
             instance.label or "N/A",
             instance.group_label,
             instance.product_base_type,
+            instance.product_type,
             instance.product_name,
             instance["variant"],
             instance["folderPath"],
