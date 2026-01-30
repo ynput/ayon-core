@@ -626,8 +626,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     Product base type: [   immutable  ]
     product name:      [   immutable  ]
                           [Submit] [Cancel]
-    """
 
+    """
     multiselection_text = "< Multiselection >"
     unknown_value = "N/A"
 
