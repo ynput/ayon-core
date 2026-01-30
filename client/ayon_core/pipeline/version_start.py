@@ -20,7 +20,7 @@ def _get_versioning_start_wrap(func):
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # 'product_base_type' passed as kwargs nad 'product_type' as arg
+        # 'product_base_type' passed as kwargs and 'product_type' as arg
         if "product_base_type" in kwargs and len(args) > 4:
             args = list(args)
             args[4] = kwargs.pop("product_base_type")
