@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import copy
 import os
+import functools
 import re
 import warnings
 from copy import deepcopy
@@ -215,17 +217,21 @@ def create_skeleton_instance(
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    product_type = ("render"
-              if "prerender.farm" not in instance.data["families"]
-              else "prerender")
-    families = [product_type]
+    # QUESTION why is 'render' product base type enforced here?
+    product_base_type = "render"
+    if "prerender.farm" in instance.data["families"]:
+        product_base_type = "prerender"
+
+    families = [product_base_type]
 
     # pass review to families if marked as review
     if data.get("review"):
         families.append("review")
 
     instance_skeleton_data = {
-        "productType": product_type,
+        # TODO find out how to define product type
+        "productType": product_base_type,
+        "productBaseType": product_base_type,
         "productName": data["productName"],
         "task": data["task"],
         "families": families,
@@ -1186,15 +1192,19 @@ def create_skeleton_instance_cache(instance):
                      "This may cause issues.").format(source))
 
     product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     # Make sure "render" is in the families to go through
     # validating expected and rendered files
     # during publishing job.
-    families = ["render", product_type]
+    families = ["render", product_base_type]
 
     instance_skeleton_data = {
         "productName": data["productName"],
         "productType": product_type,
-        "family": product_type,
+        "productBaseType": product_base_type,
+        "family": product_base_type,
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -1303,6 +1313,9 @@ def create_instances_for_cache(instance, skeleton):
     anatomy = instance.context.data["anatomy"]
     product_name = skeleton["productName"]
     product_type = skeleton["productType"]
+    product_base_type = skeleton.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     exp_files = instance.data["expectedFiles"]
     log = Logger.get_logger("farm_publishing")
 
@@ -1342,6 +1355,7 @@ def create_instances_for_cache(instance, skeleton):
         new_instance["productName"] = product_name
         log.info("Creating data for: {}".format(product_name))
         new_instance["productType"] = product_type
+        new_instance["productBaseType"] = product_base_type
         new_instance["families"] = skeleton["families"]
         # create representation
         if isinstance(col, (list, tuple)):
@@ -1481,6 +1495,9 @@ def attach_instances_to_product(attach_to, instances):
             new_inst["version"] = attach_instance.get("version")
             new_inst["productName"] = attach_instance.get("productName")
             new_inst["productType"] = attach_instance.get("productType")
+            new_inst["productBaseType"] = attach_instance.get(
+                "productBaseType"
+            )
             new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
             # don't set productGroup if we are attaching
