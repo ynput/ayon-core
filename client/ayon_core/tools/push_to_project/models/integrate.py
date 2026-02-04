@@ -895,12 +895,12 @@ class ProjectPushItemProcess:
 
     def _determine_publish_template_name(self):
         template_name = get_publish_template_name(
-            self._item.dst_project_name,
-            self.host_name,
-            self._product_base_type,
-            self._task_info.get("name"),
-            self._task_info.get("type"),
-            project_settings=self._project_settings
+            project_name=self._item.dst_project_name,
+            host_name=self.host_name,
+            product_base_type=self._product_base_type,
+            task_name=self._task_info.get("name"),
+            task_type=self._task_info.get("type"),
+            project_settings=self._project_settings,
         )
         self._log_debug(
             f"Using template '{template_name}' for integration"
@@ -911,14 +911,14 @@ class ProjectPushItemProcess:
         if self._item.use_original_name:
             product_name = self._src_product_entity["name"]
         else:
-            product_base_type = self._product_base_type
             try:
                 product_name = get_product_name(
                     self._item.dst_project_name,
                     folder_entity=self._folder_entity,
                     task_entity=self._task_info,
                     host_name=self.host_name,
-                    product_base_type=product_base_type,
+                    product_type=self._product_type,
+                    product_base_type=self._product_base_type,
                     variant=self._item.variant,
                     project_settings=self._project_settings
                 )
