@@ -29,6 +29,22 @@ def _convert_product_base_types_1_8_0(overrides):
     if version_start_s:
         all_profiles.append(version_start_s)
 
+    # Publish plugins
+    publish_plugins = overrides.get("publish", {})
+    for settings_parts in (
+        ("CollectUSDLayerContributions", "profiles"),
+    ):
+        found = True
+        plugin_settings = publish_plugins
+        for part in settings_parts:
+            if part not in plugin_settings:
+                found = False
+                break
+            plugin_settings = plugin_settings[part]
+
+        if found and plugin_settings:
+            all_profiles.append(plugin_settings)
+
     # Convert data in profiles
     for profile in all_profiles:
         for old, new in (
