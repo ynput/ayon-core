@@ -337,7 +337,10 @@ class HeroTemplateNameProfile(BaseSettingsModel):
 
 class CustomStagingDirProfileModel(BaseSettingsModel):
     active: bool = SettingsField(True, title="Is active")
-    host_names: list[str] = SettingsField(default_factory=list, title="Host names")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
