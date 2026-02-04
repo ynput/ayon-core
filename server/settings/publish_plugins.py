@@ -1549,7 +1549,7 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "profiles": [
             {
-                "product_types": [],
+                "product_base_types": [],
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
