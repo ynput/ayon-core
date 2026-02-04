@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import os
-import functools
 import re
 import warnings
 from copy import deepcopy
