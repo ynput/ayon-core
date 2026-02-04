@@ -351,29 +351,35 @@ class ExtractOIIOTranscode(publish.Extractor):
     def _get_profile(self, instance):
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
         filtering_criteria = {
             "hosts": host_name,
-            "product_types": product_type,
+            "product_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
         }
-        profile = filter_profiles(self.profiles, filtering_criteria,
-                                  logger=self.log)
+        profile = filter_profiles(
+            self.profiles,
+            filtering_criteria,
+            logger=self.log
+        )
 
         if not profile:
-            self.log.debug((
-              "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Product types: \"{}\" | Product names: \"{}\""
-              " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+            self.log.debug(
+                "Skipped instance. None of profiles in presets are for"
+                f" Host name: \"{host_name}\""
+                f" | Product types: \"{product_base_type}\""
+                f" | Product names: \"{product_name}\""
+                f" | Task name \"{task_name}\""
+                f" | Task type \"{task_type}\""
+            )
 
         return profile
 
