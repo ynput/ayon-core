@@ -207,29 +207,34 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def _get_outputs_for_instance(self, instance):
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         task_type = None
         task_entity = instance.data.get("taskEntity")
         if task_entity:
             task_type = task_entity["taskType"]
 
-        self.log.debug("Host: \"{}\"".format(host_name))
-        self.log.debug("Product type: \"{}\"".format(product_type))
-        self.log.debug("Task type: \"{}\"".format(task_type))
+        self.log.debug(
+            f"Host: \"{host_name}\""
+            f"\nProduct base type: \"{product_base_type}\""
+            f"\nTask type: \"{task_type}\""
+        )
 
         profile = filter_profiles(
             self.profiles,
             {
                 "hosts": host_name,
-                "product_types": product_type,
+                "product_types": product_base_type,
                 "task_types": task_type
             },
             logger=self.log)
         if not profile:
-            self.log.info((
+            self.log.info(
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\""
-            ).format(host_name, product_type))
+                f" Host: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+            )
             return
 
         self.log.debug("Matching profile: \"{}\"".format(json.dumps(profile)))

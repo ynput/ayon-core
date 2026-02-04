@@ -37,7 +37,11 @@ class CollectOtioSubsetResources(
             make_sequence_collection
         )
 
-        if "audio" in instance.data["productType"]:
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
+
+        if "audio" in product_base_type:
             return
 
         if not instance.data.get("representations"):

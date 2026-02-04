@@ -22,8 +22,12 @@ def get_audio_instances(context):
     for instance in context:
         if not instance.data.get("parent_instance_id"):
             continue
+
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         if (
-            instance.data["productType"] == "audio"
+            product_base_type == "audio"
             or instance.data.get("reviewAudio")
         ):
             audio_instances.append(instance)
@@ -185,7 +189,11 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                 shot_audio_fpath = recycling_file.pop()
 
             # audio file needs to be published as representation
-            if audio_instance.data["productType"] == "audio":
+            a_product_base_type = audio_instance.data.get("productBaseType")
+            if not a_product_base_type:
+                a_product_base_type = audio_instance.data["productType"]
+
+            if a_product_base_type == "audio":
                 # create empty representation attr
                 if "representations" not in audio_instance.data:
                     audio_instance.data["representations"] = []

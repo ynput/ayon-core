@@ -60,6 +60,9 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         template = profile["template"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
 
         fill_pairs = prepare_template_data({
             "task": filter_criteria["tasks"],
@@ -67,6 +70,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
             "product": {
                 "name": product_name,
                 "type": product_type,
+                "basetype": product_base_type,
             },
             "renderlayer": instance.data.get("renderlayer")
         })
@@ -96,8 +100,11 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         task = anatomy_data.get("task", {})
 
         # Return filter criteria
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         return {
-            "product_types": instance.data["productType"],
+            "product_types": product_base_type,
             "tasks": task.get("name"),
             "hosts": instance.context.data["hostName"],
             "task_types": task.get("type")
