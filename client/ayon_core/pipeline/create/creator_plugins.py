@@ -175,7 +175,7 @@ class BaseCreator(ABC):
     # Creator is enabled (Probably does not have reason of existence?)
     enabled = True
 
-    # Creator (and product type) icon
+    # Creator (and product base type) icon
     # - may not be used if `get_icon` is reimplemented
     icon = None
 
@@ -318,13 +318,13 @@ class BaseCreator(ABC):
 
     @property
     def product_base_type(self) -> Optional[str]:
-        """Base product type that plugin represents.
+        """Product base type that plugin represents.
 
         Todo (antirotor): This should be required in future - it
             should be made abstract then.
 
         Returns:
-            Optional[str]: Base product type that plugin represents.
+            Optional[str]: Product base type that plugin represents.
                 If not set, it is assumed that the creator plugin is obsolete
                 and does not support product base type.
 
@@ -504,7 +504,7 @@ class BaseCreator(ABC):
         """
 
     def get_icon(self):
-        """Icon of creator (product type).
+        """Icon of creator (product base type).
 
         Can return path to image file or awesome icon name.
         """
@@ -685,11 +685,11 @@ class Creator(BaseCreator):
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
-    # Short description of product type
+    # Short description of product base type
     # - may not be used if `get_description` is overridden
     description = None
 
-    # Detailed description of product type for artists
+    # Detailed description of product base type for artists
     # - may not be used if `get_detail_description` is overridden
     detailed_description = None
 
@@ -751,20 +751,20 @@ class Creator(BaseCreator):
         # )
 
     def get_description(self):
-        """Short description of product type and plugin.
+        """Short description of product base type and plugin.
 
         Returns:
-            str: Short description of product type.
+            str: Short description of product base type.
         """
         return self.description
 
     def get_detail_description(self):
-        """Description of product type and plugin.
+        """Description of product base type and plugin.
 
         Can be detailed with markdown or html tags.
 
         Returns:
-            str: Detailed description of product type for artist.
+            str: Detailed description of product base type for artist.
         """
         return self.detailed_description
 
@@ -863,8 +863,12 @@ class Creator(BaseCreator):
         """
         create_ctx = self.create_context
         product_name = instance.get("productName")
+        product_base_type = instance.get("productBaseType")
         product_type = instance.get("productType")
         folder_path = instance.get("folderPath")
+
+        if not product_base_type:
+            product_base_type = product_type
 
         # this can only work if product name and folder path are available
         if not product_name or not folder_path:
@@ -911,9 +915,10 @@ class Creator(BaseCreator):
             create_ctx.get_current_project_entity(),
             create_ctx.get_folder_entity(folder_path),
             create_ctx.get_task_entity(folder_path, instance.get("task")),
-            product_type,
-            product_name,
-            create_ctx.host_name,
+            product_base_type=product_base_type,
+            product_type=product_type,
+            product_name=product_name,
+            host_name=create_ctx.host_name,
             anatomy=create_ctx.get_current_project_anatomy(),
             project_settings=create_ctx.get_current_project_settings(),
             always_return_path=False,
