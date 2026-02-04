@@ -1488,7 +1488,7 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectExplicitResolution": {
         "enabled": True,
-        "product_types": [
+        "product_base_types": [
             "shot"
         ],
         "options": []
