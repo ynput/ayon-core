@@ -68,11 +68,13 @@ class CollectHierarchy(
         shot_instances = []
         for instance in context:
             # shot data dict
-            product_type = instance.data["productType"]
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
             families = instance.data["families"]
 
             # exclude other families then "shot" with intersection
-            if "shot" not in (families + [product_type]):
+            if "shot" not in (families + [product_base_type]):
                 self.log.debug("Skipping not a shot: {}".format(families))
                 continue
 

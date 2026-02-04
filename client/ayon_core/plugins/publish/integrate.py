@@ -141,10 +141,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Skip instance if there are not representations to integrate
         #   all representations should not be integrated
         if not filtered_repres:
-            self.log.info((
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
+            self.log.info(
                 "Skipping, there are no representations"
-                " to integrate for instance {}"
-            ).format(instance.data["productType"]))
+                f" to integrate for instance {product_base_type}"
+            )
             return
 
         file_transactions = FileTransaction(log=self.log,
@@ -360,6 +363,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
         product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
 
         self.log.debug("Product: {}".format(product_name))
 
@@ -388,18 +393,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         new_product_entity_kwargs = {
             "name": product_name,
-            "product_type": product_type,
             "folder_id": folder_entity["id"],
             "attribs": attributes,
             "entity_id": product_id,
             "product_base_type": product_base_type,
+            "product_type": product_type,
         }
 
         if not is_product_base_type_supported():
             new_product_entity_kwargs.pop("product_base_type")
             if (
-                    product_base_type is not None
-                    and product_base_type != product_type):
+                product_base_type is not None
+                and product_base_type != product_type
+            ):
                 self.log.warning((
                     "Product base type %s is not supported by the server, "
                     "but it's defined - and it differs from product type %s. "
