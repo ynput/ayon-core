@@ -285,19 +285,22 @@ class LoaderToolModel(BaseSettingsModel):
 
 class PublishTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
-    # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
     task_names: list[str] = SettingsField(
-        default_factory=list, title="Task names"
+        default_factory=list,
+        title="Task names"
     )
     template_name: str = SettingsField(
         "",
@@ -308,19 +311,22 @@ class PublishTemplateNameProfile(BaseSettingsModel):
 
 class HeroTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types",
     )
-    # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
     task_names: list[str] = SettingsField(
-        default_factory=list, title="Task names"
+        default_factory=list,
+        title="Task names",
     )
     template_name: str = SettingsField(
         "",
@@ -630,40 +636,29 @@ DEFAULT_TOOLS_VALUES = {
     "publish": {
         "template_name_profiles": [
             {
-                "product_types": [],
-                "hosts": [],
+                "product_base_types": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "default"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "render",
                     "prerender"
                 ],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "render"
             },
             {
-                "product_types": [
-                    "simpleUnrealTexture"
-                ],
-                "hosts": [
-                    "standalonepublisher"
-                ],
-                "task_types": [],
-                "task_names": [],
-                "template_name": "simpleUnrealTexture"
-            },
-            {
-                "product_types": [
+                "product_base_types": [
                     "image",
                     "textures",
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
@@ -671,11 +666,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTexture"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh",
                     "skeletalMesh"
                 ],
-                "hosts": [
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
@@ -683,10 +678,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "maya2unreal"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "online"
                 ],
-                "hosts": [
+                "host_names": [
                     "traypublisher"
                 ],
                 "task_types": [],
@@ -694,10 +689,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "online"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "tycache"
                 ],
-                "hosts": [
+                "host_names": [
                     "max"
                 ],
                 "task_types": [],
@@ -705,11 +700,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "tycache"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "uasset",
                     "umap"
                 ],
-                "hosts": [
+                "host_names": [
                     "unreal"
                 ],
                 "task_types": [],
@@ -719,22 +714,11 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "hero_template_name_profiles": [
             {
-                "product_types": [
-                    "simpleUnrealTexture"
-                ],
-                "hosts": [
-                    "standalonepublisher"
-                ],
-                "task_types": [],
-                "task_names": [],
-                "template_name": "simpleUnrealTextureHero"
-            },
-            {
-                "product_types": [
+                "product_base_types": [
                     "image",
                     "textures"
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
