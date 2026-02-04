@@ -1810,8 +1810,8 @@ DEFAULT_PUBLISH_VALUES = {
         },
         "profiles": [
             {
-                "product_types": [],
-                "hosts": [],
+                "product_base_types": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "product_names": [],
@@ -1834,8 +1834,8 @@ DEFAULT_PUBLISH_VALUES = {
                 ]
             },
             {
-                "product_types": ["review"],
-                "hosts": [
+                "product_base_types": ["review"],
+                "host_names": [
                     "maya",
                     "houdini",
                     "max"
