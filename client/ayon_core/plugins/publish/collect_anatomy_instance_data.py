@@ -5,6 +5,7 @@ Requires:
     context     -> anatomyData
     instance    -> folderPath
     instance    -> productName
+    instance    -> productBaseType
     instance    -> productType
 
 Optional:
@@ -300,10 +301,14 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             anatomy_data = copy.deepcopy(context.data["anatomyData"])
             product_name = instance.data["productName"]
             product_type = instance.data["productType"]
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_type
             anatomy_data.update({
                 "product": {
                     "name": product_name,
                     "type": product_type,
+                    "basetype": product_base_type,
                 }
             })
 
@@ -340,9 +345,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 task_data = anatomy_data.get("task") or {}
                 task_name = task_data.get("name")
                 task_type = task_data.get("type")
-                product_base_type = instance.data.get("productBaseType")
-                if not product_base_type:
-                    product_base_type = instance.data["productType"]
                 version_number = get_versioning_start(
                     context.data["projectName"],
                     instance.context.data["hostName"],
