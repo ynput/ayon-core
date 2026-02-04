@@ -563,10 +563,14 @@ class BaseCreator(ABC):
         if host_name is None:
             host_name = self.create_context.host_name
 
+        # Backwards compatibility for create plugins that don't implement
+        #   'product_base_type'.
+        # TODO Remove when 'product_base_type' is required
         product_base_type = self.product_base_type
         if not product_base_type:
             product_base_type = self.product_type
 
+        # Auto-fill 'product_type' with 'product_base_type'.
         if not product_type:
             product_type = product_base_type
 
