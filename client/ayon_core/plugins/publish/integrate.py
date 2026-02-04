@@ -939,19 +939,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Task can be optional in anatomy data
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
-        product_type = instance.data["productType"]
         product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            product_type,
+            product_base_type=product_base_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
             logger=self.log,
-            product_base_type=product_base_type
         )
 
     def get_rootless_path(self, anatomy, path):
