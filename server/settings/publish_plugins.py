@@ -1594,8 +1594,8 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "profiles": [
             {
-                "product_types": [],
-                "hosts": [],
+                "product_base_types": [],
+                "host_names": [],
                 "task_types": [],
                 "outputs": [
                     {
@@ -1693,8 +1693,8 @@ DEFAULT_PUBLISH_VALUES = {
                 ]
             },
             {
-                "product_types": [],
-                "hosts": ["substancepainter"],
+                "product_base_types": [],
+                "host_names": ["substancepainter"],
                 "task_types": [],
                 "outputs": [
                     {
