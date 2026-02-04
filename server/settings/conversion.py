@@ -9,6 +9,14 @@ PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 def _convert_product_base_types_1_8_0(overrides):
     all_profiles = []
+    # Version start
+    version_start_s = (
+        overrides
+        .get("version_start_category", {})
+        .get("profiles")
+    )
+    if version_start_s:
+        all_profiles.append(version_start_s)
 
     # Convert data in profiles
     for profile in all_profiles:
