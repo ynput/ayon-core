@@ -37,6 +37,7 @@ def _convert_product_base_types_1_8_0(overrides):
         ("ExtractOIIOTranscode", "profiles"),
         ("ExtractOIIOPostProcess", "profiles"),
         ("ExtractReview", "profiles"),
+        ("ExtractBurnin", "profiles"),
     ):
         found = True
         plugin_settings = publish_plugins
