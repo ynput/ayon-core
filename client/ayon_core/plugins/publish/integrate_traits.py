@@ -588,17 +588,18 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         anatomy_data = instance.data["anatomyData"]
         product_type = instance.data["productType"]
         product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            product_type,
+            product_base_type=product_base_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
             logger=self.log,
-            product_base_type=product_base_type,
         )
 
     def get_publish_template(self, instance: pyblish.api.Instance) -> str:
