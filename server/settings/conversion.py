@@ -35,6 +35,7 @@ def _convert_product_base_types_1_8_0(overrides):
         ("CollectUSDLayerContributions", "profiles"),
         ("ExtractThumbnail", "profiles"),
         ("ExtractOIIOTranscode", "profiles"),
+        ("ExtractOIIOPostProcess", "profiles"),
     ):
         found = True
         plugin_settings = publish_plugins
