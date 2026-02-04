@@ -713,9 +713,9 @@ class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
