@@ -1067,13 +1067,13 @@ class ExtractBurninModel(BaseSettingsModel):
 
 class PreIntegrateThumbnailsProfile(BaseSettingsModel):
     _isGroup = True
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types",
+        title="Product base types",
     )
-    hosts: list[str] = SettingsField(
+    host_names: list[str] = SettingsField(
         default_factory=list,
-        title="Hosts",
+        title="Host names",
     )
     task_types: list[str] = SettingsField(
         default_factory=list,
