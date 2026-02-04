@@ -137,6 +137,65 @@ def should_use_last_workfile_on_launch(
         return default_output
     return output
 
+def should_use_last_published_workfile_on_launch(
+    project_name: str,
+    host_name: str,
+    task_name: str,
+    task_type: str,
+    default_output: bool = False,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> bool:
+    """Define if host should use the last published workfile if possible.
+
+    Default output is `False`. Can be overridden with environment variable
+    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
+    `"0", "1", "true", "false", "yes", "no"`.
+
+    Args:
+        project_name (str): Name of project.
+        host_name (str): Name of host which is launched. In avalon's
+            application context it's value stored in app definition under
+            key `"application_dir"`. Is not case sensitive.
+        task_name (str): Name of task which is used for launching the host.
+            Task name is not case sensitive.
+        task_type (str): Task type.
+        default_output (Optional[bool]): Default output value if no profile
+            is found.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+
+    Returns:
+        bool: True if host should use the latest publish workfile.
+
+    """
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+    profiles = (
+        project_settings
+        ["core"]
+        ["tools"]
+        ["Workfiles"]
+        ["last_workfile_on_startup"]
+    )
+
+    if not profiles:
+        return default_output
+
+    filter_data = {
+        "tasks": task_name,
+        "task_types": task_type,
+        "hosts": host_name
+    }
+    matching_item = filter_profiles(profiles, filter_data)
+
+    output = None
+    if matching_item:
+        if matching_item.get("enabled"):
+            output = matching_item.get("use_last_published_workfile")
+
+    if output is None:
+        return default_output
+    return output
+
 
 def should_open_workfiles_tool_on_launch(
     project_name,

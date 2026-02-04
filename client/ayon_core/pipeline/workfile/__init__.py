@@ -19,6 +19,7 @@ from .path_resolving import (
 
 from .utils import (
     should_use_last_workfile_on_launch,
+    should_use_last_published_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
     MissingWorkdirError,
 
@@ -62,6 +63,7 @@ __all__ = (
     "get_comments_from_workfile_paths",
 
     "should_use_last_workfile_on_launch",
+    "should_use_last_published_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",
     "MissingWorkdirError",
 
