@@ -248,11 +248,11 @@ def ensure_unique_resolution_option(
 
 class CollectExplicitResolutionModel(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types",
+        title="Product base types",
         description=(
-            "Only activate the attribute for following product types."
+            "Only activate the attribute for following product base types."
         )
     )
     options: list[ResolutionOptionsModel] = SettingsField(

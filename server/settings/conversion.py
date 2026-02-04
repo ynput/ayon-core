@@ -55,6 +55,15 @@ def _convert_product_base_types_1_8_0(overrides):
             if old in profile and new not in profile:
                 profile[new] = profile.pop(old)
 
+    collect_exp_res = publish_plugins.get("CollectExplicitResolution") or {}
+    if (
+        "product_types" in collect_exp_res
+        and "product_base_types" not in collect_exp_res
+    ):
+        collect_exp_res["product_base_types"] = collect_exp_res.pop(
+            "product_types"
+        )
+
 
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
