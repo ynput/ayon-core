@@ -570,10 +570,6 @@ class BaseCreator(ABC):
         if not product_base_type:
             product_base_type = self.product_type
 
-        # Auto-fill 'product_type' with 'product_base_type'.
-        if not product_type:
-            product_type = product_base_type
-
         cur_project_name = self.create_context.get_current_project_name()
         if not project_entity and project_name == cur_project_name:
             project_entity = self.create_context.get_current_project_entity()
