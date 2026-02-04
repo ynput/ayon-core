@@ -280,6 +280,15 @@ class ExtractOIIOTranscode(publish.Extractor):
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
 
+            # In case instance is not flagged for reviewable workflow
+            # by `review` family we have to add it so it can be processed
+            # by ExtractReview plugin
+            if (
+                added_review
+                and "review" not in instance.data["families"]
+            ):
+                instance.data["families"].append("review")
+
         instance.data["representations"].extend(new_representations)
 
     def _rename_in_representation(self, new_repre, files_to_convert,
