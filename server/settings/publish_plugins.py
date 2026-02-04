@@ -1103,17 +1103,23 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
 
 
 class IntegrateProductGroupProfile(BaseSettingsModel):
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types",
     )
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     template: str = SettingsField("", title="Template")
 
 
@@ -1871,10 +1877,10 @@ DEFAULT_PUBLISH_VALUES = {
     "IntegrateProductGroup": {
         "product_grouping_profiles": [
             {
-                "product_types": [],
-                "hosts": [],
+                "product_base_types": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": ""
             }
         ]

@@ -104,8 +104,8 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         if not product_base_type:
             product_base_type = instance.data["productType"]
         return {
-            "product_types": product_base_type,
-            "tasks": task.get("name"),
-            "hosts": instance.context.data["hostName"],
-            "task_types": task.get("type")
+            "product_base_types": product_base_type,
+            "host_names": instance.context.data["hostName"],
+            "task_names": task.get("name"),
+            "task_types": task.get("type"),
         }
