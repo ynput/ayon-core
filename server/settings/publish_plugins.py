@@ -932,11 +932,11 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
 
 class ExtractReviewProfileModel(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types"
     )
-    # TODO use hosts enum
-    hosts: list[str] = SettingsField(
+    host_names: list[str] = SettingsField(
         default_factory=list, title="Host names"
     )
     task_types: list[str] = SettingsField(

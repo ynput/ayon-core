@@ -224,9 +224,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
         profile = filter_profiles(
             self.profiles,
             {
-                "hosts": host_name,
-                "product_types": product_base_type,
-                "task_types": task_type
+                "host_names": host_name,
+                "product_base_types": product_base_type,
+                "task_types": task_type,
             },
             logger=self.log)
         if not profile:
