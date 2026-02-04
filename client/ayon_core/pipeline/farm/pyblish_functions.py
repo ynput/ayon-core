@@ -906,11 +906,7 @@ def _create_instances_for_aov(
                 ["use_legacy_product_names_for_renders"]
             )
         except KeyError:
-            warnings.warn(
-                ("use_legacy_for_renders not found in project settings. "
-                 "Using legacy product name for renders. Please update "
-                 "your ayon-core version."), DeprecationWarning)
-            use_legacy_product_name = True
+            use_legacy_product_name = False
 
         product_base_type = skeleton.get("productBaseType")
         product_type = skeleton["productType"]
