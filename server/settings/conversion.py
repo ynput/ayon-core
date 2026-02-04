@@ -8,9 +8,11 @@ PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 
 def _convert_product_base_types_1_8_0(overrides):
+    # Staging dir, standard/hero publish templase
     all_profiles = []
     publish_settings = overrides.get("tools", {}).get("publish", {})
     for profile_name in (
+        "custom_staging_dir_profiles",
         "template_name_profiles",
         "hero_template_name_profiles",
     ):
