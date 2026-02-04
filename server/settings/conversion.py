@@ -33,6 +33,7 @@ def _convert_product_base_types_1_8_0(overrides):
     publish_plugins = overrides.get("publish", {})
     for settings_parts in (
         ("CollectUSDLayerContributions", "profiles"),
+        ("ExtractThumbnail", "profiles"),
     ):
         found = True
         plugin_settings = publish_plugins
