@@ -116,12 +116,12 @@ class ContributionLayersModel(BaseSettingsModel):
 class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
     """Profiles to define instance attribute defaults for USD contribution."""
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types",
+        title="Product base types",
         description=(
-            "The product types to match this profile to. When matched, the"
-            " settings below would apply to the instance as default"
+            "The product base types to match this profile to. When matched,"
+            " the settings below would apply to the instance as default"
             " attributes."
         ),
         section="Filter"
@@ -1437,7 +1437,7 @@ DEFAULT_PUBLISH_VALUES = {
         ],
         "profiles": [
             {
-                "product_types": ["model"],
+                "product_base_types": ["model"],
                 "task_types": [],
                 "contribution_enabled": True,
                 "contribution_layer": "model",
@@ -1445,7 +1445,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_target_product": "usdAsset"
             },
             {
-                "product_types": ["look"],
+                "product_base_types": ["look"],
                 "task_types": [],
                 "contribution_enabled": True,
                 "contribution_layer": "look",
@@ -1453,7 +1453,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_target_product": "usdAsset"
             },
             {
-                "product_types": ["groom"],
+                "product_base_types": ["groom"],
                 "task_types": [],
                 "contribution_enabled": True,
                 "contribution_layer": "groom",
@@ -1461,7 +1461,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_target_product": "usdAsset"
             },
             {
-                "product_types": ["rig"],
+                "product_base_types": ["rig"],
                 "task_types": [],
                 "contribution_enabled": True,
                 "contribution_layer": "rig",
@@ -1469,7 +1469,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_target_product": "usdAsset"
             },
             {
-                "product_types": ["usd"],
+                "product_base_types": ["usd"],
                 "task_types": [],
                 "contribution_enabled": True,
                 "contribution_layer": "assembly",
