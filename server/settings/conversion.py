@@ -7,6 +7,20 @@ from .publish_plugins import DEFAULT_PUBLISH_VALUES
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 
+def _convert_product_base_types_1_8_0(overrides):
+    all_profiles = []
+
+    # Convert data in profiles
+    for profile in all_profiles:
+        for old, new in (
+            ("product_types", "product_base_types"),
+            ("hosts", "host_names"),
+            ("tasks", "task_names"),
+        ):
+            if old in profile and new not in profile:
+                profile[new] = profile.pop(old)
+
+
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
         overrides
@@ -232,4 +246,5 @@ def convert_settings_overrides(
     _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
+    _convert_product_base_types_1_8_0(overrides)
     return overrides
