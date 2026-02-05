@@ -208,8 +208,8 @@ class CollectHierarchy(
         """Nesting each child into its parent.
 
         Args:
-            parent_dict (dict): parent dict wich should be nested with children
-            child_dict (dict): children dict which should be injested
+            parent_dict (dict): parent dict that should be nested with children
+            child_dict (dict): children dict which should be ingested
         """
 
         for key in parent_dict:
