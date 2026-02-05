@@ -563,8 +563,12 @@ class BaseCreator(ABC):
         if host_name is None:
             host_name = self.create_context.host_name
 
-        if not product_type:
-            product_type = self.product_base_type
+        # Backwards compatibility for create plugins that don't implement
+        #   'product_base_type'.
+        # TODO Remove when 'product_base_type' is required
+        product_base_type = self.product_base_type
+        if not product_base_type:
+            product_base_type = self.product_type
 
         cur_project_name = self.create_context.get_current_project_name()
         if not project_entity and project_name == cur_project_name:
@@ -595,7 +599,7 @@ class BaseCreator(ABC):
             project_name,
             folder_entity=folder_entity,
             task_entity=task_entity,
-            product_base_type=self.product_base_type,
+            product_base_type=product_base_type,
             product_type=product_type,
             host_name=host_name,
             variant=variant,
