@@ -275,7 +275,9 @@ class BuildWorkfile:
 
         filter_data = {
             "task_types": task_type,
-            "tasks": task_name
+            "task_names": task_name,
+            # Key 'tasks' is old variant of 'task_names' (Changed 26/02/05)
+            "tasks": task_name,
         }
         return filter_profiles(builder_profiles, filter_data)
 
