@@ -1420,14 +1420,18 @@ class PlaceholderLoadMixin(object):
         loader_items = list(sorted(loader_items, key=lambda i: i["label"]))
         options = options or {}
 
-        # Get product types from all loaders excluding "*"
-        product_types = set()
+        # Get product base types from all loaders excluding "*"
+        product_base_types = set()
         for loader in loaders_by_name.values():
-            product_types.update(loader.product_types)
-        product_types.discard("*")
+            l_product_base_types = loader.product_base_types
+            if l_product_base_types is None:
+                l_product_base_types = loader.product_types
+            if l_product_base_types:
+                product_base_types.update(l_product_base_types)
+        product_base_types.discard("*")
 
         # Sort for readability
-        product_types = list(sorted(product_types))
+        product_base_types = list(sorted(product_base_types))
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
@@ -1442,8 +1446,8 @@ class PlaceholderLoadMixin(object):
             {"label": link_type["name"], "value": link_type["linkType"]}
             for link_type in link_types
             if (
-                    link_type["inputType"] == "folder"
-                    and link_type["outputType"] == "folder"
+                link_type["inputType"] == "folder"
+                and link_type["outputType"] == "folder"
             )
         ]
 
@@ -1464,9 +1468,11 @@ class PlaceholderLoadMixin(object):
             " used."
         )
 
-        product_type = options.get("product_type")
-        if product_type is None:
-            product_type = options.get("family")
+        product_base_type = options.get("product_base_type")
+        if product_base_type is None:
+            product_base_type = options.get("product_type")
+            if product_base_type is None:
+                product_base_type = options.get("family")
 
         return [
             attribute_definitions.UISeparatorDef(),
@@ -1491,10 +1497,10 @@ class PlaceholderLoadMixin(object):
                 )
             ),
             attribute_definitions.EnumDef(
-                "product_type",
-                label="Product type",
-                default=product_type,
-                items=product_types
+                "product_base_type",
+                label="Product base type",
+                default=product_base_type,
+                items=product_base_types
             ),
             attribute_definitions.TextDef(
                 "representation",
@@ -1630,9 +1636,11 @@ class PlaceholderLoadMixin(object):
         product_name_regex = None
         if product_name_regex_value:
             product_name_regex = re.compile(product_name_regex_value)
-        product_type = placeholder.data.get("product_type")
-        if product_type is None:
-            product_type = placeholder.data["family"]
+        product_base_type = placeholder.data.get("product_base_type")
+        if product_base_type is None:
+            product_base_type = placeholder.data.get("product_type")
+            if product_base_type is None:
+                product_base_type = placeholder.data["family"]
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
@@ -1669,10 +1677,12 @@ class PlaceholderLoadMixin(object):
         if not folder_ids:
             return []
 
+        # TODO this should filter by product_base_types
+        # - that can change only when AYON server 1.14.0 is required
         products = list(get_products(
             project_name,
             folder_ids=folder_ids,
-            product_types=[product_type],
+            product_types={product_base_type},
             fields={"id", "name"}
         ))
         filtered_product_ids = set()
