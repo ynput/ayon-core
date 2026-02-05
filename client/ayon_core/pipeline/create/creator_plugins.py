@@ -750,9 +750,6 @@ class Creator(BaseCreator):
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
-        # instance = CreatedInstance(
-        #     self.product_type, product_name, instance_data
-        # )
 
     def get_description(self):
         """Short description of product base type and plugin.
