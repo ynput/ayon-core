@@ -1407,7 +1407,8 @@ DEFAULT_PUBLISH_VALUES = {
             "photoshop",
             "resolve",
             "tvpaint",
-            "substancepainter"
+            "substancepainter",
+            "katana"
         ],
         "skip_hosts_headless_publish": []
     },
