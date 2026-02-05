@@ -407,11 +407,14 @@ class BaseCreator(ABC):
             CreatedInstance: Created instance.
 
         """
-        if product_type is None:
-            product_type = self.product_type
+        if not product_base_type:
+            product_base_type = self.product_base_type
 
-        if not product_base_type and not self.product_base_type:
-            product_base_type = product_type
+        if not product_base_type:
+            product_base_type = self.product_type
+
+        if product_type is None:
+            product_type = product_base_type
 
         instance = CreatedInstance(
             product_type=product_type,
