@@ -151,7 +151,10 @@ class BuildWorkfile:
         # Get presets for loading current folder
         current_context_profiles = self.build_presets.get("current_context")
         # Get presets for loading linked folders
-        link_context_profiles = self.build_presets.get("linked_assets")
+        link_context_profiles = self.build_presets.get("linked_folders")
+        if not link_context_profiles:
+            # TODO remove 'linked_assets' (Marked as deprecated 26/02/05)
+            link_context_profiles = self.build_presets.get("linked_assets")
         # Skip if both are missing
         if not current_context_profiles and not link_context_profiles:
             self.log.warning(
@@ -579,6 +582,8 @@ class BuildWorkfile:
 
         # Get product id order from build presets.
         build_presets = self.build_presets.get("current_context", [])
+        build_presets += self.build_presets.get("linked_folders", [])
+        # TODO remove 'linked_assets' (Marked as deprecated 26/02/05)
         build_presets += self.build_presets.get("linked_assets", [])
         product_ids_ordered = []
         for preset in build_presets:
