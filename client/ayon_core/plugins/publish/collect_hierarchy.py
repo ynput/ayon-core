@@ -47,15 +47,6 @@ class CollectHierarchy(
             )
         ]
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        cls.edit_shot_attributes_on_update = (
-            project_settings
-                ["core"]
-                ["CollectHierarchy"]
-                ["edit_shot_attributes_on_update"]
-        )
-
     def _get_shot_instances(self, context):
         """Get shot instances from context.
 
