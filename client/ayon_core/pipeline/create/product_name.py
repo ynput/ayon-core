@@ -257,9 +257,10 @@ def get_product_name(
     """Calculate product name based on passed context and AYON settings.
 
     Subst name templates are defined in `project_settings/global/tools/creator
-    /product_name_profiles` where are profiles with host name, product type,
-    task name and task type filters. If context does not match any profile
-    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+    /product_name_profiles` where are profiles with host name,
+    product base type, task name and task type filters. If context does
+    not match any profile then `DEFAULT_PRODUCT_TEMPLATE` is used
+    as default template.
 
     That's main reason why so many arguments are required to calculate product
     name.
@@ -314,8 +315,9 @@ def get_product_name(
 
     Product name templates are defined in `project_settings/global/tools
     /creator/product_name_profiles` where are profiles with host name,
-    product type, task name and task type filters. If context does not match
-    any profile then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+    product base type, task name and task type filters. If context does
+    not match any profile then `DEFAULT_PRODUCT_TEMPLATE` is used as
+    default template.
 
     That's main reason why so many arguments are required to calculate product
     name.
@@ -409,8 +411,11 @@ def get_product_name(
             is not collected.
 
     """
-    if not product_type:
+    if not product_base_type:
         return StringTemplate("").format({})
+
+    if not product_type:
+        product_type = product_base_type
 
     task_name = task_type = None
     if task_entity:
@@ -459,7 +464,7 @@ def get_product_name(
     fill_pairs = {
         "variant": variant,
         # TODO We should stop support 'family' key.
-        "family": product_type,
+        "family": product_base_type,
         "task": task_value,
         "product": {
             "type": product_type,
