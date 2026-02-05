@@ -976,10 +976,11 @@ class CreatedInstance:
             product_name = instance_data.get("subset")
 
         return cls(
-            product_type,
-            product_name,
-            instance_data,
-            creator,
+            product_base_type=product_base_type,
+            product_type=product_type,
+            product_name=product_name,
+            data=instance_data,
+            creator=creator,
             transient_data=transient_data,
         )
 
