@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 import collections
 import json
+import typing
 from typing import Any
 
 import ayon_api
@@ -27,6 +28,9 @@ from ayon_core.pipeline.load import (
     IncompatibleLoaderError,
     load_container,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import LoaderPlugin
 
 
 class BuildWorkfile:
@@ -539,9 +543,12 @@ class BuildWorkfile:
         }
 
     def _load_containers(
-        self, repres_by_product_id, products_by_id,
-        profiles_by_product_id, loaders_by_name
-    ):
+        self,
+        repres_by_product_id: dict[str, list[dict[str, Any]]],
+        products_by_id: dict[str, dict[str, Any]],
+        profiles_by_product_id: dict[str, list[dict[str, Any]]],
+        loaders_by_name: dict[str, LoaderPlugin],
+    ) -> list[dict[str, Any]]:
         """Real load by collected data happens here.
 
         Loading of representations per product happens here. Each product can
@@ -554,13 +561,13 @@ class BuildWorkfile:
         all matching representations were already tried.
 
         Args:
-            repres_by_product_id (Dict[str, Dict[str, Any]]): Available
+            repres_by_product_id (dict[str, list[dict[str, Any]]]): Available
                 representations mapped by their parent (product) id.
-            products_by_id (Dict[str, Dict[str, Any]]): Product entities
+            products_by_id (dict[str, dict[str, Any]]): Product entities
                 mapped by their id.
-            profiles_by_product_id (Dict[str, Dict[str, Any]]): Build profiles
-                mapped by product id.
-            loaders_by_name (Dict[str, LoaderPlugin]): Available loaders
+            profiles_by_product_id (dict[str, list[dict[str, Any]]]): Build
+                profiles mapped by product id.
+            loaders_by_name (dict[str, LoaderPlugin]): Available loaders
                 per name.
 
         Returns:
