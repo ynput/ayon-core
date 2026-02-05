@@ -598,7 +598,6 @@ class BuildWorkfile:
                     product_ids_ordered.append(product_id)
 
         # Order representations from products.
-        print("repres_by_product_id", repres_by_product_id)
         representations_ordered = []
         representations = []
         for ordered_product_id in product_ids_ordered:
