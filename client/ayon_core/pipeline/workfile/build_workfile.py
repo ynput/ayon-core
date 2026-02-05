@@ -155,23 +155,22 @@ class BuildWorkfile:
         # Skip if both are missing
         if not current_context_profiles and not link_context_profiles:
             self.log.warning(
-                "Current task `{}` has empty loading preset.".format(
-                    current_task_name
-                )
+                f"Current task `{current_task_name}` has empty"
+                " loading preset."
             )
             return loaded_containers
 
         elif not current_context_profiles:
-            self.log.warning((
-                "Current task `{}` doesn't have any loading"
+            self.log.warning(
+                f"Current task `{current_task_name}` doesn't have any loading"
                 " preset for it's context."
-            ).format(current_task_name))
+            )
 
         elif not link_context_profiles:
-            self.log.warning((
-                "Current task `{}` doesn't have any"
+            self.log.warning(
+                f"Current task `{current_task_name}` doesn't have any"
                 "loading preset for it's linked folders."
-            ).format(current_task_name))
+            )
 
         # Prepare folders to process by workfile presets
         folder_entities = []
@@ -533,8 +532,10 @@ class BuildWorkfile:
         self.log.debug(msg)
 
         containers = self._load_containers(
-            valid_repres_by_product_id, products_by_id,
-            profiles_by_product_id, loaders_by_name
+            valid_repres_by_product_id,
+            products_by_id,
+            profiles_by_product_id,
+            loaders_by_name,
         )
 
         return {
