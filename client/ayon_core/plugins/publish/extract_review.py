@@ -165,6 +165,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "batchdelivery",
         "photoshop",
         "substancepainter",
+        "mari",
     ]
 
     settings_category = "core"

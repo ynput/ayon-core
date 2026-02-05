@@ -19,6 +19,7 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "nuke",
         "nukex",
         "hiero",
+        "mari",
         "houdini",
         "nukestudio",
         "fusion",
