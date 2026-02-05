@@ -8,10 +8,12 @@ For more explicit workfile build is recommended 'AbstractTemplateBuilder'
 from '~/ayon_core/pipeline/workfile/workfile_template_builder'. Which gives
 more abilities to define how build happens but require more code to achive it.
 """
+from __future__ import annotations
 
 import re
 import collections
 import json
+from typing import Any
 
 import ayon_api
 
@@ -43,12 +45,14 @@ class BuildWorkfile:
         return self._log
 
     @staticmethod
-    def map_products_by_type(product_entities):
-        products_by_type = collections.defaultdict(list)
+    def map_products_by_base_type(product_entities):
+        products_by_base_type = collections.defaultdict(list)
         for product_entity in product_entities:
-            product_type = product_entity["productType"]
-            products_by_type[product_type].append(product_entity)
-        return products_by_type
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
+            products_by_base_type[product_base_type].append(product_entity)
+        return products_by_base_type
 
     def process(self):
         """Main method of this wrapper.
@@ -69,8 +73,8 @@ class BuildWorkfile:
         logic stored in Workfile profiles from presets. Profiles are set
         by host, filtered by current task name and used by families.
 
-        Each product type can specify representation names and loaders for
-        representations and first available and successful loaded
+        Each product base type can specify representation names and loaders
+        for representations and first available and successful loaded
         representation is returned as container.
 
         At the end you'll get list of loaded containers per each folder.
@@ -275,8 +279,8 @@ class BuildWorkfile:
         Valid profile must have "loaders", "families" and "repre_names" keys
         with valid values.
         - "loaders" expects list of strings representing possible loaders.
-        - "families" expects list of strings for filtering
-                     by product type.
+        - "product_base_types" expects list of strings for filtering
+                     by product base type.
         - "repre_names" expects list of strings for filtering by
                         representation name.
 
@@ -315,9 +319,12 @@ class BuildWorkfile:
                 ).format(json.dumps(profile, indent=4)))
                 continue
 
-            # Check product types
-            profile_product_types = profile.get("product_types")
-            if not profile_product_types:
+            # Check product base types
+            profile_product_base_types = profile.get("product_base_types")
+            if not profile_product_base_types:
+                profile_product_base_types = profile.get("product_types")
+
+            if not profile_product_base_types:
                 self.log.warning((
                     "Build profile is missing families configuration: {0}"
                 ).format(json.dumps(profile, indent=4)))
@@ -333,10 +340,11 @@ class BuildWorkfile:
                 continue
 
             # Prepare lowered families and representation names
-            profile["product_types_lowered"] = [
-                product_type.lower()
-                for product_type in profile_product_types
+            profile["product_base_types_lowered"] = [
+                product_base_type.lower()
+                for product_base_type in profile_product_base_types
             ]
+
             profile["repre_names_lowered"] = [
                 name.lower() for name in profile_repre_names
             ]
@@ -374,7 +382,7 @@ class BuildWorkfile:
         """Select profile for each product by it's data.
 
         Profiles are filtered for each product individually.
-        Profile is filtered by product type, optionally by name regex and
+        Profile is filtered by product base type, optionally by name regex and
         representation names set in profile.
         It is possible to not find matching profile for product, in that case
         product is skipped and it is possible that none of products have
@@ -389,14 +397,21 @@ class BuildWorkfile:
         """
 
         # Prepare products
-        products_by_type = self.map_products_by_type(product_entities)
+        products_by_base_type = self.map_products_by_base_type(
+            product_entities
+        )
 
         profiles_by_product_id = {}
-        for product_type, product_entities in products_by_type.items():
-            product_type_low = product_type.lower()
+        for (
+            product_base_type,
+            product_entities
+        ) in products_by_base_type.items():
+            product_base_type_low = product_base_type.lower()
             for profile in profiles:
-                # Skip profile if does not contain product type
-                if product_type_low not in profile["product_types_lowered"]:
+                # Skip profile if does not contain product base type
+                if product_base_type_low not in (
+                    profile["product_base_types_lowered"]
+                ):
                     continue
 
                 # Precompile name filters as regexes
@@ -559,11 +574,17 @@ class BuildWorkfile:
         build_presets += self.build_presets.get("linked_assets", [])
         product_ids_ordered = []
         for preset in build_presets:
-            for product_type in preset["product_types"]:
+            product_base_types = preset.get("product_base_types")
+            if product_base_types is None:
+                product_base_types = preset["product_types"]
+            if not product_base_types:
+                continue
+
+            for product_base_type in product_base_types:
                 for product_id, product_entity in products_by_id.items():
                     # TODO 'families' is not available on product
                     families = product_entity["data"].get("families") or []
-                    if product_type not in families:
+                    if product_base_type not in families:
                         continue
 
                     product_ids_ordered.append(product_id)
