@@ -862,7 +862,6 @@ def _create_instances_for_aov(
         ValueError:
 
     """
-    project_entity = instance.context.data["projectEntity"]
     anatomy = instance.context.data["anatomy"]
     source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
