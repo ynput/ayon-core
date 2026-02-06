@@ -1296,7 +1296,7 @@ class CreateContext:
         kwargs = {
             # Backwards compatibility for 'project_entity' argument (24/07/08)
             "project_entity": project_entity,
-            # Backwards compatibility for 'product_type' argument (25/01/19)
+            # Backwards compatibility for 'product_type' argument (26/01/19)
             "product_type": product_type,
         }
         for kwarg in ("product_type", "project_entity"):
@@ -1305,12 +1305,6 @@ class CreateContext:
             ):
                 kwargs.pop(kwarg)
 
-        # Backwards compatibility for 'project_entity' argument
-        # - 'get_product_name' signature changed 24/07/08
-        if not is_func_signature_supported(
-            creator.get_product_name, *args, **kwargs
-        ):
-            kwargs.pop("project_entity")
         product_name = creator.get_product_name(*args, **kwargs)
 
         instance_data = {
