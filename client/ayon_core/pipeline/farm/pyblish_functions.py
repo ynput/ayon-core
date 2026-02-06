@@ -731,7 +731,7 @@ def get_product_name_and_group_from_template(
     host_name: str,
     dynamic_data: Optional[dict[str, Any]] = None,
     *,
-    folder_entity: Union[dict[str, Any], None],
+    folder_entity: Union[dict[str, Any], None] = None,
     product_base_type: str = None,
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
