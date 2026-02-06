@@ -287,6 +287,12 @@ class ExtractOIIOTranscode(publish.Extractor):
                 added_review
                 and "review" not in instance.data["families"]
             ):
+                # TODO: Preferably we do not mess with families
+                #  at this point in processing, but ExtractReview
+                #  currently requires it. And this is the only way
+                #  to have a representation with `review` tag
+                #  actually getting picked up for non-review
+                #  families.
                 instance.data["families"].append("review")
 
         instance.data["representations"].extend(new_representations)
