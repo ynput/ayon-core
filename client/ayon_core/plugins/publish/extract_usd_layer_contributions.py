@@ -465,14 +465,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             return existing_instance
 
         # Otherwise create the instance
+        product_base_type = "usd"
         new_instance = context.create_instance(name=product_name)
         new_instance.data.update(data)
 
         new_instance.data["label"] = (
             "{0} ({1})".format(product_name, new_instance.data["folderPath"])
         )
-        new_instance.data["family"] = "usd"
-        new_instance.data["productType"] = "usd"
+        new_instance.data["family"] = product_base_type
+        new_instance.data["productBaseType"] = product_base_type
+        new_instance.data["productType"] = product_base_type
         new_instance.data["icon"] = "link"
         new_instance.data["comment"] = "Automated bootstrap USD file."
         new_instance.append(source_instance.id)
@@ -494,8 +496,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
 
         # Set default target layer based on product type
         current_context_task_type = create_context.get_current_task_type()
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         profile = filter_profiles(cls.profiles, {
-            "product_types": instance.data["productType"],
+            "product_types": product_base_type,
             "task_types": current_context_task_type
         })
         if not profile:
