@@ -73,8 +73,9 @@ def _convert_product_base_types_1_8_0(overrides):
 
 
 def _convert_unify_profile_keys_1_8_0(overrides):
+    workfiles_settings = overrides.get("tools", {}).get("Workfiles", {})
 
-    to_change = []
+    profiles_settings = []
     for keys in (
         ("workfile_template_profiles",),
     ):
@@ -87,14 +88,16 @@ def _convert_unify_profile_keys_1_8_0(overrides):
             value = value[key]
 
         if found:
-            to_change.append(value)
+            profiles_settings.append(value)
 
-    for item in to_change:
-        if "hosts" in item:
-            item["host_names"] = item.pop("hosts")
-
-        if "tasks" in item:
-            item["task_names"] = item.pop("tasks")
+    for profiles in profiles_settings:
+        for profile in profiles:
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in profile and new_key not in profile:
+                    profile[new_key] = profile.pop(old_key)
 
 
 def _convert_product_name_templates_1_7_0(overrides):
