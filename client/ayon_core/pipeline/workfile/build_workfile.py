@@ -221,27 +221,29 @@ class BuildWorkfile:
         }]
 
         Returns:
-            List[Dict[str, Any]]: Loaded containers during build.
+            list[dict[str, Any]]: Loaded containers during build.
+
         """
-
-        from ayon_core.pipeline.context_tools import get_current_context
-
         loaded_containers = []
 
-        # Get current folder and task entities
-        context = get_current_context()
-        project_name = context["project_name"]
-        current_folder_path = context["folder_path"]
-        current_task_name = context["task_name"]
+        current_context = self.get_current_context()
+        project_name = current_context["project_name"]
+        current_folder_path = current_context["folder_path"]
+        current_task_name = current_context["task_name"]
 
-        current_folder_entity = ayon_api.get_folder_by_path(
-            project_name, current_folder_path
-        )
+        project_entity = self.current_project_entity
+        folder_entity = self.current_folder_entity
+        task_entity = self.current_task_entity
         # Skip if folder was not found
-        if not current_folder_entity:
-            print("Folder entity `{}` was not found".format(
-                current_folder_path
-            ))
+        if not folder_entity:
+            self.log.warning(
+                f"Folder entity '{current_folder_path}' was not found"
+            )
+            return loaded_containers
+
+        task_path = f"{current_folder_path}/{current_task_name}"
+        if not task_entity:
+            self.log.warning(f"Task entity '{task_path}' was not found"
             return loaded_containers
 
         # Prepare available loaders
@@ -251,9 +253,8 @@ class BuildWorkfile:
                 continue
             loader_name = loader.__name__
             if loader_name in loaders_by_name:
-                raise KeyError(
-                    "Duplicated loader name {0}!".format(loader_name)
-                )
+                raise KeyError(f"Duplicated loader name {loader_name}!")
+
             loaders_by_name[loader_name] = loader
 
         # Skip if there are any loaders
@@ -264,9 +265,8 @@ class BuildWorkfile:
         # Skip if there are any presets for task
         if not self.build_presets:
             self.log.warning(
-                "Current task `{}` does not have any loading preset.".format(
-                    current_task_name
-                )
+                f"Current task '{task_path}' does not have any"
+                " loading preset."
             )
             return loaded_containers
 
@@ -280,20 +280,20 @@ class BuildWorkfile:
         # Skip if both are missing
         if not current_context_profiles and not link_context_profiles:
             self.log.warning(
-                f"Current task `{current_task_name}` has empty"
+                f"Current task '{task_path}' has empty"
                 " loading preset."
             )
             return loaded_containers
 
         elif not current_context_profiles:
             self.log.warning(
-                f"Current task `{current_task_name}` doesn't have any loading"
+                f"Current task '{task_path}' doesn't have any loading"
                 " preset for it's context."
             )
 
         elif not link_context_profiles:
             self.log.warning(
-                f"Current task `{current_task_name}` doesn't have any"
+                f"Current task '{task_path}' doesn't have any"
                 "loading preset for it's linked folders."
             )
 
@@ -302,13 +302,13 @@ class BuildWorkfile:
         current_folder_id = None
         if current_context_profiles:
             # Add current folder entity if preset has current context set
-            folder_entities.append(current_folder_entity)
-            current_folder_id = current_folder_entity["id"]
+            folder_entities.append(folder_entity)
+            current_folder_id = folder_entity["id"]
 
         if link_context_profiles:
             # Find and append linked folders if preset has set linked mapping
             linked_folder_entities = self._get_linked_folder_entities(
-                project_name, current_folder_entity["id"]
+                project_name, folder_entity["id"]
             )
             if linked_folder_entities:
                 folder_entities.extend(linked_folder_entities)
@@ -431,7 +431,9 @@ class BuildWorkfile:
 
         return valid_profiles
 
-    def _get_linked_folder_entities(self, project_name, folder_id):
+    def _get_linked_folder_entities(
+        self, project_name: str, folder_id: str
+    ) -> list[dict[str, Any]]:
         """Get linked folder entities for entered folder.
 
         Args:
