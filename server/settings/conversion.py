@@ -53,14 +53,15 @@ def _convert_product_base_types_1_8_0(overrides):
             all_profiles.append(plugin_settings)
 
     # Convert data in profiles
-    for profile in all_profiles:
-        for old, new in (
-            ("product_types", "product_base_types"),
-            ("hosts", "host_names"),
-            ("tasks", "task_names"),
-        ):
-            if old in profile and new not in profile:
-                profile[new] = profile.pop(old)
+    for profiles in all_profiles:
+        for profile in profiles:
+            for old, new in (
+                ("product_types", "product_base_types"),
+                ("hosts", "host_names"),
+                ("tasks", "task_names"),
+            ):
+                if old in profile and new not in profile:
+                    profile[new] = profile.pop(old)
 
     collect_exp_res = publish_plugins.get("CollectExplicitResolution") or {}
     if (
