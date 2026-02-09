@@ -75,6 +75,20 @@ def _convert_product_base_types_1_8_0(overrides):
 def _convert_unify_profile_keys_1_8_0(overrides):
 
     to_change = []
+    for keys in (
+        ("workfile_template_profiles",),
+    ):
+        found = True
+        value = workfiles_settings
+        for key in keys:
+            if key not in value:
+                found = False
+                break
+            value = value[key]
+
+        if found:
+            to_change.append(value)
+
     for item in to_change:
         if "hosts" in item:
             item["host_names"] = item.pop("hosts")
