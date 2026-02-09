@@ -11,6 +11,7 @@ import attr
 import ayon_api
 import clique
 from ayon_core.lib import Logger
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
@@ -740,7 +741,7 @@ def get_product_name_and_group_from_template(
     host_name: str,
     dynamic_data: Optional[dict[str, Any]] = None,
     *,
-    folder_entity: Union[dict[str, Any], None],
+    folder_entity: Union[dict[str, Any], None] = None,
     product_base_type: str = None,
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
@@ -788,6 +789,12 @@ def get_product_name_and_group_from_template(
 
     if not product_base_type:
         product_base_type = product_type
+
+    if not project_entity:
+        project_entity = ayon_api.get_project(project_name)
+
+    if not project_settings:
+        project_settings = get_project_settings(project_name)
 
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.

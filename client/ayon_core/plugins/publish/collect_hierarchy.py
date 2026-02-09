@@ -47,15 +47,6 @@ class CollectHierarchy(
             )
         ]
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        cls.edit_shot_attributes_on_update = (
-            project_settings
-                ["core"]
-                ["CollectHierarchy"]
-                ["edit_shot_attributes_on_update"]
-        )
-
     def _get_shot_instances(self, context):
         """Get shot instances from context.
 
@@ -208,8 +199,8 @@ class CollectHierarchy(
         """Nesting each child into its parent.
 
         Args:
-            parent_dict (dict): parent dict wich should be nested with children
-            child_dict (dict): children dict which should be injested
+            parent_dict (dict): parent dict that should be nested with children
+            child_dict (dict): children dict which should be ingested
         """
 
         for key in parent_dict:
