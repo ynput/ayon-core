@@ -639,9 +639,9 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "open_workfile_tool_on_startup": [
             {
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "enabled": False
             }
         ],
