@@ -243,7 +243,7 @@ class BuildWorkfile:
 
         task_path = f"{current_folder_path}/{current_task_name}"
         if not task_entity:
-            self.log.warning(f"Task entity '{task_path}' was not found"
+            self.log.warning(f"Task entity '{task_path}' was not found")
             return loaded_containers
 
         # Prepare available loaders
