@@ -788,6 +788,10 @@ def get_product_name_and_group_from_template(
             )
 
     if not product_base_type:
+        log.warning(
+            f"DEPRECATION WARNING: Product base type not provided,"
+            f" using product type: {product_type}"
+        )
         product_base_type = product_type
 
     if not project_entity:
@@ -802,12 +806,6 @@ def get_product_name_and_group_from_template(
         dynamic_data = {}
     _dynamic_data = deepcopy(dynamic_data)
     _dynamic_data.pop("aov", None)
-    if product_base_type is None:
-        log.warning(
-            f"DEPRECATION WARNING: Product base type not provided,"
-            f" using product type: {product_type}"
-        )
-        product_base_type = product_type
 
     resulting_group_name = get_product_name(
         project_name=project_name,
