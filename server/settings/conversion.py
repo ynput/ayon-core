@@ -76,22 +76,24 @@ def _convert_unify_profile_keys_1_8_0(overrides):
     workfiles_settings = overrides.get("tools", {}).get("Workfiles", {})
 
     profiles_settings = []
-    for keys in (
-        ("workfile_template_profiles",),
-        ("last_workfile_on_startup",),
-        ("open_workfile_tool_on_startup",),
-        ("extra_folders",),
-        ("workfile_lock_profiles",),
+    for key in (
+        "workfile_template_profiles",
+        "last_workfile_on_startup",
+        "open_workfile_tool_on_startup",
+        "extra_folders",
+        "workfile_lock_profiles",
     ):
-        found = True
-        value = workfiles_settings
-        for key in keys:
-            if key not in value:
-                found = False
-                break
-            value = value[key]
+        value = workfiles_settings.get(key)
+        if value:
+            profiles_settings.append(value)
 
-        if found:
+    load_settings = overrides.get("tools", {}).get("loader", {})
+
+    for key in (
+        "product_type_filter_profiles",
+    ):
+        value = load_settings.get(key)
+        if value:
             profiles_settings.append(value)
 
     for profiles in profiles_settings:
