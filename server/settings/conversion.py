@@ -72,6 +72,17 @@ def _convert_product_base_types_1_8_0(overrides):
         )
 
 
+def _convert_unify_profile_keys_1_8_0(overrides):
+
+    to_change = []
+    for item in to_change:
+        if "hosts" in item:
+            item["host_names"] = item.pop("hosts")
+
+        if "tasks" in item:
+            item["task_names"] = item.pop("tasks")
+
+
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
         overrides
@@ -298,4 +309,5 @@ def convert_settings_overrides(
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
     _convert_product_base_types_1_8_0(overrides)
+    _convert_unify_profile_keys_1_8_0(overrides)
     return overrides
