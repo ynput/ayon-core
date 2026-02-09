@@ -76,7 +76,7 @@ class CleanUp(pyblish.api.InstancePlugin):
 
         # TODO: Figure out whether this could be refactored to just a
         #  product_type in self.exclude_families check.
-        product_base_type = instance.data["productBaseType"]
+        product_base_type = instance.data.get("productBaseType")
         if not product_base_type:
             product_base_type = instance.data["productType"]
 

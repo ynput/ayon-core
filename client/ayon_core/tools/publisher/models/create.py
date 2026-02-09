@@ -725,6 +725,7 @@ class CreateModel:
         )
         kwargs = {
             "instance": instance,
+            # Backwards compatibility for 'project_entity' argument (24/07/08)
             "project_entity": project_entity,
             "product_type": product_type,
         }
