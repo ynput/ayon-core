@@ -96,6 +96,15 @@ def _convert_unify_profile_keys_1_8_0(overrides):
         if value:
             profiles_settings.append(value)
 
+    validate_intent_p = (
+        overrides
+        .get("publish", {})
+        .get("ValidateIntent", {})
+        .get("profiles")
+    )
+    if validate_intent_p:
+        profiles_settings.append(validate_intent_p)
+
     for profiles in profiles_settings:
         for profile in profiles:
             for new_key, old_key in (
