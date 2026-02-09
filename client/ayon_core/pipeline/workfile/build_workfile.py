@@ -79,27 +79,38 @@ class BuildWorkfile:
             )
         return self._current_project_settings
 
-    def get_current_project_entity(self) -> dict[str, Any]:
+    def get_current_project_entity(self) -> Optional[dict[str, Any]]:
         if self._current_project_entity is None:
             context = self.get_current_context()
-            self._current_project_entity = ayon_api.get_project(
-                context["project_name"]
-            )
+            project_name = context["project_name"]
+            if not project_name:
+                return None
+            self._current_project_entity = ayon_api.get_project(project_name)
         return self._current_project_entity
 
-    def get_current_folder_entity(self) -> dict[str, Any]:
+    def get_current_folder_entity(self) -> Optional[dict[str, Any]]:
         if self._current_folder_entity is None:
             context = self.get_current_context()
+            project_name = context["project_name"]
+            folder_path = context["folder_path"]
+            if not project_name or not folder_path:
+                return None
             self._current_folder_entity = ayon_api.get_folder_by_path(
-                context["project_name"],
-                context["folder_path"]
+                project_name,
+                folder_path,
             )
         return self._current_folder_entity
 
-    def get_current_task_entity(self) -> dict[str, Any]:
+    def get_current_task_entity(self) -> Optional[dict[str, Any]]:
         if self._current_task_entity is None:
             context = self.get_current_context()
+            project_name = context["project_name"]
+            task_name = context["task_name"]
+            if not project_name or not task_name:
+                return None
             folder_entity = self.get_current_project_entity()
+            if not folder_entity:
+                return None
             self._current_task_entity = ayon_api.get_task_by_name(
                 context["project_name"],
                 folder_id=folder_entity["id"],
@@ -231,7 +242,6 @@ class BuildWorkfile:
         current_folder_path = current_context["folder_path"]
         current_task_name = current_context["task_name"]
 
-        project_entity = self.current_project_entity
         folder_entity = self.current_folder_entity
         task_entity = self.current_task_entity
         # Skip if folder was not found
