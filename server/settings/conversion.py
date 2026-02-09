@@ -81,6 +81,7 @@ def _convert_unify_profile_keys_1_8_0(overrides):
         ("last_workfile_on_startup",),
         ("open_workfile_tool_on_startup",),
         ("extra_folders",),
+        ("workfile_lock_profiles",),
     ):
         found = True
         value = workfiles_settings
