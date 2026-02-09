@@ -41,6 +41,8 @@ class BuildWorkfile:
     are host related, since each host has it's loaders.
     """
 
+    addon_name = None
+
     def __init__(self):
         self.build_presets = []
         self.log = Logger.get_logger(self.__class__.__name__)
@@ -130,10 +132,70 @@ class BuildWorkfile:
         post processing of loaded containers if necessary.
 
         Returns:
-            List[Dict[str, Any]]: Loaded containers during build.
-        """
+            list[dict[str, Any]]: Loaded containers during build.
 
+        """
+        self.apply_settings()
         return self.build_workfile()
+
+    def apply_settings(self) -> None:
+        project_entity = self.current_project_entity
+        folder_entity = self.current_folder_entity
+        task_entity = self.current_task_entity
+        if not project_entity or not folder_entity or not task_entity:
+            return
+
+        # Load workfile presets for task
+        self.build_presets = self.get_build_presets()
+
+    def get_build_profiles(self) -> list[dict[str, Any]]:
+        project_settings = self.current_project_settings
+        addon_name = self.addon_name
+        if not addon_name:
+            addon_name = self.host_name
+
+        host_settings = project_settings.get(addon_name)
+        if not host_settings:
+            return []
+
+        # Get presets for host
+        wb_settings = host_settings.get("workfile_builder")
+        if not wb_settings:
+            # backward compatibility
+            wb_settings = host_settings.get("workfile_build") or {}
+
+        builder_profiles = wb_settings.get("profiles")
+        return builder_profiles or []
+
+    def get_build_presets(self) -> Optional[dict[str, Any]]:
+        """ Returns presets to build workfile for task name.
+
+        Presets are loaded for current project received by
+        'get_current_project_name', filtered by registered host
+        and entered task name.
+
+
+        Returns:
+            dict[str, Any]: preset per entered task name
+
+        """
+        profiles = self.get_build_profiles()
+        if not profiles:
+            return None
+
+        task_entity = self.current_task_entity
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
+        filter_data = {
+            "task_types": task_type,
+            "task_names": task_name,
+            # Backwards compatibility
+            "tasks": task_name,
+        }
+        return filter_profiles(profiles, filter_data)
 
     def build_workfile(self):
         """Prepares and load containers into workfile.
@@ -198,11 +260,6 @@ class BuildWorkfile:
         if not loaders_by_name:
             self.log.warning("There are no registered loaders.")
             return loaded_containers
-
-        # Load workfile presets for task
-        self.build_presets = self.get_build_presets(
-            current_task_name, current_folder_entity["id"]
-        )
 
         # Skip if there are any presets for task
         if not self.build_presets:
@@ -293,58 +350,6 @@ class BuildWorkfile:
 
         # Return list of loaded containers
         return loaded_containers
-
-    def get_build_presets(self, task_name, folder_id):
-        """ Returns presets to build workfile for task name.
-
-        Presets are loaded for current project received by
-        'get_current_project_name', filtered by registered host
-        and entered task name.
-
-        Args:
-            task_name (str): Task name used for filtering build presets.
-            folder_id (str): Folder id.
-
-        Returns:
-            Dict[str, Any]: preset per entered task name
-        """
-
-        from ayon_core.pipeline.context_tools import (
-            get_current_host_name,
-            get_current_project_name,
-        )
-
-        project_name = get_current_project_name()
-        host_name = get_current_host_name()
-        project_settings = get_project_settings(project_name)
-
-        host_settings = project_settings.get(host_name) or {}
-        # Get presets for host
-        wb_settings = host_settings.get("workfile_builder")
-        if not wb_settings:
-            # backward compatibility
-            wb_settings = host_settings.get("workfile_build") or {}
-
-        builder_profiles = wb_settings.get("profiles")
-        if not builder_profiles:
-            return None
-
-        task_entity = ayon_api.get_task_by_name(
-            project_name,
-            folder_id,
-            task_name,
-        )
-        task_type = None
-        if task_entity:
-            task_type = task_entity["taskType"]
-
-        filter_data = {
-            "task_types": task_type,
-            "task_names": task_name,
-            # Key 'tasks' is old variant of 'task_names' (Changed 26/02/05)
-            "tasks": task_name,
-        }
-        return filter_profiles(builder_profiles, filter_data)
 
     def _filter_build_profiles(self, build_profiles, loaders_by_name):
         """ Filter build profiles by loaders and prepare process data.
