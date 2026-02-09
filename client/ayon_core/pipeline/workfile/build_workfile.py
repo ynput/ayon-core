@@ -14,7 +14,7 @@ import re
 import collections
 import json
 import typing
-from typing import Any
+from typing import Any, Optional
 
 import ayon_api
 
@@ -23,6 +23,7 @@ from ayon_core.lib import (
     filter_profiles,
     Logger,
 )
+from ayon_core.host import AbstractHost
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     IncompatibleLoaderError,
@@ -40,13 +41,77 @@ class BuildWorkfile:
     are host related, since each host has it's loaders.
     """
 
-    _log = None
+    def __init__(self):
+        self.build_presets = []
+        self.log = Logger.get_logger(self.__class__.__name__)
+        self._host = None
+        self._current_context = None
+        self._current_project_settings = None
+        self._current_project_entity = None
+        self._current_folder_entity = None
+        self._current_task_entity = None
 
-    @property
-    def log(self):
-        if self._log is None:
-            self._log = Logger.get_logger(self.__class__.__name__)
-        return self._log
+    def get_host(self) -> AbstractHost:
+        from ayon_core.pipeline import registered_host
+
+        if self._host is None:
+            self._host = registered_host()
+        return self._host
+
+    def get_host_name(self) -> str:
+        return self.host.name
+
+    def get_current_context(self) -> dict[str, str]:
+        if self._current_context is None:
+            host = self.get_host()
+            self._current_context = host.get_current_context()
+        return self._current_context
+
+    def get_current_project_name(self) -> str:
+        return self.get_current_context()["project_name"]
+
+    def get_current_project_settings(self) -> dict[str, Any]:
+        if self._current_project_settings is None:
+            self._current_project_settings = get_project_settings(
+                self.get_current_project_name()
+            )
+        return self._current_project_settings
+
+    def get_current_project_entity(self) -> dict[str, Any]:
+        if self._current_project_entity is None:
+            context = self.get_current_context()
+            self._current_project_entity = ayon_api.get_project(
+                context["project_name"]
+            )
+        return self._current_project_entity
+
+    def get_current_folder_entity(self) -> dict[str, Any]:
+        if self._current_folder_entity is None:
+            context = self.get_current_context()
+            self._current_folder_entity = ayon_api.get_folder_by_path(
+                context["project_name"],
+                context["folder_path"]
+            )
+        return self._current_folder_entity
+
+    def get_current_task_entity(self) -> dict[str, Any]:
+        if self._current_task_entity is None:
+            context = self.get_current_context()
+            folder_entity = self.get_current_project_entity()
+            self._current_task_entity = ayon_api.get_task_by_name(
+                context["project_name"],
+                folder_id=folder_entity["id"],
+                task_name=context["task_name"],
+            )
+        return self._current_task_entity
+
+    host = property(get_host)
+    host_name = property(get_host_name)
+    current_project_name = property(get_current_project_name)
+    current_project_settings = property(get_current_project_settings)
+    current_project_entity = property(get_current_project_entity)
+    current_folder_entity = property(get_current_folder_entity)
+    current_task_entity = property(get_current_task_entity)
 
     @staticmethod
     def map_products_by_base_type(product_entities):
