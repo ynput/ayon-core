@@ -187,7 +187,10 @@ class ExtraWorkFoldersProfile(BaseSettingsModel):
 class WorkfilesLockProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    host_names: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
 
 
