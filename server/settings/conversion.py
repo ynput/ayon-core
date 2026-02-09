@@ -79,6 +79,7 @@ def _convert_unify_profile_keys_1_8_0(overrides):
     for keys in (
         ("workfile_template_profiles",),
         ("last_workfile_on_startup",),
+        ("open_workfile_tool_on_startup",),
     ):
         found = True
         value = workfiles_settings

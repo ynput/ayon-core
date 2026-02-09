@@ -150,13 +150,19 @@ class LastWorkfileOnStartupProfile(BaseSettingsModel):
 class WorkfilesToolOnStartupProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
 
 
