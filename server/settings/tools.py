@@ -117,7 +117,10 @@ class WorkfileTemplateProfile(BaseSettingsModel):
         enum_resolver=task_types_enum
     )
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     # TODO this was using project anatomy template name
     workfile_template: str = SettingsField("", title="Workfile template")
 
@@ -602,12 +605,12 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_template_profiles": [
             {
                 "task_types": [],
-                "hosts": [],
+                "host_names": [],
                 "workfile_template": "default"
             },
             {
                 "task_types": [],
-                "hosts": [
+                "host_names": [
                     "unreal"
                 ],
                 "workfile_template": "unreal"
