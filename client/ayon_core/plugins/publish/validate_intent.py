@@ -38,9 +38,7 @@ class ValidateIntent(pyblish.api.ContextPlugin):
             filter_data = {
                 "host_names": host_name,
                 "task_types": task_type,
-                "task_names": task_name
-                "tasks": task_name
-                "hosts": host_name,
+                "task_names": task_name,
             }
             matching_profile = filter_profiles(
                 self.profiles, filter_data, logger=self.log
