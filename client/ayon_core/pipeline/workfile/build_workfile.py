@@ -108,7 +108,7 @@ class BuildWorkfile:
             task_name = context["task_name"]
             if not project_name or not task_name:
                 return None
-            folder_entity = self.get_current_project_entity()
+            folder_entity = self.get_current_folder_entity()
             if not folder_entity:
                 return None
             self._current_task_entity = ayon_api.get_task_by_name(
