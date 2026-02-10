@@ -20,10 +20,10 @@ class ValidateIntent(pyblish.api.ContextPlugin):
 
     # Can be modified by settings
     profiles = [{
-        "hosts": [],
+        "host_names": [],
         "task_types": [],
-        "tasks": [],
-        "validate": False
+        "task_names": [],
+        "validate": False,
     }]
 
     def process(self, context):
@@ -36,9 +36,11 @@ class ValidateIntent(pyblish.api.ContextPlugin):
             host_name = context.data.get("hostName")
 
             filter_data = {
-                "hosts": host_name,
+                "host_names": host_name,
                 "task_types": task_type,
+                "task_names": task_name
                 "tasks": task_name
+                "hosts": host_name,
             }
             matching_profile = filter_profiles(
                 self.profiles, filter_data, logger=self.log
