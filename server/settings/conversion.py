@@ -7,6 +7,72 @@ from .publish_plugins import DEFAULT_PUBLISH_VALUES
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
 
 
+def _convert_product_base_types_1_8_0(overrides):
+    # Staging dir, standard/hero publish templase
+    all_profiles = []
+    publish_settings = overrides.get("tools", {}).get("publish", {})
+    for profile_name in (
+        "custom_staging_dir_profiles",
+        "template_name_profiles",
+        "hero_template_name_profiles",
+    ):
+        profiles = publish_settings.get(profile_name)
+        if profiles:
+            all_profiles.append(profiles)
+
+    # Version start
+    version_start_s = (
+        overrides
+        .get("version_start_category", {})
+        .get("profiles")
+    )
+    if version_start_s:
+        all_profiles.append(version_start_s)
+
+    # Publish plugins
+    publish_plugins = overrides.get("publish", {})
+    for settings_parts in (
+        ("CollectUSDLayerContributions", "profiles"),
+        ("ExtractThumbnail", "profiles"),
+        ("ExtractOIIOTranscode", "profiles"),
+        ("ExtractOIIOPostProcess", "profiles"),
+        ("ExtractReview", "profiles"),
+        ("ExtractBurnin", "profiles"),
+        ("IntegrateProductGroup", "product_grouping_profiles"),
+        ("PreIntegrateThumbnails", "integrate_profiles"),
+    ):
+        found = True
+        plugin_settings = publish_plugins
+        for part in settings_parts:
+            if part not in plugin_settings:
+                found = False
+                break
+            plugin_settings = plugin_settings[part]
+
+        if found and plugin_settings:
+            all_profiles.append(plugin_settings)
+
+    # Convert data in profiles
+    for profiles in all_profiles:
+        for profile in profiles:
+            for old, new in (
+                ("product_types", "product_base_types"),
+                ("hosts", "host_names"),
+                ("tasks", "task_names"),
+            ):
+                if old in profile and new not in profile:
+                    profile[new] = profile.pop(old)
+
+    collect_exp_res = publish_plugins.get("CollectExplicitResolution") or {}
+    if (
+        "product_types" in collect_exp_res
+        and "product_base_types" not in collect_exp_res
+    ):
+        collect_exp_res["product_base_types"] = collect_exp_res.pop(
+            "product_types"
+        )
+
+
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
         overrides
@@ -232,4 +298,5 @@ def convert_settings_overrides(
     _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
+    _convert_product_base_types_1_8_0(overrides)
     return overrides
