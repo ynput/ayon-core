@@ -168,8 +168,8 @@ class ExtractBurnin(publish.Extractor):
         task_type = task_data.get("type")
 
         filtering_criteria = {
-            "hosts": host_name,
-            "product_types": product_base_type,
+            "host_names": host_name,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,

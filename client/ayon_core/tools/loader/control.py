@@ -540,7 +540,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         profile = filter_profiles(
             profiles,
             {
-                "hosts": host_name,
+                "host_names": host_name,
                 "task_types": task_type,
             }
         )
