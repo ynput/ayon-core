@@ -123,9 +123,9 @@ def should_use_last_workfile_on_launch(
         return default_output
 
     filter_data = {
-        "tasks": task_name,
+        "task_names": task_name,
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     matching_item = filter_profiles(profiles, filter_data)
 
@@ -183,9 +183,9 @@ def should_open_workfiles_tool_on_launch(
         return default_output
 
     filter_data = {
-        "tasks": task_name,
+        "task_names": task_name,
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     matching_item = filter_profiles(profiles, filter_data)
 
