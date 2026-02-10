@@ -29,7 +29,7 @@ class ExtractOIIOTranscode(publish.Extractor):
 
     Target colorspace is selected by profiles in the Settings, based on:
     - host names
-    - product types
+    - product base types
     - product names
     - task types
     - task names
@@ -374,8 +374,8 @@ class ExtractOIIOTranscode(publish.Extractor):
         task_name = task_data.get("name")
         task_type = task_data.get("type")
         filtering_criteria = {
-            "hosts": host_name,
-            "product_types": product_base_type,
+            "host_names": host_name,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -390,8 +390,8 @@ class ExtractOIIOTranscode(publish.Extractor):
             self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
                 f" Host name: \"{host_name}\""
-                f" | Product types: \"{product_base_type}\""
-                f" | Product names: \"{product_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Product name: \"{product_name}\""
                 f" | Task name \"{task_name}\""
                 f" | Task type \"{task_type}\""
             )
