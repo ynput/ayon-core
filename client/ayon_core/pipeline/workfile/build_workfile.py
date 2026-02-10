@@ -8,10 +8,13 @@ For more explicit workfile build is recommended 'AbstractTemplateBuilder'
 from '~/ayon_core/pipeline/workfile/workfile_template_builder'. Which gives
 more abilities to define how build happens but require more code to achive it.
 """
+from __future__ import annotations
 
 import re
 import collections
 import json
+import typing
+from typing import Any, Optional
 
 import ayon_api
 
@@ -20,11 +23,15 @@ from ayon_core.lib import (
     filter_profiles,
     Logger,
 )
+from ayon_core.host import AbstractHost
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     IncompatibleLoaderError,
     load_container,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import LoaderPlugin
 
 
 class BuildWorkfile:
@@ -34,21 +41,100 @@ class BuildWorkfile:
     are host related, since each host has it's loaders.
     """
 
-    _log = None
+    addon_name = None
 
-    @property
-    def log(self):
-        if self._log is None:
-            self._log = Logger.get_logger(self.__class__.__name__)
-        return self._log
+    def __init__(self):
+        self.build_presets = []
+        self.log = Logger.get_logger(self.__class__.__name__)
+        self._host = None
+        self._current_context = None
+        self._current_project_settings = None
+        self._current_project_entity = None
+        self._current_folder_entity = None
+        self._current_task_entity = None
+
+    def get_host(self) -> AbstractHost:
+        from ayon_core.pipeline import registered_host
+
+        if self._host is None:
+            self._host = registered_host()
+        return self._host
+
+    def get_host_name(self) -> str:
+        return self.host.name
+
+    def get_current_context(self) -> dict[str, str]:
+        if self._current_context is None:
+            host = self.get_host()
+            self._current_context = host.get_current_context()
+        return self._current_context
+
+    def get_current_project_name(self) -> str:
+        return self.get_current_context()["project_name"]
+
+    def get_current_project_settings(self) -> dict[str, Any]:
+        if self._current_project_settings is None:
+            self._current_project_settings = get_project_settings(
+                self.get_current_project_name()
+            )
+        return self._current_project_settings
+
+    def get_current_project_entity(self) -> Optional[dict[str, Any]]:
+        if self._current_project_entity is None:
+            context = self.get_current_context()
+            project_name = context["project_name"]
+            if not project_name:
+                return None
+            self._current_project_entity = ayon_api.get_project(project_name)
+        return self._current_project_entity
+
+    def get_current_folder_entity(self) -> Optional[dict[str, Any]]:
+        if self._current_folder_entity is None:
+            context = self.get_current_context()
+            project_name = context["project_name"]
+            folder_path = context["folder_path"]
+            if not project_name or not folder_path:
+                return None
+            self._current_folder_entity = ayon_api.get_folder_by_path(
+                project_name,
+                folder_path,
+            )
+        return self._current_folder_entity
+
+    def get_current_task_entity(self) -> Optional[dict[str, Any]]:
+        if self._current_task_entity is None:
+            context = self.get_current_context()
+            project_name = context["project_name"]
+            task_name = context["task_name"]
+            if not project_name or not task_name:
+                return None
+            folder_entity = self.get_current_folder_entity()
+            if not folder_entity:
+                return None
+            self._current_task_entity = ayon_api.get_task_by_name(
+                context["project_name"],
+                folder_id=folder_entity["id"],
+                task_name=context["task_name"],
+            )
+        return self._current_task_entity
+
+    host = property(get_host)
+    host_name = property(get_host_name)
+    current_project_name = property(get_current_project_name)
+    current_project_settings = property(get_current_project_settings)
+    current_project_entity = property(get_current_project_entity)
+    current_folder_entity = property(get_current_folder_entity)
+    current_task_entity = property(get_current_task_entity)
 
     @staticmethod
-    def map_products_by_type(product_entities):
-        products_by_type = collections.defaultdict(list)
+    def map_products_by_base_type(product_entities):
+        products_by_base_type = collections.defaultdict(list)
         for product_entity in product_entities:
-            product_type = product_entity["productType"]
-            products_by_type[product_type].append(product_entity)
-        return products_by_type
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
+            products_by_base_type[product_base_type].append(product_entity)
+        return products_by_base_type
 
     def process(self):
         """Main method of this wrapper.
@@ -57,10 +143,70 @@ class BuildWorkfile:
         post processing of loaded containers if necessary.
 
         Returns:
-            List[Dict[str, Any]]: Loaded containers during build.
-        """
+            list[dict[str, Any]]: Loaded containers during build.
 
+        """
+        self.apply_settings()
         return self.build_workfile()
+
+    def apply_settings(self) -> None:
+        project_entity = self.current_project_entity
+        folder_entity = self.current_folder_entity
+        task_entity = self.current_task_entity
+        if not project_entity or not folder_entity or not task_entity:
+            return
+
+        # Load workfile presets for task
+        self.build_presets = self.get_build_presets()
+
+    def get_build_profiles(self) -> list[dict[str, Any]]:
+        project_settings = self.current_project_settings
+        addon_name = self.addon_name
+        if not addon_name:
+            addon_name = self.host_name
+
+        host_settings = project_settings.get(addon_name)
+        if not host_settings:
+            return []
+
+        # Get presets for host
+        wb_settings = host_settings.get("workfile_builder")
+        if not wb_settings:
+            # backward compatibility
+            wb_settings = host_settings.get("workfile_build") or {}
+
+        builder_profiles = wb_settings.get("profiles")
+        return builder_profiles or []
+
+    def get_build_presets(self) -> Optional[dict[str, Any]]:
+        """ Returns presets to build workfile for task name.
+
+        Presets are loaded for current project received by
+        'get_current_project_name', filtered by registered host
+        and entered task name.
+
+
+        Returns:
+            dict[str, Any]: preset per entered task name
+
+        """
+        profiles = self.get_build_profiles()
+        if not profiles:
+            return None
+
+        task_entity = self.current_task_entity
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
+        filter_data = {
+            "task_types": task_type,
+            "task_names": task_name,
+            # Backwards compatibility
+            "tasks": task_name,
+        }
+        return filter_profiles(profiles, filter_data)
 
     def build_workfile(self):
         """Prepares and load containers into workfile.
@@ -69,8 +215,8 @@ class BuildWorkfile:
         logic stored in Workfile profiles from presets. Profiles are set
         by host, filtered by current task name and used by families.
 
-        Each product type can specify representation names and loaders for
-        representations and first available and successful loaded
+        Each product base type can specify representation names and loaders
+        for representations and first available and successful loaded
         representation is returned as container.
 
         At the end you'll get list of loaded containers per each folder.
@@ -86,27 +232,28 @@ class BuildWorkfile:
         }]
 
         Returns:
-            List[Dict[str, Any]]: Loaded containers during build.
+            list[dict[str, Any]]: Loaded containers during build.
+
         """
-
-        from ayon_core.pipeline.context_tools import get_current_context
-
         loaded_containers = []
 
-        # Get current folder and task entities
-        context = get_current_context()
-        project_name = context["project_name"]
-        current_folder_path = context["folder_path"]
-        current_task_name = context["task_name"]
+        current_context = self.get_current_context()
+        project_name = current_context["project_name"]
+        current_folder_path = current_context["folder_path"]
+        current_task_name = current_context["task_name"]
 
-        current_folder_entity = ayon_api.get_folder_by_path(
-            project_name, current_folder_path
-        )
+        folder_entity = self.current_folder_entity
+        task_entity = self.current_task_entity
         # Skip if folder was not found
-        if not current_folder_entity:
-            print("Folder entity `{}` was not found".format(
-                current_folder_path
-            ))
+        if not folder_entity:
+            self.log.warning(
+                f"Folder entity '{current_folder_path}' was not found"
+            )
+            return loaded_containers
+
+        task_path = f"{current_folder_path}/{current_task_name}"
+        if not task_entity:
+            self.log.warning(f"Task entity '{task_path}' was not found")
             return loaded_containers
 
         # Prepare available loaders
@@ -116,9 +263,8 @@ class BuildWorkfile:
                 continue
             loader_name = loader.__name__
             if loader_name in loaders_by_name:
-                raise KeyError(
-                    "Duplicated loader name {0}!".format(loader_name)
-                )
+                raise KeyError(f"Duplicated loader name {loader_name}!")
+
             loaders_by_name[loader_name] = loader
 
         # Skip if there are any loaders
@@ -126,57 +272,53 @@ class BuildWorkfile:
             self.log.warning("There are no registered loaders.")
             return loaded_containers
 
-        # Load workfile presets for task
-        self.build_presets = self.get_build_presets(
-            current_task_name, current_folder_entity["id"]
-        )
-
         # Skip if there are any presets for task
         if not self.build_presets:
             self.log.warning(
-                "Current task `{}` does not have any loading preset.".format(
-                    current_task_name
-                )
+                f"Current task '{task_path}' does not have any"
+                " loading preset."
             )
             return loaded_containers
 
         # Get presets for loading current folder
         current_context_profiles = self.build_presets.get("current_context")
         # Get presets for loading linked folders
-        link_context_profiles = self.build_presets.get("linked_assets")
+        link_context_profiles = self.build_presets.get("linked_folders")
+        if not link_context_profiles:
+            # TODO remove 'linked_assets' (Marked as deprecated 26/02/05)
+            link_context_profiles = self.build_presets.get("linked_assets")
         # Skip if both are missing
         if not current_context_profiles and not link_context_profiles:
             self.log.warning(
-                "Current task `{}` has empty loading preset.".format(
-                    current_task_name
-                )
+                f"Current task '{task_path}' has empty"
+                " loading preset."
             )
             return loaded_containers
 
         elif not current_context_profiles:
-            self.log.warning((
-                "Current task `{}` doesn't have any loading"
+            self.log.warning(
+                f"Current task '{task_path}' doesn't have any loading"
                 " preset for it's context."
-            ).format(current_task_name))
+            )
 
         elif not link_context_profiles:
-            self.log.warning((
-                "Current task `{}` doesn't have any"
+            self.log.warning(
+                f"Current task '{task_path}' doesn't have any"
                 "loading preset for it's linked folders."
-            ).format(current_task_name))
+            )
 
         # Prepare folders to process by workfile presets
         folder_entities = []
         current_folder_id = None
         if current_context_profiles:
             # Add current folder entity if preset has current context set
-            folder_entities.append(current_folder_entity)
-            current_folder_id = current_folder_entity["id"]
+            folder_entities.append(folder_entity)
+            current_folder_id = folder_entity["id"]
 
         if link_context_profiles:
             # Find and append linked folders if preset has set linked mapping
             linked_folder_entities = self._get_linked_folder_entities(
-                project_name, current_folder_entity["id"]
+                project_name, folder_entity["id"]
             )
             if linked_folder_entities:
                 folder_entities.extend(linked_folder_entities)
@@ -219,66 +361,14 @@ class BuildWorkfile:
         # Return list of loaded containers
         return loaded_containers
 
-    def get_build_presets(self, task_name, folder_id):
-        """ Returns presets to build workfile for task name.
-
-        Presets are loaded for current project received by
-        'get_current_project_name', filtered by registered host
-        and entered task name.
-
-        Args:
-            task_name (str): Task name used for filtering build presets.
-            folder_id (str): Folder id.
-
-        Returns:
-            Dict[str, Any]: preset per entered task name
-        """
-
-        from ayon_core.pipeline.context_tools import (
-            get_current_host_name,
-            get_current_project_name,
-        )
-
-        project_name = get_current_project_name()
-        host_name = get_current_host_name()
-        project_settings = get_project_settings(project_name)
-
-        host_settings = project_settings.get(host_name) or {}
-        # Get presets for host
-        wb_settings = host_settings.get("workfile_builder")
-        if not wb_settings:
-            # backward compatibility
-            wb_settings = host_settings.get("workfile_build") or {}
-
-        builder_profiles = wb_settings.get("profiles")
-        if not builder_profiles:
-            return None
-
-        task_entity = ayon_api.get_task_by_name(
-            project_name,
-            folder_id,
-            task_name,
-        )
-        task_type = None
-        if task_entity:
-            task_type = task_entity["taskType"]
-
-        filter_data = {
-            "task_types": task_type,
-            "task_names": task_name,
-            # 'tasks' is deprecated and should be changed in hosts settings
-            "tasks": task_name,
-        }
-        return filter_profiles(builder_profiles, filter_data)
-
     def _filter_build_profiles(self, build_profiles, loaders_by_name):
         """ Filter build profiles by loaders and prepare process data.
 
         Valid profile must have "loaders", "families" and "repre_names" keys
         with valid values.
         - "loaders" expects list of strings representing possible loaders.
-        - "families" expects list of strings for filtering
-                     by product type.
+        - "product_base_types" expects list of strings for filtering
+                     by product base type.
         - "repre_names" expects list of strings for filtering by
                         representation name.
 
@@ -317,9 +407,12 @@ class BuildWorkfile:
                 ).format(json.dumps(profile, indent=4)))
                 continue
 
-            # Check product types
-            profile_product_types = profile.get("product_types")
-            if not profile_product_types:
+            # Check product base types
+            profile_product_base_types = profile.get("product_base_types")
+            if not profile_product_base_types:
+                profile_product_base_types = profile.get("product_types")
+
+            if not profile_product_base_types:
                 self.log.warning((
                     "Build profile is missing families configuration: {0}"
                 ).format(json.dumps(profile, indent=4)))
@@ -335,10 +428,11 @@ class BuildWorkfile:
                 continue
 
             # Prepare lowered families and representation names
-            profile["product_types_lowered"] = [
-                product_type.lower()
-                for product_type in profile_product_types
+            profile["product_base_types_lowered"] = [
+                product_base_type.lower()
+                for product_base_type in profile_product_base_types
             ]
+
             profile["repre_names_lowered"] = [
                 name.lower() for name in profile_repre_names
             ]
@@ -347,7 +441,9 @@ class BuildWorkfile:
 
         return valid_profiles
 
-    def _get_linked_folder_entities(self, project_name, folder_id):
+    def _get_linked_folder_entities(
+        self, project_name: str, folder_id: str
+    ) -> list[dict[str, Any]]:
         """Get linked folder entities for entered folder.
 
         Args:
@@ -376,7 +472,7 @@ class BuildWorkfile:
         """Select profile for each product by it's data.
 
         Profiles are filtered for each product individually.
-        Profile is filtered by product type, optionally by name regex and
+        Profile is filtered by product base type, optionally by name regex and
         representation names set in profile.
         It is possible to not find matching profile for product, in that case
         product is skipped and it is possible that none of products have
@@ -391,14 +487,21 @@ class BuildWorkfile:
         """
 
         # Prepare products
-        products_by_type = self.map_products_by_type(product_entities)
+        products_by_base_type = self.map_products_by_base_type(
+            product_entities
+        )
 
         profiles_by_product_id = {}
-        for product_type, product_entities in products_by_type.items():
-            product_type_low = product_type.lower()
+        for (
+            product_base_type,
+            product_entities
+        ) in products_by_base_type.items():
+            product_base_type_low = product_base_type.lower()
             for profile in profiles:
-                # Skip profile if does not contain product type
-                if product_type_low not in profile["product_types_lowered"]:
+                # Skip profile if does not contain product base type
+                if product_base_type_low not in (
+                    profile["product_base_types_lowered"]
+                ):
                     continue
 
                 # Precompile name filters as regexes
@@ -516,8 +619,10 @@ class BuildWorkfile:
         self.log.debug(msg)
 
         containers = self._load_containers(
-            valid_repres_by_product_id, products_by_id,
-            profiles_by_product_id, loaders_by_name
+            valid_repres_by_product_id,
+            products_by_id,
+            profiles_by_product_id,
+            loaders_by_name,
         )
 
         return {
@@ -526,9 +631,12 @@ class BuildWorkfile:
         }
 
     def _load_containers(
-        self, repres_by_product_id, products_by_id,
-        profiles_by_product_id, loaders_by_name
-    ):
+        self,
+        repres_by_product_id: dict[str, list[dict[str, Any]]],
+        products_by_id: dict[str, dict[str, Any]],
+        profiles_by_product_id: dict[str, list[dict[str, Any]]],
+        loaders_by_name: dict[str, LoaderPlugin],
+    ) -> list[dict[str, Any]]:
         """Real load by collected data happens here.
 
         Loading of representations per product happens here. Each product can
@@ -541,13 +649,13 @@ class BuildWorkfile:
         all matching representations were already tried.
 
         Args:
-            repres_by_product_id (Dict[str, Dict[str, Any]]): Available
+            repres_by_product_id (dict[str, list[dict[str, Any]]]): Available
                 representations mapped by their parent (product) id.
-            products_by_id (Dict[str, Dict[str, Any]]): Product entities
+            products_by_id (dict[str, dict[str, Any]]): Product entities
                 mapped by their id.
-            profiles_by_product_id (Dict[str, Dict[str, Any]]): Build profiles
-                mapped by product id.
-            loaders_by_name (Dict[str, LoaderPlugin]): Available loaders
+            profiles_by_product_id (dict[str, list[dict[str, Any]]]): Build
+                profiles mapped by product id.
+            loaders_by_name (dict[str, LoaderPlugin]): Available loaders
                 per name.
 
         Returns:
@@ -558,20 +666,27 @@ class BuildWorkfile:
 
         # Get product id order from build presets.
         build_presets = self.build_presets.get("current_context", [])
+        build_presets += self.build_presets.get("linked_folders", [])
+        # TODO remove 'linked_assets' (Marked as deprecated 26/02/05)
         build_presets += self.build_presets.get("linked_assets", [])
         product_ids_ordered = []
         for preset in build_presets:
-            for product_type in preset["product_types"]:
+            product_base_types = preset.get("product_base_types")
+            if product_base_types is None:
+                product_base_types = preset["product_types"]
+            if not product_base_types:
+                continue
+
+            for product_base_type in product_base_types:
                 for product_id, product_entity in products_by_id.items():
                     # TODO 'families' is not available on product
                     families = product_entity["data"].get("families") or []
-                    if product_type not in families:
+                    if product_base_type not in families:
                         continue
 
                     product_ids_ordered.append(product_id)
 
         # Order representations from products.
-        print("repres_by_product_id", repres_by_product_id)
         representations_ordered = []
         representations = []
         for ordered_product_id in product_ids_ordered:
