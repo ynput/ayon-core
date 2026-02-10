@@ -64,9 +64,16 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         if not product_base_type:
             product_base_type = product_type
 
+        anatomy_data = instance.data["anatomyData"]
+
+        # Task can be optional in anatomy data
+        task = anatomy_data.get("task", {})
+        if "{task[" not in template.lower():
+            task = task.get("name")
+
         fill_pairs = prepare_template_data({
-            "task": filter_criteria["tasks"],
-            "host": filter_criteria["hosts"],
+            "task": task,
+            "host": instance.context.data["hostName"],
             "product": {
                 "name": product_name,
                 "type": product_type,

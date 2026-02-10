@@ -390,7 +390,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
                 f" Host name: \"{host_name}\""
-                f" | Product type: \"{product_base_type}\""
+                f" | Product base type: \"{product_base_type}\""
                 f" | Product name: \"{product_name}\""
                 f" | Task name \"{task_name}\""
                 f" | Task type \"{task_type}\""

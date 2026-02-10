@@ -1,5 +1,6 @@
 import time
 import collections
+import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -12,6 +13,7 @@ from ayon_core.tools.launcher.abstract import WebactionContext
 
 ANIMATION_LEN = 7
 SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
+IS_MACOS = platform.system().lower() == "darwin"
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -490,6 +492,13 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
+        # On macOs the popup does not get focus on show so leave
+        #   event is triggered when the animation is still running.
+        if (
+            IS_MACOS
+            and self._expand_anim.state() == QtCore.QAbstractAnimation.Running
+        ):
+            return
         self._close_timer.start()
 
     def show_items(self, group_label, action_id, action_items, pos):
@@ -627,6 +636,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._group_label.move(label_pos_x, sh_t)
         self._bg_frame.setGeometry(bg_geo)
         self.setUpdatesEnabled(True)
+        self.update()
 
     def _on_expand_finish(self):
         # Make sure that size is recalculated if src and targe size is same
