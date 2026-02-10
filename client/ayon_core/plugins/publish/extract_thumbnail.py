@@ -742,7 +742,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         task_type = task_data.get("type")
         filtering_criteria = {
             "host_names": host_name,
-            "product_types": product_base_type,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -757,8 +757,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
                 f' Host name: "{host_name}"'
-                f' | Product types: "{product_base_type}"'
-                f' | Product names: "{product_name}"'
+                f' | Product base type: "{product_base_type}"'
+                f' | Product name: "{product_name}"'
                 f' | Task name "{task_name}"'
                 f' | Task type "{task_type}"'
             )

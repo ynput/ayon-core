@@ -265,7 +265,9 @@ class BuildWorkfile:
 
         filter_data = {
             "task_types": task_type,
-            "tasks": task_name
+            "task_names": task_name,
+            # 'tasks' is deprecated and should be changed in hosts settings
+            "tasks": task_name,
         }
         return filter_profiles(builder_profiles, filter_data)
 
