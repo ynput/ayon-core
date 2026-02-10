@@ -51,10 +51,10 @@ class PreIntegrateThumbnails(pyblish.api.InstancePlugin):
         found_profile = filter_profiles(
             self.integrate_profiles,
             {
-                "hosts": host_name,
+                "host_names": host_name,
                 "task_names": task.get("name"),
                 "task_types": task.get("type"),
-                "product_types": product_base_type,
+                "product_base_types": product_base_type,
                 "product_names": product_name,
             },
             logger=self.log
