@@ -149,12 +149,11 @@ class CollectHierarchy(
             # and if not the attributes needs to be added in case the option
             # is disabled by settings
 
-            # Check if shot folder already exists in AYON database
-            shot_exists = existing_entities.get(folder_path) is not None
             # Add attributes for new shots or update existing shots if enabled
+            folder_entity = existing_entities.get(folder_path)
             if (
-                not shot_exists or 
-                (shot_exists and edit_shot_attributes_on_update)
+                (folder_entity and edit_shot_attributes_on_update)
+                or not folder_entity
             ):
                 for shot_attr in SHOT_ATTRS:
                     attr_value = instance.data.get(shot_attr)
