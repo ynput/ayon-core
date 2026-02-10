@@ -317,13 +317,19 @@ class PluginStateByHostModel(BaseSettingsModel):
 
 class ValidateIntentProfile(BaseSettingsModel):
     _layout = "expanded"
-    hosts: list[str] = SettingsField(default_factory=list, title="Host names")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     # TODO This was 'validate' in v3
     validate_intent: bool = SettingsField(True, title="Validate")
 
