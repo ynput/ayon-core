@@ -170,13 +170,9 @@ def should_copy_last_published_workfile_on_launch(
     """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
-    setting_profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["last_workfile_on_startup"]
-    )
+    setting_profiles = project_settings["core"]["tools"]["Workfiles"][
+        "last_workfile_on_startup"
+    ]
     if not setting_profiles:
         return None
 
@@ -189,7 +185,9 @@ def should_copy_last_published_workfile_on_launch(
     if not matched_settings:
         return None
 
-    return matched_settings.get("enabled", False) and matched_settings.get("use_last_published_workfile", False)
+    return matched_settings.get("enabled", False) and matched_settings.get(
+        "use_last_published_workfile", False
+    )
 
 
 def copy_last_published_workfile(
@@ -217,7 +215,8 @@ def copy_last_published_workfile(
         folder_id (str): Folder id.
         task_id (str): Task id (used to filter published versions).
         workdir (str): Path to the work directory.
-        extensions (Iterable[str]): Allowed workfile extensions (e.g. [".blend", ".png"]).
+        extensions (Iterable[str]): Allowed workfile extensions
+            (e.g. [".blend", ".png"]).
         anatomy (Anatomy): Project anatomy for resolving representation paths.
         file_template (str): Workfile filename template.
         workdir_data (dict[str, Any]): Template data for the work context.
@@ -272,7 +271,9 @@ def copy_last_published_workfile(
         )
     )
     if not repre_entities:
-        log.debug("No representations found for latest published workfile version.")
+        log.debug(
+            "No representations found for latest published workfile version."
+        )
         return None
 
     # Pick first representation whose file extension matches
@@ -283,12 +284,14 @@ def copy_last_published_workfile(
             name = Path(repre_file.get("name", ""))
             ext = name.suffix.lower()
             if ext in ext_set:
-                representation_path = Path(get_representation_path_with_anatomy(repre, anatomy))
+                representation_path = Path(
+                    get_representation_path_with_anatomy(repre, anatomy)
+                )
                 if representation_path.exists():
                     source_path = representation_path
                     repre_entity = repre
                     break
-                
+
             if source_path is not None:
                 break
         if source_path is not None:
@@ -326,10 +329,13 @@ def copy_last_published_workfile(
         )
     else:
         published_mtime = os.path.getmtime(source_path)
-        local_mtime = os.path.getmtime(local_path) if os.path.exists(local_path) else 0
+        local_mtime = (
+            os.path.getmtime(local_path) if os.path.exists(local_path) else 0
+        )
         if published_mtime <= local_mtime:
             log.debug(
-                "Latest local workfile is up-to-date with published; skipping copy."
+                "Latest local workfile is up-to-date with published; "
+                "skipping copy."
             )
             return None
         next_version = local_version + 1
@@ -346,7 +352,8 @@ def copy_last_published_workfile(
     dst_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_path, dst_path)
     log.info(
-        f"Copied last published workfile to {dst_path} (version {next_version})"
+        f"Copied last published workfile to {dst_path} "
+        f"(version {next_version})"
     )
     return dst_path.as_posix()
 
