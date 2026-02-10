@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import re
 import copy
 import collections
+import typing
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
@@ -24,6 +27,9 @@ from ayon_core.tools.publisher.constants import (
 from .folders_dialog import FoldersDialog
 from .tasks_model import TasksModel
 from .widgets import ClickableLineEdit, MultipleItemWidget
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.publisher.abstract import InstanceItem
 
 
 class FoldersFields(BaseClickableFrame):
@@ -619,9 +625,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     Task:              [   combobox   ]
     Product base type: [   immutable  ]
     product name:      [   immutable  ]
-                         [Submit] [Cancel]
-    """
+                          [Submit] [Cancel]
 
+    """
     multiselection_text = "< Multiselection >"
     unknown_value = "N/A"
 
@@ -631,8 +637,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
-        self._current_instances_by_id = {}
-        self._invalid_task_item_ids = set()
+        self._current_instances_by_id: dict[str, "InstanceItem"] = {}
+        self._invalid_task_item_ids: set[str] = set()
 
         variant_input = VariantInputWidget(self)
         folder_value_widget = FoldersFields(controller, self)
@@ -669,7 +675,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         main_layout.addRow("Folder", folder_value_widget)
         main_layout.addRow("Task", task_value_widget)
         main_layout.addRow(
-            "Product base type", product_base_type_value_widget
+            "Product base type",
+            product_base_type_value_widget
         )
         main_layout.addRow("Product name", product_value_widget)
         main_layout.addRow(btns_layout)
@@ -688,7 +695,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.variant_input = variant_input
         self.folder_value_widget = folder_value_widget
         self.task_value_widget = task_value_widget
-        self.product_base_type_value_widget = product_base_type_value_widget
+        self._product_base_type_value_widget = product_base_type_value_widget
         self.product_value_widget = product_value_widget
         self.submit_btn = submit_btn
         self.cancel_btn = cancel_btn
@@ -737,9 +744,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             try:
                 new_product_name = self._controller.get_product_name(
                     item.creator_identifier,
+                    item.product_type,
                     new_variant_value,
-                    new_task_name,
                     new_folder_path,
+                    new_task_name,
                     item.id,
                 )
                 self._invalid_task_item_ids.discard(item.id)
@@ -887,7 +895,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.folder_value_widget.set_selected_items(folder_paths)
         # Set context of task widget
         self.task_value_widget.set_selected_items(folder_task_combinations)
-        self.product_base_type_value_widget.set_value(product_base_types)
+        self._product_base_type_value_widget.set_value(product_base_types)
         self.product_value_widget.set_value(product_names)
 
         self.variant_input.setEnabled(editable)

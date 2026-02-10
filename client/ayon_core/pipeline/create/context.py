@@ -1257,9 +1257,7 @@ class CreateContext:
                 project_name, folder_path
             )
             if folder_entity is None:
-                raise CreatorError(
-                    "Folder '{}' was not found".format(folder_path)
-                )
+                raise CreatorError(f"Folder '{folder_path}' was not found")
 
         if task_entity is None:
             current_task_name = self.get_current_task_name()
@@ -1268,8 +1266,13 @@ class CreateContext:
                     project_name, folder_entity["id"], current_task_name
                 )
 
-        if not product_type:
-            product_type = creator.product_base_type
+        # Handle not passed product type
+        if product_type is None:
+            for product_type_item in creator.get_product_type_items():
+                product_type = product_type_item.product_type
+                break
+            else:
+                product_type = creator.product_base_type
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -1311,7 +1314,8 @@ class CreateContext:
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
             "productType": product_type,
-            # Add product base type if supported. Fallback to product type
+            # Add product base type if supported. Fallback to
+            #   older attribute 'product_type'
             "productBaseType": (
                 creator.product_base_type or creator.product_type),
             "variant": variant
@@ -1342,8 +1346,8 @@ class CreateContext:
 
         Args:
             identifier (str): Identifier of creator.
-            *args (tuple[Any]): Arguments for create method.
-            **kwargs (dict[Any, Any]): Keyword argument for create method.
+            *args: Arguments for create method.
+            **kwargs: Keyword argument for create method.
 
         Raises:
             CreatorsCreateFailed: When creation fails due to any possible
