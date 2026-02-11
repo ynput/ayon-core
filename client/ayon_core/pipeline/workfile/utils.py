@@ -23,7 +23,6 @@ from ayon_core.host.interfaces import (
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
-from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 from .path_resolving import (
     get_workdir,
@@ -178,13 +177,11 @@ def get_last_published_workfile_representation(
     project_name: str,
     folder_id: str,
     task_id: str,
-    host_name: str,
-    *,
     extensions: Optional[typing.Iterable[str]] = None,
     anatomy: Optional["Anatomy"] = None,
     project_settings: Optional[dict[str, Any]] = None,
 ) -> Optional[LastPublishedWorkfileInfo]:
-    """Query AYON API and resolve the latest published workfile for the context.
+    """Resolve info about the latest published workfile for the context.
 
     Returns data needed to copy the file, or None if none found or accessible.
 
@@ -192,7 +189,6 @@ def get_last_published_workfile_representation(
         project_name (str): Project name.
         folder_id (str): Folder id.
         task_id (str): Task id (used to filter published versions).
-        host_name (str): Host name (for optional anatomy/settings resolution).
         extensions (Optional[Iterable[str]]): Allowed workfile extensions.
             If None, first representation with an existing path is used.
         anatomy (Optional[Anatomy]): Project anatomy. Resolved from
@@ -278,10 +274,10 @@ def copy_last_published_workfile(
     project_settings: Optional[dict[str, Any]] = None,
     log: Optional[Any] = None,
 ) -> Optional[str]:
-    """Copy the published workfile to the work directory and create workfile entity.
+    """Copy the published workfile to the work directory.
 
     Compares with latest local workfile; copies only if none exist or published
-    is newer. Does not mutate workdir_data when provided.
+    is newer.
 
     Args:
         project_name (str): Project name.
@@ -290,12 +286,16 @@ def copy_last_published_workfile(
         host_name (str): Host name.
         published_info (LastPublishedWorkfileInfo): From
             get_last_published_workfile_representation().
-        workdir (Optional[str]): Work directory. Resolved from context if None.
-        file_template (Optional[str]): Workfile filename template. Resolved if None.
-        workdir_data (Optional[dict[str, Any]]): Template data. Resolved if None.
+        workdir (Optional[str]): Work directory.
+            Resolved from context if None.
+        file_template (Optional[str]): Workfile filename template.
+            Resolved if None.
+        workdir_data (Optional[dict[str, Any]]): Template data.
+            Resolved if None.
             Not mutated.
         anatomy (Optional[Anatomy]): Project anatomy. Resolved if None.
-        project_settings (Optional[dict[str, Any]]): Project settings. Resolved if None.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+            Resolved from project_name if None.
         log (Optional[Any]): Logger with debug/info/warning. No-op if None.
 
     Returns:
@@ -364,10 +364,11 @@ def copy_last_published_workfile(
         if published_mtime <= local_mtime:
             if log:
                 log.debug(
-                    "Latest local workfile is up-to-date with published; "
+                    "Latest local workfile is newer than last published; "
                     "skipping copy."
                 )
             return None
+
         # Use the greater of local or published version, then + 1
         next_version = max(local_version, published_version) + 1
 
