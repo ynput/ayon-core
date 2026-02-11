@@ -44,6 +44,12 @@ class LauncherWindow(QtWidgets.QWidget):
         )
 
         self._controller = controller
+        try:
+            controller.set_run_on_main_thread(
+                lambda fn: QtCore.QTimer.singleShot(0, fn)
+            )
+        except Exception:
+            pass
 
         overlay_object = MessageOverlayObject(self)
 

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
@@ -75,6 +75,17 @@ class BaseLauncherController(
 
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
+
+    def set_run_on_main_thread(self, executor):
+        """Set callable(fn) that runs fn on the main UI thread (e.g. QTimer.singleShot(0, fn))."""
+        self._run_on_main_thread = executor
+
+    def run_on_main_thread(self, fn):
+        """Run fn on the main thread. If set_run_on_main_thread was used, defers; otherwise runs now."""
+        if getattr(self, "_run_on_main_thread", None):
+            self._run_on_main_thread(fn)
+        else:
+            fn()
 
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
@@ -177,6 +188,12 @@ class BaseLauncherController(
             project_name, folder_id, task_id, workfile_id
         )
 
+    def get_launch_action_ids_for_host(self, host_name: str):
+        return self._actions_model.get_launch_action_ids_for_host(host_name)
+
+    def get_preferred_launch_action_id_for_host(self, host_name: str):
+        return self._actions_model.get_preferred_launch_action_id_for_host(host_name)
+
     def trigger_action(
         self,
         identifier,
@@ -190,6 +207,31 @@ class BaseLauncherController(
             project_name,
             folder_id,
             task_id,
+            workfile_id,
+        )
+
+    def open_workfile_with_app(self, workfile_id: str, host_name: Optional[str]) -> None:
+        """Launch preferred app for host with this workfile selected (e.g. from double-click)."""
+        from ayon_api import get_server_api_connection
+        project_name = self.get_selected_project_name()
+        if not project_name:
+            return
+        if not host_name:
+            conn = get_server_api_connection()
+            entity = conn.get_workfile_entity_by_id(
+                project_name, workfile_id, fields=("data",)
+            )
+            if not entity:
+                return
+            host_name = (entity.get("data") or {}).get("host_name")
+        if not host_name:
+            return
+        effective_id = self.get_preferred_launch_action_id_for_host(host_name) or host_name
+        self.trigger_action(
+            effective_id,
+            project_name,
+            self.get_selected_folder_id(),
+            self.get_selected_task_id(),
             workfile_id,
         )
 

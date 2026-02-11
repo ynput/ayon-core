@@ -1,4 +1,5 @@
 import os
+import threading
 import uuid
 from dataclasses import dataclass, asdict
 from urllib.parse import urlencode, urlparse
@@ -105,6 +106,7 @@ class ActionsModel:
         self._webaction_items = NestedCacheItem(
             levels=2, default_factory=list, lifetime=20,
         )
+        self._last_triggered_action_by_host = {}
 
         self._variant = get_settings_variant()
 
@@ -162,6 +164,45 @@ class ActionsModel:
 
         return output
 
+    def get_launch_action_ids_for_host(self, host_name: str) -> list[str]:
+        """Action identifiers that launch the given host (applications addon sets host_name)."""
+        ids = [
+            identifier
+            for identifier, action in self._get_action_objects().items()
+            if getattr(action, "host_name", None) == host_name
+        ]
+        if ids:
+            return ids
+        # App actions use identifier "group/variant" (e.g. harmony/24)
+        fallback_ids = [
+            identifier
+            for identifier in self._get_action_objects()
+            if identifier == host_name or identifier.startswith(host_name + "/")
+        ]
+        if fallback_ids:
+            self.log.debug(
+                "get_launch_action_ids_for_host: host_name=%r matched by identifier, ids=%s",
+                host_name,
+                fallback_ids,
+            )
+        else:
+            all_ids = list(self._get_action_objects().keys())
+            self.log.debug(
+                "get_launch_action_ids_for_host: host_name=%r no match. known identifiers=%s",
+                host_name,
+                all_ids,
+            )
+        return fallback_ids
+
+    def get_preferred_launch_action_id_for_host(self, host_name: str) -> Optional[str]:
+        """Single action id for host, or last-triggered in session, or first available."""
+        ids = self.get_launch_action_ids_for_host(host_name)
+        if not ids:
+            return None
+        if len(ids) == 1:
+            return ids[0]
+        return self._last_triggered_action_by_host.get(host_name) or ids[0]
+
     def trigger_action(
         self,
         identifier,
@@ -173,6 +214,10 @@ class ActionsModel:
         selection = self._prepare_selection(
             project_name, folder_id, task_id, workfile_id
         )
+        if identifier not in self._actions:
+            self._trigger_launch_by_host(identifier, selection)
+            return
+
         failed = False
         error_message = None
         action_label = identifier
@@ -207,6 +252,141 @@ class ActionsModel:
                 "full_label": action_label,
             }
         )
+        action_obj = self._actions.get(identifier)
+        if action_obj is not None:
+            host_name = getattr(action_obj, "host_name", None)
+            if host_name:
+                self._last_triggered_action_by_host[host_name] = identifier
+
+    def _trigger_launch_by_host(self, host_name: str, selection: LauncherActionSelection) -> None:
+        """Launch via applications addon when identifier is a host name with no launcher action."""
+        applications_addon = self._controller.get_addons_manager().get_enabled_addon(
+            "applications"
+        )
+        if not applications_addon:
+            self.log.debug(
+                "trigger_action(host): host_name=%r, applications addon not enabled",
+                host_name,
+            )
+            trigger_id = uuid.uuid4().hex
+            self._controller.emit_event(
+                "action.trigger.finished",
+                {
+                    "trigger_id": trigger_id,
+                    "identifier": host_name,
+                    "failed": True,
+                    "error_message": None,
+                    "full_label": host_name,
+                },
+            )
+            return
+        apps_manager = applications_addon.get_applications_manager()
+        app = apps_manager.find_latest_available_variant_for_group(host_name)
+        if not app:
+            self.log.debug(
+                "trigger_action(host): host_name=%r no application variant found",
+                host_name,
+            )
+            trigger_id = uuid.uuid4().hex
+            self._controller.emit_event(
+                "action.trigger.finished",
+                {
+                    "trigger_id": trigger_id,
+                    "identifier": host_name,
+                    "failed": True,
+                    "error_message": None,
+                    "full_label": host_name,
+                },
+            )
+            return
+
+        if app.full_name in self._actions:
+            self.trigger_action(
+                app.full_name,
+                selection.project_name,
+                selection.folder_id,
+                selection.task_id,
+                selection.workfile_id,
+            )
+            return
+
+        trigger_id = uuid.uuid4().hex
+        full_label = getattr(app, "full_label", None) or app.full_name
+        self._controller.emit_event(
+            "action.trigger.started",
+            {
+                "trigger_id": trigger_id,
+                "identifier": app.full_name,
+                "full_label": full_label,
+            },
+        )
+
+        project_name = selection.project_name
+        folder_id = selection.folder_id
+        task_id = selection.task_id
+        workfile_id = selection.workfile_id
+        controller = self._controller
+
+        def _do_launch():
+            folder_path = ""
+            task_name = ""
+            if folder_id and task_id:
+                folder_entity = controller.get_folder_entity(project_name, folder_id)
+                task_entity = controller.get_task_entity(project_name, task_id)
+                if folder_entity and task_entity:
+                    folder_path = folder_entity.get("path") or ""
+                    task_name = task_entity.get("name") or ""
+            workfile_path = None
+            if workfile_id:
+                try:
+                    from ayon_core.pipeline import Anatomy
+                    workfile_entity = ayon_api.get_workfile_info_by_id(
+                        project_name, workfile_id
+                    )
+                    if workfile_entity and workfile_entity.get("path"):
+                        anatomy = Anatomy(
+                            project_name,
+                            project_entity=controller.get_project_entity(project_name),
+                        )
+                        workfile_path = anatomy.fill_root(workfile_entity["path"])
+                except Exception:
+                    pass
+            failed = False
+            error_message = None
+            try:
+                applications_addon.launch_application(
+                    app.full_name,
+                    project_name,
+                    folder_path,
+                    task_name,
+                    workfile_path=workfile_path,
+                )
+            except Exception as exc:
+                failed = True
+                error_message = str(exc)
+                self.log.warning(
+                    "Launch via applications addon failed: %s",
+                    error_message,
+                    exc_info=True,
+                )
+            self._last_triggered_action_by_host[host_name] = app.full_name
+            controller.run_on_main_thread(
+                lambda: controller.emit_event(
+                    "action.trigger.finished",
+                    {
+                        "trigger_id": trigger_id,
+                        "identifier": app.full_name,
+                        "failed": failed,
+                        "error_message": error_message,
+                        "full_label": full_label,
+                    },
+                ),
+            )
+
+        def _start_worker():
+            threading.Thread(target=_do_launch, daemon=True).start()
+
+        self._controller.run_on_main_thread(_start_worker)
 
     def trigger_webaction(self, context, action_label, form_data):
         entity_type = None
