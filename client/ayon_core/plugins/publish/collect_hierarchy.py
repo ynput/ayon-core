@@ -148,9 +148,12 @@ class CollectHierarchy(
             # we need to check if the shot entity already exists
             # and if not the attributes needs to be added in case the option
             # is disabled by settings
+
+            # Add attributes for new shots or update existing shots if enabled
+            folder_entity = existing_entities.get(folder_path)
             if (
-                existing_entities.get(folder_path)
-                and edit_shot_attributes_on_update
+                (folder_entity and edit_shot_attributes_on_update)
+                or not folder_entity
             ):
                 for shot_attr in SHOT_ATTRS:
                     attr_value = instance.data.get(shot_attr)
