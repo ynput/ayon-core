@@ -1,14 +1,17 @@
 from __future__ import annotations
+import copy
 import os
 import platform
+import shutil
 import uuid
 import typing
+from pathlib import Path
 from typing import Optional, Any
 
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from ayon_core.lib import filter_profiles, get_ayon_username
+from ayon_core.lib import filter_profiles, get_ayon_username, StringTemplate
 from ayon_core.settings import get_project_settings
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
@@ -17,10 +20,12 @@ from ayon_core.host.interfaces import (
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 from .path_resolving import (
     get_workdir,
     get_workfile_template_key,
+    get_last_workfile_with_version,
 )
 
 if typing.TYPE_CHECKING:
@@ -136,6 +141,219 @@ def should_use_last_workfile_on_launch(
     if output is None:
         return default_output
     return output
+
+
+def should_copy_last_published_workfile_on_launch(
+    project_name: str,
+    host_name: str,
+    task_name: str,
+    task_type: str,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> bool:
+    """Check if published workfile should be copied to workdir on launch.
+
+    Only relevant when last workfile on startup is enabled for the same
+    profile. Returns the value of 'use_last_published_workfile' from the
+    matching last_workfile_on_startup profile.
+
+    Args:
+        project_name (str): Name of project.
+        host_name (str): Name of launched host. Not case sensitive.
+        task_name (str): Name of launched task.
+            Not case sensitive.
+        task_type (str): Type of launched task.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+
+    Returns:
+        bool: True if last published workfile should be copied to workdir
+            before opening. None if no profile is found.
+    """
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+    setting_profiles = project_settings["core"]["tools"]["Workfiles"][
+        "last_workfile_on_startup"
+    ]
+    if not setting_profiles:
+        return None
+
+    filter_data = {
+        "tasks": task_name,
+        "task_types": task_type,
+        "hosts": host_name,
+    }
+    matched_settings = filter_profiles(setting_profiles, filter_data)
+    if not matched_settings:
+        return None
+
+    return matched_settings.get("enabled", False) and matched_settings.get(
+        "use_last_published_workfile", False
+    )
+
+
+def copy_last_published_workfile(
+    project_name: str,
+    folder_id: str,
+    task_id: str,
+    workdir: str,
+    extensions: typing.Iterable[str],
+    anatomy: "Anatomy",
+    file_template: str,
+    workdir_data: dict[str, Any],
+    host_name: str,
+    project_settings: Optional[dict[str, Any]],
+    log: Any,
+) -> Optional[str]:
+    """Copy the latest published workfile to the work directory if it is newer.
+
+    Queries the AYON API for published workfiles for the given folder and task,
+    resolves the latest version's file path, and copies it to the workdir as
+    the next version if no local workfile exists or the published file is
+    newer than the latest local workfile.
+
+    Args:
+        project_name (str): Project name.
+        folder_id (str): Folder id.
+        task_id (str): Task id (used to filter published versions).
+        workdir (str): Path to the work directory.
+        extensions (Iterable[str]): Allowed workfile extensions
+            (e.g. [".blend", ".png"]).
+        anatomy (Anatomy): Project anatomy for resolving representation paths.
+        file_template (str): Workfile filename template.
+        workdir_data (dict[str, Any]): Template data for the work context.
+        host_name (str): Host name (for versioning start).
+        project_settings (Optional[dict[str, Any]]): Project settings.
+        log (Any): Logger with info/debug/warning methods.
+
+    Returns:
+        Optional[str]: Path to the copied workfile, or None if no copy was
+            performed (no published workfile, or local already up-to-date).
+    """
+    # Normalize extensions for filtering (lowercase, no leading dot)
+    ext_set = {ext.lower() for ext in extensions} if extensions else set()
+    if not ext_set:
+        return None
+
+    # Fetch workfile products for the folder
+    product_entities = list(
+        ayon_api.get_products(
+            project_name,
+            folder_ids={folder_id},
+            product_types={"workfile"},
+            fields={"id", "name"},
+        )
+    )
+    if not product_entities:
+        log.debug("No published workfile products found for folder.")
+        return None
+
+    # Include version number to pick the latest
+    latest_version = next(
+        ayon_api.get_versions(
+            project_name,
+            product_ids={p["id"] for p in product_entities},
+            task_ids={task_id},
+            latest=True,
+            fields={"id", "author", "version"},
+        ),
+        None
+    )
+    if not latest_version:
+        log.debug("No published workfile versions found for task.")
+        return None
+    version_id = latest_version["id"]
+
+    # Get representations for the latest version
+    repre_entities = list(
+        ayon_api.get_representations(
+            project_name,
+            version_ids={version_id},
+        )
+    )
+    if not repre_entities:
+        log.debug(
+            "No representations found for latest published workfile version."
+        )
+        return None
+
+    # Pick first representation whose file extension matches
+    source_path = None
+    repre_entity = None
+    for repre in repre_entities:
+        representation_path = Path(get_representation_path(
+            project_name,
+            repre,
+            anatomy=anatomy,
+        ))
+        if not representation_path.exists():
+            continue
+
+        ext = representation_path.suffix.lower()
+        if ext not ext_set:
+            continue
+
+        source_path = representation_path
+        repre_entity = repre
+        break
+
+    if not source_path or repre_entity is None:
+        log.warning("Published workfile is not accessible on this machine.")
+        return None
+
+    # Compare with latest local workfile
+    template_data = dict(workdir_data)
+    template_data.setdefault("user", get_ayon_username())
+    if "ext" not in template_data or template_data["ext"] is None:
+        template_data["ext"] = next(iter(ext_set), "")
+    template_data["ext"] = template_data["ext"].lstrip(".")
+
+    local_path, local_version = get_last_workfile_with_version(
+        workdir,
+        file_template,
+        template_data,
+        ext_set,
+    )
+
+    # Decide next version number
+    task_name = workdir_data.get("task", {}).get("name")
+    task_type = workdir_data.get("task", {}).get("type")
+    if local_version is None:
+        next_version = get_versioning_start(
+            project_name,
+            host_name,
+            task_name=task_name,
+            task_type=task_type,
+            product_base_type="workfile",
+            project_settings=project_settings,
+        )
+    else:
+        published_mtime = os.path.getmtime(source_path)
+        local_mtime = (
+            os.path.getmtime(local_path) if os.path.exists(local_path) else 0
+        )
+        if published_mtime <= local_mtime:
+            log.debug(
+                "Latest local workfile is up-to-date with published; "
+                "skipping copy."
+            )
+            return None
+        next_version = local_version + 1
+
+    # Build destination path and copy
+    data = copy.deepcopy(template_data)
+    data["version"] = next_version
+    data.pop("comment", None)
+    data["ext"] = data.get("ext", next(iter(ext_set), "")).lstrip(".")
+    filename = StringTemplate.format_strict_template(file_template, data)
+    dst_path = Path(workdir) / str(filename)
+    dst_path = dst_path.resolve()
+
+    dst_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, dst_path)
+    log.info(
+        f"Copied last published workfile to {dst_path} "
+        f"(version {next_version})"
+    )
+    return dst_path.as_posix()
 
 
 def should_open_workfiles_tool_on_launch(
