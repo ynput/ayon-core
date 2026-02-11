@@ -247,20 +247,19 @@ def copy_last_published_workfile(
         return None
 
     # Include version number to pick the latest
-    version_entities = list(
+    latest_version = next(
         ayon_api.get_versions(
             project_name,
             product_ids={p["id"] for p in product_entities},
             task_ids={task_id},
             latest=True,
             fields={"id", "author", "version"},
-        )
+        ),
+        None
     )
-    if not version_entities:
+    if not latest_version:
         log.debug("No published workfile versions found for task.")
         return None
-
-    latest_version = version_entities[0]
     version_id = latest_version["id"]
 
     # Get representations for the latest version
