@@ -279,22 +279,21 @@ def copy_last_published_workfile(
     source_path = None
     repre_entity = None
     for repre in repre_entities:
-        for repre_file in repre.get("files", []):
-            name = Path(repre_file.get("name", ""))
-            ext = name.suffix.lower()
-            if ext in ext_set:
-                representation_path = Path(
-                    get_representation_path_with_anatomy(repre, anatomy)
-                )
-                if representation_path.exists():
-                    source_path = representation_path
-                    repre_entity = repre
-                    break
+        representation_path = Path(get_representation_path(
+            project_name,
+            repre,
+            anatomy=anatomy,
+        ))
+        if not representation_path.exists():
+            continue
 
-            if source_path is not None:
-                break
-        if source_path is not None:
-            break
+        ext = representation_path.suffix.lower()
+        if ext not ext_set:
+            continue
+
+        source_path = representation_path
+        repre_entity = repre
+        break
 
     if not source_path or repre_entity is None:
         log.warning("Published workfile is not accessible on this machine.")
