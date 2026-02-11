@@ -4,6 +4,7 @@ import os
 from typing import Optional
 
 import ayon_api
+from ayon_api import get_workfiles_info
 
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, get_ayon_username
@@ -401,6 +402,19 @@ class BaseWorkfileController(
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender
         )
+
+    def get_task_ids_with_workfiles(self, project_name: str, folder_id: str):
+        """Task ids in folder that have at least one workfile (for tasks widget grey styling)."""
+        task_items = self._hierarchy_model.get_task_items(
+            project_name, folder_id, sender=None
+        )
+        if not task_items:
+            return set()
+        task_ids = {t.id for t in task_items}
+        workfiles = get_workfiles_info(
+            project_name, task_ids=task_ids, fields={"taskId"}
+        )
+        return {w["taskId"] for w in workfiles}
 
     def get_workarea_dir_by_context(self, folder_id, task_id):
         return self._workfiles_model.get_workarea_dir_by_context(
