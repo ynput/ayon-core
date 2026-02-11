@@ -1,6 +1,7 @@
 from typing import Optional
 
-from ayon_core.lib import Logger
+from ayon_api import get_workfiles_info
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
@@ -102,6 +103,19 @@ class BaseLauncherController(
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender
         )
+
+    def get_task_ids_with_workfiles(self, project_name: str, folder_id: str):
+        """Task ids in folder that have at least one workfile (for launcher UI)."""
+        task_items = self._hierarchy_model.get_task_items(
+            project_name, folder_id, sender=None
+        )
+        if not task_items:
+            return set()
+        task_ids = {t.id for t in task_items}
+        workfiles = get_workfiles_info(
+            project_name, task_ids=task_ids, fields={"taskId"}
+        )
+        return {w["taskId"] for w in workfiles}
 
     # Project settings for applications actions
     def get_project_settings(self, project_name):

@@ -207,7 +207,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
             task_type_items = self._controller.get_task_type_items(
                 project_name, sender=TASKS_MODEL_SENDER_NAME
             )
-        return task_items, task_type_items
+        task_ids_with_workfiles = None
+        if hasattr(self._controller, "get_task_ids_with_workfiles"):
+            task_ids_with_workfiles = self._controller.get_task_ids_with_workfiles(
+                project_name, folder_id
+            )
+        return task_items, task_type_items, task_ids_with_workfiles
 
     @classmethod
     def _get_default_task_icon(cls):
@@ -223,9 +228,15 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self,
         task_item,
         task_type_item_by_name,
-        task_type_icon_cache
+        task_type_icon_cache,
+        task_ids_with_workfiles=None,
     ):
-        icon = task_type_icon_cache.get(task_item.task_type)
+        use_disabled_color = (
+            task_ids_with_workfiles is not None
+            and task_item.id not in task_ids_with_workfiles
+        )
+        cache_key = (task_item.task_type, use_disabled_color)
+        icon = task_type_icon_cache.get(cache_key)
         if icon is not None:
             return icon
 
@@ -234,7 +245,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
         )
         icon = None
         if task_type_item is not None:
-            color = task_type_item.color or get_default_entity_icon_color()
+            if use_disabled_color:
+                color = get_disabled_entity_icon_color()
+            else:
+                color = task_type_item.color or get_default_entity_icon_color()
             icon = get_qt_icon({
                 "type": "material-symbols",
                 "name": task_type_item.icon,
@@ -243,11 +257,13 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         if icon is None:
             icon = self._get_default_task_icon()
-        task_type_icon_cache[task_item.task_type] = icon
+        task_type_icon_cache[cache_key] = icon
         return icon
 
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items = thread.get_result()
+        result = thread.get_result()
+        task_items, task_type_items = result[0], result[1]
+        task_ids_with_workfiles = result[2] if len(result) > 2 else None
         # Task items are refreshed
         if task_items is None:
             return
@@ -278,7 +294,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
             icon = self._get_task_item_icon(
                 task_item,
                 task_type_item_by_name,
-                task_type_icon_cache
+                task_type_icon_cache,
+                task_ids_with_workfiles=task_ids_with_workfiles,
             )
             item.setData(task_item.full_label, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
