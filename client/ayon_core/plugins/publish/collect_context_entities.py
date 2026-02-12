@@ -16,7 +16,7 @@ Provides:
 import pyblish.api
 import ayon_api
 
-from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline import KnownPublishError, Anatomy
 
 
 class CollectContextEntities(pyblish.api.ContextPlugin):
@@ -42,6 +42,9 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
                 )
 
         context.data["projectEntity"] = project_entity
+        context.data["anatomy"] = Anatomy(
+            project_name, project_entity=project_entity
+        )
 
         self.log.debug(f"Project entity \"{project_entity}\"")
 
