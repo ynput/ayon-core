@@ -22,7 +22,7 @@ from ayon_core.pipeline import KnownPublishError
 class CollectContextEntities(pyblish.api.ContextPlugin):
     """Collect entities into Context."""
 
-    order = pyblish.api.CollectorOrder - 0.1
+    order = pyblish.api.CollectorOrder - 0.45
     label = "Collect Context Entities"
 
     def process(self, context):
