@@ -30,46 +30,63 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         folder_path = context.data["folderPath"]
         task_name = context.data["task"]
 
-        project_entity = ayon_api.get_project(project_name)
+        project_entity = context.data.get("projectEntity")
+        folder_entity = context.data.get("folderEntity")
+        task_entity = context.data.get("taskEntity")
+
         if not project_entity:
-            raise KnownPublishError(
-                "Project '{}' was not found.".format(project_name)
-            )
-        self.log.debug("Collected Project \"{}\"".format(project_entity))
+            project_entity = ayon_api.get_project(project_name)
+            if not project_entity:
+                raise KnownPublishError(
+                    f"Project '{project_name}' was not found."
+                )
 
         context.data["projectEntity"] = project_entity
+
+        self.log.debug(f"Project entity \"{project_entity}\"")
 
         if not folder_path:
             self.log.info("Context is not set. Can't collect global data.")
             return
 
-        folder_entity = self._get_folder_entity(project_name, folder_path)
-        self.log.debug("Collected Folder \"{}\"".format(folder_entity))
+        if folder_entity and folder_entity["path"] != folder_path:
+            folder_entity = None
 
-        task_entity = self._get_task_entity(
-            project_name, folder_entity, task_name
-        )
-        self.log.debug("Collected Task \"{}\"".format(task_entity))
+        if not folder_entity:
+            folder_entity = self._get_folder_entity(project_name, folder_path)
+
+        self.log.debug(f"Folder entity \"{folder_entity}\"")
+
+        if (
+            task_entity
+            and task_entity["folderId"] != folder_entity["id"]
+            and task_entity["name"] != task_name
+        ):
+            task_entity = None
+
+        if not task_entity:
+            task_entity = self._get_task_entity(
+                project_name, folder_entity, task_name
+            )
+        self.log.debug(f"Task entity \"{task_entity}\"")
 
         context.data["folderEntity"] = folder_entity
         context.data["taskEntity"] = task_entity
-        context_attributes = (
-            task_entity["attrib"] if task_entity else folder_entity["attrib"]
-        )
 
-        # Task type
+        context_attributes = folder_entity["attrib"]
         task_type = None
         if task_entity:
+            context_attributes = task_entity["attrib"]
             task_type = task_entity["taskType"]
 
         context.data["taskType"] = task_type
 
         frame_start = context_attributes.get("frameStart")
+        frame_end = context_attributes.get("frameEnd")
         if frame_start is None:
             frame_start = 1
             self.log.warning("Missing frame start. Defaulting to 1.")
 
-        frame_end = context_attributes.get("frameEnd")
         if frame_end is None:
             frame_end = 2
             self.log.warning("Missing frame end. Defaulting to 2.")
@@ -96,9 +113,8 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
         if not folder_entity:
             raise KnownPublishError(
-                "Folder '{}' was not found in project '{}'.".format(
-                    folder_path, project_name
-                )
+                f"Folder '{folder_path}' was not found"
+                f" in project '{project_name}'."
             )
         return folder_entity
 
@@ -111,7 +127,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         if not task_entity:
             task_path = "/".join([folder_entity["path"], task_name])
             raise KnownPublishError(
-                "Task '{}' was not found in project '{}'.".format(
-                    task_path, project_name)
+                f"Task '{task_path}' was not found"
+                f" in project '{project_name}'."
             )
         return task_entity
