@@ -55,25 +55,16 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
             self.log.info("Context is not set. Can't collect global data.")
             return
 
-        if folder_entity and folder_entity["path"] != folder_path:
-            folder_entity = None
-
         if not folder_entity:
             folder_entity = self._get_folder_entity(project_name, folder_path)
 
         self.log.debug(f"Folder entity \"{folder_entity}\"")
 
-        if (
-            task_entity
-            and task_entity["folderId"] != folder_entity["id"]
-            and task_entity["name"] != task_name
-        ):
-            task_entity = None
-
         if not task_entity:
             task_entity = self._get_task_entity(
                 project_name, folder_entity, task_name
             )
+
         self.log.debug(f"Task entity \"{task_entity}\"")
 
         context.data["folderEntity"] = folder_entity
