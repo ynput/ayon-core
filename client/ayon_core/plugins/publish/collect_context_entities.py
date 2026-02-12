@@ -47,6 +47,9 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         )
 
         self.log.debug(f"Project entity \"{project_entity}\"")
+        self.log.debug(
+            f"Anatomy object collected for project \"{project_name}\"."
+        )
 
         if not folder_path:
             self.log.info("Context is not set. Can't collect global data.")
