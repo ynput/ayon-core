@@ -343,12 +343,15 @@ class IniSettingRegistry(ASettingRegistry):
     def __init__(self, name: str, path: str):
         super().__init__(name)
         # get registry file
-        self._registry_file = os.path.join(path, f"{name}.ini")
-        if not os.path.exists(self._registry_file):
-            with open(self._registry_file, mode="w") as cfg:
-                print("# Settings registry", cfg)
+        filepath = os.path.join(path, f"{name}.ini")
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        if not os.path.exists(filepath):
+            with open(filepath, mode="w") as stream:
+                print("# Settings registry", stream)
                 now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                print(f"# {now}", cfg)
+                print(f"# {now}", stream)
+
+        self._registry_file = filepath
 
     def set_item_section(self, section: str, name: str, value: str) -> None:
         """Set item to specific section of ini registry.
@@ -370,8 +373,8 @@ class IniSettingRegistry(ASettingRegistry):
         current = config[section]
         current[name] = value
 
-        with open(self._registry_file, mode="w") as cfg:
-            config.write(cfg)
+        with open(self._registry_file, mode="w") as stream:
+            config.write(stream)
 
     def _set_item(self, name: str, value: str) -> None:
         self.set_item_section("MAIN", name, value)
@@ -482,8 +485,8 @@ class IniSettingRegistry(ASettingRegistry):
         if len(config[section].keys()) == 0:
             config.remove_section(section)
 
-        with open(self._registry_file, mode="w") as cfg:
-            config.write(cfg)
+        with open(self._registry_file, mode="w") as stream:
+            config.write(stream)
 
     def _delete_item(self, name: str, ignore_missing: bool):
         """Delete item from default section."""
@@ -502,13 +505,10 @@ class JSONSettingRegistry(ASettingRegistry):
             "registry": {}
         }
 
-        # Use 'os.path.dirname' in case someone uses slashes in 'name'
-        dirpath = os.path.dirname(self._registry_file)
-        if not os.path.exists(dirpath):
-            os.makedirs(dirpath, exist_ok=True)
+        os.makedirs(os.path.dirname(self._registry_file), exist_ok=True)
         if not os.path.exists(self._registry_file):
-            with open(self._registry_file, mode="w") as cfg:
-                json.dump(header, cfg, indent=4)
+            with open(self._registry_file, mode="w") as stream:
+                json.dump(header, stream, indent=4)
 
     @lru_cache(maxsize=32)
     def _get_item(
