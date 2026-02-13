@@ -225,17 +225,25 @@ def create_skeleton_instance(
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    # QUESTION why is 'render' product base type enforced here?
-    product_base_type = instance.data.get("productBaseType")
-    if product_base_type:
-        product_type = instance.data.get("productType")
-    else:
-        # This is the old way of defining product base type
-        # - hard-coded product base type
-        product_type = None
-        product_base_type = "render"
-        if "prerender.farm" in instance.data["families"]:
-            product_base_type = "prerender"
+    # This is a hack to keep the value of 'productType'.
+    # Because this function does not use product base type from source
+    #   instance and we don't know if product type of the instance was
+    #   customized or not, only way how to guess custom product type is
+    #   to check if is same as product base type.
+    i_product_base_type = instance.data.get("productBaseType")
+    i_product_type = instance.data.get("productType")
+    product_type = None
+    if (
+        i_product_base_type
+        and i_product_base_type != i_product_type
+    ):
+        product_type = i_product_type
+
+    # This is the old way of defining product base type
+    # - hard-coded product base type
+    product_base_type = "render"
+    if "prerender.farm" in instance.data["families"]:
+        product_base_type = "prerender"
 
     if not product_type:
         product_type = product_base_type
