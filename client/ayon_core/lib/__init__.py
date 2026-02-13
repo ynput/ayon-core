@@ -47,6 +47,7 @@ from .attribute_definitions import (
     TextDef,
     EnumDef,
     BoolDef,
+    ColorDef,
     FileDef,
     FileDefItem,
 )
@@ -198,6 +199,7 @@ __all__ = [
     "TextDef",
     "EnumDef",
     "BoolDef",
+    "ColorDef",
     "FileDef",
     "FileDefItem",
 

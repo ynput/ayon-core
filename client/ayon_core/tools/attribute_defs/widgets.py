@@ -12,6 +12,7 @@ from ayon_core.lib.attribute_definitions import (
     TextDef,
     EnumDef,
     BoolDef,
+    ColorDef,
     FileDef,
     UIDef,
     UISeparatorDef,
@@ -28,6 +29,10 @@ from ayon_core.tools.utils import (
     set_style_property,
 )
 from ayon_core.tools.utils import NiceCheckbox
+
+from ayon_core.tools.utils.color_widgets.simple_color_picker import (
+    SimpleColorPicker,
+)
 
 from ._constants import REVERT_TO_DEFAULT_LABEL
 from .files_widget import FilesWidget
@@ -74,6 +79,9 @@ def _create_widget_for_attr_def(
 
     elif isinstance(attr_def, BoolDef):
         cls = BoolAttrWidget
+
+    elif isinstance(attr_def, ColorDef):
+        cls = ColorAttrWidget
 
     elif isinstance(attr_def, UnknownDef):
         cls = UnknownAttrWidget
@@ -629,6 +637,82 @@ class BoolAttrWidget(_BaseAttrDefWidget):
 
         if value != self.current_value():
             self._input_widget.setChecked(value)
+
+
+class ColorAttrWidget(_BaseAttrDefWidget):
+    def _ui_init(self):
+        input_widget = SimpleColorPicker(self)
+        input_widget.set_value(self.attr_def.default)
+
+        if self.attr_def.tooltip:
+            input_widget.setToolTip(self.attr_def.tooltip)
+
+        input_widget.value_changed.connect(self._on_value_change)
+
+        multisel_widget = ClickableLineEdit("< Multiselection >", self)
+        multisel_widget.setVisible(False)
+        multisel_widget.clicked.connect(self._on_multi_click)
+
+        self._input_widget = input_widget
+        self._multisel_widget = multisel_widget
+        self._last_multivalue = None
+        self._multivalue = False
+
+        self.main_layout.addWidget(input_widget, 0)
+        self.main_layout.addWidget(multisel_widget, 0)
+
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _on_context_menu(self, pos):
+        menu = QtWidgets.QMenu(self)
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+        menu.exec_(self.mapToGlobal(pos))
+
+    def _on_value_change(self, new_value):
+        self._multivalue = False
+        self.value_changed.emit(new_value, self.attr_def.id)
+
+    def _on_multi_click(self):
+        self._set_multiselection_visible(False, True)
+
+    def _set_multiselection_visible(self, visible, change_focus=False):
+        self._input_widget.setVisible(not visible)
+        self._multisel_widget.setVisible(visible)
+        if visible:
+            return
+        value = self._last_multivalue if self._last_multivalue is not None else self.attr_def.default
+        self._input_widget.blockSignals(True)
+        self._input_widget.set_value(value)
+        self._input_widget.blockSignals(False)
+        if change_focus:
+            self._input_widget.setFocus(QtCore.Qt.MouseFocusReason)
+
+    def current_value(self):
+        return self._input_widget.current_value()
+
+    def set_value(self, value, multivalue=False):
+        self._last_multivalue = None
+        if multivalue:
+            set_value = set(value)
+            if None in set_value:
+                set_value.remove(None)
+                set_value.add(self.attr_def.default)
+
+            if len(set_value) > 1:
+                self._last_multivalue = next(iter(set_value), None)
+                self._set_multiselection_visible(True)
+                self._multivalue = True
+                return
+            value = tuple(set_value)[0]
+
+        self._multivalue = False
+        self._set_multiselection_visible(False)
+        if self.current_value() != value:
+            self._input_widget.set_value(value)
 
 
 class EnumAttrWidget(_BaseAttrDefWidget):
