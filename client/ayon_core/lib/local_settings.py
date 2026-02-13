@@ -246,7 +246,7 @@ class AYONSecureRegistry(ASettingRegistry):
             keyring.set_keyring(Windows.WinVaultKeyring())
 
         # Force "AYON" prefix
-        super().__init__("/".join(("AYON", name)))
+        super().__init__(f"AYON/{name}")
 
     @lru_cache(maxsize=32)
     def _get_item(
