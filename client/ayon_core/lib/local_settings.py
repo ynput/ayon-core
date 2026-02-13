@@ -410,7 +410,9 @@ class IniSettingRegistry(ASettingRegistry):
         return super().get_item(name)
 
     @lru_cache(maxsize=32)
-    def get_item_from_section(self, section: str, name: str) -> str:
+    def get_item_from_section(
+        self, section: str, name: str, default: Any = _PLACEHOLDER
+    ) -> Optional[str]:
         """Get item from section of ini file.
 
         This will read ini file and try to get item value from specified
@@ -433,20 +435,31 @@ class IniSettingRegistry(ASettingRegistry):
         try:
             value = config[section][name]
         except KeyError:
+            if default is not _PLACEHOLDER:
+                return default
             raise RegistryItemNotFound(
                 f"Registry doesn't contain value {section}:{name}"
             )
         return value
 
-    def _get_item(self, name: str) -> str:
-        return self.get_item_from_section("MAIN", name)
+    def _get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Any:
+        return self.get_item_from_section("MAIN", name, default)
 
-    def delete_item_from_section(self, section: str, name: str) -> None:
+    def delete_item_from_section(
+        self,
+        section: str,
+        name: str,
+        ignore_missing: bool = True,
+    ):
         """Delete item from section in ini file.
 
         Args:
             section (str): Section name.
             name (str): Name of the item.
+            ignore_missing (bool): If True, no error is raised if item doesn't
+                exist.
 
         Raises:
             RegistryItemNotFound: If the item doesn't exist.
@@ -458,6 +471,8 @@ class IniSettingRegistry(ASettingRegistry):
         try:
             _ = config[section][name]
         except KeyError:
+            if ignore_missing:
+                return
             raise RegistryItemNotFound(
                 f"Registry doesn't contain value {section}:{name}"
             )
@@ -470,9 +485,9 @@ class IniSettingRegistry(ASettingRegistry):
         with open(self._registry_file, mode="w") as cfg:
             config.write(cfg)
 
-    def _delete_item(self, name):
+    def _delete_item(self, name: str, ignore_missing: bool):
         """Delete item from default section."""
-        self.delete_item_from_section("MAIN", name)
+        self.delete_item_from_section("MAIN", name, ignore_missing)
 
 
 class JSONSettingRegistry(ASettingRegistry):
@@ -496,8 +511,10 @@ class JSONSettingRegistry(ASettingRegistry):
                 json.dump(header, cfg, indent=4)
 
     @lru_cache(maxsize=32)
-    def _get_item(self, name: str) -> str:
-        """Get item value from the registry.
+    def _get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Any:
+        """Get item value from registry json.
 
         Note:
             See :meth:`ayon_core.lib.JSONSettingRegistry.get_item`
@@ -508,33 +525,39 @@ class JSONSettingRegistry(ASettingRegistry):
             try:
                 value = data["registry"][name]
             except KeyError:
-                raise RegistryItemNotFound(
-                    f"Registry doesn't contain value {name}"
-                )
+                if default is not _PLACEHOLDER:
+                    return default
+                raise RegistryItemNotFound(f"Registry doesn't contain value {name}")
         return value
 
-    def _set_item(self, name: str, value: str) -> None:
-        """Set item value to the registry.
+    def _set_item(self, name: str, value: Any):
+        """Set item value to registry json.
 
         Note:
             See :meth:`ayon_core.lib.JSONSettingRegistry.set_item`
 
         """
-        with open(self._registry_file, "r+") as cfg:
-            data = json.load(cfg)
-            data["registry"][name] = value
-            cfg.truncate(0)
-            cfg.seek(0)
-            json.dump(data, cfg, indent=4)
+        with open(self._registry_file, "r+") as stream:
+            data = json.load(stream)
+            registry_data = data.setdefault("registry", {})
+            registry_data[name] = value
+            stream.truncate(0)
+            stream.seek(0)
+            json.dump(data, stream, indent=4)
         self._get_item.cache_clear()
 
-    def _delete_item(self, name: str) -> None:
-        with open(self._registry_file, "r+") as cfg:
-            data = json.load(cfg)
-            del data["registry"][name]
-            cfg.truncate(0)
-            cfg.seek(0)
-            json.dump(data, cfg, indent=4)
+    def _delete_item(self, name: str, ignore_missing: bool):
+        with open(self._registry_file, "r+") as stream:
+            data = json.load(stream)
+            registry_data = data.setdefault("registry", {})
+            if name not in registry_data:
+                if ignore_missing:
+                    return
+                raise KeyError(f"Registry doesn't contain value {name}")
+            registry_data.pop(name)
+            stream.truncate(0)
+            stream.seek(0)
+            json.dump(data, stream, indent=4)
         self._get_item.cache_clear()
 
 
@@ -542,9 +565,7 @@ class AYONSettingsRegistry(JSONSettingRegistry):
     """Class handling AYON general settings registry.
 
     Args:
-        name (Optional[str]): Name of the registry. Using 'None' or not
-            passing name is deprecated.
-
+        name (Optional[str]): Name of the registry.
     """
     def __init__(self, name: Optional[str] = None) -> None:
         if not name:
