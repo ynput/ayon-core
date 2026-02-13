@@ -225,7 +225,8 @@ def create_skeleton_instance(
     if product_base_type:
         product_type = instance.data.get("productType")
     else:
-        # This is old way of defining product base type
+        # This is the old way of defining product base type
+        # - hard-coded product base type
         product_type = None
         product_base_type = "render"
         if "prerender.farm" in instance.data["families"]:
