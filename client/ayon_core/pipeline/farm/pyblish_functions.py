@@ -221,13 +221,18 @@ def create_skeleton_instance(
                      "This may cause issues.").format(source))
 
     # QUESTION why is 'render' product base type enforced here?
-    product_base_type = "render"
-    if "prerender.farm" in instance.data["families"]:
-        product_base_type = "prerender"
+    product_base_type = instance.data.get("productBaseType")
+    product_type = None
+    if product_base_type:
+        product_type = instance.data.get("productType")
+        product_base_type = "render"
+        if "prerender.farm" in instance.data["families"]:
+            product_base_type = "prerender"
+
+    if not product_type:
+        product_type = product_base_type
 
     families = [product_base_type]
-    # TODO find out how to get 'product_type'
-    product_type = product_base_type
 
     # pass review to families if marked as review
     if data.get("review"):
