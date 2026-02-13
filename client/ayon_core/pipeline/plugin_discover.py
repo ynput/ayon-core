@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import inspect
 import traceback
+from typing import Optional
 
 from ayon_core.lib import Logger
 from ayon_core.lib.python_module_tools import (
@@ -96,6 +99,77 @@ class DiscoverResult:
             log.info(report)
 
 
+def discover_plugins(
+    base_class: type,
+    paths: Optional[list[str]] = None,
+    classes: Optional[list[type]] = None,
+    ignored_classes: Optional[list[type]] = None,
+    allow_duplicates: bool = True,
+):
+    """Find and return subclasses of `superclass`
+
+    Args:
+        base_class (type): Class which determines discovered subclasses.
+        paths (Optional[list[str]]): List of paths to look for plug-ins.
+        classes (Optional[list[str]]): List of classes to filter.
+        ignored_classes (list[type]): List of classes that won't be added to
+            the output plugins.
+        allow_duplicates (bool): Validate class name duplications.
+
+    Returns:
+        DiscoverResult: Object holding successfully
+            discovered plugins, ignored plugins, plugins with missing
+            abstract implementation and duplicated plugin.
+
+    """
+    ignored_classes = ignored_classes or []
+    paths = paths or []
+    classes = classes or []
+
+    result = DiscoverResult(base_class)
+
+    all_plugins = list(classes)
+
+    for path in paths:
+        modules, crashed = modules_from_path(path)
+        for (filepath, exc_info) in crashed:
+            result.crashed_file_paths[filepath] = exc_info
+
+        for item in modules:
+            filepath, module = item
+            result.add_module(module)
+            for cls in classes_from_module(base_class, module):
+                if cls is base_class:
+                    continue
+                # Class has defined 'skip_discovery = True'
+                skip_discovery = cls.__dict__.get("skip_discovery")
+                if skip_discovery is True:
+                    continue
+                all_plugins.append(cls)
+
+    if base_class not in ignored_classes:
+        ignored_classes.append(base_class)
+
+    plugin_names = set()
+    for cls in all_plugins:
+        if cls in ignored_classes:
+            result.ignored_plugins.add(cls)
+            continue
+
+        if inspect.isabstract(cls):
+            result.abstract_plugins.append(cls)
+            continue
+
+        if not allow_duplicates:
+            class_name = cls.__name__
+            if class_name in plugin_names:
+                result.duplicated_plugins.append(cls)
+                continue
+            plugin_names.add(class_name)
+        result.plugins.append(cls)
+    return result
+
+
 class PluginDiscoverContext(object):
     """Store and discover registered types nad registered paths to types.
 
@@ -141,58 +215,17 @@ class PluginDiscoverContext(object):
             Union[DiscoverResult, list[Any]]: Object holding successfully
                 discovered plugins, ignored plugins, plugins with missing
                 abstract implementation and duplicated plugin.
+
         """
-
-        if not ignore_classes:
-            ignore_classes = []
-
-        result = DiscoverResult(superclass)
-        plugin_names = set()
         registered_classes = self._registered_plugins.get(superclass) or []
         registered_paths = self._registered_plugin_paths.get(superclass) or []
-        for cls in registered_classes:
-            if cls is superclass or cls in ignore_classes:
-                result.ignored_plugins.add(cls)
-                continue
-
-            if inspect.isabstract(cls):
-                result.abstract_plugins.append(cls)
-                continue
-
-            class_name = cls.__name__
-            if class_name in plugin_names:
-                result.duplicated_plugins.append(cls)
-                continue
-            plugin_names.add(class_name)
-            result.plugins.append(cls)
-
-        # Include plug-ins from registered paths
-        for path in registered_paths:
-            modules, crashed = modules_from_path(path)
-            for item in crashed:
-                filepath, exc_info = item
-                result.crashed_file_paths[filepath] = exc_info
-
-            for item in modules:
-                filepath, module = item
-                result.add_module(module)
-                for cls in classes_from_module(superclass, module):
-                    if cls is superclass or cls in ignore_classes:
-                        result.ignored_plugins.add(cls)
-                        continue
-
-                    if inspect.isabstract(cls):
-                        result.abstract_plugins.append(cls)
-                        continue
-
-                    if not allow_duplicates:
-                        class_name = cls.__name__
-                        if class_name in plugin_names:
-                            result.duplicated_plugins.append(cls)
-                            continue
-                        plugin_names.add(class_name)
-
-                    result.plugins.append(cls)
+        result = discover_plugins(
+            superclass,
+            paths=registered_paths,
+            classes=registered_classes,
+            ignored_classes=ignore_classes,
+            allow_duplicates=allow_duplicates,
+        )
 
         # Store in memory last result to keep in memory loaded modules
         self._last_discovered_results[superclass] = result

@@ -295,6 +295,21 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """Get folder id from folder path."""
         pass
 
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
     # --- Create ---
     @abstractmethod
     def get_creator_items(self) -> Dict[str, "CreatorItem"]:
@@ -443,9 +458,10 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     def get_product_name(
         self,
         creator_identifier: str,
+        product_type: str,
         variant: str,
-        task_name: Union[str, None],
         folder_path: Union[str, None],
+        task_name: Union[str, None],
         instance_id: Optional[str] = None
     ):
         """Get product name based on passed data.
@@ -453,9 +469,10 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         Args:
             creator_identifier (str): Identifier of creator which should be
                 responsible for product name creation.
+            product_type (str): Product type.
             variant (str): Variant value from user's input.
-            task_name (str): Name of task for which is instance created.
             folder_path (str): Folder path for which is instance created.
+            task_name (str): Name of task for which is instance created.
             instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
@@ -476,6 +493,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
+            product_type (str): Product type.
             product_name (str): Calculated product name.
             instance_data (Dict[str, Any]): Base instance data with variant,
                 folder path and task name.

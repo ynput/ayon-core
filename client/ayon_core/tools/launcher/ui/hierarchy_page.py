@@ -2,15 +2,13 @@ import qtawesome
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
     SquareButton,
     RefreshButton,
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
-    NiceCheckbox,
 )
-from ayon_core.tools.utils.lib import checkstate_int_to_enum
+from ayon_core.tools.utils.folders_widget import FoldersFiltersWidget
 
 from .workfiles_page import WorkfilesPage
 
@@ -76,26 +74,7 @@ class HierarchyPage(QtWidgets.QWidget):
         content_body.setOrientation(QtCore.Qt.Horizontal)
 
         # - filters
-        filters_widget = QtWidgets.QWidget(self)
-
-        folders_filter_text = PlaceholderLineEdit(filters_widget)
-        folders_filter_text.setPlaceholderText("Filter folders...")
-
-        my_tasks_tooltip = (
-            "Filter folders and task to only those you are assigned to."
-        )
-        my_tasks_label = QtWidgets.QLabel("My tasks", filters_widget)
-        my_tasks_label.setToolTip(my_tasks_tooltip)
-
-        my_tasks_checkbox = NiceCheckbox(filters_widget)
-        my_tasks_checkbox.setChecked(False)
-        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
-
-        filters_layout = QtWidgets.QHBoxLayout(filters_widget)
-        filters_layout.setContentsMargins(0, 0, 0, 0)
-        filters_layout.addWidget(folders_filter_text, 1)
-        filters_layout.addWidget(my_tasks_label, 0)
-        filters_layout.addWidget(my_tasks_checkbox, 0)
+        filters_widget = FoldersFiltersWidget(self)
 
         # - Folders widget
         folders_widget = LauncherFoldersWidget(controller, content_body)
@@ -123,8 +102,8 @@ class HierarchyPage(QtWidgets.QWidget):
 
         btn_back.clicked.connect(self._on_back_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
-        folders_filter_text.textChanged.connect(self._on_filter_text_changed)
-        my_tasks_checkbox.stateChanged.connect(
+        filters_widget.text_changed.connect(self._on_filter_text_changed)
+        filters_widget.my_tasks_changed.connect(
             self._on_my_tasks_checkbox_state_changed
         )
         folders_widget.focused_in.connect(self._on_folders_focus)
@@ -133,9 +112,9 @@ class HierarchyPage(QtWidgets.QWidget):
         self._is_visible = False
         self._controller = controller
 
+        self._filters_widget = filters_widget
         self._btn_back = btn_back
         self._projects_combobox = projects_combobox
-        self._my_tasks_checkbox = my_tasks_checkbox
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
         self._workfiles_page = workfiles_page
@@ -158,8 +137,9 @@ class HierarchyPage(QtWidgets.QWidget):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
         self._workfiles_page.refresh()
+        # Update my tasks
         self._on_my_tasks_checkbox_state_changed(
-            self._my_tasks_checkbox.checkState()
+            self._filters_widget.is_my_tasks_checked()
         )
 
     def _on_back_clicked(self):
@@ -171,16 +151,16 @@ class HierarchyPage(QtWidgets.QWidget):
     def _on_filter_text_changed(self, text):
         self._folders_widget.set_name_filter(text)
 
-    def _on_my_tasks_checkbox_state_changed(self, state):
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
         folder_ids = None
         task_ids = None
-        state = checkstate_int_to_enum(state)
-        if state == QtCore.Qt.Checked:
+        if enabled:
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
             )
             folder_ids = entity_ids["folder_ids"]
             task_ids = entity_ids["task_ids"]
+
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
 

@@ -72,8 +72,11 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                     "Instance {} doesn't have version.".format(instance))
                 continue
 
-            product_type = instance.data["productType"]
-            if product_type == "workfile":
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
+
+            if product_base_type == "workfile":
                 workfile_instance = instance
             else:
                 other_instances.append(instance)
@@ -105,7 +108,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 created links by its type
         """
         if workfile_instance is None:
-            self.log.warning("No workfile in this publish session.")
+            self.log.debug("No workfile in this publish session.")
             return
 
         workfile_version_id = workfile_instance.data["versionEntity"]["id"]

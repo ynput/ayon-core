@@ -24,17 +24,32 @@ class ProductTypeSmartSelectModel(BaseSettingsModel):
 class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
 
-    product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
     )
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
-        enum_resolver=task_types_enum
+        enum_resolver=task_types_enum,
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
-    template: str = SettingsField("", title="Template")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    template: str = SettingsField(
+        "",
+        title="Template",
+        regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$",
+    )
 
 
 class FilterCreatorProfile(BaseSettingsModel):
@@ -102,7 +117,10 @@ class WorkfileTemplateProfile(BaseSettingsModel):
         enum_resolver=task_types_enum
     )
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     # TODO this was using project anatomy template name
     workfile_template: str = SettingsField("", title="Workfile template")
 
@@ -110,13 +128,19 @@ class WorkfileTemplateProfile(BaseSettingsModel):
 class LastWorkfileOnStartupProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
     use_last_published_workfile: bool = SettingsField(
         True, title="Use last published workfile"
@@ -126,20 +150,29 @@ class LastWorkfileOnStartupProfile(BaseSettingsModel):
 class WorkfilesToolOnStartupProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
 
 
 class ExtraWorkFoldersProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -154,7 +187,10 @@ class ExtraWorkFoldersProfile(BaseSettingsModel):
 class WorkfilesLockProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    host_names: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
 
 
@@ -243,7 +279,10 @@ def filter_type_enum():
 class LoaderProductTypeFilterProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -270,19 +309,22 @@ class LoaderToolModel(BaseSettingsModel):
 
 class PublishTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
-    # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
     task_names: list[str] = SettingsField(
-        default_factory=list, title="Task names"
+        default_factory=list,
+        title="Task names"
     )
     template_name: str = SettingsField(
         "",
@@ -293,19 +335,22 @@ class PublishTemplateNameProfile(BaseSettingsModel):
 
 class HeroTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types",
     )
-    # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
     task_names: list[str] = SettingsField(
-        default_factory=list, title="Task names"
+        default_factory=list,
+        title="Task names",
     )
     template_name: str = SettingsField(
         "",
@@ -316,7 +361,10 @@ class HeroTemplateNameProfile(BaseSettingsModel):
 
 class CustomStagingDirProfileModel(BaseSettingsModel):
     active: bool = SettingsField(True, title="Is active")
-    hosts: list[str] = SettingsField(default_factory=list, title="Host names")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -325,8 +373,8 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     task_names: list[str] = SettingsField(
         default_factory=list, title="Task names"
     )
-    product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list, title="Product base types"
     )
     product_names: list[str] = SettingsField(
         default_factory=list, title="Product names"
@@ -338,6 +386,27 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
         "",
         title="Template name",
         enum_resolver=anatomy_template_items_enum(category="staging")
+    )
+
+
+class DiscoverValidationModel(BaseSettingsModel):
+    """Strictly validate publish plugins discovery.
+
+    Artist won't be able to publish if path to publish plugin fails to be
+        imported.
+
+    """
+    _isGroup = True
+    enabled: bool = SettingsField(
+        False,
+        description="Enable strict mode of plugins discovery",
+    )
+    ignore_paths: list[str] = SettingsField(
+        default_factory=list,
+        title="Ignored paths (regex)",
+        description=(
+            "Paths that do match regex will be skipped in validation."
+        ),
     )
 
 
@@ -357,6 +426,10 @@ class PublishToolModel(BaseSettingsModel):
             default_factory=list,
             title="Custom Staging Dir Profiles"
         )
+    )
+    discover_validation: DiscoverValidationModel = SettingsField(
+        default_factory=DiscoverValidationModel,
+        title="Validate plugins discovery",
     )
     comment_minimum_required_chars: int = SettingsField(
         0,
@@ -432,108 +505,118 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "product_name_profiles": [
             {
+                "product_base_types": [],
                 "product_types": [],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "workfile"
                 ],
-                "hosts": [],
+                "product_types": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "render"
                 ],
-                "hosts": [],
+                "product_types": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "renderLayer",
                     "renderPass"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "tvpaint"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": (
                     "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
                 )
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "workfile"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "aftereffects",
                     "tvpaint"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
-                "product_types": ["render"],
-                "hosts": [
+                "product_base_types": ["render"],
+                "product_types": [],
+                "host_names": [
                     "aftereffects"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}{Composition}{Variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "S_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "skeletalMesh"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "SK_{folder[name]}{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "hda"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "houdini"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{folder[name]}_{variant}"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "textureSet"
                 ],
-                "hosts": [
+                "product_types": [],
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "T_{folder[name]}{variant}"
             }
         ],
@@ -543,12 +626,12 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_template_profiles": [
             {
                 "task_types": [],
-                "hosts": [],
+                "host_names": [],
                 "workfile_template": "default"
             },
             {
                 "task_types": [],
-                "hosts": [
+                "host_names": [
                     "unreal"
                 ],
                 "workfile_template": "unreal"
@@ -556,18 +639,18 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "last_workfile_on_startup": [
             {
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "enabled": True,
                 "use_last_published_workfile": False
             }
         ],
         "open_workfile_tool_on_startup": [
             {
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "enabled": False
             }
         ],
@@ -580,40 +663,29 @@ DEFAULT_TOOLS_VALUES = {
     "publish": {
         "template_name_profiles": [
             {
-                "product_types": [],
-                "hosts": [],
+                "product_base_types": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "default"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "review",
                     "render",
                     "prerender"
                 ],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "render"
             },
             {
-                "product_types": [
-                    "simpleUnrealTexture"
-                ],
-                "hosts": [
-                    "standalonepublisher"
-                ],
-                "task_types": [],
-                "task_names": [],
-                "template_name": "simpleUnrealTexture"
-            },
-            {
-                "product_types": [
+                "product_base_types": [
                     "image",
                     "textures",
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
@@ -621,11 +693,11 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTexture"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "staticMesh",
                     "skeletalMesh"
                 ],
-                "hosts": [
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
@@ -633,10 +705,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "maya2unreal"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "online"
                 ],
-                "hosts": [
+                "host_names": [
                     "traypublisher"
                 ],
                 "task_types": [],
@@ -644,35 +716,36 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "online"
             },
             {
-                "product_types": [
+                "product_base_types": [
                     "tycache"
                 ],
-                "hosts": [
+                "host_names": [
                     "max"
                 ],
                 "task_types": [],
                 "task_names": [],
                 "template_name": "tycache"
+            },
+            {
+                "product_base_types": [
+                    "uasset",
+                    "umap"
+                ],
+                "host_names": [
+                    "unreal"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "unrealuasset"
             }
         ],
         "hero_template_name_profiles": [
             {
-                "product_types": [
-                    "simpleUnrealTexture"
-                ],
-                "hosts": [
-                    "standalonepublisher"
-                ],
-                "task_types": [],
-                "task_names": [],
-                "template_name": "simpleUnrealTextureHero"
-            },
-            {
-                "product_types": [
+                "product_base_types": [
                     "image",
                     "textures"
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
@@ -680,6 +753,10 @@ DEFAULT_TOOLS_VALUES = {
                 "template_name": "simpleUnrealTextureHero"
             }
         ],
+        "discover_validation": {
+            "enabled": False,
+            "ignore_paths": [],
+        },
         "comment_minimum_required_chars": 0,
     }
 }

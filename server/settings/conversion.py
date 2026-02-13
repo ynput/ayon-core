@@ -1,7 +1,165 @@
+import re
 import copy
 from typing import Any
 
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
+
+PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
+
+
+def _convert_product_base_types_1_8_0(overrides):
+    # Staging dir, standard/hero publish templase
+    all_profiles = []
+    publish_settings = overrides.get("tools", {}).get("publish", {})
+    for profile_name in (
+        "custom_staging_dir_profiles",
+        "template_name_profiles",
+        "hero_template_name_profiles",
+    ):
+        profiles = publish_settings.get(profile_name)
+        if profiles:
+            all_profiles.append(profiles)
+
+    # Version start
+    version_start_s = (
+        overrides
+        .get("version_start_category", {})
+        .get("profiles")
+    )
+    if version_start_s:
+        all_profiles.append(version_start_s)
+
+    # Publish plugins
+    publish_plugins = overrides.get("publish", {})
+    for settings_parts in (
+        ("CollectUSDLayerContributions", "profiles"),
+        ("ExtractThumbnail", "profiles"),
+        ("ExtractOIIOTranscode", "profiles"),
+        ("ExtractOIIOPostProcess", "profiles"),
+        ("ExtractReview", "profiles"),
+        ("ExtractBurnin", "profiles"),
+        ("IntegrateProductGroup", "product_grouping_profiles"),
+        ("PreIntegrateThumbnails", "integrate_profiles"),
+    ):
+        found = True
+        plugin_settings = publish_plugins
+        for part in settings_parts:
+            if part not in plugin_settings:
+                found = False
+                break
+            plugin_settings = plugin_settings[part]
+
+        if found and plugin_settings:
+            all_profiles.append(plugin_settings)
+
+    # Convert data in profiles
+    for profiles in all_profiles:
+        for profile in profiles:
+            for old, new in (
+                ("product_types", "product_base_types"),
+                ("hosts", "host_names"),
+                ("tasks", "task_names"),
+            ):
+                if old in profile and new not in profile:
+                    profile[new] = profile.pop(old)
+
+    collect_exp_res = publish_plugins.get("CollectExplicitResolution") or {}
+    if (
+        "product_types" in collect_exp_res
+        and "product_base_types" not in collect_exp_res
+    ):
+        collect_exp_res["product_base_types"] = collect_exp_res.pop(
+            "product_types"
+        )
+
+
+def _convert_unify_profile_keys_1_8_0(overrides):
+    workfiles_settings = overrides.get("tools", {}).get("Workfiles", {})
+
+    profiles_settings = []
+    for key in (
+        "workfile_template_profiles",
+        "last_workfile_on_startup",
+        "open_workfile_tool_on_startup",
+        "extra_folders",
+        "workfile_lock_profiles",
+    ):
+        value = workfiles_settings.get(key)
+        if value:
+            profiles_settings.append(value)
+
+    load_settings = overrides.get("tools", {}).get("loader", {})
+
+    for key in (
+        "product_type_filter_profiles",
+    ):
+        value = load_settings.get(key)
+        if value:
+            profiles_settings.append(value)
+
+    validate_intent_p = (
+        overrides
+        .get("publish", {})
+        .get("ValidateIntent", {})
+        .get("profiles")
+    )
+    if validate_intent_p:
+        profiles_settings.append(validate_intent_p)
+
+    for profiles in profiles_settings:
+        for profile in profiles:
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in profile and new_key not in profile:
+                    profile[new_key] = profile.pop(old_key)
+
+
+def _convert_product_name_templates_1_7_0(overrides):
+    product_name_profiles = (
+        overrides
+        .get("tools", {})
+        .get("creator", {})
+        .get("product_name_profiles")
+    )
+    if (
+        not product_name_profiles
+        or not isinstance(product_name_profiles, list)
+    ):
+        return
+
+    # Already converted
+    item = product_name_profiles[0]
+    if "product_base_types" in item or "product_types" not in item:
+        return
+
+    # Move product base types to product types
+    for item in product_name_profiles:
+        item["product_base_types"] = item["product_types"]
+        item["product_types"] = []
+
+
+def _convert_product_name_templates_1_6_5(overrides):
+    product_name_profiles = (
+        overrides
+        .get("tools", {})
+        .get("creator", {})
+        .get("product_name_profiles")
+    )
+    if isinstance(product_name_profiles, list):
+        for item in product_name_profiles:
+            # Remove unsupported product name characters
+            template = item.get("template")
+            if isinstance(template, str):
+                item["template"] = PRODUCT_NAME_REPL_REGEX.sub("", template)
+
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in item:
+                    item[new_key] = item.get(old_key)
 
 
 def _convert_imageio_configs_0_4_5(overrides):
@@ -133,11 +291,56 @@ def _convert_publish_plugins(overrides):
     _convert_oiio_transcode_0_4_5(overrides["publish"])
 
 
+def _convert_extract_thumbnail(overrides):
+    """ExtractThumbnail config settings did change to profiles."""
+    extract_thumbnail_overrides = (
+        overrides.get("publish", {}).get("ExtractThumbnail")
+    )
+    if extract_thumbnail_overrides is None:
+        return
+
+    base_value = {
+        "product_types": [],
+        "host_names": [],
+        "task_types": [],
+        "task_names": [],
+        "product_names": [],
+        "integrate_thumbnail": True,
+        "target_size": {"type": "source"},
+        "duration_split": 0.5,
+        "oiiotool_defaults": {
+            "type": "colorspace",
+            "colorspace": "color_picking",
+        },
+        "ffmpeg_args": {"input": ["-apply_trc gamma22"], "output": []},
+    }
+    for key in (
+        "product_names",
+        "integrate_thumbnail",
+        "target_size",
+        "duration_split",
+        "oiiotool_defaults",
+        "ffmpeg_args",
+    ):
+        if key in extract_thumbnail_overrides:
+            base_value[key] = extract_thumbnail_overrides.pop(key)
+
+    extract_thumbnail_profiles = extract_thumbnail_overrides.setdefault(
+        "profiles", []
+    )
+    extract_thumbnail_profiles.append(base_value)
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
+    _convert_product_name_templates_1_6_5(overrides)
+    _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
+    _convert_extract_thumbnail(overrides)
+    _convert_product_base_types_1_8_0(overrides)
+    _convert_unify_profile_keys_1_8_0(overrides)
     return overrides

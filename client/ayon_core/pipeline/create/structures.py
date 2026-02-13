@@ -1,16 +1,19 @@
 import copy
 import collections
 from uuid import uuid4
+from dataclasses import dataclass
 from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
@@ -21,6 +24,8 @@ from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
     from .creator_plugins import BaseCreator
+
+log = Logger.get_logger(__name__)
 
 
 class IntEnum(int, Enum):
@@ -38,6 +43,49 @@ class ParentFlags(IntEnum):
     # NOTE It might be helpful to have a function that would return "real"
     #   active state for instances
     share_active = 1 << 1
+
+
+@dataclass
+class ProductTypeItem:
+    """Structure to define product types for a create plugin.
+
+    Product types can be used as studio definitions of a product base type.
+
+    It is expected that attributes will be added/removed in the future,
+        in that regards it is recommended to use pre-defined methods
+        'new' and 'from_data' that do safely handle those cases and
+        can contain backwards/forwards compatibility if needed.
+
+    Attributes:
+        product_type (str): Name of a product type.
+        label (str): Product type label shown in Create view.
+
+    """
+    product_type: str
+    label: Optional[str] = None
+
+    @classmethod
+    def new(
+        cls,
+        *,
+        product_type: str,
+        label: str,
+        **unknown,
+    ) -> "ProductTypeItem":
+        if unknown:
+            unknown_keys = ", ".join(f"'{k}'" for k in unknown.keys())
+            log.info(
+                f"Unknown keys in ProductTypeItem: {unknown_keys}"
+            )
+
+        return cls(
+            product_type=product_type,
+            label=label,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ProductTypeItem":
+        return cls.new(**data)
 
 
 class ConvertorItem:
@@ -480,6 +528,10 @@ class CreatedInstance:
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
         creator (BaseCreator): Creator responsible for instance.
+        product_base_type (Optional[str]): Product base type that will be
+            created. If not provided then product base type is taken from
+            creator plugin. If creator does not have product base type then
+            deprecation warning is raised.
     """
 
     # Keys that can't be changed or removed from data after loading using
@@ -490,6 +542,7 @@ class CreatedInstance:
         "id",
         "instance_id",
         "productType",
+        "productBaseType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -509,7 +562,13 @@ class CreatedInstance:
         data: Dict[str, Any],
         creator: "BaseCreator",
         transient_data: Optional[Dict[str, Any]] = None,
+        product_base_type: Optional[str] = None
     ):
+        """Initialize CreatedInstance."""
+        # fallback to product type for backward compatibility
+        if not product_base_type:
+            product_base_type = creator.product_base_type or product_type
+
         self._creator = creator
         creator_identifier = creator.identifier
         group_label = creator.get_group_label()
@@ -562,6 +621,9 @@ class CreatedInstance:
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
+
+        self._data["productBaseType"] = product_base_type
+
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
 
@@ -667,22 +729,26 @@ class CreatedInstance:
     # ------
 
     @property
-    def product_type(self):
+    def product_base_type(self) -> str:
+        return self._data["productBaseType"]
+
+    @property
+    def product_type(self) -> str:
         return self._data["productType"]
 
     @property
-    def product_name(self):
+    def product_name(self) -> str:
         return self._data["productName"]
 
     @property
-    def label(self):
+    def label(self) -> str:
         label = self._data.get("label")
         if not label:
             label = self.product_name
         return label
 
     @property
-    def group_label(self):
+    def group_label(self) -> str:
         label = self._data.get("group")
         if label:
             return label
@@ -942,19 +1008,25 @@ class CreatedInstance:
         instance_data = copy.deepcopy(instance_data)
 
         product_type = instance_data.get("productType")
+        product_base_type = (
+            instance_data.get("productBaseType")
+            or product_type
+            or instance_data.get("family")
+            or creator.product_base_type
+        )
         if product_type is None:
-            product_type = instance_data.get("family")
-            if product_type is None:
-                product_type = creator.product_type
+            product_type = product_base_type
+
         product_name = instance_data.get("productName")
         if product_name is None:
             product_name = instance_data.get("subset")
 
         return cls(
-            product_type,
-            product_name,
-            instance_data,
-            creator,
+            product_base_type=product_base_type,
+            product_type=product_type,
+            product_name=product_name,
+            data=instance_data,
+            creator=creator,
             transient_data=transient_data,
         )
 
