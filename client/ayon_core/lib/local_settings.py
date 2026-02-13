@@ -178,24 +178,24 @@ class ASettingRegistry(ABC):
     def get_item(
         self,
         name: str,
-        default: Optional[Any] = _PLACEHOLDER,
+        default: Any = _PLACEHOLDER,
     ) -> Any:
         """Get item from settings registry.
 
         Args:
             name (str): Name of the item.
-            default (Optional[Any]): Default value if item is not available.
+            default (Any): Default value if item is not available.
 
         Returns:
             Any: Value of the item.
 
         Raises:
-            KeyError: If item doesn't exist.
+            RegistryItemNotFound: If item doesn't exist.
 
         """
         return self._get_item(name, default)
 
-    def set_item(self, name: str, value: str) -> None:
+    def set_item(self, name: str, value: Any) -> None:
         """Set item to settings registry.
 
         Args:
@@ -339,7 +339,8 @@ class IniSettingRegistry(ASettingRegistry):
     This class is using :mod:`configparser` (ini) files to store items.
 
     """
-    def __init__(self, name: str, path: str) -> None:
+
+    def __init__(self, name: str, path: str):
         super().__init__(name)
         # get registry file
         self._registry_file = os.path.join(path, f"{name}.ini")
