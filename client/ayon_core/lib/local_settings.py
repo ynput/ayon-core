@@ -217,7 +217,7 @@ class ASettingRegistry(ABC):
         self._delete_item(name, ignore_missing=ignore_missing)
 
 
-class AYONSecureRegistry:
+class AYONSecureRegistry(ASettingRegistry):
     """Store information using keyring.
 
     Registry should be used for private data that should be available only for
@@ -246,29 +246,10 @@ class AYONSecureRegistry:
             keyring.set_keyring(Windows.WinVaultKeyring())
 
         # Force "AYON" prefix
-        self._name = f"AYON/{name}"
-
-    def set_item(self, name: str, value: str) -> None:
-        """Set sensitive item into the system's keyring.
-
-        This uses `Keyring module`_ to save sensitive stuff into the system's
-        keyring.
-
-        Args:
-            name (str): Name of the item.
-            value (str): Value of the item.
-
-        .. _Keyring module:
-            https://github.com/jaraco/keyring
-
-        """
-        import keyring
-
-        keyring.set_password(self._name, name, value)
-        self.get_item.cache_clear()
+        super().__init__("/".join(("AYON", name)))
 
     @lru_cache(maxsize=32)
-    def get_item(
+    def _get_item(
         self, name: str, default: Any = _PLACEHOLDER
     ) -> Optional[str]:
         """Get value of sensitive item from the system's keyring.
@@ -313,13 +294,15 @@ class AYONSecureRegistry:
             f"Item {self._name}:{name} not found in keyring."
         )
 
-    def delete_item(self, name: str) -> None:
-        """Delete value stored in the system's keyring.
+    def _set_item(self, name: str, value: str) -> None:
+        """Set sensitive item into system's keyring.
 
-        See also `Keyring module`_
+        This uses `Keyring module`_ to save sensitive stuff into system's
+        keyring.
 
         Args:
-            name (str): Name of the item to be deleted.
+            name (str): Name of the item.
+            value (str): Value of the item.
 
         .. _Keyring module:
             https://github.com/jaraco/keyring
@@ -327,8 +310,27 @@ class AYONSecureRegistry:
         """
         import keyring
 
-        self.get_item.cache_clear()
+        keyring.set_password(self._name, name, value)
+        self._get_item.cache_clear()
+
+    def _delete_item(self, name: str, ignore_missing: bool = True):
+        """Delete value stored in system's keyring.
+
+        See also `Keyring module`_
+
+        Args:
+            name (str): Name of the item to be deleted.
+            ignore_missing (bool): If True, no error is raised if item doesn't
+                exist.
+
+        .. _Keyring module:
+            https://github.com/jaraco/keyring
+
+        """
+        import keyring
+
         keyring.delete_password(self._name, name)
+        self._get_item.cache_clear()
 
 
 class IniSettingRegistry(ASettingRegistry):
