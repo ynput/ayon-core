@@ -139,28 +139,33 @@ class _FakeException(Exception):
 
 
 class ASettingRegistry(ABC):
-    """Abstract class to defining structure of registry class.
+    """Abstract class defining structure of **SettingRegistry** class.
+
+    Args:
+        name(str): Name of registry used as the identifier for data.
 
     """
     def __init__(self, name: str) -> None:
         self._name = name
 
     @abstractmethod
-    def _get_item(self, name: str) -> Any:
+    def _get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Any:
         """Get item value from registry."""
 
     @abstractmethod
-    def _set_item(self, name: str, value: str) -> None:
+    def _set_item(self, name: str, value: Any) -> None:
         """Set item value to registry."""
 
     @abstractmethod
-    def _delete_item(self, name: str) -> None:
+    def _delete_item(self, name: str, ignore_missing: bool) -> None:
         """Delete item from registry."""
 
     def __getitem__(self, name: str) -> Any:
         return self._get_item(name)
 
-    def __setitem__(self, name: str, value: str) -> None:
+    def __setitem__(self, name: str, value: Any) -> None:
         self._set_item(name, value)
 
     def __delitem__(self, name: str) -> None:
@@ -170,20 +175,25 @@ class ASettingRegistry(ABC):
     def name(self) -> str:
         return self._name
 
-    def get_item(self, name: str) -> str:
+    def get_item(
+        self,
+        name: str,
+        default: Optional[Any] = _PLACEHOLDER,
+    ) -> Any:
         """Get item from settings registry.
 
         Args:
             name (str): Name of the item.
+            default (Optional[Any]): Default value if item is not available.
 
         Returns:
-            value (str): Value of the item.
+            Any: Value of the item.
 
         Raises:
-            RegistryItemNotFound: If the item doesn't exist.
+            KeyError: If item doesn't exist.
 
         """
-        return self._get_item(name)
+        return self._get_item(name, default)
 
     def set_item(self, name: str, value: str) -> None:
         """Set item to settings registry.
@@ -195,14 +205,16 @@ class ASettingRegistry(ABC):
         """
         self._set_item(name, value)
 
-    def delete_item(self, name: str) -> None:
+    def delete_item(self, name: str, ignore_missing: bool = True):
         """Delete item from settings registry.
 
         Args:
             name (str): Name of the item.
+            ignore_missing (bool): If True, no error is raised if item doesn't
+                exist.
 
         """
-        self._delete_item(name)
+        self._delete_item(name, ignore_missing=ignore_missing)
 
 
 class AYONSecureRegistry:
