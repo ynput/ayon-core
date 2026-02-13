@@ -193,6 +193,11 @@ def create_skeleton_instance(
 
     """
     # list of family names to transfer to new family if present
+    if families_transfer is None:
+        families_transfer = []
+
+    if instance_transfer is None:
+        instance_transfer = {}
 
     context = instance.context
     data = instance.data.copy()
