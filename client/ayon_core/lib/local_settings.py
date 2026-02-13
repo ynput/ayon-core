@@ -527,7 +527,9 @@ class JSONSettingRegistry(ASettingRegistry):
             except KeyError:
                 if default is not _PLACEHOLDER:
                     return default
-                raise RegistryItemNotFound(f"Registry doesn't contain value {name}")
+                raise RegistryItemNotFound(
+                    f"Registry doesn't contain value {name}"
+                )
         return value
 
     def _set_item(self, name: str, value: Any):
