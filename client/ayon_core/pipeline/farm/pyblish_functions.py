@@ -223,7 +223,7 @@ def create_skeleton_instance(
     # QUESTION why is 'render' product base type enforced here?
     product_base_type = instance.data.get("productBaseType")
     product_type = None
-    if product_base_type:
+    if not product_base_type:
         product_type = instance.data.get("productType")
         product_base_type = "render"
         if "prerender.farm" in instance.data["families"]:
