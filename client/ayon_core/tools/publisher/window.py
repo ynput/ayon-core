@@ -15,7 +15,7 @@ from ayon_core import (
 )
 from ayon_core.tools.utils import (
     ErrorMessageBox,
-    PlaceholderLineEdit,
+    ResizableCommentEdit,
     MessageOverlayObject,
     PixmapLabel,
 )
@@ -131,7 +131,7 @@ class PublisherWindow(QtWidgets.QDialog):
         footer_widget = QtWidgets.QWidget(under_publish_widget)
         footer_bottom_widget = QtWidgets.QWidget(footer_widget)
 
-        comment_input = PlaceholderLineEdit(footer_widget)
+        comment_input = ResizableCommentEdit(footer_widget)
         comment_input.setObjectName("PublishCommentInput")
         comment_input.setPlaceholderText(
             "Attach a comment to your publish"
@@ -169,7 +169,7 @@ class PublisherWindow(QtWidgets.QDialog):
             footer_margins.bottom() + self.footer_border
         )
 
-        footer_layout.addWidget(comment_input, 0)
+        footer_layout.addWidget(comment_input, 1)
         footer_layout.addWidget(footer_spacer, 0)
         footer_layout.addWidget(footer_bottom_widget, 0)
 

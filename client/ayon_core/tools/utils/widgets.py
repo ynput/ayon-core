@@ -137,6 +137,154 @@ class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
             viewport.setPalette(filter_palette)
 
 
+class _ResizeGrip(QtWidgets.QWidget):
+    """Drag grip that resizes its parent container and the host window."""
+
+    _size = 16
+    _padding = 3
+    _triangle_scale = 0.75
+
+    def __init__(self, container):
+        super().__init__(container)
+        self._container = container
+        self._drag_start_y = None
+        self._drag_start_h = None
+        self._drag_start_win_h = None
+        self.setCursor(QtCore.Qt.SizeFDiagCursor)
+        self.setFixedSize(self._size, self._size)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        color = self.palette().color(QtGui.QPalette.PlaceholderText)
+        color.setAlpha(180)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QBrush(color))
+        p = self._padding
+        s = self._size
+        t = max(2, int((s - 2 * p) * self._triangle_scale))
+        pts = [
+            QtCore.QPoint(p + t, p),
+            QtCore.QPoint(p + t, p + t),
+            QtCore.QPoint(p, p + t),
+        ]
+        painter.drawPolygon(QtGui.QPolygon(pts))
+
+    def _global_y(self, event):
+        if hasattr(event, "globalPosition"):
+            return event.globalPosition().y()
+        return event.globalPos().y()
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self._drag_start_y = self._global_y(event)
+            self._drag_start_h = self._container.height()
+            w = self._container.window()
+            self._drag_start_win_h = w.height() if w else None
+            self.grabMouse()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._drag_start_y is not None:
+            try:
+                delta = int(self._global_y(event) - self._drag_start_y)
+                new_h = max(
+                    self._container._min_h,
+                    min(self._container._max_h, self._drag_start_h + delta),
+                )
+                self._container.setFixedHeight(new_h)
+                self._container.updateGeometry()
+                p = self._container.parentWidget()
+                while p:
+                    if p.layout():
+                        p.layout().invalidate()
+                    p.updateGeometry()
+                    p = p.parentWidget()
+                w = self._container.window()
+                if w and self._drag_start_win_h is not None:
+                    extra = new_h - self._drag_start_h
+                    w.resize(w.width(), self._drag_start_win_h + extra)
+            except Exception:
+                log.exception("Resize grip: drag failed")
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton and self._drag_start_y is not None:
+            self.releaseMouse()
+            self._drag_start_y = None
+            self._drag_start_h = None
+            self._drag_start_win_h = None
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+
+class ResizableCommentEdit(QtWidgets.QWidget):
+    """Wrapper: PlainTextEdit + resize grip overlaid on bottom-right corner."""
+
+    _min_height_default = 28
+    _max_height_default = 250
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        inner = PlaceholderPlainTextEdit(self)
+        inner.setLineWrapMode(QtWidgets.QPlainTextEdit.WidgetWidth)
+        inner.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        inner.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        fm = QtGui.QFontMetrics(inner.font())
+        self._min_h = max(self._min_height_default, fm.height() + 12)
+        self._max_h = self._max_height_default
+        self.setFixedHeight(self._min_h)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(inner)
+
+        grip = _ResizeGrip(self)
+        grip.raise_()
+
+        self._inner = inner
+        self._grip = grip
+        self._place_grip()
+
+    def _place_grip(self):
+        s = self._grip._size
+        sb = self._inner.verticalScrollBar()
+        sb_w = sb.width() if sb and sb.isVisible() else 0
+        self._grip.move(self.width() - s - sb_w - 2, self.height() - s - 2)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._place_grip()
+        self._grip.raise_()
+
+    def text(self):
+        return self._inner.toPlainText()
+
+    def setText(self, s):
+        self._inner.setPlainText(s or "")
+
+    def setCursorPosition(self, _pos=None):
+        cursor = self._inner.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        self._inner.setTextCursor(cursor)
+
+    def setPlaceholderText(self, text):
+        self._inner.setPlaceholderText(text)
+
+    def setStyleSheet(self, ss):
+        self._inner.setStyleSheet(ss)
+
+    def setFocus(self):
+        self._inner.setFocus()
+
+
 class MarkdownLabel(QtWidgets.QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
