@@ -193,6 +193,11 @@ def create_skeleton_instance(
 
     """
     # list of family names to transfer to new family if present
+    if families_transfer is None:
+        families_transfer = []
+
+    if instance_transfer is None:
+        instance_transfer = {}
 
     context = instance.context
     data = instance.data.copy()
@@ -220,14 +225,30 @@ def create_skeleton_instance(
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    # QUESTION why is 'render' product base type enforced here?
+    # This is a hack to keep the value of 'productType'.
+    # Because this function does not use product base type from source
+    #   instance and we don't know if product type of the instance was
+    #   customized or not, only way how to guess custom product type is
+    #   to check if is same as product base type.
+    i_product_base_type = instance.data.get("productBaseType")
+    i_product_type = instance.data.get("productType")
+    product_type = None
+    if (
+        i_product_base_type
+        and i_product_base_type != i_product_type
+    ):
+        product_type = i_product_type
+
+    # This is the old way of defining product base type
+    # - hard-coded product base type
     product_base_type = "render"
     if "prerender.farm" in instance.data["families"]:
         product_base_type = "prerender"
 
+    if not product_type:
+        product_type = product_base_type
+
     families = [product_base_type]
-    # TODO find out how to get 'product_type'
-    product_type = product_base_type
 
     # pass review to families if marked as review
     if data.get("review"):
