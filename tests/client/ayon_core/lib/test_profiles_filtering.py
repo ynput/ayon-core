@@ -261,7 +261,7 @@ class TestGetHighestScoreProfiles(unittest.TestCase):
         # both have 2 exact matches and one wildcard match but the first
         # profile wins because it has an exact match on an earlier key
         profiles = [
-            {"a": "X", "b": "X", "c": "*", "d": 0},  # match on a and b => winner
+            {"a": "X", "b": "X", "c": "*", "d": 0},  # match on a and b => winner  # noqa: E501
             {"a": "X", "b": "*", "c": "X", "d": 1},  # match on a and c
         ]
         key_values = {"a": "X", "b": "X", "c": "X"}
