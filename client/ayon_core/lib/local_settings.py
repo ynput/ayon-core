@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*-
 """Package to deal with saving and retrieving user specific settings."""
+from __future__ import annotations
+
 import os
 import json
 import platform
