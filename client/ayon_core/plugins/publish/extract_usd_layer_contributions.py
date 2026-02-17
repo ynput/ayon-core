@@ -1,8 +1,9 @@
-from operator import attrgetter
+import copy
 import dataclasses
 import os
 import platform
 from collections import defaultdict
+from operator import attrgetter
 from typing import Any, Dict, List
 
 import pyblish.api
@@ -465,14 +466,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             return existing_instance
 
         # Otherwise create the instance
+        product_base_type = "usd"
         new_instance = context.create_instance(name=product_name)
         new_instance.data.update(data)
 
         new_instance.data["label"] = (
             "{0} ({1})".format(product_name, new_instance.data["folderPath"])
         )
-        new_instance.data["family"] = "usd"
-        new_instance.data["productType"] = "usd"
+        new_instance.data["family"] = product_base_type
+        new_instance.data["productBaseType"] = product_base_type
+        new_instance.data["productType"] = product_base_type
         new_instance.data["icon"] = "link"
         new_instance.data["comment"] = "Automated bootstrap USD file."
         new_instance.append(source_instance.id)
@@ -484,6 +487,15 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # different departments and scenes.
         new_instance.data["followWorkfileVersion"] = False
 
+        # Transfer any creator and publish attributes, to ensure any optional
+        # validators that may also apply to these instances will have the
+        # state inherited from its parent
+        for key in ("creator_attributes", "publish_attributes"):
+            if key in source_instance.data:
+                new_instance.data[key] = copy.deepcopy(
+                    source_instance.data[key]
+                )
+
         return new_instance
 
     @classmethod
@@ -494,8 +506,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
 
         # Set default target layer based on product type
         current_context_task_type = create_context.get_current_task_type()
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         profile = filter_profiles(cls.profiles, {
-            "product_types": instance.data["productType"],
+            "product_base_types": product_base_type,
             "task_types": current_context_task_type
         })
         if not profile:

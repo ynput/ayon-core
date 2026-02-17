@@ -159,15 +159,17 @@ class ExtractBurnin(publish.Extractor):
 
     def main_process(self, instance):
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
 
         filtering_criteria = {
-            "hosts": host_name,
-            "product_types": product_type,
+            "host_names": host_name,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -178,23 +180,26 @@ class ExtractBurnin(publish.Extractor):
             logger=self.log
         )
         if not profile:
-            self.log.debug((
+            self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\" | Product name \"{}\""
-                " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Product name \"{product_name}\""
+                f" | Task name \"{task_name}\""
+                f" | Task type \"{task_type}\""
+            )
             return
 
         # Pre-filter burnin definitions by instance families
         burnin_defs = self.filter_burnins_defs(profile, instance)
         if not burnin_defs:
-            self.log.debug((
+            self.log.debug(
                 "Skipped instance. Burnin definitions are not set for profile"
-                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
-                " | Profile \"{}\""
-            ).format(host_name, product_type, task_name, profile))
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Task name \"{task_name}\""
+                f" | Profile \"{profile}\""
+            )
             return
 
         burnins_per_repres = self._get_burnins_per_representations(
