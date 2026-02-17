@@ -1,8 +1,9 @@
-from operator import attrgetter
+import copy
 import dataclasses
 import os
 import platform
 from collections import defaultdict
+from operator import attrgetter
 from typing import Any, Dict, List
 
 import pyblish.api
@@ -485,6 +486,15 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # so that there will never be conflicts between contributions from
         # different departments and scenes.
         new_instance.data["followWorkfileVersion"] = False
+
+        # Transfer any creator and publish attributes, to ensure any optional
+        # validators that may also apply to these instances will have the
+        # state inherited from its parent
+        for key in ("creator_attributes", "publish_attributes"):
+            if key in source_instance.data:
+                new_instance.data[key] = copy.deepcopy(
+                    source_instance.data[key]
+                )
 
         return new_instance
 
