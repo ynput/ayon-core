@@ -548,7 +548,7 @@ class ActionsModel:
             env = os.environ.copy()
             env.pop("AYON_BUNDLE_NAME", None)
             env.pop("AYON_STUDIO_BUNDLE_NAME", None)
-            clean_envs_for_ayon_process(env)
+            env = clean_envs_for_ayon_process(env)
             run_detached_ayon_launcher_process(uri, env=env)
 
         elif response_type in ("query", "navigate"):
