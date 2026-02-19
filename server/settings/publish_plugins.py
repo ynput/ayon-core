@@ -1596,6 +1596,10 @@ DEFAULT_PUBLISH_VALUES = {
                                 "-b:a 192k",
                                 "-g 1",
                                 "-movflags faststart"
+                                "-color_range tv",
+                                "-colorspace bt709",
+                                "-color_primaries bt709",
+                                "-color_trc bt709",
                             ]
                         },
                         "filter": {
@@ -1694,7 +1698,11 @@ DEFAULT_PUBLISH_VALUES = {
                                 "-c:a aac",
                                 "-b:a 192k",
                                 "-g 1",
-                                "-movflags faststart"
+                                "-movflags faststart",
+                                "-color_range tv",
+                                "-colorspace bt709",
+                                "-color_primaries bt709",
+                                "-color_trc bt709",
                             ]
                         },
                         "filter": {
