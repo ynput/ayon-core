@@ -5,7 +5,7 @@
 
 [project]
 name = "ayon-core"
-version = "1.8.1"
+version = "1.8.1+dev"
 description = "AYON core provides the base building blocks for all other AYON addons and integrations and is responsible for discovery and initialization of other addons."
 authors = [
     {name = "Ynput s.r.o.", email = "info@ynput.io"}
