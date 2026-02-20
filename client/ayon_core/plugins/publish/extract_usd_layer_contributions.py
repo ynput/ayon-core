@@ -337,6 +337,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             instance.data.get("productGroup") or "USD Layer"
         )
 
+        instance.data["has_usd_contribution"] = True
+
         # Allow formatting in variant set name and variant name
         data = instance.data.copy()
         data["layer"] = attr_values["contribution_layer"]
@@ -676,6 +678,27 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 event["create_context"], instance
             )
             instance.set_publish_plugin_attr_defs(cls.__name__, new_attrs)
+
+
+class CollectUSDLayerContributionsMayaRig(CollectUSDLayerContributions):
+    """
+    This is solely here to expose the attribute definitions for the
+    Maya "rig" family.
+    """
+    # TODO: Improve how this is built for the rig family
+    hosts = ["maya"]
+    families = ["rig"]
+    label = CollectUSDLayerContributions.label + " (Rig)"
+
+    @classmethod
+    def get_attribute_defs(cls):
+        defs = super().get_attribute_defs()
+
+        # Update default for department layer to look
+        layer_def = next(d for d in defs if d.key == "contribution_layer")
+        layer_def.default = "rig"
+
+        return defs
 
 
 class ValidateUSDDependencies(pyblish.api.InstancePlugin):
