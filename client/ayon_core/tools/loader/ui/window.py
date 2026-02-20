@@ -442,13 +442,19 @@ class LoaderWindow(QtWidgets.QWidget):
             return
 
         product_ids = {
-            i["product_id"]
-            for i in self._products_widget.get_selected_version_info()
+            version_info["product_id"]
+            for version_info in (
+                self._products_widget.get_selected_version_info()
+            )
         }
         if not product_ids:
             return
 
-        self._group_dialog.set_product_ids(project_name, product_ids)
+        self._group_dialog.set_product_ids(
+            project_name,
+            self._selected_folder_ids,
+            product_ids,
+        )
         self._group_dialog.show()
 
     def _on_folder_filter_change(self, text: str) -> None:
