@@ -1297,7 +1297,10 @@ def set_colorspace_data_to_representation(
     # get one filename
     filename = representation["files"]
     if isinstance(filename, list):
-        filename = filename[0]
+        if filename:
+            filename = filename[0]
+        else:
+            filename = None
 
     # get matching colorspace from rules
     if colorspace is None:
