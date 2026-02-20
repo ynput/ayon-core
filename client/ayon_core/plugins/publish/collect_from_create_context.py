@@ -129,7 +129,7 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
             "productType": product_type,
             "family": product_base_type,
             "families": instance_families,
-            "representations": [],
+            "representations": in_data.get("representations", []),
             "thumbnailSource": thumbnail_path
         })
         for key, value in in_data.items():
