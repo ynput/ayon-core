@@ -1,15 +1,40 @@
+import os
 import sys
 
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .iconic_font import get_instance
 
-
-# TODO: Set icon colour and copy code with color kwarg
-
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 VIEW_COLUMNS = 5
 AUTO_SEARCH_TIMEOUT = 500
-ALL_COLLECTIONS = 'All'
+
+
+def load_stylesheet():
+    path = os.path.join(CURRENT_DIR, "stylesheet.qss")
+    with open(path, "r") as stream:
+        content = stream.read()
+    return content
+
+
+class IconModel(QtCore.QStringListModel):
+    def __init__(self, icon_color):
+        super().__init__()
+        self._icon_color = icon_color
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+    def set_icon_color(self, color):
+        self._icon_color = color
+        # TODO This does not trigger a repaint
+
+    def data(self, index, role):
+        if role == QtCore.Qt.DecorationRole:
+            value = self.data(index, role=QtCore.Qt.DisplayRole)
+            instance = get_instance()
+            return instance.get_icon(value, color=self._icon_color)
+        return super().data(index, role)
 
 
 class IconBrowser(QtWidgets.QMainWindow):
@@ -20,122 +45,123 @@ class IconBrowser(QtWidgets.QMainWindow):
     """
 
     def __init__(self):
-        super(IconBrowser, self).__init__()
-        self.setMinimumSize(400, 300)
-        self.setWindowTitle("Material Icon Browser")
+        super().__init__()
+        self.setMinimumSize(630, 420)
+        self.setWindowTitle("Material Symbols Browser")
 
+        # Prepare icons data
         instance = get_instance()
-        fontMaps = instance.get_charmap()
+        font_maps = instance.get_charmap()
 
-        iconNames = list(fontMaps)
+        icon_names = list(font_maps)
 
-        self._filterTimer = QtCore.QTimer(self)
-        self._filterTimer.setSingleShot(True)
-        self._filterTimer.setInterval(AUTO_SEARCH_TIMEOUT)
-        self._filterTimer.timeout.connect(self._updateFilter)
+        center_widget = QtWidgets.QWidget(self)
 
-        model = IconModel(self.palette().color(QtGui.QPalette.Text))
-        model.setStringList(sorted(iconNames))
+        # Filtering inputs
+        header_widget = QtWidgets.QWidget(center_widget)
 
-        self._proxyModel = QtCore.QSortFilterProxyModel()
-        self._proxyModel.setSourceModel(model)
-        self._proxyModel.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        filter_input = QtWidgets.QLineEdit(header_widget)
+        filter_input.setPlaceholderText("Filter by name...")
 
-        self._listView = IconListView(self)
-        self._listView.setUniformItemSizes(True)
-        self._listView.setViewMode(QtWidgets.QListView.IconMode)
-        self._listView.setModel(self._proxyModel)
-        self._listView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self._listView.doubleClicked.connect(self._copyIconText)
+        copy_btn = QtWidgets.QPushButton("< no selection >", header_widget)
+        copy_btn.setToolTip("Copy name")
 
-        self._lineEdit = QtWidgets.QLineEdit(self)
-        self._lineEdit.setAlignment(QtCore.Qt.AlignCenter)
-        self._lineEdit.textChanged.connect(self._triggerDelayedUpdate)
-        self._lineEdit.returnPressed.connect(self._triggerImmediateUpdate)
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(filter_input, 2)
+        header_layout.addWidget(copy_btn, 1)
 
-        self._comboBox = QtWidgets.QComboBox(self)
-        self._comboBox.setMinimumWidth(75)
-        self._comboBox.currentIndexChanged.connect(self._triggerImmediateUpdate)
-        self._comboBox.addItems([ALL_COLLECTIONS] + sorted(fontMaps.keys()))
+        # Icons view
+        icons_view = IconListView(center_widget)
+        icons_view.setUniformItemSizes(True)
+        icons_view.setResizeMode(QtWidgets.QListView.Adjust)
+        icons_view.setViewMode(QtWidgets.QListView.IconMode)
+        icons_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
-        lyt = QtWidgets.QHBoxLayout()
-        lyt.setContentsMargins(0, 0, 0, 0)
-        lyt.addWidget(self._comboBox)
-        lyt.addWidget(self._lineEdit)
+        model = IconModel(QtGui.QColor("#444746"))
+        model.setStringList(sorted(icon_names))
 
-        searchBarFrame = QtWidgets.QFrame(self)
-        searchBarFrame.setLayout(lyt)
+        proxy_model = QtCore.QSortFilterProxyModel()
+        proxy_model.setSourceModel(model)
+        proxy_model.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-        self._copyButton = QtWidgets.QPushButton('Copy Name', self)
-        self._copyButton.clicked.connect(self._copyIconText)
+        icons_view.setModel(proxy_model)
 
-        lyt = QtWidgets.QVBoxLayout()
-        lyt.addWidget(searchBarFrame)
-        lyt.addWidget(self._listView)
-        lyt.addWidget(self._copyButton)
+        center_layout = QtWidgets.QVBoxLayout(center_widget)
+        center_layout.setContentsMargins(15, 15, 15, 15)
+        center_layout.setSpacing(5)
+        center_layout.addWidget(header_widget, 0)
+        center_layout.addWidget(icons_view, 1)
 
-        frame = QtWidgets.QFrame(self)
-        frame.setLayout(lyt)
+        self.setCentralWidget(center_widget)
 
-        self.setCentralWidget(frame)
+        filter_timer = QtCore.QTimer(self)
+        filter_timer.setSingleShot(True)
+        filter_timer.setInterval(AUTO_SEARCH_TIMEOUT)
+
+        filter_input.textChanged.connect(self._on_filter_change)
+        filter_input.returnPressed.connect(self._on_filter_confirm)
+        icons_view.doubleClicked.connect(self._copy_icon_name)
+        icons_view.selectionModel().selectionChanged.connect(
+            self._on_selection_change
+        )
+        copy_btn.clicked.connect(self._copy_icon_name)
+        filter_timer.timeout.connect(self._update_filter)
 
         QtWidgets.QShortcut(
             QtGui.QKeySequence(QtCore.Qt.Key_Return),
             self,
-            self._copyIconText,
+            self._copy_icon_name,
+        )
+        QtWidgets.QShortcut(
+            QtGui.QKeySequence("Ctrl+F"),
+            self,
+            filter_input.setFocus,
         )
 
-        self._lineEdit.setFocus()
+        self._copy_btn = copy_btn
+        self._filter_input = filter_input
+        self._icons_view = icons_view
+        self._model = model
+        self._proxy_model = proxy_model
+        self._filter_timer = filter_timer
 
-        # geo = self.geometry()
-        # desktop = QtWidgets.QApplication.desktop()
-        # screen = desktop.screenNumber(desktop.cursor().pos())
-        # centerPoint = desktop.screenGeometry(screen).center()
-        # geo.moveCenter(centerPoint)
-        # self.setGeometry(geo)
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._filter_input.setFocus()
+        self.setStyleSheet(load_stylesheet())
 
-    def _updateFilter(self):
-        """
-        Update the string used for filtering in the proxy model with the
-        current text from the line edit.
-        """
-        reString = ""
+    def _update_filter(self):
+        regex = ""
+        search_term = self._filter_input.text()
+        if search_term:
+            regex = f".*{search_term}.*$"
 
-        group = self._comboBox.currentText()
-        if group != ALL_COLLECTIONS:
-            reString += r"^%s\." % group
+        self._proxy_model.setFilterRegularExpression(regex)
 
-        searchTerm = self._lineEdit.text()
-        if searchTerm:
-            reString += ".*%s.*$" % searchTerm
-
-        self._proxyModel.setFilterRegularExpression(reString)
-
-    def _triggerDelayedUpdate(self):
-        """
-        Reset the timer used for committing the search term to the proxy model.
-        """
-        self._filterTimer.stop()
-        self._filterTimer.start()
-
-    def _triggerImmediateUpdate(self):
-        """
-        Stop the timer used for committing the search term and update the
-        proxy model immediately.
-        """
-        self._filterTimer.stop()
-        self._updateFilter()
-
-    def _copyIconText(self):
-        """
-        Copy the name of the currently selected icon to the clipboard.
-        """
-        indexes = self._listView.selectedIndexes()
+    def _on_selection_change(self, _new_selection, _old_selection):
+        indexes = self._icons_view.selectedIndexes()
         if not indexes:
+            self._copy_btn.setText("< nothing >")
             return
 
-        clipboard = QtWidgets.QApplication.instance().clipboard()
-        clipboard.setText(indexes[0].data())
+        index = indexes[0]
+        icon_name = index.data()
+        self._copy_btn.setText(icon_name)
+
+    def _on_filter_change(self):
+        self._filter_timer.start()
+
+    def _on_filter_confirm(self):
+        self._filter_timer.stop()
+        self._update_filter()
+
+    def _copy_icon_name(self):
+        indexes = self._icons_view.selectedIndexes()
+        for index in indexes:
+            clipboard = QtWidgets.QApplication.instance().clipboard()
+            clipboard.setText(index.data())
+            break
 
 
 class IconListView(QtWidgets.QListView):
@@ -145,56 +171,17 @@ class IconListView(QtWidgets.QListView):
     """
 
     def __init__(self, parent=None):
-        super(IconListView, self).__init__(parent)
+        super().__init__(parent)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.set_icon_size(54)
 
-    def resizeEvent(self, event):
+    def set_icon_size(self, size):
         """
-        Re-implemented to re-calculate the grid size to provide scaling icons
-
-        Parameters
-        ----------
-        event : QtCore.QEvent
+        Set the icon size for the icons in the view.
         """
-        width = self.viewport().width() - 30
-        # The minus 30 above ensures we don't end up with an item width that
-        # can't be drawn the expected number of times across the view without
-        # being wrapped. Without this, the view can flicker during resize
-        tileWidth = width / VIEW_COLUMNS
-        iconWidth = int(tileWidth * 0.8)
-
-        self.setGridSize(QtCore.QSize(tileWidth, tileWidth))
-        self.setIconSize(QtCore.QSize(iconWidth, iconWidth))
-
-        return super(IconListView, self).resizeEvent(event)
-
-
-class IconModel(QtCore.QStringListModel):
-    def __init__(self, iconColor):
-        super(IconModel, self).__init__()
-        self._iconColor = iconColor
-
-    def flags(self, index):
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-
-    def data(self, index, role):
-        """
-        Re-implemented to return the icon for the current index.
-
-        Parameters
-        ----------
-        index : QtCore.QModelIndex
-        role : int
-
-        Returns
-        -------
-        Any
-        """
-        if role == QtCore.Qt.DecorationRole:
-            iconString = self.data(index, role=QtCore.Qt.DisplayRole)
-            instance = get_instance()
-            return instance.get_icon(iconString, color=self._iconColor)
-        return super(IconModel, self).data(index, role)
+        grid_size = (size / 8.0) * 12.0
+        self.setGridSize(QtCore.QSize(grid_size, grid_size))
+        self.setIconSize(QtCore.QSize(size, size))
 
 
 def run():
