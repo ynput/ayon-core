@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*-
 """Package to deal with saving and retrieving user specific settings."""
+from __future__ import annotations
+
 import os
 import json
 import platform
@@ -138,7 +139,86 @@ class _FakeException(Exception):
     """Placeholder exception used if real exception is not available."""
 
 
-class AYONSecureRegistry:
+class ASettingRegistry(ABC):
+    """Abstract class defining structure of **SettingRegistry** class.
+
+    Args:
+        name(str): Name of registry used as the identifier for data.
+
+    """
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    @abstractmethod
+    def _get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Any:
+        """Get item value from registry."""
+
+    @abstractmethod
+    def _set_item(self, name: str, value: Any) -> None:
+        """Set item value to registry."""
+
+    @abstractmethod
+    def _delete_item(self, name: str, ignore_missing: bool) -> None:
+        """Delete item from registry."""
+
+    def __getitem__(self, name: str) -> Any:
+        return self._get_item(name)
+
+    def __setitem__(self, name: str, value: Any) -> None:
+        self._set_item(name, value)
+
+    def __delitem__(self, name: str) -> None:
+        self._delete_item(name)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def get_item(
+        self,
+        name: str,
+        default: Any = _PLACEHOLDER,
+    ) -> Any:
+        """Get item from settings registry.
+
+        Args:
+            name (str): Name of the item.
+            default (Any): Default value if item is not available.
+
+        Returns:
+            Any: Value of the item.
+
+        Raises:
+            RegistryItemNotFound: If item doesn't exist.
+
+        """
+        return self._get_item(name, default)
+
+    def set_item(self, name: str, value: Any) -> None:
+        """Set item to settings registry.
+
+        Args:
+            name (str): Name of the item.
+            value (str): Value of the item.
+
+        """
+        self._set_item(name, value)
+
+    def delete_item(self, name: str, ignore_missing: bool = True):
+        """Delete item from settings registry.
+
+        Args:
+            name (str): Name of the item.
+            ignore_missing (bool): If True, no error is raised if item doesn't
+                exist.
+
+        """
+        self._delete_item(name, ignore_missing=ignore_missing)
+
+
+class AYONSecureRegistry(ASettingRegistry):
     """Store information using keyring.
 
     Registry should be used for private data that should be available only for
@@ -167,29 +247,10 @@ class AYONSecureRegistry:
             keyring.set_keyring(Windows.WinVaultKeyring())
 
         # Force "AYON" prefix
-        self._name = f"AYON/{name}"
-
-    def set_item(self, name: str, value: str) -> None:
-        """Set sensitive item into the system's keyring.
-
-        This uses `Keyring module`_ to save sensitive stuff into the system's
-        keyring.
-
-        Args:
-            name (str): Name of the item.
-            value (str): Value of the item.
-
-        .. _Keyring module:
-            https://github.com/jaraco/keyring
-
-        """
-        import keyring
-
-        keyring.set_password(self._name, name, value)
-        self.get_item.cache_clear()
+        super().__init__(f"AYON/{name}")
 
     @lru_cache(maxsize=32)
-    def get_item(
+    def _get_item(
         self, name: str, default: Any = _PLACEHOLDER
     ) -> Optional[str]:
         """Get value of sensitive item from the system's keyring.
@@ -234,13 +295,15 @@ class AYONSecureRegistry:
             f"Item {self._name}:{name} not found in keyring."
         )
 
-    def delete_item(self, name: str) -> None:
-        """Delete value stored in the system's keyring.
+    def _set_item(self, name: str, value: str) -> None:
+        """Set sensitive item into system's keyring.
 
-        See also `Keyring module`_
+        This uses `Keyring module`_ to save sensitive stuff into system's
+        keyring.
 
         Args:
-            name (str): Name of the item to be deleted.
+            name (str): Name of the item.
+            value (str): Value of the item.
 
         .. _Keyring module:
             https://github.com/jaraco/keyring
@@ -248,75 +311,27 @@ class AYONSecureRegistry:
         """
         import keyring
 
-        self.get_item.cache_clear()
+        keyring.set_password(self._name, name, value)
+        self._get_item.cache_clear()
+
+    def _delete_item(self, name: str, ignore_missing: bool = True):
+        """Delete value stored in system's keyring.
+
+        See also `Keyring module`_
+
+        Args:
+            name (str): Name of the item to be deleted.
+            ignore_missing (bool): If True, no error is raised if item doesn't
+                exist.
+
+        .. _Keyring module:
+            https://github.com/jaraco/keyring
+
+        """
+        import keyring
+
         keyring.delete_password(self._name, name)
-
-
-class ASettingRegistry(ABC):
-    """Abstract class to defining structure of registry class.
-
-    """
-    def __init__(self, name: str) -> None:
-        self._name = name
-
-    @abstractmethod
-    def _get_item(self, name: str) -> Any:
-        """Get item value from registry."""
-
-    @abstractmethod
-    def _set_item(self, name: str, value: str) -> None:
-        """Set item value to registry."""
-
-    @abstractmethod
-    def _delete_item(self, name: str) -> None:
-        """Delete item from registry."""
-
-    def __getitem__(self, name: str) -> Any:
-        return self._get_item(name)
-
-    def __setitem__(self, name: str, value: str) -> None:
-        self._set_item(name, value)
-
-    def __delitem__(self, name: str) -> None:
-        self._delete_item(name)
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def get_item(self, name: str) -> str:
-        """Get item from settings registry.
-
-        Args:
-            name (str): Name of the item.
-
-        Returns:
-            value (str): Value of the item.
-
-        Raises:
-            RegistryItemNotFound: If the item doesn't exist.
-
-        """
-        return self._get_item(name)
-
-    def set_item(self, name: str, value: str) -> None:
-        """Set item to settings registry.
-
-        Args:
-            name (str): Name of the item.
-            value (str): Value of the item.
-
-        """
-        self._set_item(name, value)
-
-    def delete_item(self, name: str) -> None:
-        """Delete item from settings registry.
-
-        Args:
-            name (str): Name of the item.
-
-        """
-        self._delete_item(name)
+        self._get_item.cache_clear()
 
 
 class IniSettingRegistry(ASettingRegistry):
@@ -325,15 +340,19 @@ class IniSettingRegistry(ASettingRegistry):
     This class is using :mod:`configparser` (ini) files to store items.
 
     """
-    def __init__(self, name: str, path: str) -> None:
+
+    def __init__(self, name: str, path: str):
         super().__init__(name)
         # get registry file
-        self._registry_file = os.path.join(path, f"{name}.ini")
-        if not os.path.exists(self._registry_file):
-            with open(self._registry_file, mode="w") as cfg:
-                print("# Settings registry", cfg)
+        filepath = os.path.join(path, f"{name}.ini")
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        if not os.path.exists(filepath):
+            with open(filepath, mode="w") as stream:
+                print("# Settings registry", stream)
                 now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                print(f"# {now}", cfg)
+                print(f"# {now}", stream)
+
+        self._registry_file = filepath
 
     def set_item_section(self, section: str, name: str, value: str) -> None:
         """Set item to specific section of ini registry.
@@ -355,8 +374,8 @@ class IniSettingRegistry(ASettingRegistry):
         current = config[section]
         current[name] = value
 
-        with open(self._registry_file, mode="w") as cfg:
-            config.write(cfg)
+        with open(self._registry_file, mode="w") as stream:
+            config.write(stream)
 
     def _set_item(self, name: str, value: str) -> None:
         self.set_item_section("MAIN", name, value)
@@ -395,7 +414,9 @@ class IniSettingRegistry(ASettingRegistry):
         return super().get_item(name)
 
     @lru_cache(maxsize=32)
-    def get_item_from_section(self, section: str, name: str) -> str:
+    def get_item_from_section(
+        self, section: str, name: str, default: Any = _PLACEHOLDER
+    ) -> Optional[str]:
         """Get item from section of ini file.
 
         This will read ini file and try to get item value from specified
@@ -418,20 +439,31 @@ class IniSettingRegistry(ASettingRegistry):
         try:
             value = config[section][name]
         except KeyError:
+            if default is not _PLACEHOLDER:
+                return default
             raise RegistryItemNotFound(
                 f"Registry doesn't contain value {section}:{name}"
             )
         return value
 
-    def _get_item(self, name: str) -> str:
-        return self.get_item_from_section("MAIN", name)
+    def _get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Any:
+        return self.get_item_from_section("MAIN", name, default)
 
-    def delete_item_from_section(self, section: str, name: str) -> None:
+    def delete_item_from_section(
+        self,
+        section: str,
+        name: str,
+        ignore_missing: bool = True,
+    ):
         """Delete item from section in ini file.
 
         Args:
             section (str): Section name.
             name (str): Name of the item.
+            ignore_missing (bool): If True, no error is raised if item doesn't
+                exist.
 
         Raises:
             RegistryItemNotFound: If the item doesn't exist.
@@ -443,6 +475,8 @@ class IniSettingRegistry(ASettingRegistry):
         try:
             _ = config[section][name]
         except KeyError:
+            if ignore_missing:
+                return
             raise RegistryItemNotFound(
                 f"Registry doesn't contain value {section}:{name}"
             )
@@ -452,12 +486,12 @@ class IniSettingRegistry(ASettingRegistry):
         if len(config[section].keys()) == 0:
             config.remove_section(section)
 
-        with open(self._registry_file, mode="w") as cfg:
-            config.write(cfg)
+        with open(self._registry_file, mode="w") as stream:
+            config.write(stream)
 
-    def _delete_item(self, name):
+    def _delete_item(self, name: str, ignore_missing: bool):
         """Delete item from default section."""
-        self.delete_item_from_section("MAIN", name)
+        self.delete_item_from_section("MAIN", name, ignore_missing)
 
 
 class JSONSettingRegistry(ASettingRegistry):
@@ -472,17 +506,16 @@ class JSONSettingRegistry(ASettingRegistry):
             "registry": {}
         }
 
-        # Use 'os.path.dirname' in case someone uses slashes in 'name'
-        dirpath = os.path.dirname(self._registry_file)
-        if not os.path.exists(dirpath):
-            os.makedirs(dirpath, exist_ok=True)
+        os.makedirs(os.path.dirname(self._registry_file), exist_ok=True)
         if not os.path.exists(self._registry_file):
-            with open(self._registry_file, mode="w") as cfg:
-                json.dump(header, cfg, indent=4)
+            with open(self._registry_file, mode="w") as stream:
+                json.dump(header, stream, indent=4)
 
     @lru_cache(maxsize=32)
-    def _get_item(self, name: str) -> str:
-        """Get item value from the registry.
+    def _get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Any:
+        """Get item value from registry json.
 
         Note:
             See :meth:`ayon_core.lib.JSONSettingRegistry.get_item`
@@ -493,33 +526,41 @@ class JSONSettingRegistry(ASettingRegistry):
             try:
                 value = data["registry"][name]
             except KeyError:
+                if default is not _PLACEHOLDER:
+                    return default
                 raise RegistryItemNotFound(
                     f"Registry doesn't contain value {name}"
                 )
         return value
 
-    def _set_item(self, name: str, value: str) -> None:
-        """Set item value to the registry.
+    def _set_item(self, name: str, value: Any):
+        """Set item value to registry json.
 
         Note:
             See :meth:`ayon_core.lib.JSONSettingRegistry.set_item`
 
         """
-        with open(self._registry_file, "r+") as cfg:
-            data = json.load(cfg)
-            data["registry"][name] = value
-            cfg.truncate(0)
-            cfg.seek(0)
-            json.dump(data, cfg, indent=4)
+        with open(self._registry_file, "r+") as stream:
+            data = json.load(stream)
+            registry_data = data.setdefault("registry", {})
+            registry_data[name] = value
+            stream.truncate(0)
+            stream.seek(0)
+            json.dump(data, stream, indent=4)
         self._get_item.cache_clear()
 
-    def _delete_item(self, name: str) -> None:
-        with open(self._registry_file, "r+") as cfg:
-            data = json.load(cfg)
-            del data["registry"][name]
-            cfg.truncate(0)
-            cfg.seek(0)
-            json.dump(data, cfg, indent=4)
+    def _delete_item(self, name: str, ignore_missing: bool):
+        with open(self._registry_file, "r+") as stream:
+            data = json.load(stream)
+            registry_data = data.setdefault("registry", {})
+            if name not in registry_data:
+                if ignore_missing:
+                    return
+                raise KeyError(f"Registry doesn't contain value {name}")
+            registry_data.pop(name)
+            stream.truncate(0)
+            stream.seek(0)
+            json.dump(data, stream, indent=4)
         self._get_item.cache_clear()
 
 
@@ -527,9 +568,7 @@ class AYONSettingsRegistry(JSONSettingRegistry):
     """Class handling AYON general settings registry.
 
     Args:
-        name (Optional[str]): Name of the registry. Using 'None' or not
-            passing name is deprecated.
-
+        name (Optional[str]): Name of the registry.
     """
     def __init__(self, name: Optional[str] = None) -> None:
         if not name:
