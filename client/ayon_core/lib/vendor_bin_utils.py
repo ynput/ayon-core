@@ -67,6 +67,8 @@ def find_executable(executable):
         Union[str, None]: Full path to executable with extension which was
             found otherwise None.
     """
+    # Expand user and environment variables
+    executable = os.path.expandvars(os.path.expanduser(executable))
 
     # Skip if passed path is file
     if is_file_executable(executable):
