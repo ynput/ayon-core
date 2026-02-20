@@ -128,9 +128,6 @@ class IconOptions:
     mapping_color_keys = _prepare_mapping("color")
     mapping_name_keys = _prepare_mapping("icon_name")
     mapping_fill_keys = _prepare_mapping("fill")
-    mapping_grade_keys = _prepare_mapping("grade")
-    mapping_weight_keys = _prepare_mapping("weight")
-    mapping_optical_size_keys = _prepare_mapping("optical_size")
     data_keys = {
         "opacity",
         "offset",
@@ -146,9 +143,6 @@ class IconOptions:
         color_option: IconSubOption,
         *,
         fill_option: Optional[IconSubOption] = None,
-        grade_option: Optional[IconSubOption] = None,
-        weight_option: Optional[IconSubOption] = None,
-        optical_size_option: Optional[IconSubOption] = None,
         opacity: Optional[float] = None,
         scale_factor: Optional[float] = None,
         offset: Optional[Position] = None,
@@ -163,23 +157,11 @@ class IconOptions:
 
         if fill_option is None:
             fill_option = IconSubOption(False)
-        # <-50.0; 200.0>
-        if grade_option is None:
-            grade_option = IconSubOption(0.0)
-        # <100.0; 700.0>
-        if weight_option is None:
-            weight_option = IconSubOption(400.0)
-        # <20.0; 48.0>
-        if optical_size_option is None:
-            optical_size_option = IconSubOption(24.0)
 
         self._identifier = None
         self.char_option = char_option
         self.color_option = color_option
         self.fill_option = fill_option
-        self.grade_option = grade_option
-        self.weight_option = weight_option
-        self.optical_size_option = optical_size_option
         self.opacity = opacity
         self.scale_factor = scale_factor
         self.offset = offset
@@ -200,18 +182,7 @@ class IconOptions:
         return self.char_option.get_value_for_state(state, mode)
 
     def get_fill_for_state(self, state, mode) -> float:
-        if self.fill_option.get_value_for_state(state, mode):
-            return 1.0
-        return 0.0
-
-    def get_grade_for_state(self, state, mode) -> float:
-        return self.grade_option.get_value_for_state(state, mode)
-
-    def get_weight_for_state(self, state, mode) -> float:
-        return self.weight_option.get_value_for_state(state, mode)
-
-    def get_optical_size_for_state(self, state, mode) -> float:
-        return self.optical_size_option.get_value_for_state(state, mode)
+        return self.fill_option.get_value_for_state(state, mode)
 
     @classmethod
     def from_data(cls, **kwargs):
@@ -233,28 +204,11 @@ class IconOptions:
         fill_kwargs = cls._prepare_mapping_values(
             cls.mapping_fill_keys, kwargs
         )
-        grade_kwargs = cls._prepare_mapping_values(
-            cls.mapping_grade_keys, kwargs
-        )
-        weight_kwargs = cls._prepare_mapping_values(
-            cls.mapping_weight_keys, kwargs
-        )
-        optical_size_kwargs = cls._prepare_mapping_values(
-            cls.mapping_optical_size_keys, kwargs
-        )
 
         new_kwargs["color_option"] = IconSubOption(**color_kwargs)
         new_kwargs["char_option"] = IconSubOption(**char_kwargs)
         if fill_kwargs:
             new_kwargs["fill_option"] = IconSubOption(**fill_kwargs)
-        if grade_kwargs:
-            new_kwargs["grade_option"] = IconSubOption(**grade_kwargs)
-        if weight_kwargs:
-            new_kwargs["weight_option"] = IconSubOption(**weight_kwargs)
-        if optical_size_kwargs:
-            new_kwargs["optical_size_option"] = IconSubOption(
-                **optical_size_kwargs
-            )
         return cls(**new_kwargs)
 
     @classmethod
@@ -275,9 +229,6 @@ class IconOptions:
                 self.char_option.identifier,
                 self.color_option.identifier,
                 self.fill_option.identifier,
-                self.grade_option.identifier,
-                self.weight_option.identifier,
-                self.optical_size_option.identifier,
                 self.opacity,
                 self.scale_factor,
                 self.offset,

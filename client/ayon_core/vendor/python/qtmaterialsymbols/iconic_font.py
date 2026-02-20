@@ -19,7 +19,7 @@ from typing import Dict, Optional, Union
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .structures import IconOptions, Position
-from .utils import get_char_mapping, get_icon_name_char, _get_font_name
+from .utils import get_char_mapping, _get_font_name_filled, _get_font_name
 
 
 class _Cache:
@@ -53,17 +53,10 @@ class CharIconPainter:
 
         draw_size = round(rect.height() * options.scale_factor)
 
-        font = iconic.get_font(draw_size)
-        # Tags are available since PySide 6.9.x
-        if hasattr(QtGui.QFont.Tag, "fromString"):
-            for tag_name, value in (
-                ("FILL", options.get_fill_for_state(state, mode)),
-                ("GRAD", options.get_grade_for_state(state, mode)),
-                ("wght", options.get_weight_for_state(state, mode)),
-                ("opsz", options.get_optical_size_for_state(state, mode)),
-            ):
-                tag = QtGui.QFont.Tag.fromString(tag_name)
-                font.setVariableAxis(tag, value)
+        font = iconic.get_font(
+            draw_size,
+            options.get_fill_for_state(state, mode)
+        )
 
         painter.setFont(font)
         if options.offset is not None:
@@ -143,9 +136,12 @@ class IconicFont(QtCore.QObject):
     def get_charmap(self) -> Dict[str, int]:
         return get_char_mapping()
 
-    def get_font(self, size: int) -> QtGui.QFont:
+    def get_font(self, size: int, filled: bool) -> QtGui.QFont:
         """Return a QFont corresponding to the given size."""
-        font = QtGui.QFont(_get_font_name())
+        if filled:
+            font = QtGui.QFont(_get_font_name_filled())
+        else:
+            font = QtGui.QFont(_get_font_name())
         font.setPixelSize(round(size))
         return font
 
@@ -176,9 +172,6 @@ class IconicFont(QtCore.QObject):
         vflip: bool = False,
         rotate: int = 0,
         fill: bool = True,
-        grade: float = 0.0,
-        weight: float = 400.0,
-        optical_size: float = 24.0,
         **kwargs
     ) -> QtGui.QIcon:
         """Return a QIcon object corresponding to the provided icon name."""
@@ -198,9 +191,6 @@ class IconicFont(QtCore.QObject):
             vflip=vflip,
             rotate=rotate,
             fill=fill,
-            grade=grade,
-            weight=weight,
-            optical_size=optical_size,
             **kwargs
         )
         cache_key = options.identifier
