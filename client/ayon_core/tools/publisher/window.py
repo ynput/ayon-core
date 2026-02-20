@@ -18,6 +18,8 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     MessageOverlayObject,
     PixmapLabel,
+    restore_tool_window_state,
+    save_tool_window_state,
 )
 from ayon_core.tools.utils.lib import center_window
 
@@ -497,6 +499,7 @@ class PublisherWindow(QtWidgets.QDialog):
         # Trigger custom event that should be captured only in UI
         #   - backend (controller) must not be dependent on this event topic!!!
         self._controller.emit_event("main.window.closed", {}, "window")
+        save_tool_window_state("publisher", self)
         super().closeEvent(event)
 
     def leaveEvent(self, event):
@@ -570,9 +573,10 @@ class PublisherWindow(QtWidgets.QDialog):
         )
 
     def _on_first_show(self):
-        self.resize(self.default_width, self.default_height)
         self.setStyleSheet(style.load_stylesheet())
-        center_window(self)
+        if not restore_tool_window_state("publisher", self):
+            self.resize(self.default_width, self.default_height)
+            center_window(self)
         self._reset_on_show = self._reset_on_first_show
 
     def _on_show_timer(self):

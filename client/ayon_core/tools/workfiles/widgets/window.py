@@ -7,6 +7,8 @@ from ayon_core.tools.utils import (
     MessageOverlayObject,
     PlaceholderLineEdit,
     RefreshButton,
+    restore_tool_window_state,
+    save_tool_window_state,
     TasksWidget,
     FoldersFiltersWidget,
 )
@@ -295,6 +297,15 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if self._first_show:
             self._first_show = False
             self.setStyleSheet(style.load_stylesheet())
+            restore_tool_window_state(
+                "workfiles", self, [("splitter", self._split_widget)]
+            )
+
+    def closeEvent(self, event):
+        save_tool_window_state(
+            "workfiles", self, [("splitter", self._split_widget)]
+        )
+        super(WorkfilesToolWindow, self).closeEvent(event)
 
     def keyPressEvent(self, event):
         """Custom keyPressEvent.

@@ -84,6 +84,10 @@ from .tasks_widget import (
     TasksQtModel,
     TASKS_MODEL_SENDER_NAME,
 )
+from .window_state import (
+    restore_tool_window_state,
+    save_tool_window_state,
+)
 
 
 __all__ = (
@@ -166,4 +170,7 @@ __all__ = (
     "TasksWidget",
     "TasksQtModel",
     "TASKS_MODEL_SENDER_NAME",
+
+    "restore_tool_window_state",
+    "save_tool_window_state",
 )
