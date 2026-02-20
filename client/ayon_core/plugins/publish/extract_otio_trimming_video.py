@@ -89,7 +89,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             "-ss", str(sec_start),
             "-t", str(sec_duration),
             "-i", video_path,
-            "-c", "copy",
             output_path
         ])
 
