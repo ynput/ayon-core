@@ -553,6 +553,10 @@ class PublisherController(
         """
         self._create_model.remove_instances(instance_ids)
 
+    def select_instances_in_host(self, instance_ids):
+        """Ask host/creators to select and focus selected instances."""
+        return self._create_model.select_instances_in_host(list(instance_ids))
+
     def publish_has_started(self):
         return self._publish_model.has_started()
 

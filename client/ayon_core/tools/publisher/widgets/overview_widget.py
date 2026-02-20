@@ -128,19 +128,19 @@ class OverviewWidget(QtWidgets.QFrame):
             self._on_product_change
         )
         product_list_view.double_clicked.connect(
-            self.publish_tab_requested
+            self._on_instances_double_clicked
         )
         product_list_view_grouped.selection_changed.connect(
             self._on_product_change
         )
         product_list_view_grouped.double_clicked.connect(
-            self.publish_tab_requested
+            self._on_instances_double_clicked
         )
         product_view_cards.selection_changed.connect(
             self._on_product_change
         )
         product_view_cards.double_clicked.connect(
-            self.publish_tab_requested
+            self._on_instances_double_clicked
         )
         # Instance context has changed
         product_attributes_widget.convert_requested.connect(
@@ -546,3 +546,16 @@ class OverviewWidget(QtWidgets.QFrame):
 
     def _on_instances_removed(self):
         self._refresh_instances()
+
+    def _on_instances_double_clicked(self):
+        # On double-click, select and focus corresponding nodes in host
+        instance_ids, _, _ = self.get_selected_items()
+        if not instance_ids:
+            return
+        try:
+            self._controller.select_instances_in_host(instance_ids)
+        except Exception:
+            # Keep UI responsive even if host-side selection fails
+            pass
+        # Keep existing behavior: navigate to publish tab
+        self.publish_tab_requested.emit()
