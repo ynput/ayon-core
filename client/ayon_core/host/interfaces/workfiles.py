@@ -1125,8 +1125,11 @@ class IWorkfileHost(AbstractHost):
             version = comment = None
             if workfile_entity is not None:
                 _data = workfile_entity["data"]
-                version = _data.get("version")
-                comment = _data.get("comment")
+                version = None
+                comment = None
+                if _data is not None:
+                    version = _data.get("version")
+                    comment = _data.get("comment")
 
             if version is None:
                 parsed_data = data_parser.parse_data(filename)
@@ -1152,8 +1155,11 @@ class IWorkfileHost(AbstractHost):
                 continue
 
             _data = workfile_entity["data"]
-            version = _data.get("version")
-            comment = _data.get("comment")
+            version = None
+            comment = None
+            if _data is not None:
+                version = _data.get("version")
+                comment = _data.get("comment")
             if version is None:
                 filename = os.path.basename(rootless_path)
                 parsed_data = data_parser.parse_data(filename)
