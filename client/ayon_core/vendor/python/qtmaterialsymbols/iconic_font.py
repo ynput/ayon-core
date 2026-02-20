@@ -51,15 +51,21 @@ class CharIconPainter:
 
         painter.setPen(QtGui.QColor(color))
 
-        # A 16 pixel-high icon yields a font size of 14, which is pixel perfect
-        # for font-awesome. 16 * 0.875 = 14
-        # The reason why the glyph size is smaller than the icon size is to
-        # account for font bearing.
-        # draw_size = round(0.875 * rect.height() * options.scale_factor)
-
         draw_size = round(rect.height() * options.scale_factor)
 
-        painter.setFont(iconic.get_font(draw_size))
+        font = iconic.get_font(draw_size)
+        # Tags are available since PySide 6.9.x
+        if hasattr(QtGui.QFont.Tag, "fromString"):
+            for tag_name, value in (
+                ("FILL", options.get_fill_for_state(state, mode)),
+                ("GRAD", options.get_grade_for_state(state, mode)),
+                ("wght", options.get_weight_for_state(state, mode)),
+                ("opsz", options.get_optical_size_for_state(state, mode)),
+            ):
+                tag = QtGui.QFont.Tag.fromString(tag_name)
+                font.setVariableAxis(tag, value)
+
+        painter.setFont(font)
         if options.offset is not None:
             rect = QtCore.QRect(rect)
             rect.translate(
@@ -98,7 +104,7 @@ class CharIconEngine(QtGui.QIconEngine):
         painter: QtGui.QPainter,
         options: IconOptions
     ):
-        super(CharIconEngine, self).__init__()
+        super().__init__()
         self._iconic = iconic
         self._painter = painter
         self._options = options
@@ -166,37 +172,14 @@ class IconicFont(QtCore.QObject):
         opacity: Optional[float] = None,
         scale_factor: Optional[float] = None,
         offset: Optional[Position] = None,
-        hflip: Optional[bool] = False,
-        vflip: Optional[bool] = False,
-        rotate: Optional[int] = 0,
-        icon_name_normal: Optional[str] = None,
-        icon_name_active: Optional[str] = None,
-        icon_name_selected: Optional[str] = None,
-        icon_name_disabled: Optional[str] = None,
-        icon_name_on: Optional[str] = None,
-        icon_name_off: Optional[str] = None,
-        icon_name_on_normal: Optional[str] = None,
-        icon_name_off_normal: Optional[str] = None,
-        icon_name_on_active: Optional[str] = None,
-        icon_name_off_active: Optional[str] = None,
-        icon_name_on_selected: Optional[str] = None,
-        icon_name_off_selected: Optional[str] = None,
-        icon_name_on_disabled: Optional[str] = None,
-        icon_name_off_disabled: Optional[str] = None,
-        color_normal: Optional[Union[QtGui.QColor, str]] = None,
-        color_active: Optional[Union[QtGui.QColor, str]] = None,
-        color_selected: Optional[Union[QtGui.QColor, str]] = None,
-        color_disabled: Optional[Union[QtGui.QColor, str]] = None,
-        color_on: Optional[Union[QtGui.QColor, str]] = None,
-        color_off: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_normal: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_normal: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_active: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_active: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_selected: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_selected: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_disabled: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_disabled: Optional[Union[QtGui.QColor, str]] = None,
+        hflip: bool = False,
+        vflip: bool = False,
+        rotate: int = 0,
+        fill: bool = True,
+        grade: float = 0.0,
+        weight: float = 400.0,
+        optical_size: float = 24.0,
+        **kwargs
     ) -> QtGui.QIcon:
         """Return a QIcon object corresponding to the provided icon name."""
         if QtWidgets.QApplication.instance() is None:
@@ -214,34 +197,11 @@ class IconicFont(QtCore.QObject):
             hflip=hflip,
             vflip=vflip,
             rotate=rotate,
-            icon_name_normal=icon_name_normal,
-            icon_name_active=icon_name_active,
-            icon_name_selected=icon_name_selected,
-            icon_name_disabled=icon_name_disabled,
-            icon_name_on=icon_name_on,
-            icon_name_off=icon_name_off,
-            icon_name_on_normal=icon_name_on_normal,
-            icon_name_off_normal=icon_name_off_normal,
-            icon_name_on_active=icon_name_on_active,
-            icon_name_off_active=icon_name_off_active,
-            icon_name_on_selected=icon_name_on_selected,
-            icon_name_off_selected=icon_name_off_selected,
-            icon_name_on_disabled=icon_name_on_disabled,
-            icon_name_off_disabled=icon_name_off_disabled,
-            color_normal=color_normal,
-            color_active=color_active,
-            color_selected=color_selected,
-            color_disabled=color_disabled,
-            color_on=color_on,
-            color_off=color_off,
-            color_on_normal=color_on_normal,
-            color_off_normal=color_off_normal,
-            color_on_active=color_on_active,
-            color_off_active=color_off_active,
-            color_on_selected=color_on_selected,
-            color_off_selected=color_off_selected,
-            color_on_disabled=color_on_disabled,
-            color_off_disabled=color_off_disabled,
+            fill=fill,
+            grade=grade,
+            weight=weight,
+            optical_size=optical_size,
+            **kwargs
         )
         cache_key = options.identifier
         if cache_key in self._icon_cache:
