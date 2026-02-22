@@ -114,7 +114,18 @@ class ExtractOIIOTranscode(publish.Extractor):
             source_view = colorspace_data.get("view")
             config_path = colorspace_data.get("config", {}).get("path")
             if not config_path or not os.path.exists(config_path):
-                self.log.warning("Config file doesn't exist, skipping")
+                if config_path:
+                    # File does not exist
+                    self.log.warning(
+                        "Skipping OIIO transcode, because OCIO Config file"
+                        f" doesn't exist: '{config_path}'"
+                    )
+                else:
+                    self.log.warning(
+                        "Skipping OIIO transcode, because OCIO Config file"
+                        f" is not set for representation."
+                    )
+
                 continue
 
             # Get representation files to convert
