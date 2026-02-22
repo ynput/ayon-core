@@ -104,7 +104,7 @@ def get_workfile_template_key(
 
     profile_filter = {
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     profile = filter_profiles(profiles, profile_filter)
     if profile:
@@ -798,7 +798,7 @@ def create_workdir_extra_folders(
     filter_data = {
         "task_types": task_type,
         "task_names": task_name,
-        "hosts": host_name
+        "host_names": host_name,
     }
     profile = filter_profiles(extra_folders_profiles, filter_data)
     if profile is None:

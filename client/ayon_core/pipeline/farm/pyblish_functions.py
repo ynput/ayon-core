@@ -20,6 +20,8 @@ from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
 
+log = Logger.get_logger(__name__)
+
 
 @attr.s
 class TimeData(object):
@@ -157,7 +159,6 @@ def get_transferable_representations(instance):
             try:
                 trans_rep["stagingDir"] = remap_source(staging_dir, anatomy)
             except ValueError:
-                log = Logger.get_logger("farm_publishing")
                 log.warning(
                     ("Could not find root path for remapping \"{}\". "
                      "This may cause issues on farm.").format(staging_dir))
@@ -167,7 +168,10 @@ def get_transferable_representations(instance):
 
 
 def create_skeleton_instance(
-        instance, families_transfer=None, instance_transfer=None):
+    instance,
+    families_transfer=None,
+    instance_transfer=None,
+):
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -189,6 +193,11 @@ def create_skeleton_instance(
 
     """
     # list of family names to transfer to new family if present
+    if families_transfer is None:
+        families_transfer = []
+
+    if instance_transfer is None:
+        instance_transfer = {}
 
     context = instance.context
     data = instance.data.copy()
@@ -213,14 +222,31 @@ def create_skeleton_instance(
         source = rootless_path
     else:
         # `rootless_path` is not set to `source` if none of roots match
-        log = Logger.get_logger("farm_publishing")
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    # QUESTION why is 'render' product base type enforced here?
+    # This is a hack to keep the value of 'productType'.
+    # Because this function does not use product base type from source
+    #   instance and we don't know if product type of the instance was
+    #   customized or not, only way how to guess custom product type is
+    #   to check if is same as product base type.
+    i_product_base_type = instance.data.get("productBaseType")
+    i_product_type = instance.data.get("productType")
+    product_type = None
+    if (
+        i_product_base_type
+        and i_product_base_type != i_product_type
+    ):
+        product_type = i_product_type
+
+    # This is the old way of defining product base type
+    # - hard-coded product base type
     product_base_type = "render"
     if "prerender.farm" in instance.data["families"]:
         product_base_type = "prerender"
+
+    if not product_type:
+        product_type = product_base_type
 
     families = [product_base_type]
 
@@ -232,7 +258,7 @@ def create_skeleton_instance(
         # TODO find out how to define product type
         # - Right now product base type is hardcoded, from where should be
         #   product type taken?
-        "productType": product_base_type,
+        "productType": product_type,
         "productBaseType": product_base_type,
         "productName": data["productName"],
         "task": data["task"],
@@ -358,8 +384,6 @@ def prepare_representations(
     representations = []
     host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
-
-    log = Logger.get_logger("farm_publishing")
 
     if frames_to_render is not None:
         frames_to_render = convert_frames_str_to_list(frames_to_render)
@@ -611,7 +635,6 @@ def create_instances_for_aov(
     """
     # we cannot attach AOVs to other products as we consider every
     # AOV product of its own.
-    log = Logger.get_logger("farm_publishing")
 
     # if there are product to attach to and more than one AOV,
     # we cannot proceed.
@@ -691,8 +714,15 @@ def _get_legacy_product_name_and_group(
         tuple: product name and group name
 
     """
-    warnings.warn("Using legacy product name for renders",
-                  DeprecationWarning)
+    log.warning(
+        "Using legacy product name logic for renders. The logic is coming"
+        " from OpenPype please change 'ayon+settings://core/tools/creator/"
+        "use_legacy_product_names_for_renders' and will be removed."
+    )
+    warnings.warn(
+        "Using legacy product name for renders",
+        DeprecationWarning
+    )
 
     # create product name `<product type><Task><Product name>`
     if not source_product_name.startswith(product_type):
@@ -779,6 +809,10 @@ def get_product_name_and_group_from_template(
             )
 
     if not product_base_type:
+        log.warning(
+            f"DEPRECATION WARNING: Product base type not provided,"
+            f" using product type: {product_type}"
+        )
         product_base_type = product_type
 
     if not project_entity:
@@ -789,8 +823,11 @@ def get_product_name_and_group_from_template(
 
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.
-    _dynamic_data = deepcopy(dynamic_data) or {}
+    if dynamic_data is None:
+        dynamic_data = {}
+    _dynamic_data = deepcopy(dynamic_data)
     _dynamic_data.pop("aov", None)
+
     resulting_group_name = get_product_name(
         project_name=project_name,
         folder_entity=folder_entity,
@@ -851,13 +888,10 @@ def _create_instances_for_aov(
         ValueError:
 
     """
-
-    project_entity = instance.context.data["projectEntity"]
     anatomy = instance.context.data["anatomy"]
     source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
     expected_files = instance.data["expectedFiles"]
-    log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
@@ -904,20 +938,13 @@ def _create_instances_for_aov(
 
         project_settings = instance.context.data.get("project_settings")
 
-        try:
-            use_legacy_product_name = (
-                project_settings
-                ["core"]
-                ["tools"]
-                ["creator"]
-                ["use_legacy_product_names_for_renders"]
-            )
-        except KeyError:
-            warnings.warn(
-                ("use_legacy_for_renders not found in project settings. "
-                 "Using legacy product name for renders. Please update "
-                 "your ayon-core version."), DeprecationWarning)
-            use_legacy_product_name = True
+        use_legacy_product_name = (
+            project_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["use_legacy_product_names_for_renders"]
+        )
 
         product_base_type = skeleton.get("productBaseType")
         product_type = skeleton["productType"]
@@ -936,6 +963,7 @@ def _create_instances_for_aov(
                 product_name, group_name
             ) = get_product_name_and_group_from_template(
                 project_name=instance.context.data["projectName"],
+                project_entity=instance.context.data["projectEntity"],
                 folder_entity=instance.data["folderEntity"],
                 task_entity=instance.data["taskEntity"],
                 host_name=instance.context.data["hostName"],
@@ -943,7 +971,6 @@ def _create_instances_for_aov(
                 product_type=product_type,
                 variant=instance.data.get("variant", source_product_name),
                 dynamic_data=dynamic_data,
-                project_entity=project_entity,
                 project_settings=project_settings,
             )
 
@@ -1197,7 +1224,6 @@ def create_skeleton_instance_cache(instance):
         source = rootless_path
     else:
         # `rootless_path` is not set to `source` if none of roots match
-        log = Logger.get_logger("farm_publishing")
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
@@ -1266,8 +1292,6 @@ def prepare_cache_representations(skeleton_data, exp_files, anatomy):
     representations = []
     collections, _remainders = clique.assemble(exp_files)
 
-    log = Logger.get_logger("farm_publishing")
-
     # create representation for every collected sequence
     for collection in collections:
         ext = collection.tail.lstrip(".")
@@ -1327,7 +1351,6 @@ def create_instances_for_cache(instance, skeleton):
     if not product_base_type:
         product_base_type = product_type
     exp_files = instance.data["expectedFiles"]
-    log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
@@ -1412,7 +1435,6 @@ def copy_extend_frames(instance, representation):
     R_FRAME_NUMBER = re.compile(
         r".+\.(?P<frame>[0-9]+)\..+")
 
-    log = Logger.get_logger("farm_publishing")
     log.info("Preparing to copy ...")
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
@@ -1520,8 +1542,6 @@ def create_metadata_path(instance, anatomy):
     # Ensure output dir exists
     output_dir = ins_data.get(
         "publishRenderMetadataFolder", ins_data["outputDir"])
-
-    log = Logger.get_logger("farm_publishing")
 
     try:
         if not os.path.isdir(output_dir):
