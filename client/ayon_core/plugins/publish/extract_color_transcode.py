@@ -116,7 +116,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             if not config_path:
                 self.log.warning(
                     "Skipping OIIO transcode, because OCIO Config file"
-                    f" is not set for representation."
+                    " is not set for representation."
                 )
                 continue
             elif not os.path.exists(config_path):
