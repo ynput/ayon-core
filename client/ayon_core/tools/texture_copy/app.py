@@ -2,10 +2,10 @@ import os
 import re
 
 import click
-import speedcopy
 import ayon_api
 
 from ayon_core.lib import Terminal
+from ayon_core.lib.file_transaction import copyfile
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 
@@ -61,7 +61,7 @@ class TextureCopy:
                                os.path.basename(tex))
             t.echo("  - Copy {} -> {}".format(tex, dst))
             try:
-                speedcopy.copyfile(tex, dst)
+                copyfile(tex, dst)
             except Exception as e:
                 t.echo("!!! Copying failed")
                 t.echo("!!! {}".format(e))

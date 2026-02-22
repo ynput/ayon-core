@@ -23,7 +23,6 @@ import clique
 import pyblish.util
 import pyblish.plugin
 import pyblish.api
-import speedcopy
 
 from ayon_core.lib import (
     import_filepath,
@@ -34,6 +33,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import get_staging_dir_info
 from ayon_core.pipeline.plugin_discover import DiscoverResult
+from ayon_core.lib.file_transaction import copyfile
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
@@ -1347,7 +1347,7 @@ def fill_sequence_gaps_with_previous_version(
             f"Replacing missing '{hole_fpath}' with "
             f"'{previous_version_path}'"
         )
-        speedcopy.copyfile(previous_version_path, hole_fpath)
+        copyfile(previous_version_path, hole_fpath)
         added_files[frame] = hole_fpath
 
     return (used_version_entity, added_files)
