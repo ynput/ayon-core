@@ -7,7 +7,6 @@ import errno
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional, Union
 
-from speedcopy import copyfile
 import clique
 import ayon_api
 from ayon_api.operations import OperationsSession, new_version_entity
@@ -18,7 +17,7 @@ from ayon_core import style
 from ayon_core.pipeline import load, Anatomy
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import create_hard_link, source_hash, StringTemplate
-from ayon_core.lib.file_transaction import wait_for_future_errors
+from ayon_core.lib.file_transaction import wait_for_future_errors, copyfile
 from ayon_core.pipeline.publish import get_publish_template_name
 from ayon_core.pipeline.template_data import get_template_data
 

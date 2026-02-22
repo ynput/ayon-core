@@ -1430,7 +1430,7 @@ def copy_extend_frames(instance, representation):
         representation (dict): presentation to operate on
 
     """
-    import speedcopy
+    from ...lib.file_transaction import copyfile
 
     R_FRAME_NUMBER = re.compile(
         r".+\.(?P<frame>[0-9]+)\..+")
@@ -1498,7 +1498,7 @@ def copy_extend_frames(instance, representation):
 
     # copy files
     for source in resource_files:
-        speedcopy.copy(source[0], source[1])
+        copyfile(source[0], source[1])
         log.info("  > {}".format(source[1]))
 
     log.info("Finished copying %i files" % len(resource_files))
