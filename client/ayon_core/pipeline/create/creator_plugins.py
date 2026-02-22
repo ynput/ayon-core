@@ -5,9 +5,13 @@ import collections
 import copy
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from ayon_core.lib import Logger, get_version_from_path
+from ayon_core.lib import (
+    Logger,
+    get_version_from_path,
+    is_func_signature_supported,
+)
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -20,7 +24,7 @@ from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
-from .structures import CreatedInstance
+from .structures import CreatedInstance, ProductTypeItem
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
@@ -171,7 +175,7 @@ class BaseCreator(ABC):
     # Creator is enabled (Probably does not have reason of existence?)
     enabled = True
 
-    # Creator (and product type) icon
+    # Creator (and product base type) icon
     # - may not be used if `get_icon` is reimplemented
     icon = None
 
@@ -191,6 +195,8 @@ class BaseCreator(ABC):
     settings_category: Optional[str] = None
     # Name of plugin in create settings > class name is used if not set
     settings_name: Optional[str] = None
+
+    product_type_items: list[ProductTypeItem] = []
 
     def __init__(
         self, project_settings, create_context, headless=False
@@ -287,6 +293,40 @@ class BaseCreator(ABC):
                 )
             setattr(self, key, value)
 
+        self.product_type_items = self._convert_product_type_items(
+            self.product_type_items
+        )
+
+    def _convert_product_type_items(
+        self, product_type_items: list
+    ) -> list[ProductTypeItem]:
+        """Helper method to convert product type items from settings."""
+        if not product_type_items:
+            return []
+
+        first_item = product_type_items[0]
+        if isinstance(first_item, ProductTypeItem):
+            return product_type_items
+
+        if not isinstance(first_item, dict):
+            self.log.warning(
+                f"Invalid product type item. Expected 'dict' or"
+                f" 'ProductTypeItem', got '{type(first_item)}'."
+            )
+            return []
+
+        try:
+            return [
+                ProductTypeItem.from_data(item)
+                for item in self.product_type_items
+            ]
+        except Exception:
+            self.log.warning(
+                "Failed to convert product type items"
+                " to ProductTypeItem instances"
+            )
+            return []
+
     def register_callbacks(self):
         """Register callbacks for creator.
 
@@ -314,13 +354,13 @@ class BaseCreator(ABC):
 
     @property
     def product_base_type(self) -> Optional[str]:
-        """Base product type that plugin represents.
+        """Product base type that plugin represents.
 
         Todo (antirotor): This should be required in future - it
             should be made abstract then.
 
         Returns:
-            Optional[str]: Base product type that plugin represents.
+            Optional[str]: Product base type that plugin represents.
                 If not set, it is assumed that the creator plugin is obsolete
                 and does not support product base type.
 
@@ -385,7 +425,7 @@ class BaseCreator(ABC):
     def _create_instance(
         self,
         product_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         product_type: Optional[str] = None,
         product_base_type: Optional[str] = None
     ) -> CreatedInstance:
@@ -393,7 +433,7 @@ class BaseCreator(ABC):
 
         Args:
             product_name (str): Product name.
-            data (Dict[str, Any]): Instance data.
+            data (dict[str, Any]): Instance data.
             product_type (Optional[str]): Product type, object attribute
                 'product_type' is used if not passed.
             product_base_type (Optional[str]): Product base type, object
@@ -403,11 +443,14 @@ class BaseCreator(ABC):
             CreatedInstance: Created instance.
 
         """
-        if product_type is None:
-            product_type = self.product_type
+        if not product_base_type:
+            product_base_type = self.product_base_type
 
-        if not product_base_type and not self.product_base_type:
-            product_base_type = product_type
+        if not product_base_type:
+            product_base_type = self.product_type
+
+        if product_type is None:
+            product_type = product_base_type
 
         instance = CreatedInstance(
             product_type=product_type,
@@ -500,7 +543,7 @@ class BaseCreator(ABC):
         """
 
     def get_icon(self):
-        """Icon of creator (product type).
+        """Icon of creator (product base type).
 
         Can return path to image file or awesome icon name.
         """
@@ -508,16 +551,21 @@ class BaseCreator(ABC):
 
     def get_dynamic_data(
         self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name,
-        instance
-    ):
+        project_name: str,
+        folder_entity: Optional[dict[str, Any]],
+        task_entity: Optional[dict[str, Any]],
+        variant: str,
+        host_name: str,
+        instance: Optional[CreatedInstance] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
+    ) -> dict[str, Any]:
         """Dynamic data for product name filling.
 
         These may be dynamically created based on current context of workfile.
+
+        Default implementation will always return empty dictionary.
+
         """
         return {}
 
@@ -530,6 +578,7 @@ class BaseCreator(ABC):
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
         project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
     ) -> str:
         """Return product name for passed context.
 
@@ -547,30 +596,58 @@ class BaseCreator(ABC):
                 for which is product name updated. Passed only on product name
                 update.
             project_entity (Optional[dict[str, Any]]): Project entity.
+            product_type (Optional[str]): Product type.
 
         """
         if host_name is None:
             host_name = self.create_context.host_name
 
-        dynamic_data = self.get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance
-        )
+        # Backwards compatibility for create plugins that don't implement
+        #   'product_base_type'.
+        # TODO Remove when 'product_base_type' is required
+        product_base_type = self.product_base_type
+        if not product_base_type:
+            product_base_type = self.product_type
+
+        if product_type is None:
+            for product_type_item in self.get_product_type_items():
+                product_type = product_type_item.product_type
+                break
+            else:
+                product_type = product_base_type
 
         cur_project_name = self.create_context.get_current_project_name()
         if not project_entity and project_name == cur_project_name:
             project_entity = self.create_context.get_current_project_entity()
 
+        args = (
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+        )
+        kwargs = dict(
+            instance=instance,
+            project_entity=project_entity,
+            product_type=product_type,
+        )
+        # NOTE 'project_entity' and 'product_type' were added at the same time
+        #   26/01/19
+        if not is_func_signature_supported(
+            self.get_dynamic_data, *args, **kwargs
+        ):
+            kwargs.pop("project_entity")
+            kwargs.pop("product_type")
+
+        dynamic_data = self.get_dynamic_data(*args, **kwargs)
+
         return get_product_name(
             project_name,
             folder_entity=folder_entity,
             task_entity=task_entity,
-            product_base_type=self.product_base_type,
-            product_type=self.product_type,
+            product_base_type=product_base_type,
+            product_type=product_type,
             host_name=host_name,
             variant=variant,
             dynamic_data=dynamic_data,
@@ -644,6 +721,24 @@ class BaseCreator(ABC):
             self.create_context.project_name, instances
         )
 
+    def get_product_type_items(self) -> list[ProductTypeItem]:
+        """Get product type the Creator can work with.
+
+        By default, it returns `product_type_items` attribute value that
+        can be set by Creator settings. This can be overridden to provide
+        different source.
+
+        Product type items are list of ProductTypeItem that
+        Creator can create. Label is used in UI to show user-friendly name.
+        This dataclass can be easily expanded with data in the future. New
+        fields must have default values to not break existing implementations.
+
+        Returns:
+            list[ProductTypeItem]: List of product type items.
+
+        """
+        return self.product_type_items
+
 
 class Creator(BaseCreator):
     """Creator that has more information for artist to show in UI.
@@ -659,11 +754,11 @@ class Creator(BaseCreator):
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
-    # Short description of product type
+    # Short description of product base type
     # - may not be used if `get_description` is overridden
     description = None
 
-    # Detailed description of product type for artists
+    # Detailed description of product base type for artists
     # - may not be used if `get_detail_description` is overridden
     detailed_description = None
 
@@ -720,25 +815,22 @@ class Creator(BaseCreator):
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
-        # instance = CreatedInstance(
-        #     self.product_type, product_name, instance_data
-        # )
 
     def get_description(self):
-        """Short description of product type and plugin.
+        """Short description of product base type and plugin.
 
         Returns:
-            str: Short description of product type.
+            str: Short description of product base type.
         """
         return self.description
 
     def get_detail_description(self):
-        """Description of product type and plugin.
+        """Description of product base type and plugin.
 
         Can be detailed with markdown or html tags.
 
         Returns:
-            str: Detailed description of product type for artist.
+            str: Detailed description of product base type for artist.
         """
         return self.detailed_description
 
@@ -837,8 +929,12 @@ class Creator(BaseCreator):
         """
         create_ctx = self.create_context
         product_name = instance.get("productName")
+        product_base_type = instance.get("productBaseType")
         product_type = instance.get("productType")
         folder_path = instance.get("folderPath")
+
+        if not product_base_type:
+            product_base_type = product_type
 
         # this can only work if product name and folder path are available
         if not product_name or not folder_path:
@@ -885,9 +981,10 @@ class Creator(BaseCreator):
             create_ctx.get_current_project_entity(),
             create_ctx.get_folder_entity(folder_path),
             create_ctx.get_task_entity(folder_path, instance.get("task")),
-            product_type,
-            product_name,
-            create_ctx.host_name,
+            product_base_type=product_base_type,
+            product_type=product_type,
+            product_name=product_name,
+            host_name=create_ctx.host_name,
             anatomy=create_ctx.get_current_project_anatomy(),
             project_settings=create_ctx.get_current_project_settings(),
             always_return_path=False,

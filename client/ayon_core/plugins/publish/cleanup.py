@@ -76,14 +76,17 @@ class CleanUp(pyblish.api.InstancePlugin):
 
         # TODO: Figure out whether this could be refactored to just a
         #  product_type in self.exclude_families check.
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
+
         if any(
-            product_type in exclude_family
+            product_base_type in exclude_family
             for exclude_family in self.exclude_families
         ):
             self.log.debug(
-                "Skipping cleanup for instance because product "
-                f"type is excluded from cleanup: {product_type}")
+                "Skipping cleanup for instance because product base"
+                f" type is excluded from cleanup: {product_base_type}")
             return
 
         temp_root = tempfile.gettempdir()
@@ -116,7 +119,9 @@ class CleanUp(pyblish.api.InstancePlugin):
         transfers = instance.data.get("transfers", list())
 
         instance_families = instance.data.get("families", list())
-        instance_product_type = instance.data.get("productType")
+        instance_product_base_type = instance.data.get("productBaseType")
+        if not instance_product_base_type:
+            instance_product_base_type = instance.data.get("productType")
         dirnames = []
         transfers_dirs = []
 
@@ -141,7 +146,7 @@ class CleanUp(pyblish.api.InstancePlugin):
                 continue
 
             if (
-                instance_product_type == "render"
+                instance_product_base_type == "render"
                 or "render" in instance_families
             ):
                 self.log.info("Removing src: `{}`...".format(src))

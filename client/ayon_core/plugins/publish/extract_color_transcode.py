@@ -29,7 +29,7 @@ class ExtractOIIOTranscode(publish.Extractor):
 
     Target colorspace is selected by profiles in the Settings, based on:
     - host names
-    - product types
+    - product base types
     - product names
     - task types
     - task names
@@ -280,6 +280,21 @@ class ExtractOIIOTranscode(publish.Extractor):
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
 
+            # In case instance is not flagged for reviewable workflow
+            # by `review` family we have to add it so it can be processed
+            # by ExtractReview plugin
+            if (
+                added_review
+                and "review" not in instance.data["families"]
+            ):
+                # TODO: Preferably we do not mess with families
+                #  at this point in processing, but ExtractReview
+                #  currently requires it. And this is the only way
+                #  to have a representation with `review` tag
+                #  actually getting picked up for non-review
+                #  families.
+                instance.data["families"].append("review")
+
         instance.data["representations"].extend(new_representations)
 
     def _rename_in_representation(self, new_repre, files_to_convert,
@@ -351,29 +366,35 @@ class ExtractOIIOTranscode(publish.Extractor):
     def _get_profile(self, instance):
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
         filtering_criteria = {
-            "hosts": host_name,
-            "product_types": product_type,
+            "host_names": host_name,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
         }
-        profile = filter_profiles(self.profiles, filtering_criteria,
-                                  logger=self.log)
+        profile = filter_profiles(
+            self.profiles,
+            filtering_criteria,
+            logger=self.log
+        )
 
         if not profile:
-            self.log.debug((
-              "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Product types: \"{}\" | Product names: \"{}\""
-              " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+            self.log.debug(
+                "Skipped instance. None of profiles in presets are for"
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Product name: \"{product_name}\""
+                f" | Task name \"{task_name}\""
+                f" | Task type \"{task_type}\""
+            )
 
         return profile
 
