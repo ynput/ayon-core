@@ -5,7 +5,7 @@ import collections
 import copy
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from ayon_core.lib import (
     Logger,
@@ -24,7 +24,7 @@ from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
-from .structures import CreatedInstance
+from .structures import CreatedInstance, ProductTypeItem
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
@@ -196,6 +196,8 @@ class BaseCreator(ABC):
     # Name of plugin in create settings > class name is used if not set
     settings_name: Optional[str] = None
 
+    product_type_items: list[ProductTypeItem] = []
+
     def __init__(
         self, project_settings, create_context, headless=False
     ):
@@ -290,6 +292,40 @@ class BaseCreator(ABC):
                     key, cls_name
                 )
             setattr(self, key, value)
+
+        self.product_type_items = self._convert_product_type_items(
+            self.product_type_items
+        )
+
+    def _convert_product_type_items(
+        self, product_type_items: list
+    ) -> list[ProductTypeItem]:
+        """Helper method to convert product type items from settings."""
+        if not product_type_items:
+            return []
+
+        first_item = product_type_items[0]
+        if isinstance(first_item, ProductTypeItem):
+            return product_type_items
+
+        if not isinstance(first_item, dict):
+            self.log.warning(
+                f"Invalid product type item. Expected 'dict' or"
+                f" 'ProductTypeItem', got '{type(first_item)}'."
+            )
+            return []
+
+        try:
+            return [
+                ProductTypeItem.from_data(item)
+                for item in self.product_type_items
+            ]
+        except Exception:
+            self.log.warning(
+                "Failed to convert product type items"
+                " to ProductTypeItem instances"
+            )
+            return []
 
     def register_callbacks(self):
         """Register callbacks for creator.
@@ -389,7 +425,7 @@ class BaseCreator(ABC):
     def _create_instance(
         self,
         product_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         product_type: Optional[str] = None,
         product_base_type: Optional[str] = None
     ) -> CreatedInstance:
@@ -397,7 +433,7 @@ class BaseCreator(ABC):
 
         Args:
             product_name (str): Product name.
-            data (Dict[str, Any]): Instance data.
+            data (dict[str, Any]): Instance data.
             product_type (Optional[str]): Product type, object attribute
                 'product_type' is used if not passed.
             product_base_type (Optional[str]): Product base type, object
@@ -573,18 +609,26 @@ class BaseCreator(ABC):
         if not product_base_type:
             product_base_type = self.product_type
 
+        if product_type is None:
+            for product_type_item in self.get_product_type_items():
+                product_type = product_type_item.product_type
+                break
+            else:
+                product_type = product_base_type
+
         cur_project_name = self.create_context.get_current_project_name()
         if not project_entity and project_name == cur_project_name:
             project_entity = self.create_context.get_current_project_entity()
+
         args = (
             project_name,
             folder_entity,
             task_entity,
             variant,
             host_name,
-            instance,
         )
         kwargs = dict(
+            instance=instance,
             project_entity=project_entity,
             product_type=product_type,
         )
@@ -676,6 +720,24 @@ class BaseCreator(ABC):
         return get_next_versions_for_instances(
             self.create_context.project_name, instances
         )
+
+    def get_product_type_items(self) -> list[ProductTypeItem]:
+        """Get product type the Creator can work with.
+
+        By default, it returns `product_type_items` attribute value that
+        can be set by Creator settings. This can be overridden to provide
+        different source.
+
+        Product type items are list of ProductTypeItem that
+        Creator can create. Label is used in UI to show user-friendly name.
+        This dataclass can be easily expanded with data in the future. New
+        fields must have default values to not break existing implementations.
+
+        Returns:
+            list[ProductTypeItem]: List of product type items.
+
+        """
+        return self.product_type_items
 
 
 class Creator(BaseCreator):

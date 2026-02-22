@@ -117,7 +117,10 @@ class WorkfileTemplateProfile(BaseSettingsModel):
         enum_resolver=task_types_enum
     )
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     # TODO this was using project anatomy template name
     workfile_template: str = SettingsField("", title="Workfile template")
 
@@ -125,13 +128,19 @@ class WorkfileTemplateProfile(BaseSettingsModel):
 class LastWorkfileOnStartupProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
     use_last_published_workfile: bool = SettingsField(
         True, title="Use last published workfile"
@@ -141,20 +150,29 @@ class LastWorkfileOnStartupProfile(BaseSettingsModel):
 class WorkfilesToolOnStartupProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
         enum_resolver=task_types_enum
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
 
 
 class ExtraWorkFoldersProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -169,7 +187,10 @@ class ExtraWorkFoldersProfile(BaseSettingsModel):
 class WorkfilesLockProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    host_names: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     enabled: bool = SettingsField(True, title="Enabled")
 
 
@@ -258,7 +279,10 @@ def filter_type_enum():
 class LoaderProductTypeFilterProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
@@ -602,12 +626,12 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_template_profiles": [
             {
                 "task_types": [],
-                "hosts": [],
+                "host_names": [],
                 "workfile_template": "default"
             },
             {
                 "task_types": [],
-                "hosts": [
+                "host_names": [
                     "unreal"
                 ],
                 "workfile_template": "unreal"
@@ -615,18 +639,18 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "last_workfile_on_startup": [
             {
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "enabled": True,
                 "use_last_published_workfile": False
             }
         ],
         "open_workfile_tool_on_startup": [
             {
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "enabled": False
             }
         ],

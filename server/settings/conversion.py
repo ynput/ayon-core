@@ -73,6 +73,49 @@ def _convert_product_base_types_1_8_0(overrides):
         )
 
 
+def _convert_unify_profile_keys_1_8_0(overrides):
+    workfiles_settings = overrides.get("tools", {}).get("Workfiles", {})
+
+    profiles_settings = []
+    for key in (
+        "workfile_template_profiles",
+        "last_workfile_on_startup",
+        "open_workfile_tool_on_startup",
+        "extra_folders",
+        "workfile_lock_profiles",
+    ):
+        value = workfiles_settings.get(key)
+        if value:
+            profiles_settings.append(value)
+
+    load_settings = overrides.get("tools", {}).get("loader", {})
+
+    for key in (
+        "product_type_filter_profiles",
+    ):
+        value = load_settings.get(key)
+        if value:
+            profiles_settings.append(value)
+
+    validate_intent_p = (
+        overrides
+        .get("publish", {})
+        .get("ValidateIntent", {})
+        .get("profiles")
+    )
+    if validate_intent_p:
+        profiles_settings.append(validate_intent_p)
+
+    for profiles in profiles_settings:
+        for profile in profiles:
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in profile and new_key not in profile:
+                    profile[new_key] = profile.pop(old_key)
+
+
 def _convert_product_name_templates_1_7_0(overrides):
     product_name_profiles = (
         overrides
@@ -299,4 +342,5 @@ def convert_settings_overrides(
     _convert_publish_plugins(overrides)
     _convert_extract_thumbnail(overrides)
     _convert_product_base_types_1_8_0(overrides)
+    _convert_unify_profile_keys_1_8_0(overrides)
     return overrides
