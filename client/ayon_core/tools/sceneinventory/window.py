@@ -13,15 +13,20 @@ class SceneInventoryWindow(QtWidgets.QDialog):
     """Scene Inventory window"""
 
     def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
-
         if controller is None:
             controller = SceneInventoryController()
 
-        project_name = controller.get_current_project_name()
+        title = "AYON Scene Inventory"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
+        super().__init__(parent)
+
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("Scene Inventory - {}".format(project_name))
+
         self.setObjectName("SceneInventory")
 
         self.resize(1100, 480)
