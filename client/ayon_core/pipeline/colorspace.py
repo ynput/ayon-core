@@ -1724,4 +1724,3 @@ def get_representation_ocio_config_path(
         f" {config_path}"
     )
     return None
-
