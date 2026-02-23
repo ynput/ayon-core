@@ -1,9 +1,6 @@
-
-import os
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
-from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     FoldersWidget,
     GoToCurrentButton,
@@ -22,7 +19,7 @@ from .utils import BaseOverlayFrame
 
 class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
-        super(InvalidHostOverlay, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(
             (
@@ -52,26 +49,17 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Frontend controller.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
-
-    @property
-    def title(self):
-        """Get window title with application name."""
-        base_title = "AYON Workfiles"
-        app_name = (
-            os.environ.get("AYON_APP_NAME")
-            or get_current_host_name()
-        )
-        if app_name:
-            return f"{base_title} - {app_name}"
-        return base_title
-
     def __init__(self, controller=None, parent=None):
-        super(WorkfilesToolWindow, self).__init__(parent=parent)
-
         if controller is None:
             controller = BaseWorkfileController()
 
-        self.setWindowTitle(self.title)
+        title = "AYON Workfiles"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
+        super().__init__(parent=parent)
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
