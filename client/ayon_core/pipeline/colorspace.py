@@ -1707,7 +1707,7 @@ def get_representation_ocio_config_path(
     if config_path:
         if os.path.isfile(config_path):
             return config_path
-        logger.warning(
+        logger.debug(
             "OCIO Config file for representation not found at:"
             f" {config_path}"
         )
