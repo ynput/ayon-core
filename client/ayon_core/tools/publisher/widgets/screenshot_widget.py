@@ -11,8 +11,8 @@ class ScreenMarqueeDialog(QtWidgets.QDialog):
     mouse_released = QtCore.Signal(QtCore.QPoint)
     close_requested = QtCore.Signal()
 
-    def __init__(self, screen: QtCore.QObject, screen_id: str):
-        super().__init__()
+    def __init__(self, screen: QtCore.QObject, screen_id: str, owner=None):
+        super().__init__(owner)
         self.setWindowFlags(
             QtCore.Qt.Window
             | QtCore.Qt.FramelessWindowHint
@@ -175,13 +175,13 @@ class ScreenMarquee(QtCore.QObject):
     `capture_to_file`, `capture_to_clipboard` and `capture_to_pixmap`.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, owner=None):
         super().__init__(parent=parent)
 
         screens_by_id = {}
         for screen in QtWidgets.QApplication.screens():
             screen_id = uuid.uuid4().hex
-            screen_dialog = ScreenMarqueeDialog(screen, screen_id)
+            screen_dialog = ScreenMarqueeDialog(screen, screen_id, owner=owner)
             screens_by_id[screen_id] = screen_dialog
             screen_dialog.mouse_moved.connect(self._on_mouse_move)
             screen_dialog.mouse_pressed.connect(self._on_mouse_press)
@@ -234,14 +234,11 @@ class ScreenMarquee(QtCore.QObject):
     def start_capture(self):
         for dialog in self._screens_by_id.values():
             dialog.show()
-            # Activate so Escape event is not ignored.
-            dialog.setWindowState(QtCore.Qt.WindowActive)
 
         app = QtWidgets.QApplication.instance()
         while not self._finished:
             app.processEvents()
 
-        # Give time to cloe dialogs
         for _ in range(2):
             app.processEvents()
 
@@ -358,32 +355,37 @@ class ScreenMarquee(QtCore.QObject):
         # return output_pix
 
     @classmethod
-    def capture_to_pixmap(cls):
+    def capture_to_pixmap(cls, owner=None):
         """Take screenshot with marquee into pixmap.
 
         Note:
             The pixmap can be invalid (use 'isNull' to check).
 
+        Args:
+            owner: Optional parent/owner window (e.g. modal dialog) so marquee
+                receives input on Windows while owner is modal.
+
         Returns:
             QtGui.QPixmap: Captured pixmap image.
         """
-        tool = cls()
+        tool = cls(owner=owner)
         tool.start_capture()
         return tool.get_captured_pixmap()
 
     @classmethod
-    def capture_to_file(cls, filepath=None):
+    def capture_to_file(cls, filepath=None, owner=None):
         """Take screenshot with marquee into file.
 
         Args:
             filepath (Optional[str]): Path where screenshot will be saved.
+            owner: Optional parent/owner window so marquee receives input
+                on Windows while owner is modal.
 
         Returns:
             Union[str, None]: Path to the saved screenshot, or None if user
                 cancelled the operation.
         """
-
-        pixmap = cls.capture_to_pixmap()
+        pixmap = cls.capture_to_pixmap(owner=owner)
         if pixmap.isNull():
             return None
 
@@ -434,18 +436,19 @@ def capture_to_pixmap():
     return ScreenMarquee.capture_to_pixmap()
 
 
-def capture_to_file(filepath=None):
+def capture_to_file(filepath=None, owner=None):
     """Take screenshot with marquee into file.
 
     Args:
         filepath (Optional[str]): Path where screenshot will be saved.
+        owner: Optional parent/owner window so marquee receives input
+            on Windows while owner is modal.
 
     Returns:
         Union[str, None]: Path to the saved screenshot, or None if user
             cancelled the operation.
     """
-
-    return ScreenMarquee.capture_to_file(filepath)
+    return ScreenMarquee.capture_to_file(filepath, owner=owner)
 
 
 def capture_to_clipboard():

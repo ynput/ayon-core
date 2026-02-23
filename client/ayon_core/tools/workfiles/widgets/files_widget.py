@@ -172,7 +172,6 @@ class FilesWidget(QtWidgets.QWidget):
         Returns:
             Union[dict[str, Any], None]: Result of the dialog.
         """
-
         dialog = SaveAsDialog(self._controller, self)
         dialog.update_context()
         dialog.exec_()
@@ -274,7 +273,8 @@ class FilesWidget(QtWidgets.QWidget):
             result["filename"],
             version=result["version"],
             comment=result["comment"],
-            description=result["description"]
+            description=result["description"],
+            thumbnail_path=result.get("thumbnail_path"),
         )
 
     def _on_workarea_path_changed(self, event):

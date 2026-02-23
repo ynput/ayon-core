@@ -655,6 +655,7 @@ class WorkfileInfo:
         updated_by (Optional[str]): User id of the user who updated the
             workfile entity.
         available (bool): True if workfile is available on the machine.
+        thumbnail_id (Optional[str]): Thumbnail entity id linked to workfile.
 
     """
     filepath: str
@@ -669,6 +670,7 @@ class WorkfileInfo:
     created_by: Optional[str]
     updated_by: Optional[str]
     available: bool
+    thumbnail_id: Optional[str] = None
 
     @classmethod
     def new(
@@ -708,6 +710,7 @@ class WorkfileInfo:
             created_by=workfile_entity.get("createdBy"),
             updated_by=workfile_entity.get("updatedBy"),
             available=available,
+            thumbnail_id=workfile_entity.get("thumbnailId"),
         )
 
     def to_data(self) -> dict[str, Any]:
@@ -888,6 +891,21 @@ class IWorkfileHost(AbstractHost):
 
         """
         return []
+
+    def capture_workfile_thumbnail_source(self) -> Optional[str]:
+        """Optional: capture host editor (e.g. Camera/Node view) to a temp image.
+
+        Used by the Workfiles tool when the user presses Ctrl+Shift+S to
+        capture the host's editor (e.g. Harmony Camera view or Node View) as
+        the current workfile thumbnail. The image is shown in the side panel
+        so the user can click "Save thumbnail" to persist it.
+
+        Returns:
+            Optional[str]: Path to a temporary image file (e.g. PNG), or None
+                if the host does not support capture or the user cancelled.
+
+        """
+        return None
 
     def save_workfile_with_context(
         self,
