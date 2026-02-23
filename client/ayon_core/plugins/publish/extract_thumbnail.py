@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, fields
 import os
 import subprocess
 import tempfile
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
 
 import pyblish.api
 from ayon_core.lib import (
@@ -24,8 +24,12 @@ from ayon_core.lib.transcoding import (
     get_oiio_input_and_channel_args,
     get_oiio_info_for_input,
 )
+from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
 
 
 @dataclass
@@ -256,11 +260,13 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
+                anatomy = instance.context.data["anatomy"]
                 repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
-                    colorspace_data,
+                    repre,
                     thumbnail_def,
+                    anatomy=anatomy
                 )
 
             # Try to use FFMPEG if OIIO is not supported or for cases when
@@ -423,25 +429,39 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        colorspace_data: dict,
+        repre: dict,
         thumbnail_def: ThumbnailDef,
+        anatomy: "Anatomy",
     ):
         """Create thumbnail using OIIO tool oiiotool
 
         Args:
             src_path (str): path to source file
             dst_path (str): path to destination file
-            colorspace_data (dict): colorspace data from representation
+            repre (dict): colorspace data from representation
                 keys:
                     colorspace (str)
                     config (dict)
                     display (Optional[str])
                     view (Optional[str])
             thumbnail_def (ThumbnailDefinition): Thumbnail definition.
+            anatomy (Anatomy): Current project Anatomy.
 
         Returns:
-            str: path to created thumbnail
+            bool: Whether a thumbnail has been created.
         """
+
+        path = get_representation_ocio_config_path(
+            repre,
+            anatomy=anatomy,
+            logger=self.log
+        )
+        if not path:
+            self.log.debug("Unable to find representation OCIO file.")
+            return False
+
+        colorspace_data: dict = repre.get("colorspaceData", {})
+
         self.log.info(f"Extracting thumbnail {dst_path}")
         resolution_arg = self._get_resolution_args(
             "oiiotool", src_path, thumbnail_def
