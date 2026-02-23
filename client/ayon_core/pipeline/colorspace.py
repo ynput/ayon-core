@@ -1668,7 +1668,7 @@ def get_imageio_config(
 
 
 def get_representation_ocio_config_path(
-    representation: dict[str, Any],
+    publish_repre: dict[str, Any],
     anatomy: Anatomy,
     logger: Optional[logging.Logger] = None,
 ) -> Optional[str]:
@@ -1684,11 +1684,11 @@ def get_representation_ocio_config_path(
     """
     if logger is None:
         logger = log
-    colorspace_data = representation.get("colorspaceData") or {}
+    colorspace_data = publish_repre.get("colorspaceData") or {}
     config = colorspace_data.get("config")
     if not config:
         logger.debug(
-            "No OCIO Config file for represenation,"
+            "No OCIO Config file for representation,"
             " because it has no colorspace data."
         )
         return None
@@ -1701,6 +1701,9 @@ def get_representation_ocio_config_path(
         )
         return None
 
+    # First we check the lightest route and just see if path is a valid file.
+    # When it is not we'll assume that the path is e.g. from another machine
+    # or another platform and may need to be computed from the template
     if config_path:
         if os.path.isfile(config_path):
             return config_path
@@ -1713,15 +1716,12 @@ def get_representation_ocio_config_path(
         return None
 
     config_path = anatomy.fill_root(config_template)
+    if os.path.isfile(config_path):
+        return config_path
 
-    # First we check the lightest route and just see if path is a valid file.
-    # When it is not we'll assume that the path is e.g. from another machine
-    # or another platform and may need to be computed from the template
-    if not os.path.isfile(config_path):
-        logger.warning(
-            "OCIO Config file for representation not found at:"
-            f" {config_path}"
-        )
-        return None
+    logger.warning(
+        "OCIO Config file for representation not found at:"
+        f" {config_path}"
+    )
+    return None
 
-    return config_path
