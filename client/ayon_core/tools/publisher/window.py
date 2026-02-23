@@ -13,7 +13,6 @@ from ayon_core import (
     resources,
     style
 )
-from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     ErrorMessageBox,
     PlaceholderLineEdit,
@@ -53,29 +52,25 @@ class PublisherWindow(QtWidgets.QDialog):
     footer_border = 8
     publish_footer_spacer = 2
 
-    @property
-    def title(self):
-        """Get window title with application name."""
-        base_title = "AYON Publisher"
-        app_name = (
-            os.environ.get("AYON_APP_NAME")
-            or get_current_host_name()
-        )
-        if app_name:
-            return f"{base_title} - {app_name}"
-        return base_title
-
     def __init__(
         self,
         parent: Optional[QtWidgets.QWidget] = None,
         controller: Optional[AbstractPublisherFrontend] = None,
         reset_on_show: Optional[bool] = None
     ):
+        if controller is None:
+            controller = QtPublisherController()
+
+        title = "AYON Publisher"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
         super().__init__(parent)
 
         self.setObjectName("PublishWindow")
 
-        self.setWindowTitle(self.title)
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
@@ -89,9 +84,6 @@ class PublisherWindow(QtWidgets.QDialog):
             | QtCore.Qt.WindowMinimizeButtonHint
             | QtCore.Qt.WindowCloseButtonHint
         )
-
-        if controller is None:
-            controller = QtPublisherController()
 
         help_dialog = HelpDialog(controller, self)
 
