@@ -185,6 +185,20 @@ class IPluginPaths(AYONInterface):
         """
         return self._get_plugin_paths_by_type("inventory")
 
+    def get_loader_action_plugin_paths(
+        self, host_name: Optional[str]
+    ) -> list[str]:
+        """Receive loader action plugin paths.
+
+        Args:
+            host_name (Optional[str]): Current host name.
+
+        Returns:
+            list[str]: Paths to loader action plugins.
+
+        """
+        return []
+
 
 class ITrayAddon(AYONInterface):
     """Addon has special procedures when used in Tray tool.

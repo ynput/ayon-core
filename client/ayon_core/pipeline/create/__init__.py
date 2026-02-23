@@ -22,6 +22,7 @@ from .exceptions import (
 )
 from .structures import (
     ParentFlags,
+    ProductTypeItem,
     CreatedInstance,
     ConvertorItem,
     AttributeValues,
@@ -80,6 +81,7 @@ __all__ = (
     "TemplateFillError",
 
     "ParentFlags",
+    "ProductTypeItem",
     "CreatedInstance",
     "ConvertorItem",
     "AttributeValues",

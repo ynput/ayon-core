@@ -21,6 +21,7 @@ from ayon_api.operations import (
 from ayon_core.lib import (
     StringTemplate,
     source_hash,
+    is_func_signature_supported,
 )
 from ayon_core.lib.file_transaction import FileTransaction
 from ayon_core.pipeline.thumbnails import get_thumbnail_path
@@ -89,7 +90,7 @@ class ProjectPushItem:
         variant,
         comment,
         new_folder_name,
-        dst_version,
+        version_up,
         item_id=None,
         use_original_name=False
     ):
@@ -100,7 +101,7 @@ class ProjectPushItem:
         self.dst_project_name = dst_project_name
         self.dst_folder_id = dst_folder_id
         self.dst_task_name = dst_task_name
-        self.dst_version = dst_version
+        self.version_up = version_up
         self.variant = variant
         self.new_folder_name = new_folder_name
         self.comment = comment or ""
@@ -118,7 +119,7 @@ class ProjectPushItem:
                 str(self.dst_folder_id),
                 str(self.new_folder_name),
                 str(self.dst_task_name),
-                str(self.dst_version),
+                str(self.version_up),
                 self.use_original_name
             ])
         return self._repr_value
@@ -133,7 +134,7 @@ class ProjectPushItem:
             "dst_project_name": self.dst_project_name,
             "dst_folder_id": self.dst_folder_id,
             "dst_task_name": self.dst_task_name,
-            "dst_version": self.dst_version,
+            "version_up": self.version_up,
             "variant": self.variant,
             "comment": self.comment,
             "new_folder_name": self.new_folder_name,
@@ -450,6 +451,7 @@ class ProjectPushItemProcess:
         self._product_entity = None
         self._version_entity = None
 
+        self._product_base_type = None
         self._product_type = None
         self._product_name = None
 
@@ -485,7 +487,7 @@ class ProjectPushItemProcess:
             self._log_info("Destination folder was determined")
             self._fill_or_create_destination_task()
             self._log_info("Destination task was determined")
-            self._determine_product_type()
+            self._determine_product_base_type()
             self._determine_publish_template_name()
             self._determine_product_name()
             self._make_sure_product_exists()
@@ -872,29 +874,33 @@ class ProjectPushItemProcess:
         task_info.update(task_type_info)
         self._task_info = task_info
 
-    def _determine_product_type(self):
+    def _determine_product_base_type(self):
         product_entity = self._src_product_entity
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
-        if not product_type:
+        if not product_base_type:
+            product_base_type = product_type
+        if not product_base_type:
             self._status.set_failed(
                 "Couldn't figure out product type from source product"
             )
             raise PushToProjectError(self._status.fail_reason)
 
         self._log_debug(
-            f"Publishing product type is '{product_type}'"
+            f"Publishing product type is '{product_base_type}'"
             f" (Based on source product)"
         )
         self._product_type = product_type
+        self._product_base_type = product_base_type
 
     def _determine_publish_template_name(self):
         template_name = get_publish_template_name(
-            self._item.dst_project_name,
-            self.host_name,
-            self._product_type,
-            self._task_info.get("name"),
-            self._task_info.get("type"),
-            project_settings=self._project_settings
+            project_name=self._item.dst_project_name,
+            host_name=self.host_name,
+            product_base_type=self._product_base_type,
+            task_name=self._task_info.get("name"),
+            task_type=self._task_info.get("type"),
+            project_settings=self._project_settings,
         )
         self._log_debug(
             f"Using template '{template_name}' for integration"
@@ -905,28 +911,23 @@ class ProjectPushItemProcess:
         if self._item.use_original_name:
             product_name = self._src_product_entity["name"]
         else:
-            product_type = self._product_type
-            task_info = self._task_info
-            task_name = task_type = None
-            if task_info:
-                task_name = task_info["name"]
-                task_type = task_info["taskType"]
-
             try:
                 product_name = get_product_name(
                     self._item.dst_project_name,
-                    task_name,
-                    task_type,
-                    self.host_name,
-                    product_type,
-                    self._item.variant,
+                    folder_entity=self._folder_entity,
+                    task_entity=self._task_info,
+                    host_name=self.host_name,
+                    product_type=self._product_type,
+                    product_base_type=self._product_base_type,
+                    variant=self._item.variant,
                     project_settings=self._project_settings
                 )
             except TaskNotSetError:
                 self._status.set_failed(
-                    "Target product name template requires task name. To "
-                    "continue you have to select target task or change settings "  # noqa: E501
-                    " <b>ayon+settings://core/tools/creator/product_name_profiles"  # noqa: E501
+                    "Target product name template requires task name. To"
+                    " continue you have to select target task or change"
+                    " settings <b>ayon+settings://core/tools/creator/"
+                    "product_name_profiles"
                     f"?project={self._item.dst_project_name}</b>."
                 )
                 raise PushToProjectError(self._status.fail_reason)
@@ -940,7 +941,6 @@ class ProjectPushItemProcess:
         project_name = self._item.dst_project_name
         folder_id = self._folder_entity["id"]
         product_name = self._product_name
-        product_type = self._product_type
         product_entity = ayon_api.get_product_by_name(
             project_name, product_name, folder_id
         )
@@ -948,11 +948,32 @@ class ProjectPushItemProcess:
             self._product_entity = product_entity
             return product_entity
 
-        product_entity = new_product_entity(
-            product_name,
-            product_type,
-            folder_id,
+        src_attrib = self._src_product_entity["attrib"]
+
+        dst_attrib = {}
+        for key in {
+            "description",
+            "productGroup",
+        }:
+            value = src_attrib.get(key)
+            if value:
+                dst_attrib[key] = value
+
+        kwargs = dict(
+            name=product_name,
+            product_type=self._product_type,
+            product_base_type=self._product_base_type,
+            folder_id=folder_id,
+            attribs=dst_attrib,
         )
+        # Backwards compatibility 26/01/28
+        # Check if 'product_base_type' is supported argument
+        if not is_func_signature_supported(
+            new_product_entity, **kwargs
+        ):
+            kwargs["product_type"] = kwargs.pop("product_base_type")
+
+        product_entity = new_product_entity(**kwargs)
         self._operations.create_entity(
             project_name, "product", product_entity
         )
@@ -962,11 +983,14 @@ class ProjectPushItemProcess:
         """Make sure version document exits in database."""
 
         project_name = self._item.dst_project_name
-        version = self._item.dst_version
+        version_up = self._item.version_up
         src_version_entity = self._src_version_entity
         product_entity = self._product_entity
         product_id = product_entity["id"]
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         src_attrib = src_version_entity["attrib"]
 
         dst_attrib = {}
@@ -990,27 +1014,29 @@ class ProjectPushItemProcess:
             "description",
             "intent",
         }:
-            if key in src_attrib:
-                dst_attrib[key] = src_attrib[key]
+            value = src_attrib.get(key)
+            if value:
+                dst_attrib[key] = value
 
-        if version is None:
-            last_version_entity = ayon_api.get_last_version_by_product_id(
-                project_name, product_id
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, product_id
+        )
+        if last_version_entity is None:
+            dst_version = get_versioning_start(
+                project_name,
+                self.host_name,
+                task_name=self._task_info.get("name"),
+                task_type=self._task_info.get("taskType"),
+                product_base_type=product_base_type,
+                product_name=product_entity["name"],
             )
-            if last_version_entity:
-                version = int(last_version_entity["version"]) + 1
-            else:
-                version = get_versioning_start(
-                    project_name,
-                    self.host_name,
-                    task_name=self._task_info.get("name"),
-                    task_type=self._task_info.get("taskType"),
-                    product_type=product_type,
-                    product_name=product_entity["name"],
-                )
+        else:
+            dst_version = int(last_version_entity["version"])
+            if version_up:
+                dst_version += 1
 
         existing_version_entity = ayon_api.get_version_by_name(
-            project_name, version, product_id
+            project_name, dst_version, product_id
         )
         thumbnail_id = self._copy_version_thumbnail()
 
@@ -1031,10 +1057,23 @@ class ProjectPushItemProcess:
         copied_tags = self._get_transferable_tags(src_version_entity)
         copied_status = self._get_transferable_status(src_version_entity)
 
+        description_parts = []
+        dst_attr_description = dst_attrib.get("description")
+        if dst_attr_description:
+            description_parts.append(dst_attr_description)
+
+        description = self._create_src_version_description(
+            self._item.src_project_name,
+            src_version_entity
+        )
+        if description:
+            description_parts.append(description)
+
+        dst_attrib["description"] = "\n\n".join(description_parts)
+
         version_entity = new_version_entity(
-            version,
+            dst_version,
             product_id,
-            author=src_version_entity["author"],
             status=copied_status,
             tags=copied_tags,
             task_id=self._task_info.get("id"),
@@ -1115,11 +1154,10 @@ class ProjectPushItemProcess:
             self.host_name
         )
         formatting_data.update({
-            "subset": self._product_name,
-            "family": self._product_type,
             "product": {
                 "name": self._product_name,
                 "type": self._product_type,
+                "basetype": self._product_base_type,
             },
             "version": version_entity["version"]
         })
@@ -1147,17 +1185,15 @@ class ProjectPushItemProcess:
         self, anatomy, template_name, formatting_data, file_template
     ):
         processed_repre_items = []
-        repre_context = None
         for repre_item in self._src_repre_items:
             repre_entity = repre_item.repre_entity
             repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
 
-            if not repre_context:
-                repre_context = self._update_repre_context(
-                    copy.deepcopy(repre_entity),
-                    formatting_data
-                )
+            repre_context = self._update_repre_context(
+                copy.deepcopy(repre_entity),
+                formatting_data
+            )
 
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
@@ -1358,6 +1394,30 @@ class ProjectPushItemProcess:
             return copied_status["name"]
         return None
 
+    def _create_src_version_description(
+            self,
+            src_project_name: str,
+            src_version_entity: dict[str, Any]
+    ) -> str:
+        """Creates description text about source version."""
+        src_version_id = src_version_entity["id"]
+        src_author = src_version_entity["author"]
+        query = "&".join([
+            f"project={src_project_name}",
+            "type=version",
+            f"id={src_version_id}"
+        ])
+        version_url = (
+            f"{ayon_api.get_base_url()}"
+            f"/projects/{src_project_name}/products?{query}"
+        )
+        description = (
+            f"Version copied from from  {version_url} "
+            f"created by '{src_author}', "
+        )
+
+        return description
+
 
 class IntegrateModel:
     def __init__(self, controller):
@@ -1380,7 +1440,7 @@ class IntegrateModel:
         variant,
         comment,
         new_folder_name,
-        dst_version,
+        version_up,
         use_original_name
     ):
         """Create new item for integration.
@@ -1394,7 +1454,7 @@ class IntegrateModel:
             variant (str): Variant name.
             comment (Union[str, None]): Comment.
             new_folder_name (Union[str, None]): New folder name.
-            dst_version (int): Destination version number.
+            version_up (bool): Should destination product be versioned up
             use_original_name (bool): If original product names should be used
 
         Returns:
@@ -1411,7 +1471,7 @@ class IntegrateModel:
             variant,
             comment=comment,
             new_folder_name=new_folder_name,
-            dst_version=dst_version,
+            version_up=version_up,
             use_original_name=use_original_name
         )
         process_item = ProjectPushItemProcess(self, item)

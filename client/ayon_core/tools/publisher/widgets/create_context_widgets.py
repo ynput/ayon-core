@@ -1,10 +1,14 @@
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.utils import PlaceholderLineEdit, GoToCurrentButton
 
 from ayon_core.tools.common_models import HierarchyExpectedSelection
-from ayon_core.tools.utils import FoldersWidget, TasksWidget
+from ayon_core.tools.utils import (
+    FoldersWidget,
+    TasksWidget,
+    FoldersFiltersWidget,
+    GoToCurrentButton,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
@@ -180,8 +184,7 @@ class CreateContextWidget(QtWidgets.QWidget):
 
         headers_widget = QtWidgets.QWidget(self)
 
-        folder_filter_input = PlaceholderLineEdit(headers_widget)
-        folder_filter_input.setPlaceholderText("Filter folders..")
+        filters_widget = FoldersFiltersWidget(headers_widget)
 
         current_context_btn = GoToCurrentButton(headers_widget)
         current_context_btn.setToolTip("Go to current context")
@@ -189,7 +192,8 @@ class CreateContextWidget(QtWidgets.QWidget):
 
         headers_layout = QtWidgets.QHBoxLayout(headers_widget)
         headers_layout.setContentsMargins(0, 0, 0, 0)
-        headers_layout.addWidget(folder_filter_input, 1)
+        headers_layout.setSpacing(5)
+        headers_layout.addWidget(filters_widget, 1)
         headers_layout.addWidget(current_context_btn, 0)
 
         hierarchy_controller = CreateHierarchyController(controller)
@@ -207,15 +211,17 @@ class CreateContextWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_layout.addWidget(headers_widget, 0)
+        main_layout.addSpacing(5)
         main_layout.addWidget(folders_widget, 2)
         main_layout.addWidget(tasks_widget, 1)
 
         folders_widget.selection_changed.connect(self._on_folder_change)
         tasks_widget.selection_changed.connect(self._on_task_change)
         current_context_btn.clicked.connect(self._on_current_context_click)
-        folder_filter_input.textChanged.connect(self._on_folder_filter_change)
+        filters_widget.text_changed.connect(self._on_folder_filter_change)
+        filters_widget.my_tasks_changed.connect(self._on_my_tasks_change)
 
-        self._folder_filter_input = folder_filter_input
+        self._filters_widget = filters_widget
         self._current_context_btn = current_context_btn
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
@@ -285,6 +291,10 @@ class CreateContextWidget(QtWidgets.QWidget):
         self._hierarchy_controller.set_expected_selection(
             self._last_project_name, folder_id, task_name
         )
+        # Update my tasks
+        self._on_my_tasks_change(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _clear_selection(self):
         self._folders_widget.set_selected_folder(None)
@@ -303,5 +313,17 @@ class CreateContextWidget(QtWidgets.QWidget):
             self._last_project_name, folder_id, task_name
         )
 
-    def _on_folder_filter_change(self, text):
+    def _on_folder_filter_change(self, text: str) -> None:
         self._folders_widget.set_name_filter(text)
+
+    def _on_my_tasks_change(self, enabled: bool) -> None:
+        folder_ids = None
+        task_ids = None
+        if enabled:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._last_project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)

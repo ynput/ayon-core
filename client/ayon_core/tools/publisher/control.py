@@ -2,6 +2,7 @@ import os
 import logging
 import tempfile
 import shutil
+from typing import Union, Optional, Any
 
 import ayon_api
 
@@ -11,7 +12,11 @@ from ayon_core.pipeline import (
     registered_host,
     get_process_id,
 )
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+)
 
 from .models import (
     PublishModel,
@@ -101,6 +106,7 @@ class PublisherController(
         # Cacher of avalon documents
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -317,6 +323,17 @@ class PublisherController(
                 return False
         return True
 
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
     # --- Publish specific callbacks ---
     def get_context_title(self):
         """Get context title for artist shown at the top of main window."""
@@ -359,6 +376,7 @@ class PublisherController(
         self._emit_event("controller.reset.started")
 
         self._hierarchy_model.reset()
+        self._users_model.reset()
 
         # Publish part must be reset after plugins
         self._create_model.reset()
@@ -449,11 +467,12 @@ class PublisherController(
 
     def get_product_name(
         self,
-        creator_identifier,
-        variant,
-        task_name,
-        folder_path,
-        instance_id=None
+        creator_identifier: str,
+        product_type: str,
+        variant: str,
+        folder_path: Union[str, None],
+        task_name: Union[str, None],
+        instance_id: Optional[str] = None
     ):
         """Get product name based on passed data.
 
@@ -461,17 +480,18 @@ class PublisherController(
             creator_identifier (str): Identifier of creator which should be
                 responsible for product name creation.
             variant (str): Variant value from user's input.
-            task_name (str): Name of task for which is instance created.
             folder_path (str): Folder path for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when product
+            task_name (str): Name of task for which is instance created.
+            instance_id (Optional[str]): Existing instance id when product
                 name is updated.
         """
 
         return self._create_model.get_product_name(
             creator_identifier,
+            product_type,
             variant,
-            task_name,
             folder_path,
+            task_name,
             instance_id=None
         )
 
@@ -491,12 +511,19 @@ class PublisherController(
         self.reset()
 
     def create(
-        self, creator_identifier, product_name, instance_data, options
+        self,
+        creator_identifier: str,
+        product_name: str,
+        instance_data: dict[str, Any],
+        options: dict[str, Any],
     ):
         """Trigger creation and refresh of instances in UI."""
 
         return self._create_model.create(
-            creator_identifier, product_name, instance_data, options
+            creator_identifier,
+            product_name,
+            instance_data,
+            options,
         )
 
     def save_changes(self, show_message=True):
