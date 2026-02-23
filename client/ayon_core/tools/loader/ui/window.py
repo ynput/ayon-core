@@ -43,7 +43,7 @@ GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
 class LoadErrorMessageBox(ErrorMessageBox):
     def __init__(self, messages, parent=None):
         self._messages = messages
-        super(LoadErrorMessageBox, self).__init__("Loading failed", parent)
+        super().__init__("Loading failed", parent)
 
     def _create_top_widget(self, parent_widget):
         label_widget = QtWidgets.QLabel(parent_widget)
@@ -135,31 +135,23 @@ class RefreshHandler:
 
 
 class LoaderWindow(QtWidgets.QWidget):
-
-    @property
-    def title(self):
-        """Get window title with application name."""
-        base_title = "AYON Loader"
-        app_name = (
-            os.environ.get("AYON_APP_NAME")
-            or get_current_host_name()
-        )
-        if app_name:
-            return f"{base_title} - {app_name}"
-        return base_title
-
     def __init__(self, controller=None, parent=None):
-        super(LoaderWindow, self).__init__(parent)
+        super().__init__(parent)
 
-        self.setWindowTitle(self.title)
+        if controller is None:
+            controller = LoaderController()
+
+        subtitle = controller.get_window_subtitle()
+        title = "AYON Loader"
+        if subtitle:
+            title += f" - {subtitle}"
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
 
-        if controller is None:
-            controller = LoaderController()
 
         overlay_object = MessageOverlayObject(self)
 
