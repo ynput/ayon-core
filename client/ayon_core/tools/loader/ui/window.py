@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 
 from typing import Optional
 
@@ -151,7 +150,6 @@ class LoaderWindow(QtWidgets.QWidget):
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
-
 
         overlay_object = MessageOverlayObject(self)
 
