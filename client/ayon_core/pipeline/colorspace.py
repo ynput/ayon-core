@@ -1684,7 +1684,10 @@ def get_representation_ocio_config_path(
     """
     colorspace_data = representation.get("colorspaceData")
     if not colorspace_data:
-        logger.warning("Config file doesn't exist, skipping")
+        logger.debug(
+            "No OCIO Config file for represenation,"
+            " because it has no colorspace data."
+        )
         return None
 
     config = colorspace_data.get("config", {})
@@ -1692,7 +1695,9 @@ def get_representation_ocio_config_path(
     config_path: str = config.get("path", "")
     if not config_path and not config_template:
         if logger:
-            logger.warning("Config file not set.")
+            logger.warning(
+                "OCIO Config file is not set for representation."
+            )
         return None
 
     if config_path and os.path.isfile(config_path):
@@ -1706,7 +1711,10 @@ def get_representation_ocio_config_path(
     # or another platform and may need to be computed from the template
     if not os.path.isfile(config_path):
         if logger:
-            logger.warning("Config file not found at: {}".format(config_path))
+            logger.warning(
+                "OCIO Config file for representation not found at:"
+                f" {config_path}"
+            )
         return None
 
     return config_path

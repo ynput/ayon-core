@@ -117,6 +117,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                 logger=self.log
             )
             if not config_path:
+                self.log.debug(
+                    "Skipping OIIO Color Transcode because no OCIO config"
+                    " path found on representation."
+                )
                 continue
 
             source_colorspace = colorspace_data["colorspace"]
