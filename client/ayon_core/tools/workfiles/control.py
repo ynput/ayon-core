@@ -30,7 +30,7 @@ NOT_SET = object()
 
 class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
     def __init__(self, controller):
-        super(WorkfilesToolExpectedSelection, self).__init__(
+        super().__init__(
             controller,
             handle_project=False,
             handle_folder=True,
@@ -57,16 +57,14 @@ class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
         self._workfile_selected = False
         self._representation_selected = False
 
-        super(WorkfilesToolExpectedSelection, self).set_expected_selection(
+        super().set_expected_selection(
             project_name,
             folder_id,
             task_name,
         )
 
     def get_expected_selection_data(self):
-        data = super(
-            WorkfilesToolExpectedSelection, self
-        ).get_expected_selection_data()
+        data = super().get_expected_selection_data()
 
         _is_current = (
             self._project_selected
@@ -169,6 +167,11 @@ class BaseWorkfileController(
         if self._log is None:
             self._log = Logger.get_logger("WorkfilesUI")
         return self._log
+
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
 
     def is_host_valid(self):
         return self._host_is_valid
