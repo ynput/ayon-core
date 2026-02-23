@@ -451,12 +451,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             bool: Whether a thumbnail has been created.
         """
 
-        path = get_representation_ocio_config_path(
+        ocio_config_path = get_representation_ocio_config_path(
             repre,
             anatomy=anatomy,
             logger=self.log
         )
-        if not path:
+        if not ocio_config_path:
             self.log.debug("Unable to find representation OCIO file.")
             return False
 
@@ -498,7 +498,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             oiio_color_convert(
                 src_path,
                 dst_path,
-                colorspace_data["config"]["path"],
+                ocio_config_path,
                 colorspace_data["colorspace"],
                 source_display=colorspace_data.get("display"),
                 source_view=colorspace_data.get("view"),
