@@ -460,7 +460,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             self.log.debug("Unable to find representation OCIO file.")
             return False
 
-        colorspace_data: dict = repre.get("colorspaceData", {})
+        colorspace_data: dict = repre["colorspaceData"]
 
         self.log.info(f"Extracting thumbnail {dst_path}")
         resolution_arg = self._get_resolution_args(
