@@ -3,7 +3,7 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 VERSION_ROLE = QtCore.Qt.UserRole + 1
@@ -127,7 +127,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         return icon
 
 
-class WorkfilesView(QtWidgets.QTreeView):
+class WorkfilesView(DeselectableTreeView):
     def drawBranches(self, painter, rect, index):
         return
 
@@ -164,6 +164,10 @@ class WorkfilesPage(QtWidgets.QWidget):
 
     def refresh(self) -> None:
         self._workfiles_model.refresh()
+
+    def deselect(self):
+        sel_model = self._workfiles_view.selectionModel()
+        sel_model.clearSelection()
 
     def _on_refresh(self) -> None:
         self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder)

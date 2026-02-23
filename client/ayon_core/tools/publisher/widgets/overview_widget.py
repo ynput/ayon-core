@@ -66,10 +66,11 @@ class OverviewWidget(QtWidgets.QFrame):
         change_view_btn = ChangeViewBtn(product_views_widget)
 
         # --- Overview ---
-        # pProduct details widget
+        # Product details widget
         product_attributes_wrap = BorderedLabelWidget(
             "Publish options", product_content_widget
         )
+        product_attributes_wrap.setVisible(False)
         product_attributes_widget = ProductInfoWidget(
             controller, product_attributes_wrap
         )
@@ -321,8 +322,9 @@ class OverviewWidget(QtWidgets.QFrame):
 
         # Disable delete button if nothing is selected
         self._delete_btn.setEnabled(len(instance_ids) > 0)
-
-        instances_by_id = self._controller.get_instances_by_id(instance_ids)
+        instances_by_id = self._controller.get_instance_items_by_id(
+            instance_ids
+        )
         instances = [
             instances_by_id[instance_id]
             for instance_id in instance_ids

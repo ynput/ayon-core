@@ -1114,6 +1114,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
         try:
             for item_id, item_version in zip(item_ids, versions):
                 container = containers_by_id[item_id]
+                if container.get("version_locked"):
+                    continue
                 try:
                     update_container(container, item_version)
                 except Exception as exc:

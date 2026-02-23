@@ -70,6 +70,7 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
                 "usd",
                 "oxrig",
                 "sbsar",
+                "zfab",
                 ]
 
     def process(self, instance):
@@ -87,10 +88,14 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
             task_name = task_entity["name"]
             task_type = task_entity["taskType"]
 
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
+
         template_name = get_publish_template_name(
             project_name=instance.context.data["projectName"],
             host_name=instance.context.data["hostName"],
-            product_type=instance.data["productType"],
+            product_base_type=product_base_type,
             task_name=task_name,
             task_type=task_type,
             project_settings=instance.context.data["project_settings"],

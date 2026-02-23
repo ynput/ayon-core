@@ -41,6 +41,7 @@ class PushToContextController:
         self._process_item_id = None
 
         self._use_original_name = False
+        self._version_up = False
 
         self.set_source(project_name, version_ids)
 
@@ -162,7 +163,7 @@ class PushToContextController:
         """Checks if original product names must be used.
 
         Currently simple check if multiple versions, but if multiple products
-        with different product_type were used, it wouldn't be necessary.
+        with different product_base_type were used, it wouldn't be necessary.
         """
         return len(self._src_version_entities) > 1
 
@@ -212,7 +213,7 @@ class PushToContextController:
                 self._user_values.variant,
                 comment=self._user_values.comment,
                 new_folder_name=self._user_values.new_folder_name,
-                dst_version=1,
+                version_up=self._version_up,
                 use_original_name=self._use_original_name,
             )
             item_ids.append(item_id)
@@ -228,6 +229,9 @@ class PushToContextController:
         self._process_thread = thread
         thread.start()
         return item_ids
+
+    def set_version_up(self, state):
+        self._version_up = state
 
     def wait_for_process_thread(self):
         if self._process_thread is None:
@@ -306,10 +310,13 @@ class PushToContextController:
         )
 
         project_settings = get_project_settings(project_name)
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         template = get_product_name_template(
             self._src_project_name,
-            product_type,
+            product_base_type,
             task_name,
             task_type,
             None,
@@ -327,9 +334,10 @@ class PushToContextController:
         template_s = template[:idx]
         template_e = template[idx + len(variant_placeholder):]
         fill_data = prepare_template_data({
-            "family": product_type,
+            "family": product_base_type,
             "product": {
                 "type": product_type,
+                "basetype": product_base_type,
             },
             "task": task_name
         })

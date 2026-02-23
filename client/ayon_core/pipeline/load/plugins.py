@@ -21,6 +21,13 @@ from .utils import get_representation_path_from_context
 class LoaderPlugin(list):
     """Load representation into host application"""
 
+    # Attribute 'skip_discovery' is used during discovery phase to skip
+    #   plugins, which can be used to mark base plugins that should not be
+    #   considered as plugins "to use". The discovery logic does NOT use
+    #   the attribute value from parent classes. Each base class has to define
+    #   the attribute again.
+    skip_discovery = True
+
     product_types: set[str] = set()
     product_base_types: Optional[set[str]] = None
     representations = set()
