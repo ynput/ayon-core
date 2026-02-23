@@ -1430,7 +1430,7 @@ def copy_extend_frames(instance, representation):
         representation (dict): presentation to operate on
 
     """
-    from ...lib.file_transaction import copyfile
+    from ayon_core.lib.file_transaction import copyfile
 
     R_FRAME_NUMBER = re.compile(
         r".+\.(?P<frame>[0-9]+)\..+")
