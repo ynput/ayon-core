@@ -70,8 +70,6 @@ def _load_fonts():
 
     _load_font()
     _load_font_filled()
-    print(_Cache.font_name)
-    print(_Cache.font_name_filled)
 
 
 def _load_mapping():
