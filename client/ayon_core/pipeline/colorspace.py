@@ -1682,39 +1682,46 @@ def get_representation_ocio_config_path(
     then `None` is returned.
 
     """
-    colorspace_data = representation.get("colorspaceData")
-    if not colorspace_data:
+    if logger is None:
+        logger = log
+    colorspace_data = representation.get("colorspaceData") or {}
+    config = colorspace_data.get("config")
+    if not config:
         logger.debug(
             "No OCIO Config file for represenation,"
             " because it has no colorspace data."
         )
         return None
 
-    config = colorspace_data.get("config", {})
     config_template: str = config.get("template", "")
     config_path: str = config.get("path", "")
     if not config_path and not config_template:
-        if logger:
-            logger.warning(
-                "OCIO Config file is not set for representation."
-            )
+        logger.warning(
+            "OCIO Config file is not set for representation."
+        )
         return None
 
-    if config_path and os.path.isfile(config_path):
-        return config_path
+    if config_path:
+        if os.path.isfile(config_path):
+            return config_path
+        logger.warning(
+            "OCIO Config file for representation not found at:"
+            f" {config_path}"
+        )
 
-    if config_template:
-        config_path = anatomy.fill_root(config_template)
+    if not config_template:
+        return None
+
+    config_path = anatomy.fill_root(config_template)
 
     # First we check the lightest route and just see if path is a valid file.
     # When it is not we'll assume that the path is e.g. from another machine
     # or another platform and may need to be computed from the template
     if not os.path.isfile(config_path):
-        if logger:
-            logger.warning(
-                "OCIO Config file for representation not found at:"
-                f" {config_path}"
-            )
+        logger.warning(
+            "OCIO Config file for representation not found at:"
+            f" {config_path}"
+        )
         return None
 
     return config_path
