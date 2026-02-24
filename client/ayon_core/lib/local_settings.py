@@ -285,11 +285,16 @@ class AYONSecureRegistry(ASettingRegistry):
         except ImportError:
             ItemNotFoundException = _FakeException
 
+        value = None
         try:
-            return keyring.get_password(self._name, name)
+            value = keyring.get_password(self._name, name)
         except (ItemNotFoundException, PasswordSetError):
-            if default is not _PLACEHOLDER:
-                return default
+
+        if value is not None:
+            return value
+
+        if default is not _PLACEHOLDER:
+            return default
 
         raise RegistryItemNotFound(
             f"Item {self._name}:{name} not found in keyring."
