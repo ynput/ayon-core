@@ -289,6 +289,7 @@ class AYONSecureRegistry(ASettingRegistry):
         try:
             value = keyring.get_password(self._name, name)
         except (ItemNotFoundException, PasswordSetError):
+            pass
 
         if value is not None:
             return value
