@@ -330,7 +330,8 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         widget="textarea",
         title="Project environments",
-        section="---"
+        section="---",
+        scope=["project"],
     )
     filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(
         default_factory=list,
