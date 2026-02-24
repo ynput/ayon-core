@@ -395,7 +395,7 @@ class IniSettingRegistry(ASettingRegistry):
         # we cast value to str as ini options values must be strings.
         super().set_item(name, str(value))
 
-    def get_item(self, name: str) -> str:
+    def get_item(self, name: str, default: Any = _PLACEHOLDER) -> str:
         """Gets item from settings ini file.
 
         This gets settings from ``DEFAULT`` section of ini file as each item
@@ -403,6 +403,7 @@ class IniSettingRegistry(ASettingRegistry):
 
         Args:
             name (str): Name of the item.
+            default (Any): Default value if item is not available.
 
         Returns:
             str: Value of item.
@@ -411,7 +412,7 @@ class IniSettingRegistry(ASettingRegistry):
             RegistryItemNotFound: If value doesn't exist.
 
         """
-        return super().get_item(name)
+        return super().get_item(name, default)
 
     @lru_cache(maxsize=32)
     def get_item_from_section(
