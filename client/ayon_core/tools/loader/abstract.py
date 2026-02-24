@@ -512,6 +512,15 @@ class BackendLoaderController(_BaseLoaderController):
 
 class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
+    def get_window_subtitle(self) -> Optional[str]:
+        """Get window subtitle.
+
+        Returns:
+            Optional[str]: Window subtitle.
+
+        """
+
+    @abstractmethod
     def register_event_callback(self, topic, callback):
         """Register callback for an event topic.
 
