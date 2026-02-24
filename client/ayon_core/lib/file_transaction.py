@@ -2,12 +2,30 @@ import concurrent.futures
 import os
 import logging
 import errno
+import shutil
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Optional
 
 from ayon_core.lib import create_hard_link
 
-from speedcopy import copyfile
+import speedcopy
+
+
+def copyfile(src, dst):
+    """Copy a file from src to dst.
+
+    Defaults to using `speedcopy` but on certain infrastructure the fstats
+    calls that it does may fail. For those cases, environment variable
+    `AYON_COPY_FILE_DISABLE_SPEEDCOPY=1` could be set to avoid using speedcopy.
+
+    Args:
+        src (str): Source path.
+        dst (str): Destination path.
+    """
+    if os.getenv("AYON_COPY_FILE_DISABLE_SPEEDCOPY") != "1":
+        speedcopy.copyfile(src, dst)
+    else:
+        shutil.copyfile(src, dst)
 
 
 class DuplicateDestinationError(ValueError):
