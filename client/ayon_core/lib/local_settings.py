@@ -274,6 +274,11 @@ class AYONSecureRegistry(ASettingRegistry):
         """
         import keyring
 
+        try:
+            from keyring.errors import PasswordSetError
+        except ImportError:
+            PasswordSetError = _FakeException
+
         # Capture 'ItemNotFoundException' exception (on linux)
         try:
             from secretstorage.exceptions import ItemNotFoundException
@@ -281,15 +286,10 @@ class AYONSecureRegistry(ASettingRegistry):
             ItemNotFoundException = _FakeException
 
         try:
-            value = keyring.get_password(self._name, name)
-        except ItemNotFoundException:
-            value = None
-
-        if value is not None:
-            return value
-
-        if default is not _PLACEHOLDER:
-            return default
+            return keyring.get_password(self._name, name)
+        except (ItemNotFoundException, PasswordSetError):
+            if default is not _PLACEHOLDER:
+                return default
 
         raise RegistryItemNotFound(
             f"Item {self._name}:{name} not found in keyring."
@@ -330,7 +330,18 @@ class AYONSecureRegistry(ASettingRegistry):
         """
         import keyring
 
-        keyring.delete_password(self._name, name)
+        try:
+            from keyring.errors import PasswordDeleteError
+        except ImportError:
+            PasswordDeleteError = _FakeException
+
+        try:
+            keyring.delete_password(self._name, name)
+        except PasswordDeleteError:
+            if not ignore_missing:
+                raise RegistryItemNotFound(
+                    f"Item {self._name}:{name} not found in keyring."
+                )
         self._get_item.cache_clear()
 
 
