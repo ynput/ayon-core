@@ -57,6 +57,10 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             "save_as.finished",
             self._on_save_as_finished
         )
+        controller.register_event_callback(
+            "workfile_delete.finished",
+            self._on_delete_finished
+        )
 
         self._file_icon = qtawesome.icon(
             "fa.file-o",
@@ -169,6 +173,13 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._fill_items()
 
     def _on_save_as_finished(self, event):
+        if event["failed"]:
+            return
+
+        if not self._published_mode:
+            self._fill_items()
+
+    def _on_delete_finished(self, event):
         if event["failed"]:
             return
 
@@ -291,6 +302,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
     duplicate_requested = QtCore.Signal()
+    delete_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
         super(WorkAreaFilesWidget, self).__init__(parent)
@@ -308,6 +320,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         proxy_model.setDynamicSortFilter(True)
 
         view.setModel(proxy_model)
+        view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
         time_delegate = PrettyTimeDelegate()
         view.setItemDelegateForColumn(model.date_modified_col, time_delegate)
@@ -386,6 +399,29 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         """
         return self._get_selected_info()["filepath"]
 
+    def get_selected_workfile_infos(self):
+        """All selected workfile infos (one per selected row).
+
+        Returns:
+            list[dict]: List of dicts with filepath, rootless_path, filename,
+                workfile_entity_id. Skips placeholder/disabled rows.
+        """
+        selection_model = self._view.selectionModel()
+        infos = []
+        for index in selection_model.selectedRows(0):
+            if not index.flags() & QtCore.Qt.ItemIsEnabled:
+                continue
+            filepath = index.data(FILEPATH_ROLE)
+            if not filepath:
+                continue
+            infos.append({
+                "filepath": filepath,
+                "rootless_path": index.data(ROOTLESS_PATH_ROLE),
+                "filename": index.data(FILENAME_ROLE),
+                "workfile_entity_id": index.data(WORKFILE_ENTITY_ID_ROLE),
+            })
+        return infos
+
     def _on_selection_change(self):
         info = self._get_selected_info()
         self._controller.set_selected_workfile_path(
@@ -416,12 +452,23 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         action.triggered.connect(self._on_duplicate_pressed)
         menu.addAction(action)
 
+        # Delete
+        action = QtWidgets.QAction("Delete", menu)
+        tip = "Delete selected file(s)."
+        action.setToolTip(tip)
+        action.setStatusTip(tip)
+        action.triggered.connect(self._on_delete_pressed)
+        menu.addAction(action)
+
         # Show the context action menu
         global_point = self._view.mapToGlobal(point)
         _ = menu.exec_(global_point)
 
     def _on_duplicate_pressed(self):
         self.duplicate_requested.emit()
+
+    def _on_delete_pressed(self):
+        self.delete_requested.emit()
 
     def _on_expected_selection_change(self, event):
         workfile_info = event["workfile"]
