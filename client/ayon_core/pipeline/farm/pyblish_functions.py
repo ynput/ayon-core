@@ -11,6 +11,7 @@ import attr
 import ayon_api
 import clique
 from ayon_core.lib import Logger
+from ayon_core.lib.file_transaction import copyfile
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
@@ -1430,7 +1431,6 @@ def copy_extend_frames(instance, representation):
         representation (dict): presentation to operate on
 
     """
-    import speedcopy
 
     R_FRAME_NUMBER = re.compile(
         r".+\.(?P<frame>[0-9]+)\..+")
@@ -1498,7 +1498,7 @@ def copy_extend_frames(instance, representation):
 
     # copy files
     for source in resource_files:
-        speedcopy.copy(source[0], source[1])
+        copyfile(source[0], source[1])
         log.info("  > {}".format(source[1]))
 
     log.info("Finished copying %i files" % len(resource_files))

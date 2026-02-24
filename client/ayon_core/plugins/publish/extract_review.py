@@ -10,7 +10,6 @@ from typing import Any, Optional
 import tempfile
 
 import clique
-import speedcopy
 import pyblish.api
 
 from ayon_core.lib import (
@@ -22,6 +21,7 @@ from ayon_core.lib import (
 from ayon_core.pipeline.publish.lib import (
     fill_sequence_gaps_with_previous_version
 )
+from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
@@ -1094,7 +1094,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     staging_dir, extension, resolution_width, resolution_height
                 )
                 temp_data.paths_to_remove.append(blank_frame_path)
-            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            copyfile(blank_frame_path, hole_fpath)
             added_files[frame] = hole_fpath
 
         return added_files
@@ -1175,7 +1175,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 raise KnownPublishError(
                     "Missing previously detected file: {}".format(src_fpath))
 
-            speedcopy.copyfile(src_fpath, hole_fpath)
+            copyfile(src_fpath, hole_fpath)
             added_files[hole_frame] = hole_fpath
 
         return added_files
