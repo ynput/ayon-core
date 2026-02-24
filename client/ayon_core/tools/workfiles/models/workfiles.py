@@ -2,10 +2,13 @@ from __future__ import annotations
 import os
 import copy
 import platform
+import time
 import typing
 from typing import Optional, Any
+import uuid
 
 import ayon_api
+from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import (
     get_ayon_username,
@@ -39,7 +42,6 @@ from ayon_core.pipeline.workfile import (
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.tools.workfiles.abstract import (
     WorkareaFilepathResult,
-    PublishedWorkfileWrap,
     AbstractWorkfilesBackend,
 )
 
@@ -80,7 +82,7 @@ class WorkfilesModel:
 
         # Published workfiles
         self._repre_by_id = {}
-        self._version_comment_by_id = {}
+        self._version_by_repre_id = {}
         self._published_workfile_items_cache = NestedCacheItem(
             levels=1, default_factory=list
         )
@@ -97,30 +99,137 @@ class WorkfilesModel:
         self._workarea_file_items_cache.reset()
 
         self._repre_by_id = {}
-        self._version_comment_by_id = {}
+        self._version_by_repre_id = {}
         self._published_workfile_items_cache.reset()
 
         self._workfile_entities_by_task_id = {}
+        self._operation_heartbeat = None
+
+    def _emit_event_and_process(
+        self, event_name, event_data, ensure_visible=False
+    ):
+        """Emit event and process Qt events to update UI immediately.
+
+        Args:
+            event_name (str): Name of the event to emit.
+            event_data (dict): Event data to emit.
+            ensure_visible (bool): If True, process events multiple times with delay
+                to ensure UI widgets are fully visible before returning.
+        """
+        self._emit_event(event_name, event_data)
+        # Process Qt events to update UI immediately
+        try:
+            from qtpy import QtWidgets
+
+            app = QtWidgets.QApplication.instance()
+            if app:
+                if ensure_visible:
+                    # Process events multiple times to ensure widget is visible
+                    import time
+
+                    for _ in range(5):
+                        app.processEvents()
+                    time.sleep(0.05)  # 50ms delay
+                else:
+                    app.processEvents()
+        except Exception:
+            pass
+
+    def _start_operation_heartbeat(self):
+        """Start Qt heartbeat for long-running operations.
+
+        Uses 16ms interval (~60fps) for smooth toast animations.
+        """
+        if not self._operation_heartbeat:
+            try:
+                from qtpy import QtCore, QtWidgets
+
+                app = QtWidgets.QApplication.instance()
+                if app:
+                    timer = QtCore.QTimer()
+                    timer.timeout.connect(lambda: app.processEvents())
+                    timer.start(16)  # Process events every 16ms (~60fps)
+                    self._operation_heartbeat = timer
+            except Exception:
+                pass
+
+    def _stop_operation_heartbeat(self):
+        """Stop Qt heartbeat."""
+        if self._operation_heartbeat:
+            try:
+                self._operation_heartbeat.stop()
+            except Exception:
+                pass
+            finally:
+                self._operation_heartbeat = None
 
     # Host functionality
     def get_current_workfile(self):
         return self._host.get_current_workfile()
 
     def open_workfile(self, folder_id, task_id, filepath):
-        self._emit_event("open_workfile.started")
+        import uuid
+        import time
+
+        message_id = str(uuid.uuid4())
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        self._emit_event_and_process(
+            "open_workfile.started",
+            {"id": message_id, "message": "Opening workfile..."},
+            ensure_visible=True,
+        )
+
+        # Allow toast animation to complete before blocking operation
+        time.sleep(0.35)  # 350ms for smooth slide-in
 
         failed = False
         try:
-            self._open_workfile(folder_id, task_id, filepath)
+            # Create progress callback for host to report progress
+            def progress_callback(progress, message=None):
+                self._emit_event(
+                    "open_workfile.progress",
+                    {
+                        "id": message_id,
+                        "progress": progress,
+                        "message": message or "",
+                    },
+                )
+                # Force immediate UI update
+                try:
+                    from qtpy import QtWidgets
+
+                    app = QtWidgets.QApplication.instance()
+                    if app:
+                        app.processEvents()
+                except Exception:
+                    pass
+
+            self._open_workfile(
+                folder_id, task_id, filepath, progress_callback
+            )
 
         except Exception:
             failed = True
             self._log.warning("Open of workfile failed", exc_info=True)
 
+        self._stop_operation_heartbeat()
         self._emit_event(
             "open_workfile.finished",
-            {"failed": failed},
+            {"id": message_id, "failed": failed},
         )
+
+        # Process events one final time to ensure finished event is handled
+        try:
+            from qtpy import QtWidgets
+
+            app = QtWidgets.QApplication.instance()
+            if app:
+                app.processEvents()
+        except Exception:
+            pass
 
     def save_current_workfile(self):
         current_file = self.get_current_workfile()
@@ -136,8 +245,22 @@ class WorkfilesModel:
         version,
         comment,
         description,
+        thumbnail_path=None,
     ):
-        self._emit_event("save_as.started")
+
+        message_id = str(uuid.uuid4())
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        self._emit_event_and_process(
+            "save_as.started",
+            {"id": message_id, "message": "Saving workfile..."},
+            ensure_visible=True,
+        )
+
+        # Allow toast animation to complete before blocking operation
+        time.sleep(0.35)  # 350ms for smooth slide-in
 
         filepath = os.path.join(workdir, filename)
         rootless_path = f"{rootless_workdir}/{filename}"
@@ -146,9 +269,27 @@ class WorkfilesModel:
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
-        task_entity = self._controller.get_task_entity(
-            project_name, task_id
-        )
+        task_entity = self._controller.get_task_entity(project_name, task_id)
+
+        # Create progress callback for host to report progress
+        def progress_callback(progress, message=None):
+            self._emit_event(
+                "save_as.progress",
+                {
+                    "id": message_id,
+                    "progress": progress,
+                    "message": message or "",
+                },
+            )
+            # Force immediate UI update
+            try:
+                from qtpy import QtWidgets
+
+                app = QtWidgets.QApplication.instance()
+                if app:
+                    app.processEvents()
+            except Exception:
+                pass
 
         prepared_data = SaveWorkfileOptionalData(
             project_entity=project_entity,
@@ -156,6 +297,7 @@ class WorkfilesModel:
             project_settings=self._controller.project_settings,
             rootless_path=rootless_path,
             workfile_entities=self.get_workfile_entities(task_id),
+            progress_callback=progress_callback,
         )
         failed = False
         try:
@@ -169,7 +311,8 @@ class WorkfilesModel:
                 prepared_data=prepared_data,
             )
             self._update_workfile_info(
-                task_id, rootless_path, description
+                task_id, rootless_path, description,
+                thumbnail_path=thumbnail_path,
             )
             self._update_current_context(
                 folder_id, folder_entity["path"], task_entity["name"]
@@ -179,10 +322,21 @@ class WorkfilesModel:
             failed = True
             self._log.warning("Save as failed", exc_info=True)
 
+        self._stop_operation_heartbeat()
         self._emit_event(
             "save_as.finished",
-            {"failed": failed},
+            {"id": message_id, "failed": failed},
         )
+
+        # Process events one final time to ensure finished event is handled
+        try:
+            from qtpy import QtWidgets
+
+            app = QtWidgets.QApplication.instance()
+            if app:
+                app.processEvents()
+        except Exception:
+            pass
 
     def copy_workfile_representation(
         self,
@@ -304,6 +458,49 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
+    def delete_workfile(self, folder_id, task_id, filepath, workfile_entity_id):
+        """Delete a workfile and its database entry.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            filepath (str): Path to the workfile to delete.
+            workfile_entity_id (str): ID of the workfile entity in database.
+        """
+        self._emit_event("workfile_delete.started")
+
+        failed = False
+        try:
+            # Delete the physical file if it exists
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                self._log.info(f"Deleted workfile: {filepath}")
+
+            # Delete the workfile entity from database
+            if workfile_entity_id:
+                project_name = self._controller.get_current_project_name()
+                op_session = OperationsSession()
+                op_session.delete_entity(
+                    project_name, "workfile", workfile_entity_id
+                )
+                op_session.commit()
+                self._log.info(f"Deleted workfile entity: {workfile_entity_id}")
+
+            # Reset cache for this task to refresh the file list
+            self._reset_workarea_file_items(task_id)
+            
+            # Also invalidate the workfile entities cache for this task
+            self._workfile_entities_by_task_id.pop(task_id, None)
+
+        except Exception:
+            failed = True
+            self._log.warning("Deletion of workfile failed", exc_info=True)
+
+        self._emit_event(
+            "workfile_delete.finished",
+            {"failed": failed},
+        )
+
     def get_workfile_entities(self, task_id: str):
         if not task_id:
             return []
@@ -338,6 +535,7 @@ class WorkfilesModel:
         version: Optional[int],
         comment: Optional[str],
         description: Optional[str],
+        thumbnail_path: Optional[str] = None,
     ):
         self._save_workfile_info(
             task_id,
@@ -345,6 +543,7 @@ class WorkfilesModel:
             version,
             comment,
             description,
+            thumbnail_path=thumbnail_path,
         )
 
         self._update_file_description(
@@ -555,13 +754,13 @@ class WorkfilesModel:
         )
 
     def get_published_file_items(
-        self, folder_id: Optional[str], task_id: Optional[str]
+        self, folder_id: str, task_id: str
     ) -> list[PublishedWorkfileInfo]:
         """Published workfiles for passed context.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
+            folder_id (str): Folder id.
+            task_id (str): Task id.
 
         Returns:
             list[PublishedWorkfileInfo]: List of files for published workfiles.
@@ -605,10 +804,17 @@ class WorkfilesModel:
             })
 
             # Map versions by representation ID for easy lookup
-            self._version_comment_by_id.update({
-                version_entity["id"]: version_entity["attrib"].get("comment")
+            version_by_id = {
+                version_entity["id"]: version_entity
                 for version_entity in version_entities
-            })
+            }
+            for repre_entity in repre_entities:
+                repre_id = repre_entity["id"]
+                version_id = repre_entity.get("versionId")
+                if version_id and version_id in version_by_id:
+                    self._version_by_repre_id[repre_id] = version_by_id[
+                        version_id
+                    ]
 
             project_entity = self._controller.get_project_entity(project_name)
 
@@ -637,32 +843,50 @@ class WorkfilesModel:
         return items
 
     def get_published_workfile_info(
-        self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
-    ) -> PublishedWorkfileWrap:
+        self, representation_id: str
+    ) -> Optional[PublishedWorkfileInfo]:
         """Get published workfile info by representation ID.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            representation_id (Optional[str]): Representation id.
+            representation_id (str): Representation id.
 
         Returns:
-            PublishedWorkfileWrap: Published workfile info or None
+            Optional[PublishedWorkfileInfo]: Published workfile info or None
                 if not found.
 
         """
         if not representation_id:
-            return PublishedWorkfileWrap()
+            return None
 
         # Search through all cached published workfile items
-        for item in self.get_published_file_items(folder_id, None):
-            if item.representation_id == representation_id:
-                comment = self._get_published_workfile_version_comment(
-                    representation_id
-                )
-                return PublishedWorkfileWrap(item, comment)
-        return PublishedWorkfileWrap()
+        cache_items = self._published_workfile_items_cache._data_by_key
+        for folder_cache in cache_items.values():
+            if folder_cache.is_valid:
+                for item in folder_cache.get_data():
+                    if item.representation_id == representation_id:
+                        return item
+        return None
+
+    def get_published_workfile_version_comment(
+        self, representation_id: str
+    ) -> Optional[str]:
+        """Get version comment for published workfile.
+
+        Args:
+            representation_id (str): Representation id.
+
+        Returns:
+            Optional[str]: Version comment or None.
+
+        """
+        if not representation_id:
+            return None
+
+        version_entity = self._version_by_repre_id.get(representation_id)
+        if version_entity:
+            attrib = version_entity.get("attrib") or {}
+            return attrib.get("comment")
+        return None
 
     @property
     def _project_name(self) -> str:
@@ -680,27 +904,14 @@ class WorkfilesModel:
             self._current_username = get_ayon_username()
         return self._current_username
 
-    def _get_published_workfile_version_comment(
-        self, representation_id: str
-    ) -> Optional[str]:
-        """Get version comment for published workfile.
-
-        Args:
-            representation_id (str): Representation id.
-
-        Returns:
-            Optional[str]: Version comment or None.
-
-        """
-        if not representation_id:
-            return None
-        repre = self._repre_by_id.get(representation_id)
-        if not repre:
-            return None
-        return self._version_comment_by_id.get(repre["versionId"])
-
     # --- Host ---
-    def _open_workfile(self, folder_id: str, task_id: str, filepath: str):
+    def _open_workfile(
+        self,
+        folder_id: str,
+        task_id: str,
+        filepath: str,
+        progress_callback=None,
+    ):
         # TODO move to workfiles pipeline
         project_name = self._project_name
         project_entity = self._controller.get_project_entity(project_name)
@@ -714,6 +925,7 @@ class WorkfilesModel:
             project_entity=project_entity,
             anatomy=self._controller.project_anatomy,
             project_settings=self._controller.project_settings,
+            progress_callback=progress_callback,
         )
         self._host.open_workfile_with_context(
             filepath, folder_entity, task_entity, prepared_data=prepared_data
@@ -876,7 +1088,7 @@ class WorkfilesModel:
             self._host_name,
             task_name=task_entity["name"],
             task_type=task_entity["taskType"],
-            product_base_type="workfile",
+            product_type="workfile",
             project_settings=self._controller.project_settings,
         )
 
@@ -893,7 +1105,47 @@ class WorkfilesModel:
         task_id: str,
         rootless_path: str,
         description: str,
+        thumbnail_path: Optional[str] = None,
     ):
+        project_name = self._controller.get_current_project_name()
+        if thumbnail_path and os.path.isfile(thumbnail_path):
+            try:
+                thumbnail_id = ayon_api.create_thumbnail(
+                    project_name, thumbnail_path
+                )
+            except Exception:
+                self._log.warning(
+                    "Failed to upload workfile thumbnail", exc_info=True
+                )
+                thumbnail_id = None
+        else:
+            thumbnail_id = None
+
+        if thumbnail_id is not None:
+            # Invalidate cache: save_workfile_with_context already created
+            # the entity, so the cached list is stale and would cause a
+            # duplicate-create attempt.
+            self._workfile_entities_by_task_id.pop(task_id, None)
+            workfile_entity = save_workfile_info(
+                project_name,
+                task_id,
+                rootless_path,
+                self._controller.get_host_name(),
+                thumbnail_id=thumbnail_id,
+                workfile_entities=self.get_workfile_entities(task_id),
+            )
+            if task_id in self._workfile_entities_by_task_id:
+                workfile_entities = self.get_workfile_entities(task_id)
+                for entity in workfile_entities:
+                    if entity["path"] == rootless_path:
+                        entity["thumbnailId"] = thumbnail_id
+                        break
+                mapping = self._workarea_file_items_mapping.get(task_id)
+                if mapping:
+                    item = mapping.get(rootless_path)
+                    if item is not None:
+                        item.thumbnail_id = thumbnail_id
+
         self._update_file_description(task_id, rootless_path, description)
         self._reset_workarea_file_items(task_id)
 
@@ -931,9 +1183,22 @@ class WorkfilesModel:
         version: Optional[int],
         comment: Optional[str],
         description: Optional[str],
+        thumbnail_path: Optional[str] = None,
     ):
+        project_name = self._controller.get_current_project_name()
+        thumbnail_id = None
+        if thumbnail_path and os.path.isfile(thumbnail_path):
+            try:
+                thumbnail_id = ayon_api.create_thumbnail(
+                    project_name, thumbnail_path
+                )
+            except Exception:
+                self._log.warning(
+                    "Failed to upload workfile thumbnail", exc_info=True
+                )
+
         workfile_entity = save_workfile_info(
-            self._controller.get_current_project_name(),
+            project_name,
             task_id,
             rootless_path,
             self._controller.get_host_name(),
@@ -941,6 +1206,7 @@ class WorkfilesModel:
             comment=comment,
             description=description,
             workfile_entities=self.get_workfile_entities(task_id),
+            thumbnail_id=thumbnail_id,
         )
         # Update cache
         workfile_entities = self.get_workfile_entities(task_id)
@@ -955,3 +1221,9 @@ class WorkfilesModel:
             workfile_entities.append(workfile_entity)
         else:
             workfile_entities[match_idx] = workfile_entity
+
+        if thumbnail_id and task_id in self._workarea_file_items_mapping:
+            mapping = self._workarea_file_items_mapping[task_id]
+            item = mapping.get(rootless_path)
+            if item is not None:
+                item.thumbnail_id = thumbnail_id

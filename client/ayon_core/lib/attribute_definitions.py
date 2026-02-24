@@ -320,6 +320,36 @@ class UILabelDef(UIDef):
         return self.label == other.label
 
 
+class UIClickableLabelDef(UIDef):
+    """Label that on click sets another attribute's value.
+
+    Used e.g. to show "Write node: path" and fill a Layer Name field on click.
+    """
+    type = "clickable_label"
+    type_attributes = ["target_attr_key", "value_to_set"]
+
+    def __init__(
+        self,
+        label: str,
+        target_attr_key: str,
+        value_to_set: Any,
+        key: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(label=label, key=key, tooltip=tooltip, *args, **kwargs)
+        self.target_attr_key = target_attr_key
+        self.value_to_set = value_to_set
+
+    def _def_type_compare(self, other: "UIClickableLabelDef") -> bool:
+        return (
+            self.label == other.label
+            and self.target_attr_key == other.target_attr_key
+            and self.value_to_set == other.value_to_set
+        )
+
+
 # ---------------------------------------
 # Attribute definitions should hold value
 # ---------------------------------------
@@ -1239,6 +1269,7 @@ def deserialize_attr_defs(
 for _attr_class in (
     UISeparatorDef,
     UILabelDef,
+    UIClickableLabelDef,
     UnknownDef,
     NumberDef,
     TextDef,

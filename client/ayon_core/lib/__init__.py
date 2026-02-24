@@ -41,6 +41,7 @@ from .attribute_definitions import (
     UIDef,
     UISeparatorDef,
     UILabelDef,
+    UIClickableLabelDef,
 
     UnknownDef,
     NumberDef,
