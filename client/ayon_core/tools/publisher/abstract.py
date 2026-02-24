@@ -220,6 +220,15 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
 
 class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
+    def get_window_subtitle(self) -> Optional[str]:
+        """Get window subtitle.
+
+        Returns:
+            Optional[str]: Window subtitle.
+
+        """
+
+    @abstractmethod
     def register_event_callback(self, topic: str, callback: Callable):
         pass
 

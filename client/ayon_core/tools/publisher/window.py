@@ -58,12 +58,19 @@ class PublisherWindow(QtWidgets.QDialog):
         controller: Optional[AbstractPublisherFrontend] = None,
         reset_on_show: Optional[bool] = None
     ):
+        if controller is None:
+            controller = QtPublisherController()
+
+        title = "AYON Publisher"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
         super().__init__(parent)
 
         self.setObjectName("PublishWindow")
 
-        self.setWindowTitle("AYON publisher")
-
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
@@ -77,9 +84,6 @@ class PublisherWindow(QtWidgets.QDialog):
             | QtCore.Qt.WindowMinimizeButtonHint
             | QtCore.Qt.WindowCloseButtonHint
         )
-
-        if controller is None:
-            controller = QtPublisherController()
 
         help_dialog = HelpDialog(controller, self)
 
