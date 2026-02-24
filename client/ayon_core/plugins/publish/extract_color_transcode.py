@@ -8,6 +8,7 @@ from ayon_core.pipeline import (
     publish,
     get_temp_dir
 )
+from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 from ayon_core.lib import (
     is_oiio_supported,
 )
@@ -109,13 +110,22 @@ class ExtractOIIOTranscode(publish.Extractor):
             added_review = False
 
             colorspace_data = repre["colorspaceData"]
+
+            config_path = get_representation_ocio_config_path(
+                repre,
+                anatomy=instance.context.data["anatomy"],
+                logger=self.log
+            )
+            if not config_path:
+                self.log.debug(
+                    "Skipping OIIO Color Transcode because no OCIO config"
+                    " path found on representation."
+                )
+                continue
+
             source_colorspace = colorspace_data["colorspace"]
             source_display = colorspace_data.get("display")
             source_view = colorspace_data.get("view")
-            config_path = colorspace_data.get("config", {}).get("path")
-            if not config_path or not os.path.exists(config_path):
-                self.log.warning("Config file doesn't exist, skipping")
-                continue
 
             # Get representation files to convert
             if isinstance(repre["files"], list):
