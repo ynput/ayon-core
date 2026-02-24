@@ -8,6 +8,8 @@ from typing import List, Optional
 
 from ayon_core.lib import create_hard_link
 
+import speedcopy
+
 
 def copyfile(src, dst):
     """Copy a file from src to dst.
@@ -21,7 +23,6 @@ def copyfile(src, dst):
         dst (str): Destination path.
     """
     if os.getenv("AYON_COPY_FILE_DISABLE_SPEEDCOPY") != "1":
-        import speedcopy  # noqa
         speedcopy.copyfile(src, dst)
     else:
         shutil.copyfile(src, dst)
