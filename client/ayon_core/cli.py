@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Package for handling AYON command line arguments."""
+
 import os
 import sys
 import logging
@@ -77,6 +78,17 @@ def tray(force):
     from ayon_core.tools.tray import main
 
     main(force)
+
+
+@main_cli.command(context_settings={"ignore_unknown_options": True})
+def browser():
+    from ayon_core.tools.utils import get_ayon_qt_app
+    from ayon_core.tools.loader.ui import LoaderWindow
+
+    app = get_ayon_qt_app()
+    window = LoaderWindow()
+    window.show()
+    app.exec_()
 
 
 @main_cli.group(help="Run command line arguments of AYON addons")
