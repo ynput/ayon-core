@@ -437,14 +437,30 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             op_session.create_entity(
                 project_name, "product", product_entity
             )
+            self.log.debug(f"Creating product '{product_name}'")
+            return product_entity
 
-        else:
-            # Update existing product data with new data and set in database.
-            # We also change the found product in-place so we don't need to
-            # re-query the product afterwards
-            update_data = prepare_changes(
-                existing_product_entity, product_entity
-            )
+        # Update existing product data with new data and set in database.
+        # We also change the found product in-place so we don't need to
+        # re-query the product afterwards
+        update_data = prepare_changes(
+            existing_product_entity, product_entity
+        )
+        old_product_base_type = existing_product_entity.get(
+            "productBaseType"
+        )
+        # 'productBaseType' cannot be changed
+        if "productBaseType" in update_data:
+            new_product_base_type = update_data.pop("productBaseType")
+            # Warn only if existing product entity has filled product
+            #   base type (possible before AYON 1.14.0)
+            if old_product_base_type:
+                self.log.warning(
+                    f"Change of product base type '{old_product_base_type}'"
+                    f" -> '{new_product_base_type}' is not possible."
+                )
+
+        if update_data:
             op_session.update_entity(
                 project_name,
                 "product",
@@ -452,7 +468,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 update_data
             )
 
-        self.log.debug("Prepared product: {}".format(product_name))
+        self.log.debug(f"Updating product '{product_name}'")
         return product_entity
 
     def prepare_version(
