@@ -285,6 +285,7 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         title="Global environment variables",
         widget="textarea",
+        syntax="json",
         scope=["studio"],
     )
     update_check_interval: int = SettingsField(
@@ -324,12 +325,14 @@ class CoreSettings(BaseSettingsModel):
             "Defines project folders to create on disk"
             " for 'Create project folders' action."
         ),
+        syntax="json",
         section="---"
     )
     project_environments: str = SettingsField(
         "{}",
         widget="textarea",
         title="Project environments",
+        syntax="json",
         section="---"
     )
     filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(
