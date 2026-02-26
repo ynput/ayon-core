@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
+from typing import Union
 
 from ayon_core.tools.utils import (
     NiceCheckbox,
@@ -878,7 +881,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         report = PublishReport(report_data)
         self.set_report(report)
 
-    def set_report(self, report: PublishReport) -> None:
+    def set_report(self, report: Union[PublishReport, None]) -> None:
         self._ignore_selection_changes = True
 
         self._report_item = report
@@ -888,7 +891,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
         self._plugins_details_widget.set_report(report)
-        if report.blocking_crashed_paths:
+        if report is not None and report.blocking_crashed_paths:
             self._details_tab_widget.setCurrentWidget(
                 self._plugin_load_report_widget
             )
