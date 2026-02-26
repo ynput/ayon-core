@@ -1,6 +1,8 @@
+from __future__ import annotations
 import re
 import os
 import json
+import logging
 import contextlib
 import functools
 import platform
@@ -8,6 +10,7 @@ import tempfile
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Any, Optional
 
 import ayon_api
 
@@ -1662,3 +1665,62 @@ def get_imageio_config(
         template_data=anatomy_data,
         env=env,
     )
+
+
+def get_representation_ocio_config_path(
+    publish_repre: dict[str, Any],
+    anatomy: Anatomy,
+    logger: Optional[logging.Logger] = None,
+) -> Optional[str]:
+    """Return the OCIO config path from representation's colorspace data.
+
+    If not colorspace data is found, then `None` is returned.
+
+    If the colorspace data  `path` data does not point to an existing file,
+    then the `template` will be filled with root paths by Anatomy to try and
+    find a local equivalent of the filepath. If that's also not found,
+    then `None` is returned.
+
+    """
+    if logger is None:
+        logger = log
+    colorspace_data = publish_repre.get("colorspaceData") or {}
+    config = colorspace_data.get("config")
+    if not config:
+        logger.debug(
+            "No OCIO Config file for representation,"
+            " because it has no colorspace data."
+        )
+        return None
+
+    config_template: str = config.get("template", "")
+    config_path: str = config.get("path", "")
+    if not config_path and not config_template:
+        logger.warning(
+            "OCIO Config file is not set for representation."
+        )
+        return None
+
+    # First we check the lightest route and just see if path is a valid file.
+    # When it is not we'll assume that the path is e.g. from another machine
+    # or another platform and may need to be computed from the template
+    if config_path:
+        if os.path.isfile(config_path):
+            return config_path
+        logger.debug(
+            "OCIO Config file for representation not found at:"
+            f" {config_path}"
+        )
+
+    if not config_template:
+        return None
+
+    config_path = anatomy.fill_root(config_template)
+    if os.path.isfile(config_path):
+        return config_path
+
+    logger.warning(
+        "OCIO Config file for representation not found at:"
+        f" {config_path}"
+    )
+    return None
