@@ -162,7 +162,7 @@ class LoaderWindow(AYContainer):
 
         overlay_object = MessageOverlayObject(self)
 
-        main_splitter = QtWidgets.QSplitter(self)
+        main_splitter = QtWidgets.QSplitter()
 
         context_splitter = QtWidgets.QSplitter(main_splitter)
         context_splitter.setOrientation(QtCore.Qt.Vertical)
@@ -256,8 +256,10 @@ class LoaderWindow(AYContainer):
         main_splitter.setStretchFactor(1, 6)
         main_splitter.setStretchFactor(2, 1)
 
-        # main_layout = QtWidgets.QHBoxLayout(self)
-        self.add_widget(main_splitter)
+        self.tab = QtWidgets.QTabWidget()
+        self.tab.addTab(main_splitter, "Folders")
+
+        self.add_widget(self.tab)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
