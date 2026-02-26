@@ -23,6 +23,9 @@ from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
 
+from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+
 from .folders_widget import LoaderFoldersWidget
 from .tasks_widget import LoaderTasksWidget
 from .products_widget import ProductsWidget
@@ -133,9 +136,15 @@ class RefreshHandler:
         self._products_refreshed = True
 
 
-class LoaderWindow(QtWidgets.QWidget):
+class LoaderWindow(AYContainer):
     def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.High,
+            layout_margin=16,
+            layout_spacing=16,
+        )
 
         if controller is None:
             controller = LoaderController()
@@ -247,8 +256,8 @@ class LoaderWindow(QtWidgets.QWidget):
         main_splitter.setStretchFactor(1, 6)
         main_splitter.setStretchFactor(2, 1)
 
-        main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.addWidget(main_splitter)
+        # main_layout = QtWidgets.QHBoxLayout(self)
+        self.add_widget(main_splitter)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
