@@ -141,10 +141,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Skip instance if there are not representations to integrate
         #   all representations should not be integrated
         if not filtered_repres:
-            self.log.info((
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
+            self.log.info(
                 "Skipping, there are no representations"
-                " to integrate for instance {}"
-            ).format(instance.data["productType"]))
+                f" to integrate for instance {product_base_type}"
+            )
             return
 
         file_transactions = FileTransaction(log=self.log,
@@ -360,6 +363,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
         product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
 
         self.log.debug("Product: {}".format(product_name))
 
@@ -369,9 +374,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         )
 
         # Define product data
-        data = {
-            "families": get_instance_families(instance)
-        }
         attributes = {}
 
         product_group = instance.data.get("productGroup")
@@ -391,19 +393,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         new_product_entity_kwargs = {
             "name": product_name,
-            "product_type": product_type,
             "folder_id": folder_entity["id"],
-            "data": data,
             "attribs": attributes,
             "entity_id": product_id,
             "product_base_type": product_base_type,
+            "product_type": product_type,
         }
 
         if not is_product_base_type_supported():
             new_product_entity_kwargs.pop("product_base_type")
             if (
-                    product_base_type is not None
-                    and product_base_type != product_type):
+                product_base_type is not None
+                and product_base_type != product_type
+            ):
                 self.log.warning((
                     "Product base type %s is not supported by the server, "
                     "but it's defined - and it differs from product type %s. "
@@ -943,19 +945,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Task can be optional in anatomy data
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
-        product_type = instance.data["productType"]
         product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            product_type,
+            product_base_type=product_base_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
             logger=self.log,
-            product_base_type=product_base_type
         )
 
     def get_rootless_path(self, anatomy, path):

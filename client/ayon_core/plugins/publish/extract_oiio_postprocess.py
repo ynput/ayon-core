@@ -272,7 +272,9 @@ class ExtractOIIOPostProcess(publish.Extractor):
     ) -> Optional[dict[str, Any]]:
         """Returns profile if it should process this instance."""
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
@@ -281,7 +283,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
         repre_ext: str = repre["ext"]
         filtering_criteria = {
             "host_names": host_name,
-            "product_types": product_type,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -294,12 +296,12 @@ class ExtractOIIOPostProcess(publish.Extractor):
         if not profile:
             self.log.debug(
               "Skipped instance. None of profiles in presets are for"
-              f" Host: \"{host_name}\" |"
-              f" Product types: \"{product_type}\" |"
-              f" Product names: \"{product_name}\" |"
-              f" Task name \"{task_name}\" |"
-              f" Task type \"{task_type}\" |"
-              f" Representation: \"{repre_name}\" (.{repre_ext})"
+              f" Host name: \"{host_name}\""
+              f" | Product types: \"{product_base_type}\""
+              f" | Product names: \"{product_name}\""
+              f" | Task name \"{task_name}\""
+              f" | Task type \"{task_type}\""
+              f" | Representation: \"{repre_name}\" (.{repre_ext})"
             )
 
         return profile
