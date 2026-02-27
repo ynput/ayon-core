@@ -52,7 +52,7 @@ from ayon_core.lib.env_tools import (
     "--ayon-login",
     is_flag=True,
     expose_value=False,
-    help="Force login dialog")
+    help="Show login dialog (change server or user)")
 def main_cli(ctx, *_args, **_kwargs):
     """AYON is main command serving as entry point to pipeline system.
 
