@@ -56,19 +56,27 @@ class ProductGroupDialog(QtWidgets.QDialog):
             self._project_name, folder_ids
         )
 
-        # Group names among product ids to pre-set the group name if they
-        # all share the same product id
+        # Get all group names under the folder ids
         product_groups = {
             product_item.group_name
             for product_item in product_items
-            if product_item.product_id in product_ids
         }
         product_groups.discard(None)
         product_groups.discard("")
 
+        # Get all group names for the selected product ids so we can
+        # potentially pre-set a current group name
+        product_groups_selected = {
+            product_item.group_name
+            for product_item in product_items
+            if product_item.product_id in product_ids
+        }
+        product_groups_selected.discard(None)
+        product_groups_selected.discard("")
+
         text: str = ""
-        if len(product_groups) == 1:
-            text: str = next(iter(product_groups))
+        if len(product_groups_selected) == 1:
+            text: str = next(iter(product_groups_selected))
 
         self._name_line_edit.setText(text)
         self._name_line_edit.set_options(list(sorted(product_groups)))
