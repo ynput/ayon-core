@@ -47,15 +47,6 @@ class CollectHierarchy(
             )
         ]
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        cls.edit_shot_attributes_on_update = (
-            project_settings
-                ["core"]
-                ["CollectHierarchy"]
-                ["edit_shot_attributes_on_update"]
-        )
-
     def _get_shot_instances(self, context):
         """Get shot instances from context.
 
@@ -68,11 +59,13 @@ class CollectHierarchy(
         shot_instances = []
         for instance in context:
             # shot data dict
-            product_type = instance.data["productType"]
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
             families = instance.data["families"]
 
             # exclude other families then "shot" with intersection
-            if "shot" not in (families + [product_type]):
+            if "shot" not in (families + [product_base_type]):
                 self.log.debug("Skipping not a shot: {}".format(families))
                 continue
 
@@ -155,9 +148,12 @@ class CollectHierarchy(
             # we need to check if the shot entity already exists
             # and if not the attributes needs to be added in case the option
             # is disabled by settings
+
+            # Add attributes for new shots or update existing shots if enabled
+            folder_entity = existing_entities.get(folder_path)
             if (
-                existing_entities.get(folder_path)
-                and edit_shot_attributes_on_update
+                (folder_entity and edit_shot_attributes_on_update)
+                or not folder_entity
             ):
                 for shot_attr in SHOT_ATTRS:
                     attr_value = instance.data.get(shot_attr)
@@ -206,8 +202,8 @@ class CollectHierarchy(
         """Nesting each child into its parent.
 
         Args:
-            parent_dict (dict): parent dict wich should be nested with children
-            child_dict (dict): children dict which should be injested
+            parent_dict (dict): parent dict that should be nested with children
+            child_dict (dict): children dict which should be ingested
         """
 
         for key in parent_dict:

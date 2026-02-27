@@ -3,10 +3,7 @@
   Helper script to run various tasks on ayon-core addon repository.
 
 .DESCRIPTION
-  This script will detect Python installation, and build OpenPype to `build`
-  directory using existing virtual environment created by Poetry (or
-  by running `/tools/create_venv.ps1`). It will then shuffle dependencies in
-  build folder to optimize for different Python versions (2/3) in Python host.
+  This script helps to setup development environment, run code checks and tests.
 
 .EXAMPLE
 
@@ -14,7 +11,7 @@ PS> .\tools\manage.ps1
 
 .EXAMPLE
 
-To create virtual environment using Poetry:
+To create virtual environment using uv:
 PS> .\tools\manage.ps1 create-env
 
 .EXAMPLE
@@ -32,7 +29,7 @@ $CurrentDir = Get-Location
 $ScriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 $RepoRoot = (Get-Item $ScriptDir).parent.FullName
 & git submodule update --init --recursive
-$env:PSModulePath = $env:PSModulePath + ";$($openpype_root)\tools\modules\powershell"
+$env:PSModulePath = $env:PSModulePath + ";$($ayon_root)\tools\modules\powershell"
 
 $FunctionName=$ARGS[0]
 $Arguments=@()
@@ -124,23 +121,9 @@ function Show-PSWarning() {
     }
 }
 
-function Install-Poetry() {
-    Write-Info -Text ">>> ", "Installing Poetry ... " -Color Green, Gray
-    $python = "python"
-    if (Get-Command "pyenv" -ErrorAction SilentlyContinue) {
-        if (-not (Test-Path -PathType Leaf -Path "$($RepoRoot)\.python-version")) {
-            $result = & pyenv global
-            if ($result -eq "no global version configured") {
-                Write-Info "!!! Using pyenv but having no local or global version of Python set." -Color Red, Yellow
-                Exit-WithCode 1
-            }
-        }
-        $python = & pyenv which python
-
-    }
-
-    $env:POETRY_HOME="$RepoRoot\.poetry"
-    (Invoke-WebRequest -Uri https://install.python-poetry.org/ -UseBasicParsing).Content | & $($python) -
+function Install-Uv() {
+    Write-Info -Text ">>> ", "Installing uv ... " -Color Green, Gray
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 }
 
 function Set-Cwd() {
@@ -155,96 +138,78 @@ function Restore-Cwd() {
     }
 }
 
-function Initialize-Environment {
-    Write-Info -Text ">>> ", "Reading Poetry ... " -Color Green, Gray -NoNewline
-    if (-not(Test-Path -PathType Container -Path "$( $env:POETRY_HOME )\bin"))
-    {
-        Write-Info -Text "NOT FOUND" -Color Yellow
-        Install-Poetry
-        Write-Info -Text "INSTALLED" -Color Cyan
-    }
-    else
+function New-UvEnv {
+    Set-Cwd
+    Write-Info -Text ">>> ", "Test if UV is installed ... " -Color Green, Gray -NoNewline
+    if (Get-Command "uv" -ErrorAction SilentlyContinue)
     {
         Write-Info -Text "OK" -Color Green
-    }
-
-    if (-not(Test-Path -PathType Leaf -Path "$( $repo_root )\poetry.lock"))
-    {
-        Write-Info -Text ">>> ", "Installing virtual environment and creating lock." -Color Green, Gray
-    }
-    else
-    {
-        Write-Info -Text ">>> ", "Installing virtual environment from lock." -Color Green, Gray
-    }
-    $startTime = [int][double]::Parse((Get-Date -UFormat %s))
-    & "$env:POETRY_HOME\bin\poetry" config virtualenvs.in-project true --local
-    & "$env:POETRY_HOME\bin\poetry" config virtualenvs.create true --local
-    & "$env:POETRY_HOME\bin\poetry" install --no-root $poetry_verbosity --ansi
-    if ($LASTEXITCODE -ne 0)
-    {
-        Write-Info -Text "!!! ", "Poetry command failed." -Color Red, Yellow
-        Restore-Cwd
-        Exit-WithCode 1
-    }
-    if (Test-Path -PathType Container -Path "$( $repo_root )\.git")
-    {
-        Write-Info -Text ">>> ", "Installing pre-commit hooks ..." -Color Green, White
-        & "$env:POETRY_HOME\bin\poetry" run pre-commit install
-        if ($LASTEXITCODE -ne 0)
-        {
-            Write-Info -Text "!!! ", "Installation of pre-commit hooks failed." -Color Red, Yellow
+    } else {
+        if (Test-Path -PathType Leaf -Path "$($USERPROFILE)/.cargo/bin/uv") {
+            $env:PATH += ";$($env:USERPROFILE)/.cargo/bin"
+            Write-Info -Text "OK" -Color Green
+        } else {
+            Write-Info -Text "NOT FOUND" -Color Yellow
+            Install-Uv
+            Write-Info -Text "INSTALLED" -Color Cyan
         }
     }
+    $startTime = [int][double]::Parse((Get-Date -UFormat %s))
+
+    # note that uv venv can use .python-version marker file to determine what python version to use
+    # so you can safely use pyenv to manage python versions
+    Write-Info -Text ">>> ", "Creating and activating venv ... " -Color Green, Gray
+    & uv venv --allow-existing .venv
+    & uv sync --all-extras
+    if ($LASTEXITCODE -ne 0)
+    {
+        Write-Info -Text "!!! ", "Creation of virtual environment failed." -Color Red, Yellow
+        Restore-Cwd
+        Exit-WithCode $LASTEXITCODE
+    }
+
     $endTime = [int][double]::Parse((Get-Date -UFormat %s))
     Restore-Cwd
     try
     {
-        if (Test-CommandExists "New-BurntToastNotification")
-        {
-            $app_logo = "$repo_root\tools\icons\ayon.ico"
-            New-BurntToastNotification -AppLogo "$app_logo" -Text "AYON", "Virtual environment created.", "All done in $( $endTime - $startTime ) secs."
-        }
-    }
-    catch {}
+        New-BurntToastNotification -AppLogo "$app_logo" -Text "AYON", "Virtual environment created.", "All done in $( $endTime - $startTime ) secs."
+    } catch {}
     Write-Info -Text ">>> ", "Virtual environment created." -Color Green, White
+
 }
 
 function Invoke-Ruff {
     param (
         [switch] $Fix
     )
-    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
     $RuffArgs = @( "run", "ruff", "check" )
     if ($Fix) {
         $RuffArgs += "--fix"
     }
-    & $Poetry $RuffArgs
+    & uv $RuffArgs
 }
 
 function Invoke-Codespell {
     param (
         [switch] $Fix
     )
-    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
     $CodespellArgs = @( "run", "codespell" )
     if ($Fix) {
         $CodespellArgs += "--fix"
     }
-    & $Poetry $CodespellArgs
+    & uv $CodespellArgs
 }
 
 function Run-From-Code {
-    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
     $RunArgs = @( "run")
 
-    & $Poetry $RunArgs @arguments
+    & uv $RunArgs @arguments
 }
 
 function Run-Tests {
-    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
     $RunArgs = @( "run", "pytest", "$($RepoRoot)/tests", "-m",  "not server")
 
-    & $Poetry $RunArgs @arguments
+    & uv $RunArgs @arguments
 }
 
 function Write-Help {
@@ -258,11 +223,11 @@ function Write-Help {
     Write-Info -Text "Usage: ", "./manage.ps1 ", "[command]" -Color Gray, White, Cyan
     Write-Host ""
     Write-Host "Commands:"
-    Write-Info -Text "  create-env                    ", "Install Poetry and update venv by lock file" -Color White, Cyan
+    Write-Info -Text "  create-env                    ", "Install uv and update venv by lock file" -Color White, Cyan
     Write-Info -Text "  ruff-check                    ", "Run Ruff check for the repository" -Color White, Cyan
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
-    Write-Info -Text "  run                           ", "Run a poetry command in the repository environment" -Color White, Cyan
+    Write-Info -Text "  run                           ", "Run a uv command in the repository environment" -Color White, Cyan
     Write-Info -Text "  run-tests                     ", "Run ayon-core tests" -Color White, Cyan
     Write-Host ""
 }
@@ -275,7 +240,7 @@ function Resolve-Function {
     $FunctionName = $FunctionName.ToLower() -replace "\W"
     if ($FunctionName -eq "createenv") {
         Set-Cwd
-        Initialize-Environment
+        New-UvEnv
     } elseif ($FunctionName -eq "ruffcheck") {
         Set-Cwd
         Invoke-Ruff
