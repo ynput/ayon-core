@@ -48,6 +48,11 @@ from ayon_core.lib.env_tools import (
     is_flag=True,
     expose_value=False,
     help="use dev bundle")
+@click.option(
+    "--ayon-login",
+    is_flag=True,
+    expose_value=False,
+    help="Force login dialog")
 def main_cli(ctx, *_args, **_kwargs):
     """AYON is main command serving as entry point to pipeline system.
 
