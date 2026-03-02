@@ -202,9 +202,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._show_timer = show_timer
 
         capture_shortcut = QtGui.QShortcut(
-            QtGui.QKeySequence(
-                QtCore.Qt.CTRL | QtCore.Qt.SHIFT | QtCore.Qt.Key_S
-            ),
+            QtGui.QKeySequence("Ctrl+Shift+S"),
             self,
         )
         capture_shortcut.activated.connect(self._on_capture_thumbnail_shortcut)
