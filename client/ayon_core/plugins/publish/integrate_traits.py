@@ -327,18 +327,21 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         # 1) skip farm and integrate ==  False
 
         if instance.data.get("integrate", True) is False:
-            self.log.debug("Instance is marked to skip integrating. Skipping")
+            self.log.debug(f"Instance '{instance.name}' is marked to skip "
+                           "integrating. Skipping")
             return
 
         if instance.data.get("farm"):
             self.log.debug(
-                "Instance is marked to be processed on farm. Skipping")
+                f"Instance '{instance.name}' is marked to be processed on "
+                "farm. Skipping")
             return
 
         # TODO (antirotor): Find better name for the key
         if not has_trait_representations(instance):
             self.log.debug(
-                "Instance has no representations with traits. Skipping")
+                f"Instance '{instance.name}' has no representations with "
+                "traits. Skipping")
             return
 
         # 2) filter representations based on LifeCycle traits
@@ -352,7 +355,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         if not representations:
             self.log.debug(
-                "Instance has no persistent representations. Skipping")
+                f"Instance '{instance.name}' has no persistent "
+                "representations. Skipping")
             return
 
         op_session = OperationsSession()
@@ -431,6 +435,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         # 10) Commit the session to AYON
         self.log.debug(pformat(op_session.to_data()))
         op_session.commit()
+
+        # 11) Pass the list of published representations to the instance
+        # for further processing in Integrate Hero versions for example.
+        instance.data["publishedRepresentationsWithTraits"] = representations
 
     def get_transfers_from_representations(
             self,
