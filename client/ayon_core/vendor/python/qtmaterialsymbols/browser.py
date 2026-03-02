@@ -20,10 +20,18 @@ def load_stylesheet():
 class IconModel(QtCore.QStringListModel):
     def __init__(self, icon_color):
         super().__init__()
+        self._fill = False
         self._icon_color = icon_color
 
     def flags(self, index):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+    def set_filled(self, filled: bool):
+        self._fill = filled
+        self.dataChanged.emit(
+            self.index(0, 0),
+            self.index(self.rowCount() - 1, 0)
+        )
 
     def set_icon_color(self, color):
         self._icon_color = color
@@ -33,7 +41,11 @@ class IconModel(QtCore.QStringListModel):
         if role == QtCore.Qt.DecorationRole:
             value = self.data(index, role=QtCore.Qt.DisplayRole)
             instance = get_instance()
-            return instance.get_icon(value, color=self._icon_color)
+            return instance.get_icon(
+                value,
+                color=self._icon_color,
+                fill=self._fill,
+            )
         return super().data(index, role)
 
 
@@ -63,13 +75,17 @@ class IconBrowser(QtWidgets.QMainWindow):
         filter_input = QtWidgets.QLineEdit(header_widget)
         filter_input.setPlaceholderText("Filter by name...")
 
+        filled_check = QtWidgets.QCheckBox("Fill", header_widget)
+        filled_check.setToolTip("Filled icons")
+
         copy_btn = QtWidgets.QPushButton("< no selection >", header_widget)
         copy_btn.setToolTip("Copy name")
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(filter_input, 2)
-        header_layout.addWidget(copy_btn, 1)
+        header_layout.addWidget(filter_input, 4)
+        header_layout.addWidget(filled_check, 1)
+        header_layout.addWidget(copy_btn, 0)
 
         # Icons view
         icons_view = IconListView(center_widget)
@@ -101,6 +117,7 @@ class IconBrowser(QtWidgets.QMainWindow):
 
         filter_input.textChanged.connect(self._on_filter_change)
         filter_input.returnPressed.connect(self._on_filter_confirm)
+        filled_check.stateChanged.connect(self._on_filled_change)
         icons_view.doubleClicked.connect(self._copy_icon_name)
         icons_view.selectionModel().selectionChanged.connect(
             self._on_selection_change
@@ -119,6 +136,7 @@ class IconBrowser(QtWidgets.QMainWindow):
             filter_input.setFocus,
         )
 
+        self._filled_check = filled_check
         self._copy_btn = copy_btn
         self._filter_input = filter_input
         self._icons_view = icons_view
@@ -138,6 +156,9 @@ class IconBrowser(QtWidgets.QMainWindow):
             regex = f".*{search_term}.*$"
 
         self._proxy_model.setFilterRegularExpression(regex)
+
+    def _on_filled_change(self):
+        self._model.set_filled(self._filled_check.isChecked())
 
     def _on_selection_change(self, _new_selection, _old_selection):
         indexes = self._icons_view.selectedIndexes()
