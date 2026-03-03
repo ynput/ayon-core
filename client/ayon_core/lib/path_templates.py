@@ -7,7 +7,7 @@ import numbers
 import warnings
 import platform
 from string import Formatter
-from typing import Any, Union, Iterable
+from typing import Any, Union, Iterable, Optional
 
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
