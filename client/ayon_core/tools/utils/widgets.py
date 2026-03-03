@@ -924,7 +924,7 @@ class OptionalAction(QtWidgets.QWidgetAction):
         if not options:
             self.option_tip = ""
             return
-        
+
         # Simple tooltip: just explain what the button does and list option names
         option_names = []
         if isinstance(options[0], AbstractAttrDef):
@@ -934,12 +934,21 @@ class OptionalAction(QtWidgets.QWidgetAction):
                 else:
                     option_names.append(option.key)
         else:
-            # Legacy qargparse format
+            # Legacy qargparse format (dicts or qargparse QArgument objects)
             for opt in options:
-                option_names.append(opt.get("name", opt.get("label", "Option")))
-        
+                if isinstance(opt, dict):
+                    option_names.append(opt.get("label", opt.get("name", "Option")))
+                else:
+                    try:
+                        name = opt["label"] or opt["name"]
+                    except (TypeError, KeyError):
+                        name = getattr(opt, "name", None) or str(opt)
+                    option_names.append(name)
+
         if option_names:
-            self.option_tip = "Load with options:\n  • " + "\n  • ".join(option_names)
+            self.option_tip = "Load with options:\n  • " + "\n  • ".join(
+                str(name) for name in option_names
+            )
         else:
             self.option_tip = "Load with options"
 
