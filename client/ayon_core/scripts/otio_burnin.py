@@ -632,9 +632,16 @@ def prepare_fill_values(burnin_template, data):
 
 
 def burnins_from_data(
-    input_path, output_path, data,
-    codec_data=None, options=None, burnin_values=None, overwrite=True,
-    full_input_path=None, first_frame=None, source_ffmpeg_cmd=None
+    input_path,
+    output_path,
+    data,
+    codec_data=None,
+    options=None,
+    burnin_values=None,
+    overwrite=True,
+    full_input_path=None,
+    first_frame=None,
+    source_ffmpeg_cmd=None,
 ):
     """This method adds burnins to video/image file based on presets setting.
 
