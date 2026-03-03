@@ -17,6 +17,7 @@ from ayon_core.lib import (
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
     convert_ffprobe_fps_value,
+    StringTemplate,
 )
 
 FFMPEG_EXE_COMMAND = subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
@@ -601,6 +602,10 @@ def prepare_fill_values(burnin_template, data):
     fill_values = {}
     listed_keys = {}
     missing_keys = set()
+    # Remove optional parts for which are data not available
+    burnin_template_t = StringTemplate(burnin_template)
+    burnin_template = burnin_template_t.remove_optional_parts_for_data(data)
+
     for item in Formatter().parse(burnin_template):
         _, field_name, format_spec, conversion = item
         if not field_name:
@@ -608,10 +613,9 @@ def prepare_fill_values(burnin_template, data):
         # Calculate nested keys '{project[name]}' -> ['project', 'name']
         keys = [key.rstrip("]") for key in field_name.split("[")]
         # Calculate original full key for replacement
-        conversion = "!{}".format(conversion) if conversion else ""
-        format_spec = ":{}".format(format_spec) if format_spec else ""
-        orig_key = "{{{}{}{}}}".format(
-            field_name, conversion, format_spec)
+        conversion = f"!{conversion}" if conversion else ""
+        format_spec = f":{format_spec}" if format_spec else ""
+        orig_key = f"{{{field_name}{conversion}{format_spec}}}"
 
         key_value = data
         try:
