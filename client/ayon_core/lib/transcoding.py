@@ -542,9 +542,9 @@ def get_default_reviewable_layers(project_settings: dict) -> list[str]:
         list[str]: List of default reviewable layers.
     """
     review_layers = project_settings["core"].get("reviewable_layers", {})
-    if review_layers:
-        return review_layers.get("review_layers", [])
-    return []
+    if not review_layers:
+        return []
+    return review_layers.get("review_layers", [])
 
 
 def get_convert_rgb_channels(
