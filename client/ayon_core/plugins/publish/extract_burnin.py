@@ -219,7 +219,7 @@ class ExtractBurnin(publish.Extractor):
 
         anatomy = instance.context.data["anatomy"]
         scriptpath = self.burnin_script_path()
-
+        project_settings = instance.context.data["project_settings"]
         # Args that will execute the script
         executable_args = ["run", scriptpath]
         for repre, repre_burnin_defs in burnins_per_repres:
@@ -245,7 +245,9 @@ class ExtractBurnin(publish.Extractor):
 
             first_input_path = os.path.join(src_repre_staging_dir, filename)
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, project_settings
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -268,7 +270,8 @@ class ExtractBurnin(publish.Extractor):
                 convert_input_paths_for_ffmpeg(
                     src_filepaths,
                     new_staging_dir,
-                    self.log
+                    self.log,
+                    project_settings
                 )
 
             # Add anatomy keys to burnin_data.

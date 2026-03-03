@@ -145,6 +145,13 @@ class PublishedProductModel(BaseSettingsModel):
     )
 
 
+class ReviewLayersModel(BaseSettingsModel):
+    review_layers: list[str] = SettingsField(
+        default_factory=list,
+        title="Review layers"
+    )
+
+
 class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     _layout = "expanded"
     host_names: list[str] = SettingsField(
@@ -305,6 +312,10 @@ class CoreSettings(BaseSettingsModel):
         default_factory=VersionStartCategoryModel,
         title="Version start"
     )
+    reviewable_layers: ReviewLayersModel = SettingsField(
+        default_factory=ReviewLayersModel,
+        title="Default reviewable layers"
+    )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
         title="Color Management (ImageIO)"
@@ -407,6 +418,9 @@ DEFAULT_VALUES = {
     "tools": DEFAULT_TOOLS_VALUES,
     "version_start_category": {
         "profiles": []
+    },
+    "reviewable_layers": {
+        "review_layers": []
     },
     "publish": DEFAULT_PUBLISH_VALUES,
     "project_folder_structure": json.dumps(
