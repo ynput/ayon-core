@@ -602,9 +602,6 @@ def prepare_fill_values(burnin_template, data):
     fill_values = {}
     listed_keys = {}
     missing_keys = set()
-    # Remove optional parts for which are data not available
-    burnin_template_t = StringTemplate(burnin_template)
-    burnin_template = burnin_template_t.remove_optional_parts_for_data(data)
 
     for item in Formatter().parse(burnin_template):
         _, field_name, format_spec, conversion = item
@@ -791,6 +788,10 @@ def burnins_from_data(
             has_source_timecode = False
             print("Source does not have set timecode value.")
             value = value.replace(SOURCE_TIMECODE_KEY, MISSING_KEY_VALUE)
+
+        # Remove optional parts for which are data not available
+        value_t = StringTemplate(value)
+        value = value_t.remove_optional_parts_for_data(data)
 
         # Failsafe for missing keys.
         fill_values, listed_keys, missing_keys = prepare_fill_values(
