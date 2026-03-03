@@ -343,6 +343,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             instance, profile_outputs
         )
 
+        project_settings = instance.context.data["project_settings"]
         for repre, output_defs in outputs_per_repres:
             # Check if input should be preconverted before processing
             # Store original staging dir (it's value may change)
@@ -382,7 +383,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, project_settings
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -392,7 +395,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 ))
                 continue
 
-            layer_name = get_review_layer_name(first_input_path)
+            layer_name = get_review_layer_name(
+                first_input_path, project_settings
+            )
 
             # Do conversion if needed
             #   - change staging dir of source representation
@@ -407,7 +412,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
                     new_staging_dir,
-                    self.log
+                    self.log,
+                    project_settings
                 )
                 # The OIIO conversion will remap the RGBA channels just to
                 # `R,G,B,A` so we will pass the intermediate file to FFMPEG
