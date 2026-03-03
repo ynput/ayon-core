@@ -386,7 +386,7 @@ def parse_oiio_xml_output(xml_string, logger=None):
 
 
 def get_review_info_by_layer_name(
-        channel_names: list[str], project_settings: dict) -> list[dict]:
+        channel_names: list[str], review_layers: list[str]) -> list[dict]:
     """Get channels info grouped by layer name.
 
     Finds all layers in channel names and returns list of dictionaries with
@@ -420,7 +420,7 @@ def get_review_info_by_layer_name(
 
     Args:
         channel_names (list[str]): List of channel names.
-        project_settings (dict): Project setting.
+        review_layers (list[str]): List of reviewable layers.
 
     Returns:
         list[dict]: List of channels information.
@@ -456,7 +456,6 @@ def get_review_info_by_layer_name(
     # Put empty layer or 'rgba' to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
     def _sort(_layer_name: str) -> int:
-        review_layers = get_default_reviewable_layers(project_settings)
         if review_layers:
             for idx, layer in enumerate(review_layers):
                 if layer in _layer_name:
@@ -542,8 +541,6 @@ def get_default_reviewable_layers(project_settings: dict) -> list[str]:
         list[str]: List of default reviewable layers.
     """
     review_layers = project_settings["core"].get("reviewable_layers", {})
-    if not review_layers:
-        return []
     return review_layers.get("review_layers", [])
 
 
@@ -581,9 +578,9 @@ def get_convert_rgb_channels(
             4 channel names defying channel names for R, G, B, A or None
             if there is not any layer with RGB combination.
     """
-
+    review_layers = get_default_reviewable_layers(project_settings)
     channels_info = get_review_info_by_layer_name(
-        channel_names, project_settings
+        channel_names, review_layers
     )
     for item in channels_info:
         review_channels = item["review_channels"]
@@ -621,8 +618,9 @@ def get_review_layer_name(
         return None
 
     channel_names = input_info["channelnames"]
+    review_layers = get_default_reviewable_layers(project_settings)
     channels_info = get_review_info_by_layer_name(
-        channel_names, project_settings
+        channel_names, review_layers
     )
     for item in channels_info:
         # Layer name can be '', when review channels are 'R', 'G', 'B'
