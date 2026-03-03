@@ -536,13 +536,16 @@ def get_default_reviewable_layers(project_settings: dict) -> list[str]:
     """Get default reviewable layers from project settings.
 
     Args:
-        project_settings (dict): Project settings containing review layer lists.
+        project_settings (dict): Project settings.
 
     Returns:
         list[str]: List of default reviewable layers.
     """
-    review_layers = project_settings["core"].get("reviewable_layers", {})
-    return review_layers.get("review_layers", [])
+    core_settings = project_settings.get("core") or {}
+    review_layers = core_settings.get("reviewable_layers", {})
+    if review_layers:
+        return review_layers.get("review_layers", [])
+    return []
 
 
 def get_convert_rgb_channels(
@@ -1433,7 +1436,7 @@ def get_rescaled_command_arguments(
         target_height: int,
         target_par: float = None,
         bg_color: list[int] = None,
-        log: logging.Logger =None,
+        log: logging.Logger = None,
         project_settings: dict = None
 ) -> list[str]:
     """Get command arguments for rescaling input to target size.
