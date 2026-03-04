@@ -386,7 +386,9 @@ def parse_oiio_xml_output(xml_string, logger=None):
 
 
 def get_review_info_by_layer_name(
-        channel_names: list[str], review_layers: list[str]) -> list[dict]:
+        channel_names: list[str],
+        review_layers: Optional[list[str]] = None
+    ) -> list[dict]:
     """Get channels info grouped by layer name.
 
     Finds all layers in channel names and returns list of dictionaries with
@@ -420,7 +422,7 @@ def get_review_info_by_layer_name(
 
     Args:
         channel_names (list[str]): List of channel names.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         list[dict]: List of channels information.
@@ -546,7 +548,7 @@ def get_default_reviewable_layers(project_settings: dict) -> list[str]:
 
 def get_convert_rgb_channels(
         channel_names: list[str],
-        review_layers: list[str]) -> Optional[
+        review_layers: Optional[list[str]] = None) -> Optional[
             tuple[str, str, str, Optional[str]]]:
     """Get first available RGB(A) group from channels info.
 
@@ -572,7 +574,7 @@ def get_convert_rgb_channels(
 
     Args:
         channel_names (list[str]): List of channel names.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         Union[NoneType, tuple[str, str, str, Union[str, None]]]: Tuple of
@@ -594,12 +596,13 @@ def get_convert_rgb_channels(
 
 
 def get_review_layer_name(
-        src_filepath: str, review_layers: list[str]) -> Optional[str]:
+        src_filepath: str,
+        review_layers: Optional[list[str]] = None) -> Optional[str]:
     """Find layer name that could be used for review.
 
     Args:
         src_filepath (str): Path to input file.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         Union[str, None]: Layer name of None.
@@ -629,14 +632,15 @@ def get_review_layer_name(
 
 
 def should_convert_for_ffmpeg(
-        src_filepath: str, review_layers: list[str]) -> Optional[bool]:
+        src_filepath: str,
+        review_layers: Optional[list[str]] = None) -> Optional[bool]:
     """Find out if input should be converted for ffmpeg.
 
     Currently cares only about exr inputs and is based on OpenImageIO.
 
     Args:
         src_filepath (str): Path to input file.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         bool/NoneType: True if should be converted, False if should not and
@@ -719,7 +723,7 @@ def convert_input_paths_for_ffmpeg(
     input_paths: str,
     output_dir: str,
     logger: logging.Logger = None,
-    review_layers: list[str] = None,
+    review_layers: Optional[list[str]] = None,
 ) -> None:
     """Convert source file to format supported in ffmpeg.
 
@@ -738,7 +742,7 @@ def convert_input_paths_for_ffmpeg(
         output_dir (str): Path to directory where output will be rendered.
             Must not be same as input's directory.
         logger (logging.Logger): Logger used for logging.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
@@ -1269,7 +1273,7 @@ def oiio_color_convert(
         parallel_frames (bool): If True, process frames in parallel inside
             the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
     Raises:
         ValueError: if misconfigured
 
@@ -1431,9 +1435,9 @@ def get_rescaled_command_arguments(
         target_width: int,
         target_height: int,
         target_par: float = None,
-        bg_color: list[int] = None,
-        log: logging.Logger = None,
-        review_layers: list[str] = None
+        bg_color: Optional[list[int]] = None,
+        log: Optional[logging.Logger] = None,
+        review_layers: Optional[list[str]] = None
 ) -> list[str]:
     """Get command arguments for rescaling input to target size.
 
@@ -1447,7 +1451,7 @@ def get_rescaled_command_arguments(
         bg_color (Optional[list[int]]): List of 8bit int values for
             background color. Should be in range 0 - 255.
         log (Optional[logging.Logger]): Logger used for logging.
-        review_layers (list[str]): List of reviewable layers.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         list[str]: List of command arguments.
@@ -1656,14 +1660,15 @@ def convert_color_values(application, color_value):
 def get_oiio_input_and_channel_args(
         oiio_input_info: dict,
         alpha_default: float = None,
-        review_layers: list[str] = None) -> tuple[str, str]:
+        review_layers: Optional[list[str]] = None) -> tuple[str, str]:
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
             Should be output of function 'get_oiio_info_for_input' (can be
             called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
-        review_layers (list[str], optional): List of reviewable layers.
+        review_layers (Optional[list[str]], optional): List of reviewable
+            layers.
 
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.

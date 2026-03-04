@@ -442,7 +442,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         repre: dict,
         thumbnail_def: ThumbnailDef,
         anatomy: "Anatomy",
-        review_layers: list[str]
+        review_layers: Optional[list[str]] = None
     ) -> bool:
         """Create thumbnail using OIIO tool oiiotool
 
@@ -457,7 +457,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     view (Optional[str])
             thumbnail_def (ThumbnailDefinition): Thumbnail definition.
             anatomy (Anatomy): Current project Anatomy.
-            review_layers (list[str]): List of reviewable layers.
+            review_layers (Optional[list[str]]): List of reviewable layers.
 
         Returns:
             bool: Whether a thumbnail has been created.
@@ -535,7 +535,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             src_path: str,
             dst_path: str,
             thumbnail_def: ThumbnailDef,
-            review_layers: list[str]
+            review_layers: Optional[list[str]] = None
     ) -> bool:
         """Create thumbnail using OIIO tool
 
@@ -543,7 +543,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             src_path (str): source file path
             dst_path (str): destination file path
             thumbnail_def (ThumbnailDef): Thumbnail definition.
-            review_layers (list[str]): List of reviewable layers.
+            review_layers (Optional[list[str]]): List of reviewable layers.
 
         Returns:
             bool: Whether the thumbnail was successfully created.
@@ -602,14 +602,14 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             src_path: str,
             dst_path: str,
             thumbnail_def: ThumbnailDef,
-            review_layers: list[str]) -> bool:
+            review_layers: Optional[list[str]] = None) -> bool:
         """Create thumbnail using FFmpeg tool
 
         Args:
             src_path (str): source file path
             dst_path (str): destination file path
             thumbnail_def (ThumbnailDef): Thumbnail definition.
-            review_layers (list[str]): List of reviewable layers.
+            review_layers (Optional[list[str]]): List of reviewable layers.
 
         Returns:
             bool: Whether the thumbnail was successfully created.
@@ -774,7 +774,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         application: str,
         input_path: str,
         thumbnail_def: ThumbnailDef,
-        review_layers: list[str]
+        review_layers: Optional[list[str]] = None
     ) -> list:
         """Create command arguments for rescaling.
 
@@ -782,7 +782,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             application (str): Application name.
             input_path (str): Input file path.
             thumbnail_def (ThumbnailDef): Thumbnail definition.
-            review_layers (list[str]): List of reviewable layers.
+            review_layers (Optional[list[str]]): List of reviewable layers.
 
         Returns:
             list: List of command arguments for rescaling.
