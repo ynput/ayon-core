@@ -458,7 +458,7 @@ def get_review_info_by_layer_name(
     def _sort(_layer_name: str) -> int:
         if review_layers:
             for idx, layer in enumerate(review_layers):
-                if layer in _layer_name:
+                if re.match(layer, _layer_name):
                     return idx - len(review_layers)
 
         if _layer_name == "rgba":
@@ -546,7 +546,7 @@ def get_default_reviewable_layers(project_settings: dict) -> list[str]:
 
 def get_convert_rgb_channels(
         channel_names: list[str],
-        project_settings: dict) -> Optional[
+        review_layers: list[str]) -> Optional[
             tuple[str, str, str, Optional[str]]]:
     """Get first available RGB(A) group from channels info.
 
@@ -572,13 +572,13 @@ def get_convert_rgb_channels(
 
     Args:
         channel_names (list[str]): List of channel names.
+        review_layers (list[str]): List of reviewable layers.
 
     Returns:
         Union[NoneType, tuple[str, str, str, Union[str, None]]]: Tuple of
             4 channel names defying channel names for R, G, B, A or None
             if there is not any layer with RGB combination.
     """
-    review_layers = get_default_reviewable_layers(project_settings)
     channels_info = get_review_info_by_layer_name(
         channel_names, review_layers
     )
@@ -594,12 +594,12 @@ def get_convert_rgb_channels(
 
 
 def get_review_layer_name(
-        src_filepath: str, project_settings: dict) -> Optional[str]:
+        src_filepath: str, review_layers: list[str]) -> Optional[str]:
     """Find layer name that could be used for review.
 
     Args:
         src_filepath (str): Path to input file.
-        project_settings (dict): Project setting.
+        review_layers (list[str]): List of reviewable layers.
 
     Returns:
         Union[str, None]: Layer name of None.
@@ -618,7 +618,6 @@ def get_review_layer_name(
         return None
 
     channel_names = input_info["channelnames"]
-    review_layers = get_default_reviewable_layers(project_settings)
     channels_info = get_review_info_by_layer_name(
         channel_names, review_layers
     )
@@ -630,14 +629,14 @@ def get_review_layer_name(
 
 
 def should_convert_for_ffmpeg(
-        src_filepath: str, project_settings: dict) -> Optional[bool]:
+        src_filepath: str, review_layers: list[str]) -> Optional[bool]:
     """Find out if input should be converted for ffmpeg.
 
     Currently cares only about exr inputs and is based on OpenImageIO.
 
     Args:
         src_filepath (str): Path to input file.
-        project_settings (dict): Project setting.
+        review_layers (list[str]): List of reviewable layers.
 
     Returns:
         bool/NoneType: True if should be converted, False if should not and
@@ -668,7 +667,7 @@ def should_convert_for_ffmpeg(
 
     # Check channels
     channel_names = input_info["channelnames"]
-    review_channels = get_convert_rgb_channels(channel_names, project_settings)
+    review_channels = get_convert_rgb_channels(channel_names, review_layers)
     if review_channels is None:
         return None
 
@@ -720,7 +719,7 @@ def convert_input_paths_for_ffmpeg(
     input_paths: str,
     output_dir: str,
     logger: logging.Logger = None,
-    project_settings: dict = None,
+    review_layers: list[str] = None,
 ) -> None:
     """Convert source file to format supported in ffmpeg.
 
@@ -739,7 +738,7 @@ def convert_input_paths_for_ffmpeg(
         output_dir (str): Path to directory where output will be rendered.
             Must not be same as input's directory.
         logger (logging.Logger): Logger used for logging.
-        project_settings (dict): Project settings.
+        review_layers (list[str]): List of reviewable layers.
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
@@ -767,7 +766,7 @@ def convert_input_paths_for_ffmpeg(
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(
-        input_info, project_settings=project_settings
+        input_info, review_layers=review_layers
     )
 
     # Find which attributes to strip
@@ -1229,7 +1228,7 @@ def oiio_color_convert(
     frame_padding: Optional[int] = None,
     parallel_frames: bool = False,
     logger: Optional[logging.Logger] = None,
-    project_settings: Optional[dict] = None,
+    review_layers: Optional[list[str]] = None,
 ) -> None:
     """Transcode source file to other with colormanagement.
 
@@ -1270,7 +1269,7 @@ def oiio_color_convert(
         parallel_frames (bool): If True, process frames in parallel inside
             the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
-        project_settings (dict, optional): Project settings.
+        review_layers (list[str]): List of reviewable layers.
     Raises:
         ValueError: if misconfigured
 
@@ -1295,7 +1294,7 @@ def oiio_color_convert(
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(
-        input_info, project_settings=project_settings
+        input_info, review_layers=review_layers
     )
 
     # Prepare subprocess arguments
@@ -1434,7 +1433,7 @@ def get_rescaled_command_arguments(
         target_par: float = None,
         bg_color: list[int] = None,
         log: logging.Logger = None,
-        project_settings: dict = None
+        review_layers: list[str] = None
 ) -> list[str]:
     """Get command arguments for rescaling input to target size.
 
@@ -1448,6 +1447,7 @@ def get_rescaled_command_arguments(
         bg_color (Optional[list[int]]): List of 8bit int values for
             background color. Should be in range 0 - 255.
         log (Optional[logging.Logger]): Logger used for logging.
+        review_layers (list[str]): List of reviewable layers.
 
     Returns:
         list[str]: List of command arguments.
@@ -1515,7 +1515,7 @@ def get_rescaled_command_arguments(
         )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
-            input_info, alpha_default=1.0, project_settings=project_settings
+            input_info, alpha_default=1.0, review_layers=review_layers
         )
 
         command_args.extend([
@@ -1656,21 +1656,21 @@ def convert_color_values(application, color_value):
 def get_oiio_input_and_channel_args(
         oiio_input_info: dict,
         alpha_default: float = None,
-        project_settings: dict = None) -> tuple[str, str]:
+        review_layers: list[str] = None) -> tuple[str, str]:
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
             Should be output of function 'get_oiio_info_for_input' (can be
             called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
-        project_settings (dict, optional): Project setting.
+        review_layers (list[str], optional): List of reviewable layers.
 
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.
 
     """
     channel_names = oiio_input_info["channelnames"]
-    review_channels = get_convert_rgb_channels(channel_names, project_settings)
+    review_channels = get_convert_rgb_channels(channel_names, review_layers)
 
     if review_channels is None:
         raise MissingRGBAChannelsError(

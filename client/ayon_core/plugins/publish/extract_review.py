@@ -17,6 +17,7 @@ from ayon_core.lib import (
     filter_profiles,
     path_to_subprocess_arg,
     run_subprocess,
+    get_default_reviewable_layers,
 )
 from ayon_core.pipeline.publish.lib import (
     fill_sequence_gaps_with_previous_version
@@ -344,6 +345,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         )
 
         project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for repre, output_defs in outputs_per_repres:
             # Check if input should be preconverted before processing
             # Store original staging dir (it's value may change)
@@ -384,7 +386,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             # Determine if representation requires pre conversion for ffmpeg
             do_convert = should_convert_for_ffmpeg(
-                first_input_path, project_settings
+                first_input_path, review_layers
             )
             # If result is None the requirement of conversion can't be
             #   determined
@@ -396,7 +398,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             layer_name = get_review_layer_name(
-                first_input_path, project_settings
+                first_input_path, review_layers
             )
 
             # Do conversion if needed
@@ -413,7 +415,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     input_filepaths,
                     new_staging_dir,
                     self.log,
-                    project_settings
+                    review_layers
                 )
                 # The OIIO conversion will remap the RGBA channels just to
                 # `R,G,B,A` so we will pass the intermediate file to FFMPEG
