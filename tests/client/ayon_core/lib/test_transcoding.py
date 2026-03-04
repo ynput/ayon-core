@@ -10,7 +10,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
     def test_rgba_channels(self):
 
         # RGB is supported
-        info = get_review_info_by_layer_name(["R", "G", "B"], ["G", "R", "B"])
+        info = get_review_info_by_layer_name(["R", "G", "B"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -22,7 +22,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
         }])
 
         # rgb is supported
-        info = get_review_info_by_layer_name(["r", "g", "b"], ["G", "R", "B"])
+        info = get_review_info_by_layer_name(["r", "g", "b"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -35,8 +35,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
 
         # diffuse.[RGB] is supported
         info = get_review_info_by_layer_name(
-            ["diffuse.R", "diffuse.G", "diffuse.B"],
-            ["diffuse.G", "diffuse.R", "diffuse.B"]
+            ["diffuse.R", "diffuse.G", "diffuse.B"]
         )
         self.assertEqual(info, [{
             "name": "diffuse",
@@ -48,10 +47,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
             }
         }])
 
-        info = get_review_info_by_layer_name(
-            ["R", "G", "B", "A"],
-            ["G", "R", "B", "A"]
-        )
+        info = get_review_info_by_layer_name(["R", "G", "B", "A"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -64,7 +60,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
 
     def test_z_channel(self):
 
-        info = get_review_info_by_layer_name(["Z"], ["Z"])
+        info = get_review_info_by_layer_name(["Z"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -75,7 +71,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
             }
         }])
 
-        info = get_review_info_by_layer_name(["Z", "A"], ["Z", "A"])
+        info = get_review_info_by_layer_name(["Z", "A"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -88,9 +84,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
 
     def test_ar_ag_ab_channels(self):
 
-        info = get_review_info_by_layer_name(
-            ["AR", "AG", "AB"], ["AB", "AG", "AR"]
-        )
+        info = get_review_info_by_layer_name(["AR", "AG", "AB"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -101,10 +95,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
             }
         }])
 
-        info = get_review_info_by_layer_name(
-            ["AR", "AG", "AB", "A"],
-            ["AB", "AG", "AR", "A"]
-        )
+        info = get_review_info_by_layer_name(["AR", "AG", "AB", "A"])
         self.assertEqual(info, [{
             "name": "",
             "review_channels": {
@@ -116,9 +107,7 @@ class GetReviewInfoByLayerName(unittest.TestCase):
         }])
 
     def test_unknown_channels(self):
-        info = get_review_info_by_layer_name(
-            ["hello", "world"], ["hello", "world"]
-        )
+        info = get_review_info_by_layer_name(["hello", "world"])
         self.assertEqual(info, [])
 
     def test_rgba_priority(self):
@@ -132,20 +121,12 @@ class GetReviewInfoByLayerName(unittest.TestCase):
 
         """
 
-        info = get_review_info_by_layer_name(
-            [
-                "Z",
-                "diffuse.R", "diffuse.G", "diffuse.B",
-                "R", "G", "B", "A",
-                "specular.R", "specular.G", "specular.B", "specular.A",
-            ],
-            [
-                "Z",
-                "diffuse.R", "diffuse.G", "diffuse.B",
-                "R", "G", "B", "A",
-                "specular.R", "specular.G", "specular.B", "specular.A",
-            ],
-        )
+        info = get_review_info_by_layer_name([
+            "Z",
+            "diffuse.R", "diffuse.G", "diffuse.B",
+            "R", "G", "B", "A",
+            "specular.R", "specular.G", "specular.B", "specular.A",
+        ])
         self.assertEqual(info, [
             {
                 "name": "",
