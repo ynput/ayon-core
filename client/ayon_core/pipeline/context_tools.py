@@ -13,7 +13,7 @@ import pyblish.api
 from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.host import HostBase
+from ayon_core.host import AbstractHost
 from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
@@ -100,16 +100,16 @@ def registered_root():
     return _registered_root["_"]
 
 
-def install_host(host: HostBase) -> None:
+def install_host(host: AbstractHost) -> None:
     """Install `host` into the running Python session.
 
     Args:
-        host (HostBase): A host interface object.
+        host (AbstractHost): A host interface object.
 
     """
-    if not isinstance(host, HostBase):
+    if not isinstance(host, AbstractHost):
         log.error(
-            f"Host must be a subclass of 'HostBase', got '{type(host)}'."
+            f"Host must be a subclass of 'AbstractHost', got '{type(host)}'."
         )
 
     global _is_installed
@@ -310,7 +310,7 @@ def get_current_host_name():
     """
 
     host = registered_host()
-    if isinstance(host, HostBase):
+    if isinstance(host, AbstractHost):
         return host.name
     return os.environ.get("AYON_HOST_NAME")
 
@@ -346,28 +346,28 @@ def get_global_context():
 
 def get_current_context():
     host = registered_host()
-    if isinstance(host, HostBase):
+    if isinstance(host, AbstractHost):
         return host.get_current_context()
     return get_global_context()
 
 
 def get_current_project_name():
     host = registered_host()
-    if isinstance(host, HostBase):
+    if isinstance(host, AbstractHost):
         return host.get_current_project_name()
     return get_global_context()["project_name"]
 
 
 def get_current_folder_path():
     host = registered_host()
-    if isinstance(host, HostBase):
+    if isinstance(host, AbstractHost):
         return host.get_current_folder_path()
     return get_global_context()["folder_path"]
 
 
 def get_current_task_name():
     host = registered_host()
-    if isinstance(host, HostBase):
+    if isinstance(host, AbstractHost):
         return host.get_current_task_name()
     return get_global_context()["task_name"]
 

@@ -1,11 +1,11 @@
 import collections
 import hashlib
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import (
-    RecursiveSortFilterProxyModel,
     DeselectableTreeView,
     TasksQtModel,
     TASKS_MODEL_SENDER_NAME,
@@ -15,8 +15,10 @@ from ayon_core.tools.utils.tasks_widget import (
     ITEM_NAME_ROLE,
     PARENT_ID_ROLE,
     TASK_TYPE_ROLE,
+    TasksProxyModel,
 )
 from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
+
 
 # Role that can't clash with default 'tasks_widget' roles
 FOLDER_LABEL_ROLE = QtCore.Qt.UserRole + 100
@@ -295,13 +297,19 @@ class LoaderTasksQtModel(TasksQtModel):
         return super().data(index, role)
 
 
-class LoaderTasksProxyModel(RecursiveSortFilterProxyModel):
+class LoaderTasksProxyModel(TasksProxyModel):
     def lessThan(self, left, right):
         if left.data(ITEM_ID_ROLE) == NO_TASKS_ID:
             return False
         if right.data(ITEM_ID_ROLE) == NO_TASKS_ID:
             return True
         return super().lessThan(left, right)
+
+    def filterAcceptsRow(self, row, parent_index):
+        source_index = self.sourceModel().index(row, 0, parent_index)
+        if source_index.data(ITEM_ID_ROLE) == NO_TASKS_ID:
+            return True
+        return super().filterAcceptsRow(row, parent_index)
 
 
 class LoaderTasksWidget(QtWidgets.QWidget):
@@ -362,6 +370,15 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         self._tasks_proxy_model.setFilterFixedString(name)
         if name:
             self._tasks_view.expandAll()
+
+    def set_task_ids_filter(self, task_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            task_ids (list[str]): The list of folder ids.
+
+        """
+        self._tasks_proxy_model.set_task_ids_filter(task_ids)
 
     def refresh(self):
         self._tasks_model.refresh()

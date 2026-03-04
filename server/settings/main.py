@@ -59,6 +59,7 @@ def _ocio_config_profile_types():
         {"value": "builtin_path", "label": "AYON built-in OCIO config"},
         {"value": "custom_path", "label": "Path to OCIO config"},
         {"value": "published_product", "label": "Published product"},
+        {"value": "disabled", "label": "Disable OCIO management"},
     ]
 
 
@@ -215,9 +216,9 @@ class VersionStartCategoryProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
@@ -284,6 +285,7 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         title="Global environment variables",
         widget="textarea",
+        syntax="json",
         scope=["studio"],
     )
     update_check_interval: int = SettingsField(
@@ -323,12 +325,14 @@ class CoreSettings(BaseSettingsModel):
             "Defines project folders to create on disk"
             " for 'Create project folders' action."
         ),
+        syntax="json",
         section="---"
     )
     project_environments: str = SettingsField(
         "{}",
         widget="textarea",
         title="Project environments",
+        syntax="json",
         section="---"
     )
     filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(

@@ -1,31 +1,36 @@
+from __future__ import annotations
+
 import os
+from typing import Optional
 
 import ayon_api
 
 from ayon_core.host import IWorkfileHost
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import get_global_context
-
+from ayon_core.settings import get_project_settings
 from ayon_core.tools.common_models import (
-    HierarchyModel,
     HierarchyExpectedSelection,
+    HierarchyModel,
     ProjectsModel,
     UsersModel,
 )
 
 from .abstract import (
-    AbstractWorkfilesFrontend,
     AbstractWorkfilesBackend,
+    AbstractWorkfilesFrontend,
+    PublishedWorkfileWrap,
 )
 from .models import SelectionModel, WorkfilesModel
+
+NOT_SET = object()
 
 
 class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
     def __init__(self, controller):
-        super(WorkfilesToolExpectedSelection, self).__init__(
+        super().__init__(
             controller,
             handle_project=False,
             handle_folder=True,
@@ -52,16 +57,14 @@ class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
         self._workfile_selected = False
         self._representation_selected = False
 
-        super(WorkfilesToolExpectedSelection, self).set_expected_selection(
+        super().set_expected_selection(
             project_name,
             folder_id,
             task_name,
         )
 
     def get_expected_selection_data(self):
-        data = super(
-            WorkfilesToolExpectedSelection, self
-        ).get_expected_selection_data()
+        data = super().get_expected_selection_data()
 
         _is_current = (
             self._project_selected
@@ -143,6 +146,7 @@ class BaseWorkfileController(
         self._project_settings = None
         self._event_system = None
         self._log = None
+        self._username = NOT_SET
 
         self._current_project_name = None
         self._current_folder_path = None
@@ -163,6 +167,11 @@ class BaseWorkfileController(
         if self._log is None:
             self._log = Logger.get_logger("WorkfilesUI")
         return self._log
+
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
 
     def is_host_valid(self):
         return self._host_is_valid
@@ -430,6 +439,15 @@ class BaseWorkfileController(
             folder_id, task_id
         )
 
+    def get_published_workfile_info(
+        self,
+        folder_id: Optional[str],
+        representation_id: Optional[str],
+    ) -> PublishedWorkfileWrap:
+        return self._workfiles_model.get_published_workfile_info(
+            folder_id, representation_id
+        )
+
     def get_workfile_info(self, folder_id, task_id, rootless_path):
         return self._workfiles_model.get_workfile_info(
             folder_id, task_id, rootless_path
@@ -587,6 +605,20 @@ class BaseWorkfileController(
             comment,
             description,
         )
+
+    def get_my_tasks_entity_ids(self, project_name: str):
+        username = self._get_my_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def _get_my_username(self):
+        if self._username is NOT_SET:
+            self._username = get_ayon_username()
+        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")

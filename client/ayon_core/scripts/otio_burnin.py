@@ -6,12 +6,18 @@ import json
 import tempfile
 from string import Formatter
 
-import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+try:
+    from otio_burnins_adapter import ffmpeg_burnins
+except ImportError:
+    import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+from PIL import ImageFont
+
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
     convert_ffprobe_fps_value,
+    StringTemplate,
 )
 
 FFMPEG_EXE_COMMAND = subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
@@ -34,6 +40,39 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
+
+
+def _drawtext(align, resolution, text, options):
+    """
+    :rtype: {'x': int, 'y': int}
+    """
+    x_pos = "0"
+    if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
+        x_pos = "w/2-tw/2"
+
+    elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
+        ifont = ImageFont.truetype(options["font"], options["font_size"])
+        if hasattr(ifont, "getbbox"):
+            left, top, right, bottom = ifont.getbbox(text)
+            box_size = right - left, bottom - top
+        else:
+            box_size = ifont.getsize(text)
+        x_pos = resolution[0] - (box_size[0] + options["x_offset"])
+    elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
+        x_pos = options["x_offset"]
+
+    if align in (
+        ffmpeg_burnins.TOP_CENTERED,
+        ffmpeg_burnins.TOP_RIGHT,
+        ffmpeg_burnins.TOP_LEFT
+    ):
+        y_pos = "%d" % options["y_offset"]
+    else:
+        y_pos = "h-text_h-%d" % (options["y_offset"])
+    return {"x": x_pos, "y": y_pos}
+
+
+ffmpeg_burnins._drawtext = _drawtext
 
 
 def _get_ffprobe_data(source):
@@ -563,6 +602,7 @@ def prepare_fill_values(burnin_template, data):
     fill_values = {}
     listed_keys = {}
     missing_keys = set()
+
     for item in Formatter().parse(burnin_template):
         _, field_name, format_spec, conversion = item
         if not field_name:
@@ -570,10 +610,9 @@ def prepare_fill_values(burnin_template, data):
         # Calculate nested keys '{project[name]}' -> ['project', 'name']
         keys = [key.rstrip("]") for key in field_name.split("[")]
         # Calculate original full key for replacement
-        conversion = "!{}".format(conversion) if conversion else ""
-        format_spec = ":{}".format(format_spec) if format_spec else ""
-        orig_key = "{{{}{}{}}}".format(
-            field_name, conversion, format_spec)
+        conversion = f"!{conversion}" if conversion else ""
+        format_spec = f":{format_spec}" if format_spec else ""
+        orig_key = f"{{{field_name}{conversion}{format_spec}}}"
 
         key_value = data
         try:
@@ -593,9 +632,16 @@ def prepare_fill_values(burnin_template, data):
 
 
 def burnins_from_data(
-    input_path, output_path, data,
-    codec_data=None, options=None, burnin_values=None, overwrite=True,
-    full_input_path=None, first_frame=None, source_ffmpeg_cmd=None
+    input_path,
+    output_path,
+    data,
+    codec_data=None,
+    options=None,
+    burnin_values=None,
+    overwrite=True,
+    full_input_path=None,
+    first_frame=None,
+    source_ffmpeg_cmd=None,
 ):
     """This method adds burnins to video/image file based on presets setting.
 
@@ -749,6 +795,10 @@ def burnins_from_data(
             has_source_timecode = False
             print("Source does not have set timecode value.")
             value = value.replace(SOURCE_TIMECODE_KEY, MISSING_KEY_VALUE)
+
+        # Remove optional parts for which are data not available
+        value_t = StringTemplate(value)
+        value = value_t.remove_optional_parts_for_data(data)
 
         # Failsafe for missing keys.
         fill_values, listed_keys, missing_keys = prepare_fill_values(

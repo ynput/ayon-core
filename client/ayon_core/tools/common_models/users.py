@@ -1,10 +1,13 @@
 import json
 import collections
+from typing import Optional
 
 import ayon_api
 from ayon_api.graphql import FIELD_VALUE, GraphQlQuery, fields_to_dict
 
-from ayon_core.lib import NestedCacheItem
+from ayon_core.lib import NestedCacheItem, get_ayon_username
+
+NOT_SET = object()
 
 
 # --- Implementation that should be in ayon-python-api ---
@@ -105,8 +108,17 @@ class UserItem:
 
 class UsersModel:
     def __init__(self, controller):
+        self._current_username = NOT_SET
         self._controller = controller
         self._users_cache = NestedCacheItem(default_factory=list)
+
+    def get_current_username(self) -> Optional[str]:
+        if self._current_username is NOT_SET:
+            self._current_username = get_ayon_username()
+        return self._current_username
+
+    def reset(self) -> None:
+        self._users_cache.reset()
 
     def get_user_items(self, project_name):
         """Get user items.

@@ -8,11 +8,7 @@ from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
     register_plugin_path,
-    deregister_plugin,
-    deregister_plugin_path
 )
-
-from .load.utils import get_representation_path_from_context
 
 
 class LauncherActionSelection:
@@ -37,16 +33,19 @@ class LauncherActionSelection:
         project_name,
         folder_id,
         task_id,
+        workfile_id,
         folder_path=None,
         task_name=None,
         project_entity=None,
         folder_entity=None,
         task_entity=None,
+        workfile_entity=None,
         project_settings=None,
     ):
         self._project_name = project_name
         self._folder_id = folder_id
         self._task_id = task_id
+        self._workfile_id = workfile_id
 
         self._folder_path = folder_path
         self._task_name = task_name
@@ -54,6 +53,7 @@ class LauncherActionSelection:
         self._project_entity = project_entity
         self._folder_entity = folder_entity
         self._task_entity = task_entity
+        self._workfile_entity = workfile_entity
 
         self._project_settings = project_settings
 
@@ -213,6 +213,15 @@ class LauncherActionSelection:
             self._task_name = self.task_entity["name"]
         return self._task_name
 
+    def get_workfile_id(self):
+        """Selected workfile id.
+
+        Returns:
+            Union[str, None]: Selected workfile id.
+
+        """
+        return self._workfile_id
+
     def get_project_entity(self):
         """Project entity for the selection.
 
@@ -258,6 +267,24 @@ class LauncherActionSelection:
                 self._project_name, self._task_id
             )
         return self._task_entity
+
+    def get_workfile_entity(self):
+        """Workfile entity for the selection.
+
+        Returns:
+            Union[dict[str, Any], None]: Workfile entity.
+
+        """
+        if (
+            self._project_name is None
+            or self._workfile_id is None
+        ):
+            return None
+        if self._workfile_entity is None:
+            self._workfile_entity = ayon_api.get_workfile_info_by_id(
+                self._project_name, self._workfile_id
+            )
+        return self._workfile_entity
 
     def get_project_settings(self):
         """Project settings for the selection.
@@ -305,15 +332,27 @@ class LauncherActionSelection:
         """
         return self._task_id is not None
 
+    @property
+    def is_workfile_selected(self):
+        """Return whether a task is selected.
+
+        Returns:
+            bool: Whether a task is selected.
+
+        """
+        return self._workfile_id is not None
+
     project_name = property(get_project_name)
     folder_id = property(get_folder_id)
     task_id = property(get_task_id)
+    workfile_id = property(get_workfile_id)
     folder_path = property(get_folder_path)
     task_name = property(get_task_name)
 
     project_entity = property(get_project_entity)
     folder_entity = property(get_folder_entity)
     task_entity = property(get_task_entity)
+    workfile_entity = property(get_workfile_entity)
 
 
 class LauncherAction(object):
@@ -347,79 +386,6 @@ class LauncherAction(object):
         pass
 
 
-class InventoryAction(object):
-    """A custom action for the scene inventory tool
-
-    If registered the action will be visible in the Right Mouse Button menu
-    under the submenu "Actions".
-
-    """
-
-    label = None
-    icon = None
-    color = None
-    order = 0
-
-    log = logging.getLogger("InventoryAction")
-    log.propagate = True
-
-    @staticmethod
-    def is_compatible(container):
-        """Override function in a custom class
-
-        This method is specifically used to ensure the action can operate on
-        the container.
-
-        Args:
-            container(dict): the data of a loaded asset, see host.ls()
-
-        Returns:
-            bool
-        """
-        return bool(container.get("objectName"))
-
-    def process(self, containers):
-        """Override function in a custom class
-
-        This method will receive all containers even those which are
-        incompatible. It is advised to create a small filter along the lines
-        of this example:
-
-        valid_containers = filter(self.is_compatible(c) for c in containers)
-
-        The return value will need to be a True-ish value to trigger
-        the data_changed signal in order to refresh the view.
-
-        You can return a list of container names to trigger GUI to select
-        treeview items.
-
-        You can return a dict to carry extra GUI options. For example:
-            {
-                "objectNames": [container names...],
-                "options": {"mode": "toggle",
-                            "clear": False}
-            }
-        Currently workable GUI options are:
-            - clear (bool): Clear current selection before selecting by action.
-                            Default `True`.
-            - mode (str): selection mode, use one of these:
-                          "select", "deselect", "toggle". Default is "select".
-
-        Args:
-            containers (list): list of dictionaries
-
-        Return:
-            bool, list or dict
-
-        """
-        return True
-
-    @classmethod
-    def filepath_from_context(cls, context):
-        return get_representation_path_from_context(context)
-
-
-# Launcher action
 def discover_launcher_actions():
     return discover(LauncherAction)
 
@@ -430,30 +396,3 @@ def register_launcher_action(plugin):
 
 def register_launcher_action_path(path):
     return register_plugin_path(LauncherAction, path)
-
-
-# Inventory action
-def discover_inventory_actions():
-    actions = discover(InventoryAction)
-    filtered_actions = []
-    for action in actions:
-        if action is not InventoryAction:
-            filtered_actions.append(action)
-
-    return filtered_actions
-
-
-def register_inventory_action(plugin):
-    return register_plugin(InventoryAction, plugin)
-
-
-def deregister_inventory_action(plugin):
-    deregister_plugin(InventoryAction, plugin)
-
-
-def register_inventory_action_path(path):
-    return register_plugin_path(InventoryAction, path)
-
-
-def deregister_inventory_action_path(path):
-    return deregister_plugin_path(InventoryAction, path)

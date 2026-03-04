@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-import logging
 import os
 from typing import Any, Optional, Type
 
+from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -21,6 +21,13 @@ from .utils import get_representation_path_from_context
 class LoaderPlugin(list):
     """Load representation into host application"""
 
+    # Attribute 'skip_discovery' is used during discovery phase to skip
+    #   plugins, which can be used to mark base plugins that should not be
+    #   considered as plugins "to use". The discovery logic does NOT use
+    #   the attribute value from parent classes. Each base class has to define
+    #   the attribute again.
+    skip_discovery = True
+
     product_types: set[str] = set()
     product_base_types: Optional[set[str]] = None
     representations = set()
@@ -31,8 +38,7 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("ProductLoader")
-    log.propagate = True
+    log = Logger.get_logger("ProductLoader")
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -278,6 +284,10 @@ class LoaderPlugin(list):
         """
         return []
 
+    def __repr__(self):
+        # Avoid printing as a list (due to inheritance), but print like object.
+        return object.__repr__(self)
+
 
 class ProductLoaderPlugin(LoaderPlugin):
     """Load product into host application
@@ -373,7 +383,7 @@ def discover_loader_plugins(project_name=None):
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
-    plugins = discover(LoaderPlugin)
+    plugins = discover(LoaderPlugin, allow_duplicates=False)
     hooks = discover(LoaderHookPlugin)
     sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:

@@ -1,6 +1,8 @@
 from .constants import ContextChangeReason
+from .abstract import AbstractHost, ApplicationInformation
 from .host import (
     HostBase,
+    ContextChangeData,
 )
 
 from .interfaces import (
@@ -18,7 +20,11 @@ from .dirmap import HostDirmap
 __all__ = (
     "ContextChangeReason",
 
+    "AbstractHost",
+    "ApplicationInformation",
+
     "HostBase",
+    "ContextChangeData",
 
     "IWorkfileHost",
     "WorkfileInfo",

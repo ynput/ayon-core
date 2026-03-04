@@ -1,0 +1,18 @@
+name: Deploy MkDocs
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+
+jobs:
+  build-mk-docs:
+    # FIXME: Update @develop to @main after `ops-repo-automation` release.
+    uses: ynput/ops-repo-automation/.github/workflows/deploy_mkdocs.yml@develop
+    with:
+      repo: ${{ github.repository }}
+    secrets:
+      YNPUT_BOT_TOKEN: ${{ secrets.YNPUT_BOT_TOKEN }}
+      CI_USER: ${{ secrets.CI_USER }}
+      CI_EMAIL: ${{ secrets.CI_EMAIL }}

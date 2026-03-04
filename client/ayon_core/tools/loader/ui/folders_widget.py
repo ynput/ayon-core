@@ -1,11 +1,11 @@
+from typing import Optional
+
 import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.utils import (
-    RecursiveSortFilterProxyModel,
-    DeselectableTreeView,
-)
 from ayon_core.style import get_objected_colors
+from ayon_core.tools.utils import DeselectableTreeView
+from ayon_core.tools.utils.folders_widget import FoldersProxyModel
 
 from ayon_core.tools.utils import (
     FoldersQtModel,
@@ -260,7 +260,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
             QtWidgets.QAbstractItemView.ExtendedSelection)
 
         folders_model = LoaderFoldersModel(controller)
-        folders_proxy_model = RecursiveSortFilterProxyModel()
+        folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -313,6 +313,15 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         self._folders_proxy_model.setFilterFixedString(name)
         if name:
             self._folders_view.expandAll()
+
+    def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            folder_ids (list[str]): The list of folder ids.
+
+        """
+        self._folders_proxy_model.set_folder_ids_filter(folder_ids)
 
     def set_merged_products_selection(self, items):
         """

@@ -12,9 +12,10 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
     """
 
     order = pyblish.api.CollectorOrder
-    label = 'Collect Scene Version'
+    label = "Collect Scene Version"
     # configurable in Settings
     hosts = ["*"]
+    settings_category = "core"
 
     # in some cases of headless publishing (for example webpublisher using PS)
     # you want to ignore version from name and let integrate use next version

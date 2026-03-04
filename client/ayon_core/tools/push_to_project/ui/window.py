@@ -85,6 +85,13 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         header_widget = QtWidgets.QWidget(main_context_widget)
 
+        library_only_label = QtWidgets.QLabel(
+            "Show only libraries",
+            header_widget
+        )
+        library_only_checkbox = NiceCheckbox(
+            True, parent=header_widget)
+
         header_label = QtWidgets.QLabel(
             controller.get_source_label(),
             header_widget
@@ -92,7 +99,9 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(header_label)
+        header_layout.addWidget(header_label, 1)
+        header_layout.addWidget(library_only_label, 0)
+        header_layout.addWidget(library_only_checkbox, 0)
 
         main_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Horizontal, main_context_widget
@@ -124,6 +133,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         inputs_widget = QtWidgets.QWidget(main_splitter)
 
         new_folder_checkbox = NiceCheckbox(True, parent=inputs_widget)
+        original_names_checkbox = NiceCheckbox(False, parent=inputs_widget)
 
         folder_name_input = PlaceholderLineEdit(inputs_widget)
         folder_name_input.setPlaceholderText("< Name of new folder >")
@@ -134,6 +144,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         variant_input.setPlaceholderText("< Variant >")
         variant_input.setObjectName("ValidatedLineEdit")
 
+        version_up_checkbox = NiceCheckbox(True, parent=inputs_widget)
+
         comment_input = PlaceholderLineEdit(inputs_widget)
         comment_input.setPlaceholderText("< Publish comment >")
 
@@ -142,6 +154,12 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         inputs_layout.addRow("Create new folder", new_folder_checkbox)
         inputs_layout.addRow("New folder name", folder_name_input)
         inputs_layout.addRow("Variant", variant_input)
+        inputs_layout.addRow(
+            "Use original product names", original_names_checkbox
+        )
+        inputs_layout.addRow(
+            "Version up existing Product", version_up_checkbox
+        )
         inputs_layout.addRow("Comment", comment_input)
 
         main_splitter.addWidget(context_widget)
@@ -196,6 +214,13 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         show_detail_btn.setToolTip(
             "Show error detail dialog to copy full error."
         )
+        original_names_checkbox.setToolTip(
+            "Required for multi copy, doesn't allow changes variant values."
+        )
+        version_up_checkbox.setToolTip(
+            "Version up existing product. If not selected version will be "
+            "updated."
+        )
 
         overlay_close_btn = QtWidgets.QPushButton(
             "Close", overlay_btns_widget
@@ -240,6 +265,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         folder_name_input.textChanged.connect(self._on_new_folder_change)
         variant_input.textChanged.connect(self._on_variant_change)
         comment_input.textChanged.connect(self._on_comment_change)
+        library_only_checkbox.stateChanged.connect(self._on_library_only_change)
+        original_names_checkbox.stateChanged.connect(
+            self._on_original_names_change)
+        version_up_checkbox.stateChanged.connect(
+            self._on_version_up_checkbox_change)
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
@@ -288,6 +318,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._new_folder_checkbox = new_folder_checkbox
         self._folder_name_input = folder_name_input
         self._comment_input = comment_input
+        self._use_original_names_checkbox = original_names_checkbox
+        self._library_only_checkbox = library_only_checkbox
 
         self._publish_btn = publish_btn
 
@@ -308,6 +340,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._new_folder_name_input_text = None
         self._variant_input_text = None
         self._comment_input_text = None
+        self._version_up_checkbox = version_up_checkbox
 
         self._first_show = True
         self._show_timer = show_timer
@@ -316,7 +349,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._main_thread_timer = main_thread_timer
         self._main_thread_timer_can_stop = True
         self._last_submit_message = None
-        self._process_item_id = None
 
         self._variant_is_valid = None
         self._folder_is_valid = None
@@ -325,19 +357,20 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         show_detail_btn.setVisible(False)
         overlay_close_btn.setVisible(False)
         overlay_try_btn.setVisible(False)
+        version_up_checkbox.setChecked(False)
 
     # Support of public api function of controller
-    def set_source(self, project_name, version_id):
+    def set_source(self, project_name, version_ids):
         """Set source project and version.
 
         Call the method on controller.
 
         Args:
             project_name (Union[str, None]): Name of project.
-            version_id (Union[str, None]): Version id.
+            version_ids (Union[str, None]): comma separated Version ids.
         """
 
-        self._controller.set_source(project_name, version_id)
+        self._controller.set_source(project_name, version_ids)
 
     def showEvent(self, event):
         super(PushToContextSelectWindow, self).showEvent(event)
@@ -352,10 +385,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._folder_name_input.setText(new_folder_name or "")
         self._variant_input.setText(variant or "")
         self._invalidate_variant(user_values["is_variant_valid"])
+        self._invalidate_use_original_names(
+            self._use_original_names_checkbox.isChecked())
         self._invalidate_new_folder_name(
             new_folder_name, user_values["is_new_folder_name_valid"]
         )
-
         self._projects_combobox.refresh()
 
     def _on_first_show(self):
@@ -393,6 +427,19 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
     def _on_comment_change(self, text):
         self._comment_input_text = text
         self._user_input_changed_timer.start()
+
+    def _on_library_only_change(self) -> None:
+        """Change toggle state, reset filter, recalculate dropdown"""
+        is_checked = self._library_only_checkbox.isChecked()
+        self._projects_combobox.set_standard_filter_enabled(is_checked)
+
+    def _on_original_names_change(self) -> None:
+        is_checked = self._use_original_names_checkbox.isChecked()
+        self._invalidate_use_original_names(is_checked)
+
+    def _on_version_up_checkbox_change(self) -> None:
+        is_checked = self._version_up_checkbox.isChecked()
+        self._controller.set_version_up(is_checked)
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled
@@ -456,16 +503,26 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         state = ""
         if folder_name is not None:
             state = "valid" if is_valid else "invalid"
-        set_style_property(
-            self._folder_name_input, "state", state
-        )
+        set_style_property(self._folder_name_input, "state", state)
 
     def _invalidate_variant(self, is_valid):
-        if self._variant_is_valid is is_valid:
-            return
         self._variant_is_valid = is_valid
         state = "valid" if is_valid else "invalid"
         set_style_property(self._variant_input, "state", state)
+
+    def _invalidate_use_original_names(self, use_original_names):
+        """Checks if original names must be used.
+
+        Invalidates Variant if necessary
+        """
+        if self._controller.original_names_required():
+            use_original_names = True
+
+        self._variant_input.setEnabled(not use_original_names)
+        self._invalidate_variant(not use_original_names)
+
+        self._controller._use_original_name = use_original_names
+        self._use_original_names_checkbox.setChecked(use_original_names)
 
     def _on_submission_change(self, event):
         self._publish_btn.setEnabled(event["enabled"])
@@ -495,31 +552,43 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             self._overlay_label.setText(self._last_submit_message)
             self._last_submit_message = None
 
-        process_status = self._controller.get_process_item_status(
-            self._process_item_id
-        )
-        push_failed = process_status["failed"]
-        fail_traceback = process_status["full_traceback"]
+        failed_pushes = []
+        fail_tracebacks = []
+        for process_item in self._controller.get_process_items().values():
+            process_status = process_item.get_status_data()
+            if process_status["failed"]:
+                failed_pushes.append(process_status)
+        # push_failed = process_status["failed"]
+        # fail_traceback = process_status["full_traceback"]
         if self._main_thread_timer_can_stop:
             self._main_thread_timer.stop()
             self._overlay_close_btn.setVisible(True)
-            if push_failed:
+            if failed_pushes:
                 self._overlay_try_btn.setVisible(True)
-                if fail_traceback:
+                fail_tracebacks = [
+                    process_status["full_traceback"]
+                    for process_status in failed_pushes
+                    if process_status["full_traceback"]
+                ]
+                if fail_tracebacks:
                     self._show_detail_btn.setVisible(True)
 
-        if push_failed:
-            reason = process_status["fail_reason"]
-            if fail_traceback:
+        if failed_pushes:
+            reasons = [
+                process_status["fail_reason"]
+                for process_status in failed_pushes
+            ]
+            if fail_tracebacks:
+                reason = "\n".join(reasons)
                 message = (
                     "Unhandled error happened."
                     " Check error detail for more information."
                 )
                 self._error_detail_dialog.set_detail(
-                    reason, fail_traceback
+                    reason, "\n".join(fail_tracebacks)
                 )
             else:
-                message = f"Push Failed:\n{reason}"
+                message = f"Push Failed:\n{reasons}"
 
             self._overlay_label.setText(message)
             set_style_property(self._overlay_close_btn, "state", "error")
@@ -534,7 +603,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._main_thread_timer_can_stop = False
         self._main_thread_timer.start()
         self._main_layout.setCurrentWidget(self._overlay_widget)
-        self._overlay_label.setText("Submittion started")
+        self._overlay_label.setText("Submission started")
 
     def _on_controller_submit_end(self):
         self._main_thread_timer_can_stop = True

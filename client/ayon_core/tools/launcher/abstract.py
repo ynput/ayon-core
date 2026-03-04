@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, Any
 
+from ayon_core.addon import AddonsManager
 from ayon_core.tools.common_models import (
     ProjectItem,
     FolderItem,
@@ -20,6 +21,7 @@ class WebactionContext:
     project_name: str
     folder_id: str
     task_id: str
+    workfile_id: str
     addon_name: str
     addon_version: str
 
@@ -33,7 +35,7 @@ class ActionItem:
         identifier (str): Unique identifier of action item.
         order (int): Action ordering.
         label (str): Action label.
-        variant_label (Union[str, None]): Variant label, full label is
+        variant_label (Optional[str]): Variant label, full label is
             concatenated with space. Actions are grouped under single
             action if it has same 'label' and have set 'variant_label'.
         full_label (str): Full label, if not set it is generated
@@ -54,6 +56,15 @@ class ActionItem:
     config_fields: list[dict]
     addon_name: Optional[str] = None
     addon_version: Optional[str] = None
+
+
+@dataclass
+class WorkfileItem:
+    workfile_id: str
+    filename: str
+    exists: bool
+    icon: Optional[str]
+    version: Optional[int]
 
 
 class AbstractLauncherCommon(ABC):
@@ -86,11 +97,15 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
         pass
 
     @abstractmethod
+    def get_addons_manager(self) -> AddonsManager:
+        pass
+
+    @abstractmethod
     def get_project_settings(self, project_name):
         """Project settings for current project.
 
         Args:
-            project_name (Union[str, None]): Project name.
+            project_name (Optional[str]): Project name.
 
         Returns:
             dict[str, Any]: Project settings.
@@ -254,7 +269,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Selected project name.
 
         Returns:
-            Union[str, None]: Selected project name.
+            Optional[str]: Selected project name.
 
         """
         pass
@@ -264,7 +279,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Selected folder id.
 
         Returns:
-            Union[str, None]: Selected folder id.
+            Optional[str]: Selected folder id.
 
         """
         pass
@@ -274,7 +289,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Selected task id.
 
         Returns:
-            Union[str, None]: Selected task id.
+            Optional[str]: Selected task id.
 
         """
         pass
@@ -284,7 +299,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Selected task name.
 
         Returns:
-            Union[str, None]: Selected task name.
+            Optional[str]: Selected task name.
 
         """
         pass
@@ -302,7 +317,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
             }
 
         Returns:
-            dict[str, Union[str, None]]: Selected context.
+            dict[str, Optional[str]]: Selected context.
 
         """
         pass
@@ -312,7 +327,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Change selected folder.
 
         Args:
-            project_name (Union[str, None]): Project nameor None if no project
+            project_name (Optional[str]): Project nameor None if no project
                 is selected.
 
         """
@@ -323,7 +338,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Change selected folder.
 
         Args:
-            folder_id (Union[str, None]): Folder id or None if no folder
+            folder_id (Optional[str]): Folder id or None if no folder
                 is selected.
 
         """
@@ -336,10 +351,20 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Change selected task.
 
         Args:
-            task_id (Union[str, None]): Task id or None if no task
+            task_id (Optional[str]): Task id or None if no task
                 is selected.
-            task_name (Union[str, None]): Task name or None if no task
+            task_name (Optional[str]): Task name or None if no task
                 is selected.
+
+        """
+        pass
+
+    @abstractmethod
+    def set_selected_workfile(self, workfile_id: Optional[str]):
+        """Change selected workfile.
+
+        Args:
+            workfile_id (Optional[str]): Workfile id or None.
 
         """
         pass
@@ -351,13 +376,15 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         project_name: Optional[str],
         folder_id: Optional[str],
         task_id: Optional[str],
+        workfile_id: Optional[str],
     ) -> list[ActionItem]:
         """Get action items for given context.
 
         Args:
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
+            project_name (Optional[str]): Project name.
+            folder_id (Optional[str]): Folder id.
+            task_id (Optional[str]): Task id.
+            workfile_id (Optional[str]): Workfile id.
 
         Returns:
             list[ActionItem]: List of action items that should be shown
@@ -373,14 +400,16 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         project_name: Optional[str],
         folder_id: Optional[str],
         task_id: Optional[str],
+        workfile_id: Optional[str],
     ):
         """Trigger action on given context.
 
         Args:
             action_id (str): Action identifier.
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
+            project_name (Optional[str]): Project name.
+            folder_id (Optional[str]): Folder id.
+            task_id (Optional[str]): Task id.
+            workfile_id (Optional[str]): Task id.
 
         """
         pass
@@ -462,6 +491,24 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workfile_items(
+        self,
+        project_name: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        """Get workfile items for a given context.
+
+        Args:
+            project_name (Optional[str]): Project name.
+            task_id (Optional[str]): Task id.
+
+        Returns:
+            list[WorkfileItem]: List of workfile items.
 
         """
         pass

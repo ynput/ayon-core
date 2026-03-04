@@ -10,10 +10,7 @@ from typing import Any, Optional
 import tempfile
 
 import clique
-import speedcopy
 import pyblish.api
-
-from ayon_api import get_last_version_by_product_name, get_representations
 
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
@@ -21,6 +18,10 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
+from ayon_core.pipeline.publish.lib import (
+    fill_sequence_gaps_with_previous_version
+)
+from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
@@ -130,7 +131,7 @@ def frame_to_timecode(frame: int, fps: float) -> str:
 
 
 class ExtractReview(pyblish.api.InstancePlugin):
-    """Extracting Review mov file for Ftrack
+    """Extracting Reviewable medias
 
     Compulsory attribute of representation is tags list with "review",
     otherwise the representation is ignored.
@@ -161,12 +162,17 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "aftereffects",
         "flame",
         "unreal",
-        "circuit",
-        "photoshop"
+        "batchdelivery",
+        "photoshop",
+        "substancepainter",
+        "workflow",
     ]
 
+    settings_category = "core"
     # Supported extensions
-    image_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif"}
+    image_exts = {
+        "exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif", "psd"
+    }
     video_exts = {"mov", "mp4"}
     supported_exts = image_exts | video_exts
 
@@ -202,29 +208,34 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def _get_outputs_for_instance(self, instance):
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         task_type = None
         task_entity = instance.data.get("taskEntity")
         if task_entity:
             task_type = task_entity["taskType"]
 
-        self.log.debug("Host: \"{}\"".format(host_name))
-        self.log.debug("Product type: \"{}\"".format(product_type))
-        self.log.debug("Task type: \"{}\"".format(task_type))
+        self.log.debug(
+            f"Host: \"{host_name}\""
+            f"\nProduct base type: \"{product_base_type}\""
+            f"\nTask type: \"{task_type}\""
+        )
 
         profile = filter_profiles(
             self.profiles,
             {
-                "hosts": host_name,
-                "product_types": product_type,
-                "task_types": task_type
+                "host_names": host_name,
+                "product_base_types": product_base_type,
+                "task_types": task_type,
             },
             logger=self.log)
         if not profile:
-            self.log.info((
+            self.log.info(
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\""
-            ).format(host_name, product_type))
+                f" Host: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+            )
             return
 
         self.log.debug("Matching profile: \"{}\"".format(json.dumps(profile)))
@@ -359,14 +370,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not filtered_output_defs:
                 self.log.debug((
                     "Repre: {} - All output definitions were filtered"
-                    " out by single frame filter. Skipping"
+                    " out by single frame filter. Skipped."
                 ).format(repre["name"]))
                 continue
 
             # Skip if file is not set
             if first_input_path is None:
                 self.log.warning((
-                    "Representation \"{}\" have empty files. Skipped."
+                    "Representation \"{}\" has empty files. Skipped."
                 ).format(repre["name"]))
                 continue
 
@@ -398,6 +409,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     new_staging_dir,
                     self.log
                 )
+                # The OIIO conversion will remap the RGBA channels just to
+                # `R,G,B,A` so we will pass the intermediate file to FFMPEG
+                # without layer name.
+                layer_name = ""
 
             try:
                 self._render_output_definitions(
@@ -507,10 +522,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         resolution_width=temp_data.resolution_width,
                         resolution_height=temp_data.resolution_height,
                         extension=temp_data.input_ext,
-                        temp_data=temp_data
+                        temp_data=temp_data,
                     )
                 elif fill_missing_frames == "previous_version":
-                    new_frame_files = self.fill_sequence_gaps_with_previous(
+                    fill_output = fill_sequence_gaps_with_previous_version(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         instance=instance,
@@ -518,8 +533,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         start_frame=temp_data.frame_start,
                         end_frame=temp_data.frame_end,
                     )
+                    _, new_frame_files = fill_output
                     # fallback to original workflow
                     if new_frame_files is None:
+                        self.log.warning(
+                            "Falling back to filling from currently "
+                            "last rendered."
+                        )
                         new_frame_files = (
                             self.fill_sequence_gaps_from_existing(
                             collection=collection,
@@ -611,8 +631,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "name": "{}_{}".format(output_name, output_ext),
                 "outputName": output_name,
                 "outputDef": output_def,
-                "frameStartFtrack": temp_data.output_frame_start,
-                "frameEndFtrack": temp_data.output_frame_end,
                 "ffmpeg_cmd": subprcs_cmd
             })
 
@@ -1049,92 +1067,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         return all_args
 
-    def fill_sequence_gaps_with_previous(
-        self,
-        collection: str,
-        staging_dir: str,
-        instance: pyblish.plugin.Instance,
-        current_repre_name: str,
-        start_frame: int,
-        end_frame: int
-    ) -> Optional[dict[int, str]]:
-        """Tries to replace missing frames from ones from last version"""
-        repre_file_paths = self._get_last_version_files(
-            instance, current_repre_name)
-        if repre_file_paths is None:
-            # issues in getting last version files, falling back
-            return None
-
-        prev_collection = clique.assemble(
-            repre_file_paths,
-            patterns=[clique.PATTERNS["frames"]],
-            minimum_items=1
-        )[0][0]
-        prev_col_format = prev_collection.format("{head}{padding}{tail}")
-
-        added_files = {}
-        anatomy = instance.context.data["anatomy"]
-        col_format = collection.format("{head}{padding}{tail}")
-        for frame in range(start_frame, end_frame + 1):
-            if frame in collection.indexes:
-                continue
-            hole_fpath = os.path.join(staging_dir, col_format % frame)
-
-            previous_version_path = prev_col_format % frame
-            previous_version_path = anatomy.fill_root(previous_version_path)
-            if not os.path.exists(previous_version_path):
-                self.log.warning(
-                    "Missing frame should be replaced from "
-                    f"'{previous_version_path}' but that doesn't exist. "
-                    "Falling back to filling from currently last rendered."
-                )
-                return None
-
-            self.log.warning(
-                f"Replacing missing '{hole_fpath}' with "
-                f"'{previous_version_path}'"
-            )
-            speedcopy.copyfile(previous_version_path, hole_fpath)
-            added_files[frame] = hole_fpath
-
-        return added_files
-
-    def _get_last_version_files(
-        self,
-        instance: pyblish.plugin.Instance,
-        current_repre_name: str,
-    ):
-        product_name = instance.data["productName"]
-        project_name = instance.data["projectEntity"]["name"]
-        folder_entity = instance.data["folderEntity"]
-
-        version_entity = get_last_version_by_product_name(
-            project_name,
-            product_name,
-            folder_entity["id"],
-            fields={"id"}
-        )
-        if not version_entity:
-            return None
-
-        matching_repres = get_representations(
-            project_name,
-            version_ids=[version_entity["id"]],
-            representation_names=[current_repre_name],
-            fields={"files"}
-        )
-
-        if not matching_repres:
-            return None
-        matching_repre = list(matching_repres)[0]
-
-        repre_file_paths = [
-            file_info["path"]
-            for file_info in matching_repre["files"]
-        ]
-
-        return repre_file_paths
-
     def fill_sequence_gaps_with_blanks(
         self,
         collection: str,
@@ -1162,7 +1094,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     staging_dir, extension, resolution_width, resolution_height
                 )
                 temp_data.paths_to_remove.append(blank_frame_path)
-            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            copyfile(blank_frame_path, hole_fpath)
             added_files[frame] = hole_fpath
 
         return added_files
@@ -1243,7 +1175,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 raise KnownPublishError(
                     "Missing previously detected file: {}".format(src_fpath))
 
-            speedcopy.copyfile(src_fpath, hole_fpath)
+            copyfile(src_fpath, hole_fpath)
             added_files[hole_frame] = hole_fpath
 
         return added_files
@@ -1383,15 +1315,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            # NOTE modified, always was expected "frameStartFtrack" which is
-            # STRANGE?!!! There should be different key, right?
-            # TODO use different frame start!
             offset_seconds = 0
-            frame_start_ftrack = instance.data.get("frameStartFtrack")
-            if frame_start_ftrack is not None:
-                offset_frames = frame_start_ftrack - audio["offset"]
-                offset_seconds = offset_frames / temp_data.fps
-
             if offset_seconds > 0:
                 audio_in_args.append(
                     "-ss {}".format(offset_seconds)

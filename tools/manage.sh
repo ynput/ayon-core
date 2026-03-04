@@ -63,11 +63,17 @@ detect_python () {
   fi
 }
 
-install_poetry () {
-  echo -e "${BIGreen}>>>${RST} Installing Poetry ..."
-  export POETRY_HOME="$repo_root/.poetry"
-  command -v curl >/dev/null 2>&1 || { echo -e "${BIRed}!!!${RST}${BIYellow} Missing ${RST}${BIBlue}curl${BIYellow} command.${RST}"; return 1; }
-  curl -sSL https://install.python-poetry.org/ | python -
+##############################################################################
+# Install UV
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+install_uv () {
+  command -v uv >/dev/null 2>&1 || {
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+  }
 }
 
 ##############################################################################
@@ -85,10 +91,6 @@ realpath () {
 
 ##############################################################################
 # Create Virtual Environment
-# Globals:
-#   repo_root
-#   POETRY_HOME
-#   poetry_verbosity
 # Arguments:
 #   Path to resolve
 # Returns:
@@ -98,21 +100,7 @@ create_env () {
   # Directories
   pushd "$repo_root" > /dev/null || return > /dev/null
 
-  echo -e "${BIGreen}>>>${RST} Reading Poetry ... \c"
-  if [ -f "$POETRY_HOME/bin/poetry" ]; then
-    echo -e "${BIGreen}OK${RST}"
-  else
-    echo -e "${BIYellow}NOT FOUND${RST}"
-    install_poetry || { echo -e "${BIRed}!!!${RST} Poetry installation failed"; return 1; }
-  fi
-
-  if [ -f "$repo_root/poetry.lock" ]; then
-    echo -e "${BIGreen}>>>${RST} Updating dependencies ..."
-  else
-    echo -e "${BIGreen}>>>${RST} Installing dependencies ..."
-  fi
-
-  "$POETRY_HOME/bin/poetry" install --no-root $poetry_verbosity || { echo -e "${BIRed}!!!${RST} Poetry environment installation failed"; return 1; }
+  uv venv --allow-existing && uv sync --all-extras || { echo -e "${BIRed}!!!${RST} Venv installation failed"; return 1; }
   if [ $? -ne 0 ] ; then
     echo -e "${BIRed}!!!${RST} Virtual environment creation failed."
     return 1
@@ -121,11 +109,9 @@ create_env () {
   echo -e "${BIGreen}>>>${RST} Cleaning cache files ..."
   clean_pyc
 
-  "$POETRY_HOME/bin/poetry" run python -m pip install --disable-pip-version-check --force-reinstall pip
-
   if [ -d "$repo_root/.git" ]; then
     echo -e "${BIGreen}>>>${RST} Installing pre-commit hooks ..."
-    "$POETRY_HOME/bin/poetry" run pre-commit install
+    uv run pre-commit install
   fi
 }
 
@@ -153,51 +139,48 @@ default_help() {
   echo -e "Usage: ${BWhite}./manage.sh${RST} ${BICyan}[command]${RST}"
   echo ""
   echo -e "${BWhite}Commands:${RST}"
-  echo -e "  ${BWhite}create-env${RST}      ${BCyan}Install Poetry and update venv by lock file${RST}"
+  echo -e "  ${BWhite}create-env${RST}      ${BCyan}Install uv and update venv by lock file${RST}"
   echo -e "  ${BWhite}ruff-check${RST}      ${BCyan}Run Ruff check for the repository${RST}"
   echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
-  echo -e "  ${BWhite}run${RST}             ${BCyan}Run a poetry command in the repository environment${RST}"
+  echo -e "  ${BWhite}run${RST}             ${BCyan}Run a uv command in the repository environment${RST}"
   echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests${RST}"
   echo ""
 }
 
 run_ruff () {
   echo -e "${BIGreen}>>>${RST} Running Ruff check ..."
-  "$POETRY_HOME/bin/poetry" run ruff check
+  "uv" run ruff check
 }
 
 run_ruff_check () {
   echo -e "${BIGreen}>>>${RST} Running Ruff fix ..."
-  "$POETRY_HOME/bin/poetry" run ruff check --fix
+  uv run ruff check --fix
 }
 
 run_codespell () {
   echo -e "${BIGreen}>>>${RST} Running codespell check ..."
-  "$POETRY_HOME/bin/poetry" run codespell
+  uv run codespell
 }
 
 run_command () {
   echo -e "${BIGreen}>>>${RST} Running ..."
   shift;  # will remove first arg ("run") from the "$@"
-  "$POETRY_HOME/bin/poetry" run "$@"
+  uv run "$@"
 }
 
 run_tests () {
   echo -e "${BIGreen}>>>${RST} Running tests..."
   shift;  # will remove first arg ("run-tests") from the "$@"
-  "$POETRY_HOME/bin/poetry" run pytest ./tests -m "not server"
+  uv run pytest ./tests -m "not server"
 }
 
 main () {
   detect_python || return 1
+  install_uv || return 1
 
   # Directories
   repo_root=$(realpath $(dirname $(dirname "${BASH_SOURCE[0]}")))
-
-  if [[ -z $POETRY_HOME ]]; then
-    export POETRY_HOME="$repo_root/.poetry"
-  fi
 
   pushd "$repo_root" > /dev/null || return > /dev/null
 

@@ -127,6 +127,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             status_text_rect.setLeft(icon_rect.right() + 2)
 
         if status_text_rect.width() <= 0:
+            painter.restore()
             return
 
         if status_text_rect.width() < metrics.width(status_name):
@@ -144,6 +145,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
             status_name
         )
+        painter.restore()
 
     def set_current_index(self, index):
         model = self._combo_view.model()

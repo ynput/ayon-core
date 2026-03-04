@@ -25,8 +25,8 @@ from .utils import (
     get_loader_identifier,
     get_loaders_by_name,
 
-    get_representation_path_from_context,
     get_representation_path,
+    get_representation_path_from_context,
     get_representation_path_with_anatomy,
 
     is_compatible_loader,
@@ -85,8 +85,8 @@ __all__ = (
     "get_loader_identifier",
     "get_loaders_by_name",
 
-    "get_representation_path_from_context",
     "get_representation_path",
+    "get_representation_path_from_context",
     "get_representation_path_with_anatomy",
 
     "is_compatible_loader",

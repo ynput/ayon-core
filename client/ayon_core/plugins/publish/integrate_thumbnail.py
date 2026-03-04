@@ -24,11 +24,16 @@
 
 import os
 import collections
+import time
 
-import pyblish.api
 import ayon_api
-from ayon_api import RequestTypes
+from ayon_api import RequestTypes, TransferProgress
 from ayon_api.operations import OperationsSession
+import pyblish.api
+import requests
+
+from ayon_core.lib import get_media_mime_type, format_file_size
+from ayon_core.pipeline.publish import PublishXmlValidationError
 
 
 InstanceFilterResult = collections.namedtuple(
@@ -164,25 +169,17 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         return os.path.normpath(filled_path)
 
     def _create_thumbnail(self, project_name: str, src_filepath: str) -> str:
-        """Upload thumbnail to AYON and return its id.
-
-        This is temporary fix of 'create_thumbnail' function in ayon_api to
-            fix jpeg mime type.
-
-        """
-        mime_type = None
-        with open(src_filepath, "rb") as stream:
-            if b"\xff\xd8\xff" == stream.read(3):
-                mime_type = "image/jpeg"
-
+        """Upload thumbnail to AYON and return its id."""
+        mime_type = get_media_mime_type(src_filepath)
         if mime_type is None:
-            return ayon_api.create_thumbnail(project_name, src_filepath)
+            return ayon_api.create_thumbnail(
+                project_name, src_filepath
+            )
 
-        response = ayon_api.upload_file(
+        response = self._upload_with_retries(
             f"projects/{project_name}/thumbnails",
             src_filepath,
-            request_type=RequestTypes.post,
-            headers={"Content-Type": mime_type},
+            mime_type,
         )
         response.raise_for_status()
         return response.json()["id"]
@@ -247,4 +244,72 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             instance.data.get("label")
             or instance.data.get("name")
             or "N/A"
+        )
+
+    def _upload_with_retries(
+        self,
+        endpoint: str,
+        repre_path: str,
+        content_type: str,
+    ):
+        """Upload file with simple retries."""
+        ayon_con = ayon_api.get_server_api_connection()
+        headers = ayon_con.get_headers(content_type)
+        max_retries = ayon_con.get_default_max_retries()
+        # Retries are already implemented in 'ayon_api.upload_file'
+        # - added in ayon api 1.2.7
+        if hasattr(TransferProgress, "get_attempt"):
+            max_retries = 1
+
+        size = os.path.getsize(repre_path)
+        self.log.info(
+            f"Uploading '{repre_path}' (size: {format_file_size(size)})"
+        )
+
+        # How long to sleep before next attempt
+        wait_time = 1
+        last_error = None
+        for attempt in range(max_retries):
+            attempt += 1
+            start = time.time()
+            try:
+                output = ayon_con.upload_file(
+                    endpoint,
+                    repre_path,
+                    headers=headers,
+                    request_type=RequestTypes.post,
+                )
+                self.log.debug(f"Uploaded in {time.time() - start}s.")
+                return output
+
+            except (
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError
+            ) as exc:
+                # Log and retry with backoff if attempts remain
+                if attempt >= max_retries:
+                    last_error = exc
+                    break
+
+                self.log.warning(
+                    f"Review upload failed ({attempt}/{max_retries})"
+                    f" after {time.time() - start}s."
+                    f" Retrying in {wait_time}s...",
+                    exc_info=True,
+                )
+                time.sleep(wait_time)
+
+        # Exhausted retries - raise a user-friendly validation error with help
+        raise PublishXmlValidationError(
+            self,
+            (
+                "Upload of thumbnail timed out or failed after multiple"
+                " attempts. Please try publishing again."
+            ),
+            formatting_data={
+                "upload_type": "Thumbnail",
+                "file": repre_path,
+                "error": str(last_error),
+            },
+            help_filename="upload_file.xml",
         )

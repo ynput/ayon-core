@@ -19,11 +19,7 @@ from .create import (
     CreatedInstance,
     CreatorError,
 
-    LegacyCreator,
-    legacy_create,
-
     discover_creator_plugins,
-    discover_legacy_creator_plugins,
     register_creator_plugin,
     deregister_creator_plugin,
     register_creator_plugin_path,
@@ -141,12 +137,7 @@ __all__ = (
 
     "CreatorError",
 
-    # - legacy creation
-    "LegacyCreator",
-    "legacy_create",
-
     "discover_creator_plugins",
-    "discover_legacy_creator_plugins",
     "register_creator_plugin",
     "deregister_creator_plugin",
     "register_creator_plugin_path",

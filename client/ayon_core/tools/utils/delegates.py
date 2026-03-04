@@ -186,8 +186,15 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         )
         fm = QtGui.QFontMetrics(option.font)
         if text_rect.width() < fm.width(text):
-            text = self._get_status_short_name(index)
-            if text_rect.width() < fm.width(text):
+            short_text = self._get_status_short_name(index)
+            if short_text:
+                text = short_text
+
+            text = fm.elidedText(
+                text, QtCore.Qt.ElideRight, text_rect.width()
+            )
+            # Allow at least one character
+            if len(text) < 2:
                 text = ""
 
         fg_color = self._get_status_color(index)

@@ -969,12 +969,6 @@ SearchItemDisplayWidget #ValueWidget {
     background: {color:bg-buttons};
 }
 
-/* Subset Manager */
-#SubsetManagerDetailsText {}
-#SubsetManagerDetailsText[state="invalid"] {
-    border: 1px solid #ff0000;
-}
-
 /* Creator */
 #CreatorsView::item {
     padding: 1px 5px;
@@ -1151,6 +1145,10 @@ PixmapButton:disabled {
 
 #ListViewProductName[state="invalid"] {
     color: {color:publisher:error};
+}
+
+#ListViewProductName[state="disabled"] {
+    color: {color:publisher:disabled};
 }
 
 #PublishInfoFrame {
