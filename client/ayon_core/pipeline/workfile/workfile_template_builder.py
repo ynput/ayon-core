@@ -16,6 +16,7 @@ import re
 import collections
 import copy
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import ayon_api
 from ayon_api import (
@@ -29,7 +30,7 @@ from ayon_api import (
 )
 
 from ayon_core.settings import get_project_settings
-from ayon_core.host import IWorkfileHost, HostBase
+from ayon_core.host import IWorkfileHost, AbstractHost
 from ayon_core.lib import (
     Logger,
     StringTemplate,
@@ -53,7 +54,6 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from ayon_core.pipeline.create import (
-    discover_legacy_creator_plugins,
     CreateContext,
     HiddenCreator,
 )
@@ -126,15 +126,14 @@ class AbstractTemplateBuilder(ABC):
     placeholder population.
 
     Args:
-        host (Union[HostBase, ModuleType]): Implementation of host.
+        host (Union[AbstractHost, ModuleType]): Implementation of host.
     """
 
     _log = None
-    use_legacy_creators = False
 
     def __init__(self, host):
         # Get host name
-        if isinstance(host, HostBase):
+        if isinstance(host, AbstractHost):
             host_name = host.name
         else:
             host_name = os.environ.get("AYON_HOST_NAME")
@@ -162,24 +161,24 @@ class AbstractTemplateBuilder(ABC):
 
     @property
     def project_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_project_name()
         return os.getenv("AYON_PROJECT_NAME")
 
     @property
     def current_folder_path(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_folder_path()
         return os.getenv("AYON_FOLDER_PATH")
 
     @property
     def current_task_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_task_name()
         return os.getenv("AYON_TASK_NAME")
 
     def get_current_context(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
@@ -200,12 +199,6 @@ class AbstractTemplateBuilder(ABC):
                 self.project_name, self.current_folder_path
             )
         return self._current_folder_entity
-
-    @property
-    def linked_folder_entities(self):
-        if self._linked_folder_entities is _NOT_SET:
-            self._linked_folder_entities = self._get_linked_folder_entities()
-        return self._linked_folder_entities
 
     @property
     def current_task_entity(self):
@@ -261,7 +254,7 @@ class AbstractTemplateBuilder(ABC):
         """Access to host implementation.
 
         Returns:
-            Union[HostBase, ModuleType]: Implementation of host.
+            Union[AbstractHost, ModuleType]: Implementation of host.
         """
 
         return self._host
@@ -307,13 +300,20 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def _get_linked_folder_entities(self):
+    def get_linked_folder_entities(
+        self,
+        link_type: Optional[str],
+        folder_path_regex: Optional[str],
+    ):
+        if not link_type:
+            return []
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
             return []
         links = get_folder_links(
-            project_name, folder_entity["id"], link_direction="in"
+            project_name,
+            folder_entity["id"], link_types=[link_type], link_direction="in"
         )
         linked_folder_ids = {
             link["entityId"]
@@ -321,20 +321,11 @@ class AbstractTemplateBuilder(ABC):
             if link["entityType"] == "folder"
         }
 
-        return list(get_folders(project_name, folder_ids=linked_folder_ids))
-
-    def _collect_legacy_creators(self):
-        creators_by_name = {}
-        for creator in discover_legacy_creator_plugins():
-            if not creator.enabled:
-                continue
-            creator_name = creator.__name__
-            if creator_name in creators_by_name:
-                raise KeyError(
-                    "Duplicated creator name {} !".format(creator_name)
-                )
-            creators_by_name[creator_name] = creator
-        self._creators_by_name = creators_by_name
+        return list(get_folders(
+            project_name,
+            folder_path_regex=folder_path_regex,
+            folder_ids=linked_folder_ids,
+        ))
 
     def _collect_creators(self):
         self._creators_by_name = {
@@ -347,10 +338,7 @@ class AbstractTemplateBuilder(ABC):
 
     def get_creators_by_name(self):
         if self._creators_by_name is None:
-            if self.use_legacy_creators:
-                self._collect_legacy_creators()
-            else:
-                self._collect_creators()
+            self._collect_creators()
 
         return self._creators_by_name
 
@@ -663,10 +651,14 @@ class AbstractTemplateBuilder(ABC):
     def save_workfile(self, workfile_path):
         """Save workfile in current host."""
         # Save current scene, continue to open file
-        if isinstance(self.host, IWorkfileHost):
-            self.host.save_workfile(workfile_path)
-        else:
+        if not isinstance(self.host, IWorkfileHost):
             self.host.save_file(workfile_path)
+            return
+        self.host.save_workfile_with_context(
+            workfile_path,
+            self.current_folder_entity,
+            self.current_task_entity,
+        )
 
     def _prepare_placeholders(self, placeholders):
         """Run preparation part for placeholders on plugins.
@@ -852,14 +844,24 @@ class AbstractTemplateBuilder(ABC):
         host_name = self.host_name
         task_name = self.current_task_name
         task_type = self.current_task_type
+        folder_path = self.current_folder_path
+        folder_type = None
+        folder_entity = self.current_folder_entity
+        if folder_entity:
+            folder_type = folder_entity["folderType"]
+
+        filter_data = {
+            "task_types": task_type,
+            "task_names": task_name,
+            "folder_types": folder_type,
+            "folder_paths": folder_path,
+        }
 
         build_profiles = self._get_build_profiles()
         profile = filter_profiles(
             build_profiles,
-            {
-                "task_types": task_type,
-                "task_names": task_name
-            }
+            filter_data,
+            logger=self.log
         )
         if not profile:
             raise TemplateProfileNotFound((
@@ -1418,21 +1420,42 @@ class PlaceholderLoadMixin(object):
         loader_items = list(sorted(loader_items, key=lambda i: i["label"]))
         options = options or {}
 
-        # Get product types from all loaders excluding "*"
-        product_types = set()
+        # Get product base types from all loaders excluding "*"
+        product_base_types = set()
         for loader in loaders_by_name.values():
-            product_types.update(loader.product_types)
-        product_types.discard("*")
+            l_product_base_types = loader.product_base_types
+            if l_product_base_types is None:
+                l_product_base_types = loader.product_types
+            if l_product_base_types:
+                product_base_types.update(l_product_base_types)
+        product_base_types.discard("*")
 
         # Sort for readability
-        product_types = list(sorted(product_types))
+        product_base_types = list(sorted(product_base_types))
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
-            # TODO implement linked folders
-            # {"label": "Linked folders", "value": "linked_folders"},
+            {"label": "Linked folders", "value": "linked_folders"},
             {"label": "All folders", "value": "all_folders"},
         ]
+
+        link_types = ayon_api.get_link_types(self.builder.project_name)
+
+        # Filter link types for folder to folder links
+        link_types_enum_items = [
+            {"label": link_type["name"], "value": link_type["linkType"]}
+            for link_type in link_types
+            if (
+                link_type["inputType"] == "folder"
+                and link_type["outputType"] == "folder"
+            )
+        ]
+
+        if not link_types_enum_items:
+            link_types_enum_items.append(
+                {"label": "<No link types>", "value": None}
+            )
+
         build_type_label = "Folder Builder Type"
         build_type_help = (
             "Folder Builder Type\n"
@@ -1445,9 +1468,11 @@ class PlaceholderLoadMixin(object):
             " used."
         )
 
-        product_type = options.get("product_type")
-        if product_type is None:
-            product_type = options.get("family")
+        product_base_type = options.get("product_base_type")
+        if product_base_type is None:
+            product_base_type = options.get("product_type")
+            if product_base_type is None:
+                product_base_type = options.get("family")
 
         return [
             attribute_definitions.UISeparatorDef(),
@@ -1462,10 +1487,21 @@ class PlaceholderLoadMixin(object):
                 tooltip=build_type_help
             ),
             attribute_definitions.EnumDef(
-                "product_type",
-                label="Product type",
-                default=product_type,
-                items=product_types
+                "link_type",
+                label="Link Type",
+                default=options.get("link_type"),
+                items=link_types_enum_items,
+                tooltip=(
+                    "Link Type\n"
+                    "\nDefines what type of link will be used to"
+                    " link the product to the current folder."
+                )
+            ),
+            attribute_definitions.EnumDef(
+                "product_base_type",
+                label="Product base type",
+                default=product_base_type,
+                items=product_base_types
             ),
             attribute_definitions.TextDef(
                 "representation",
@@ -1601,16 +1637,15 @@ class PlaceholderLoadMixin(object):
         product_name_regex = None
         if product_name_regex_value:
             product_name_regex = re.compile(product_name_regex_value)
-        product_type = placeholder.data.get("product_type")
-        if product_type is None:
-            product_type = placeholder.data["family"]
+        product_base_type = placeholder.data.get("product_base_type")
+        if product_base_type is None:
+            product_base_type = placeholder.data.get("product_type")
+            if product_base_type is None:
+                product_base_type = placeholder.data["family"]
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
-        if builder_type == "context_folder":
-            folder_ids = [current_folder_entity["id"]]
-
-        elif builder_type == "all_folders":
+        if builder_type == "all_folders":
             folder_ids = {
                 folder_entity["id"]
                 for folder_entity in get_folders(
@@ -1620,13 +1655,35 @@ class PlaceholderLoadMixin(object):
                 )
             }
 
+        elif builder_type == "context_folder":
+            folder_ids = [current_folder_entity["id"]]
+
+        elif builder_type == "linked_folders":
+            # link type from placeholder data or default to "template"
+            link_type = placeholder.data.get("link_type", "template")
+            # Get all linked folders for the current folder
+            if hasattr(self, "builder") and isinstance(
+                    self.builder, AbstractTemplateBuilder):
+                # self.builder: AbstractTemplateBuilder
+                folder_ids = [
+                    linked_folder_entity["id"]
+                    for linked_folder_entity in (
+                        self.builder.get_linked_folder_entities(
+                            link_type=link_type,
+                            folder_path_regex=folder_path_regex
+                        )
+                    )
+                ]
+
         if not folder_ids:
             return []
 
+        # TODO this should filter by product_base_types
+        # - that can change only when AYON server 1.14.0 is required
         products = list(get_products(
             project_name,
             folder_ids=folder_ids,
-            product_types=[product_type],
+            product_types={product_base_type},
             fields={"id", "name"}
         ))
         filtered_product_ids = set()
@@ -1645,6 +1702,8 @@ class PlaceholderLoadMixin(object):
             for version in get_last_versions(
                 project_name, filtered_product_ids, fields={"id"}
             ).values()
+            # Version may be none if a product has no versions
+            if version is not None
         )
         return list(get_representations(
             project_name,
@@ -1899,8 +1958,6 @@ class PlaceholderCreateMixin(object):
             pre_create_data (dict): dictionary of configuration from Creator
                 configuration in UI
         """
-
-        legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
         active = placeholder.data.get("active")
@@ -1940,20 +1997,14 @@ class PlaceholderCreateMixin(object):
 
         # compile product name from variant
         try:
-            if legacy_create:
-                creator_instance = creator_plugin(
-                    product_name,
-                    folder_path
-                ).process()
-            else:
-                creator_instance = self.builder.create_context.create(
-                    creator_plugin.identifier,
-                    create_variant,
-                    folder_entity,
-                    task_entity,
-                    pre_create_data=pre_create_data,
-                    active=active
-                )
+            creator_instance = self.builder.create_context.create(
+                creator_plugin.identifier,
+                create_variant,
+                folder_entity,
+                task_entity,
+                pre_create_data=pre_create_data,
+                active=active
+            )
 
         except:  # noqa: E722
             failed = True

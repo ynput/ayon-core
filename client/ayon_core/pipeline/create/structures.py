@@ -1,15 +1,19 @@
 import copy
 import collections
 from uuid import uuid4
+from dataclasses import dataclass
+from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
@@ -20,6 +24,68 @@ from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
     from .creator_plugins import BaseCreator
+
+log = Logger.get_logger(__name__)
+
+
+class IntEnum(int, Enum):
+    """An int-based Enum class that allows for int comparison."""
+
+    def __int__(self) -> int:
+        return self.value
+
+
+class ParentFlags(IntEnum):
+    # Delete instance if parent is deleted
+    parent_lifetime = 1
+    # Active state is propagated from parent to children
+    # - the active state is propagated in collection phase
+    # NOTE It might be helpful to have a function that would return "real"
+    #   active state for instances
+    share_active = 1 << 1
+
+
+@dataclass
+class ProductTypeItem:
+    """Structure to define product types for a create plugin.
+
+    Product types can be used as studio definitions of a product base type.
+
+    It is expected that attributes will be added/removed in the future,
+        in that regards it is recommended to use pre-defined methods
+        'new' and 'from_data' that do safely handle those cases and
+        can contain backwards/forwards compatibility if needed.
+
+    Attributes:
+        product_type (str): Name of a product type.
+        label (str): Product type label shown in Create view.
+
+    """
+    product_type: str
+    label: Optional[str] = None
+
+    @classmethod
+    def new(
+        cls,
+        *,
+        product_type: str,
+        label: str,
+        **unknown,
+    ) -> "ProductTypeItem":
+        if unknown:
+            unknown_keys = ", ".join(f"'{k}'" for k in unknown.keys())
+            log.info(
+                f"Unknown keys in ProductTypeItem: {unknown_keys}"
+            )
+
+        return cls(
+            product_type=product_type,
+            label=label,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ProductTypeItem":
+        return cls.new(**data)
 
 
 class ConvertorItem:
@@ -119,6 +185,7 @@ class AttributeValues:
             if value is None:
                 continue
             converted_value = attr_def.convert_value(value)
+            # QUESTION Could we just use converted value all the time?
             if converted_value == value:
                 self._data[attr_def.key] = value
 
@@ -227,11 +294,11 @@ class AttributeValues:
 
     def _update(self, value):
         changes = {}
-        for key, value in dict(value).items():
-            if key in self._data and self._data.get(key) == value:
+        for key, key_value in dict(value).items():
+            if key in self._data and self._data.get(key) == key_value:
                 continue
-            self._data[key] = value
-            changes[key] = value
+            self._data[key] = key_value
+            changes[key] = key_value
         return changes
 
     def _pop(self, key, default):
@@ -461,6 +528,10 @@ class CreatedInstance:
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
         creator (BaseCreator): Creator responsible for instance.
+        product_base_type (Optional[str]): Product base type that will be
+            created. If not provided then product base type is taken from
+            creator plugin. If creator does not have product base type then
+            deprecation warning is raised.
     """
 
     # Keys that can't be changed or removed from data after loading using
@@ -471,6 +542,7 @@ class CreatedInstance:
         "id",
         "instance_id",
         "productType",
+        "productBaseType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -490,7 +562,13 @@ class CreatedInstance:
         data: Dict[str, Any],
         creator: "BaseCreator",
         transient_data: Optional[Dict[str, Any]] = None,
+        product_base_type: Optional[str] = None
     ):
+        """Initialize CreatedInstance."""
+        # fallback to product type for backward compatibility
+        if not product_base_type:
+            product_base_type = creator.product_base_type or product_type
+
         self._creator = creator
         creator_identifier = creator.identifier
         group_label = creator.get_group_label()
@@ -507,7 +585,9 @@ class CreatedInstance:
         if transient_data is None:
             transient_data = {}
         self._transient_data = transient_data
-        self._is_mandatory = False
+        self._is_mandatory: bool = False
+        self._parent_instance_id: Optional[str] = None
+        self._parent_flags: int = 0
 
         # Create a copy of passed data to avoid changing them on the fly
         data = copy.deepcopy(data or {})
@@ -541,6 +621,9 @@ class CreatedInstance:
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
+
+        self._data["productBaseType"] = product_base_type
+
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
 
@@ -646,22 +729,26 @@ class CreatedInstance:
     # ------
 
     @property
-    def product_type(self):
+    def product_base_type(self) -> str:
+        return self._data["productBaseType"]
+
+    @property
+    def product_type(self) -> str:
         return self._data["productType"]
 
     @property
-    def product_name(self):
+    def product_name(self) -> str:
         return self._data["productName"]
 
     @property
-    def label(self):
+    def label(self) -> str:
         label = self._data.get("label")
         if not label:
             label = self.product_name
         return label
 
     @property
-    def group_label(self):
+    def group_label(self) -> str:
         label = self._data.get("group")
         if label:
             return label
@@ -751,6 +838,39 @@ class CreatedInstance:
         if value is True:
             self["active"] = True
         self._create_context.instance_requirement_changed(self.id)
+
+    @property
+    def parent_instance_id(self) -> Optional[str]:
+        return self._parent_instance_id
+
+    @property
+    def parent_flags(self) -> int:
+        return self._parent_flags
+
+    def set_parent(
+        self, instance_id: Optional[str], flags: int
+    ) -> None:
+        """Set parent instance id and parenting flags.
+
+        Args:
+            instance_id (Optional[str]): Parent instance id.
+            flags (int): Parenting flags.
+
+        """
+        changed = False
+        if instance_id != self._parent_instance_id:
+            changed = True
+            self._parent_instance_id = instance_id
+
+        if flags is None:
+            flags = 0
+
+        if self._parent_flags != flags:
+            self._parent_flags = flags
+            changed = True
+
+        if changed:
+            self._create_context.instance_parent_changed(self.id)
 
     def changes(self):
         """Calculate and return changes."""
@@ -888,19 +1008,25 @@ class CreatedInstance:
         instance_data = copy.deepcopy(instance_data)
 
         product_type = instance_data.get("productType")
+        product_base_type = (
+            instance_data.get("productBaseType")
+            or product_type
+            or instance_data.get("family")
+            or creator.product_base_type
+        )
         if product_type is None:
-            product_type = instance_data.get("family")
-            if product_type is None:
-                product_type = creator.product_type
+            product_type = product_base_type
+
         product_name = instance_data.get("productName")
         if product_name is None:
             product_name = instance_data.get("subset")
 
         return cls(
-            product_type,
-            product_name,
-            instance_data,
-            creator,
+            product_base_type=product_base_type,
+            product_type=product_type,
+            product_name=product_name,
+            data=instance_data,
+            creator=creator,
             transient_data=transient_data,
         )
 

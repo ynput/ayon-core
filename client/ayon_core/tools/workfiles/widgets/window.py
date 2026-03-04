@@ -1,27 +1,25 @@
-from qtpy import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core import style, resources
+from ayon_core import resources, style
 from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    MessageOverlayObject,
-)
-
-from ayon_core.tools.workfiles.control import BaseWorkfileController
-from ayon_core.tools.utils import (
-    GoToCurrentButton,
-    RefreshButton,
     FoldersWidget,
+    GoToCurrentButton,
+    MessageOverlayObject,
+    PlaceholderLineEdit,
+    RefreshButton,
     TasksWidget,
+    FoldersFiltersWidget,
 )
+from ayon_core.tools.workfiles.control import BaseWorkfileController
 
-from .side_panel import SidePanelWidget
 from .files_widget import FilesWidget
+from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
 
 
 class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
-        super(InvalidHostOverlay, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(
             (
@@ -51,16 +49,17 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Frontend controller.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
-
-    title = "Work Files"
-
     def __init__(self, controller=None, parent=None):
-        super(WorkfilesToolWindow, self).__init__(parent=parent)
-
         if controller is None:
             controller = BaseWorkfileController()
 
-        self.setWindowTitle(self.title)
+        title = "AYON Workfiles"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
+        super().__init__(parent=parent)
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
@@ -69,7 +68,6 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._default_window_flags = flags
 
         self._folders_widget = None
-        self._folder_filter_input = None
 
         self._files_widget = None
 
@@ -107,7 +105,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         split_widget.addWidget(tasks_widget)
         split_widget.addWidget(col_3_widget)
         split_widget.addWidget(side_panel)
-        split_widget.setSizes([255, 175, 550, 190])
+        split_widget.setSizes([350, 175, 550, 190])
 
         body_layout.addWidget(split_widget)
 
@@ -157,6 +155,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._home_body_widget = home_body_widget
         self._split_widget = split_widget
 
+        self._project_name = self._controller.get_current_project_name()
+
         self._tasks_widget = tasks_widget
         self._side_panel = side_panel
 
@@ -176,33 +176,36 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         col_widget = QtWidgets.QWidget(parent)
         header_widget = QtWidgets.QWidget(col_widget)
 
-        folder_filter_input = PlaceholderLineEdit(header_widget)
-        folder_filter_input.setPlaceholderText("Filter folders..")
+        filters_widget = FoldersFiltersWidget(header_widget)
 
         go_to_current_btn = GoToCurrentButton(header_widget)
         refresh_btn = RefreshButton(header_widget)
 
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(filters_widget, 1)
+        header_layout.addWidget(go_to_current_btn, 0)
+        header_layout.addWidget(refresh_btn, 0)
+
         folder_widget = FoldersWidget(
             controller, col_widget, handle_expected_selection=True
         )
-
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(folder_filter_input, 1)
-        header_layout.addWidget(go_to_current_btn, 0)
-        header_layout.addWidget(refresh_btn, 0)
 
         col_layout = QtWidgets.QVBoxLayout(col_widget)
         col_layout.setContentsMargins(0, 0, 0, 0)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(folder_widget, 1)
 
-        folder_filter_input.textChanged.connect(self._on_folder_filter_change)
+        filters_widget.text_changed.connect(self._on_folder_filter_change)
+        filters_widget.my_tasks_changed.connect(
+            self._on_my_tasks_checkbox_state_changed
+        )
         go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
 
-        self._folder_filter_input = folder_filter_input
         self._folders_widget = folder_widget
+
+        self._filters_widget = filters_widget
 
         return col_widget
 
@@ -340,8 +343,11 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if not self._host_is_valid:
             return
 
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
+        self._project_name = self._controller.get_current_project_name()
+        self._folders_widget.set_project_name(self._project_name)
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
         )
 
     def _on_save_as_finished(self, event):
@@ -385,3 +391,15 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             )
         else:
             self.close()
+
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
+        folder_ids = None
+        task_ids = None
+        if enabled:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)

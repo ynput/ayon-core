@@ -1,6 +1,12 @@
-from code import InteractiveInterpreter
+from __future__ import annotations
 
+from code import InteractiveInterpreter
 from qtpy import QtCore, QtWidgets, QtGui
+
+try:
+    from .syntax_highlight import PythonSyntaxHighlighter
+except ImportError:
+    PythonSyntaxHighlighter = None  # type: ignore
 
 
 class PythonCodeEditor(QtWidgets.QPlainTextEdit):
@@ -12,6 +18,25 @@ class PythonCodeEditor(QtWidgets.QPlainTextEdit):
         self.setObjectName("PythonCodeEditor")
 
         self._indent = 4
+        self._apply_syntax_highlighter()
+
+    def _apply_syntax_highlighter(self):
+        if PythonSyntaxHighlighter is None:
+            return
+
+        try:
+            highlighter = PythonSyntaxHighlighter(self.document())
+        except ValueError as e:
+            print(f"Error applying syntax highlighter: {e!s}")
+            return
+
+        # Apply background color from the style
+        if background_color := highlighter.style.background_color:
+            self.setStyleSheet((
+                "QPlainTextEdit {"
+                f"background-color: {background_color};"
+                "}"
+            ))
 
     def _tab_shift_right(self):
         cursor = self.textCursor()

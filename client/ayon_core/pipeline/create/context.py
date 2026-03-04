@@ -15,6 +15,7 @@ from typing import (
     Any,
     Callable,
 )
+from warnings import warn
 
 import pyblish.logic
 import pyblish.api
@@ -41,7 +42,12 @@ from .exceptions import (
     HostMissRequiredMethod,
 )
 from .changes import TrackChangesItem
-from .structures import PublishAttributes, ConvertorItem, InstanceContextInfo
+from .structures import (
+    PublishAttributes,
+    ConvertorItem,
+    InstanceContextInfo,
+    ParentFlags,
+)
 from .creator_plugins import (
     Creator,
     AutoCreator,
@@ -49,15 +55,12 @@ from .creator_plugins import (
     discover_convertor_plugins,
 )
 if typing.TYPE_CHECKING:
-    from ayon_core.host import HostBase
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.lib.events import EventCallback, Event
 
     from .structures import CreatedInstance
     from .creator_plugins import BaseCreator
 
-    class PublishHost(HostBase, IPublishHost):
-        pass
 
 # Import of functions and classes that were moved to different file
 # TODO Should be removed in future release - Added 24/08/28, 0.4.3-dev.1
@@ -80,6 +83,7 @@ INSTANCE_ADDED_TOPIC = "instances.added"
 INSTANCE_REMOVED_TOPIC = "instances.removed"
 VALUE_CHANGED_TOPIC = "values.changed"
 INSTANCE_REQUIREMENT_CHANGED_TOPIC = "instance.requirement.changed"
+INSTANCE_PARENT_CHANGED_TOPIC = "instance.parent.changed"
 PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC = "pre.create.attr.defs.changed"
 CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
@@ -163,7 +167,7 @@ class CreateContext:
             context which should be handled by host.
 
     Args:
-        host (PublishHost): Host implementation which handles implementation
+        host (IPublishHost): Host implementation which handles implementation
             and global metadata.
         headless (bool): Context is created out of UI (Current not used).
         reset (bool): Reset context on initialization.
@@ -173,7 +177,7 @@ class CreateContext:
 
     def __init__(
         self,
-        host: "PublishHost",
+        host: IPublishHost,
         headless: bool = False,
         reset: bool = True,
         discover_publish_plugins: bool = True,
@@ -262,6 +266,8 @@ class CreateContext:
             # - right now used only for 'mandatory' but can be extended
             #   in future
             "requirement_change": BulkInfo(),
+            # Instance parent changed
+            "parent_change": BulkInfo(),
         }
         self._bulk_order = []
 
@@ -747,13 +753,13 @@ class CreateContext:
         manual_creators = {}
         report = discover_creator_plugins(return_report=True)
         self.creator_discover_result = report
-        for creator_class in report.plugins:
-            if inspect.isabstract(creator_class):
-                self.log.debug(
-                    "Skipping abstract Creator {}".format(str(creator_class))
-                )
-                continue
+        for creator_class in report.abstract_plugins:
+            self.log.debug(
+                "Skipping abstract Creator '%s'",
+                str(creator_class)
+            )
 
+        for creator_class in report.plugins:
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
                 self.log.warning(
@@ -767,25 +773,36 @@ class CreateContext:
                 creator_class.host_name
                 and creator_class.host_name != self.host_name
             ):
-                self.log.info((
-                    "Creator's host name \"{}\""
-                    " is not supported for current host \"{}\""
-                ).format(creator_class.host_name, self.host_name))
+                self.log.info(
+                    (
+                        'Creator\'s host name "{}"'
+                        ' is not supported for current host "{}"'
+                    ).format(creator_class.host_name, self.host_name)
+                )
                 continue
 
             # TODO report initialization error
             try:
-                creator = creator_class(
-                    project_settings,
-                    self,
-                    self.headless
-                )
+                creator = creator_class(project_settings, self, self.headless)
             except Exception:
                 self.log.error(
                     f"Failed to initialize plugin: {creator_class}",
                     exc_info=True
                 )
                 continue
+
+            if not creator.product_base_type:
+                message = (
+                    f"Provided creator {creator!r} doesn't have "
+                    "product base type attribute defined. This will be "
+                    "required in future."
+                )
+                warn(
+                    message,
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+                self.log.warning(message)
 
             if not creator.enabled:
                 disabled_creators[creator_identifier] = creator
@@ -1083,6 +1100,35 @@ class CreateContext:
             INSTANCE_REQUIREMENT_CHANGED_TOPIC, callback
         )
 
+    def add_instance_parent_change_callback(
+        self, callback: Callable
+    ) -> "EventCallback":
+        """Register callback to listen to instance parent changes.
+
+        Instance changed parent or parent flags.
+
+        Data structure of event:
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                instance requirement changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
+        return self._event_hub.add_callback(
+            INSTANCE_PARENT_CHANGED_TOPIC, callback
+        )
+
     def context_data_to_store(self) -> dict[str, Any]:
         """Data that should be stored by host function.
 
@@ -1173,6 +1219,7 @@ class CreateContext:
         task_entity: Optional[dict[str, Any]] = None,
         pre_create_data: Optional[dict[str, Any]] = None,
         active: Optional[bool] = None,
+        product_type: Optional[str] = None,
     ) -> Any:
         """Trigger create of plugins with standartized arguments.
 
@@ -1192,6 +1239,7 @@ class CreateContext:
             pre_create_data (dict[str, Any]): Pre-create attribute values.
             active (Optional[bool]): Whether the created instance defaults
                 to be active or not.
+            product_type (str): Specific product type to use.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -1209,9 +1257,7 @@ class CreateContext:
                 project_name, folder_path
             )
             if folder_entity is None:
-                raise CreatorError(
-                    "Folder '{}' was not found".format(folder_path)
-                )
+                raise CreatorError(f"Folder '{folder_path}' was not found")
 
         if task_entity is None:
             current_task_name = self.get_current_task_name()
@@ -1219,6 +1265,14 @@ class CreateContext:
                 task_entity = ayon_api.get_task_by_name(
                     project_name, folder_entity["id"], current_task_name
                 )
+
+        # Handle not passed product type
+        if product_type is None:
+            for product_type_item in creator.get_product_type_items():
+                product_type = product_type_item.product_type
+                break
+            else:
+                product_type = creator.product_base_type
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -1242,21 +1296,31 @@ class CreateContext:
             variant,
             self.host_name,
         )
-        kwargs = {"project_entity": project_entity}
-        # Backwards compatibility for 'project_entity' argument
-        # - 'get_product_name' signature changed 24/07/08
-        if not is_func_signature_supported(
-            creator.get_product_name, *args, **kwargs
-        ):
-            kwargs.pop("project_entity")
+        kwargs = {
+            # Backwards compatibility for 'project_entity' argument (24/07/08)
+            "project_entity": project_entity,
+            # Backwards compatibility for 'product_type' argument (26/01/19)
+            "product_type": product_type,
+        }
+        for kwarg in ("product_type", "project_entity"):
+            if not is_func_signature_supported(
+                creator.get_product_name, *args, **kwargs
+            ):
+                kwargs.pop(kwarg)
+
         product_name = creator.get_product_name(*args, **kwargs)
 
         instance_data = {
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
-            "productType": creator.product_type,
+            "productType": product_type,
+            # Add product base type if supported. Fallback to
+            #   older attribute 'product_type'
+            "productBaseType": (
+                creator.product_base_type or creator.product_type),
             "variant": variant
         }
+
         if active is not None:
             if not isinstance(active, bool):
                 self.log.warning(
@@ -1282,8 +1346,8 @@ class CreateContext:
 
         Args:
             identifier (str): Identifier of creator.
-            *args (tuple[Any]): Arguments for create method.
-            **kwargs (dict[Any, Any]): Keyword argument for create method.
+            *args: Arguments for create method.
+            **kwargs: Keyword argument for create method.
 
         Raises:
             CreatorsCreateFailed: When creation fails due to any possible
@@ -1365,6 +1429,13 @@ class CreateContext:
             yield bulk_info
 
     @contextmanager
+    def bulk_instance_parent_change(self, sender: Optional[str] = None):
+        with self._bulk_context(
+            "parent_change", sender
+        ) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_publish_attr_defs_change(self, sender: Optional[str] = None):
         with self._bulk_context("publish_attrs_change", sender) as bulk_info:
             yield bulk_info
@@ -1442,6 +1513,19 @@ class CreateContext:
         """
         if self._is_instance_events_ready(instance_id):
             with self.bulk_instance_requirement_change() as bulk_item:
+                bulk_item.append(instance_id)
+
+    def instance_parent_changed(self, instance_id: str) -> None:
+        """Instance parent changed.
+
+        Triggered by `CreatedInstance`.
+
+        Args:
+            instance_id (Optional[str]): Instance id.
+
+        """
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_instance_parent_change() as bulk_item:
                 bulk_item.append(instance_id)
 
     # --- context change callbacks ---
@@ -2046,63 +2130,97 @@ class CreateContext:
             sender (Optional[str]): Sender of the event.
 
         """
+        instance_ids_by_parent_id = collections.defaultdict(set)
+        for instance in self.instances:
+            instance_ids_by_parent_id[instance.parent_instance_id].add(
+                instance.id
+            )
+
+        instances_to_remove = list(instances)
+        ids_to_remove = {
+            instance.id
+            for instance in instances_to_remove
+        }
+        _queue = collections.deque()
+        _queue.extend(instances_to_remove)
+        # Add children with parent lifetime flag
+        while _queue:
+            instance = _queue.popleft()
+            ids_to_remove.add(instance.id)
+            children_ids = instance_ids_by_parent_id[instance.id]
+            for children_id in children_ids:
+                if children_id in ids_to_remove:
+                    continue
+                instance = self._instances_by_id[children_id]
+                if instance.parent_flags & ParentFlags.parent_lifetime:
+                    instances_to_remove.append(instance)
+                    ids_to_remove.add(instance.id)
+                    _queue.append(instance)
+
         instances_by_identifier = collections.defaultdict(list)
-        for instance in instances:
+        for instance in instances_to_remove:
             identifier = instance.creator_identifier
             instances_by_identifier[identifier].append(instance)
 
         # Just remove instances from context if creator is not available
         missing_creators = set(instances_by_identifier) - set(self.creators)
-        instances = []
+        miss_creator_instances = []
         for identifier in missing_creators:
-            instances.extend(
-                instance
-                for instance in instances_by_identifier[identifier]
-            )
+            miss_creator_instances.extend(instances_by_identifier[identifier])
 
-        self._remove_instances(instances, sender)
+        with self.bulk_remove_instances(sender):
+            self._remove_instances(miss_creator_instances, sender)
 
-        error_message = "Instances removement of creator \"{}\" failed. {}"
-        failed_info = []
-        # Remove instances by creator plugin order
-        for creator in self.get_sorted_creators(
-            instances_by_identifier.keys()
-        ):
-            identifier = creator.identifier
-            creator_instances = instances_by_identifier[identifier]
+            error_message = "Instances removement of creator \"{}\" failed. {}"
+            failed_info = []
+            # Remove instances by creator plugin order
+            for creator in self.get_sorted_creators(
+                instances_by_identifier.keys()
+            ):
+                identifier = creator.identifier
+                # Filter instances by current state of 'CreateContext'
+                # - in case instances were already removed as subroutine of
+                #   previous create plugin.
+                creator_instances = [
+                    instance
+                    for instance in instances_by_identifier[identifier]
+                    if instance.id in self._instances_by_id
+                ]
+                if not creator_instances:
+                    continue
 
-            label = creator.label
-            failed = False
-            add_traceback = False
-            exc_info = None
-            try:
-                creator.remove_instances(creator_instances)
+                label = creator.label
+                failed = False
+                add_traceback = False
+                exc_info = None
+                try:
+                    creator.remove_instances(creator_instances)
 
-            except CreatorError:
-                failed = True
-                exc_info = sys.exc_info()
-                self.log.warning(
-                    error_message.format(identifier, exc_info[1])
-                )
-
-            except (KeyboardInterrupt, SystemExit):
-                raise
-
-            except:  # noqa: E722
-                failed = True
-                add_traceback = True
-                exc_info = sys.exc_info()
-                self.log.warning(
-                    error_message.format(identifier, ""),
-                    exc_info=True
-                )
-
-            if failed:
-                failed_info.append(
-                    prepare_failed_creator_operation_info(
-                        identifier, label, exc_info, add_traceback
+                except CreatorError:
+                    failed = True
+                    exc_info = sys.exc_info()
+                    self.log.warning(
+                        error_message.format(identifier, exc_info[1])
                     )
-                )
+
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+
+                except:  # noqa: E722
+                    failed = True
+                    add_traceback = True
+                    exc_info = sys.exc_info()
+                    self.log.warning(
+                        error_message.format(identifier, ""),
+                        exc_info=True
+                    )
+
+                if failed:
+                    failed_info.append(
+                        prepare_failed_creator_operation_info(
+                            identifier, label, exc_info, add_traceback
+                        )
+                    )
 
         if failed_info:
             raise CreatorsRemoveFailed(failed_info)
@@ -2305,6 +2423,8 @@ class CreateContext:
             self._bulk_publish_attrs_change_finished(data, sender)
         elif key == "requirement_change":
             self._bulk_instance_requirement_change_finished(data, sender)
+        elif key == "parent_change":
+            self._bulk_instance_parent_change_finished(data, sender)
 
     def _bulk_add_instances_finished(
         self,
@@ -2515,6 +2635,25 @@ class CreateContext:
 
         self._emit_event(
             INSTANCE_REQUIREMENT_CHANGED_TOPIC,
+            {"instances": instances},
+            sender,
+        )
+
+    def _bulk_instance_parent_change_finished(
+        self,
+        instance_ids: list[str],
+        sender: Optional[str],
+    ):
+        if not instance_ids:
+            return
+
+        instances = [
+            self.get_instance_by_id(instance_id)
+            for instance_id in set(instance_ids)
+        ]
+
+        self._emit_event(
+            INSTANCE_PARENT_CHANGED_TOPIC,
             {"instances": instances},
             sender,
         )
