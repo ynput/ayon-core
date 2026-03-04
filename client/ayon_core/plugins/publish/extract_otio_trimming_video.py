@@ -11,7 +11,9 @@ from copy import deepcopy
 import pyblish.api
 
 from ayon_core.lib import (
+    get_ffprobe_data,
     get_ffmpeg_tool_args,
+    get_ffmpeg_codec_args,
     run_subprocess,
 )
 from ayon_core.pipeline import publish
@@ -74,9 +76,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             otio_range (opentime.TimeRange): range to trim to
 
         """
-        # create path to destination
-        output_path = self._get_ffmpeg_output(input_file_path)
-
         # start command list
         command = get_ffmpeg_tool_args("ffmpeg")
 
@@ -89,8 +88,28 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             "-ss", str(sec_start),
             "-t", str(sec_duration),
             "-i", video_path,
-            output_path
         ])
+
+        # Trim the video by re-encoding the relevant part of it to
+        # the same codec. This is the only way to ensure a precise
+        # output duration.
+        # '-c copy' make FFmpeg rely on key I-frames, not 100% accurate.
+        # https://video.stackexchange.com/questions/16750/
+        ffprobe_data = get_ffprobe_data(input_file_path, self.log)
+        video_codec_args = get_ffmpeg_codec_args(ffprobe_data)
+        if not video_codec_args:
+            self.log.warning(
+                "FFmpeg could not identify the video codec for %s. "
+                "Use '-c copy' which might lead in duration mismatches.",
+                input_file_path,
+            )
+            video_codec_args = ["-c", "copy"]
+
+        command.extend(video_codec_args)
+
+        # create and append path to destination
+        output_path = self._get_ffmpeg_output(input_file_path)
+        command.append(output_path)
 
         # execute
         self.log.debug("Executing: {}".format(" ".join(command)))
