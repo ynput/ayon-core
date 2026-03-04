@@ -1244,9 +1244,9 @@ def oiio_color_convert(
     # Get oiioinfo only from first image, otherwise file can't be found
     first_input_path = input_path
     if frames:
-        frames: str
-        first_frame = int(re.split("[ x-]", frames, 1)[0])
-        first_frame = str(first_frame).zfill(frame_padding or 0)
+        match = re.search(r"\d+", frames)
+        first_frame = match.group() if match else "0"
+        first_frame = first_frame.zfill(frame_padding or 0)
         for token in ["#", "%d"]:
             first_input_path = first_input_path.replace(token, first_frame)
 
