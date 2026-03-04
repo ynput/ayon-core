@@ -161,7 +161,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        review_layers: list[str]
+        review_layers: Optional[list[str]] = None
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
         try:
@@ -196,7 +196,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        review_layers: list[str]
+        review_layers: Optional[list[str]] = None
     ) -> bool:
         try:
             resolution_args = self._get_resolution_args(
@@ -248,7 +248,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         application: str,
         input_path: str,
-        review_layers: list[str]
+        review_layers: Optional[list[str]] = None
     ) -> List[str]:
         # get settings
         if self.target_size["type"] == "source":

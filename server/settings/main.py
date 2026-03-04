@@ -314,7 +314,13 @@ class CoreSettings(BaseSettingsModel):
     )
     reviewable_layers: ReviewLayersModel = SettingsField(
         default_factory=ReviewLayersModel,
-        title="Default reviewable layers"
+        title="Default reviewable layers",
+        description=(
+            "Ordered list of layer names used to determine reviewable channel"
+            "The list order defines review layer priority (the first matching "
+            "layer is prioritized first). If the list is empty, review layers "
+            "use the default sorting behavior."
+        )
     )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
