@@ -339,7 +339,7 @@ def copy_last_published_workfile(
             )
             workdir = str(workdir_result)
 
-    # Use a copy for template filling; do not mutate callers' workdir_data
+    # Use a copy for template filling
     template_data = copy.deepcopy(workdir_data)
     template_data["ext"] = published_info.extension
     ext_set = {published_info.extension}
