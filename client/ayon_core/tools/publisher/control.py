@@ -120,6 +120,11 @@ class PublisherController(
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
+
     def is_headless(self):
         return self._headless
 
