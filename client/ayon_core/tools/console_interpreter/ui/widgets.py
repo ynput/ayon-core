@@ -1,6 +1,78 @@
 from code import InteractiveInterpreter
+import re
 
 from qtpy import QtCore, QtWidgets, QtGui
+
+
+class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Define highlighting rules
+        self.highlighting_rules = []
+
+        # Keyword format
+        keyword_format = QtGui.QTextCharFormat()
+        keyword_format.setForeground(QtGui.QColor("#569CD6"))
+        keyword_format.setFontWeight(QtGui.QFont.Bold)
+        keywords = [
+            "and", "as", "assert", "break", "class", "continue", "def",
+            "del", "elif", "else", "except", "False", "finally", "for",
+            "from", "global", "if", "import", "in", "is", "lambda", "None",
+            "nonlocal", "not", "or", "pass", "raise", "return", "True",
+            "try", "while", "with", "yield", "async", "await"
+        ]
+        for word in keywords:
+            pattern = r"\b" + word + r"\b"
+            self.highlighting_rules.append((re.compile(pattern), keyword_format))
+
+        # Built-in functions
+        builtin_format = QtGui.QTextCharFormat()
+        builtin_format.setForeground(QtGui.QColor("#DCDCAA"))
+        builtins = [
+            "abs", "all", "any", "bin", "bool", "bytes", "chr", "dict",
+            "dir", "enumerate", "filter", "float", "format", "int", "len",
+            "list", "map", "max", "min", "open", "print", "range", "repr",
+            "round", "set", "sorted", "str", "sum", "tuple", "type", "zip"
+        ]
+        for word in builtins:
+            pattern = r"\b" + word + r"\b"
+            self.highlighting_rules.append((re.compile(pattern), builtin_format))
+
+        # String formats
+        string_format = QtGui.QTextCharFormat()
+        string_format.setForeground(QtGui.QColor("#CE9178"))
+        self.highlighting_rules.append((re.compile(r'"[^"\\]*(\\.[^"\\]*)*"'), string_format))
+        self.highlighting_rules.append((re.compile(r"'[^'\\]*(\\.[^'\\]*)*'"), string_format))
+
+        # Comment format
+        comment_format = QtGui.QTextCharFormat()
+        comment_format.setForeground(QtGui.QColor("#6A9955"))
+        self.highlighting_rules.append((re.compile(r"#[^\n]*"), comment_format))
+
+        # Number format
+        number_format = QtGui.QTextCharFormat()
+        number_format.setForeground(QtGui.QColor("#B5CEA8"))
+        self.highlighting_rules.append((re.compile(r"\b\d+\.?\d*\b"), number_format))
+
+        # Function/class definition
+        function_format = QtGui.QTextCharFormat()
+        function_format.setForeground(QtGui.QColor("#DCDCAA"))
+        function_format.setFontWeight(QtGui.QFont.Bold)
+        self.highlighting_rules.append((re.compile(r"\bdef\s+(\w+)"), function_format))
+        self.highlighting_rules.append((re.compile(r"\bclass\s+(\w+)"), function_format))
+
+        # Decorator format
+        decorator_format = QtGui.QTextCharFormat()
+        decorator_format.setForeground(QtGui.QColor("#4EC9B0"))
+        self.highlighting_rules.append((re.compile(r"@\w+"), decorator_format))
+
+    def highlightBlock(self, text):
+        for pattern, format_style in self.highlighting_rules:
+            for match in pattern.finditer(text):
+                start = match.start()
+                length = match.end() - start
+                self.setFormat(start, length, format_style)
 
 
 class PythonCodeEditor(QtWidgets.QPlainTextEdit):
@@ -12,6 +84,8 @@ class PythonCodeEditor(QtWidgets.QPlainTextEdit):
         self.setObjectName("PythonCodeEditor")
 
         self._indent = 4
+
+        self._highlighter = PythonSyntaxHighlighter(self.document())
 
     def _tab_shift_right(self):
         cursor = self.textCursor()
