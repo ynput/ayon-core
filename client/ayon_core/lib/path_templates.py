@@ -7,7 +7,7 @@ import numbers
 import warnings
 import platform
 from string import Formatter
-from typing import Any, Union, Iterable
+from typing import Any, Union, Iterable, Optional
 
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
@@ -195,6 +195,43 @@ class StringTemplate:
         result = self.format(data)
         result.validate()
         return result
+
+    def remove_optional_parts_for_data(
+        self,
+        data: Optional[dict[str, Any]] = None,
+    ) -> str:
+        """Remove optional parts from template for data.
+
+        This method does not modify the template object itself.
+
+        Note:
+            At this moment the functionality is not 1:1 with 'format' where
+                lists are supported and the values are validated.
+
+        Args:
+            data (Optional[dict[str, Any]]): Template data for template.
+
+        Returns:
+            str: Template without optional parts that are not available
+                in passed data.
+
+        """
+        if data is None:
+            data = {}
+
+        output = ""
+        for part in self._parts:
+            if isinstance(part, str):
+                output += part
+            elif isinstance(part, FormattingPart):
+                output += part.template
+            elif isinstance(part, OptionalPart):
+                output += part.remove_optional_parts_for_data(data)
+            else:
+                raise TypeError(
+                    f"Got invalid type in template parts '{type(part)}'"
+                )
+        return output
 
     @classmethod
     def format_template(
@@ -604,6 +641,15 @@ class FormattingPart:
         joined_keys = "".join([f"[{key}]" for key in keys])
         return f"{template_base}{joined_keys}"
 
+    def keys(self) -> tuple[str]:
+        """Return keys of the template.
+
+        Returns:
+            tuple[str]: Keys of the template.
+
+        """
+        return tuple(SUB_DICT_PATTERN.findall(self._field_name))
+
     def format(
         self, data: dict[str, Any], result: TemplatePartResult
     ) -> TemplatePartResult:
@@ -623,7 +669,7 @@ class FormattingPart:
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])
-        key_subdict = list(SUB_DICT_PATTERN.findall(self._field_name))
+        key_subdict = self.keys()
 
         value = data
         missing_key = False
@@ -749,6 +795,34 @@ class OptionalPart:
     @property
     def parts(self) -> list[Union[str, OptionalPart, FormattingPart]]:
         return self._parts
+
+    def remove_optional_parts_for_data(self, data: dict[str, Any]) -> str:
+        if not data:
+            return ""
+
+        output = ""
+        for part in self._parts:
+            if isinstance(part, str):
+                output += part
+            elif isinstance(part, OptionalPart):
+                output += part.remove_optional_parts_for_data(data)
+
+            elif isinstance(part, FormattingPart):
+                data_v = data
+                for key in part.keys():
+                    if key not in data_v:
+                        return ""
+                    try:
+                        data_v = data_v[key]
+                    except (KeyError, IndexError, TypeError):
+                        return ""
+                output += part.template
+
+            else:
+                raise TypeError(
+                    f"Got invalid type in template parts '{type(part)}'"
+                )
+        return output
 
     def __str__(self) -> str:
         joined_parts = "".join([str(p) for p in self._parts])
