@@ -15,6 +15,7 @@ from typing import (
     Dict,
     Iterable,
     TypeVar,
+    Callable,
 )
 
 import clique
@@ -241,6 +242,30 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         """
         pass
+
+    def toggle_callback(self, instance_data: dict[str, Any]) -> Dict[str, Any]:
+        """
+        This method gets called when toggled gets emitted by the widget this
+        AttrDef created.
+
+        Args:
+            instance_data:  A dictionary containing all the data in relating to
+            the publish instance, this should be an
+            ayon_core.pipeline.CreatedInstance.data, or for precreate attribute
+            definitions just a dictionary of key, attribute definition name to
+            value, the value of the widget linked to that attribute definition.
+            This allows the callback to access the data.
+
+        Returns:
+            Dict[str, Any]: When this method gets overridden by a subclass it
+            should return a dictionary to update the instance data that this
+            attribute definition is linked to. For precreate attribute
+            definitions, the return value should just be a dictionary of key,
+            attribute definition name, to value, value to set the widget linked
+            to that attribute definition to since an instance will not exist 
+            yet.
+        """
+        return {}
 
     def serialize(self) -> Dict[str, Any]:
         """Serialize object to data so it's possible to recreate it.
@@ -1111,6 +1136,88 @@ class FileDef(AbstractAttrDef):
         return []
 
 
+class ButtonDef(AbstractAttrDef):
+    """
+    A definition to create a button UI element for plugins.
+    The button will run the callable 'callback' passed into it on
+    initialization when pressed.
+    """
+    type = "button"
+    type_attributes = ["callback"]
+    is_value_def = False
+
+    def __init__(
+            self,
+            key: str,
+            text: Optional[str] = "",
+            callback: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+            **kwargs
+    ) -> None:
+        """
+        Initializes a button attribute definition.
+        This sets up the callback and text attributes.
+
+        Args:
+            key: A string representing the unique id for this button
+            text: An optional string argument, whatever is inputted as this
+            value will be displayed on the button as a label
+            callback: An optional callable argument, this callable will be run
+            every time the button is pressed. The callable should take a
+            dictionary as an argument this will be a dictionary containing all
+            the data in relating to the publish instance, this should be an
+            ayon_core.pipeline.CreatedInstance.data, or for precreate attribute
+            definitions just a dictionary of key, attribute definition name to
+            value, the value of the widget linked to that attribute definition.
+            The callable should return a dictionary, this dictionary
+            is used to update the data of the instance this attribute def is
+            added on. For precreate attribute definitions, the return value
+            should just be a dictionary of key, attribute definition name, to
+            value, value to set the widget linked to that attribute definition
+            to.
+            **kwargs: The keyword arguments set by the parent class
+            AbstractAttrDef
+        """
+        super().__init__(key, default=None, **kwargs)
+        self.callback = callback
+        self.text = text
+
+    def toggle_callback(self, instance_data: dict[str, Any]) -> dict[str, Any]:
+        """
+        This method is run when toggled is emitted by the button widget this
+        attribute definition creates.
+        All it does is run callback if the optional argument was added.
+
+        Args:
+            instance_data:  A dictionary containing all the data in relating to
+            the publish instance, this should be an
+            ayon_core.pipeline.CreatedInstance.data, or for precreate attribute
+            definitions just a dictionary of key, attribute definition name to
+            value, the value of the widget linked to that attribute definition.
+            This allows the callback to access the data.
+
+        Returns:
+            Dict[str, Any]: A dictionary to update the instance data that this
+            attribute definition is linked to. For precreate attribute
+            definitions, the return value should just be a dictionary of key,
+            attribute definition name, to value, value to set the widget linked
+            to that attribute definition to since an instance will not exist
+            yet. This will be an empty dictionary if no callback exists.
+        """
+        if not self.callback:
+            return {}
+        val = self.callback(instance_data)
+        return val
+
+    def _def_type_compare(self, other: "ButtonDef") -> bool:
+        return self.callback == other.callback
+
+    def is_value_valid(self, value: Any) -> bool:
+        return True
+
+    def convert_value(self, value: Any) -> Any:
+        return value
+
+
 def register_attr_def_class(cls: AttrDefType):
     """Register attribute definition.
 
@@ -1244,6 +1351,7 @@ for _attr_class in (
     TextDef,
     EnumDef,
     BoolDef,
-    FileDef
+    FileDef,
+    ButtonDef
 ):
     register_attr_def_class(_attr_class)

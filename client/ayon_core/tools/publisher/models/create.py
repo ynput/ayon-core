@@ -621,6 +621,48 @@ class CreateModel:
             for instance_id in instance_ids
         }
 
+    def get_instance_data_copy_by_ids(
+            self, instance_ids: List[str]
+    ):
+        """
+        Gets the instance data relating to the given ids.
+        This is a copy of the data and cannot be modified to change the data on
+        the instance.
+
+        Args:
+            instance_ids (List[str]): A list of instance ids to find the data
+            for.
+
+        Returns:
+            A dictionary in the format:
+            {instance_id: instance.data}
+            for all the instance ids in the given instance_ids
+            Where an instance is an ayon_core.pipeline.CreatedInstance.
+        """
+        instance_data_by_id = {}
+        instances = self._get_instances_by_id(instance_ids)
+        for instance_id, instance in instances.items():
+            instance_data_by_id[instance_id] = instance.data.copy()
+        return instance_data_by_id
+
+    def get_instance_data_to_store_by_id(
+            self, instance_id: str
+    ) -> Optional[dict[str, dict[str, Any]]]:
+        instance = self._create_context.instances_by_id.get(instance_id)
+        if instance is None:
+            return None
+        return instance.data_to_store()
+
+    def get_instances_data_to_store_by_id(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ) -> dict[str, dict[str, Any]]:
+        if instance_ids is None:
+            instance_ids = self._create_context.instances_by_id.keys()
+        return {
+            instance_id: self.get_instance_data_to_store_by_id(instance_id)
+            for instance_id in instance_ids
+        }
+
     def get_instances_context_info(
         self, instance_ids: Optional[Iterable[str]] = None
     ):
@@ -973,11 +1015,12 @@ class CreateModel:
                 plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
-                    if isinstance(attr_def, UIDef):
-                        continue
+                    value = None
+                    if attr_def.is_value_def:
+                        value = attr_val[attr_def.key]
                     attr_values = plugin_values.setdefault(attr_def.key, [])
                     attr_values.append(
-                        (item_id, attr_val[attr_def.key], attr_def.default)
+                        (item_id, value, attr_def.default)
                     )
 
         attr_defs_by_plugin_name = {}

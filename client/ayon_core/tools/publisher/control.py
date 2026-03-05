@@ -226,6 +226,26 @@ class PublisherController(
     def get_instance_items_by_id(self, instance_ids=None):
         return self._create_model.get_instance_items_by_id(instance_ids)
 
+    def get_instance_data_copy_by_ids(
+            self,
+            instance_ids: list[str]
+        ) -> dict[str: dict[str: Any]]:
+        """
+        Gets the instance data relating to the given ids.
+        This is a copy of the data and cannot be modified to change the data on
+        the instance.
+
+        Args:
+            instance_ids: A list of instance ids to find the data for
+
+        Returns:
+            A dictionary in the format:
+            {instance_id: instance.data}
+            for all the instance ids in instance_ids
+            Where an instance is an ayon_core.pipeline.CreatedInstance.
+        """
+        return self._create_model.get_instance_data_copy_by_ids(instance_ids)
+
     def get_instances_context_info(self, instance_ids=None):
         return self._create_model.get_instances_context_info(instance_ids)
 
@@ -433,6 +453,25 @@ class PublisherController(
             instance_ids
         )
 
+    def set_instances_create_attr_values_dict(
+            self,
+            instance_ids: list[str],
+            values: dict[str, Any]
+        ) -> None:
+        """
+        Updates the creator attribute values on instances with an id in
+        the given instance IDs using the given values dictionary.
+
+        Args:
+            instance_ids: The ids of the instances to update the creator
+            attributes of.
+            values: A dictionary in the format:
+                {attr_def_name: attr_def_value}
+            to update on the instance.
+        """
+        for key, val in values.items():
+            self.set_instances_create_attr_values(instance_ids, key, val)
+
     def set_instances_create_attr_values(self, instance_ids, key, value):
         return self._create_model.set_instances_create_attr_values(
             instance_ids, key, value
@@ -455,6 +494,30 @@ class PublisherController(
         return self._create_model.get_publish_attribute_definitions(
             instance_ids, include_context
         )
+
+    def set_instances_publish_attr_values_dict(
+            self,
+            instance_ids: list[str],
+            values: dict[str, dict[str, Any]]
+        ) -> None:
+        """
+        Updates the publish attribute values on instances with an ID in
+        the given instance IDs using the given values dictionary.
+
+        Args:
+            instance_ids: The IDs of the instances to update the publish
+            attributes of.
+            values: A dictionary in the format:
+                {plugin_name: {plugin_attr_def_name: plugin_attr_def_value}}
+            to update on the instance.
+        """
+        for plugin_name, plugin_attr_vals in values.items():
+            for key, val in plugin_attr_vals.items():
+                self.set_instances_publish_attr_values(
+                    instance_ids,
+                    plugin_name,
+                    key, val
+                )
 
     def set_instances_publish_attr_values(
         self, instance_ids, plugin_name, key, value

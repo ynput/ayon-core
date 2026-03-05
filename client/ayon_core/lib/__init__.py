@@ -49,6 +49,7 @@ from .attribute_definitions import (
     BoolDef,
     FileDef,
     FileDefItem,
+    ButtonDef,
 )
 
 from .env_tools import (
@@ -200,6 +201,7 @@ __all__ = [
     "BoolDef",
     "FileDef",
     "FileDefItem",
+    "ButtonDef",
 
     "import_filepath",
     "modules_from_path",
