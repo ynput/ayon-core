@@ -34,6 +34,9 @@ from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
 from .search_bar import FiltersBar, FilterDefinition
 
+from .reviews_widget import ReviewsWidget
+from ayon_ui_qt import get_ayon_style
+
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
 )
@@ -256,8 +259,11 @@ class LoaderWindow(AYContainer):
         main_splitter.setStretchFactor(1, 6)
         main_splitter.setStretchFactor(2, 1)
 
+        self.review_wdgt = ReviewsWidget()
+
         self.tab = QtWidgets.QTabWidget()
         self.tab.addTab(main_splitter, "Folders")
+        self.tab.addTab(self.review_wdgt, "Reviews")
 
         self.add_widget(self.tab)
 
@@ -404,6 +410,9 @@ class LoaderWindow(AYContainer):
             return
 
         super().keyPressEvent(event)
+
+    # def setStyleSheet(self, styleSheet: str) -> None:
+    #     self.setStyle(get_ayon_style())
 
     def _on_first_show(self):
         self._first_show = False
