@@ -189,7 +189,7 @@ class IntegrateHeroVersionTraits(
         old_repres_to_replace = {}
         old_repres_to_delete = {}
 
-        for repre in filtered_representations:
+        for repre in repre_entities:
             repre_name_low = repre.name.lower()
             if repre_name_low in old_repres_by_name:
                 old_repres_to_replace[repre_name_low] = (
