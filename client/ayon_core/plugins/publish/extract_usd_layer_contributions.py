@@ -1,10 +1,10 @@
 import copy
-import dataclasses
 import os
+import dataclasses
 import platform
 from collections import defaultdict
 from operator import attrgetter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 
 import pyblish.api
 try:
@@ -53,8 +53,10 @@ BUILD_INTO_LAST_VERSIONS = True
 
 @dataclasses.dataclass
 class _BaseContribution:
-    # What are we contributing?
-    instance: pyblish.api.Instance  # instance that contributes it
+    # We contribute either the resulting usd representation of an instance
+    # or an explicit `source` string which represent an asset path or layer
+    # identifier like an AYON entity URI
+    source: Union[pyblish.api.Instance, str]
 
     # Where are we contributing to?
     layer_id: str  # usually the department or task name
@@ -63,12 +65,22 @@ class _BaseContribution:
     order: int
 
 
+@dataclasses.dataclass
 class SublayerContribution(_BaseContribution):
     """Sublayer contribution"""
 
 
 @dataclasses.dataclass
-class VariantContribution(_BaseContribution):
+class ReferenceContribution(_BaseContribution):
+    """Reference contribution"""
+    target_prim_path: str
+
+    # TODO: Add support to payload instead
+    # reference_mode: Literal["reference", "payload"]
+
+
+@dataclasses.dataclass
+class VariantContribution(ReferenceContribution):
     """Reference contribution within a Variant Set"""
 
     # Variant
@@ -109,7 +121,7 @@ def get_representation_path_in_publish_context(
     # publish to another project. As such, we know if the project name we're
     # looking for doesn't match the publishing context it'll not be in there.
     if context.data["projectName"] != project_name:
-        return
+        return None
 
     if version_name == "hero":
         raise NotImplementedError(
@@ -139,12 +151,13 @@ def get_representation_path_in_publish_context(
             ext=None,
             version=version_name if specific_version else None
         )
+    return None
 
 
 def get_instance_uri_path(
-        instance,
+        instance: pyblish.api.Instance,
         resolve=True
-):
+) -> str:
     """Return path for instance's usd representation"""
     context = instance.context
     folder_path = instance.data["folderPath"]
@@ -195,7 +208,10 @@ def get_instance_uri_path(
     return path
 
 
-def get_last_publish(instance, representation="usd"):
+def get_last_publish(
+    instance: pyblish.api.Instance,
+    representation: str="usd"
+) -> Optional[str]:
     """Wrapper to quickly get last representation publish path"""
     return get_representation_path_by_names(
         project_name=instance.context.data["projectName"],
@@ -206,9 +222,14 @@ def get_last_publish(instance, representation="usd"):
     )
 
 
-def add_representation(instance, name,
-                       files, staging_dir, ext=None,
-                       output_name=None):
+def add_representation(
+    instance: pyblish.api.Instance,
+    name: str,
+    files: Union[str, list[str]],
+    staging_dir: str,
+    ext: Optional[str] = None,
+    output_name: Optional[str] = None,
+) -> dict[str, Any]:
     """Add a representation to publish and integrate.
 
     A representation must exist of either a single file or a
@@ -349,10 +370,17 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # Define contribution
         in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
+            # Set target prim for variant contributions
+            default_prim: str = get_standard_default_prim_name(
+                folder_path=instance.data["folderPath"]
+            )
+            target_prim_path = f"/{default_prim}"
+
             contribution = VariantContribution(
-                instance=instance,
+                source=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
+                target_prim_path=target_prim_path,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
                 variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
@@ -360,7 +388,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             )
         else:
             contribution = SublayerContribution(
-                instance=instance,
+                source=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
                 order=in_layer_order
@@ -689,9 +717,14 @@ class ValidateUSDDependencies(pyblish.api.InstancePlugin):
 
 
 class ExtractUSDLayerContribution(publish.Extractor):
+    """Creates the department layer USD file.
+
+    Given `instance.data["usd_contributions"]` populate the department layer
+    with new contributions.
+    """
 
     families = ["usdLayer"]
-    label = "Extract USD Layer Contributions (Asset/Shot)"
+    label = "Extract USD Department Layer Contributions"
     order = pyblish.api.ExtractorOrder + 0.45
 
     settings_category = "core"
@@ -716,75 +749,15 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 sdf_layer.defaultPrim = get_standard_default_prim_name(
                     folder_path
                 )
-
-            default_prim = sdf_layer.defaultPrim
         else:
             default_prim = get_standard_default_prim_name(folder_path)
             sdf_layer = Sdf.Layer.CreateAnonymous()
             set_layer_defaults(sdf_layer, default_prim=default_prim)
 
-        contributions = instance.data.get("usd_contributions", [])
-        for contribution in sorted(contributions, key=attrgetter("order")):
-            path = get_instance_uri_path(contribution.instance,
-                                         resolve=not self.use_ayon_entity_uri)
-            if isinstance(contribution, VariantContribution):
-                # Add contribution as a reference inside a variant
-                self.log.debug(f"Adding variant: {contribution}")
-
-                # Make sure at least the prim exists outside the variant
-                # selection, so it can house the variant selection and the
-                # variants themselves
-                prim_path = Sdf.Path(f"/{default_prim}")
-                prim_spec = get_or_define_prim_spec(sdf_layer,
-                                                    prim_path,
-                                                    "Xform")
-
-                variant_prim_path = variant_nested_prim_path(
-                    prim_path=prim_path,
-                    variant_selections=[
-                        (contribution.variant_set_name,
-                         contribution.variant_name)
-                    ]
-                )
-
-                # Remove any existing matching entry of same product
-                variant_prim_spec = sdf_layer.GetPrimAtPath(variant_prim_path)
-                if variant_prim_spec:
-                    self.remove_previous_reference_contribution(
-                        prim_spec=variant_prim_spec,
-                        instance=contribution.instance
-                    )
-
-                # Add the contribution at the indicated order
-                self.add_reference_contribution(sdf_layer,
-                                                variant_prim_path,
-                                                path,
-                                                contribution)
-
-                # Set default variant selection
-                variant_set_name = contribution.variant_set_name
-                variant_name = contribution.variant_name
-                if contribution.variant_is_default or \
-                        variant_set_name not in prim_spec.variantSelections:
-                    prim_spec.variantSelections[variant_set_name] = variant_name  # noqa: E501
-
-            elif isinstance(contribution, SublayerContribution):
-                # Sublayer source file
-                self.log.debug(f"Adding sublayer: {contribution}")
-
-                # This replaces existing versions of itself so that
-                # republishing does not continuously add more versions of the
-                # same product
-                product_name = contribution.instance.data["productName"]
-                add_ordered_sublayer(
-                    layer=sdf_layer,
-                    contribution_path=path,
-                    layer_id=product_name,
-                    order=contribution.order,
-                    add_sdf_arguments_metadata=True
-                )
-            else:
-                raise TypeError(f"Unsupported contribution: {contribution}")
+        self.add_contributions_to_layer(
+            contributions=instance.data.get("usd_contributions", []),
+            sdf_layer=sdf_layer,
+        )
 
         # Save the file
         staging_dir = self.staging_dir(instance)
@@ -799,43 +772,148 @@ class ExtractUSDLayerContribution(publish.Extractor):
             staging_dir=staging_dir
         )
 
-    def remove_previous_reference_contribution(self,
-                                               prim_spec: "Sdf.PrimSpec",
-                                               instance: pyblish.api.Instance):
-        # Remove existing contributions of the same product - ignoring
-        # the picked version and representation. We assume there's only ever
-        # one version of a product you want to have referenced into a Prim.
-        remove_indices = set()
-        for index, ref in enumerate(prim_spec.referenceList.prependedItems):
-            ref: "Sdf.Reference"
+    def add_contributions_to_layer(
+        self,
+        contributions: list[_BaseContribution],
+        sdf_layer: Sdf.Layer
+    ):
+        """Add contributions in the right order to the layer."""
+        if not contributions:
+            return
 
-            uri = ref.customData.get("ayon_uri")
-            if uri and self.instance_match_ayon_uri(instance, uri):
+        for contribution in sorted(contributions, key=attrgetter("order")):
+            self._add_contribution_to_layer(contribution, sdf_layer)
+
+    def _add_contribution_to_layer(
+        self,
+        contribution: _BaseContribution,
+        sdf_layer: Sdf.Layer
+    ):
+        """Add a single contribution to the layer."""
+        path = self._resolve_contribution_path(contribution)
+
+        # Handle references, and references in variants
+        if isinstance(contribution, ReferenceContribution):
+            target_prim_path = contribution.target_prim_path
+            if not target_prim_path:
+                raise ValueError(
+                    "Reference contribution requires 'target_prim_path'."
+                )
+            self.log.debug(f"Adding reference: {contribution}")
+
+            # Make sure at least the prim exists outside the variant
+            # selection, so it can house the variant selection and the
+            # variants themselves
+            prim_path = Sdf.Path(target_prim_path)
+            prim_spec = get_or_define_prim_spec(sdf_layer,
+                                                prim_path,
+                                                "Xform")
+
+            # Go into a variant prim path for variant contributions
+            if isinstance(contribution, VariantContribution):
+                variant_set_name: str = contribution.variant_set_name
+                variant_name: str = contribution.variant_name
+                # TODO: Add support to not author variant selection at all
+                #  even if no selection was set yet.
+                if (
+                        contribution.variant_is_default
+                        or variant_set_name not in prim_spec.variantSelections
+                ):
+                    prim_spec.variantSelections[variant_set_name] = variant_name
+
+                # Set the prim path contribution to be inside the variant
+                target_prim_path = variant_nested_prim_path(
+                    prim_path=prim_path,
+                    variant_selections=[
+                        (contribution.variant_set_name,
+                         contribution.variant_name)
+                    ]
+                )
+
+            # Remove any existing matching entry of same contribution key
+            prim_spec = sdf_layer.GetPrimAtPath(target_prim_path)
+            if prim_spec:
+                self.remove_previous_reference_contribution(
+                    prim_spec=prim_spec,
+                    contribution=contribution
+                )
+
+            # Add the contribution at the indicated order
+            self.add_reference_contribution(sdf_layer,
+                                            target_prim_path,
+                                            path,
+                                            contribution)
+
+        # Handle sublayers
+        elif isinstance(contribution, SublayerContribution):
+            # Sublayer source file
+            self.log.debug(f"Adding sublayer: {contribution}")
+
+            add_ordered_sublayer(
+                layer=sdf_layer,
+                contribution_path=path,
+                layer_id=self._contribution_identity_key(contribution),
+                order=contribution.order,
+                add_sdf_arguments_metadata=True
+            )
+        else:
+            raise TypeError(
+                f"Unsupported contribution type: {type(contribution)}"
+            )
+
+    def remove_previous_reference_contribution(
+        self,
+        prim_spec: "Sdf.PrimSpec",
+        contribution: ReferenceContribution
+    ):
+        remove_indices = set()
+        key_to_match = self._contribution_identity_key(contribution)
+        for index, ref in enumerate(prim_spec.referenceList.prependedItems):
+            key = ref.customData.get("ayon_contribution_key")
+            if key == key_to_match:
                 self.log.debug("Removing existing reference: %s", ref)
                 remove_indices.add(index)
+                continue
 
-        if remove_indices:
-            prim_spec.referenceList.prependedItems[:] = [
-                ref for index, ref
-                in enumerate(prim_spec.referenceList.prependedItems)
-                if index not in remove_indices
-            ]
+            # Backward-compatible cleanup for older publishes that only
+            # authored AYON URI metadata.
+            uri = ref.customData.get("ayon_uri")
+            source = contribution.source
+            if uri and not isinstance(source, str):
+                if self.instance_match_ayon_uri(source, uri):
+                    self.log.debug("Removing existing reference: %s", ref)
+                    remove_indices.add(index)
 
-    def add_reference_contribution(self,
-                                   layer: "Sdf.Layer",
-                                   prim_path: "Sdf.Path",
-                                   filepath: str,
-                                   contribution: VariantContribution):
-        instance = contribution.instance
-        uri = construct_ayon_entity_uri(
-            project_name=instance.data["projectEntity"]["name"],
-            folder_path=instance.data["folderPath"],
-            product=instance.data["productName"],
-            version=instance.data["version"],
-            representation_name="usd"
-        )
-        reference = Sdf.Reference(assetPath=filepath,
-                                  customData={"ayon_uri": uri})
+        # Remove in reverse order to keep indices valid
+        for index in sorted(remove_indices, reverse=True):
+            del prim_spec.referenceList.prependedItems[index]
+
+    def add_reference_contribution(
+        self,
+        layer: "Sdf.Layer",
+        prim_path: "Sdf.Path",
+        filepath: str,
+        contribution: ReferenceContribution
+    ):
+        custom_data = {
+            "ayon_contribution_key": self._contribution_identity_key(
+                contribution
+            )
+        }
+
+        # Backwards compatibility
+        source = contribution.source
+        if isinstance(source, pyblish.api.Instance):
+            uri = construct_ayon_entity_uri(
+                project_name=source.data["projectEntity"]["name"],
+                folder_path=source.data["folderPath"],
+                product=source.data["productName"],
+                version=source.data["version"],
+                representation_name="usd"
+            )
+            custom_data["ayon_uri"] = uri
+
+        reference = Sdf.Reference(assetPath=filepath, customData=custom_data)
         add_ordered_reference(
             layer=layer,
             prim_path=prim_path,
@@ -843,8 +921,11 @@ class ExtractUSDLayerContribution(publish.Extractor):
             order=contribution.order
         )
 
-    def instance_match_ayon_uri(self, instance, ayon_uri):
-
+    def instance_match_ayon_uri(
+        self,
+        instance: pyblish.api.Instance,
+        ayon_uri: str
+    ) -> bool:
         uri_data = parse_ayon_entity_uri(ayon_uri)
         if not uri_data:
             return False
@@ -852,17 +933,60 @@ class ExtractUSDLayerContribution(publish.Extractor):
         # Check if project, asset and product match
         if instance.data["projectEntity"]["name"] != uri_data.get("project"):
             return False
-
         if instance.data["folderPath"] != uri_data.get("folderPath"):
             return False
-
         if instance.data["productName"] != uri_data.get("product"):
             return False
-
         return True
+
+    def _resolve_contribution_path(self, contribution: _BaseContribution) -> str:
+        """Return contribution asset path/identifier for authoring.
+
+        - Instance-sourced contributions resolve through existing AYON URI or
+          expected published path.
+        - String-sourced contributions are passed through as-is.
+        """
+        source = contribution.source
+        if isinstance(source, str):
+            return source
+        elif isinstance(source, pyblish.api.Instance):
+            return get_instance_uri_path(
+                source,
+                resolve=not self.use_ayon_entity_uri
+            )
+        raise TypeError(
+            "Unsupported contribution source type: {}".format(type(source))
+        )
+
+    def _contribution_identity_key(self, contribution: _BaseContribution) -> str:
+        """Return a stable key used to identify and replace contributions.
+
+        String sources use their exact value; instance sources use
+        project/folder/product identity to match previous authored entries.
+        """
+        source = contribution.source
+        # TODO: The source filepath may not actually be a good key because
+        #  future publish may be using a different file, so we may need to be
+        #  more explicit about the key from whatever defines the contribution,
+        #  e.g. specifying the contribution `key` on the data class itself.
+        if isinstance(source, str):
+            return f"str::{source}"
+        elif isinstance(source, pyblish.api.Instance):
+            project_name = source.data["projectEntity"]["name"]
+            folder_path = source.data["folderPath"]
+            product_name = source.data["productName"]
+            return f"instance::{project_name}::{folder_path}::{product_name}"
+        raise TypeError(
+            "Unsupported contribution source type: {}".format(type(source))
+        )
 
 
 class ExtractUSDAssetContribution(publish.Extractor):
+    """Creates a usdAsset or usdShot.
+
+    From the `source_instances` representing the department layers this will
+    build up a USD file sublayering the department layers.
+    """
 
     families = ["usdAsset"]
     label = "Extract USD Asset/Shot Contributions"
@@ -926,7 +1050,9 @@ class ExtractUSDAssetContribution(publish.Extractor):
                     fps, asset_layer.framesPerSecond
                 )
 
-        target_layer = payload_layer if payload_layer else asset_layer
+        target_layer: "Sdf.Layer" = (
+            payload_layer if payload_layer else asset_layer
+        )
 
         # Get unique layer instances (remove duplicate entries)
         processed_ids = set()
@@ -938,13 +1064,12 @@ class ExtractUSDAssetContribution(publish.Extractor):
             processed_ids.add(layer_inst.id)
 
         # Insert the layer in contributions order
-        def sort_by_order(instance):
-            return instance.data["usd_layer_order"]
+        def sort_by_order(instance_: pyblish.api.Instance) -> int:
+            return instance_.data["usd_layer_order"]
 
         for layer_instance in sorted(layer_instances,
                                      key=sort_by_order,
                                      reverse=True):
-
             layer_id = layer_instance.data["usd_layer_id"]
             order = layer_instance.data["usd_layer_order"]
 
