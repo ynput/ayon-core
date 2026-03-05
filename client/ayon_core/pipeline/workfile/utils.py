@@ -228,8 +228,11 @@ def get_last_published_workfile_representation(
             latest=True,
             standard=True,
             fields={"id", "author", "version", "taskId"},
-        )
+        ),
+        None,
     )
+    if latest_version is None:
+        return None
 
     repre_entities = list(
         ayon_api.get_representations(
