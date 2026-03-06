@@ -24,6 +24,8 @@ from ayon_core.lib.env_tools import (
 )
 
 
+log = Logger.get_logger("CLI")
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.option(
@@ -332,10 +334,10 @@ def main(*args, **kwargs):
             sys.path.insert(0, path)
     os.environ["PYTHONPATH"] = os.pathsep.join(split_paths)
 
-    print(">>> loading environments ...")
-    print("  - global AYON ...")
+    log.info("loading environments ...")
+    log.debug("[yellow]- global AYON ...[/yellow]")
     _set_global_environments()
-    print("  - for addons ...")
+    log.debug("[yellow]- for addons ...[/yellow]")
     addons_manager = AddonsManager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
@@ -350,6 +352,6 @@ def main(*args, **kwargs):
         )
     except Exception:  # noqa
         exc_info = sys.exc_info()
-        print("!!! AYON crashed:")
-        traceback.print_exception(*exc_info)
+        log.critical("AYON crashed:", exc_info=exc_info)
+        # traceback.print_exception(*exc_info)
         sys.exit(1)
