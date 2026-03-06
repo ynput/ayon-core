@@ -708,6 +708,8 @@ class ExtractBurnin(publish.Extractor):
         """
         # Add representation name to burnin data
         burnin_data["representation"] = repre["name"]
+        burnin_data["colorspace"] = repre.get(
+            "colorspaceData", {}).get("colorspace")
 
         # no handles switch from profile tags
         if "no-handles" in repre["tags"]:
