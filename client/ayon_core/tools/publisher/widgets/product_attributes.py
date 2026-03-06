@@ -163,6 +163,13 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values, True)
 
             widget.value_changed.connect(self._input_value_changed)
+            widget.toggled.connect(
+                lambda value: _input_toggled(
+                    value,
+                    controller=self._controller,
+                    attr_def_info_by_id=self._attr_def_info_by_id,
+                )
+            )
             widget.revert_to_default_requested.connect(
                 self._on_request_revert_to_default
             )
@@ -409,9 +416,13 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     )
                     row += 1
 
-                if not attr_def.is_value_def:
-                    continue
-
+                widget.toggled.connect(
+                    lambda value: _input_toggled(
+                        value,
+                        controller=self._controller,
+                        attr_def_info_by_id=self._attr_def_info_by_id,
+                    )
+                )
                 widget.value_changed.connect(self._input_value_changed)
                 widget.revert_to_default_requested.connect(
                     self._on_request_revert_to_default
@@ -425,15 +436,19 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     plugin_values.get(attr_def.key, [])
                 ):
                     instance_ids.append(instance_id)
-                    values.append(value)
                     if not is_overriden and value != default_value:
                         is_overriden = True
                     # 'set' cannot be used for default values because they can
                     #    be unhashable types, e.g. 'list'.
-                    if default_value not in default_values:
-                        default_values.append(default_value)
-
-                multivalue = len(values) > 1
+                    if attr_def.is_value_def:
+                        values.append(value)
+                        if default_value not in default_values:
+                            default_values.append(default_value)
+                        multivalue = len(values) > 1
+                        if multivalue:
+                            widget.set_value(values, multivalue)
+                        else:
+                            widget.set_value(values[0])
 
                 self._attr_def_info_by_id[attr_def.id] = _PublishAttrDefInfo(
                     attr_def,
@@ -442,11 +457,6 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     default_values,
                     label_widget,
                 )
-
-                if multivalue:
-                    widget.set_value(values, multivalue)
-                else:
-                    widget.set_value(values[0])
 
                 if label_widget is not None:
                     label_widget.set_overridden(is_overriden)
@@ -502,3 +512,69 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             ):
                 self._refresh_content()
                 break
+
+
+def _input_toggled(
+    attr_def: AbstractAttrDef,
+    controller: AbstractPublisherFrontend,
+    attr_def_info_by_id: Dict[
+        str, "Union[_CreateAttrDefInfo, _PublishAttrDefInfo]"
+    ],
+) -> None:
+    """
+    This method will run the toggle_callback method on the attr_def passed
+    into it. toggle_callback should return a dictionary, this dictionary
+    gets used to update the instance.data where the instance is the
+    CreatedInstance that the attr_def is attached to.
+
+    Args:
+        attr_def: The AbstractAttrDef that created the widget that has been
+        toggled
+    """
+
+    attr_id = attr_def.id
+    attr_def_info = attr_def_info_by_id.get(attr_id)
+    if attr_def_info is None:
+        return
+    instance_data = next(
+        iter(
+            controller.get_instance_data_copy_by_ids(
+                attr_def_info.instance_ids
+            ).values()
+        ),
+        None,
+    )
+    if not instance_data:
+        raise RuntimeError(
+            "Unable to get data from instance, no instances"
+            f" exists with IDs {attr_def_info.instance_ids}"
+            " cannot run toggle callback"
+        )
+    new_data = attr_def.toggle_callback(instance_data)
+    if not new_data:
+        return
+    creator_attributes = new_data.pop("creator_attributes", None)
+    if creator_attributes:
+        controller.set_instances_create_attr_values_dict(
+            attr_def_info.instance_ids, creator_attributes
+        )
+        controller.emit_event(
+            "create.context.create.attrs.changed",
+            {"instance_ids": attr_def_info.instance_ids},
+        )
+    publish_attributes = new_data.pop("publish_attributes", None)
+    if publish_attributes:
+        controller.set_instances_publish_attr_values_dict(
+            attr_def_info.instance_ids, publish_attributes
+        )
+        event_data = {
+            instance_id: publish_attributes.keys()
+            for instance_id in attr_def_info.instance_ids
+        }
+        controller.emit_event(
+            "create.context.publish.attrs.changed",
+            event_data,
+        )
+
+    update_dict = {inst_id: new_data for inst_id in attr_def_info.instance_ids}
+    controller.set_instances_context_info(update_dict)
