@@ -519,7 +519,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 def _input_toggled(
         attr_def: AbstractAttrDef,
         controller: AbstractPublisherFrontend,
-        attr_def_info_by_id: Dict[str, Union[_CreateAttrDefInfo, _PublishAttrDefInfo]]
+        attr_def_info_by_id: Dict[str, "Union[_CreateAttrDefInfo, _PublishAttrDefInfo]"]
     ) -> None:
     """
     This method will run the toggle_callback method on the attr_def passed
