@@ -374,6 +374,7 @@ class ReviewController(QtCore.QObject):
         if not name:
             return
         project_entity = ayon_api.get_project(name)
+        # print(f"Project entity: {json.dumps(project_entity, indent=4)}")
         if not project_entity:
             return
         self._project_info = dict(project_entity)
@@ -391,11 +392,44 @@ class ReviewController(QtCore.QObject):
                 s["name"]: s for s in project_entity.get("statuses", [])
             },
             "tags": {t["name"]: t for t in project_entity.get("tags", [])},
+            "productTypes": {
+                t["name"]: t
+                for t in project_entity.get("config", {})
+                .get("productBaseTypes", {})
+                .get("definitions", [])
+            }
+            | {
+                "default": (
+                    project_entity.get("config", {})
+                    .get("productBaseTypes", {})
+                    .get("default", {})
+                )
+            },
         }
         self._folder_type_icons = {
             ft["name"]: ft["icon"]
             for ft in project_entity.get("folderTypes", [])
         }
+
+    def _pinfo(self, category: str, name: str, key: str, default=None) -> Any:
+        """Get a project info value by category and key.
+
+        Args:
+            category: One of "folderTypes", "taskTypes", "linkTypes",
+                "statuses", or "tags".
+            key: The name of the item to look up.
+            default: The value to return if the key is not found.
+
+        Returns:
+            The value for the given key in the given category, or the
+            specified default.
+        """
+        return (
+            self._project_info.get("by_name", {})
+            .get(category, {})
+            .get(name, {})
+            .get(key, default)
+        )
 
     def _get_versions_page(
         self,
@@ -459,17 +493,32 @@ class ReviewController(QtCore.QObject):
         )
         status = n.get("status", "")
         by_name = self._project_info.get("by_name", {})
-        status_info = by_name.get("statuses", {}).get(status, {})
         return {
             "thumbnail": "",
             "product/version": (
                 f"{n.get('product', {}).get('name', '')} - {n.get('name', '')}"
             ),
+            "product/version__icon": "layers",
             "status": status,
-            "status__color": status_info.get("color", None),
-            "status__icon": status_info.get("icon", None),
+            "status__color": self._pinfo("statuses", status, "color"),
+            "status__icon": self._pinfo("statuses", status, "icon"),
             "entityType": n.get("entityType", "Version"),
+            "entityType__icon": "layers",
             "productType": n.get("product", {}).get("productType", ""),
+            "productType__icon": (
+                self._pinfo(
+                    "productTypes",
+                    n.get("product", {}).get("productType", ""),
+                    "icon",
+                )
+            ),
+            "productType__color": (
+                self._pinfo(
+                    "productTypes",
+                    n.get("product", {}).get("productType", ""),
+                    "color",
+                )
+            ),
             "folderName": (
                 n.get("product", {}).get("folder", {}).get("name", "")
             ),
