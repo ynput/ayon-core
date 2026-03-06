@@ -166,6 +166,10 @@ class ReviewSlicer(AYContainer):
                 self._controller.on_tree_selection_changed(
                     data.get("id", ""), data.get("name", "")
                 )
+        elif deselected.indexes():
+            # User clicked an already-selected item to deselect it;
+            # clear the folder filter so all versions are shown.
+            self._controller.on_tree_selection_changed("", "")
 
     def current_category(self) -> str:
         """Return the currently selected category name."""
@@ -260,6 +264,7 @@ class ReviewsWidget(AYContainer):
         self._controller.project_changed.connect(
             lambda _: self._table._model.reset_data()
         )
+        self._controller.selection_changed.connect(self._on_folder_selected)
 
         # Set initial project
         initial_project = self._slicer.current_project()
@@ -278,3 +283,13 @@ class ReviewsWidget(AYContainer):
         """Reset the tree model and re-attach it to the slicer."""
         self._model.reset()
         self._slicer.set_model(self._model)
+
+    def _on_folder_selected(self, id: str, name: str) -> None:
+        """Refresh the version table when a folder is selected or cleared.
+
+        Args:
+            id: ID of the selected folder, or empty string when
+                deselected.
+            name: Name of the selected folder.
+        """
+        self._table._model.reset_data()

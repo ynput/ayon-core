@@ -132,6 +132,7 @@ class ReviewController(QtCore.QObject):
         self._review_data: Any = None  # generator or None if not fetched
         self._graphql_has_next_page: bool = False
         self._graphql_after: str = ""
+        self._selected_folder_id: str | None = None
         self.log = logging.getLogger(
             "ayon_core.tools.loader.review_controller"
         )
@@ -174,6 +175,7 @@ class ReviewController(QtCore.QObject):
         self._review_data = None
         self._graphql_after = ""
         self._graphql_has_next_page = False
+        self._selected_folder_id = None
         self._build_project_info()
         self._get_reviews()
         self.project_changed.emit(project_name)
@@ -188,6 +190,9 @@ class ReviewController(QtCore.QObject):
                 ``"Reviews"``.
         """
         self._current_category = category
+        self._selected_folder_id = None
+        self._graphql_after = ""
+        self._graphql_has_next_page = False
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
 
@@ -195,9 +200,13 @@ class ReviewController(QtCore.QObject):
         """Handle a selection change in the tree view.
 
         Args:
-            id: ID of the selected entity.
+            id: ID of the selected entity, or empty string when
+                deselected.
             name: Name of the selected entity.
         """
+        self._selected_folder_id = id if id else None
+        self._graphql_after = ""
+        self._graphql_has_next_page = False
         self.selection_changed.emit(id, name)
 
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
@@ -247,7 +256,7 @@ class ReviewController(QtCore.QObject):
             return []
         edges, page_info = self._get_versions_page(
             self._current_project,
-            None,
+            self._selected_folder_id,
             page_size,
             self._graphql_after,
         )
