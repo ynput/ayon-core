@@ -261,11 +261,11 @@ class LoaderWindow(AYContainer):
 
         self.review_wdgt = ReviewsWidget()
 
-        self.tab = QtWidgets.QTabWidget()
-        self.tab.addTab(main_splitter, "Folders")
-        self.tab.addTab(self.review_wdgt, "Reviews")
+        self._tab = QtWidgets.QTabWidget()
+        self._tab.addTab(main_splitter, " Loader ")
+        self._tab.addTab(self.review_wdgt, " Reviews ")
 
-        self.add_widget(self.tab)
+        self.add_widget(self._tab)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
