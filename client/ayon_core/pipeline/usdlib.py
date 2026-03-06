@@ -1,12 +1,18 @@
+from __future__ import annotations
 import dataclasses
 import os
 import logging
+from typing import Union, TYPE_CHECKING
 
 try:
     from pxr import UsdGeom, Sdf, Kind
 except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
     from mvpxr import UsdGeom, Sdf, Kind
+
+
+if TYPE_CHECKING:
+    import pyblish.api
 
 log = logging.getLogger(__name__)
 
@@ -105,7 +111,7 @@ def setup_asset_layer(
         force_add_payload (bool): Generate payload layer even if no
             reference paths are set - thus generating an enmpty layer.
         set_payload_path (bool): Whether to directly set the payload asset
-            path to `./payload.usd` or not Defaults to True.
+            path to `./payload.usd` or not Defaults to False.
 
     """
     # Define root prim for the asset and make it the default for the stage.
@@ -705,3 +711,44 @@ def get_standard_default_prim_name(folder_path: str) -> str:
         folder_name = f"_{folder_name}"
 
     return folder_name
+
+
+@dataclasses.dataclass
+class BaseContribution:
+    # We contribute either the resulting usd representation of an instance
+    # or an explicit `source` string which represent an asset path or layer
+    # identifier like an AYON entity URI
+    source: Union[pyblish.api.Instance, str]
+
+    # usually the department or task name, something that uniquely identifies
+    # this contribution so that we can swap out an older contribution with a
+    # new one when the same layer_id is used again
+    layer_id: str
+
+    # When sublayering or referencing defines where this contribution should
+    # be ordered compared to other contributions.
+    order: int
+
+
+@dataclasses.dataclass
+class SublayerContribution(BaseContribution):
+    """Sublayer contribution"""
+
+
+@dataclasses.dataclass
+class ReferenceContribution(BaseContribution):
+    """Reference contribution"""
+    target_prim_path: str
+
+    # TODO: Add support to payload instead
+    # reference_mode: Literal["reference", "payload"]
+
+
+@dataclasses.dataclass
+class VariantContribution(ReferenceContribution):
+    """Reference contribution within a Variant Set"""
+
+    # Variant
+    variant_set_name: str
+    variant_name: str
+    variant_is_default: bool  # Whether to author variant selection opinion

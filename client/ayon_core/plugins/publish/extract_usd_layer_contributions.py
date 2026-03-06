@@ -29,7 +29,11 @@ try:
         setup_asset_layer,
         add_ordered_sublayer,
         set_layer_defaults,
-        get_standard_default_prim_name
+        get_standard_default_prim_name,
+        BaseContribution,
+        ReferenceContribution,
+        VariantContribution,
+        SublayerContribution
     )
 except ImportError:
     pass
@@ -49,44 +53,6 @@ from ayon_core.pipeline import publish, KnownPublishError
 # individual publishes instead of requiring to republish each contribution
 # all the time at the same time
 BUILD_INTO_LAST_VERSIONS = True
-
-
-@dataclasses.dataclass
-class _BaseContribution:
-    # We contribute either the resulting usd representation of an instance
-    # or an explicit `source` string which represent an asset path or layer
-    # identifier like an AYON entity URI
-    source: Union[pyblish.api.Instance, str]
-
-    # Where are we contributing to?
-    layer_id: str  # usually the department or task name
-    target_product: str  # target product the layer should merge to
-
-    order: int
-
-
-@dataclasses.dataclass
-class SublayerContribution(_BaseContribution):
-    """Sublayer contribution"""
-
-
-@dataclasses.dataclass
-class ReferenceContribution(_BaseContribution):
-    """Reference contribution"""
-    target_prim_path: str
-
-    # TODO: Add support to payload instead
-    # reference_mode: Literal["reference", "payload"]
-
-
-@dataclasses.dataclass
-class VariantContribution(ReferenceContribution):
-    """Reference contribution within a Variant Set"""
-
-    # Variant
-    variant_set_name: str
-    variant_name: str
-    variant_is_default: bool  # Whether to author variant selection opinion
 
 
 def get_representation_path_in_publish_context(
@@ -379,7 +345,6 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution = VariantContribution(
                 source=instance,
                 layer_id=attr_values["contribution_layer"],
-                target_product=attr_values["contribution_target_product"],
                 target_prim_path=target_prim_path,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
@@ -390,18 +355,17 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution = SublayerContribution(
                 source=instance,
                 layer_id=attr_values["contribution_layer"],
-                target_product=attr_values["contribution_target_product"],
                 order=in_layer_order
             )
 
-        asset_product = contribution.target_product
+        asset_product = attr_values["contribution_target_product"]
         layer_product = "{}_{}".format(asset_product, contribution.layer_id)
 
         scope: str = attr_values["contribution_target_product_init"]
         layer_order: int = (
             self.contribution_layers[scope][attr_values["contribution_layer"]]
         )
-        # Layer contribution instance
+        # Department layer contribution instance
         layer_instance = self.get_or_create_instance(
             product_name=layer_product,
             variant=contribution.layer_id,
@@ -434,7 +398,12 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             f"{layer_product} -> {asset_product}"
         )
 
-    def find_instance(self, context, data, ignore_instance):
+    def find_instance(
+        self,
+        context: pyblish.api.Context,
+        data: dict,
+        ignore_instance: pyblish.api.Instance
+    ) -> Optional[pyblish.api.Instance]:
         """Return instance in context that has matching `instance.data`.
 
         If no matching instance is found, then `None` is returned.
@@ -442,10 +411,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         for instance in context:
             if instance is ignore_instance:
                 continue
-
-            if all(instance.data.get(key) == value
-                   for key, value in data.items()):
+            if all(
+                instance.data.get(key) == value for key, value in data.items()
+            ):
                 return instance
+        return None
 
     def get_or_create_instance(self,
                                product_name,
@@ -472,7 +442,6 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             pyblish.api.Instance: The resulting instance.
 
         """
-
         # Potentially the instance already exists due to multiple instances
         # contributing to the same layer or asset - so we first check for
         # existence
@@ -774,7 +743,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
     def add_contributions_to_layer(
         self,
-        contributions: list[_BaseContribution],
+        contributions: list[BaseContribution],
         sdf_layer: Sdf.Layer
     ):
         """Add contributions in the right order to the layer."""
@@ -786,7 +755,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
     def _add_contribution_to_layer(
         self,
-        contribution: _BaseContribution,
+        contribution: BaseContribution,
         sdf_layer: Sdf.Layer
     ):
         """Add a single contribution to the layer."""
@@ -939,7 +908,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
             return False
         return True
 
-    def _resolve_contribution_path(self, contribution: _BaseContribution) -> str:
+    def _resolve_contribution_path(self, contribution: BaseContribution) -> str:
         """Return contribution asset path/identifier for authoring.
 
         - Instance-sourced contributions resolve through existing AYON URI or
@@ -958,7 +927,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
             "Unsupported contribution source type: {}".format(type(source))
         )
 
-    def _contribution_identity_key(self, contribution: _BaseContribution) -> str:
+    def _contribution_identity_key(self, contribution: BaseContribution) -> str:
         """Return a stable key used to identify and replace contributions.
 
         String sources use their exact value; instance sources use
@@ -1001,7 +970,6 @@ class ExtractUSDAssetContribution(publish.Extractor):
         folder_path = instance.data["folderPath"]
         product_name = instance.data["productName"]
         self.log.debug(f"Building asset: {folder_path} > {product_name}")
-        asset_name = get_standard_default_prim_name(folder_path)
 
         # Contribute layers to asset
         # Use existing asset and add to it, or initialize a new asset layer
@@ -1020,6 +988,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
             # the layer as either a default asset or shot structure.
             init_type = instance.data["contribution_target_product_init"]
             self.log.debug("Initializing layer as type: %s", init_type)
+            asset_name = get_standard_default_prim_name(folder_path)
             asset_layer, payload_layer = self.init_layer(
                 asset_name=asset_name, init_type=init_type
             )
@@ -1030,7 +999,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
         if fps is not None:
             if (
                 not asset_layer.HasTimeCodesPerSecond()
-                    and not asset_layer.HasFramesPerSecond()
+                and not asset_layer.HasFramesPerSecond()
             ):
                 # Author FPS on the asset layer since there is no opinion yet
                 self.log.info("Authoring FPS on Asset Layer: %s FPS", fps)
@@ -1055,19 +1024,16 @@ class ExtractUSDAssetContribution(publish.Extractor):
         )
 
         # Get unique layer instances (remove duplicate entries)
-        processed_ids = set()
-        layer_instances = []
-        for layer_inst in instance.data["source_instances"]:
-            if layer_inst.id in processed_ids:
-                continue
-            layer_instances.append(layer_inst)
-            processed_ids.add(layer_inst.id)
+        layer_instances_by_id = {
+            layer_inst.id: layer_inst
+            for layer_inst in instance.data["source_instances"]
+        }
 
         # Insert the layer in contributions order
         def sort_by_order(instance_: pyblish.api.Instance) -> int:
             return instance_.data["usd_layer_order"]
 
-        for layer_instance in sorted(layer_instances,
+        for layer_instance in sorted(layer_instances_by_id.values(),
                                      key=sort_by_order,
                                      reverse=True):
             layer_id = layer_instance.data["usd_layer_id"]
