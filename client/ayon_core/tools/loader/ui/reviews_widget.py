@@ -207,34 +207,60 @@ class ReviewTable(AYContainer):
         self.add_widget(self._table)
 
     def _build_columns(self) -> list[TableColumn]:
+        _style = get_ayon_style_data("AYTableView", "default")
+        font = self._table.font()
+        metrics = QtGui.QFontMetrics(font)
+        h_pad = _style.get("header-padding", [4, 8])[0] * 4
+        indicator_width = _style.get("indicator-width", 16)
+
+        def _w(col_name: str, default: int = 75) -> int:
+            return max(
+                metrics.horizontalAdvance(col_name) + h_pad + indicator_width,
+                default,
+            )
+
         return [
-            TableColumn("thumb", "Thumbnail", width=100),
-            TableColumn("product/version", "Product/Version", width=200),
-            TableColumn("status", "Status", width=100),
-            TableColumn("entityType", "Entity Type", width=100),
-            TableColumn("productType", "Product Type", width=100),
-            TableColumn("folderName", "Folder Name", width=100),
-            TableColumn("author", "Author", width=100),
-            TableColumn("version", "Version", width=100),
-            TableColumn("productName", "Product Name", width=100),
-            TableColumn("taskType", "Task Type", width=100),
-            TableColumn("task", "Task", width=75),
-            TableColumn("tags", "Tags", width=75),
-            TableColumn("createdAt", "Created At", width=110),
-            TableColumn("updatedAt", "Updated At", width=110),
-            TableColumn("fps", "FPS", width=50),
-            TableColumn("width", "Width", width=50),
-            TableColumn("height", "Height", width=50),
-            TableColumn("pixelAspect", "Pixel Aspect", width=75),
-            TableColumn("clipIn", "Clip In", width=100),
-            TableColumn("clipOut", "Clip Out", width=100),
-            TableColumn("frameStart", "Frame Start", width=100),
-            TableColumn("frameEnd", "Frame End", width=100),
-            TableColumn("handleStart", "Handle Start", width=100),
-            TableColumn("handleEnd", "Handle End", width=100),
-            TableColumn("machine", "Machine", width=100),
-            TableColumn("source", "Source", width=100),
-            TableColumn("comment", "Comment", width=100),
+            TableColumn(
+                "thumb", "Thumbnail", width=_w("Thumbnail"), sortable=False
+            ),
+            TableColumn(
+                "product/version",
+                "Product/Version",
+                width=_w("Product/Version", 200),
+            ),
+            TableColumn("status", "Status", width=_w("Status", 120)),
+            TableColumn("entityType", "Entity Type", width=_w("Entity Type")),
+            TableColumn(
+                "productType", "Product Type", width=_w("Product Type")
+            ),
+            TableColumn("folderName", "Folder Name", width=_w("Folder Name")),
+            TableColumn("author", "Author", width=_w("Author")),
+            TableColumn("version", "Version", width=_w("Version")),
+            TableColumn(
+                "productName", "Product Name", width=_w("Product Name", 150)
+            ),
+            TableColumn("taskType", "Task Type", width=_w("Task Type")),
+            TableColumn("task", "Task", width=_w("Task")),
+            TableColumn("tags", "Tags", width=_w("Tags")),
+            TableColumn("createdAt", "Created At", width=_w("Created At")),
+            TableColumn("updatedAt", "Updated At", width=_w("Updated At")),
+            TableColumn("fps", "FPS", width=_w("FPS")),
+            TableColumn("width", "Width", width=_w("Width")),
+            TableColumn("height", "Height", width=_w("Height")),
+            TableColumn(
+                "pixelAspect", "Pixel Aspect", width=_w("Pixel Aspect")
+            ),
+            TableColumn("clipIn", "Clip In", width=_w("Clip In")),
+            TableColumn("clipOut", "Clip Out", width=_w("Clip Out")),
+            TableColumn("frameStart", "Frame Start", width=_w("Frame Start")),
+            TableColumn("frameEnd", "Frame End", width=_w("Frame End")),
+            TableColumn(
+                "handleStart", "Handle Start", width=_w("Handle Start")
+            ),
+            TableColumn("handleEnd", "Handle End", width=_w("Handle End")),
+            TableColumn("machine", "Machine", width=_w("Machine", 100)),
+            TableColumn("source", "Source", width=_w("Source", 100)),
+            TableColumn("comment", "Comment", width=_w("Comment", 100)),
         ]
 
 

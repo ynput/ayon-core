@@ -95,6 +95,24 @@ query GetVersions(
 }
 """
 
+#: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
+#: the AYON versions resolver.  Only direct version fields and version
+#: attrib entries are supported; columns that originate from related
+#: entities (products, folders, tasks) cannot be sorted server-side and
+#: are intentionally absent — clicking them is a no-op.
+COLUMN_TO_SORT_BY: dict[str, str] = {
+    "version": "version",
+    "status": "status",
+    "createdAt": "createdAt",
+    "updatedAt": "updatedAt",
+    "fps": "attrib.fps",
+    "handleStart": "attrib.handleStart",
+    "handleEnd": "attrib.handleEnd",
+    "machine": "attrib.machine",
+    "source": "attrib.source",
+    "comment": "attrib.comment",
+}
+
 
 def timestamp_to_date(timestamp: str) -> str:
     """Convert ISO timestamp string to human-readable date.
@@ -130,8 +148,8 @@ class ReviewController(QtCore.QObject):
         self._project_info: dict[str, Any] = {}
         self._folder_type_icons: dict[str, str] = {}
         self._review_data: Any = None  # generator or None if not fetched
-        self._graphql_has_next_page: bool = False
-        self._graphql_after: str = ""
+        self._graphql_has_more: bool = False
+        self._graphql_cursor: str = ""
         self._selected_folder_id: str | None = None
         self.log = logging.getLogger(
             "ayon_core.tools.loader.review_controller"
@@ -173,8 +191,7 @@ class ReviewController(QtCore.QObject):
         """
         self._current_project = project_name
         self._review_data = None
-        self._graphql_after = ""
-        self._graphql_has_next_page = False
+        self._reset_pagination()
         self._selected_folder_id = None
         self._build_project_info()
         self._get_reviews()
@@ -191,8 +208,7 @@ class ReviewController(QtCore.QObject):
         """
         self._current_category = category
         self._selected_folder_id = None
-        self._graphql_after = ""
-        self._graphql_has_next_page = False
+        self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
 
@@ -205,8 +221,7 @@ class ReviewController(QtCore.QObject):
             name: Name of the selected entity.
         """
         self._selected_folder_id = id if id else None
-        self._graphql_after = ""
-        self._graphql_has_next_page = False
+        self._reset_pagination()
         self.selection_changed.emit(id, name)
 
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
@@ -237,6 +252,12 @@ class ReviewController(QtCore.QObject):
     ) -> list[dict[str, Any]]:
         """Fetch a page of version rows for the table.
 
+        Translates the UI ``sort_key`` column name to a valid GraphQL
+        ``sortBy`` value using :data:`COLUMN_TO_SORT_BY`.  Columns not
+        present in that mapping are unsortable server-side; the call
+        proceeds without a sort parameter so the server falls back to
+        its default ordering (``creation_order``).
+
         Args:
             page_number: Zero-based page index (used to determine
                 whether to reset the cursor).
@@ -254,18 +275,41 @@ class ReviewController(QtCore.QObject):
                 "returning empty page."
             )
             return []
+
+        if page_number == 0:
+            self._reset_pagination()
+
+        sort_by = COLUMN_TO_SORT_BY.get(sort_key) if sort_key else None
+        self.log.debug(
+            "fetch_versions_page: page=%d sort_key=%r sort_by=%r "
+            "descending=%r cursor=%r",
+            page_number,
+            sort_key,
+            sort_by,
+            descending,
+            self._graphql_cursor,
+        )
+
         edges, page_info = self._get_versions_page(
             self._current_project,
             self._selected_folder_id,
             page_size,
-            self._graphql_after,
+            cursor=self._graphql_cursor,
+            sort_by=sort_by,
+            descending=descending,
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
         )
         page = [self._transform_version_edge(e) for e in edges]
-        self._graphql_has_next_page = page_info["hasNextPage"]
-        self._graphql_after = page_info["endCursor"]
+
+        if descending:
+            self._graphql_has_more = page_info["hasPreviousPage"]
+            self._graphql_cursor = page_info["startCursor"]
+        else:
+            self._graphql_has_more = page_info["hasNextPage"]
+            self._graphql_cursor = page_info["endCursor"]
+
         return page
 
     def fetch_projects(self) -> list[dict[str, Any]]:
@@ -291,6 +335,11 @@ class ReviewController(QtCore.QObject):
     # ------------------------------------------------------------------
     # Private methods
     # ------------------------------------------------------------------
+
+    def _reset_pagination(self) -> None:
+        """Reset the GraphQL pagination cursor and has-more flag."""
+        self._graphql_cursor = ""
+        self._graphql_has_more = False
 
     def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for review sessions.
@@ -383,7 +432,6 @@ class ReviewController(QtCore.QObject):
         if not name:
             return
         project_entity = ayon_api.get_project(name)
-        # print(f"Project entity: {json.dumps(project_entity, indent=4)}")
         if not project_entity:
             return
         self._project_info = dict(project_entity)
@@ -445,15 +493,28 @@ class ReviewController(QtCore.QObject):
         project_name: str,
         folder_id: str | None,
         page_size: int,
-        after: str | None = None,
+        cursor: str | None = None,
+        sort_by: str | None = None,
+        descending: bool = False,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
+
+        Sort direction is expressed through the pagination parameters:
+        ascending order uses ``first``/``after``, while descending order
+        uses ``last``/``before``.  This maps directly onto the AYON
+        backend's cursor-based pagination which applies ``DESC`` only
+        when ``last`` is set.
 
         Args:
             project_name: AYON project name.
             folder_id: Filter by folder ID, or ``None`` for all.
             page_size: Maximum number of edges to return.
-            after: GraphQL cursor for pagination.
+            cursor: GraphQL cursor from the previous page, or ``None``
+                for the first page.
+            sort_by: Valid GraphQL ``sortBy`` value, or ``None`` to use
+                the server default (``creation_order``).
+            descending: When ``True`` use ``last``/``before`` pagination
+                to obtain results in descending order.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -470,11 +531,15 @@ class ReviewController(QtCore.QObject):
             "versionFilter": "",
             "productFilter": "",
             "taskFilter": "",
-            "sortBy": "path",
-            "first": page_size,
+            "sortBy": sort_by,
             "folderIds": [folder_id] if folder_id else None,
-            "after": after,
         }
+        if descending:
+            variables["last"] = page_size
+            variables["before"] = cursor or None
+        else:
+            variables["first"] = page_size
+            variables["after"] = cursor or None
         resp = con.query_graphql(GET_VERSIONS_QUERY, variables)
         if resp.errors:
             raise RuntimeError(resp.errors)
@@ -494,14 +559,10 @@ class ReviewController(QtCore.QObject):
         """
         n = edge["node"]
         all_attrib = json.loads(n.get("allAttrib", "{}"))
-        product_attrib = json.loads(
-            n.get("product", {}).get("allAttrib", "{}")
-        )
         product_folder_attrib = json.loads(
             n.get("product", {}).get("folder", {}).get("allAttrib", "{}")
         )
         status = n.get("status", "")
-        by_name = self._project_info.get("by_name", {})
         return {
             "thumbnail": "",
             "product/version": (
