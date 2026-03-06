@@ -11,6 +11,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 from ayon_core.lib import (
     is_oiio_supported,
+    get_default_reviewable_layers,
 )
 from ayon_core.lib.transcoding import (
     MissingRGBAChannelsError,
@@ -100,7 +101,8 @@ class ExtractOIIOTranscode(publish.Extractor):
             # Backward compatibility
             instance.data.get("colorspaceView")
         )
-
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for idx, repre in enumerate(list(repres)):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre, profile):
@@ -228,7 +230,8 @@ class ExtractOIIOTranscode(publish.Extractor):
                             frames=frames,
                             frame_padding=frame_padding,
                             parallel_frames=parallel_frames,
-                            logger=self.log
+                            logger=self.log,
+                            review_layers=review_layers
                         )
                     except MissingRGBAChannelsError as exc:
                         missing_rgba_review_channels = True
