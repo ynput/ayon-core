@@ -865,6 +865,7 @@ class ButtonAttrWidget(_BaseAttrDefWidget):
     """
     A button widget for the publish window
     """
+
     def emit_toggled(self) -> None:
         """
         emits toggled signal

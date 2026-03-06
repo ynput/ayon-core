@@ -262,7 +262,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             attribute definition is linked to. For precreate attribute
             definitions, the return value should just be a dictionary of key,
             attribute definition name, to value, value to set the widget linked
-            to that attribute definition to since an instance will not exist 
+            to that attribute definition to since an instance will not exist
             yet.
         """
         return {}
@@ -1142,16 +1142,17 @@ class ButtonDef(AbstractAttrDef):
     The button will run the callable 'callback' passed into it on
     initialization when pressed.
     """
+
     type = "button"
     type_attributes = ["callback"]
     is_value_def = False
 
     def __init__(
-            self,
-            key: str,
-            text: Optional[str] = "",
-            callback: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
-            **kwargs
+        self,
+        key: str,
+        text: Optional[str] = "",
+        callback: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+        **kwargs,
     ) -> None:
         """
         Initializes a button attribute definition.
@@ -1352,6 +1353,6 @@ for _attr_class in (
     EnumDef,
     BoolDef,
     FileDef,
-    ButtonDef
+    ButtonDef,
 ):
     register_attr_def_class(_attr_class)

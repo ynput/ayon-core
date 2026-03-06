@@ -227,9 +227,8 @@ class PublisherController(
         return self._create_model.get_instance_items_by_id(instance_ids)
 
     def get_instance_data_copy_by_ids(
-            self,
-            instance_ids: list[str]
-        ) -> dict[str: dict[str: Any]]:
+        self, instance_ids: list[str]
+    ) -> dict[str : dict[str:Any]]:
         """
         Gets the instance data relating to the given ids.
         This is a copy of the data and cannot be modified to change the data on
@@ -454,10 +453,8 @@ class PublisherController(
         )
 
     def set_instances_create_attr_values_dict(
-            self,
-            instance_ids: list[str],
-            values: dict[str, Any]
-        ) -> None:
+        self, instance_ids: list[str], values: dict[str, Any]
+    ) -> None:
         """
         Updates the creator attribute values on instances with an id in
         the given instance IDs using the given values dictionary.
@@ -496,10 +493,8 @@ class PublisherController(
         )
 
     def set_instances_publish_attr_values_dict(
-            self,
-            instance_ids: list[str],
-            values: dict[str, dict[str, Any]]
-        ) -> None:
+        self, instance_ids: list[str], values: dict[str, dict[str, Any]]
+    ) -> None:
         """
         Updates the publish attribute values on instances with an ID in
         the given instance IDs using the given values dictionary.
@@ -514,9 +509,7 @@ class PublisherController(
         for plugin_name, plugin_attr_vals in values.items():
             for key, val in plugin_attr_vals.items():
                 self.set_instances_publish_attr_values(
-                    instance_ids,
-                    plugin_name,
-                    key, val
+                    instance_ids, plugin_name, key, val
                 )
 
     def set_instances_publish_attr_values(

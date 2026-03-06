@@ -621,9 +621,7 @@ class CreateModel:
             for instance_id in instance_ids
         }
 
-    def get_instance_data_copy_by_ids(
-            self, instance_ids: List[str]
-    ):
+    def get_instance_data_copy_by_ids(self, instance_ids: List[str]):
         """
         Gets the instance data relating to the given ids.
         This is a copy of the data and cannot be modified to change the data on
@@ -646,7 +644,7 @@ class CreateModel:
         return instance_data_by_id
 
     def get_instance_data_to_store_by_id(
-            self, instance_id: str
+        self, instance_id: str
     ) -> Optional[dict[str, dict[str, Any]]]:
         instance = self._create_context.instances_by_id.get(instance_id)
         if instance is None:

@@ -164,11 +164,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
             widget.value_changed.connect(self._input_value_changed)
             widget.toggled.connect(
-                lambda value:
-                _input_toggled(
+                lambda value: _input_toggled(
                     value,
                     controller=self._controller,
-                    attr_def_info_by_id=self._attr_def_info_by_id
+                    attr_def_info_by_id=self._attr_def_info_by_id,
                 )
             )
             widget.revert_to_default_requested.connect(
@@ -418,11 +417,10 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     row += 1
 
                 widget.toggled.connect(
-                    lambda value:
-                    _input_toggled(
+                    lambda value: _input_toggled(
                         value,
                         controller=self._controller,
-                        attr_def_info_by_id=self._attr_def_info_by_id
+                        attr_def_info_by_id=self._attr_def_info_by_id,
                     )
                 )
                 widget.value_changed.connect(self._input_value_changed)
@@ -517,10 +515,12 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
 
 def _input_toggled(
-        attr_def: AbstractAttrDef,
-        controller: AbstractPublisherFrontend,
-        attr_def_info_by_id: Dict[str, "Union[_CreateAttrDefInfo, _PublishAttrDefInfo]"]
-    ) -> None:
+    attr_def: AbstractAttrDef,
+    controller: AbstractPublisherFrontend,
+    attr_def_info_by_id: Dict[
+        str, "Union[_CreateAttrDefInfo, _PublishAttrDefInfo]"
+    ],
+) -> None:
     """
     This method will run the toggle_callback method on the attr_def passed
     into it. toggle_callback should return a dictionary, this dictionary
@@ -538,21 +538,25 @@ def _input_toggled(
         return
     instance_data = next(
         iter(
-            controller.get_instance_data_copy_by_ids(attr_def_info.instance_ids).values()
-        ), None
+            controller.get_instance_data_copy_by_ids(
+                attr_def_info.instance_ids
+            ).values()
+        ),
+        None,
     )
     if not instance_data:
-        raise RuntimeError("Unable to get data from instance, no instances"
-                           f" exists with IDs {attr_def_info.instance_ids}"
-                           " cannot run toggle callback")
+        raise RuntimeError(
+            "Unable to get data from instance, no instances"
+            f" exists with IDs {attr_def_info.instance_ids}"
+            " cannot run toggle callback"
+        )
     new_data = attr_def.toggle_callback(instance_data)
     if not new_data:
         return
     creator_attributes = new_data.pop("creator_attributes", None)
     if creator_attributes:
         controller.set_instances_create_attr_values_dict(
-            attr_def_info.instance_ids,
-            creator_attributes
+            attr_def_info.instance_ids, creator_attributes
         )
         controller.emit_event(
             "create.context.create.attrs.changed",
@@ -561,18 +565,16 @@ def _input_toggled(
     publish_attributes = new_data.pop("publish_attributes", None)
     if publish_attributes:
         controller.set_instances_publish_attr_values_dict(
-            attr_def_info.instance_ids,
-            publish_attributes
+            attr_def_info.instance_ids, publish_attributes
         )
         event_data = {
             instance_id: publish_attributes.keys()
             for instance_id in attr_def_info.instance_ids
         }
         controller.emit_event(
-                "create.context.publish.attrs.changed",
-                event_data,
-            )
+            "create.context.publish.attrs.changed",
+            event_data,
+        )
 
-    update_dict = {inst_id: new_data
-                for inst_id in attr_def_info.instance_ids}
+    update_dict = {inst_id: new_data for inst_id in attr_def_info.instance_ids}
     controller.set_instances_context_info(update_dict)
