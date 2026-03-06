@@ -857,6 +857,36 @@ class CreateModel:
         #    is not required.
         self._remove_instances_from_context(instance_ids)
 
+    def select_instances_in_host(self, instance_ids: List[str]):
+        """Ask host/creator to select and focus instances in DCC.
+
+        Calls creator-specific hook 'select_in_host' when available.
+
+        Args:
+            instance_ids (List[str]): Instance identifiers to select.
+        """
+        if not instance_ids:
+            return
+        for instance_id in instance_ids:
+            instance = self._get_instance_by_id(instance_id)
+            if instance is None:
+                continue
+            try:
+                creator_identifier = instance.creator_identifier
+                creator = self._creators.get(creator_identifier)
+                if creator is None:
+                    continue
+                # Call optional hook if present on the creator
+                select_hook = getattr(creator, "select_in_host", None)
+                if callable(select_hook):
+                    select_hook(instance)
+            except Exception as e:
+                # Never raise from a UX helper
+                self.log.debug(
+                    "Selection hook failed for instance %s", instance_id, exc_info=True
+                )
+                self.log.error(f"Selection hook failed for instance {instance_id}: {e}")
+
     def set_instances_create_attr_values(self, instance_ids, key, value):
         self._set_instances_create_attr_values(instance_ids, key, value)
 
