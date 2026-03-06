@@ -126,6 +126,7 @@ class ReviewSlicer(AYContainer):
             layout_spacing=4,
             **kwargs,
         )
+        self.setMinimumWidth(250)
         self._controller = controller
         self._selector = ProjectSelector(controller)
         self.add_widget(self._selector, stretch=0)
@@ -276,7 +277,7 @@ class ReviewsWidget(AYContainer):
         main_splitter.addWidget(self._slicer)
         main_splitter.addWidget(self._table)
         main_splitter.setStretchFactor(0, 1)
-        main_splitter.setStretchFactor(1, 8)
+        main_splitter.setStretchFactor(1, 6)
         self.add_widget(main_splitter)
 
     def _on_tree_reset(self) -> None:
