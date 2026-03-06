@@ -704,15 +704,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
-            # Use last frame for minimum padding
-            #   - that should cover both 'udim' and 'frame' minimum padding
-            destination_padding = len(str(destination_indexes[-1]))
-            if not is_udim:
-                # Change padding for frames if template has defined higher
-                #   padding.
-                template_padding = anatomy.templates_obj.frame_padding
-                if template_padding > destination_padding:
-                    destination_padding = template_padding
+
+            if is_udim:
+                # UDIM should at be four digits
+                destination_padding: int = 4
+            else:
+                # Change padding for frames to match anatomy template
+                destination_padding: int = anatomy.templates_obj.frame_padding
 
                 # If the representation has `frameStart` set it renumbers the
                 # frame indices of the published collection. It will start from
