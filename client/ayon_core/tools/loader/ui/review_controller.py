@@ -146,7 +146,6 @@ class ReviewController(QtCore.QObject):
         self._current_project: str = ""
         self._current_category: str = "Hierarchy"
         self._project_info: dict[str, Any] = {}
-        self._folder_type_icons: dict[str, str] = {}
         self._review_data: Any = None  # generator or None if not fetched
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
@@ -173,11 +172,6 @@ class ReviewController(QtCore.QObject):
     def project_info(self) -> dict[str, Any]:
         """Return project metadata dict."""
         return self._project_info
-
-    @property
-    def folder_type_icons(self) -> dict[str, str]:
-        """Return mapping of folder type name to icon name."""
-        return self._folder_type_icons
 
     # ------------------------------------------------------------------
     # Public methods
@@ -237,8 +231,6 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of :class:`TreeNode` instances.
         """
-        if not self._folder_type_icons:
-            self._build_project_info()
         if self._current_category == "Hierarchy":
             return self._fetch_products(parent_id)
         return self._fetch_reviews(parent_id)
@@ -399,13 +391,14 @@ class ReviewController(QtCore.QObject):
                 "hasTasks",
             },
         )
-        type_icons = self._folder_type_icons
         return [
             TreeNode(
                 id=f["id"],
                 label=f.get("label") or f["name"],
                 has_children=f.get("hasChildren", False),
-                icon=type_icons.get(f.get("folderType", ""), "folder"),
+                icon=self._pinfo(
+                    "folderTypes", f.get("folderType", ""), "icon", "folder"
+                ),
                 data=f,
             )
             for f in folders
@@ -421,8 +414,7 @@ class ReviewController(QtCore.QObject):
     def _build_project_info(self, project_name: str | None = None) -> None:
         """Populate project info and folder type icon mapping.
 
-        Sets :attr:`_project_info` and :attr:`_folder_type_icons`
-        in place.
+        Sets :attr:`_project_info` in place.
 
         Args:
             project_name: Override for the project to query. Defaults
@@ -463,10 +455,6 @@ class ReviewController(QtCore.QObject):
                 )
             },
         }
-        self._folder_type_icons = {
-            ft["name"]: ft["icon"]
-            for ft in project_entity.get("folderTypes", [])
-        }
 
     def _pinfo(self, category: str, name: str, key: str, default=None) -> Any:
         """Get a project info value by category and key.
@@ -474,6 +462,7 @@ class ReviewController(QtCore.QObject):
         Args:
             category: One of "folderTypes", "taskTypes", "linkTypes",
                 "statuses", or "tags".
+            name: The name of the entity to look up within the category.
             key: The name of the item to look up.
             default: The value to return if the key is not found.
 
