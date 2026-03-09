@@ -206,8 +206,14 @@ class ReviewTable(AYContainer):
         self._table.setModel(self._model)
         self.add_widget(self._table)
 
+    def on_project_info_changed(self) -> None:
+        """Rebuild columns now that version attributes are available."""
+        self._model.reset_data()
+        self._model.set_columns(
+            self._build_columns(self._controller.current_category)
+        )
+
     def _build_columns(self, category: str) -> list[TableColumn]:
-        # print("Building columns for category:", category)
         _style = get_ayon_style_data("AYTableView", "default")
         font = self._table.font()
         metrics = QtGui.QFontMetrics(font)
@@ -233,25 +239,12 @@ class ReviewTable(AYContainer):
         ]
 
         attributes = [
-            TableColumn("createdAt", "Created At", width=_w("Created At")),
-            TableColumn("updatedAt", "Updated At", width=_w("Updated At")),
-            TableColumn("fps", "FPS", width=_w("FPS")),
-            TableColumn("width", "Width", width=_w("Width")),
-            TableColumn("height", "Height", width=_w("Height")),
             TableColumn(
-                "pixelAspect", "Pixel Aspect", width=_w("Pixel Aspect")
-            ),
-            TableColumn("clipIn", "Clip In", width=_w("Clip In")),
-            TableColumn("clipOut", "Clip Out", width=_w("Clip Out")),
-            TableColumn("frameStart", "Frame Start", width=_w("Frame Start")),
-            TableColumn("frameEnd", "Frame End", width=_w("Frame End")),
-            TableColumn(
-                "handleStart", "Handle Start", width=_w("Handle Start")
-            ),
-            TableColumn("handleEnd", "Handle End", width=_w("Handle End")),
-            TableColumn("machine", "Machine", width=_w("Machine", 100)),
-            TableColumn("source", "Source", width=_w("Source", 100)),
-            TableColumn("comment", "Comment", width=_w("Comment", 100)),
+                name,
+                data.get("title", name),
+                width=_w(data.get("title", name)),
+            )
+            for name, data in self._controller.version_attributes.items()
         ]
 
         hierarchy = [
@@ -329,6 +322,9 @@ class ReviewsWidget(AYContainer):
         # Ensure the table updates when the category changes
         self._controller.category_changed.connect(
             self._table.on_category_changed
+        )
+        self._controller.project_info_changed.connect(
+            self._table.on_project_info_changed
         )
 
         # Set initial project
