@@ -191,6 +191,7 @@ class CreateWidget(QtWidgets.QWidget):
         variant_widget.setToolTip(VARIANT_TOOLTIP)
 
         product_name_input = QtWidgets.QLineEdit(product_variant_widget)
+        product_name_input.setObjectName("CreateProductInput")
         product_name_input.setEnabled(False)
 
         product_variant_layout = QtWidgets.QFormLayout(product_variant_widget)
