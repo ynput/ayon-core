@@ -1188,7 +1188,10 @@ def oiio_color_convert(
     target_colorspace=None,
     target_display=None,
     target_view=None,
-    additional_command_args=None,
+    custom_global_args=None,
+    custom_input_args=None,
+    custom_process_args=None,
+    custom_output_args=None,
     frames: Optional[str] = None,
     frame_padding: Optional[int] = None,
     parallel_frames: bool = False,
@@ -1223,8 +1226,10 @@ def oiio_color_convert(
             'target_colorspace')
         target_view (str): name for target viewer space (ocio valid)
             both 'view' and 'display' must be filled (if 'target_colorspace')
-        additional_command_args (list): arguments for oiiotool (like binary
-            depth for .dpx)
+        custom_global_args (list): Global settings applied before any files are read.
+        custom_input_args (list): Arguments applied directly to the input file upon loading.
+        custom_process_args (list): Operations that modify the image pixels currently in memory.
+        custom_output_args (list): Arguments applied immediately before the file is written to disk.
         frames (Optional[str]): Complex frame range to process. This requires
             input path and output path to use frame token placeholder like
             `#` or `%d`, e.g. file.#.exr
@@ -1262,6 +1267,7 @@ def oiio_color_convert(
     # Prepare subprocess arguments
     oiio_cmd = get_oiio_tool_args(
         "oiiotool",
+        *(custom_global_args or []),
         # Don't add any additional attributes
         "--nosoftwareattrib",
         "--colorconfig", config_path
@@ -1284,10 +1290,12 @@ def oiio_color_convert(
         oiio_cmd.append("--parallel-frames")
 
     oiio_cmd.extend([
+        *(custom_input_args or []),
         input_arg, input_path,
         # Tell oiiotool which channels should be put to top stack
         #   (and output)
-        "--ch", channels_arg
+        "--ch", channels_arg,
+        *(custom_process_args or [])
     ])
 
     # Validate input parameters
@@ -1317,9 +1325,6 @@ def oiio_color_convert(
             "Both source display/view and source_colorspace provided. "
             "Using source display/view pair and ignoring source_colorspace."
         )
-
-    if additional_command_args:
-        oiio_cmd.extend(additional_command_args)
 
     # Handle the different conversion cases
     # Source view and display are known
@@ -1381,7 +1386,10 @@ def oiio_color_convert(
             target_view,
         ])
 
-    oiio_cmd.extend(["-o", output_path])
+    oiio_cmd.extend([
+        *(custom_output_args or []),
+        "-o", output_path
+    ])
 
     logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
     run_subprocess(oiio_cmd, logger=logger)

@@ -494,10 +494,25 @@ def _extract_oiio_transcoding_type():
 
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
-    additional_command_args: list[str] = SettingsField(
+    custom_global_args: list[str] = SettingsField(
         default_factory=list,
-        title="Arguments",
-        description="Additional command line arguments for *oiiotool*."
+        title="Custom Global Arguments",
+        description="Global settings applied before any files are read. Examples: --threads, --colorconfig, --nosoftwareattrib, --info."
+    )
+    custom_input_args: list[str] = SettingsField(
+        default_factory=list,
+        title="Custom Input Arguments",
+        description="Arguments applied directly to the input file upon loading. Examples: -i:ch=R,G,B, --iscolorspace scene_linear, --frames."
+    )
+    custom_process_args: list[str] = SettingsField(
+        default_factory=list,
+        title="Custom Process Arguments",
+        description="Operations that modify the image pixels currently in memory. Examples: --resize, --crop, --ociodisplay, --colorconvert."
+    )
+    custom_output_args: list[str] = SettingsField(
+        default_factory=list,
+        title="Custom Output Arguments",
+        description="Arguments applied immediately before the file is written to disk. Examples: -d uint8, --attrib oiio:ColorSpace sRGB, --compression."
     )
 
 
@@ -683,6 +698,11 @@ class ExtractOIIOPostProcessOutputModel(BaseSettingsModel):
         default_factory=list,
         title="Output arguments",
         description="Arguments passed prior to the -o argument.",
+    )
+    custom_args: OIIOToolArgumentsModel = SettingsField(
+        default_factory=OIIOToolArgumentsModel,
+        title="Custom Arguments",
+        description="Additional custom arguments inserted at various points of OIIOtool command execution.",
     )
     tags: list[str] = SettingsField(
         default_factory=list,
