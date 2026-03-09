@@ -200,13 +200,14 @@ class ReviewTable(AYContainer):
         self._table = AYTableView(self)
         self._model = PaginatedTableModel(
             fetch_page=self._controller.fetch_versions_page,
-            columns=self._build_columns(),
+            columns=self._build_columns(self._controller.current_category),
             page_size=250,
         )
         self._table.setModel(self._model)
         self.add_widget(self._table)
 
-    def _build_columns(self) -> list[TableColumn]:
+    def _build_columns(self, category: str) -> list[TableColumn]:
+        # print("Building columns for category:", category)
         _style = get_ayon_style_data("AYTableView", "default")
         font = self._table.font()
         metrics = QtGui.QFontMetrics(font)
@@ -219,7 +220,7 @@ class ReviewTable(AYContainer):
                 default,
             )
 
-        return [
+        common = [
             TableColumn(
                 "thumb", "Thumbnail", width=_w("Thumbnail"), sortable=False
             ),
@@ -229,19 +230,9 @@ class ReviewTable(AYContainer):
                 width=_w("Product/Version", 200),
             ),
             TableColumn("status", "Status", width=_w("Status", 120)),
-            TableColumn("entityType", "Entity Type", width=_w("Entity Type")),
-            TableColumn(
-                "productType", "Product Type", width=_w("Product Type")
-            ),
-            TableColumn("folderName", "Folder Name", width=_w("Folder Name")),
-            TableColumn("author", "Author", width=_w("Author")),
-            TableColumn("version", "Version", width=_w("Version")),
-            TableColumn(
-                "productName", "Product Name", width=_w("Product Name", 150)
-            ),
-            TableColumn("taskType", "Task Type", width=_w("Task Type")),
-            TableColumn("task", "Task", width=_w("Task")),
-            TableColumn("tags", "Tags", width=_w("Tags")),
+        ]
+
+        attributes = [
             TableColumn("createdAt", "Created At", width=_w("Created At")),
             TableColumn("updatedAt", "Updated At", width=_w("Updated At")),
             TableColumn("fps", "FPS", width=_w("FPS")),
@@ -262,6 +253,49 @@ class ReviewTable(AYContainer):
             TableColumn("source", "Source", width=_w("Source", 100)),
             TableColumn("comment", "Comment", width=_w("Comment", 100)),
         ]
+
+        hierarchy = [
+            TableColumn("entityType", "Entity Type", width=_w("Entity Type")),
+            TableColumn(
+                "productType", "Product Type", width=_w("Product Type")
+            ),
+            TableColumn("folderName", "Folder Name", width=_w("Folder Name")),
+            TableColumn("author", "Author", width=_w("Author")),
+            TableColumn("version", "Version", width=_w("Version")),
+            TableColumn(
+                "productName", "Product Name", width=_w("Product Name", 150)
+            ),
+            TableColumn("taskType", "Task Type", width=_w("Task Type")),
+            TableColumn("task", "Task", width=_w("Task")),
+            TableColumn("tags", "Tags", width=_w("Tags")),
+        ]
+
+        review_sessions = [
+            TableColumn("tags", "Tags", width=_w("Tags")),
+            TableColumn(
+                "productType", "Product Type", width=_w("Product Type")
+            ),
+            TableColumn("taskType", "Task Type", width=_w("Task Type")),
+            TableColumn("entityType", "Entity Type", width=_w("Entity Type")),
+            TableColumn("author", "Author", width=_w("Author")),
+            TableColumn("version", "Version", width=_w("Version")),
+            TableColumn(
+                "productName", "Product Name", width=_w("Product Name", 150)
+            ),
+        ]
+
+        cols = (
+            common + hierarchy + attributes
+            if category == "Hierarchy"
+            else common + review_sessions + attributes
+        )
+
+        return cols
+
+    def on_category_changed(self, category: str) -> None:
+        """Reset the table when the slicer category changes."""
+        self._model.reset_data()
+        self._model.set_columns(self._build_columns(category))
 
 
 class ReviewsWidget(AYContainer):
@@ -292,6 +326,10 @@ class ReviewsWidget(AYContainer):
             lambda _: self._table._model.reset_data()
         )
         self._controller.selection_changed.connect(self._on_folder_selected)
+        # Ensure the table updates when the category changes
+        self._controller.category_changed.connect(
+            self._table.on_category_changed
+        )
 
         # Set initial project
         initial_project = self._slicer.current_project()
