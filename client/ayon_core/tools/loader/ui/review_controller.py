@@ -151,6 +151,7 @@ class ReviewController(QtCore.QObject):
         self._graphql_cursor: str = ""
         self._selected_folder_id: str | None = None
         self._review_session_version_ids: list[str] | None = None
+        self._version_attributes: dict[str, Any] = {}
         self.log = logging.getLogger(
             "ayon_core.tools.loader.review_controller"
         )
@@ -173,6 +174,11 @@ class ReviewController(QtCore.QObject):
     def project_info(self) -> dict[str, Any]:
         """Return project metadata dict."""
         return self._project_info
+
+    @property
+    def version_attributes(self) -> dict[str, Any]:
+        """Return version attributes dict."""
+        return self._version_attributes
 
     # ------------------------------------------------------------------
     # Public methods
@@ -427,11 +433,9 @@ class ReviewController(QtCore.QObject):
     def _get_review_session_list(self) -> None:
         """Refresh review data from the server."""
         project = self._current_project
-        # self.log.info("Getting review sessions for project %s", project)
         self._review_entity_lists = ayon_api.get_entity_lists(
             project_name=project
         )
-        # print(f"Review data:{self._review_data}")
         self.log.debug("Review data generator ready for project %s", project)
 
     def _get_review_session_version_ids(self, session_id: str) -> list[str]:
@@ -450,7 +454,6 @@ class ReviewController(QtCore.QObject):
             project_name=self._current_project, list_ids=[session_id]
         )
         items = next(versions_gen).get("items", []) if versions_gen else []
-        # print(f"Items: {json.dumps(items, indent=2)}")
         return [
             item["entityId"]
             for item in items
@@ -501,6 +504,7 @@ class ReviewController(QtCore.QObject):
                 )
             },
         }
+        self._version_attributes = ayon_api.get_attributes_for_type("version")
 
     def _pinfo(self, category: str, name: str, key: str, default=None) -> Any:
         """Get a project info value by category and key.
@@ -571,7 +575,6 @@ class ReviewController(QtCore.QObject):
             "folderIds": [folder_id] if folder_id else None,
             "versionIds": version_ids if version_ids else None,
         }
-        # print(f"VARIABLES: {json.dumps(variables, indent=2)}")
         if descending:
             variables["last"] = page_size
             variables["before"] = cursor or None
@@ -582,7 +585,6 @@ class ReviewController(QtCore.QObject):
         if resp.errors:
             raise RuntimeError(resp.errors)
         payload = resp.data["data"]
-        # print(f"PAYLOAD: {json.dumps(payload, indent=2)}")
         versions_block = payload["project"]["versions"]
         return versions_block["edges"], versions_block["pageInfo"]
 
