@@ -135,21 +135,22 @@ class ReviewController(QtCore.QObject):
     UI. Emits signals when state changes so that widgets can react.
     """
 
-    project_changed = QtCore.Signal(str)
-    project_info_changed = QtCore.Signal()
-    category_changed = QtCore.Signal(str)
-    tree_reset_requested = QtCore.Signal()
-    selection_changed = QtCore.Signal(str, str)
+    project_changed = QtCore.Signal(str)  # type: ignore
+    project_info_changed = QtCore.Signal()  # type: ignore
+    category_changed = QtCore.Signal(str)  # type: ignore
+    tree_reset_requested = QtCore.Signal()  # type: ignore
+    selection_changed = QtCore.Signal(str, str)  # type: ignore
 
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._current_project: str = ""
         self._current_category: str = "Hierarchy"
         self._project_info: dict[str, Any] = {}
-        self._review_data: Any = None  # generator or None if not fetched
+        self._review_entity_lists: Any = None  # generator or None
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
         self._selected_folder_id: str | None = None
+        self._review_session_version_ids: list[str] | None = None
         self.log = logging.getLogger(
             "ayon_core.tools.loader.review_controller"
         )
@@ -184,11 +185,11 @@ class ReviewController(QtCore.QObject):
             project_name: AYON project name to activate.
         """
         self._current_project = project_name
-        self._review_data = None
+        self._review_entity_lists = None
         self._reset_pagination()
         self._selected_folder_id = None
         self._build_project_info()
-        self._get_reviews()
+        self._get_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
         self.tree_reset_requested.emit()
@@ -202,6 +203,8 @@ class ReviewController(QtCore.QObject):
         """
         self._current_category = category
         self._selected_folder_id = None
+        self._review_session_version_ids = None
+        self._review_entity_lists = None
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
@@ -215,6 +218,13 @@ class ReviewController(QtCore.QObject):
             name: Name of the selected entity.
         """
         self._selected_folder_id = id if id else None
+        self._review_session_version_ids = None  # always clear first
+
+        if self._current_category == "Reviews" and id:
+            self._review_session_version_ids = (
+                self._get_review_session_version_ids(id)
+            )
+
         self._reset_pagination()
         self.selection_changed.emit(id, name)
 
@@ -282,13 +292,24 @@ class ReviewController(QtCore.QObject):
             self._graphql_cursor,
         )
 
+        if self._current_category == "Reviews":
+            folder_id = None
+            version_ids = self._review_session_version_ids  # None = no filter
+            if version_ids is None:
+                # No review session selected yet — show nothing
+                return []
+        else:
+            folder_id = self._selected_folder_id
+            version_ids = None
+
         edges, page_info = self._get_versions_page(
             self._current_project,
-            self._selected_folder_id,
+            folder_id,
             page_size,
             cursor=self._graphql_cursor,
             sort_by=sort_by,
             descending=descending,
+            version_ids=version_ids,
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -344,11 +365,11 @@ class ReviewController(QtCore.QObject):
             List of :class:`TreeNode` instances.
         """
         self.log.debug("Fetching review children for %s", parent_id)
-        if self._review_data is None:
-            self._get_reviews()
+        if self._review_entity_lists is None:
+            self._get_review_session_list()
         if parent_id is None:
             nodes = []
-            for r in self._review_data:
+            for r in self._review_entity_lists:
                 if r.get("entityListType") != "review-session":
                     continue
                 nodes.append(
@@ -360,7 +381,6 @@ class ReviewController(QtCore.QObject):
                         data=r,
                     )
                 )
-            self._review_data = nodes
             return nodes
         return []
 
@@ -404,12 +424,38 @@ class ReviewController(QtCore.QObject):
             for f in folders
         ]
 
-    def _get_reviews(self) -> None:
+    def _get_review_session_list(self) -> None:
         """Refresh review data from the server."""
         project = self._current_project
-        self.log.info("Getting reviews for project %s", project)
-        self._review_data = ayon_api.get_entity_lists(project_name=project)
+        # self.log.info("Getting review sessions for project %s", project)
+        self._review_entity_lists = ayon_api.get_entity_lists(
+            project_name=project
+        )
+        # print(f"Review data:{self._review_data}")
         self.log.debug("Review data generator ready for project %s", project)
+
+    def _get_review_session_version_ids(self, session_id: str) -> list[str]:
+        """Return version IDs contained in the given review session.
+
+        Args:
+            session_id: Entity list ID of the review session.
+
+        Returns:
+            List of version IDs.
+        """
+        con = ayon_api.get_server_api_connection()
+        if not con:
+            return []
+        versions_gen = ayon_api.get_entity_lists(
+            project_name=self._current_project, list_ids=[session_id]
+        )
+        items = next(versions_gen).get("items", []) if versions_gen else []
+        # print(f"Items: {json.dumps(items, indent=2)}")
+        return [
+            item["entityId"]
+            for item in items
+            if item.get("entityType") == "version"
+        ]
 
     def _build_project_info(self, project_name: str | None = None) -> None:
         """Populate project info and folder type icon mapping.
@@ -485,6 +531,7 @@ class ReviewController(QtCore.QObject):
         cursor: str | None = None,
         sort_by: str | None = None,
         descending: bool = False,
+        version_ids: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
 
@@ -522,7 +569,9 @@ class ReviewController(QtCore.QObject):
             "taskFilter": "",
             "sortBy": sort_by,
             "folderIds": [folder_id] if folder_id else None,
+            "versionIds": version_ids if version_ids else None,
         }
+        # print(f"VARIABLES: {json.dumps(variables, indent=2)}")
         if descending:
             variables["last"] = page_size
             variables["before"] = cursor or None
@@ -533,6 +582,7 @@ class ReviewController(QtCore.QObject):
         if resp.errors:
             raise RuntimeError(resp.errors)
         payload = resp.data["data"]
+        # print(f"PAYLOAD: {json.dumps(payload, indent=2)}")
         versions_block = payload["project"]["versions"]
         return versions_block["edges"], versions_block["pageInfo"]
 
