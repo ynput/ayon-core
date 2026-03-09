@@ -93,14 +93,15 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         # Trim the video by re-encoding the relevant part of it to
         # the same codec. This is the only way to ensure a precise
         # output duration.
-        # '-c copy' make FFmpeg rely on key I-frames, not 100% accurate.
+        # '-c copy' makes FFmpeg rely on key I-frames, not 100% accurate.
         # https://video.stackexchange.com/questions/16750/
         ffprobe_data = get_ffprobe_data(input_file_path, self.log)
         video_codec_args = get_ffmpeg_codec_args(ffprobe_data)
         if not video_codec_args:
             self.log.warning(
                 "FFmpeg could not identify the video codec for %s. "
-                "Use '-c copy' which might lead in duration mismatches.",
+                "Falling back to '-c copy' which may lead to"
+                " duration mismatches.",
                 input_file_path,
             )
             video_codec_args = ["-c", "copy"]
