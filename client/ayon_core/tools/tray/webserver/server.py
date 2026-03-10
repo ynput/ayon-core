@@ -154,7 +154,13 @@ class WebServerManager:
             self.log.debug("Stopping Web server")
             self.webserver_thread.is_running = False
             self.webserver_thread.stop()
-
+            if self.webserver_thread.is_alive():
+                self.webserver_thread.join(timeout=10.0)
+                if self.webserver_thread.is_alive():
+                    self.log.warning(
+                        "Web server thread did not stop within timeout; "
+                        "daemon thread will exit with process"
+                    )
         except Exception:
             self.log.warning(
                 "Error has happened during Killing Web server",
@@ -179,6 +185,7 @@ class WebServerThread(threading.Thread):
         self._log = None
 
         super(WebServerThread, self).__init__()
+        self.daemon = True
 
         self.is_running = False
         self.manager = manager
@@ -251,11 +258,17 @@ class WebServerThread(threading.Thread):
                 await task
                 self.log.debug("returned value {}".format(task.result))
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)
 
         self.log.debug("Starting shutdown")
         await self.site.stop()
         self.log.debug("Site stopped")
+        try:
+            shutdown = getattr(self.manager.app, "shutdown", None)
+            if callable(shutdown):
+                await shutdown()
+        except Exception:
+            self.log.debug("App shutdown skipped or failed", exc_info=True)
         await self.runner.cleanup()
         self.log.debug("Runner stopped")
         tasks = [

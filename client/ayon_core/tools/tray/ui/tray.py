@@ -1,8 +1,9 @@
 import os
+import signal
 import sys
+import threading
 import time
 import collections
-import atexit
 import platform
 
 import ayon_api
@@ -325,7 +326,15 @@ class TrayManager:
         else:
             self.tray_widget.exit()
 
+    def stop_timers(self):
+        """Stop all TrayManager timers so no callbacks run during shutdown."""
+        if self._main_thread_timer.isActive():
+            self._main_thread_timer.stop()
+        if self._update_check_timer.isActive():
+            self._update_check_timer.stop()
+
     def on_exit(self):
+        self.stop_timers()
         remove_tray_server_url()
         self._addons_manager.on_exit()
 
@@ -648,8 +657,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Add menu to Context of SystemTrayIcon
         self.setContextMenu(self.menu)
 
-        atexit.register(self.exit)
-
         # Catch activate event for left click if not on MacOS
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
@@ -708,27 +715,140 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             self._doubleclick = True
 
     def exit(self):
-        """ Exit whole application.
+        """Exit whole application.
 
-        - Icon won't stay in tray after exit.
+        - If called from a non-main thread, skip Qt and force exit.
+        - On macOS, skip self.hide(): QCocoaSystemTrayIcon::cleanup() synchronously
+          dispatches to the main thread and blocks, deadlocking when the main thread
+          is the caller. The icon disappears when the process exits.
+        - Run blocking cleanup (stop_server, addon tray_exit) in a worker thread so
+          the main thread stays responsive; schedule QCoreApplication.exit() when done.
         """
         if self._exited:
             return
         self._exited = True
+        if threading.current_thread() is not threading.main_thread():
+            os._exit(0)
+        if platform.system() != "Darwin":
+            self.hide()
 
-        self.hide()
-        self._tray_manager.on_exit()
-        QtCore.QCoreApplication.exit()
+        self._tray_manager.stop_timers()
+        remove_tray_server_url()
+
+        def cleanup_then_quit():
+            self._tray_manager._addons_manager.on_exit()
+            QtCore.QTimer.singleShot(0, QtCore.QCoreApplication.exit)
+
+        worker = threading.Thread(target=cleanup_then_quit, daemon=True)
+        worker.start()
+
+
+_shutdown_scheduled = False
+
+# Set to True when macOS applicationShouldTerminate_ returns NSTerminateLater;
+# main() uses this to call replyToApplicationShouldTerminate_(True) after exec_() returns.
+_macos_pending_terminate_reply = False
+
+# Substrings in Qt messages to suppress (e.g. timer-from-wrong-thread during shutdown).
+_QT_SUPPRESS_MESSAGE_SUBSTRINGS = (
+    "another thread",
+    "killTimer",
+    "Timers cannot be stopped",
+)
+
+
+def _qt_message_handler(msg_type, context, message):
+    """Suppress Qt 'another thread' / killTimer shutdown warnings so they don't surface as errors in Automator."""
+    if message and any(s in message for s in _QT_SUPPRESS_MESSAGE_SUBSTRINGS):
+        return
+    if _qt_default_message_handler is not None:
+        _qt_default_message_handler(msg_type, context, message)
+
+
+_qt_default_message_handler = None
+
+
+def _install_macos_terminate_handler(tray_widget):
+    """On Darwin, install NSApplication delegate to catch Cmd+Q/dock Quit when Qt doesn't."""
+    global _macos_pending_terminate_reply
+    if platform.system() != "Darwin":
+        return
+    try:
+        import AppKit
+        import objc
+        NSApp = AppKit.NSApplication.sharedApplication()
+        # NSTerminateLater = 2
+        NSTerminateLater = 2
+
+        class TerminateDelegate(objc.lookUpClass("NSObject")):
+            def applicationShouldTerminate_(self, sender):
+                global _macos_pending_terminate_reply
+                _macos_pending_terminate_reply = True
+                QtCore.QTimer.singleShot(0, tray_widget.exit)
+                return NSTerminateLater
+
+        delegate = TerminateDelegate.alloc().init()
+        NSApp.setDelegate_(delegate)
+    except Exception:
+        pass
+
+
+class _AppQuitEventFilter(QtCore.QObject):
+    """Catch application-level Close and Quit (e.g. dock Quit / Cmd+Q on macOS)."""
+
+    def __init__(self, tray_widget, app, main_window=None):
+        super(_AppQuitEventFilter, self).__init__()
+        self._tray_widget = tray_widget
+        self._app = app
+        self._main_window = main_window
+
+    def eventFilter(self, obj, event):
+        # On macOS, Cmd+Q posts QEvent.Quit to the app, not Close.
+        if event.type() == QtCore.QEvent.Quit and obj is self._app:
+            self._tray_widget.exit()
+            return super(_AppQuitEventFilter, self).eventFilter(obj, event)
+        if event.type() != QtCore.QEvent.Close:
+            return super(_AppQuitEventFilter, self).eventFilter(obj, event)
+        if obj is self._app:
+            self._tray_widget.exit()
+            return super(_AppQuitEventFilter, self).eventFilter(obj, event)
+        # On macOS, dock Quit / Cmd+Q can deliver Close to the tray's parent window.
+        if self._main_window is not None and obj is self._main_window:
+            self._tray_widget.exit()
+        return super(_AppQuitEventFilter, self).eventFilter(obj, event)
+
+
+def _make_signal_exit_handler(tray_widget):
+    def _handler(*args):
+        global _shutdown_scheduled
+        if _shutdown_scheduled:
+            return
+        _shutdown_scheduled = True
+        QtCore.QTimer.singleShot(0, tray_widget.exit)
+    return _handler
 
 
 class TrayStarter(QtCore.QObject):
     def __init__(self, app):
+        super(TrayStarter, self).__init__(None)
         app.setQuitOnLastWindowClosed(False)
         self._app = app
         self._splash = None
 
         main_window = QtWidgets.QMainWindow()
         tray_widget = SystemTrayIcon(main_window)
+
+        app.aboutToQuit.connect(tray_widget.exit)
+        self._quit_event_filter = _AppQuitEventFilter(
+            tray_widget, app, main_window=main_window
+        )
+        app.installEventFilter(self._quit_event_filter)
+        _install_macos_terminate_handler(tray_widget)
+
+        if os.name != "nt":
+            handler = _make_signal_exit_handler(tray_widget)
+            signal.signal(signal.SIGTERM, handler)
+            signal.signal(signal.SIGINT, handler)
 
         start_timer = QtCore.QTimer()
         start_timer.setInterval(100)
@@ -785,6 +905,14 @@ class TrayStarter(QtCore.QObject):
 def main():
     app = get_ayon_qt_app()
 
+    global _qt_default_message_handler
+    _install = getattr(QtCore, "qInstallMessageHandler", None)
+    if _install is not None:
+        try:
+            _qt_default_message_handler = _install(_qt_message_handler)
+        except Exception:
+            _qt_default_message_handler = None
+
     starter = TrayStarter(app)  # noqa F841
 
     if not is_running_from_build() and os.name == "nt":
@@ -793,4 +921,21 @@ def main():
             u"ayon_tray"
         )
 
-    sys.exit(app.exec_())
+    exit_code = app.exec_()
+    if platform.system() == "Darwin":
+        if _macos_pending_terminate_reply:
+            try:
+                import AppKit
+                AppKit.NSApplication.sharedApplication().replyToApplicationShouldTerminate_(True)
+            except Exception:
+                pass
+        log = Logger.get_logger("TrayMain")
+
+        def _macos_force_exit():
+            time.sleep(5)
+            log.warning("macOS exit timeout; forcing process exit")
+            os._exit(exit_code)
+
+        t = threading.Thread(target=_macos_force_exit, daemon=True)
+        t.start()
+    sys.exit(exit_code)
