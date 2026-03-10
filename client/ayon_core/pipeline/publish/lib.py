@@ -230,14 +230,17 @@ def get_publish_template_name(
 
 def get_template_name_from_instance(
     instance: CreatedInstance,
+    mapped_product_base_type: Optional[dict[str, str]] = None,
     logger: Optional[logging.Logger] = None,
 ):
     """Return anatomy template name to use for integration of instance.
     
     Args:
         instance (CreatedInstance): Instance object.
-        logger (logging.Logger): Custom logger used for 'filter_profiles'
-            function.
+        mapped_product_base_type (dict[str, str] or None): Mapping of
+            product base types. 
+        logger (logging.Logger or none): Custom logger used for 
+            'filter_profiles' function.
             
     Returns:
         str: Template name which should be used for integration.
@@ -250,14 +253,21 @@ def get_template_name_from_instance(
 
     # Task can be optional in anatomy data
     host_name = context.data["hostName"]
-    product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = instance.data["productType"]
+    if mapped_product_base_types:
+        product_base_type = (
+            mapped_product_base_type.get(product_base_type)
+            or product_base_type
+        )
     anatomy_data = instance.data["anatomyData"]
     task_info = anatomy_data.get("task") or {}
 
     return get_publish_template_name(
-        project_name,
-        host_name,
-        product_type,
+        project_name=project_name,
+        host_name=host_name,
+        product_base_type=product_type,
         task_name=task_info.get("name"),
         task_type=task_info.get("type"),
         project_settings=context.data["project_settings"],
@@ -937,7 +947,9 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    template_name = get_template_name_from_instance(workfile_instance, log)
+    template_name = get_template_name_from_instance(
+        workfile_instance, logger=log
+    )
     template = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
