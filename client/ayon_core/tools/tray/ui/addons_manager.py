@@ -222,7 +222,6 @@ class TrayAddonsManager(AddonsManager):
 
     def on_exit(self):
         self._webserver_manager.stop_server()
-        _TRAY_EXIT_TIMEOUT = 8.0
         for addon in self.get_enabled_tray_addons():
             if not addon.tray_initialized:
                 continue

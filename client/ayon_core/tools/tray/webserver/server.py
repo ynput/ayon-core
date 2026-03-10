@@ -154,6 +154,12 @@ class WebServerManager:
             self.log.debug("Stopping Web server")
             self.webserver_thread.is_running = False
             self.webserver_thread.stop()
+        except Exception:
+            self.log.warning(
+                "Error has happened during Killing Web server",
+                exc_info=True
+            )
+        finally:
             if self.webserver_thread.is_alive():
                 self.webserver_thread.join(timeout=10.0)
                 if self.webserver_thread.is_alive():
@@ -161,11 +167,6 @@ class WebServerManager:
                         "Web server thread did not stop within timeout; "
                         "daemon thread will exit with process"
                     )
-        except Exception:
-            self.log.warning(
-                "Error has happened during Killing Web server",
-                exc_info=True
-            )
 
     @property
     def is_running(self) -> bool:
