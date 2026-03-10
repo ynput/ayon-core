@@ -31,7 +31,7 @@ from ayon_core.lib import (
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import get_staging_dir_info
+from ayon_core.pipeline import get_staging_dir_info, CreatedInstance
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.lib.file_transaction import copyfile
 from .constants import (
@@ -226,6 +226,43 @@ def get_publish_template_name(
     if profile:
         template = profile["template_name"]
     return template or default_template
+
+
+def get_template_name_from_instance(
+    instance: CreatedInstance,
+    logger: Optional[logging.Logger] = None,
+):
+    """Return anatomy template name to use for integration of instance.
+    
+    Args:
+        instance (CreatedInstance): Instance object.
+        logger (logging.Logger): Custom logger used for 'filter_profiles'
+            function.
+            
+    Returns:
+        str: Template name which should be used for integration.
+        
+    """
+
+    # Anatomy data is pre-filled by Collectors
+    context = instance.context
+    project_name = context.data["projectName"]
+
+    # Task can be optional in anatomy data
+    host_name = context.data["hostName"]
+    product_type = instance.data["productType"]
+    anatomy_data = instance.data["anatomyData"]
+    task_info = anatomy_data.get("task") or {}
+
+    return get_publish_template_name(
+        project_name,
+        host_name,
+        product_type,
+        task_name=task_info.get("name"),
+        task_type=task_info.get("type"),
+        project_settings=context.data["project_settings"],
+        logger=logger
+    )
 
 
 class HelpContent:
@@ -900,26 +937,7 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    project_name = anatomy.project_name
-    task_name = task_type = None
-    task_entity = instance.data.get("taskEntity")
-    if task_entity:
-        task_name = task_entity["name"]
-        task_type = task_entity["taskType"]
-
-    project_settings = instance.context.data["project_settings"]
-    product_base_type = workfile_instance.data.get("productBaseType")
-    if not product_base_type:
-        product_base_type = workfile_instance.data["productType"]
-
-    template_name = get_publish_template_name(
-        project_name=project_name,
-        host_name=instance.context.data["hostName"],
-        product_base_type=product_base_type,
-        task_name=task_name,
-        task_type=task_type,
-        project_settings=project_settings,
-    )
+    template_name = get_template_name_from_instance(workfile_instance, log)
     template = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
@@ -1092,25 +1110,8 @@ def get_instance_expected_output_path(
     })
 
     # Get instance publish template name
-    task_name = task_type = None
-    task_entity = instance.data.get("taskEntity")
-    if task_entity:
-        task_name = task_entity["name"]
-        task_type = task_entity["taskType"]
-
-    product_base_type = instance.data.get("productBaseType")
-    if not product_base_type:
-        product_base_type = instance.data["productType"]
-
-    template_name = get_publish_template_name(
-        project_name=instance.context.data["projectName"],
-        host_name=instance.context.data["hostName"],
-        product_base_type=product_base_type,
-        task_name=task_name,
-        task_type=task_type,
-        project_settings=instance.context.data["project_settings"],
-    )
-
+    template_name = get_template_name_from_instance(instance)
+    
     path_template_obj = anatomy.get_template_item(
         "publish",
         template_name
