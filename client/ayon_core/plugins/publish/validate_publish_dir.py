@@ -2,7 +2,7 @@ import pyblish.api
 from ayon_core.pipeline.publish import ValidateContentsOrder
 from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
-    get_publish_template_name_from_instance,
+    get_template_name_from_instance,
 )
 
 
