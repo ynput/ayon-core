@@ -1,8 +1,6 @@
 import os
 import signal
-import signal
 import sys
-import threading
 import threading
 import time
 import collections
