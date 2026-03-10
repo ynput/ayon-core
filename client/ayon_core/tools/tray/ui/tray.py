@@ -48,6 +48,12 @@ from .dialogs import (
     UpdateDialog,
 )
 
+_shutdown_scheduled = False
+
+# Set to True when macOS applicationShouldTerminate_ returns NSTerminateLater;
+# main() uses this to call replyToApplicationShouldTerminate_(True) after exec_() returns.
+_macos_pending_terminate_reply = False
+
 
 class TrayManager:
     """Cares about context of application.
@@ -332,11 +338,6 @@ class TrayManager:
             self._main_thread_timer.stop()
         if self._update_check_timer.isActive():
             self._update_check_timer.stop()
-
-    def on_exit(self):
-        self.stop_timers()
-        remove_tray_server_url()
-        self._addons_manager.on_exit()
 
     def execute_in_main_thread(self, callback, *args, **kwargs):
         if isinstance(callback, WrappedCallbackItem):
@@ -743,31 +744,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         worker.start()
 
 
-_shutdown_scheduled = False
-
-# Set to True when macOS applicationShouldTerminate_ returns NSTerminateLater;
-# main() uses this to call replyToApplicationShouldTerminate_(True) after exec_() returns.
-_macos_pending_terminate_reply = False
-
-# Substrings in Qt messages to suppress (e.g. timer-from-wrong-thread during shutdown).
-_QT_SUPPRESS_MESSAGE_SUBSTRINGS = (
-    "another thread",
-    "killTimer",
-    "Timers cannot be stopped",
-)
-
-
-def _qt_message_handler(msg_type, context, message):
-    """Suppress Qt 'another thread' / killTimer shutdown warnings so they don't surface as errors in Automator."""
-    if message and any(s in message for s in _QT_SUPPRESS_MESSAGE_SUBSTRINGS):
-        return
-    if _qt_default_message_handler is not None:
-        _qt_default_message_handler(msg_type, context, message)
-
-
-_qt_default_message_handler = None
-
-
 def _install_macos_terminate_handler(tray_widget):
     """On Darwin, install NSApplication delegate to catch Cmd+Q/dock Quit when Qt doesn't."""
     global _macos_pending_terminate_reply
@@ -904,14 +880,6 @@ class TrayStarter(QtCore.QObject):
 
 def main():
     app = get_ayon_qt_app()
-
-    global _qt_default_message_handler
-    _install = getattr(QtCore, "qInstallMessageHandler", None)
-    if _install is not None:
-        try:
-            _qt_default_message_handler = _install(_qt_message_handler)
-        except Exception:
-            _qt_default_message_handler = None
 
     starter = TrayStarter(app)  # noqa F841
 

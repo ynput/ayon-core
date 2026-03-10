@@ -10,6 +10,9 @@ from ayon_core.tools.tray.webserver import (
     WebServerManager,
 )
 
+# Timeout for addon tray_exit to finish
+_TRAY_EXIT_TIMEOUT = 8.0
+
 
 class TrayAddonsManager(AddonsManager):
     # TODO do not use env variable
