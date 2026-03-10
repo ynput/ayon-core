@@ -234,17 +234,17 @@ def get_template_name_from_instance(
     logger: Optional[logging.Logger] = None,
 ):
     """Return anatomy template name to use for integration of instance.
-    
+
     Args:
         instance (CreatedInstance): Instance object.
         mapped_product_base_type (dict[str, str] or None): Mapping of
-            product base types. 
-        logger (logging.Logger or none): Custom logger used for 
+            product base types.
+        logger (logging.Logger or none): Custom logger used for
             'filter_profiles' function.
-            
+
     Returns:
         str: Template name which should be used for integration.
-        
+
     """
 
     # Anatomy data is pre-filled by Collectors
@@ -256,7 +256,7 @@ def get_template_name_from_instance(
     product_base_type = instance.data.get("productBaseType")
     if not product_base_type:
         product_base_type = instance.data["productType"]
-    if mapped_product_base_types:
+    if mapped_product_base_type:
         product_base_type = (
             mapped_product_base_type.get(product_base_type)
             or product_base_type
@@ -267,7 +267,7 @@ def get_template_name_from_instance(
     return get_publish_template_name(
         project_name=project_name,
         host_name=host_name,
-        product_base_type=product_type,
+        product_base_type=product_base_type,
         task_name=task_info.get("name"),
         task_type=task_info.get("type"),
         project_settings=context.data["project_settings"],
@@ -1123,7 +1123,7 @@ def get_instance_expected_output_path(
 
     # Get instance publish template name
     template_name = get_template_name_from_instance(instance)
-    
+
     path_template_obj = anatomy.get_template_item(
         "publish",
         template_name
