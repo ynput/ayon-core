@@ -13,7 +13,7 @@ import pyblish.api
 
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import (
-    get_publish_template_name_from_instance
+    get_template_name_from_instance
 )
 
 
