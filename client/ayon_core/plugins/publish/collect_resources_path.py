@@ -13,7 +13,7 @@ import copy
 
 import pyblish.api
 
-from ayon_core.pipeline.publish import get_template_name_from_instance
+from ayon_core.pipeline.publish import get_template_name_for_instance
 
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
@@ -82,7 +82,7 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
         # TODO remove when all clients have solved this issue
         template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
-        template_name = get_template_name_from_instance(
+        template_name = get_template_name_for_instance(
             instance, logger=self.log
         )
 

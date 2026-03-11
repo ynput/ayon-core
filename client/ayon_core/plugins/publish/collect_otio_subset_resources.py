@@ -13,7 +13,7 @@ import pyblish.api
 
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import (
-    get_template_name_from_instance
+    get_template_name_for_instance
 )
 
 
@@ -50,7 +50,7 @@ class CollectOtioSubsetResources(
         if not instance.data.get("versionData"):
             instance.data["versionData"] = {}
 
-        template_name = get_template_name_from_instance(instance)
+        template_name = get_template_name_for_instance(instance)
         anatomy = instance.context.data["anatomy"]
         publish_path_template = anatomy.get_template_item(
             "publish", template_name, "path"

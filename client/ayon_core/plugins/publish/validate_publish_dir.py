@@ -2,7 +2,7 @@ import pyblish.api
 from ayon_core.pipeline.publish import ValidateContentsOrder
 from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
-    get_template_name_from_instance,
+    get_template_name_for_instance,
 )
 
 
@@ -28,9 +28,18 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        template_name = get_template_name_from_instance(
+        product_base_type = (
+            instance.data.get("productBaseType")
+            or instance.data["productType"]
+        )
+        mapped_product_base_type = (
+            self.product_base_type_mapping.get(product_base_type)
+            or product_base_type
+        )
+
+        template_name = get_template_name_for_instance(
             instance,
-            mapped_product_base_type=self.product_base_type_mapping,
+            product_base_type=mapped_product_base_type,
             logger=self.log,
         )
 

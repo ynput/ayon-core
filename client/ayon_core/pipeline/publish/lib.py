@@ -31,7 +31,7 @@ from ayon_core.lib import (
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import get_staging_dir_info, CreatedInstance
+from ayon_core.pipeline import get_staging_dir_info
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.lib.file_transaction import copyfile
 from .constants import (
@@ -228,17 +228,17 @@ def get_publish_template_name(
     return template or default_template
 
 
-def get_template_name_from_instance(
-    instance: CreatedInstance,
-    mapped_product_base_type: Optional[dict[str, str]] = None,
+def get_template_name_for_instance(
+    instance: pyblish.api.Instance,
+    product_base_type: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
-):
+) -> str:
     """Return anatomy template name to use for integration of instance.
 
     Args:
-        instance (CreatedInstance): Instance object.
-        mapped_product_base_type (dict[str, str] or None): Mapping of
-            product base types.
+        instance (pyblish.api.Instance): Instance object.
+        product_base_type (str or None): Optional override for product
+            base type.
         logger (logging.Logger or none): Custom logger used for
             'filter_profiles' function.
 
@@ -253,23 +253,23 @@ def get_template_name_from_instance(
 
     # Task can be optional in anatomy data
     host_name = context.data["hostName"]
-    product_base_type = instance.data.get("productBaseType")
     if not product_base_type:
-        product_base_type = instance.data["productType"]
-    if mapped_product_base_type:
         product_base_type = (
-            mapped_product_base_type.get(product_base_type)
-            or product_base_type
+            instance.data.get("productBaseType")
+            or instance.data["productType"]
         )
-    anatomy_data = instance.data["anatomyData"]
-    task_info = anatomy_data.get("task") or {}
+    task_name = task_type = None
+    task_entity = instance.data["taskEntity"]
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
 
     return get_publish_template_name(
         project_name=project_name,
         host_name=host_name,
         product_base_type=product_base_type,
-        task_name=task_info.get("name"),
-        task_type=task_info.get("type"),
+        task_name=task_name,
+        task_type=task_type,
         project_settings=context.data["project_settings"],
         logger=logger
     )
@@ -947,7 +947,7 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    template_name = get_template_name_from_instance(
+    template_name = get_template_name_for_instance(
         workfile_instance, logger=log
     )
     template = anatomy.get_template_item("publish", template_name, "path")
@@ -1122,7 +1122,7 @@ def get_instance_expected_output_path(
     })
 
     # Get instance publish template name
-    template_name = get_template_name_from_instance(instance)
+    template_name = get_template_name_for_instance(instance)
 
     path_template_obj = anatomy.get_template_item(
         "publish",

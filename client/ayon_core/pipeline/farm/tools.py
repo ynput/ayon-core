@@ -1,6 +1,6 @@
 import os
 
-from ayon_core.pipeline.publish.lib import get_template_name_from_instance
+from ayon_core.pipeline.publish.lib import get_template_name_for_instance
 
 
 def get_published_workfile_instance(context):
@@ -58,7 +58,7 @@ def from_published_scene(instance, replace_in_path=True):
     template_data["representation"] = rep.get("name")
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
-    template_name = get_template_name_from_instance(instance)
+    template_name = get_template_name_for_instance(instance)
 
     anatomy = instance.context.data['anatomy']
     template_obj = anatomy.get_template_item("publish", template_name, "path")
