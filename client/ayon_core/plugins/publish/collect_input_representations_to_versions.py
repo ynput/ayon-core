@@ -6,6 +6,7 @@ from ayon_core.pipeline.publish.input_versions import (
     version_ids_to_input_versions
 )
 
+
 class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):
     """Converts collected input representations to input versions.
 
