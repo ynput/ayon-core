@@ -43,7 +43,6 @@ def create_link(
     response.raise_for_status()
 
 
-
 class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
     """Connecting version level dependency links
 
