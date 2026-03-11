@@ -131,6 +131,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
                 instance=instance,
             )
             if contribution:
+                self.log.debug(f"Adding contribution: {contribution}")
                 contributions.append(contribution)
 
     def _get_contribution(
