@@ -27,7 +27,7 @@ except ImportError:
     pass
 
 
-def resolve_entity_uri(entity_uri: str) -> str:
+def resolve_entity_uri(entity_uri: str) -> Optional[str]:
     """Resolve AYON entity URI to a filesystem path for local system."""
     response = ayon_api.post(
         "resolve",
@@ -41,7 +41,10 @@ def resolve_entity_uri(entity_uri: str) -> str:
         )
 
     entities = response.data[0]["entities"]
-    if len(entities) != 1:
+    if not entities:
+        return None
+
+    if len(entities) > 1:
         raise RuntimeError(
             f"Unable to resolve AYON entity URI '{entity_uri}' to a "
             f"single filepath. Received data: {response.data}"
@@ -214,8 +217,8 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         if source_type == "source_path":
             source: str = contribution_settings["source_path"]
             return source.format_map(instance.data["anatomyData"])
-        elif source_type == "product":
-            return self._search_product(instance, contribution_settings)
+        elif source_type == "search_product":
+            return self._search_product(contribution_settings, instance)
         else:
             raise ValueError(
                 f"Unknown contribution source type: {source_type}"
@@ -271,7 +274,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         if as_ayon_entity_uri:
             return construct_ayon_entity_uri(
                 project_name=project_name,
-                folder_path=folder_path,
+                folder_path=parent_folder["path"],
                 product=product_name,
                 version=version_name,
                 representation_name=representation_name,
@@ -290,4 +293,6 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         #  which may be helpful when dealing with custom USD resolver.
         if parse_ayon_entity_uri(source):
             source = resolve_entity_uri(source)
+            if not source:
+                return False
         return os.path.isfile(source)
