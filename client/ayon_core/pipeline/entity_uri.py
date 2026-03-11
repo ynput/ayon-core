@@ -80,6 +80,9 @@ def construct_ayon_entity_uri(
             except ValueError:
                 pass
 
+        if isinstance(version, int) and version < 0:
+            version = "hero"
+
         if not isinstance(version, int):
             raise ValueError(
                 "Version must either be integer, 'latest' or 'hero'. "
