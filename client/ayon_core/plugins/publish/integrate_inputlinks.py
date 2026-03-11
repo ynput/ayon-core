@@ -1,5 +1,5 @@
 import collections
-from typing import Any
+from typing import Any, Optional, Union
 import dataclasses
 
 import pyblish.api
@@ -95,11 +95,17 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
 
         self.create_links_on_server(context, new_links_by_type)
 
-    def split_instances(self, context: pyblish.api.Context):
-        """Separates published instances into workfile and other
+    def split_instances(
+        self,
+        context: pyblish.api.Context
+    ) -> tuple[Union[pyblish.api.Instance, None], list[pyblish.api.Instance]]:
+        """Separates published instances into workfile and other.
 
         Returns:
-            (tuple(pyblish.plugin.Instance), list(pyblish.plugin.Instance))
+            tuple[
+                pyblish.plugin.Instance | None,
+                list(pyblish.plugin.Instance)
+            ]: workfile instance and list of other instances
         """
         workfile_instance = None
         other_instances = []
@@ -153,14 +159,15 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
 
     def create_workfile_links(
         self,
-        workfile_instance: pyblish.api.Instance,
+        workfile_instance: Optional[pyblish.api.Instance],
         other_instances: list[pyblish.api.Instance],
         new_links_by_type: LinksByType,
     ):
         """Adds links (generative and reference) for workfile.
 
         Args:
-            workfile_instance (pyblish.plugin.Instance): Published workfile.
+            workfile_instance (Optional[pyblish.plugin.Instance]): Published
+                workfile.
             other_instances (list[pyblish.plugin.Instance]): Other published
                 instances
             new_links_by_type (LinksByType): Dictionary collecting new created
