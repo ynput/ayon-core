@@ -2,17 +2,46 @@ import collections
 from typing import Any, Optional
 
 import pyblish.api
-from ayon_api import (
-    create_link,
-    make_sure_link_type_exists,
-    get_versions_links,
-)
 
+import ayon_api
 from ayon_core.pipeline.publish.input_versions import InputVersion
 
 
 LinkPayload = tuple[str, str, Optional[dict[str, Any]]]
 LinksByType = dict[str, list[LinkPayload]]
+
+
+def create_link(
+    project_name: str,
+    link_type_name: str,
+    input_id: str,
+    input_type: str,
+    output_id: str,
+    output_type: str,
+    data: dict,
+):
+    """Create link in AYON.
+
+    TODO Replace with 'ayon_api.create_link' when AYON launcher >= 1.5.2
+        is required by ayon-core.
+
+    """
+    full_link_type_name = ayon_api.get_full_link_type_name(
+        link_type_name, input_type, output_type)
+
+    kwargs = {
+        "input": input_id,
+        "output": output_id,
+        "linkType": full_link_type_name,
+    }
+    if data:
+        kwargs["data"] = data
+
+    response = ayon_api.post(
+        f"projects/{project_name}/links", **kwargs
+    )
+    response.raise_for_status()
+
 
 
 class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
@@ -189,7 +218,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
         if not entity_ids:
             return output
 
-        existing_in_links = get_versions_links(
+        existing_in_links = ayon_api.get_versions_links(
             project_name, entity_ids, [link_type], "out"
         )
 
@@ -209,7 +238,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
 
         # Make sure link types are available on server
         for link_type in new_links.keys():
-            make_sure_link_type_exists(
+            ayon_api.make_sure_link_type_exists(
                 project_name, link_type, "version", "version"
             )
 
