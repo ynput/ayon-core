@@ -1,10 +1,9 @@
 import copy
 import os
-import dataclasses
 import platform
 from collections import defaultdict
 from operator import attrgetter
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 
 import pyblish.api
 try:
@@ -44,6 +43,9 @@ from ayon_core.pipeline.entity_uri import (
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
 from ayon_core.pipeline import publish, KnownPublishError
+
+if TYPE_CHECKING:
+    import logging
 
 
 # This global toggle is here mostly for debugging purposes and should usually
@@ -389,6 +391,20 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             source_instance=layer_instance,
             families=["usd", "usdAsset"],
         )
+        target_contributions = target_instance.data.setdefault(
+            "usd_contributions", []
+        )
+        if not any(
+            existing_contribution.layer_id == contribution.layer_id
+            for existing_contribution in target_contributions
+        ):
+            target_contributions.append(
+                SublayerContribution(
+                    source=layer_instance,
+                    layer_id=contribution.layer_id,
+                    order=layer_order,
+                )
+            )
         target_instance.data["contribution_target_product_init"] = attr_values[
             "contribution_target_product_init"
         ]
@@ -685,61 +701,16 @@ class ValidateUSDDependencies(pyblish.api.InstancePlugin):
             raise KnownPublishError("USD library 'Sdf' is not available.")
 
 
-class ExtractUSDLayerContribution(publish.Extractor):
-    """Creates the department layer USD file.
-
-    Given `instance.data["usd_contributions"]` populate the department layer
-    with new contributions.
-    """
-
-    families = ["usdLayer"]
-    label = "Extract USD Department Layer Contributions"
-    order = pyblish.api.ExtractorOrder + 0.45
-
-    settings_category = "core"
-
+class USDContributionStackingMixin:
+    # TODO: Move mix-in to pipeline or lib
+    log: "logging.Logger"  # from pyblish plug-ins
     use_ayon_entity_uri = False
-    enforce_default_prim = False
 
-    def process(self, instance):
-
-        folder_path = instance.data["folderPath"]
-        product_name = instance.data["productName"]
-        self.log.debug(f"Building layer: {folder_path} > {product_name}")
-
-        path = get_last_publish(instance)
-        if path and BUILD_INTO_LAST_VERSIONS:
-            sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
-
-            # If enabled in settings, ignore any default prim specified on
-            # older publish versions and always publish with the AYON
-            # standard default prim
-            if self.enforce_default_prim:
-                sdf_layer.defaultPrim = get_standard_default_prim_name(
-                    folder_path
-                )
-        else:
-            default_prim = get_standard_default_prim_name(folder_path)
-            sdf_layer = Sdf.Layer.CreateAnonymous()
-            set_layer_defaults(sdf_layer, default_prim=default_prim)
-
-        self.add_contributions_to_layer(
-            contributions=instance.data.get("usd_contributions", []),
-            sdf_layer=sdf_layer,
-        )
-
-        # Save the file
-        staging_dir = self.staging_dir(instance)
-        filename = f"{instance.name}.usd"
-        filepath = os.path.join(staging_dir, filename)
-        sdf_layer.Export(filepath, args={"format": "usda"})
-
-        add_representation(
-            instance,
-            name="usd",
-            files=filename,
-            staging_dir=staging_dir
-        )
+    def get_instance_contributions(
+        self,
+        instance: pyblish.api.Instance
+    ) -> list[BaseContribution]:
+        return list(instance.data.get("usd_contributions", []))
 
     def add_contributions_to_layer(
         self,
@@ -821,7 +792,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
             add_ordered_sublayer(
                 layer=sdf_layer,
                 contribution_path=path,
-                layer_id=self._contribution_identity_key(contribution),
+                layer_id=contribution.layer_id,
                 order=contribution.order,
                 add_sdf_arguments_metadata=True
             )
@@ -836,9 +807,9 @@ class ExtractUSDLayerContribution(publish.Extractor):
         contribution: ReferenceContribution
     ):
         remove_indices = set()
-        key_to_match = self._contribution_identity_key(contribution)
+        key_to_match = contribution.layer_id
         for index, ref in enumerate(prim_spec.referenceList.prependedItems):
-            key = ref.customData.get("ayon_contribution_key")
+            key = ref.customData.get("AYON_layer_id")
             if key == key_to_match:
                 self.log.debug("Removing existing reference: %s", ref)
                 remove_indices.add(index)
@@ -846,7 +817,11 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
             # Backward-compatible cleanup for older publishes that only
             # authored AYON URI metadata.
-            uri = ref.customData.get("ayon_uri")
+            uri = (
+                ref.customData.get("AYON_uri")
+                # Backwards compatibility
+                or ref.customData.get("ayon_uri")
+            )
             source = contribution.source
             if uri and not isinstance(source, str):
                 if self.instance_match_ayon_uri(source, uri):
@@ -865,7 +840,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
         contribution: ReferenceContribution
     ):
         custom_data = {
-            "ayon_contribution_key": self._contribution_identity_key(
+            "AYON_layer_id": self._contribution_layer_id(
                 contribution
             )
         }
@@ -880,7 +855,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 version=source.data["version"],
                 representation_name="usd"
             )
-            custom_data["ayon_uri"] = uri
+            custom_data["AYON_uri"] = uri
 
         reference = Sdf.Reference(assetPath=filepath, customData=custom_data)
         add_ordered_reference(
@@ -927,34 +902,71 @@ class ExtractUSDLayerContribution(publish.Extractor):
             "Unsupported contribution source type: {}".format(type(source))
         )
 
-    def _contribution_identity_key(self, contribution: BaseContribution) -> str:
-        """Return a stable key used to identify and replace contributions.
 
-        String sources use their exact value; instance sources use
-        project/folder/product identity to match previous authored entries.
-        """
-        source = contribution.source
-        # TODO: The source filepath may not actually be a good key because
-        #  future publish may be using a different file, so we may need to be
-        #  more explicit about the key from whatever defines the contribution,
-        #  e.g. specifying the contribution `key` on the data class itself.
-        if isinstance(source, str):
-            return f"str::{source}"
-        elif isinstance(source, pyblish.api.Instance):
-            project_name = source.data["projectEntity"]["name"]
-            folder_path = source.data["folderPath"]
-            product_name = source.data["productName"]
-            return f"instance::{project_name}::{folder_path}::{product_name}"
-        raise TypeError(
-            "Unsupported contribution source type: {}".format(type(source))
+class ExtractUSDLayerContribution(USDContributionStackingMixin,
+                                  publish.Extractor):
+    """Creates the department layer USD file.
+
+    Given `instance.data["usd_contributions"]` populate the department layer
+    with new contributions.
+    """
+
+    families = ["usdLayer"]
+    label = "Extract USD Department Layer Contributions"
+    order = pyblish.api.ExtractorOrder + 0.45
+
+    settings_category = "core"
+
+    use_ayon_entity_uri = False
+    enforce_default_prim = False
+
+    def process(self, instance):
+
+        folder_path = instance.data["folderPath"]
+        product_name = instance.data["productName"]
+        self.log.debug(f"Building layer: {folder_path} > {product_name}")
+
+        path = get_last_publish(instance)
+        if path and BUILD_INTO_LAST_VERSIONS:
+            sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
+
+            # If enabled in settings, ignore any default prim specified on
+            # older publish versions and always publish with the AYON
+            # standard default prim
+            if self.enforce_default_prim:
+                sdf_layer.defaultPrim = get_standard_default_prim_name(
+                    folder_path
+                )
+        else:
+            default_prim = get_standard_default_prim_name(folder_path)
+            sdf_layer = Sdf.Layer.CreateAnonymous()
+            set_layer_defaults(sdf_layer, default_prim=default_prim)
+
+        self.add_contributions_to_layer(
+            contributions=self.get_instance_contributions(instance),
+            sdf_layer=sdf_layer,
+        )
+
+        # Save the file
+        staging_dir = self.staging_dir(instance)
+        filename = f"{instance.name}.usd"
+        filepath = os.path.join(staging_dir, filename)
+        sdf_layer.Export(filepath, args={"format": "usda"})
+
+        add_representation(
+            instance,
+            name="usd",
+            files=filename,
+            staging_dir=staging_dir
         )
 
 
-class ExtractUSDAssetContribution(publish.Extractor):
+class ExtractUSDAssetContribution(USDContributionStackingMixin,
+                                  publish.Extractor):
     """Creates a usdAsset or usdShot.
 
-    From the `source_instances` representing the department layers this will
-    build up a USD file sublayering the department layers.
+    Given `instance.data["usd_contributions"]` this will build up the
+    target USD file contents.
     """
 
     families = ["usdAsset"]
@@ -1023,32 +1035,10 @@ class ExtractUSDAssetContribution(publish.Extractor):
             payload_layer if payload_layer else asset_layer
         )
 
-        # Get unique layer instances (remove duplicate entries)
-        layer_instances_by_id = {
-            layer_inst.id: layer_inst
-            for layer_inst in instance.data["source_instances"]
-        }
-
-        # Insert the layer in contributions order
-        def sort_by_order(instance_: pyblish.api.Instance) -> int:
-            return instance_.data["usd_layer_order"]
-
-        for layer_instance in sorted(layer_instances_by_id.values(),
-                                     key=sort_by_order,
-                                     reverse=True):
-            layer_id = layer_instance.data["usd_layer_id"]
-            order = layer_instance.data["usd_layer_order"]
-
-            path = get_instance_uri_path(instance=layer_instance,
-                                         resolve=not self.use_ayon_entity_uri)
-            add_ordered_sublayer(target_layer,
-                                 contribution_path=path,
-                                 layer_id=layer_id,
-                                 order=order,
-                                 # Add the sdf argument metadata which allows
-                                 # us to later detect whether another path
-                                 # has the same layer id, so we can replace it.
-                                 add_sdf_arguments_metadata=True)
+        self.add_contributions_to_layer(
+            contributions=self.get_instance_contributions(instance),
+            sdf_layer=target_layer,
+        )
 
         # Save the file
         staging_dir = self.staging_dir(instance)
