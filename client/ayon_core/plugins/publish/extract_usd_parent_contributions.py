@@ -72,7 +72,7 @@ def find_nearest_parent_folder_of_type(
     # Parent paths
     parent_folder_paths = set()
     for i in range(len(parents)):
-        parent = "/".join(parents[:i+1])
+        parent = "/".join(parents[: i + 1])
         parent_folder_paths.add(parent)
 
     # Get all parents,      sorted by depth
@@ -217,7 +217,9 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         elif source_type == "product":
             return self._search_product(instance, contribution_settings)
         else:
-            raise ValueError(f"Unknown contribution source type: {source_type}")
+            raise ValueError(
+                f"Unknown contribution source type: {source_type}"
+            )
 
     def _format_prim_path(
         self,
