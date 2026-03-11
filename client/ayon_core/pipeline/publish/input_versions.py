@@ -5,7 +5,6 @@ from typing import Any, Optional, Iterable, Union
 
 import ayon_api
 
-
 SerializedInputVersion = Union[str, dict[str, Any]]
 
 
