@@ -100,7 +100,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
     """
     # Run late during collecting, because other collectors should not be
     # dependent on this.
-    order = pyblish.api.CollectorOrder + 0.5
+    order = pyblish.api.CollectorOrder + 0.4999
     label = "Collect USD Custom Contributions"
     families = ["usdAsset"]
     enabled = True
