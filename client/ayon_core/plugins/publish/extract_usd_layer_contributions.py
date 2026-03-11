@@ -840,9 +840,7 @@ class USDContributionStackingMixin:
         contribution: ReferenceContribution
     ):
         custom_data = {
-            "AYON_layer_id": self._contribution_layer_id(
-                contribution
-            )
+            "AYON_layer_id": contribution.layer_id
         }
 
         # Backwards compatibility
