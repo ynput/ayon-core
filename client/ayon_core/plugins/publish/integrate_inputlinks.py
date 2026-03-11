@@ -1,5 +1,6 @@
 import collections
-from typing import Any, Optional
+from typing import Any
+import dataclasses
 
 import pyblish.api
 
@@ -7,7 +8,13 @@ import ayon_api
 from ayon_core.pipeline.publish.input_versions import InputVersion
 
 
-LinkPayload = tuple[str, str, Optional[dict[str, Any]]]
+@dataclasses.dataclass
+class LinkPayload:
+    input_id: str
+    output_id: str
+    data: dict[str, Any]
+
+
 LinksByType = dict[str, list[LinkPayload]]
 
 
@@ -56,7 +63,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
     order = pyblish.api.IntegratorOrder + 0.2
     label = "Connect Dependency InputLinks AYON"
 
-    def process(self, context):
+    def process(self, context: pyblish.api.Context):
         """Connect dependency links for all instances, globally
 
         Code steps:
@@ -88,7 +95,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
 
         self.create_links_on_server(context, new_links_by_type)
 
-    def split_instances(self, context):
+    def split_instances(self, context: pyblish.api.Context):
         """Separates published instances into workfile and other
 
         Returns:
@@ -123,7 +130,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
         link_type: str,
         input_id: str,
         output_id: str,
-        data: Optional[dict[str, Any]] = None,
+        data: dict[str, Any],
     ):
         """Add dependency link data into temporary variable.
 
@@ -134,14 +141,20 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             link_type (str): Type of link, one of 'reference' or 'generative'
             input_id (str): Input version id.
             output_id (str): Output version id.
-            data (Optional[dict[str, Any]]): Optional link metadata.
+            data (dict[str, Any]): Link metadata.
         """
-        new_links_by_type[link_type].append((input_id, output_id, data))
+        new_links_by_type[link_type].append(
+            LinkPayload(
+                input_id=input_id,
+                output_id=output_id,
+                data=data
+            )
+        )
 
     def create_workfile_links(
         self,
-        workfile_instance,
-        other_instances,
+        workfile_instance: pyblish.api.Instance,
+        other_instances: list[pyblish.api.Instance],
         new_links_by_type: LinksByType,
     ):
         """Adds links (generative and reference) for workfile.
@@ -162,9 +175,10 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
         for instance in other_instances:
             self.add_link(
                 new_links_by_type,
-                "generative",
-                workfile_version_id,
-                instance.data["versionEntity"]["id"],
+                link_type="generative",
+                input_id=workfile_version_id,
+                output_id=instance.data["versionEntity"]["id"],
+                data={}
             )
 
         loaded_versions = workfile_instance.context.data.get("loadedVersions")
@@ -172,17 +186,19 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             return
 
         # link all loaded versions in scene into workfile
-        for version in loaded_versions:
+        for input_version in loaded_versions:
+            input_version = InputVersion.from_value(input_version)
             self.add_link(
                 new_links_by_type,
-                "reference",
-                version["version_id"],
-                workfile_version_id,
+                link_type="reference",
+                input_id=input_version.version_id,
+                output_id=workfile_version_id,
+                data=input_version.data
             )
 
     def create_generative_links(
         self,
-        other_instances,
+        other_instances: list[pyblish.api.Instance],
         new_links_by_type: LinksByType,
     ):
         for instance in other_instances:
@@ -195,10 +211,10 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 input_version = InputVersion.from_value(input_version)
                 self.add_link(
                     new_links_by_type,
-                    "generative",
-                    input_version.version_id,
-                    version_entity["id"],
-                    input_version.data or None,
+                    link_type="generative",
+                    input_id=input_version.version_id,
+                    output_id=version_entity["id"],
+                    data=input_version.data,
                 )
 
     def _get_existing_links(self, project_name, link_type, entity_ids):
@@ -228,12 +244,16 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 output[entity_id].add(link["entityId"])
         return output
 
-    def create_links_on_server(self, context, new_links: LinksByType):
+    def create_links_on_server(
+        self,
+        context: pyblish.api.Context,
+        new_links: LinksByType,
+    ):
         """Create new links on server."""
         if not new_links:
             return
 
-        project_name = context.data["projectName"]
+        project_name: str = context.data["projectName"]
 
         # Make sure link types are available on server
         for link_type in new_links.keys():
@@ -242,35 +262,34 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             )
 
         # Create link themselves
-        for link_type, items in new_links.items():
-            mapping = collections.defaultdict(dict)
-            # Make sure there are no duplicates of src > dst ids
-            for input_id, output_id, data in items:
-                existing_data = mapping[input_id].get(output_id)
-                if existing_data:
-                    if data:
-                        existing_data.update(data)
-                else:
-                    mapping[input_id][output_id] = data or None
+        for link_type, link_payloads in new_links.items():
+            # Make sure there are no duplicates of src > dst ids and merge
+            # metadata if multiple links are found.
+            mapping: dict[tuple[str, str], dict] = collections.defaultdict(
+                dict
+            )
+            for link_payload in link_payloads:
+                connection = (link_payload.input_id, link_payload.output_id)
+                mapping[connection].update(link_payload.data)
 
+            in_ids = {payload.input_id for payload in link_payloads}
             existing_links_by_in_id = self._get_existing_links(
-                project_name, link_type, set(mapping.keys())
+                project_name, link_type, in_ids
             )
 
-            for input_id, output_ids in mapping.items():
+            for (input_id, output_id), data in mapping.items():
                 existing_links = existing_links_by_in_id[input_id]
-                for output_id, data in output_ids.items():
-                    # Skip creation of link if already exists
-                    # NOTE: AYON server does not support
-                    #     to have same links
-                    if output_id in existing_links:
-                        continue
-                    create_link(
-                        project_name,
-                        link_type,
-                        input_id,
-                        "version",
-                        output_id,
-                        "version",
-                        data=data,
-                    )
+                # Skip creation of link if already exists
+                # NOTE: AYON server does not support
+                #     to have same links
+                if output_id in existing_links:
+                    continue
+                create_link(
+                    project_name,
+                    link_type,
+                    input_id,
+                    "version",
+                    output_id,
+                    "version",
+                    data=data,
+                )
