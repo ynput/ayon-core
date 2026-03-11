@@ -462,11 +462,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # contributing to the same layer or asset - so we first check for
         # existence
         context = source_instance.context
+        task_name = source_instance.data.get("task")
 
         # Required matching vars
         data = {
             "folderPath": source_instance.data["folderPath"],
-            "task": source_instance.data.get("task"),
             "productName": product_name,
             "variant": variant,
             "families": families
@@ -476,6 +476,25 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         if existing_instance:
             existing_instance.append(source_instance.id)
             existing_instance.data["source_instances"].append(source_instance)
+
+            # If the instance already exists, we want to ensure the task name
+            # is set if any of the source instances specify it.
+            existing_instance_task_name = existing_instance.data.get("task")
+            if task_name and existing_instance_task_name != task_name:
+                if existing_instance_task_name:
+                    # Log the difference, but do not change task name
+                    # on the existing instance
+                    self.log.debug(
+                        "Instance has different task name"
+                        f" '{existing_instance_task_name}' than source"
+                        f" instance '{task_name}' because it already "
+                        " inherited the task name from another source "
+                        " instance."
+                    )
+                else:
+                    # Set the task name
+                    existing_instance.data["task"] = task_name
+
             return existing_instance
 
         # Otherwise create the instance
@@ -493,6 +512,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         new_instance.data["comment"] = "Automated bootstrap USD file."
         new_instance.append(source_instance.id)
         new_instance.data["source_instances"] = [source_instance]
+        if task_name:
+            new_instance.data["task"] = task_name
 
         # The contribution target publishes should never match versioning of
         # the workfile but should just always increment from their last version
