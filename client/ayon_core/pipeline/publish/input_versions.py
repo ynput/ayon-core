@@ -81,7 +81,7 @@ class InputVersion:
 
 
 def serialize_input_versions(
-    input_versions: Optional[Sequence[Any]],
+    input_versions: Optional[Iterable[Any]],
 ) -> list[SerializedInputVersion]:
     if not input_versions:
         return []
@@ -93,7 +93,7 @@ def serialize_input_versions(
 
 
 def deserialize_input_versions(
-    input_versions: Optional[Sequence[Any]],
+    input_versions: Optional[Iterable[Any]],
 ) -> list[InputVersion]:
     if not input_versions:
         return []
