@@ -54,11 +54,14 @@ def find_nearest_parent_folder_of_type(
     source_folder_path: str,
     folder_types: set[str]
 ) -> list[dict]:
-    """Find the nearest parent folder of a specific folder type, e.g. "sequence" or "global"
+    """Find the nearest parent folder of a specific folder type.
+
+    Search for e.g. parent folder of type "Sequence" or "Episode".
 
     Args:
         project_name (str): Name of the project.
-        source_folder_path (str): The folder path from which to start searching.
+        source_folder_path (str): The folder path from which to start
+            searching.
         folder_types (set[str]): A set of parent folder types to look for.
 
     Returns:

@@ -279,9 +279,16 @@ def usd_contribution_layering_types_enum_resolver():
 
 def usd_contribution_load_from_enum_resolver():
     return [
-        {"value": "source_path", "label": "Source Path (e.g. filepath or AYON Entity URI)"},
-        {"value": "search_product",
-         "label": "Find product in first parent folder of given folder type"},
+        {
+            "value": "source_path",
+            "label": "Source Path (e.g. filepath or AYON Entity URI)",
+        },
+        {
+            "value": "search_product",
+            "label": (
+                "Find product in first parent folder of given folder type"
+            ),
+        },
     ]
 
 
@@ -356,9 +363,8 @@ class ContributionSearchLayersModel(BaseSettingsModel):
         "",
         title="Source Path",
         description=(
-            "Layer path. This can be an AYON entity URI or a relative file path."
-            " It will essentially be taken 1:1 into the result so use with"
-            " caution."
+            "Layer path. This can be an AYON entity URI or a relative file"
+            " path. It will be taken 1:1 into the result so use with caution."
         ),
     )
     search_product: SearchParentProductModel = SettingsField(
@@ -397,7 +403,9 @@ class CollectUSDAssetLayerContributionsProfileModel(BaseSettingsModel):
 
 class CollectUSDAssetContributionsModel(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
-    profiles: list[CollectUSDAssetLayerContributionsProfileModel] = SettingsField(  # noqa: E502
+    profiles: list[
+        CollectUSDAssetLayerContributionsProfileModel
+    ] = SettingsField(  # noqa: E502
         default_factory=list,
         title="Profiles",
         description=(

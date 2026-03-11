@@ -178,7 +178,7 @@ def get_instance_uri_path(
 
 def get_last_publish(
     instance: pyblish.api.Instance,
-    representation: str="usd"
+    representation: str = "usd"
 ) -> Optional[str]:
     """Wrapper to quickly get last representation publish path"""
     return get_representation_path_by_names(
@@ -759,7 +759,7 @@ class USDContributionStackingMixin:
                         contribution.variant_is_default
                         or variant_set_name not in prim_spec.variantSelections
                 ):
-                    prim_spec.variantSelections[variant_set_name] = variant_name
+                    prim_spec.variantSelections[variant_set_name] = variant_name  # noqa: E501
 
                 # Set the prim path contribution to be inside the variant
                 target_prim_path = variant_nested_prim_path(
@@ -881,7 +881,10 @@ class USDContributionStackingMixin:
             return False
         return True
 
-    def _resolve_contribution_path(self, contribution: BaseContribution) -> str:
+    def _resolve_contribution_path(
+        self,
+        contribution: BaseContribution
+    ) -> str:
         """Return contribution asset path/identifier for authoring.
 
         - Instance-sourced contributions resolve through existing AYON URI or
