@@ -10,7 +10,6 @@ except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
     from mvpxr import UsdGeom, Sdf, Kind
 
-
 if TYPE_CHECKING:
     import pyblish.api
 
