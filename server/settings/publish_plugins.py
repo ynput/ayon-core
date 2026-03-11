@@ -1636,6 +1636,10 @@ DEFAULT_PUBLISH_VALUES = {
             },
         ]
     },
+    "CollectUSDAssetContributions": {
+        "enabled": False,
+        "profiles": []
+    },
     "CollectExplicitResolution": {
         "enabled": True,
         "product_base_types": [
