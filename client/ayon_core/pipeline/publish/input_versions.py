@@ -1,7 +1,9 @@
 from __future__ import annotations
-
+import logging
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Iterable, Union
+
+import ayon_api
 
 
 SerializedInputVersion = Union[str, dict[str, Any]]
@@ -101,3 +103,81 @@ def deserialize_input_versions(
         InputVersion.from_value(input_version)
         for input_version in input_versions
     ]
+
+
+def _hero_versions_to_versions(
+    version_info_by_version_id: dict[str, InputVersion],
+    project_name: str,
+    log: logging.Logger,
+) -> dict[str, InputVersion]:
+    """Remap hero versions to their 'real' version ids"""
+    # Get all hero version ids among the versions
+    hero_versions: list[dict] = list(ayon_api.get_hero_versions(
+        project_name=project_name,
+        version_ids=set(version_info_by_version_id.keys()),
+        fields={"id", "productId"},
+    ))
+    if not hero_versions:
+        return version_info_by_version_id
+
+    product_ids = {hv["productId"] for hv in hero_versions}
+    hero_version_ids: set[str] = {hv["id"] for hv in hero_versions}
+
+    # TODO: When backend supports it filter directly to only versions
+    #  where hero version id matches our list of versions or skip those
+    #  that have no hero version id
+    versions = ayon_api.get_versions(
+        project_name,
+        product_ids=product_ids,
+        fields={"id", "heroVersionId"}
+    )
+    # Mapping from hero version id to real version id
+    real_version_id_by_hero_version_id: dict[str, str] = {
+        v["heroVersionId"]: v["id"] for v in versions
+        # Disregard versions with irrelevant hero version id
+        if v["heroVersionId"] in hero_version_ids
+    }
+    log.debug(
+        f"Hero version to version id map: {real_version_id_by_hero_version_id}"
+    )
+
+    for hero_version_id in hero_version_ids:
+        real_version_id: str = real_version_id_by_hero_version_id.get(
+            hero_version_id
+        )
+        if not real_version_id:
+            log.debug(
+                "Could not find real version for hero version: %s.",
+                hero_version_id,
+            )
+            continue
+
+        version_info_by_version_id[hero_version_id] = (
+            InputVersion(
+                version_id=real_version_id,
+                hero=True,
+                hero_version_id=hero_version_id,
+            )
+        )
+
+    return version_info_by_version_id
+
+
+def version_ids_to_input_versions(
+    project_name: str,
+    version_ids: Iterable[str],
+    log: logging.Logger,
+) -> dict[str, InputVersion]:
+    version_info_by_version_id = {
+        version_id: InputVersion(version_id=version_id)
+        for version_id in version_ids
+    }
+
+    # Replace hero versions with their real versions with metadata preserving
+    # info about the hero version ids
+    version_info_by_version_id = _hero_versions_to_versions(
+        version_info_by_version_id,
+        project_name,
+        log=log,
+    )
+    return version_info_by_version_id
