@@ -46,12 +46,15 @@ def _drawtext(align, resolution, text, options):
     """
     :rtype: {'x': int, 'y': int}
     """
+
+    ifont = ImageFont.truetype(options["font"], options["font_size"])
+    ascent, descent = ifont.getmetrics()
+
     x_pos = "0"
     if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
         x_pos = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
-        ifont = ImageFont.truetype(options["font"], options["font_size"])
         if hasattr(ifont, "getbbox"):
             left, top, right, bottom = ifont.getbbox(text)
             box_size = right - left, bottom - top
@@ -61,14 +64,17 @@ def _drawtext(align, resolution, text, options):
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
         x_pos = options["x_offset"]
 
+    # y position
+    y_offset = options["y_offset"]
     if align in (
         ffmpeg_burnins.TOP_CENTERED,
         ffmpeg_burnins.TOP_RIGHT,
         ffmpeg_burnins.TOP_LEFT
     ):
-        y_pos = "%d" % options["y_offset"]
+        y_pos = y_offset - descent
     else:
-        y_pos = "h-text_h-%d" % (options["y_offset"])
+        y_pos = f"h-{y_offset + ascent}"
+
     return {"x": x_pos, "y": y_pos}
 
 
@@ -450,15 +456,27 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         )
         data["font"] = arg_font_path
 
-        self.filters['drawtext'].append(draw % data)
+        drawtext = draw % data
+        drawtext += ":y_align=font"  # align based on the font metrics
 
         if options.get('bg_color') is not None:
-            box = ffmpeg_burnins.BOX % {
-                'border': options['bg_padding'],
-                'color': options['bg_color'],
-                'opacity': options['bg_opacity']
-            }
-            self.filters['drawtext'][-1] += ':%s' % box
+
+            box_args = [
+                "box=1",
+                f"boxcolor={options['bg_color']}@{options['bg_opacity']}"
+            ]
+
+            if padding := options.get('bg_padding'):
+                font = ImageFont.truetype(options["font"], options["font_size"])
+                _, descent = font.getmetrics()
+                padding_x = padding  # x can be just the padding itself
+                padding_y = padding - descent  # font descent is already included box size by default  # noqa: E501
+                box_args.append(f"boxborderw={padding_y}|{padding_x}")  # yes, it's "y|x"  # noqa: E501
+
+            box = ":".join(box_args)
+            drawtext += f':{box}'
+
+        self.filters['drawtext'].append(drawtext)
 
     def command(self, output=None, args=None, overwrite=False):
         """
