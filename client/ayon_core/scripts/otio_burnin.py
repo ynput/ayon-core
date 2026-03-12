@@ -61,14 +61,17 @@ def _drawtext(align, resolution, text, options):
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
         x_pos = options["x_offset"]
 
+    # y position
+    y_offset = options["y_offset"]
     if align in (
         ffmpeg_burnins.TOP_CENTERED,
         ffmpeg_burnins.TOP_RIGHT,
         ffmpeg_burnins.TOP_LEFT
     ):
-        y_pos = "%d" % options["y_offset"]
+        y_pos = y_offset
     else:
-        y_pos = "h-text_h-%d" % (options["y_offset"])
+        y_pos = f"h-{y_offset}-font_a-font_d"  # offset by font height
+
     return {"x": x_pos, "y": y_pos}
 
 
@@ -450,15 +453,19 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         )
         data["font"] = arg_font_path
 
-        self.filters['drawtext'].append(draw % data)
+        drawtext = draw % data
+        drawtext += ":y_align=font"  # align based on the font metrics
 
         if options.get('bg_color') is not None:
-            box = ffmpeg_burnins.BOX % {
-                'border': options['bg_padding'],
-                'color': options['bg_color'],
-                'opacity': options['bg_opacity']
-            }
-            self.filters['drawtext'][-1] += ':%s' % box
+            box_args = [
+                "box=1",
+                f"boxborderw={options['bg_padding']}",
+                f"boxcolor={options['bg_color']}@{options['bg_opacity']}"
+            ]
+            box = ":".join(box_args)
+            drawtext += f':{box}'
+
+        self.filters['drawtext'].append(drawtext)
 
     def command(self, output=None, args=None, overwrite=False):
         """
