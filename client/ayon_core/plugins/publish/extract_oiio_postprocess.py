@@ -130,13 +130,21 @@ class ExtractOIIOPostProcess(publish.Extractor):
                     output_arguments: list[str] = output_def.get(
                         "output_arguments", []
                     )
+                    custom_global_args = output_def.get("custom_args", {}).get("custom_global_args", [])
+                    custom_input_args = output_def.get("custom_args", {}).get("custom_input_args", [])
+                    custom_process_args = output_def.get("custom_args", {}).get("custom_process_args", [])
+                    custom_output_args = output_def.get("custom_args", {}).get("custom_output_args", [])
 
                     # Prepare subprocess arguments
                     oiio_cmd = get_oiio_tool_args(
                         "oiiotool",
+                        *custom_global_args,
                         *input_arguments,
+                        *custom_input_args,
                         input_path,
+                        *custom_process_args,
                         *output_arguments,
+                        *custom_output_args,
                         "-o",
                         output_path
                     )

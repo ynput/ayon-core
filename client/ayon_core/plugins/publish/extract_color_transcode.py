@@ -180,8 +180,14 @@ class ExtractOIIOTranscode(publish.Extractor):
                     new_repre["colorspaceData"]["colorspace"] = \
                         target_colorspace
 
-                additional_command_args = (output_def["oiiotool_args"]
-                                           ["additional_command_args"])
+                custom_global_args = (output_def.get("oiiotool_args", {})
+                                      .get("custom_global_args", []))
+                custom_input_args = (output_def.get("oiiotool_args", {})
+                                     .get("custom_input_args", []))
+                custom_process_args = (output_def.get("oiiotool_args", {})
+                                       .get("custom_process_args", []))
+                custom_output_args = (output_def.get("oiiotool_args", {})
+                                      .get("custom_output_args", []))
 
                 sequence_files = self._translate_to_sequence(
                     files_to_convert)
@@ -224,7 +230,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                             target_view=target_view,
                             source_display=source_display,
                             source_view=source_view,
-                            additional_command_args=additional_command_args,
+                            custom_global_args=custom_global_args,
+                            custom_input_args=custom_input_args,
+                            custom_process_args=custom_process_args,
+                            custom_output_args=custom_output_args,
                             frames=frames,
                             frame_padding=frame_padding,
                             parallel_frames=parallel_frames,
