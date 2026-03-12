@@ -75,3 +75,17 @@ class OCIOEnvHook(PreLaunchHook):
             f"Setting OCIO environment to config path: {ocio_path}")
 
         self.launch_context.env["OCIO"] = ocio_path
+
+        custom_vars = config_data.get("custom_vars", {})
+        for var_name, var_value in custom_vars.items():
+            if var_value:
+                # Normalize path to fix mixed slashes like `W:\/AY1_Ayon/foo`
+                import os
+                var_value = os.path.normpath(var_value)
+                if self.host_name in ["nuke", "hiero"]:
+                    var_value = var_value.replace("\\", "/")
+                
+            self.log.info(
+                f"Setting OCIO custom variable '{var_name}' to '{var_value}'"
+            )
+            self.launch_context.env[var_name] = var_value
