@@ -1738,6 +1738,11 @@ def get_representation_ocio_config_path(
     if not config_template:
         return None
 
+    # Fill template with environment variables
+    # - use StringTemplate to ignore unfilled values so anatomy can try
+    config_template = str(StringTemplate.format_template(
+        config_template, os.environ.copy()
+    ))
     config_path = anatomy.fill_root(config_template)
     if os.path.isfile(config_path):
         return config_path
