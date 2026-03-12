@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import sys
 import copy
@@ -19,6 +20,7 @@ from ayon_core.lib.file_transaction import (
     DuplicateDestinationError,
 )
 from ayon_core.pipeline.publish import (
+    apply_plugin_settings_automatically,
     get_publish_template_name,
     OptionalPyblishPluginMixin,
     KnownPublishError,
@@ -67,8 +69,10 @@ class IntegrateHeroVersion(
     optional = True
     active = True
 
-    # Families are modified using settings
-    families = [
+    # Configured via settings
+    hosts: list[str] = ["*"]
+    hosts_exclude: list[str] = []
+    families: list[str] = [
         "model",
         "rig",
         "setdress",
@@ -94,6 +98,30 @@ class IntegrateHeroVersion(
     # *but all other plugins must be successfully completed
 
     use_hardlinks = False
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        apply_plugin_settings_automatically(
+            cls, project_settings, logger=cls.log
+        )
+
+        # Allow to explicitly exclude hosts to allow including all by default
+        # but selectively excluding just a particular host. Note that these
+        # filter by `pyblish.api` registered hosts - not the AYON one.
+        # Force exclude this plug-in if any registered host is in the
+        # `hosts_exclude` list
+        if cls.hosts_exclude:
+            exclude_host = next(
+                host for host in pyblish.api.registered_hosts()
+                if host in cls.hosts_exclude
+            )
+            if exclude_host:
+                cls.log.debug(
+                    "Integrate Hero Version is explicitly excluded for "
+                    f"host '{exclude_host}'")
+                # force clear available hosts to disable plug-in
+                cls.hosts = []
+                return
 
     def process(self, instance):
         if not self.is_active(instance.data):

@@ -1152,6 +1152,15 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
     optional: bool = SettingsField(False, title="Optional")
     active: bool = SettingsField(True, title="Active")
+    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    hosts_exclude: list[str] = SettingsField(
+        default_factory=list, title="Hosts exclude",
+        description=(
+            "This can be useful if 'hosts' is set to '*' to run for all hosts,"
+            " but you want to disable hero versioning for only one or more"
+            " specific hosts."
+        )
+    )
     families: list[str] = SettingsField(default_factory=list, title="Families")
     use_hardlinks: bool = SettingsField(
         False, title="Use Hardlinks",
@@ -1831,6 +1840,8 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "optional": True,
         "active": True,
+        "hosts": ["*"],
+        "hosts_exclude": [],
         "families": [
             "model",
             "rig",
