@@ -8,6 +8,18 @@ import ayon_api
 SerializedInputVersion = Union[str, dict[str, Any]]
 
 
+# LinkPayload dataclass could currently live in `integrate_inputlinks.py`
+# however due to a bug in `pyblish` with certain Python builds and mixing
+# `from __future__ import annotations` with `dataclasses` in pyblish plug-in
+# discovered files we need to keep it separate for now.
+# See https://github.com/pyblish/pyblish-base/pull/403
+@dataclass
+class LinkPayload:
+    input_id: str
+    output_id: str
+    data: dict[str, Any]
+
+
 @dataclass(frozen=True)
 class InputVersion:
     """Input version used for dependency links.
