@@ -13,6 +13,7 @@ from ayon_core.lib import (
 
     is_oiio_supported,
     get_rescaled_command_arguments,
+    get_default_reviewable_layers,
 
     path_to_subprocess_arg,
     run_subprocess,
@@ -200,6 +201,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         oiio_supported = is_oiio_supported()
         thumbnail_created = False
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for repre in filtered_repres:
             # Reset for each iteration to handle cases where multiple
             # reviewable thumbnails are needed
@@ -266,7 +269,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     full_output_path,
                     repre,
                     thumbnail_def,
-                    anatomy=anatomy
+                    anatomy=anatomy,
+                    review_layers=review_layers
                 )
 
             # Try to use FFMPEG if OIIO is not supported or for cases when
@@ -274,13 +278,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             #   colorspace data
             if not repre_thumb_created:
                 repre_thumb_created = self._create_thumbnail_ffmpeg(
-                    full_input_path, full_output_path, thumbnail_def
+                    full_input_path,
+                    full_output_path,
+                    thumbnail_def,
+                    review_layers
                 )
 
             # Skip representation and try next one if wasn't created
             if not repre_thumb_created and oiio_supported:
                 repre_thumb_created = self._create_thumbnail_oiio(
-                    full_input_path, full_output_path, thumbnail_def
+                    full_input_path,
+                    full_output_path,
+                    thumbnail_def,
+                    review_layers
                 )
 
             if not repre_thumb_created:
@@ -432,7 +442,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         repre: dict,
         thumbnail_def: ThumbnailDef,
         anatomy: "Anatomy",
-    ):
+        review_layers: Optional[list[str]] = None
+    ) -> bool:
         """Create thumbnail using OIIO tool oiiotool
 
         Args:
@@ -446,6 +457,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     view (Optional[str])
             thumbnail_def (ThumbnailDefinition): Thumbnail definition.
             anatomy (Anatomy): Current project Anatomy.
+            review_layers (Optional[list[str]]): List of reviewable layers.
 
         Returns:
             bool: Whether a thumbnail has been created.
@@ -507,6 +519,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 target_colorspace=oiio_default_colorspace,
                 additional_command_args=resolution_arg,
                 logger=self.log,
+                review_layers=review_layers
             )
         except Exception:
             self.log.warning(
@@ -517,7 +530,24 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return True
 
-    def _create_thumbnail_oiio(self, src_path, dst_path, thumbnail_def):
+    def _create_thumbnail_oiio(
+            self,
+            src_path: str,
+            dst_path: str,
+            thumbnail_def: ThumbnailDef,
+            review_layers: Optional[list[str]] = None
+    ) -> bool:
+        """Create thumbnail using OIIO tool
+
+        Args:
+            src_path (str): source file path
+            dst_path (str): destination file path
+            thumbnail_def (ThumbnailDef): Thumbnail definition.
+            review_layers (Optional[list[str]]): List of reviewable layers.
+
+        Returns:
+            bool: Whether the thumbnail was successfully created.
+        """
         self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
 
         try:
@@ -537,7 +567,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         )
         try:
             input_arg, channels_arg = get_oiio_input_and_channel_args(
-                input_info
+                input_info, review_layers=review_layers
             )
         except MissingRGBAChannelsError:
             self.log.debug(
@@ -567,10 +597,26 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-    def _create_thumbnail_ffmpeg(self, src_path, dst_path, thumbnail_def):
+    def _create_thumbnail_ffmpeg(
+            self,
+            src_path: str,
+            dst_path: str,
+            thumbnail_def: ThumbnailDef,
+            review_layers: Optional[list[str]] = None) -> bool:
+        """Create thumbnail using FFmpeg tool
+
+        Args:
+            src_path (str): source file path
+            dst_path (str): destination file path
+            thumbnail_def (ThumbnailDef): Thumbnail definition.
+            review_layers (Optional[list[str]]): List of reviewable layers.
+
+        Returns:
+            bool: Whether the thumbnail was successfully created.
+        """
         try:
             resolution_arg = self._get_resolution_args(
-                "ffmpeg", src_path, thumbnail_def
+                "ffmpeg", src_path, thumbnail_def, review_layers
             )
         except RuntimeError:
             self.log.warning(
@@ -728,7 +774,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         application: str,
         input_path: str,
         thumbnail_def: ThumbnailDef,
+        review_layers: Optional[list[str]] = None
     ) -> list:
+        """Create command arguments for rescaling.
+
+        Args:
+            application (str): Application name.
+            input_path (str): Input file path.
+            thumbnail_def (ThumbnailDef): Thumbnail definition.
+            review_layers (Optional[list[str]]): List of reviewable layers.
+
+        Returns:
+            list: List of command arguments for rescaling.
+        """
         # get settings
         if thumbnail_def.target_size["type"] == "source":
             return []
@@ -744,7 +802,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             target_width,
             target_height,
             bg_color=thumbnail_def.background_color,
-            log=self.log
+            log=self.log,
+            review_layers=review_layers
         )
 
     def _get_config_from_profile(
