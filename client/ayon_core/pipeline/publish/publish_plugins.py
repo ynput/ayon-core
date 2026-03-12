@@ -118,8 +118,8 @@ class PublishXmlValidationError(PublishValidationError):
             formatting_data = {}
         result = load_help_content_from_plugin(plugin, help_filename)
         content_obj = result["errors"][key]
-        description = content_obj.description.format_map(formatting_data)
         title = content_obj.title.format_map(formatting_data)
+        description = content_obj.description.format_map(formatting_data)
         detail = content_obj.detail
         if detail:
             detail = detail.format_map(formatting_data)
