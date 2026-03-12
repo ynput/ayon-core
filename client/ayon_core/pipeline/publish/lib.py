@@ -41,6 +41,11 @@ from .constants import (
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.traits import Representation
+    from ayon_core.pipeline import Anatomy
+    from ayon_core.pipeline.anatomy.templates import (
+        AnatomyStringTemplate,
+        TemplateItem as AnatomyTemplateItem,
+    )
 
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
@@ -1388,3 +1393,223 @@ def _get_last_version_files(
     ]
 
     return (version_entity, repre_file_paths)
+
+
+def get_template_name(instance: pyblish.api.Instance) -> str:
+    """Return anatomy template name to use for integration.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to process.
+
+    Returns:
+        str: Anatomy template name
+
+    """
+    # Anatomy data is pre-filled by Collectors
+    context = instance.context
+    project_name = context.data["projectName"]
+
+    # Task can be optional in anatomy data
+    host_name = context.data["hostName"]
+    anatomy_data = instance.data["anatomyData"]
+    product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
+    task_info = anatomy_data.get("task") or {}
+
+    return get_publish_template_name(
+        project_name,
+        host_name,
+        product_base_type=product_base_type,
+        task_name=task_info.get("name"),
+        task_type=task_info.get("type"),
+        project_settings=context.data["project_settings"],
+        logger=log,
+    )
+
+
+def get_publish_template(instance: pyblish.api.Instance) -> str:
+    """Return anatomy template name to use for integration.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to process.
+
+    Returns:
+        str: Anatomy template name
+
+    """
+    # Anatomy data is pre-filled by Collectors
+    template_name = get_template_name(instance)
+    anatomy = instance.context.data["anatomy"]
+    publish_template = anatomy.get_template_item("publish", template_name)
+    path_template_obj = publish_template["path"]
+    return path_template_obj.template.replace("\\", "/")
+
+
+def get_publish_template_object(
+        instance: pyblish.api.Instance) -> "AnatomyTemplateItem":
+    """Return anatomy template object to use for integration.
+
+    Note: What is the actual type of the object?
+
+    Args:
+        instance (pyblish.api.Instance): Instance to process.
+
+    Returns:
+        AnatomyTemplateItem: Anatomy template object
+
+    """
+    # Anatomy data is pre-filled by Collectors
+    template_name = get_template_name(instance)
+    anatomy = instance.context.data["anatomy"]
+    return anatomy.get_template_item("publish", template_name)
+
+
+def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
+    """Get all families of the instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to get families from.
+
+    Returns:
+        list[str]: List of families.
+
+    """
+    family = instance.data.get("family")
+    families = []
+    if family:
+        families.append(family)
+
+    for _family in (instance.data.get("families") or []):
+        if _family not in families:
+            families.append(_family)
+
+    return families
+
+
+def get_version_data_from_instance(
+        instance: pyblish.api.Instance) -> dict:
+    """Get version data from the Instance.
+
+    Args:
+        instance (pyblish.api.Instance): the current instance
+            being published.
+
+    Returns:
+        dict: the required information for ``version["data"]``
+
+    """
+    context = instance.context
+
+    # create relative source path for DB
+    if "source" in instance.data:
+        source = instance.data["source"]
+    else:
+        source = context.data["currentFile"]
+        anatomy = instance.context.data["anatomy"]
+        source = get_rootless_path(anatomy, source)
+    log.debug("Source: %s", source)
+
+    version_data = {
+        "families": get_instance_families(instance),
+        "time": context.data["time"],
+        "author": context.data["user"],
+        "source": source,
+        "comment": instance.data["comment"],
+        "machine": context.data.get("machine"),
+        "fps": instance.data.get("fps", context.data.get("fps"))
+    }
+
+    intent_value = context.data.get("intent")
+    if intent_value and isinstance(intent_value, dict):
+        intent_value = intent_value.get("value")
+
+    if intent_value:
+        version_data["intent"] = intent_value
+
+    # Include optional data if present in
+    optionals = [
+        "frameStart", "frameEnd", "step",
+        "handleEnd", "handleStart", "sourceHashes"
+    ]
+    for key in optionals:
+        if key in instance.data:
+            version_data[key] = instance.data[key]
+
+    # Include instance.data[versionData] directly
+    version_data_instance = instance.data.get("versionData")
+    if version_data_instance:
+        version_data.update(version_data_instance)
+
+    return version_data
+
+
+def get_rootless_path(anatomy: "Anatomy", path: str) -> str:
+    r"""Get rootless variant of the path.
+
+    Returns, if possible, a path without an absolute portion from the root
+    (e.g. 'c:\' or '/opt/..'). This is basically a wrapper for the
+    meth:`Anatomy.find_root_template_from_path` method that displays
+    a warning if the root path is not found.
+
+     This information is platform-dependent and shouldn't be captured.
+     For example::
+
+         'c:/projects/MyProject1/Assets/publish...'
+         will be transformed to:
+         '{root}/MyProject1/Assets...'
+
+    Args:
+        anatomy (Anatomy): Project anatomy.
+        path (str): Absolute path.
+
+    Returns:
+        str: Path where root path is replaced by formatting string.
+
+    """
+    success, rootless_path = anatomy.find_root_template_from_path(path)
+    if success:
+        path = rootless_path
+    else:
+        log.warning((
+            'Could not find root path for remapping "%s".'
+            " This may cause issues on farm."
+        ), path)
+    return path
+
+
+class TemplateItem:
+    """Represents single template item.
+
+    Template path, template data that was used in the template.
+
+    Attributes:
+        anatomy (Anatomy): Anatomy object.
+        template (str): Template path.
+        template_data (dict[str, Any]): Template data.
+        template_object (AnatomyTemplateItem): Template object
+    """
+    anatomy: Anatomy
+    template: str
+    template_data: dict[str, Any]
+    template_object: "AnatomyTemplateItem"
+
+    def __init__(self,
+        anatomy: "Anatomy",
+        template: str,
+        template_data: dict[str, Any],
+        template_object: "AnatomyTemplateItem"):
+        """Initialize TemplateItem.
+
+        Args:
+            anatomy (Anatomy): Anatomy object.
+            template (str): Template path.
+            template_data (dict[str, Any]): Template data.
+            template_object (AnatomyTemplateItem): Template object.
+
+        """
+        self.anatomy = anatomy
+        self.template = template
+        self.template_data = template_data
+        self.template_object = template_object

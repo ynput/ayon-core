@@ -43,9 +43,13 @@ from .two_dimensional import (
     PixelBased,
     Planar,
 )
-from .utils import (
-    get_sequence_from_files,
+
+from .publishing import (
+    TransferItem,
+    get_transfers_from_representations,
+    get_template_data_from_representation,
 )
+
 
 __all__ = [  # noqa: RUF022
     # base
@@ -107,6 +111,8 @@ __all__ = [  # noqa: RUF022
     "Planar",
     "UDIM",
 
-    # utils
-    "get_sequence_from_files",
+    # publishing
+    "TransferItem",
+    "get_transfers_from_representations",
+    "get_template_data_from_representation",
 ]
