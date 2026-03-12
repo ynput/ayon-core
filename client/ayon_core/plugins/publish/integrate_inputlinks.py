@@ -1,18 +1,13 @@
 import collections
 from typing import Any, Optional, Union
-import dataclasses
 
 import pyblish.api
 
 import ayon_api
-from ayon_core.pipeline.publish.input_versions import InputVersion
-
-
-@dataclasses.dataclass
-class LinkPayload:
-    input_id: str
-    output_id: str
-    data: dict[str, Any]
+from ayon_core.pipeline.publish.input_versions import (
+    InputVersion,
+    LinkPayload
+)
 
 
 LinksByType = dict[str, list[LinkPayload]]
