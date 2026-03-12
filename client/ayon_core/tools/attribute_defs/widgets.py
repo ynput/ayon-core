@@ -13,6 +13,7 @@ from ayon_core.lib.attribute_definitions import (
     EnumDef,
     BoolDef,
     FileDef,
+    ButtonDef,
     UIDef,
     UISeparatorDef,
     UILabelDef
@@ -83,6 +84,9 @@ def _create_widget_for_attr_def(
 
     elif isinstance(attr_def, FileDef):
         cls = FileAttrWidget
+
+    elif isinstance(attr_def, ButtonDef):
+        cls = ButtonAttrWidget
 
     elif isinstance(attr_def, UISeparatorDef):
         cls = SeparatorAttrWidget
@@ -284,6 +288,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 class _BaseAttrDefWidget(QtWidgets.QWidget):
     # Type 'object' may not work with older PySide versions
     value_changed = QtCore.Signal(object, str)
+    toggled = QtCore.Signal(object)
     revert_to_default_requested = QtCore.Signal(str)
 
     def __init__(
@@ -854,3 +859,34 @@ class FileAttrWidget(_BaseAttrDefWidget):
 
     def set_value(self, value, multivalue=False):
         self._input_widget.set_value(value, multivalue)
+
+
+class ButtonAttrWidget(_BaseAttrDefWidget):
+    """
+    A button widget for the publish window
+    """
+
+    def emit_toggled(self) -> None:
+        """
+        emits toggled signal
+        """
+        self.toggled.emit(self.attr_def)
+
+    def _ui_init(self) -> None:
+        """
+        Initializes the UI, this sets up the QPushButton with the text from the
+        attribute definition used to create the button and adds it to the
+        layout of this widget.
+        """
+        input_widget = QtWidgets.QPushButton(self)
+        input_widget.clicked.connect(self.emit_toggled)
+        input_widget.setText(self.attr_def.text)
+        self.main_layout.addWidget(input_widget, 0)
+        self.main_layout.addStretch(1)
+        input_widget.adjustSize()
+
+    def current_value(self) -> None:
+        return
+
+    def set_value(self, value, multivalue=False) -> None:
+        return

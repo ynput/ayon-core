@@ -1,6 +1,9 @@
+from typing import Dict, Any
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.lib import AbstractAttrDef
 
 from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
 
@@ -123,6 +126,7 @@ class AttributesWidget(QtWidgets.QWidget):
 
             col_num = 2 - expand_cols
 
+            widget.toggled.connect(self._input_toggled)
             if attr_def.is_value_def and attr_def.label:
                 label_widget = QtWidgets.QLabel(attr_def.label, self)
                 tooltip = attr_def.tooltip
@@ -145,3 +149,39 @@ class AttributesWidget(QtWidgets.QWidget):
             self._widgets.append(widget)
 
             row += 1
+
+    def set_precreate_attr_info(self, attr_info: Dict[str, Any]) -> None:
+        """
+        Updates all the widgets currently held within this AttributesWidget
+        using attr_info.
+
+        Args:
+            attr_info (Dict[str, Any]): A dictionary of key, name of the
+            attribute definition that created the widget we want to update, to
+            value, the value to set the widget to.
+        """
+        for widget in self._widgets:
+            attr_def = widget.attr_def
+            if not attr_def.is_value_def or attr_def.key not in attr_info:
+                continue
+            val = attr_info[attr_def.key]
+            try:
+                widget.set_value(val)
+            except TypeError:
+                continue
+
+    def _input_toggled(self, attr_def: AbstractAttrDef) -> None:
+        """
+        This method will run the toggle_callback method on the attr_def passed
+        into it. toggle_callback should return a dictionary, this dictionary
+        gets used to update the all precreate attribute definition widget
+        values.
+
+        Args:
+            attr_def: The AbstractAttrDef that created the widget that has been
+            toggled
+        """
+        new_data = attr_def.toggle_callback(self.current_value())
+        if not new_data:
+            return
+        self.set_precreate_attr_info(new_data)

@@ -726,6 +726,9 @@ class CreatedInstance:
 
     def items(self):
         return self._data.items()
+
+    def copy(self) -> dict[str, Any]:
+        return self._data.copy()
     # ------
 
     @property
