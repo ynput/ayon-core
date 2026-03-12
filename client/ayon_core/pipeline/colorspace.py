@@ -9,7 +9,7 @@ import platform
 import tempfile
 import warnings
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import ayon_api
@@ -40,6 +40,7 @@ class ConfigData:
     path: str = ""
     template: str = ""
     enabled: bool = True
+    custom_vars: dict = field(default_factory=dict)
 
 
 class CachedData:
@@ -737,9 +738,28 @@ def _get_config_path_from_profile_data(
         log.warning(f"Path was not found '{normalized_path}'.")
         return ConfigData()  # Return invalid config data
 
+    custom_vars = {}
+    for var in profile.get("custom_variables", []):
+        var_name = var["var_name"]
+        if var_name in custom_vars:
+            continue
+        var_value = var["value"]
+        formatted_value = StringTemplate.format_template(var_value, template_data)
+        if formatted_value.solved and str(formatted_value).strip():
+            resolved_value = str(formatted_value).strip()
+            if os.path.exists(resolved_value):
+                custom_vars[var_name] = resolved_value
+
+    # Ensure all defined variable names are present, defaulting to empty string if no valid path was found
+    for var in profile.get("custom_variables", []):
+        var_name = var["var_name"]
+        if var_name not in custom_vars:
+            custom_vars[var_name] = ""
+
     return ConfigData(
         path=normalized_path,
-        template=template
+        template=template,
+        custom_vars=custom_vars
     )
 
 
@@ -1044,6 +1064,7 @@ def get_imageio_config_preset(
     return {
         "path": config_data.path,
         "template": config_data.template,
+        "custom_vars": getattr(config_data, "custom_vars", {}),
     }
 
 
@@ -1070,10 +1091,12 @@ def _get_host_config_data(templates, template_data):
 
         path = os.path.abspath(formatted_path)
         if os.path.exists(path):
-            return {
-                "path": os.path.normpath(path),
-                "template": template
-            }
+            return ConfigData(
+                path=os.path.normpath(path),
+                template=template
+            )
+            
+    return ConfigData()
 
 
 def get_imageio_file_rules(project_name, host_name, project_settings=None):
@@ -1715,6 +1738,11 @@ def get_representation_ocio_config_path(
     if not config_template:
         return None
 
+    # Fill template with environment variables
+    # - use StringTemplate to ignore unfilled values so anatomy can try
+    config_template = str(StringTemplate.format_template(
+        config_template, os.environ.copy()
+    ))
     config_path = anatomy.fill_root(config_template)
     if os.path.isfile(config_path):
         return config_path
