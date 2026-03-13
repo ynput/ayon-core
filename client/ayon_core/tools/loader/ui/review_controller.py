@@ -21,6 +21,7 @@ query GetVersions(
   $featuredOnly: [String!],
   $hasReviewables: Boolean,
   $folderIds: [String!],
+  $includeFolderChildren: Boolean,
   $search: String,
   $after: String,
   $first: Int,
@@ -38,7 +39,7 @@ query GetVersions(
       featuredOnly: $featuredOnly
       hasReviewables: $hasReviewables
       folderIds: $folderIds
-      includeFolderChildren: true
+      includeFolderChildren: $includeFolderChildren
       search: $search
       after: $after
       first: $first
@@ -149,6 +150,9 @@ class ReviewController(QtCore.QObject):
         self._review_entity_lists: Any = None  # generator or None
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
+        self._folder_cursors: dict[str, str] = {}
+        self._folder_has_more: dict[str, bool] = {}
+        self._tree_mode: bool = False
         self._selected_folder_id: str | None = None
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
@@ -179,6 +183,16 @@ class ReviewController(QtCore.QObject):
     def version_attributes(self) -> dict[str, Any]:
         """Return version attributes dict."""
         return self._version_attributes
+
+    @property
+    def tree_mode(self) -> bool:
+        """Return whether tree mode is currently active."""
+        return self._tree_mode
+
+    @property
+    def selected_folder_id(self) -> str | None:
+        """Return the folder ID currently selected in the slicer tree."""
+        return self._selected_folder_id
 
     # ------------------------------------------------------------------
     # Public methods
@@ -234,6 +248,16 @@ class ReviewController(QtCore.QObject):
         self._reset_pagination()
         self.selection_changed.emit(id, name)
 
+    def set_tree_mode(self, enabled: bool) -> None:
+        """Enable or disable tree mode for the version table.
+
+        Args:
+            enabled: When ``True``, the table shows root folders as
+                expandable nodes instead of a flat version list.
+        """
+        self._tree_mode = enabled
+        self._reset_pagination()
+
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for the given parent.
 
@@ -257,6 +281,7 @@ class ReviewController(QtCore.QObject):
         page_size: int,
         sort_key: str | None,
         descending: bool,
+        parent_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch a page of version rows for the table.
 
@@ -266,12 +291,18 @@ class ReviewController(QtCore.QObject):
         proceeds without a sort parameter so the server falls back to
         its default ordering (``creation_order``).
 
+        In tree mode with ``parent_id=None``, returns root folder rows
+        instead of version rows.  When ``parent_id`` is set, returns
+        version rows for that folder using a per-folder pagination cursor.
+
         Args:
             page_number: Zero-based page index (used to determine
                 whether to reset the cursor).
             page_size: Number of rows per page.
             sort_key: Column key to sort by, or ``None``.
             descending: Whether to sort in descending order.
+            parent_id: Row ``id`` of the parent node when fetching
+                child rows in tree mode, or ``None`` for root level.
 
         Returns:
             List of row dicts suitable for
@@ -285,19 +316,74 @@ class ReviewController(QtCore.QObject):
             return []
 
         if page_number == 0:
-            self._reset_pagination()
+            if parent_id is not None:
+                self._folder_cursors.pop(parent_id, None)
+                self._folder_has_more.pop(parent_id, None)
+            else:
+                self._reset_pagination()
 
         sort_by = COLUMN_TO_SORT_BY.get(sort_key) if sort_key else None
         self.log.debug(
             "fetch_versions_page: page=%d sort_key=%r sort_by=%r "
-            "descending=%r cursor=%r",
+            "descending=%r cursor=%r parent_id=%r",
             page_number,
             sort_key,
             sort_by,
             descending,
             self._graphql_cursor,
+            parent_id,
         )
 
+        # Tree root: return folder rows so the model has expandable nodes.
+        if (
+            parent_id is None
+            and self._tree_mode
+            and self._current_category == "Hierarchy"
+        ):
+            return self._fetch_root_folders(self._selected_folder_id)
+
+        # Child versions for a specific folder (tree-mode expand).
+        if parent_id is not None:
+            # On the first page, prepend direct sub-folder rows so that
+            # the tree can be navigated depth-first all the way down to
+            # version leaves.
+            if page_number == 0:
+                folder_rows = self._get_child_folder_rows(parent_id)
+            else:
+                folder_rows = []
+
+            cursor = self._folder_cursors.get(parent_id, "")
+            if page_number > 0 and not self._folder_has_more.get(
+                parent_id, False
+            ):
+                return []
+            edges, page_info = self._get_versions_page(
+                self._current_project,
+                parent_id,
+                page_size,
+                cursor=cursor,
+                sort_by=sort_by,
+                descending=descending,
+                include_folder_children=False,
+            )
+            version_rows = [self._transform_version_edge(e) for e in edges]
+            if descending:
+                self._folder_has_more[parent_id] = page_info["hasPreviousPage"]
+                self._folder_cursors[parent_id] = page_info["startCursor"]
+            else:
+                self._folder_has_more[parent_id] = page_info["hasNextPage"]
+                self._folder_cursors[parent_id] = page_info["endCursor"]
+            self.log.debug(
+                "Received %d sub-folders and %d child version edges for "
+                "folder %r, page info: %s",
+                len(folder_rows),
+                len(edges),
+                parent_id,
+                page_info,
+            )
+            return folder_rows + version_rows
+
+        # Flat mode: existing behaviour.
         if self._current_category == "Reviews":
             folder_id = None
             version_ids = self._review_session_version_ids  # None = no filter
@@ -356,9 +442,104 @@ class ReviewController(QtCore.QObject):
     # ------------------------------------------------------------------
 
     def _reset_pagination(self) -> None:
-        """Reset the GraphQL pagination cursor and has-more flag."""
+        """Reset the GraphQL pagination cursor, has-more flag, and all
+        per-folder pagination state."""
         self._graphql_cursor = ""
         self._graphql_has_more = False
+        self._folder_cursors = {}
+        self._folder_has_more = {}
+
+    def _fetch_root_folders(
+        self, selected_folder_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Fetch folders to use as tree root rows.
+
+        When *selected_folder_id* is given the selected folder is
+        returned as the sole root row so the table shows that folder
+        expanded.  Otherwise, all top-level folders (depth 1) are
+        returned collapsed.
+
+        Args:
+            selected_folder_id: ID of the folder currently selected in
+                the slicer tree, or ``None`` for the default root view.
+
+        Returns:
+            List of row dicts with ``has_children=True`` so the table
+            model renders them as expandable nodes.
+        """
+        if selected_folder_id:
+            folders = list(
+                ayon_api.get_folders(
+                    self._current_project,
+                    folder_ids=[selected_folder_id],
+                    fields={
+                        "id", "name", "label", "folderType", "hasChildren"
+                    },
+                )
+            )
+        else:
+            folders = list(
+                ayon_api.get_folders(
+                    self._current_project,
+                    parent_ids=[None],  # type: ignore[list-item]
+                    fields={
+                        "id", "name", "label", "folderType", "hasChildren"
+                    },
+                )
+            )
+        return [self._build_folder_row(f) for f in folders]
+
+    def _get_child_folder_rows(
+        self, parent_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch direct sub-folders of *parent_id* as table rows.
+
+        Args:
+            parent_id: Folder ID whose immediate children should be
+                returned.
+
+        Returns:
+            List of row dicts built by :meth:`_build_folder_row`.
+        """
+        folders = ayon_api.get_folders(
+            self._current_project,
+            parent_ids=[parent_id],
+            fields={"id", "name", "label", "folderType", "hasChildren"},
+        )
+        return [self._build_folder_row(f) for f in folders]
+
+    def _build_folder_row(self, folder: dict[str, Any]) -> dict[str, Any]:
+        """Build a table row dict from a folder entity.
+
+        Args:
+            folder: Folder entity dict from ``ayon_api.get_folders``.
+
+        Returns:
+            Row dict compatible with
+            :class:`~ayon_ui_qt.components.table_model.PaginatedTableModel`.
+        """
+        folder_type = folder.get("folderType", "")
+        label = folder.get("label") or folder.get("name", "")
+        icon = self._pinfo("folderTypes", folder_type, "icon", "folder")
+        return {
+            "id": folder.get("id", ""),
+            "has_children": True,
+            "product/version": label,
+            "product/version__icon": icon,
+            "folderName": label,
+            "entityType": "Folder",
+            "entityType__icon": "folder",
+            "status": "",
+            "productType": "",
+            "author": "",
+            "version": "",
+            "productName": "",
+            "taskType": "",
+            "task": "",
+            "tags": "",
+            "createdAt": "",
+            "updatedAt": "",
+        }
 
     def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for review sessions.
@@ -536,6 +717,7 @@ class ReviewController(QtCore.QObject):
         sort_by: str | None = None,
         descending: bool = False,
         version_ids: list[str] | None = None,
+        include_folder_children: bool = True,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
 
@@ -573,6 +755,7 @@ class ReviewController(QtCore.QObject):
             "taskFilter": "",
             "sortBy": sort_by,
             "folderIds": [folder_id] if folder_id else None,
+            "includeFolderChildren": include_folder_children,
             "versionIds": version_ids if version_ids else None,
         }
         if descending:

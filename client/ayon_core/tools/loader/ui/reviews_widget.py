@@ -7,9 +7,11 @@ from typing import Any
 from ayon_ui_qt import get_ayon_style_data
 from ayon_ui_qt.components.buttons import AYButton  # noqa: F401
 from ayon_ui_qt.components.combo_box import AYComboBox
-from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
+from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.slicer import AYSlicer
+from ayon_ui_qt.components.table_filter import AYTableFilter
 from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
 from ayon_ui_qt.components.table_view import AYTableView
 from ayon_ui_qt.components.tree_model import LazyTreeModel
@@ -194,6 +196,8 @@ class ReviewTable(AYContainer):
             *args,
             layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.Low,
+            layout_margin=8,
+            layout_spacing=4,
             **kwargs,
         )
         self._controller = controller
@@ -203,8 +207,23 @@ class ReviewTable(AYContainer):
             columns=self._build_columns(self._controller.current_category),
             page_size=250,
         )
-        self._table.setModel(self._model)
+        self._table_filter = AYTableFilter(model=self._model, parent=self)
+        self._table.setModel(self._table_filter.filter_model)
+        self._tree_toggle = AYCheckBox(
+            "Show Hierarchy",
+            variant=AYCheckBox.Variants.Button,
+            parent=self,
+        )
+        self._tree_toggle.toggled.connect(self._on_tree_mode_toggle)
+
+        toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
+        toolbar_lyt.addWidget(self._table_filter, stretch=1)
+        toolbar_lyt.addWidget(self._tree_toggle, stretch=0)
+        self.add_layout(toolbar_lyt, stretch=0)
         self.add_widget(self._table)
+
+        self._auto_expand: bool = False
+        self._model.rowsInserted.connect(self._on_rows_inserted_expand)
 
     def on_project_info_changed(self) -> None:
         """Rebuild columns now that version attributes are available."""
@@ -212,6 +231,61 @@ class ReviewTable(AYContainer):
         self._model.set_columns(
             self._build_columns(self._controller.current_category)
         )
+
+    def _on_tree_mode_toggle(self, enabled: bool) -> None:
+        # Update the controller state first so that the fetch triggered
+        # by model.set_tree_mode() sees the correct mode.
+        self._controller.set_tree_mode(enabled)
+        # Set auto-expand before the model reset so that the very first
+        # batch of inserted rows is expanded immediately.
+        has_selection = bool(self._controller.selected_folder_id)
+        self._auto_expand = enabled and has_selection
+        self._model.set_tree_mode(enabled)
+
+    def set_auto_expand(self, enabled: bool) -> None:
+        """Enable or disable automatic expansion of folder rows.
+
+        When *enabled*, every folder row inserted into the model is
+        immediately expanded so that its children are fetched and
+        displayed.  Cascades recursively until version-leaf rows
+        (which have no children) are reached.
+
+        Args:
+            enabled: ``True`` to auto-expand, ``False`` to disable.
+        """
+        self._auto_expand = enabled
+
+    def _on_rows_inserted_expand(
+        self,
+        parent: QtCore.QModelIndex,
+        first: int,
+        last: int,
+    ) -> None:
+        """Expand newly inserted folder rows when auto-expand is active.
+
+        Connected to ``PaginatedTableModel.rowsInserted``.  For each
+        inserted row, if the source model reports that it can fetch
+        more children (i.e. it is a folder node), the corresponding
+        proxy index is expanded.  Expanding triggers Qt's
+        ``fetchMore`` cycle, which inserts more rows, which fires this
+        handler again — the recursion terminates naturally when version
+        leaf rows (``canFetchMore == False``) are reached.
+
+        Args:
+            parent: Source model parent index of the inserted rows.
+            first: First inserted row (0-based).
+            last: Last inserted row (0-based, inclusive).
+        """
+        if not self._auto_expand:
+            return
+        for row in range(first, last + 1):
+            src_idx = self._model.index(row, 0, parent)
+            if self._model.canFetchMore(src_idx):
+                proxy_idx = self._table_filter.filter_model.mapFromSource(
+                    src_idx
+                )
+                if proxy_idx.isValid():
+                    self._table.expand(proxy_idx)
 
     def _build_columns(self, category: str) -> list[TableColumn]:
         _style = get_ayon_style_data("AYTableView", "default")
@@ -234,8 +308,12 @@ class ReviewTable(AYContainer):
                 "product/version",
                 "Product/Version",
                 width=_w("Product/Version", 200),
+                icon="layers",
+                tree_position=True,
             ),
-            TableColumn("status", "Status", width=_w("Status", 120)),
+            TableColumn(
+                "status", "Status", width=_w("Status", 120), icon="circle"
+            ),
         ]
 
         attributes = [
@@ -248,32 +326,67 @@ class ReviewTable(AYContainer):
         ]
 
         hierarchy = [
-            TableColumn("entityType", "Entity Type", width=_w("Entity Type")),
             TableColumn(
-                "productType", "Product Type", width=_w("Product Type")
+                "entityType",
+                "Entity Type",
+                width=_w("Entity Type"),
+                icon="layers",
             ),
-            TableColumn("folderName", "Folder Name", width=_w("Folder Name")),
-            TableColumn("author", "Author", width=_w("Author")),
-            TableColumn("version", "Version", width=_w("Version")),
             TableColumn(
-                "productName", "Product Name", width=_w("Product Name", 150)
+                "productType",
+                "Product Type",
+                width=_w("Product Type"),
+                icon="category",
             ),
-            TableColumn("taskType", "Task Type", width=_w("Task Type")),
-            TableColumn("task", "Task", width=_w("Task")),
-            TableColumn("tags", "Tags", width=_w("Tags")),
+            TableColumn(
+                "folderName",
+                "Folder Name",
+                width=_w("Folder Name"),
+                icon="folder",
+            ),
+            TableColumn("author", "Author", width=_w("Author"), icon="person"),
+            TableColumn(
+                "version", "Version", width=_w("Version"), icon="history"
+            ),
+            TableColumn(
+                "productName",
+                "Product Name",
+                width=_w("Product Name", 150),
+                icon="inventory_2",
+            ),
+            TableColumn(
+                "taskType", "Task Type", width=_w("Task Type"), icon="task_alt"
+            ),
+            TableColumn("task", "Task", width=_w("Task"), icon="task"),
+            TableColumn("tags", "Tags", width=_w("Tags"), icon="label"),
         ]
 
         review_sessions = [
-            TableColumn("tags", "Tags", width=_w("Tags")),
+            TableColumn("tags", "Tags", width=_w("Tags"), icon="label"),
             TableColumn(
-                "productType", "Product Type", width=_w("Product Type")
+                "productType",
+                "Product Type",
+                width=_w("Product Type"),
+                icon="category",
             ),
-            TableColumn("taskType", "Task Type", width=_w("Task Type")),
-            TableColumn("entityType", "Entity Type", width=_w("Entity Type")),
-            TableColumn("author", "Author", width=_w("Author")),
-            TableColumn("version", "Version", width=_w("Version")),
             TableColumn(
-                "productName", "Product Name", width=_w("Product Name", 150)
+                "taskType", "Task Type", width=_w("Task Type"), icon="task_alt"
+            ),
+            TableColumn(
+                "entityType",
+                "Entity Type",
+                width=_w("Entity Type"),
+                icon="layers",
+            ),
+            TableColumn("author", "Author", width=_w("Author"), icon="person"),
+            TableColumn(
+                "version", "Version", width=_w("Version"), icon="history"
+            ),
+            TableColumn(
+                "productName",
+                "Product Name",
+                width=_w("Product Name", 150),
+                icon="inventory_2",
             ),
         ]
 
@@ -287,6 +400,17 @@ class ReviewTable(AYContainer):
 
     def on_category_changed(self, category: str) -> None:
         """Reset the table when the slicer category changes."""
+        is_hierarchy = category == "Hierarchy"
+        self._tree_toggle.setEnabled(is_hierarchy)
+        if not is_hierarchy and self._tree_toggle.isChecked():
+            # Suppress tree mode when leaving Hierarchy; block signals to
+            # avoid a redundant reset_data from the toggle signal.
+            self._tree_toggle.blockSignals(True)
+            self._tree_toggle.setChecked(False)
+            self._tree_toggle.blockSignals(False)
+            self._controller.set_tree_mode(False)
+            self._model.set_tree_mode(False)
+        self._auto_expand = False
         self._model.reset_data()
         self._model.set_columns(self._build_columns(category))
 
@@ -308,6 +432,7 @@ class ReviewsWidget(AYContainer):
         )
         self._slicer.set_model(self._model)
         self._table = ReviewTable(self._controller, self)
+        self._selected_folder_id: str = ""
         self._build()
 
         # Connect signals
@@ -315,9 +440,7 @@ class ReviewsWidget(AYContainer):
             self._controller.set_project
         )
         self._controller.tree_reset_requested.connect(self._on_tree_reset)
-        self._controller.project_changed.connect(
-            lambda _: self._table._model.reset_data()
-        )
+        self._controller.project_changed.connect(self._on_project_changed)
         self._controller.selection_changed.connect(self._on_folder_selected)
         # Ensure the table updates when the category changes
         self._controller.category_changed.connect(
@@ -326,6 +449,7 @@ class ReviewsWidget(AYContainer):
         self._controller.project_info_changed.connect(
             self._table.on_project_info_changed
         )
+        # auto-expand on mode toggle is handled inside ReviewTable
 
         # Set initial project
         initial_project = self._slicer.current_project()
@@ -345,12 +469,32 @@ class ReviewsWidget(AYContainer):
         self._model.reset()
         self._slicer.set_model(self._model)
 
+    def _on_project_changed(self, project_name: str) -> None:
+        """Clear selection state and refresh table on project change.
+
+        Args:
+            project_name: Newly selected project name.
+        """
+        self._selected_folder_id = ""
+        self._table.set_auto_expand(False)
+        self._table._model.reset_data()
+
     def _on_folder_selected(self, id: str, name: str) -> None:
         """Refresh the version table when a folder is selected or cleared.
+
+        In tree mode, selecting a folder makes that folder the single
+        root row of the table and enables auto-expansion so that the
+        full sub-tree is shown immediately.  Deselecting reverts to the
+        collapsed root-folders view.
 
         Args:
             id: ID of the selected folder, or empty string when
                 deselected.
             name: Name of the selected folder.
         """
+        self._selected_folder_id = id
+        auto_expand = bool(id) and self._controller.tree_mode
+        self._table.set_auto_expand(auto_expand)
         self._table._model.reset_data()
+        # Re-apply active filter criteria to the freshly loaded data.
+        self._table._table_filter.filter_model.refresh_filter()
