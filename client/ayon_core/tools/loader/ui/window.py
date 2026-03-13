@@ -23,6 +23,9 @@ from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
 
+from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+
 from .folders_widget import LoaderFoldersWidget
 from .tasks_widget import LoaderTasksWidget
 from .products_widget import ProductsWidget
@@ -30,6 +33,9 @@ from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
 from .search_bar import FiltersBar, FilterDefinition
+
+from .reviews_widget import ReviewsWidget
+from ayon_ui_qt import get_ayon_style
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -133,9 +139,15 @@ class RefreshHandler:
         self._products_refreshed = True
 
 
-class LoaderWindow(QtWidgets.QWidget):
+class LoaderWindow(AYContainer):
     def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.High,
+            layout_margin=16,
+            layout_spacing=16,
+        )
 
         if controller is None:
             controller = LoaderController()
@@ -153,7 +165,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         overlay_object = MessageOverlayObject(self)
 
-        main_splitter = QtWidgets.QSplitter(self)
+        main_splitter = QtWidgets.QSplitter()
 
         context_splitter = QtWidgets.QSplitter(main_splitter)
         context_splitter.setOrientation(QtCore.Qt.Vertical)
@@ -247,8 +259,13 @@ class LoaderWindow(QtWidgets.QWidget):
         main_splitter.setStretchFactor(1, 6)
         main_splitter.setStretchFactor(2, 1)
 
-        main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.addWidget(main_splitter)
+        self.review_wdgt = ReviewsWidget()
+
+        self._tab = QtWidgets.QTabWidget()
+        self._tab.addTab(main_splitter, " Loader ")
+        self._tab.addTab(self.review_wdgt, " Reviews ")
+
+        self.add_widget(self._tab)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
@@ -353,6 +370,8 @@ class LoaderWindow(QtWidgets.QWidget):
             self._product_group_checkbox.isChecked()
         )
 
+        self._tab.setCurrentIndex(1)
+
     def refresh(self):
         self._reset_on_show = False
         self._controller.reset()
@@ -393,6 +412,9 @@ class LoaderWindow(QtWidgets.QWidget):
             return
 
         super().keyPressEvent(event)
+
+    # def setStyleSheet(self, styleSheet: str) -> None:
+    #     self.setStyle(get_ayon_style())
 
     def _on_first_show(self):
         self._first_show = False

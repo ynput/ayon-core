@@ -7,8 +7,12 @@ import socket
 import time
 import threading
 import copy
+import datetime
 
 from . import Terminal
+
+# force the logger to use the same format for all log levels.
+USE_STD_FMT = bool(os.environ.get("AYON_USE_STD_LOG_FORMAT", 0))
 
 
 class LogStreamHandler(logging.StreamHandler):
@@ -90,6 +94,13 @@ class LogFormatter(logging.Formatter):
             )
         return out
 
+    def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
+        return (
+            datetime.fromtimestamp(record.created)
+            .astimezone(datetime.timezone.utc)
+            .isoformat(timespec="milliseconds")
+        )
+
 
 class Logger:
     DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
@@ -98,13 +109,16 @@ class Logger:
     WRN = "*** WRN: >>> { %(name)s }: [ %(message)s ] "
     ERR = "!!! ERR: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
     CRI = "!!! CRI: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
+    STD = (
+        "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
+    )
 
     FORMAT_FILE = {
-        logging.INFO: INF,
-        logging.DEBUG: DBG,
-        logging.WARNING: WRN,
-        logging.ERROR: ERR,
-        logging.CRITICAL: CRI,
+        logging.INFO: STD if USE_STD_FMT else INF,
+        logging.DEBUG: STD if USE_STD_FMT else DBG,
+        logging.WARNING: STD if USE_STD_FMT else WRN,
+        logging.ERROR: STD if USE_STD_FMT else ERR,
+        logging.CRITICAL: STD if USE_STD_FMT else CRI,
     }
 
     # Is static class initialized
