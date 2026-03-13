@@ -370,6 +370,8 @@ class LoaderWindow(AYContainer):
             self._product_group_checkbox.isChecked()
         )
 
+        self._tab.setCurrentIndex(1)
+
     def refresh(self):
         self._reset_on_show = False
         self._controller.reset()
