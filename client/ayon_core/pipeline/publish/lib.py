@@ -41,7 +41,7 @@ from .constants import (
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.traits import Representation
-
+    from ayon_core.pipeline.anatomy import AnatomyStringTemplate
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
@@ -1111,10 +1111,36 @@ def get_instance_expected_output_path(
         project_settings=instance.context.data["project_settings"],
     )
 
-    path_template_obj = anatomy.get_template_item(
+    path_template_obj: AnatomyStringTemplate = anatomy.get_template_item(
         "publish",
         template_name
     )["path"]
+
+    # Define {originalBasename} template key which can be used in publish
+    # template to use to original filename.
+    if "originalbasename" in path_template_obj.template.lower():
+        repre = next(
+            (
+                repre for repre in instance.data.get("representations", [])
+                if repre["name"] == representation_name
+            ),
+            None
+        )
+        if repre:
+            files = repre["files"]
+            first_file = files  # files may be `str` if single file
+            if isinstance(files, list):
+                first_file = files[0]
+
+            basename = os.path.splitext(os.path.basename(first_file))[0]
+            template_data["originalBasename"] = basename
+        else:
+            raise ValueError(
+                "Unable to format 'originalBasename' for representation "
+                f"{representation_name} because representation is not found"
+                " on instance."
+            )
+
     template_filled = path_template_obj.format_strict(template_data)
     return os.path.normpath(template_filled)
 
