@@ -427,13 +427,13 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
 
         resolution = self.resolution
         data = {
-            'text': (
+            "text": (
                 final_text
                 .replace(",", r"\,")
                 .replace(':', r'\:')
             ),
-            'color': options['font_color'],
-            'size': options['font_size']
+            "color": options["font_color"],
+            "size": options["font_size"]
         }
         timecode_text = options.get("timecode") or ""
         text_for_size += timecode_text
@@ -452,31 +452,36 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         arg_font_path = (
             font_path
             .replace("\\", "\\\\")
-            .replace(':', r'\:')
+            .replace(":", r"\:")
         )
         data["font"] = arg_font_path
 
         drawtext = draw % data
         drawtext += ":y_align=font"  # align based on the font metrics
 
-        if options.get('bg_color') is not None:
+        if options.get("bg_color") is not None:
 
             box_args = [
                 "box=1",
                 f"boxcolor={options['bg_color']}@{options['bg_opacity']}"
             ]
 
-            if padding := options.get('bg_padding'):
-                font = ImageFont.truetype(options["font"], options["font_size"])
+            if padding := options.get("bg_padding"):
+                font = ImageFont.truetype(
+                    options["font"], options["font_size"]
+                )
                 _, descent = font.getmetrics()
-                padding_x = padding  # x can be just the padding itself
-                padding_y = padding - descent  # font descent is already included box size by default  # noqa: E501
-                box_args.append(f"boxborderw={padding_y}|{padding_x}")  # yes, it's "y|x"  # noqa: E501
+                padding_x = padding
+                # font descent is already included box height by default
+                padding_y = padding - descent
+                # boxborderw defines top|right|bottom|left
+                # or in this case vertical|horizontal
+                box_args.append(f"boxborderw={padding_y}|{padding_x}")
 
             box = ":".join(box_args)
-            drawtext += f':{box}'
+            drawtext += f":{box}"
 
-        self.filters['drawtext'].append(drawtext)
+        self.filters["drawtext"].append(drawtext)
 
     def command(self, output=None, args=None, overwrite=False):
         """
