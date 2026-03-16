@@ -90,22 +90,26 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             "-i", video_path,
         ])
 
+        ffprobe_data = get_ffprobe_data(input_file_path, self.log)
+        video_codec_args = get_ffmpeg_codec_args(ffprobe_data)
+
         # Trim the video by re-encoding the relevant part of it to
         # the same codec. This is the only way to ensure a precise
         # output duration.
-        # '-c copy' make FFmpeg rely on key I-frames, not 100% accurate.
+        if video_codec_args:
+            command.extend(video_codec_args)
+
+        # Cannot identify video codec, won't be able to re-encode and ensure
+        # precise duration. FFmpeg will cut at keyframes.
         # https://video.stackexchange.com/questions/16750/
-        ffprobe_data = get_ffprobe_data(input_file_path, self.log)
-        video_codec_args = get_ffmpeg_codec_args(ffprobe_data)
-        if not video_codec_args:
+        # Use '-c copy' which preserve the original video codec.
+        else:
             self.log.warning(
                 "FFmpeg could not identify the video codec for %s. "
                 "Use '-c copy' which might lead in duration mismatches.",
                 input_file_path,
             )
-            video_codec_args = ["-c", "copy"]
-
-        command.extend(video_codec_args)
+            command.extend(["-c", "copy"])
 
         # create and append path to destination
         output_path = self._get_ffmpeg_output(input_file_path)
