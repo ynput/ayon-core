@@ -106,7 +106,8 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         else:
             self.log.warning(
                 "FFmpeg could not identify the video codec for %s. "
-                "Use '-c copy' which might lead in duration mismatches.",
+                "Falling back to '-c copy' which may lead to"
+                " duration mismatches.",
                 input_file_path,
             )
             command.extend(["-c", "copy"])
