@@ -518,7 +518,7 @@ class ReviewTable(AYContainer):
             TableColumn(
                 "product/version",
                 "Product/Version",
-                width=_w("Product/Version", 200),
+                width=_w("Product/Version", 300),
                 icon="layers",
                 tree_position=True,
             ),
