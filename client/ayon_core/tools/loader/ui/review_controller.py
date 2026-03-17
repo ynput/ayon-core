@@ -474,7 +474,11 @@ class ReviewController(QtCore.QObject):
                     self._current_project,
                     folder_ids=[selected_folder_id],
                     fields={
-                        "id", "name", "label", "folderType", "hasChildren"
+                        "id",
+                        "name",
+                        "label",
+                        "folderType",
+                        "hasChildren",
                     },
                 )
             )
@@ -484,15 +488,17 @@ class ReviewController(QtCore.QObject):
                     self._current_project,
                     parent_ids=[None],  # type: ignore[list-item]
                     fields={
-                        "id", "name", "label", "folderType", "hasChildren"
+                        "id",
+                        "name",
+                        "label",
+                        "folderType",
+                        "hasChildren",
                     },
                 )
             )
         return [self._build_folder_row(f) for f in folders]
 
-    def _get_child_folder_rows(
-        self, parent_id: str
-    ) -> list[dict[str, Any]]:
+    def _get_child_folder_rows(self, parent_id: str) -> list[dict[str, Any]]:
         """Fetch direct sub-folders of *parent_id* as table rows.
 
         Args:
@@ -709,6 +715,162 @@ class ReviewController(QtCore.QObject):
             .get(key, default)
         )
 
+    def fetch_versions_page_batch(
+        self,
+        requests: "list[Any]",
+    ) -> "dict[str | None, list[dict[str, Any]]]":
+        """Batch-fetch child rows for multiple parent nodes in one round-trip.
+
+        Implements the ``fetch_page_batch`` contract of
+        :class:`~ayon_ui_qt.components.table_model.PaginatedTableModel`.
+
+        For page-0 requests the method issues:
+
+        * One :func:`ayon_api.get_folders` call for all parent IDs
+          combined, to retrieve sub-folder rows.
+        * One :meth:`_get_versions_page` GraphQL call with all parent IDs
+          as ``folderIds``, to retrieve version rows.  Results are then
+          partitioned by ``product.folder.id``.
+
+        Page-N requests (continuation pages) cannot be batched safely
+        because each parent has its own cursor state.  They are forwarded
+        individually to :meth:`fetch_versions_page` and merged into the
+        return dict.
+
+        Args:
+            requests: List of
+                :class:`~ayon_ui_qt.components.table_model.BatchFetchRequest`
+                instances describing which parent_ids and pages to fetch.
+
+        Returns:
+            Mapping of ``parent_id -> list[row_dict]`` for each requested
+            parent.
+        """
+        if not self._current_project:
+            return {}
+
+        result: dict[str | None, list[dict[str, Any]]] = {}
+
+        page0_reqs = [r for r in requests if r.page == 0 and r.parent_id]
+        pagen_reqs = [r for r in requests if r not in page0_reqs]
+
+        # ------------------------------------------------------------------
+        # Page-N fallback: forward individually (uses per-folder cursors).
+        # ------------------------------------------------------------------
+        for req in pagen_reqs:
+            rows = self.fetch_versions_page(
+                req.page,
+                req.page_size,
+                req.sort_key,
+                req.descending,
+                req.parent_id,
+            )
+            result[req.parent_id] = rows
+
+        if not page0_reqs:
+            return result
+
+        parent_ids: list[str] = [r.parent_id for r in page0_reqs]  # type: ignore[misc]
+        req0 = page0_reqs[0]
+        sort_by = (
+            COLUMN_TO_SORT_BY.get(req0.sort_key) if req0.sort_key else None
+        )
+        descending = req0.descending
+        # Use a single page large enough to hold page_size rows per parent.
+        combined_page_size = req0.page_size * len(parent_ids)
+
+        # Reset per-folder cursor/has-more state for all page-0 parents.
+        for pid in parent_ids:
+            self._folder_cursors.pop(pid, None)
+            self._folder_has_more.pop(pid, None)
+
+        # ------------------------------------------------------------------
+        # 1. Batch sub-folder fetch (one API call for all parent_ids).
+        # ------------------------------------------------------------------
+        try:
+            child_folder_list = list(
+                ayon_api.get_folders(
+                    self._current_project,
+                    parent_ids=parent_ids,
+                    fields={
+                        "id",
+                        "name",
+                        "label",
+                        "folderType",
+                        "hasChildren",
+                        "parentId",
+                    },
+                )
+            )
+        except Exception:
+            self.log.exception(
+                "Batch sub-folder fetch failed for %d parents", len(parent_ids)
+            )
+            child_folder_list = []
+
+        folders_by_parent: dict[str, list[dict[str, Any]]] = {}
+        for f in child_folder_list:
+            pid = f.get("parentId", "")
+            folders_by_parent.setdefault(pid, []).append(f)
+
+        # ------------------------------------------------------------------
+        # 2. Batch version fetch (one GraphQL query for all parent_ids).
+        # ------------------------------------------------------------------
+        try:
+            edges, _ = self._get_versions_page(
+                self._current_project,
+                folder_id=None,
+                page_size=combined_page_size,
+                cursor=None,
+                sort_by=sort_by,
+                descending=descending,
+                include_folder_children=False,
+                folder_ids=parent_ids,
+            )
+        except Exception:
+            self.log.exception(
+                "Batch version fetch failed for %d parents", len(parent_ids)
+            )
+            edges = []
+
+        # Group version edges by the folder they belong to.
+        edges_by_folder: dict[str, list] = {}
+        for edge in edges:
+            fid = (
+                edge.get("node", {})
+                .get("product", {})
+                .get("folder", {})
+                .get("id", "")
+            )
+            edges_by_folder.setdefault(fid, []).append(edge)
+
+        # ------------------------------------------------------------------
+        # 3. Assemble per-parent result.
+        # ------------------------------------------------------------------
+        for req in page0_reqs:
+            pid = req.parent_id
+            folder_rows = [
+                self._build_folder_row(f)
+                for f in folders_by_parent.get(pid, [])
+            ]
+            version_rows = [
+                self._transform_version_edge(e)
+                for e in edges_by_folder.get(pid, [])
+            ]
+            # Mark no more pages for this parent — the combined query
+            # was sized to retrieve all rows in a single shot.
+            self._folder_has_more[pid] = False
+            result[pid] = folder_rows + version_rows
+
+        self.log.debug(
+            "Batch fetch complete: %d parents, %d sub-folders, "
+            "%d version edges",
+            len(parent_ids),
+            len(child_folder_list),
+            len(edges),
+        )
+        return result
+
     def _get_versions_page(
         self,
         project_name: str,
@@ -719,6 +881,7 @@ class ReviewController(QtCore.QObject):
         descending: bool = False,
         version_ids: list[str] | None = None,
         include_folder_children: bool = True,
+        folder_ids: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
 
@@ -730,7 +893,8 @@ class ReviewController(QtCore.QObject):
 
         Args:
             project_name: AYON project name.
-            folder_id: Filter by folder ID, or ``None`` for all.
+            folder_id: Filter by a single folder ID, or ``None``.
+                Ignored when *folder_ids* is provided.
             page_size: Maximum number of edges to return.
             cursor: GraphQL cursor from the previous page, or ``None``
                 for the first page.
@@ -738,6 +902,10 @@ class ReviewController(QtCore.QObject):
                 the server default (``creation_order``).
             descending: When ``True`` use ``last``/``before`` pagination
                 to obtain results in descending order.
+            folder_ids: When provided, filters by this explicit list of
+                folder IDs instead of the single *folder_id*. Used by
+                :meth:`fetch_versions_page_batch` to query multiple
+                parents in one shot.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -749,13 +917,22 @@ class ReviewController(QtCore.QObject):
         con = ayon_api.get_server_api_connection()
         if not con:
             raise RuntimeError("No server connection")
+
+        resolved_folder_ids: list[str] | None
+        if folder_ids is not None:
+            resolved_folder_ids = folder_ids
+        elif folder_id is not None:
+            resolved_folder_ids = [folder_id]
+        else:
+            resolved_folder_ids = None
+
         variables: dict[str, Any] = {
             "projectName": project_name,
             "versionFilter": "",
             "productFilter": "",
             "taskFilter": "",
             "sortBy": sort_by,
-            "folderIds": [folder_id] if folder_id else None,
+            "folderIds": resolved_folder_ids,
             "includeFolderChildren": include_folder_children,
             "versionIds": version_ids if version_ids else None,
         }

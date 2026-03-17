@@ -361,6 +361,7 @@ class ReviewTable(AYContainer):
         self._table = AYTableView(self)
         self._model = PaginatedTableModel(
             fetch_page=self._controller.fetch_versions_page,
+            fetch_page_batch=self._controller.fetch_versions_page_batch,
             columns=self._build_columns(self._controller.current_category),
             page_size=250,
         )
