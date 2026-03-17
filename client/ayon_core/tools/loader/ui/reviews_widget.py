@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import json
 import logging
+import tempfile
 from typing import Any
+
+import ayon_api
 
 from ayon_ui_qt import get_ayon_style_data
 from ayon_ui_qt.components.buttons import AYButton  # noqa: F401
 from ayon_ui_qt.components.combo_box import AYComboBox
 from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
+from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
 from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.slicer import AYSlicer
@@ -16,12 +20,55 @@ from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
 from ayon_ui_qt.components.table_view import AYTableView
 from ayon_ui_qt.components.tree_model import LazyTreeModel
 from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
-from qtpy import QtCore, QtGui, QtWidgets
+from ayon_ui_qt.components.task_queue import get_task_queue, AsyncTask
+from ayon_ui_qt.image_cache import ImageCache
+from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.tools.loader.ui.review_controller import ReviewController
 from ayon_core.tools.utils import get_qt_icon
 
 log = logging.getLogger(__name__)
+# log.setLevel(logging.INFO)
+
+
+def _thumbnail_loader(key: str) -> str:
+    """Fetch a version thumbnail from AYON and persist it to a temp file.
+
+    Args:
+        key: Cache key in the form:
+          ``"<project_name>/<version_id>/<thumbnail_id>"``.
+
+    Returns:
+        Absolute path to the saved image file, or empty string when the
+        version has no thumbnail (which will be caught by the factory).
+    """
+    log.debug("Fetching thumbnail for key %r", key)
+    ic = ImageCache.get_instance()
+    path = ic.get_path(key)
+    if path:
+        log.debug("  |_ Thumbnail CACHE HIT for key %r: %s", key, path)
+        return path
+    try:
+        project_name, version_id, thumbnail_id = key.split("/", 2)
+        content = ayon_api.get_version_thumbnail(
+            project_name, version_id, thumbnail_id
+        )
+        if not content.is_valid:
+            return ""
+        ext = (
+            ".jpg"
+            if content.content_type and "jpeg" in content.content_type
+            else ".png"
+        )
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
+            fh.write(content.content)
+            log.debug(
+                "  |_ Thumbnail cache miss for key %r: %s", key, fh.name
+            )
+            return str(fh.name)
+    except Exception:
+        log.debug("Failed to fetch thumbnail for key %r", key, exc_info=True)
+        return ""
 
 
 class ProjectModel(QtGui.QStandardItemModel):
@@ -300,9 +347,45 @@ class ReviewTable(AYContainer):
                 default,
             )
 
+        controller = self._controller
+
+        def _thumb_widget_factory(
+            index: QtCore.QModelIndex,
+            parent: QtWidgets.QWidget,
+        ) -> AYEntityThumbnail:
+            row_dict = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            thumbnail_id = row_dict.get("thumbnailId", "")
+            version_id = row_dict.get("id", "")
+            project = controller.current_project
+            if not thumbnail_id or not version_id or not project:
+                return AYEntityThumbnail(size=(66, 32), parent=parent)
+            key = f"{project}/{version_id}/{thumbnail_id}"
+            w = AYEntityThumbnail(
+                size=(66, 32),
+                parent=parent,
+            )
+            # put the thumbnail_loader on the task queue to avoid blocking
+            # the UI.
+            get_task_queue().enqueue(
+                AsyncTask(
+                    name=f"thumbnail_loader_{key}",
+                    function=lambda: _thumbnail_loader(key),
+                    callback=lambda fpath: w.set_thumbnail(fpath)
+                    if shiboken.isValid(w)
+                    else None,
+                    priority=5,
+                    context_id=self._model._request_id,
+                )
+            )
+            return w
+
         common = [
             TableColumn(
-                "thumb", "Thumbnail", width=_w("Thumbnail"), sortable=False
+                "thumb",
+                "Thumbnail",
+                width=_w("Thumbnail"),
+                sortable=False,
+                widget_factory=_thumb_widget_factory,
             ),
             TableColumn(
                 "product/version",

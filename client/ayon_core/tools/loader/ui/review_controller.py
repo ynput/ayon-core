@@ -71,6 +71,7 @@ query GetVersions(
           version
           featuredVersionType
           heroVersionId
+          thumbnailId
           task {
             id
             taskType
@@ -788,7 +789,8 @@ class ReviewController(QtCore.QObject):
         )
         status = n.get("status", "")
         return {
-            "thumbnail": "",
+            "thumbnail": n.get("thumbnailId") or "",
+            "thumbnailId": n.get("thumbnailId") or "",
             "product/version": (
                 f"{n.get('product', {}).get('name', '')} - {n.get('name', '')}"
             ),
