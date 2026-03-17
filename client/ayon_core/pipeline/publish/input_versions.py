@@ -5,7 +5,7 @@ from typing import Any, Optional, Iterable, Union
 
 import ayon_api
 
-SerializedInputVersion = Union[str, dict[str, Any]]
+SerializedInputVersion = dict[str, Any]
 
 
 # LinkPayload dataclass could currently live in `integrate_inputlinks.py`
@@ -42,13 +42,10 @@ class InputVersion:
             output["hero_version_id"] = self.hero_version_id
         return output
 
-    def to_json_data(self) -> SerializedInputVersion:
-        data = self.data
-        if not data:
-            return self.version_id
+    def to_dict(self) -> SerializedInputVersion:
         return {
             "version_id": self.version_id,
-            "data": data,
+            "data": self.data,
         }
 
     @classmethod
@@ -59,37 +56,29 @@ class InputVersion:
         if isinstance(value, cls):
             return value
 
+        if isinstance(value, str):
+            return cls(version_id=str(value))
+
         if isinstance(value, dict):
-            version_id = (
-                value.get("version_id")
-                or value.get("versionId")
-                or value.get("id")
-            )
+            version_id = value.get("version_id")
             if not version_id:
                 raise ValueError(
                     "Serialized input version is missing 'version_id'."
                 )
 
-            data = value.get("data") or {}
-            hero = value.get("hero")
-            hero_version_id = value.get("hero_version_id")
-            if isinstance(data, dict):
-                if hero is None:
-                    hero = data.get("hero")
-                if hero_version_id is None:
-                    hero_version_id = data.get("hero_version_id")
-
-            hero = bool(hero or hero_version_id)
-            if hero_version_id is not None:
-                hero_version_id = str(hero_version_id)
-
+            data: dict = value.get("data") or {}
+            hero: bool = data.get("hero", False)
+            hero_version_id: Optional[str] = data.get("hero_version_id")
             return cls(
                 version_id=str(version_id),
                 hero=hero,
                 hero_version_id=hero_version_id,
             )
 
-        return cls(version_id=str(value))
+        raise TypeError(
+            "Must have InputVersion, str or dict type."
+            f" Got: {value} ({type(value)})"
+        )
 
 
 def serialize_input_versions(
@@ -99,7 +88,7 @@ def serialize_input_versions(
         return []
 
     return [
-        InputVersion.from_value(input_version).to_json_data()
+        InputVersion.from_value(input_version).to_dict()
         for input_version in input_versions
     ]
 
