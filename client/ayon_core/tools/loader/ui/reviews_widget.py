@@ -62,13 +62,65 @@ def _thumbnail_loader(key: str) -> str:
         )
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
             fh.write(content.content)
-            log.debug(
-                "  |_ Thumbnail cache miss for key %r: %s", key, fh.name
-            )
+            log.debug("  |_ Thumbnail cache miss for key %r: %s", key, fh.name)
             return str(fh.name)
     except Exception:
         log.debug("Failed to fetch thumbnail for key %r", key, exc_info=True)
         return ""
+
+
+class LazyThumbnailWidget(AYEntityThumbnail):
+    """Thumbnail widget that defers loading until the first paint event.
+
+    Persistent-editor widgets only receive ``paintEvent`` when they are
+    within the viewport's visible area.  By deferring the async thumbnail
+    fetch to the first paint, we avoid issuing network requests for
+    off-screen rows.
+
+    Args:
+        key: ImageCache key in the form
+            ``"<project>/<version_id>/<thumbnail_id>"``.
+        context_id: Model request-ID used to scope the task-queue entry
+            so stale tasks can be cancelled on model reset.
+        size: ``(width, height)`` dimensions for the thumbnail.
+        parent: Optional parent widget.
+    """
+
+    def __init__(
+        self,
+        key: str,
+        context_id: str,
+        size: tuple[int, int] = (66, 32),
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(size=size, parent=parent)
+        self._thumb_key: str = key
+        self._context_id: str = context_id
+        self._load_requested: bool = False
+
+    def paintEvent(  # type: ignore[override]
+        self, event: QtGui.QPaintEvent
+    ) -> None:
+        """Enqueue the thumbnail fetch on the first paint, then paint.
+
+        Args:
+            event: The paint event forwarded to the parent class.
+        """
+        if not self._load_requested:
+            self._load_requested = True
+            w = self
+            get_task_queue().enqueue(
+                AsyncTask(
+                    name=f"thumbnail_loader_{self._thumb_key}",
+                    function=lambda: _thumbnail_loader(self._thumb_key),
+                    callback=lambda fpath: w.set_thumbnail(fpath)
+                    if shiboken.isValid(w)
+                    else None,
+                    priority=5,
+                    context_id=self._context_id,
+                )
+            )
+        super().paintEvent(event)
 
 
 class ProjectModel(QtGui.QStandardItemModel):
@@ -360,24 +412,14 @@ class ReviewTable(AYContainer):
             if not thumbnail_id or not version_id or not project:
                 return AYEntityThumbnail(size=(66, 32), parent=parent)
             key = f"{project}/{version_id}/{thumbnail_id}"
-            w = AYEntityThumbnail(
+            # Defer the thumbnail fetch to the first paintEvent so that
+            # off-screen rows do not trigger unnecessary network requests.
+            return LazyThumbnailWidget(
+                key=key,
+                context_id=self._model._request_id,
                 size=(66, 32),
                 parent=parent,
             )
-            # put the thumbnail_loader on the task queue to avoid blocking
-            # the UI.
-            get_task_queue().enqueue(
-                AsyncTask(
-                    name=f"thumbnail_loader_{key}",
-                    function=lambda: _thumbnail_loader(key),
-                    callback=lambda fpath: w.set_thumbnail(fpath)
-                    if shiboken.isValid(w)
-                    else None,
-                    priority=5,
-                    context_id=self._model._request_id,
-                )
-            )
-            return w
 
         common = [
             TableColumn(
