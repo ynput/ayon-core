@@ -1126,20 +1126,19 @@ def get_instance_expected_output_path(
             ),
             None
         )
-        if repre:
-            files = repre["files"]
-            first_file = files  # files may be `str` if single file
-            if isinstance(files, list):
-                first_file = files[0]
-
-            basename = os.path.splitext(os.path.basename(first_file))[0]
-            template_data["originalBasename"] = basename
-        else:
+        if not repre:
             raise ValueError(
                 "Unable to format 'originalBasename' for representation "
                 f"{representation_name} because representation is not found"
                 " on instance."
             )
+
+        first_file = repre["files"]
+        if isinstance(first_file, list):
+            first_file = first_file[0]
+
+        basename = os.path.splitext(first_file)[0]
+        template_data["originalBasename"] = basename
 
     template_filled = path_template_obj.format_strict(template_data)
     return os.path.normpath(template_filled)
