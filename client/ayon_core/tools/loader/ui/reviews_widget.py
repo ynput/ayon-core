@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import tempfile
-from typing import Any
+from typing import Any, Callable
 
 import ayon_api
 
@@ -121,6 +121,64 @@ class LazyThumbnailWidget(AYEntityThumbnail):
                 )
             )
         super().paintEvent(event)
+
+
+class PlaceholderThumbnail(QtWidgets.QWidget):
+    """Lightweight placeholder widget that creates the real thumbnail lazily.
+
+    The widget returned by a ``widget_factory`` is instantiated by Qt as
+    soon as ``openPersistentEditor`` is called, whether or not the row is
+    visible.  This class acts as a near-zero-cost stand-in: construction
+    costs a single ``QWidget`` allocation plus ``setFixedSize``.  The
+    real :class:`LazyThumbnailWidget` is only created on the first
+    ``paintEvent``, i.e. when the row actually scrolls into view.
+
+    This pairs with the viewport-aware editor management in
+    ``AYTableView`` (Strategy 1).  Even if an editor is opened for an
+    off-screen row, the real thumbnail widget (and its async network
+    fetch) will not be triggered until that row becomes visible.
+
+    Args:
+        make_real: Callable with no arguments that returns the real
+            :class:`LazyThumbnailWidget` when invoked.
+        size: ``(width, height)`` in pixels; must match the real widget.
+        parent: Optional parent widget (viewport).
+    """
+
+    def __init__(
+        self,
+        make_real: Callable[[], LazyThumbnailWidget],
+        size: tuple[int, int] = (66, 32),
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._make_real = make_real
+        self._real: LazyThumbnailWidget | None = None
+        self.setFixedSize(*size)
+
+    def paintEvent(  # type: ignore[override]
+        self, event: QtGui.QPaintEvent
+    ) -> None:
+        """Materialise the real thumbnail widget on the first paint.
+
+        Because ``paintEvent`` is only called when the widget is within
+        the visible viewport, the real widget (and its expensive
+        constructor) is never created for off-screen rows.
+
+        Args:
+            event: The paint event forwarded to the real widget.
+        """
+        if self._real is None:
+            self._real = self._make_real()
+            self._real.setParent(self)
+            self._real.setGeometry(self.rect())
+            self._real.show()
+        super().paintEvent(event)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if self._real is not None:
+            self._real.setGeometry(self.rect())
 
 
 class ProjectModel(QtGui.QStandardItemModel):
@@ -404,19 +462,46 @@ class ReviewTable(AYContainer):
         def _thumb_widget_factory(
             index: QtCore.QModelIndex,
             parent: QtWidgets.QWidget,
-        ) -> AYEntityThumbnail:
+        ) -> PlaceholderThumbnail:
+            """Return a cheap placeholder; the real thumbnail is lazy.
+
+            Constructing a :class:`PlaceholderThumbnail` is near-free (~a
+            single QWidget + setFixedSize).  The real
+            :class:`LazyThumbnailWidget` is only created when the row
+            scrolls into view (first ``paintEvent``), deferring both the
+            expensive widget construction and the async network fetch.
+
+            Args:
+                index: Display-model index for the cell.
+                parent: Viewport widget passed by the delegate.
+
+            Returns:
+                A :class:`PlaceholderThumbnail` sized ``(66, 32)``.
+            """
             row_dict = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             thumbnail_id = row_dict.get("thumbnailId", "")
             version_id = row_dict.get("id", "")
             project = controller.current_project
-            if not thumbnail_id or not version_id or not project:
-                return AYEntityThumbnail(size=(66, 32), parent=parent)
-            key = f"{project}/{version_id}/{thumbnail_id}"
-            # Defer the thumbnail fetch to the first paintEvent so that
-            # off-screen rows do not trigger unnecessary network requests.
-            return LazyThumbnailWidget(
-                key=key,
-                context_id=self._model._request_id,
+            request_id = self._model._request_id
+
+            def _make_real() -> LazyThumbnailWidget:
+                if not thumbnail_id or not version_id or not project:
+                    # No thumbnail available — return a sized blank widget.
+                    w = LazyThumbnailWidget(
+                        key="",
+                        context_id=request_id,
+                        size=(66, 32),
+                    )
+                    return w
+                key = f"{project}/{version_id}/{thumbnail_id}"
+                return LazyThumbnailWidget(
+                    key=key,
+                    context_id=request_id,
+                    size=(66, 32),
+                )
+
+            return PlaceholderThumbnail(
+                make_real=_make_real,
                 size=(66, 32),
                 parent=parent,
             )
