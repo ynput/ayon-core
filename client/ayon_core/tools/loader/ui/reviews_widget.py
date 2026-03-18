@@ -6,29 +6,29 @@ import tempfile
 from typing import Any, Callable
 
 import ayon_api
-
 from ayon_ui_qt import get_ayon_style_data
 from ayon_ui_qt.components.buttons import AYButton  # noqa: F401
+from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
 from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
-from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.slicer import AYSlicer
 from ayon_ui_qt.components.table_filter import AYTableFilter
 from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
 from ayon_ui_qt.components.table_view import AYTableView
+from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
 from ayon_ui_qt.components.tree_model import LazyTreeModel
 from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
-from ayon_ui_qt.components.task_queue import get_task_queue, AsyncTask
 from ayon_ui_qt.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.tools.loader.ui.review_controller import ReviewController
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils.user_prefs import UserPreferences
+from ayon_core.lib import Logger
 
-log = logging.getLogger(__name__)
-# log.setLevel(logging.INFO)
+log = Logger.get_logger(__name__)
 
 
 def _thumbnail_loader(key: str) -> str:
@@ -231,7 +231,11 @@ class ProjectSelector(AYComboBox):
     """Combo box that lets the user select an AYON project."""
 
     def __init__(
-        self, controller: ReviewController, *args: Any, **kwargs: Any
+        self,
+        controller: ReviewController,
+        *args: Any,
+        initial_project="",
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             *args,
@@ -240,6 +244,8 @@ class ProjectSelector(AYComboBox):
             **kwargs,
         )
         self.setModel(ProjectModel(controller, self))
+        if initial_project:
+            self.setCurrentText(initial_project)
 
     def current_project(self) -> str:
         """Return the currently selected project name."""
@@ -275,6 +281,8 @@ class ReviewSlicer(AYContainer):
         self,
         controller: ReviewController,
         *args: Any,
+        initial_project: str = "",
+        initial_category: str = "Hierarchy",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -287,10 +295,16 @@ class ReviewSlicer(AYContainer):
         )
         self.setMinimumWidth(250)
         self._controller = controller
-        self._selector = ProjectSelector(controller)
+        self._selector = ProjectSelector(
+            controller,
+            initial_project=initial_project,
+        )
         self.add_widget(self._selector, stretch=0)
 
-        self._slicer = AYSlicer(item_list=self.CATEGORIES)
+        self._slicer = AYSlicer(
+            item_list=self.CATEGORIES,
+            initial_text=initial_category,
+        )
         self.add_widget(self._slicer, stretch=0)
 
         self._tree_view = ReviewTreeView(self)
@@ -636,8 +650,17 @@ class ReviewsWidget(AYContainer):
             variant=AYContainer.Variants.High,
             **kwargs,
         )
+        prefs = UserPreferences()
+        saved_project = prefs.get("loader.review.last_project", "")
+        saved_category = prefs.get("loader.review.last_category", "Hierarchy")
+
         self._controller = ReviewController(parent=self)
-        self._slicer = ReviewSlicer(self._controller, self)
+        self._slicer = ReviewSlicer(
+            self._controller,
+            self,
+            initial_project=saved_project,
+            initial_category=saved_category,
+        )
         self._model = LazyTreeModel(
             fetch_children=self._controller.fetch_children
         )
@@ -666,6 +689,9 @@ class ReviewsWidget(AYContainer):
         initial_project = self._slicer.current_project()
         if initial_project:
             self._controller.set_project(initial_project)
+        initial_category = self._slicer.current_category()
+        if initial_category:
+            self._controller.set_category(initial_category)
 
     def _build(self) -> None:
         main_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)

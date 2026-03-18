@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-import json
-import logging
 import datetime
+import json
 from typing import Any
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
 from ayon_ui_qt.components.tree_model import TreeNode
 from qtpy import QtCore
+
+from ayon_core.lib import Logger
+from ayon_core.tools.utils.user_prefs import UserPreferences
 
 GET_VERSIONS_QUERY = """
 query GetVersions(
@@ -148,7 +150,7 @@ class ReviewController(QtCore.QObject):
         self._current_project: str = ""
         self._current_category: str = "Hierarchy"
         self._project_info: dict[str, Any] = {}
-        self._review_entity_lists: Any = None  # generator or None
+        self._review_sessions_cache: list[dict[str, Any]] = []
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
         self._folder_cursors: dict[str, str] = {}
@@ -157,9 +159,7 @@ class ReviewController(QtCore.QObject):
         self._selected_folder_id: str | None = None
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
-        self.log = logging.getLogger(
-            "ayon_core.tools.loader.review_controller"
-        )
+        self.log = Logger.get_logger(self.__class__.__name__)
 
     # ------------------------------------------------------------------
     # Properties
@@ -206,7 +206,7 @@ class ReviewController(QtCore.QObject):
             project_name: AYON project name to activate.
         """
         self._current_project = project_name
-        self._review_entity_lists = None
+        self._review_sessions_cache = []
         self._reset_pagination()
         self._selected_folder_id = None
         self._build_project_info()
@@ -214,6 +214,7 @@ class ReviewController(QtCore.QObject):
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
         self.tree_reset_requested.emit()
+        UserPreferences().set("loader.review.last_project", project_name)
 
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
@@ -225,10 +226,10 @@ class ReviewController(QtCore.QObject):
         self._current_category = category
         self._selected_folder_id = None
         self._review_session_version_ids = None
-        self._review_entity_lists = None
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
+        UserPreferences().set("loader.review.last_category", category)
 
     def on_tree_selection_changed(self, id: str, name: str) -> None:
         """Handle a selection change in the tree view.
@@ -551,6 +552,13 @@ class ReviewController(QtCore.QObject):
     def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for review sessions.
 
+        Read-only: builds :class:`TreeNode` objects from the pre-populated
+        :attr:`_review_sessions_cache`.  The cache is populated exclusively
+        from the main thread by :meth:`_get_review_session_list`, which is
+        called inside :meth:`set_project`.  Pool worker threads that call
+        this method therefore only perform read access on an already-complete
+        list, eliminating the previous generator re-entrancy race.
+
         Args:
             parent_id: Parent entity ID. Only root (``None``) returns
                 review session nodes; children are always empty.
@@ -559,24 +567,19 @@ class ReviewController(QtCore.QObject):
             List of :class:`TreeNode` instances.
         """
         self.log.debug("Fetching review children for %s", parent_id)
-        if self._review_entity_lists is None:
-            self._get_review_session_list()
-        if parent_id is None:
-            nodes = []
-            for r in self._review_entity_lists:
-                if r.get("entityListType") != "review-session":
-                    continue
-                nodes.append(
-                    TreeNode(
-                        id=r.get("id", "no id"),
-                        label=r.get("label", "no label"),
-                        has_children=False,
-                        icon="subscriptions",
-                        data=r,
-                    )
-                )
-            return nodes
-        return []
+        if parent_id is not None:
+            return []
+        return [
+            TreeNode(
+                id=r.get("id", "no id"),
+                label=r.get("label", "no label"),
+                has_children=False,
+                icon="subscriptions",
+                data=r,
+            )
+            for r in self._review_sessions_cache
+            if r.get("entityListType") == "review-session"
+        ]
 
     def _fetch_products(self, parent_id: str | None) -> list[TreeNode]:
         """Fetch folder hierarchy level by parent folder id.
@@ -619,12 +622,23 @@ class ReviewController(QtCore.QObject):
         ]
 
     def _get_review_session_list(self) -> None:
-        """Refresh review data from the server."""
+        """Fetch review sessions from the server and cache them as a list.
+
+        Materialises the generator returned by
+        :func:`ayon_api.get_entity_lists` into a plain Python list so that
+        the result can be read safely by pool worker threads without the
+        generator re-entrancy issue.  Must only be called from the main
+        thread (e.g. inside :meth:`set_project`).
+        """
         project = self._current_project
-        self._review_entity_lists = ayon_api.get_entity_lists(
-            project_name=project
+        self._review_sessions_cache = list(
+            ayon_api.get_entity_lists(project_name=project)
         )
-        self.log.debug("Review data generator ready for project %s", project)
+        self.log.debug(
+            "Review sessions cached for project %s (%d items)",
+            project,
+            len(self._review_sessions_cache),
+        )
 
     def _get_review_session_version_ids(self, session_id: str) -> list[str]:
         """Return version IDs contained in the given review session.
