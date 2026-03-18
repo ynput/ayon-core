@@ -970,6 +970,7 @@ class ReviewController(QtCore.QObject):
             "thumbnailId": n.get("thumbnailId") or "",
             "product/version": (
                 f"{n.get('product', {}).get('name', '')} - {n.get('name', '')}"
+                f"{'  ★' if n.get('heroVersionId') else ''}"
             ),
             "product/version__icon": "layers",
             "status": status,
