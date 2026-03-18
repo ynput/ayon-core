@@ -96,7 +96,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         size: tuple[int, int] = (66, 32),
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
-        super().__init__(size=size, parent=parent)
+        super().__init__(size=size, parent=parent, fade_duration=500)
         self._thumb_key: str = key
         self._context_id: str = context_id
         self._load_requested: bool = False
