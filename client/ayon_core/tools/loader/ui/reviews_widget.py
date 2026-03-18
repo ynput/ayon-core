@@ -43,6 +43,9 @@ def _thumbnail_loader(key: str) -> str:
         version has no thumbnail (which will be caught by the factory).
     """
     log.debug("Fetching thumbnail for key %r", key)
+    if not key:
+        log.debug("  |_ No thumbnail key provided; skipping fetch")
+        return ""
     ic = ImageCache.get_instance()
     path = ic.get_path(key)
     if path:
@@ -141,20 +144,34 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
     Args:
         make_real: Callable with no arguments that returns the real
             :class:`LazyThumbnailWidget` when invoked.
-        size: ``(width, height)`` in pixels; must match the real widget.
+        alignment: Alignment flag for the widget.
         parent: Optional parent widget (viewport).
     """
 
     def __init__(
         self,
-        make_real: Callable[[], LazyThumbnailWidget],
-        size: tuple[int, int] = (66, 32),
+        make_real: Callable | None,
+        alignment: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignLeft,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self._make_real = make_real
-        self._real: LazyThumbnailWidget | None = None
-        self.setFixedSize(*size)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True
+        )
+        self._make_real: Callable | None = make_real
+        self._real: QtWidgets.QWidget | None = None
+        self._lyt = None
+        self._alignment = alignment
+
+    def _create_layout(self) -> None:
+        self._lyt = QtWidgets.QHBoxLayout()
+        self._lyt.setContentsMargins(0, 0, 0, 0)
+        self._lyt.setAlignment(self._alignment)
+        self.setLayout(self._lyt)
 
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
@@ -168,17 +185,13 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         Args:
             event: The paint event forwarded to the real widget.
         """
-        if self._real is None:
+        if self._make_real and self._real is None:
             self._real = self._make_real()
-            self._real.setParent(self)
-            self._real.setGeometry(self.rect())
-            self._real.show()
+            if self._real:
+                self._create_layout()
+                assert self._lyt is not None
+                self._lyt.addWidget(self._real, stretch=1)
         super().paintEvent(event)
-
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        super().resizeEvent(event)
-        if self._real is not None:
-            self._real.setGeometry(self.rect())
 
 
 class ProjectModel(QtGui.QStandardItemModel):
@@ -499,15 +512,10 @@ class ReviewTable(AYContainer):
             project = controller.current_project
             request_id = self._model._request_id
 
-            def _make_real() -> LazyThumbnailWidget:
+            def _make_real() -> LazyThumbnailWidget | None:
                 if not thumbnail_id or not version_id or not project:
-                    # No thumbnail available — return a sized blank widget.
-                    w = LazyThumbnailWidget(
-                        key="",
-                        context_id=request_id,
-                        size=(66, 32),
-                    )
-                    return w
+                    # No thumbnail available
+                    return None
                 key = f"{project}/{version_id}/{thumbnail_id}"
                 return LazyThumbnailWidget(
                     key=key,
@@ -517,8 +525,8 @@ class ReviewTable(AYContainer):
 
             return PlaceholderThumbnail(
                 make_real=_make_real,
-                size=(66, 32),
                 parent=parent,
+                alignment=QtCore.Qt.AlignmentFlag.AlignCenter,
             )
 
         common = [
