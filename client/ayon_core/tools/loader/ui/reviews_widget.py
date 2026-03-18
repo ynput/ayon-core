@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import tempfile
 from typing import Any, Callable
 
@@ -46,12 +45,11 @@ def _thumbnail_loader(key: str) -> str:
     if not key:
         log.debug("  |_ No thumbnail key provided; skipping fetch")
         return ""
+
     ic = ImageCache.get_instance()
-    path = ic.get_path(key)
-    if path:
-        log.debug("  |_ Thumbnail CACHE HIT for key %r: %s", key, path)
-        return path
-    try:
+
+    def _fetch() -> str:
+        log.debug("  |_ Cache miss; fetching from ayon API: %r", key)
         project_name, version_id, thumbnail_id = key.split("/", 2)
         content = ayon_api.get_version_thumbnail(
             project_name, version_id, thumbnail_id
@@ -65,8 +63,10 @@ def _thumbnail_loader(key: str) -> str:
         )
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
             fh.write(content.content)
-            log.debug("  |_ Thumbnail cache miss for key %r: %s", key, fh.name)
-            return str(fh.name)
+            return fh.name
+
+    try:
+        return ic.get(key, _fetch)
     except Exception:
         log.debug("Failed to fetch thumbnail for key %r", key, exc_info=True)
         return ""
