@@ -368,7 +368,11 @@ class ReviewController(QtCore.QObject):
                 descending=descending,
                 include_folder_children=False,
             )
-            version_rows = [self._transform_version_edge(e) for e in edges]
+            version_rows = [
+                self._transform_version_edge(e)
+                for e in edges
+                if e.get("node", {}).get("name") != "HERO"
+            ]
             if descending:
                 self._folder_has_more[parent_id] = page_info["hasPreviousPage"]
                 self._folder_cursors[parent_id] = page_info["startCursor"]
@@ -408,7 +412,11 @@ class ReviewController(QtCore.QObject):
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
         )
-        page = [self._transform_version_edge(e) for e in edges]
+        page = [
+            self._transform_version_edge(e)
+            for e in edges
+            if e.get("node", {}).get("name") != "HERO"
+        ]
 
         if descending:
             self._graphql_has_more = page_info["hasPreviousPage"]
@@ -870,6 +878,7 @@ class ReviewController(QtCore.QObject):
             version_rows = [
                 self._transform_version_edge(e)
                 for e in edges_by_folder.get(pid, [])
+                if e.get("node", {}).get("name") != "HERO"
             ]
             # Mark no more pages for this parent — the combined query
             # was sized to retrieve all rows in a single shot.
