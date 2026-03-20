@@ -471,12 +471,13 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
                     options["font"], options["font_size"]
                 )
                 _, descent = font.getmetrics()
-                padding_x = padding
-                # font descent is already included box height by default
-                padding_y = padding - descent
-                # boxborderw defines top|right|bottom|left
-                # or in this case vertical|horizontal
-                box_args.append(f"boxborderw={padding_y}|{padding_x}")
+
+                # distance from the top of an uppercase A to the ascend
+                height_uppercase = font.getbbox("A", anchor="la")[1]
+                pad_t = max(padding - height_uppercase, 0)
+                pad_b = max(padding - descent, 0)
+                pad_l = pad_r = padding
+                box_args.append(f"boxborderw={pad_t}|{pad_r}|{pad_b}|{pad_l}")
 
             box = ":".join(box_args)
             drawtext += f":{box}"
