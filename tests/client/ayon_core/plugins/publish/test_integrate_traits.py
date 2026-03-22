@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import os
 import re
 import time
 from pathlib import Path
@@ -15,6 +16,7 @@ from ayon_core.lib.file_transaction import (
 )
 
 from ayon_core.pipeline.anatomy import Anatomy
+from ayon_core.pipeline.publish import get_publish_template_object
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
@@ -26,7 +28,9 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Representation,
     Sequence,
+    TemplatePath,
     Transient,
+    get_transfers_from_representations,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 
@@ -472,3 +476,57 @@ def test_get_transfers_from_representation(
     for representation in representations:
         _ = integrator._get_legacy_files_for_representation(  # noqa: SLF001
             transfers, representation, anatomy=instance.data["anatomy"])
+
+
+@pytest.mark.server
+def test_get_transfers_from_representation_preserves_hierarchy(
+        mock_context: pyblish.api.Context,
+        tmp_path: Path) -> None:
+    """FileLocations without Sequence/UDIM should keep relative hierarchy."""
+    instance = mock_context[0]
+    common_root = tmp_path / "textures"
+    file_paths = [
+        common_root / "diffuse" / "beauty.png",
+        common_root / "masks" / "crypto" / "object.png",
+    ]
+    for file_path in file_paths:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(base64.b64decode(PNG_FILE_B64))
+
+    representation = Representation(name="test_hierarchy", traits=[
+        Persistent(),
+        FileLocations(file_paths=[
+            FileLocation(file_path=file_path, file_size=file_path.stat().st_size)
+            for file_path in file_paths
+        ]),
+        Image(),
+        MimeType(mime_type="image/png"),
+    ])
+
+    template = get_publish_template_object(instance)
+    transfers = get_transfers_from_representations(
+        instance,
+        template,
+        [representation],
+    )
+
+    assert len(transfers) == len(file_paths)
+
+    destination_common_root = Path(
+        os.path.commonpath([str(transfer.destination) for transfer in transfers])
+    )
+    assert destination_common_root.suffix == ""
+
+    relative_destinations = {
+        transfer.destination.relative_to(destination_common_root)
+        for transfer in transfers
+    }
+    expected_relative_destinations = {
+        file_path.relative_to(common_root)
+        for file_path in file_paths
+    }
+    assert relative_destinations == expected_relative_destinations
+
+    template_path = representation.get_trait(TemplatePath)
+    assert template_path.template == template["path"]
+

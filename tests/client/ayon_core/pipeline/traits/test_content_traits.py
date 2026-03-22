@@ -65,7 +65,7 @@ def test_bundles() -> None:
         }
 
 
-def test_file_locations_validation() -> None:
+def test_file_locations_validation(tmp_path: Path) -> None:
     """Test FileLocations trait validation."""
     file_locations_list = [
         FileLocation(
@@ -122,25 +122,29 @@ def test_file_locations_validation() -> None:
     with pytest.raises(TraitValidationError):
         file_locations_trait.validate_trait(representation)
 
-    # invalid representation with multiple file locations but
-    # unrelated to either Sequence or Bundle traits
+    # valid representation with multiple file locations that share
+    # a common root and preserve their hierarchy
+    common_root = tmp_path / "textures"
     representation = Representation(name="test", traits=[
         FileLocations(file_paths=[
             FileLocation(
-                file_path=Path("/path/to/file_foo.exr"),
+                file_path=common_root / "diffuse" / "file_foo.exr",
                 file_size=1024,
                 file_hash=None,
             ),
             FileLocation(
-                file_path=Path("/path/to/anotherfile.obj"),
+                file_path=common_root / "specular" / "anotherfile.obj",
                 file_size=1234,
                 file_hash=None,
             )
         ])
     ])
 
-    with pytest.raises(TraitValidationError):
-        representation.validate()
+    representation.validate()
+    assert (
+        representation.get_trait(FileLocations).get_common_root()
+        == common_root
+    )
 
 
 def test_get_file_location_from_frame() -> None:

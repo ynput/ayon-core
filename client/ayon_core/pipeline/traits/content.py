@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import re
 from dataclasses import dataclass
 
 # TCH003 is there because Path in TYPECHECKING will fail in tests
 from pathlib import Path  # noqa: TCH003
 from typing import ClassVar, Generator, Optional
+
+from clique import assemble
 
 from .representation import Representation
 from .temporal import FrameRanged, Handles, Sequence
@@ -17,7 +20,6 @@ from .trait import (
     TraitValidationError,
 )
 from .two_dimensional import UDIM
-from .utils import get_sequence_from_files
 
 
 @dataclass
@@ -99,11 +101,10 @@ class FileLocation(TraitBase):
 
 @dataclass
 class FileLocations(TraitBase):
-    """FileLocation trait model.
+    """FileLocations trait model.
 
-    This model represents a file path. It is a specialization of the
-    LocatableContent trait. It is adding optional file size and file hash
-    for easy access to file information.
+    This model defines list of FileLocation traits. It can be
+    used for file sequences or more complex hierarchies.
 
     Attributes:
         name (str): Trait name.
@@ -130,6 +131,47 @@ class FileLocations(TraitBase):
         """
         for file_location in self.file_paths:
             yield file_location.file_path
+
+    def get_common_root(self) -> Path:
+        """Get a meaningful common root directory for all file paths.
+
+        Returns:
+            Path: Common root directory.
+
+        Raises:
+            ValueError: If file locations do not share a meaningful root.
+
+        """
+        file_paths = [
+            file_path if isinstance(file_path, Path) else Path(file_path)
+            for file_path in self.get_files()
+        ]
+        if not file_paths:
+            raise ValueError("No file locations defined.")
+
+        try:
+            common_root = Path(
+                os.path.commonpath(
+                    [str(file_path.parent) for file_path in file_paths]
+                )
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "File locations must share a common root directory."
+            ) from exc
+
+        if str(common_root) in {"", "."}:
+            raise ValueError(
+                "File locations must share a meaningful common root directory."
+            )
+
+        if common_root.anchor and common_root == Path(common_root.anchor):
+            raise ValueError(
+                "File locations must share a common root deeper than the "
+                "filesystem root."
+            )
+
+        return common_root
 
     def get_file_location_for_frame(
             self,
@@ -186,15 +228,16 @@ class FileLocations(TraitBase):
             self._validate_frame_range(representation)
         if not representation.contains_trait(Sequence) \
                 and not representation.contains_trait(UDIM):
-            # we have multiple files, but it is not a sequence
-            # or UDIM tile set what is it then? If the files are not related
-            # to each other, then this representation is invalid.
-            msg = (
-                 "Multiple file locations defined, but no Sequence "
-                 "or UDIM trait defined. If the files are not related to "
-                 "each other, the representation is invalid."
-            )
-            raise TraitValidationError(self.name, msg)
+            try:
+                self.get_common_root()
+            except ValueError as exc:
+                msg = (
+                    "Multiple file locations defined, but no Sequence or "
+                    "UDIM trait defined. Files must share a meaningful "
+                    "common root so their relative hierarchy can be "
+                    "preserved."
+                )
+                raise TraitValidationError(self.name, msg) from exc
 
     def _validate_frame_range(self, representation: Representation) -> None:
         """Validate the frame range against the file paths.
@@ -212,7 +255,7 @@ class FileLocations(TraitBase):
                 representation.
 
         """
-        tmp_frame_ranged: FrameRanged = get_sequence_from_files(
+        tmp_frame_ranged: FrameRanged = self.get_sequence_from_files(
                     [f.file_path for f in self.file_paths])
 
         frames_from_spec: list[int] = []
@@ -347,6 +390,46 @@ class FileLocations(TraitBase):
         frame_end_with_handles = frame_end + frame_end_handle
 
         return frame_start_with_handles, frame_end_with_handles
+
+    @staticmethod
+    def get_sequence_from_files(paths: list[Path]) -> FrameRanged:
+        """Get the original frame range from files.
+
+        Note that this cannot guess frame rate, so it's set to 25.
+        This will also fail on paths that cannot be assembled into
+        one collection without any reminders.
+
+        Args:
+            paths (list[Path]): List of file paths.
+
+        Returns:
+            FrameRanged: FrameRanged trait.
+
+        Raises:
+            ValueError: If paths cannot be assembled into one collection
+
+        """
+        cols, rems = assemble([path.as_posix() for path in paths])
+        if rems:
+            msg = "Cannot assemble paths into one collection"
+            raise ValueError(msg)
+        if len(cols) != 1:
+            msg = "More than one collection found"
+            raise ValueError(msg)
+        col = cols[0]
+
+        sorted_frames = sorted(col.indexes)
+        # First frame used for end value
+        first_frame = sorted_frames[0]
+        # Get last frame for padding
+        last_frame = sorted_frames[-1]
+        # Use padding from a collection of the last frame lengths as string
+        # padding = max(col.padding, len(str(last_frame)))
+
+        return FrameRanged(
+            frame_start=first_frame, frame_end=last_frame,
+            frames_per_second="25.0"
+        )
 
 
 @dataclass
@@ -483,3 +566,23 @@ class Fragment(TraitBase):
     id: ClassVar[str] = "ayon.content.Fragment.v1"
     persistent: ClassVar[bool] = True
     parent: str
+
+
+@dataclass
+class OriginalFilename(TraitBase):
+    """OriginalFilename trait model.
+
+    This trait indicates that the representation file name(s) are kept -
+    ie they are not renamed using templates
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        original_filename (str): Original filename.
+    """
+
+    name: ClassVar[str] = "OriginalFilename"
+    description: ClassVar[str] = "OriginalFilename Trait"
+    id: ClassVar[str] = "ayon.content.OriginalFilename.v1"
+    persistent: ClassVar[bool] = True

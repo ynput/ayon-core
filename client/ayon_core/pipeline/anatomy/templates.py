@@ -4,6 +4,8 @@ import copy
 import platform
 import collections
 import numbers
+from typing import Any, Optional
+import logging
 
 from ayon_core.lib.path_templates import (
     TemplateResult,
@@ -15,6 +17,9 @@ from .exceptions import (
     TemplateMissingKey,
     AnatomyTemplateUnsolved,
 )
+
+log = logging.getLogger(__name__)
+
 
 _IS_WINDOWS = platform.system().lower() == "windows"
 _PLACEHOLDER = object()
@@ -578,8 +583,12 @@ class AnatomyTemplates:
         return self.format(in_data, strict=False)
 
     def get_template_item(
-        self, category_name, template_name, subkey=None, default=_PLACEHOLDER
-    ):
+        self,
+        category_name: str,
+        template_name: str,
+        subkey: Optional[str] = None,
+        default: Any = _PLACEHOLDER
+    ) -> Any:
         """Get template item from category.
 
         Args:
