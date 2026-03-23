@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import subprocess
@@ -25,14 +27,9 @@ FFMPEG = (
     '{}%(input_args)s -i "%(input)s" %(filters)s %(args)s%(output)s'
 ).format(FFMPEG_EXE_COMMAND)
 
-DRAWTEXT = (
-    "drawtext@'%(label)s'=fontfile='%(font)s':text=\\'%(text)s\\':"
-    "x=%(x)s:y=%(y)s:fontcolor=%(color)s@%(opacity).1f:fontsize=%(size)d"
-)
+DRAWTEXT = "drawtext@%(label)s=%(args)s"
 TIMECODE = (
-    "drawtext=timecode=\\'%(timecode)s\\':text=\\'%(text)s\\'"
-    ":timecode_rate=%(fps).2f:x=%(x)s:y=%(y)s:fontcolor="
-    "%(color)s@%(opacity).1f:fontsize=%(size)d:fontfile='%(font)s'"
+    "drawtext=timecode=\\'%(timecode)s\\':timecode_rate=%(fps).02f:%(args)s"
 )
 
 MISSING_KEY_VALUE = "N/A"
@@ -42,27 +39,57 @@ TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
 
 
-def _drawtext(align, resolution, text, options):
-    """
-    :rtype: {'x': int, 'y': int}
-    """
+def get_drawtext_args(align, resolution, text: str, options: dict):
+    """Returns a dictionary of arguments for the drawtext filter."""
 
-    ifont = ImageFont.truetype(options["font"], options["font_size"])
-    ascent, descent = ifont.getmetrics()
+    font_file = options["font"]
+    font_size = options["font_size"]
 
-    x_pos = "0"
+    font = ImageFont.truetype(font_file, font_size)
+    ascent, descent = font.getmetrics()
+
+    args = {
+        "fontfile": f"'{font_file}'",
+        "fontsize": font_size,
+        "fontcolor": f"{options['font_color']}@{options['opacity']:.1f}",
+        "y_align": "font",
+    }
+
+    # padding
+    padding = options.get("bg_padding") or 0
+    if padding:
+        # distance from the top of an uppercase A to the ascend
+        height_uppercase = font.getbbox("A", anchor="la")[1]
+        height_uppercase = int(height_uppercase)
+        pad_t = max(padding - height_uppercase, 0)
+        pad_b = max(padding - descent, 0)
+        pad_l = pad_r = padding
+    else:
+        pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
+
+    # border box
+    if options.get("bg_color") is not None:
+        args["box"] = "1"
+        args["boxcolor"] = f"{options['bg_color']}@{options['bg_opacity']}"
+        args["boxborderw"] = f"{pad_t}|{pad_r}|{pad_b}|{pad_l}"
+
+    # x position
     if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
-        x_pos = "w/2-tw/2"
+        args["x"] = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
-        if hasattr(ifont, "getbbox"):
-            left, top, right, bottom = ifont.getbbox(text)
-            box_size = right - left, bottom - top
+        if hasattr(font, "getbbox"):
+            left, _, right, _ = font.getbbox(text)
+            box_width = right - left
         else:
-            box_size = ifont.getsize(text)
-        x_pos = resolution[0] - (box_size[0] + options["x_offset"])
+            box_width = font.getsize(text)[0]
+        x = resolution[0] - box_width - options["x_offset"] - padding
+        args["x"] = x
+
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
-        x_pos = options["x_offset"]
+        args["x"] = options["x_offset"] + padding
+    else:
+        args["x"] = 0
 
     # y position
     y_offset = options["y_offset"]
@@ -71,11 +98,19 @@ def _drawtext(align, resolution, text, options):
         ffmpeg_burnins.TOP_RIGHT,
         ffmpeg_burnins.TOP_LEFT
     ):
-        y_pos = y_offset
+        args["y"] = y_offset + pad_t
     else:
-        y_pos = f"h-{y_offset + ascent + descent}"
+        args["y"] = f"h-{y_offset + ascent + descent + pad_b}"
 
-    return {"x": x_pos, "y": y_pos}
+    return args
+
+
+def _drawtext(align, resolution, text, options):
+    """
+    :rtype: {'x': int, 'y': int}
+    """
+    text_args = get_drawtext_args(align, resolution, text, options)
+    return {"x": text_args["x"], "y": text_args["y"]}
 
 
 ffmpeg_burnins._drawtext = _drawtext
@@ -425,62 +460,29 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
                 CURRENT_FRAME_SPLITTER, size_replacement
             )
 
-        resolution = self.resolution
-        data = {
-            "text": (
-                final_text
-                .replace(",", r"\,")
-                .replace(':', r'\:')
-            ),
-            "color": options["font_color"],
-            "size": options["font_size"]
-        }
         timecode_text = options.get("timecode") or ""
         text_for_size += timecode_text
 
         font_path = options.get("font")
         if not font_path or not os.path.exists(font_path):
-            font_path = ffmpeg_burnins.FONT
+            options["font"] = ffmpeg_burnins.FONT
 
-        options["font"] = font_path
-
-        data.update(options)
-        data.update(
-            ffmpeg_burnins._drawtext(align, resolution, text_for_size, options)
+        drawtext_args = get_drawtext_args(
+            align,
+            self.resolution,
+            text_for_size,
+            options
         )
 
-        arg_font_path = (
-            font_path
-            .replace("\\", "\\\\")
-            .replace(":", r"\:")
-        )
-        data["font"] = arg_font_path
+        final_text = final_text.replace(",", r"\,").replace(':', r'\:')
+        drawtext_args["text"] = f"'{final_text}'"
 
-        drawtext = draw % data
-        drawtext += ":y_align=font"  # align based on the font metrics
-
-        if options.get("bg_color") is not None:
-
-            box_args = [
-                "box=1",
-                f"boxcolor={options['bg_color']}@{options['bg_opacity']}"
-            ]
-
-            if padding := options.get("bg_padding"):
-                font = ImageFont.truetype(
-                    options["font"], options["font_size"]
-                )
-                _, descent = font.getmetrics()
-
-                # distance from the top of an uppercase A to the ascend
-                height_uppercase = font.getbbox("A", anchor="la")[1]
-                pad_t = max(padding - height_uppercase, 0)
-                pad_b = max(padding - descent, 0)
-                pad_l = pad_r = padding
-                box_args.append(f"boxborderw={pad_t}|{pad_r}|{pad_b}|{pad_l}")
-
-            box = ":".join(box_args)
-            drawtext += f":{box}"
+        args = ":".join(f"{k}={v}" for k, v in drawtext_args.items())
+        drawtext = draw % {
+            **options,
+            "args": args,
+            "label": align,
+        }
 
         self.filters["drawtext"].append(drawtext)
 
