@@ -15,7 +15,10 @@ from ayon_core.lib.file_transaction import (
 )
 
 from ayon_core.pipeline.anatomy import Anatomy
-from ayon_core.pipeline.publish import TemplateItem
+from ayon_core.pipeline.publish import (
+    TemplateItem,
+    get_template_name,
+)
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
@@ -32,6 +35,8 @@ from ayon_core.pipeline.traits import (
 )
 from ayon_core.pipeline.traits.publishing import (
     get_transfers_from_file_locations_common_root,
+    get_template_data_from_representation,
+    get_transfers_from_representations,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 
@@ -251,7 +256,7 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
 
     """
     integrator = IntegrateTraits()
-    template_name = integrator.get_template_name(
+    template_name = get_template_name(
         mock_context[0])
 
     assert template_name == "default"
@@ -267,7 +272,7 @@ def test_get_template_data_from_representation(
         "representations_with_traits"]
 
     for representation in representations:
-        template_data = integrator.get_template_data_from_representation(
+        template_data = get_template_data_from_representation(
             representation, instance)
 
         assert template_data["project"]["name"] == instance.context.data[
@@ -449,10 +454,12 @@ def test_get_transfers_from_representation(
     integrator = IntegrateTraits()
 
     instance = mock_context[0]
+    anatomy = instance.context.data["anatomy"]
+    template_item = anatomy.get_template_item("hero", "default")
     representations: list[Representation] = instance.data[
         "representations_with_traits"]
-    transfers = integrator.get_transfers_from_representations(
-        instance, representations)
+    transfers = get_transfers_from_representations(
+        instance, template_item, representations)
 
     assert len(representations) == 3
     assert len(transfers) == 22
