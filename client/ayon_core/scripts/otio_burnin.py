@@ -56,7 +56,7 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
     }
 
     # padding
-    pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
+    pad_l = pad_r = pad_t = pad_b = 0
     if padding := options.get("bg_padding"):
         # distance from the top of an uppercase A to the ascend
         height_uppercase = font.getbbox("A", anchor="la")[1]
