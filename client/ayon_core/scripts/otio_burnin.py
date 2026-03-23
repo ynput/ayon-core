@@ -39,7 +39,7 @@ TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
 
 
-def get_drawtext_args(align, resolution, text: str, options: dict):
+def get_drawtext_kwargs(align, resolution, text: str, options: dict):
     """Returns a dictionary of arguments for the drawtext filter."""
 
     font_file = options["font"]
@@ -56,16 +56,14 @@ def get_drawtext_args(align, resolution, text: str, options: dict):
     }
 
     # padding
-    padding = options.get("bg_padding") or 0
-    if padding:
+    pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
+    if padding := options.get("bg_padding"):
         # distance from the top of an uppercase A to the ascend
         height_uppercase = font.getbbox("A", anchor="la")[1]
         height_uppercase = int(height_uppercase)
         pad_t = max(padding - height_uppercase, 0)
         pad_b = max(padding - descent, 0)
         pad_l = pad_r = padding
-    else:
-        pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
 
     # border box
     if options.get("bg_color") is not None:
@@ -74,8 +72,9 @@ def get_drawtext_args(align, resolution, text: str, options: dict):
         args["boxborderw"] = f"{pad_t}|{pad_r}|{pad_b}|{pad_l}"
 
     # x position
+    x_pos = 0
     if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
-        args["x"] = "w/2-tw/2"
+        x_pos = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
         if hasattr(font, "getbbox"):
@@ -83,13 +82,10 @@ def get_drawtext_args(align, resolution, text: str, options: dict):
             box_width = right - left
         else:
             box_width = font.getsize(text)[0]
-        x = resolution[0] - box_width - options["x_offset"] - padding
-        args["x"] = x
+        x_pos = resolution[0] - box_width - options["x_offset"] - pad_r
 
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
-        args["x"] = options["x_offset"] + padding
-    else:
-        args["x"] = 0
+        x_pos = options["x_offset"] + pad_l
 
     # y position
     y_offset = options["y_offset"]
@@ -98,9 +94,12 @@ def get_drawtext_args(align, resolution, text: str, options: dict):
         ffmpeg_burnins.TOP_RIGHT,
         ffmpeg_burnins.TOP_LEFT
     ):
-        args["y"] = y_offset + pad_t
+        y_pos = y_offset + pad_t
     else:
-        args["y"] = f"h-{y_offset + ascent + descent + pad_b}"
+        y_pos = f"h-{y_offset + ascent + descent + pad_b}"
+
+    args["x"] = x_pos
+    args["y"] = y_pos
 
     return args
 
@@ -109,7 +108,7 @@ def _drawtext(align, resolution, text, options):
     """
     :rtype: {'x': int, 'y': int}
     """
-    text_args = get_drawtext_args(align, resolution, text, options)
+    text_args = get_drawtext_kwargs(align, resolution, text, options)
     return {"x": text_args["x"], "y": text_args["y"]}
 
 
@@ -467,7 +466,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         if not font_path or not os.path.exists(font_path):
             options["font"] = ffmpeg_burnins.FONT
 
-        drawtext_args = get_drawtext_args(
+        drawtext_kwargs = get_drawtext_kwargs(
             align,
             self.resolution,
             text_for_size,
@@ -475,9 +474,9 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         )
 
         final_text = final_text.replace(",", r"\,").replace(':', r'\:')
-        drawtext_args["text"] = f"'{final_text}'"
+        drawtext_kwargs["text"] = f"'{final_text}'"
 
-        args = ":".join(f"{k}={v}" for k, v in drawtext_args.items())
+        args = ":".join(f"{k}={v}" for k, v in drawtext_kwargs.items())
         drawtext = draw % {
             **options,
             "args": args,
