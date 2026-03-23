@@ -71,9 +71,9 @@ def _drawtext(align, resolution, text, options):
         ffmpeg_burnins.TOP_RIGHT,
         ffmpeg_burnins.TOP_LEFT
     ):
-        y_pos = y_offset - descent
+        y_pos = y_offset
     else:
-        y_pos = f"h-{y_offset + ascent}"
+        y_pos = f"h-{y_offset + ascent + descent}"
 
     return {"x": x_pos, "y": y_pos}
 
