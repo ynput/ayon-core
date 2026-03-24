@@ -11,6 +11,7 @@ pygments = "^2.15.0"
 speedcopy = "^2.1"
 six = "^1.15"
 qtawesome = "0.7.3"
+async-timeout = "*"
 
 [ayon.runtimeDependencies]
 aiohttp-middlewares = "^2.0.0"
