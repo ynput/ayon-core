@@ -47,7 +47,12 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
 
     font = ImageFont.truetype(font_file, font_size)
     ascent, descent = font.getmetrics()
-
+    font_file = (
+        font_file
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(":", "\\:")
+    )
     args = {
         "fontfile": f"'{font_file}'",
         "fontsize": font_size,
