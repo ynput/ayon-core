@@ -418,7 +418,9 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             lines.append(
                 f"{seconds} drawtext@{align} reinit text='{new_text}';")
 
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp:
+        with tempfile.NamedTemporaryFile(
+            prefix="ayon_burnin_", mode="w", delete=False,
+        ) as temp:
             path = temp.name
             temp.write("\n".join(lines))
 
@@ -507,7 +509,9 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         filters = ""
         filter_string = self.filter_string
         if filter_string:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp:
+            with tempfile.NamedTemporaryFile(
+                prefix="ayon_burnin_", mode="w", delete=False
+            ) as temp:
                 temp.write(filter_string)
                 filters_path = temp.name
             filters = '-filter_script:v "{}"'.format(filters_path)
