@@ -1,5 +1,7 @@
 import logging
+import os
 import sys
+import tempfile
 import uuid
 from typing import Optional, Any, Callable
 
@@ -8,11 +10,13 @@ import qtawesome
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.tools.utils import DeselectableTreeView
+
 from ayon_core.tools.loader.drag_drop import (
     encode_loader_drag_payload,
     loader_payload_to_bytes,
     decode_loader_drag_payload_from_mime,
     LOADER_PAYLOAD_MIME_TYPE,
+    LOADER_PAYLOAD_TEMP_PREFIX,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.widgets import (
@@ -49,6 +53,17 @@ def _format_payload_summary_from_dict(payload):
         f"project_name={payload.get('project_name', '')} entity_type={payload.get('entity_type', '')} "
         f"entity_ids={len(entity_ids)} ids={id_previews} actions={len(actions)} {action_ids}"
     )
+
+
+def _delete_payload_temp_file(path: Optional[str]) -> None:
+    """Delete temp file used for OS DnD payload bridge. Ignores errors."""
+    if not path:
+        return
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+    except OSError:
+        pass
 
 
 def _set_file_urls_on_mime_data(mime_data: QtCore.QMimeData, paths: list) -> None:
@@ -122,7 +137,7 @@ class LoaderDragTreeView(DeselectableTreeView):
             dist = (event.pos() - self._drag_start_pos).manhattanLength()
             if dist >= QtWidgets.QApplication.startDragDistance():
                 self._drag_start_pos = None
-                mime_data, entity_ids = self._build_drag_mime_data()
+                mime_data, entity_ids, temp_path = self._build_drag_mime_data()
                 if mime_data is not None:
                     if _log and getattr(self, "_last_drag_summary", None):
                         _log.debug(
@@ -136,6 +151,7 @@ class LoaderDragTreeView(DeselectableTreeView):
                     drag.setPixmap(_make_drag_pixmap(label))
                     drag.setHotSpot(QtCore.QPoint(24, 16))
                     result = drag.exec_(QtCore.Qt.CopyAction)
+                    _delete_payload_temp_file(temp_path)
                     if _log:
                         _log.debug(
                             "mouseMoveEvent: drag finished result=%s",
@@ -154,7 +170,7 @@ class LoaderDragTreeView(DeselectableTreeView):
         if not self._drag_data_callback:
             if _log:
                 _log.debug("_build_drag_mime_data: reason=no_callback")
-            return None, ()
+            return None, (), None
         try:
             result = self._drag_data_callback()
         except Exception as e:
@@ -164,11 +180,11 @@ class LoaderDragTreeView(DeselectableTreeView):
                     e,
                     exc_info=True,
                 )
-            return None, ()
+            return None, (), None
         if not result:
             if _log:
                 _log.debug("_build_drag_mime_data: reason=callback_returned_none")
-            return None, ()
+            return None, (), None
         try:
             project_name, entity_ids, entity_type = result
         except (ValueError, TypeError) as e:
@@ -177,13 +193,13 @@ class LoaderDragTreeView(DeselectableTreeView):
                     "_build_drag_mime_data: unpack result failed %s",
                     e,
                 )
-            return None, ()
+            return None, (), None
         if not entity_ids:
             if _log:
                 _log.debug(
                     "_build_drag_mime_data: reason=no_entity_ids (product row only? select version row)"
                 )
-            return None, ()
+            return None, (), None
         controller = getattr(self.parent(), "_controller", None)
         action_items = []
         if controller and hasattr(controller, "get_drag_drop_action_items"):
@@ -220,6 +236,31 @@ class LoaderDragTreeView(DeselectableTreeView):
                             e,
                             exc_info=True,
                         )
+            temp_path = None
+            try:
+                fd, temp_path = tempfile.mkstemp(
+                    suffix=".json",
+                    prefix=LOADER_PAYLOAD_TEMP_PREFIX,
+                    dir=tempfile.gettempdir(),
+                )
+                with os.fdopen(fd, "wb") as f:
+                    f.write(loader_payload_to_bytes(payload))
+                existing = list(mime_data.urls())
+                existing.append(QtCore.QUrl.fromLocalFile(temp_path))
+                mime_data.setUrls(existing)
+            except Exception as e:
+                if _log:
+                    _log.debug(
+                        "_build_drag_mime_data: temp file for OS DnD failed %s",
+                        e,
+                        exc_info=True,
+                    )
+                if temp_path and os.path.isfile(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except OSError:
+                        pass
+                temp_path = None
             summary = _format_payload_summary(
                 project_name, entity_type, entity_ids, action_items
             )
@@ -230,11 +271,11 @@ class LoaderDragTreeView(DeselectableTreeView):
                     e,
                     exc_info=True,
                 )
-            return None, ()
+            return None, (), None
         if _log:
             _log.debug("_build_drag_mime_data: %s", summary)
         self._last_drag_summary = summary
-        return mime_data, entity_ids
+        return mime_data, entity_ids, temp_path
 
     def startDrag(self, supportedActions):
         if _log:
@@ -243,7 +284,7 @@ class LoaderDragTreeView(DeselectableTreeView):
                 supportedActions,
             )
         try:
-            mime_data, entity_ids = self._build_drag_mime_data()
+            mime_data, entity_ids, temp_path = self._build_drag_mime_data()
         except Exception as e:
             if _log:
                 _log.debug(
@@ -251,7 +292,7 @@ class LoaderDragTreeView(DeselectableTreeView):
                     e,
                     exc_info=True,
                 )
-            mime_data, entity_ids = None, ()
+            mime_data, entity_ids, temp_path = None, (), None
         if _log:
             _log.debug(
                 "startDrag: mime_data built=%s, fallback to super=%s",
@@ -271,6 +312,7 @@ class LoaderDragTreeView(DeselectableTreeView):
             drag.setPixmap(_make_drag_pixmap(label))
             drag.setHotSpot(QtCore.QPoint(24, 16))
             result = drag.exec_(QtCore.Qt.CopyAction)
+            _delete_payload_temp_file(temp_path)
             if _log:
                 _log.debug(
                     "startDrag: drag finished result=%s",

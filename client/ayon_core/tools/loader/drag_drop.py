@@ -15,6 +15,9 @@ from ayon_core.tools.loader.abstract import ActionItem
 
 LOADER_PAYLOAD_MIME_TYPE = "application/x-ayon-loader-payload"
 
+"""Prefix for temp file used in OS DnD bridge (e.g. Unity). File name: ayon_loader_<uuid>.json."""
+LOADER_PAYLOAD_TEMP_PREFIX = "ayon_loader_"
+
 _log = Logger.get_logger(__name__)
 
 
