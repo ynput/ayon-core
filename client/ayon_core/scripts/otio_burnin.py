@@ -107,9 +107,9 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
         x_pos = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
-        left, _, right, _ = font.getbbox(text)
-        box_width = right - left
-        x_pos = resolution[0] - box_width - options["x_offset"] - pad_r
+        # For some reason width is off by 2 pixels
+        box_width = math.ceil(font.getlength(text)) + 2
+        x_pos = f"w-{box_width + options['x_offset'] + pad_r}"
 
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
         x_pos = options["x_offset"] + pad_l
