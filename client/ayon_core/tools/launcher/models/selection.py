@@ -27,6 +27,7 @@ class LauncherSelectionModel:
         self._task_name = None
         self._task_id = None
         self._workfile_id = None
+        self._workfile_published = False
 
     def get_selected_project_name(self) -> Optional[str]:
         return self._project_name
@@ -87,11 +88,19 @@ class LauncherSelectionModel:
     def get_selected_workfile(self) -> Optional[str]:
         return self._workfile_id
 
-    def set_selected_workfile(self, workfile_id: Optional[str]) -> None:
-        if workfile_id == self._workfile_id:
+    def set_selected_workfile(
+        self,
+        workfile_id: Optional[str],
+        published: bool = False,
+    ) -> None:
+        if (
+            workfile_id == self._workfile_id
+            and published == self._workfile_published
+        ):
             return
 
         self._workfile_id = workfile_id
+        self._workfile_published = published
         self._controller.emit_event(
             "selection.workfile.changed",
             {
@@ -100,6 +109,7 @@ class LauncherSelectionModel:
                 "task_name": self._task_name,
                 "task_id": self._task_id,
                 "workfile_id": workfile_id,
+                "published": published,
             },
             self.event_source
         )

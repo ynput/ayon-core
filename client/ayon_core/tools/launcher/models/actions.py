@@ -107,6 +107,11 @@ class ActionsModel:
         )
 
         self._variant = get_settings_variant()
+        self._published_workfile_selected = False
+        controller.register_event_callback(
+            "selection.workfile.changed",
+            self._on_selection_workfile_changed,
+        )
 
     @staticmethod
     def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
@@ -368,9 +373,13 @@ class ActionsModel:
             folder_id,
             task_id,
             workfile_id,
+            published_workfile=self._published_workfile_selected,
             project_entity=project_entity,
             project_settings=project_settings,
         )
+
+    def _on_selection_workfile_changed(self, event):
+        self._published_workfile_selected = event.get("published", False)
 
     def _get_webaction_request_data(self, selection: LauncherActionSelection):
         entity_type = None

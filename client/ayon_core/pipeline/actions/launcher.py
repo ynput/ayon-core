@@ -34,11 +34,13 @@ class LauncherActionSelection:
         folder_id,
         task_id,
         workfile_id,
+        published_workfile=False,
         folder_path=None,
         task_name=None,
         project_entity=None,
         folder_entity=None,
         task_entity=None,
+        representation_entity=None,
         workfile_entity=None,
         project_settings=None,
     ):
@@ -46,6 +48,7 @@ class LauncherActionSelection:
         self._folder_id = folder_id
         self._task_id = task_id
         self._workfile_id = workfile_id
+        self._published_workfile = published_workfile
 
         self._folder_path = folder_path
         self._task_name = task_name
@@ -53,6 +56,7 @@ class LauncherActionSelection:
         self._project_entity = project_entity
         self._folder_entity = folder_entity
         self._task_entity = task_entity
+        self._representation_entity = representation_entity
         self._workfile_entity = workfile_entity
 
         self._project_settings = project_settings
@@ -278,6 +282,7 @@ class LauncherActionSelection:
         if (
             self._project_name is None
             or self._workfile_id is None
+            or self._published_workfile
         ):
             return None
         if self._workfile_entity is None:
@@ -285,6 +290,20 @@ class LauncherActionSelection:
                 self._project_name, self._workfile_id
             )
         return self._workfile_entity
+
+    def get_representation_entity(self):
+        """Published representation entity for the selection."""
+        if (
+            self._project_name is None
+            or self._workfile_id is None
+            or not self._published_workfile
+        ):
+            return None
+        if self._representation_entity is None:
+            self._representation_entity = ayon_api.get_representation_by_id(
+                self._project_name, self._workfile_id
+            )
+        return self._representation_entity
 
     def get_project_settings(self):
         """Project settings for the selection.
@@ -342,6 +361,10 @@ class LauncherActionSelection:
         """
         return self._workfile_id is not None
 
+    @property
+    def is_published_workfile(self):
+        return self._published_workfile
+
     project_name = property(get_project_name)
     folder_id = property(get_folder_id)
     task_id = property(get_task_id)
@@ -353,6 +376,7 @@ class LauncherActionSelection:
     folder_entity = property(get_folder_entity)
     task_entity = property(get_task_entity)
     workfile_entity = property(get_workfile_entity)
+    representation_entity = property(get_representation_entity)
 
 
 class LauncherAction(object):

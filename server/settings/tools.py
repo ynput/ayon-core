@@ -230,6 +230,17 @@ class WorkfilesToolModel(BaseSettingsModel):
     )
 
 
+class LauncherToolModel(BaseSettingsModel):
+    show_local_workfiles_only: bool = SettingsField(
+        False,
+        title="Show local workfiles only",
+        description=(
+            "Default setting for launcher workfiles, it hides save-as "
+            "workfiles that are not present on the local workstation."
+        ),
+    )
+
+
 def _product_types_enum():
     return [
         "action",
@@ -454,6 +465,10 @@ class GlobalToolsModel(BaseSettingsModel):
         default_factory=WorkfilesToolModel,
         title="Workfiles"
     )
+    launcher: LauncherToolModel = SettingsField(
+        default_factory=LauncherToolModel,
+        title="Launcher"
+    )
     loader: LoaderToolModel = SettingsField(
         default_factory=LoaderToolModel,
         title="Loader"
@@ -656,6 +671,9 @@ DEFAULT_TOOLS_VALUES = {
         ],
         "extra_folders": [],
         "workfile_lock_profiles": []
+    },
+    "launcher": {
+        "show_local_workfiles_only": False
     },
     "loader": {
         "product_type_filter_profiles": []
