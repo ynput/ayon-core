@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 import os
+import string
 import sys
 import subprocess
 import platform
@@ -39,6 +41,34 @@ TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
 
 
+def get_metrics(font: ImageFont.FreeTypeFont) -> tuple[float, float]:
+    """Return a ascent, descent for a font in pixels.
+
+    Pillow's `font.getmetrics()` can under-report extremes for some fonts.
+    To avoid clipping when aligning text, we additionally measure a broad set
+    of printable characters via `font.getbbox(..., anchor="ms")` and clamp the
+    returned metrics to those observed bounds.
+
+    Returns:
+        tuple[float, float]: A 2-tuple of `(ascent, descent)` where both values
+            are positive pixel distances above and below the baseline,
+            respectively, rounded up to whole pixels.
+
+    """
+    # official metrics
+    ascent, descent = font.getmetrics()
+
+    # measured real metrics
+    text = string.printable
+    _, top, _, bottom = font.getbbox(text, anchor="ms")
+    top = math.ceil(abs(top))
+    bottom = math.ceil(abs(bottom))
+
+    ascent = max(ascent, top)
+    descent = max(descent, bottom)
+    return ascent, descent
+
+
 def get_drawtext_kwargs(align, resolution, text: str, options: dict):
     """Returns a dictionary of arguments for the drawtext filter."""
 
@@ -46,7 +76,7 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
     font_size = options["font_size"]
 
     font = ImageFont.truetype(font_file, font_size)
-    ascent, descent = font.getmetrics()
+    ascent, descent = get_metrics(font)
     font_file = (
         font_file
         .replace("\\", "\\\\")
