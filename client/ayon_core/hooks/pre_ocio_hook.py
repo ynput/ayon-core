@@ -19,6 +19,7 @@ class OCIOEnvHook(PreLaunchHook):
         "maya",
         "nuke",
         "hiero",
+        "photoshop",
         "resolve",
         "openrv",
         "cinema4d",
