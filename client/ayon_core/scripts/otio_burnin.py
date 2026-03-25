@@ -59,13 +59,10 @@ def get_metrics(font: ImageFont.FreeTypeFont) -> tuple[float, float]:
     ascent, descent = font.getmetrics()
 
     # measured real metrics
-    text = string.printable
-    _, top, _, bottom = font.getbbox(text, anchor="ms")
-    top = math.ceil(abs(top))
-    bottom = math.ceil(abs(bottom))
+    _, top, _, bottom = font.getbbox(string.printable, anchor="ms")
 
-    ascent = max(ascent, top)
-    descent = max(descent, bottom)
+    ascent = max(ascent, abs(math.ceil(top)))
+    descent = max(descent, abs(math.ceil(bottom)))
     return ascent, descent
 
 
@@ -94,9 +91,7 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
     pad_l = pad_r = pad_t = pad_b = 0
     if padding := options.get("bg_padding"):
         # distance from the top of an uppercase A to the ascend
-        height_uppercase = font.getbbox("A", anchor="la")[1]
-        height_uppercase = int(height_uppercase)
-        pad_t = max(padding - height_uppercase, 0)
+        pad_t = max(padding - ascent, 0)
         pad_b = max(padding - descent, 0)
         pad_l = pad_r = padding
 
@@ -112,11 +107,8 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
         x_pos = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
-        if hasattr(font, "getbbox"):
-            left, _, right, _ = font.getbbox(text)
-            box_width = right - left
-        else:
-            box_width = font.getsize(text)[0]
+        left, _, right, _ = font.getbbox(text)
+        box_width = right - left
         x_pos = resolution[0] - box_width - options["x_offset"] - pad_r
 
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
