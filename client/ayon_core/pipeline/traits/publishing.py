@@ -7,10 +7,14 @@ import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
+from ayon_api.utils import create_entity_id
+from ayon_core.lib import source_hash
+
 from ayon_core.pipeline.publish import (
     PublishError,
     get_template_name,
     TemplateItem,
+    get_rootless_path,
 )
 from ayon_core.pipeline.traits import (
     FileLocation,
@@ -644,3 +648,60 @@ def get_template_data_from_representation(
                 template_data["ext"] = (file_path.suffix.lstrip("."))
         # Note: handle "output" and "originalBasename"
     return template_data
+
+
+def _prepare_file_info(
+        path: Path, anatomy: "Anatomy") -> dict[str, Any]:
+    """Prepare information for one file (asset or resource).
+
+    Arguments:
+        path (Path): Destination url of published file.
+        anatomy (Anatomy): Project anatomy part from instance.
+
+    Raises:
+        PublishError: If file does not exist.
+
+    Returns:
+        dict[str, Any]: Representation file info dictionary.
+
+    """
+    if not path.exists():
+        msg = f"File '{path}' does not exist."
+        raise PublishError(msg)
+
+    return {
+        "id": create_entity_id(),
+        "name": path.name,
+        "path": get_rootless_path(anatomy, path.as_posix()),
+        "size": path.stat().st_size,
+        "hash": source_hash(path.as_posix()),
+        "hash_type": "op3",
+    }
+
+
+def get_legacy_files_for_representation(
+        transfer_items: list[TransferItem],
+        representation: Representation,
+        anatomy: "Anatomy",
+    ) -> list[dict[str, str]]:
+    """Get legacy files for a given representation.
+
+    This expects the file to exist - it must run after the transfer
+    is done.
+
+    Returns:
+        list: List of legacy files.
+
+    """
+    selected: list[TransferItem] = []
+    selected.extend(
+        item
+        for item in transfer_items
+        if item.representation == representation
+    )
+    files: list[dict[str, str]] = []
+    files.extend(
+        _prepare_file_info(item.destination, anatomy)
+        for item in selected
+    )
+    return files

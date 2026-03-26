@@ -10,6 +10,7 @@ import copy
 from ayon_core.pipeline.traits import (
     Representation,
     get_transfers_from_representations,
+    get_legacy_files_for_representation
 )
 from ayon_core.lib.file_transaction import (
     DuplicateDestinationError,
@@ -220,9 +221,6 @@ class IntegrateHeroVersionTraits(
             backup_hero_publish_dir = self._backup_hero_version_dir(
                 hero_publish_dir)
 
-        for repe in repre_entities:
-            self.log.debug(f"representation: {pformat(repe, indent=4)}")
-
         representations = [
             Representation.from_dict(
                 name=repre["name"],
@@ -230,8 +228,35 @@ class IntegrateHeroVersionTraits(
                 trait_data=json.loads(repre["traits"])
             )
             for repre in repre_entities
-            if repre["name"] not in self.ignored_representation_names and repre["traits"]
+            if repre["name"] not in self.ignored_representation_names
+                and repre["traits"] and repre["active"] is True
         ]
+
+        # prepare new representation entities for hero version
+        new_repre_entities = []
+        representations: list[Representation] = []
+        repre_id_map = {}
+
+        for repre in repre_entities:
+            if (
+                    repre["active"] is False
+                    or repre["name"] in self.ignored_representation_names
+                    or not repre["traits"]
+            ):
+                continue
+
+            representation = Representation.from_dict(
+                name=repre["name"],
+                representation_id=None,
+                trait_data=json.loads(repre["traits"])
+            )
+            repre_id_map[representation.representation_id] = representation
+            representations.append(representation)
+            new_repre = copy.deepcopy(repre)
+            new_repre["versionId"] = new_hero_version["id"]
+            new_repre["id"] = representation.representation_id
+            new_repre["traits"] = representation.traits_as_dict()
+            new_repre_entities.append(new_repre)
 
         self.log.debug(
             "Prepared representations for hero version: %s",
@@ -286,6 +311,24 @@ class IntegrateHeroVersionTraits(
             raise KnownPublishError(msg) from e
         finally:
             file_transactions.finalize()
+
+        # create new representation entities and prepare legacy file attrib
+        for new_repre in new_repre_entities:
+            representation = repre_id_map[new_repre["id"]]
+            files = get_legacy_files_for_representation(
+                transfer_items=get_transfers_from_representations(
+                    instance,
+                    template=hero_template,
+                    representations=[representation]
+                ),
+                representation=representation,
+                anatomy=anatomy,
+            )
+            new_repre["files"] = files
+            op_session.create_entity(
+                project_name, "representation", new_repre
+            )
+        op_session.commit()
 
     def _backup_hero_version_dir(self, hero_publish_dir: str) -> str:
         """Backup current hero version publish directory.
