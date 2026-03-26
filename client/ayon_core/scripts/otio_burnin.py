@@ -14,6 +14,12 @@ try:
     from otio_burnins_adapter import ffmpeg_burnins
 except ImportError:
     import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+
+try:
+    from fontTools.ttLib import TTFont
+except ImportError:
+    TTFont = None
+
 from PIL import ImageFont
 
 from ayon_core.lib import (
@@ -24,7 +30,8 @@ from ayon_core.lib import (
     StringTemplate,
 )
 
-FFMPEG_EXE_COMMAND = subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
+FFMPEG_EXE_ARGS = get_ffmpeg_tool_args("ffmpeg")
+FFMPEG_EXE_COMMAND = subprocess.list2cmdline(FFMPEG_EXE_ARGS)
 FFMPEG = (
     '{}%(input_args)s -i "%(input)s" %(filters)s %(args)s%(output)s'
 ).format(FFMPEG_EXE_COMMAND)
@@ -39,6 +46,105 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
+
+
+def _get_text_width_fonttools(
+    text: str, font_path: str, font_size: int
+) -> int | None:
+    if TTFont is None:
+        return None
+
+    # Ignore if file cannot be read by TTF
+    try:
+        font = TTFont(font_path)
+    except Exception:
+        return None
+
+    # Get Units Per Em (usually 2048 or 1000)
+    units_per_em = font["head"].unitsPerEm
+
+    # Get the horizontal metrics table
+    hmtx = font["hmtx"]
+
+    # Get the character map to map characters to glyph names
+    cmap = font.getBestCmap()
+
+    total_advance = 0
+    for char in text:
+        # Get glyph name for the character
+        glyph_name = cmap.get(ord(char))
+        if glyph_name:
+            # Get advance width in font units
+            advance_width, left_side_bearing = hmtx[glyph_name]
+            total_advance += advance_width
+
+    # Scale from font units to pixels: (units * size) / unitsPerEm
+    width_px = (total_advance * font_size) / units_per_em
+
+    # FFmpeg usually applies ceil() to the final result
+    return math.ceil(width_px)
+
+
+def _get_text_width_ffmpeg(
+    text: str,
+    font_file: str,
+    font_size: int,
+):
+    text = (
+        text
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(":", "\\:")
+    )
+    font_file = (
+        font_file
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(":", "\\:")
+    )
+    draw_text_filter = (
+        f"drawtext=text='{text}':fontfile='{font_file}':fontsize={font_size}"
+        f":x=0+0*print(tw\\,8):y=0"
+    )
+    args = list(FFMPEG_EXE_ARGS)
+    args.extend([
+        "-hide_banner", "-loglevel", "fatal",
+        "-f", "lavfi", "-i", "color=c=blue:s=1920x1080",
+        "-vf", draw_text_filter,
+        "-frames:v", "1",
+        "-f", "null", "-",
+    ])
+    process = subprocess.run(
+        args,
+        stderr=subprocess.PIPE,
+    )
+    if process.returncode != 0:
+        return None
+    text_width = None
+    for line in process.stderr.splitlines():
+        try:
+            line = float(line.decode("utf-8"))
+            width = math.ceil(line)
+            if text_width is None:
+                text_width = width
+            elif width > text_width:
+                text_width = width
+
+        except ValueError:
+            pass
+    return text_width
+
+
+def get_text_width(text: str, font_path: str, font_size: int) -> int:
+    width = _get_text_width_fonttools(text, font_path, font_size)
+    if width is not None:
+        return width
+    width = _get_text_width_ffmpeg(text, font_path, font_size)
+    if width is not None:
+        return width
+
+    font = ImageFont.truetype(font_path, font_size)
+    return math.ceil(font.getlength(text))
 
 
 def get_metrics(font: ImageFont.FreeTypeFont) -> tuple[float, float]:
@@ -74,14 +180,14 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
 
     font = ImageFont.truetype(font_file, font_size)
     ascent, descent = get_metrics(font)
-    font_file = (
+    ffmpeg_font_file = (
         font_file
         .replace("\\", "\\\\")
         .replace(",", "\\,")
         .replace(":", "\\:")
     )
     args = {
-        "fontfile": f"'{font_file}'",
+        "fontfile": f"'{ffmpeg_font_file}'",
         "fontsize": font_size,
         "fontcolor": f"{options['font_color']}@{options['opacity']:.1f}",
         "y_align": "font",
@@ -107,8 +213,9 @@ def get_drawtext_kwargs(align, resolution, text: str, options: dict):
         x_pos = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
-        # Text width from Pillow font is not the same width as ffmpeg renders
-        x_pos = f"w-tw-{options['x_offset'] + pad_r}"
+        text_width = get_text_width(text, font_file, font_size)
+        x_offset = options["x_offset"]
+        x_pos = f"w-{text_width + x_offset + pad_r}"
 
     elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
         x_pos = options["x_offset"] + pad_l
