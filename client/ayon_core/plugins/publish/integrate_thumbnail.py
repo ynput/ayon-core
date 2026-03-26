@@ -177,7 +177,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             )
 
         response = self._upload_with_retries(
-            f"projects/{project_name}/thumbnails",
+            f"api/projects/{project_name}/thumbnails",
             src_filepath,
             mime_type,
         )

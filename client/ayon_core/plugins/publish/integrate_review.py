@@ -78,7 +78,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 query = f"?label={label}"
 
             endpoint = (
-                f"/projects/{project_name}"
+                f"/api/projects/{project_name}"
                 f"/versions/{version_id}/reviewables{query}"
             )
             self.log.info(f"Uploading reviewable {repre_path}")
