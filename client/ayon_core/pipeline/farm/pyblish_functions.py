@@ -20,6 +20,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish.input_versions import serialize_input_versions
 
 log = Logger.get_logger(__name__)
 
@@ -282,8 +283,7 @@ def create_skeleton_instance(
         "multipartExr": data.get("multipartExr", False),
         "jobBatchName": data.get("jobBatchName", ""),
         "useSequenceForReview": data.get("useSequenceForReview", True),
-        # map inputVersions `ObjectId` -> `str` so json supports it
-        "inputVersions": list(map(str, data.get("inputVersions", []))),
+        "inputVersions": serialize_input_versions(data.get("inputVersions")),
         "colorspace": data.get("colorspace"),
         "hasExplicitFrames": data.get("hasExplicitFrames", False),
         "reuseLastVersion": data.get("reuseLastVersion", False),
@@ -1256,8 +1256,7 @@ def create_skeleton_instance_cache(instance):
         "extendFrames": data.get("extendFrames"),
         "overrideExistingFrame": data.get("overrideExistingFrame"),
         "jobBatchName": data.get("jobBatchName", ""),
-        # map inputVersions `ObjectId` -> `str` so json supports it
-        "inputVersions": list(map(str, data.get("inputVersions", []))),
+        "inputVersions": serialize_input_versions(data.get("inputVersions")),
     }
 
     # skip locking version if we are creating v01
