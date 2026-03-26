@@ -199,50 +199,47 @@ def get_last_published_workfile_representation(
     Returns:
         Optional[LastPublishedWorkfileInfo]: Resolved info, or None.
     """
+    if not extensions:
+        return None
+
     if anatomy is None:
         from ayon_core.pipeline import Anatomy
         anatomy = Anatomy(project_name)
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
-    ext_set = None
-    if extensions:
-        ext_set = {str(ext).lstrip(".").lower() for ext in extensions}
+    extensions = {str(ext).lstrip(".").lower() for ext in extensions}
 
-    product_entities = list(
-        ayon_api.get_products(
+    product_ids = {
+        product_entity["id"]
+        for product_entity in ayon_api.get_products(
             project_name,
             folder_ids={folder_id},
             product_types={"workfile"},
-            fields={"id", "name"},
+            fields={"id"},
         )
-    )
-    if not product_entities:
+    }
+    if not product_ids:
         return None
 
     latest_version = next(
         ayon_api.get_versions(
             project_name,
-            product_ids={p["id"] for p in product_entities},
+            product_ids=product_ids,
             task_ids={task_id},
             latest=True,
             standard=True,
-            fields={"id", "author", "version", "taskId"},
+            fields={"id"},
         ),
         None,
     )
     if latest_version is None:
         return None
 
-    repre_entities = list(
-        ayon_api.get_representations(
-            project_name,
-            version_ids={latest_version["id"]},
-        )
+    repre_entities = ayon_api.get_representations(
+        project_name,
+        version_ids={latest_version["id"]},
     )
-    if not repre_entities:
-        return None
-
     for repre in repre_entities:
         representation_path = Path(get_representation_path(
             project_name,
@@ -253,7 +250,7 @@ def get_last_published_workfile_representation(
             continue
 
         ext = representation_path.suffix.lower().lstrip(".")
-        if ext_set is not None and ext in ext_set:
+        if ext in extensions:
             return LastPublishedWorkfileInfo(
                 source_path=representation_path.as_posix(),
                 representation_entity=repre,
