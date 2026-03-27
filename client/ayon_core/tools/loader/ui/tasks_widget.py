@@ -322,6 +322,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
+        tasks_view.setIndentation(0)
 
         tasks_model = LoaderTasksQtModel(controller)
         tasks_proxy_model = LoaderTasksProxyModel()
