@@ -520,6 +520,9 @@ QAbstractItemView::item:selected:hover {
 }
 
 /* Row colors (alternate colors) are from left - right */
+QTreeView {
+    qproperty-indentation: 20;
+}
 QTreeView::branch {
     background: {color:bg-view};
 }
