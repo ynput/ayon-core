@@ -13,6 +13,7 @@ class CollectFarmVersionLock(pyblish.api.ContextPlugin):
     """
     order = pyblish.api.CollectorOrder + 0.499
     label = "Collect Farm Version Lock"
+    settings_category = "core"
     targets = ["local"]
 
     lock_version_on_farm = True
