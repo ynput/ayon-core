@@ -1369,7 +1369,8 @@ class InstancesLogsView(QtWidgets.QFrame):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setObjectName("InstancesLogsView")
+
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1381,8 +1382,8 @@ class InstancesLogsView(QtWidgets.QFrame):
             scrollbar_bg.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         content_wrap_widget = QtWidgets.QWidget(scroll_area)
-        content_wrap_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         content_wrap_widget.setMinimumWidth(80)
+        content_wrap_widget.setObjectName("InstancesLogsView")
 
         content_widget = QtWidgets.QWidget(content_wrap_widget)
         content_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
