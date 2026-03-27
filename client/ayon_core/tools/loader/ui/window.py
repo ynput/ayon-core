@@ -281,6 +281,10 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_refresh_click
         )
         controller.register_event_callback(
+            "load.started",
+            self._on_load_started,
+        )
+        controller.register_event_callback(
             "load.finished",
             self._on_load_finished,
         )
@@ -542,9 +546,21 @@ class LoaderWindow(QtWidgets.QWidget):
             self._filters_widget.is_my_tasks_checked()
         )
 
+    def _on_load_started(self, event):
+        """Handle load.started event and show toast notification."""
+        message = event.get("message")
+        if message:
+            self._overlay_object.add_message(message, message_id=event["id"])
+        else:
+            self._overlay_object.add_message("Loading...", message_id=event["id"])
+
     def _on_load_finished(self, event):
         error_info = event["error_info"]
         if not error_info:
+            self._overlay_object.add_message(
+                "Loading completed successfully",
+                message_id=event["id"],
+            )
             return
 
         box = LoadErrorMessageBox(error_info, self)

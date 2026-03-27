@@ -811,6 +811,15 @@ class CreateWidget(QtWidgets.QWidget):
             "productType": product_type,
         }
 
+        if hasattr(self._controller, "creation_started_message"):
+            self._controller.emit_card_message(
+                self._controller.creation_started_message
+            )
+        else:
+            self._controller.emit_card_message(
+                "Creation started, Please wait..."
+            )
+
         success = self._controller.create(
             creator_identifier,
             product_name,

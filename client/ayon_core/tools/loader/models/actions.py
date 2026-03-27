@@ -156,6 +156,14 @@ class LoaderActionsModel:
             "data": data,
             "id": uuid.uuid4().hex,
         }
+        loader = None
+        if identifier == LOADER_PLUGIN_ID and data is not None:
+            loader = self._get_loader_by_identifier(
+                project_name, data["loader"]
+            )
+            msg = getattr(loader, "loading_started_message", None)
+            if msg:
+                event_data["message"] = msg
         self._controller.emit_event(
             "load.started",
             event_data,
@@ -192,9 +200,10 @@ class LoaderActionsModel:
             )
             return
 
-        loader = self._get_loader_by_identifier(
-            project_name, data["loader"]
-        )
+        if loader is None:
+            loader = self._get_loader_by_identifier(
+                project_name, data["loader"]
+            )
         entity_type = data["entity_type"]
         entity_ids = data["entity_ids"]
         if entity_type == "version":
