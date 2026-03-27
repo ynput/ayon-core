@@ -1,10 +1,8 @@
 """Integrate Hero version with representation traits."""
 from __future__ import annotations
-from itertools import count
 
 import json
 import os
-from pprint import pformat
 import shutil
 import copy
 from ayon_core.pipeline.traits import (
@@ -35,7 +33,6 @@ from ayon_core.pipeline.publish import (
 if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.anatomy.templates import (
-        AnatomyStringTemplate,
         TemplateItem as AnatomyTemplateItem,
     )
     import logging
@@ -215,22 +212,9 @@ class IntegrateHeroVersionTraits(
                     old_repres_by_name.pop(repre_name_low)
                 )
 
-        old_repres_to_delete = old_repres_by_name or {}
-        backup_hero_publish_dir = None
         if os.path.exists(hero_publish_dir):
-            backup_hero_publish_dir = self._backup_hero_version_dir(
+            _ = self._backup_hero_version_dir(
                 hero_publish_dir)
-
-        representations = [
-            Representation.from_dict(
-                name=repre["name"],
-                representation_id=repre["id"],
-                trait_data=json.loads(repre["traits"])
-            )
-            for repre in repre_entities
-            if repre["name"] not in self.ignored_representation_names
-                and repre["traits"] and repre["active"] is True
-        ]
 
         # prepare new representation entities for hero version
         new_repre_entities = []

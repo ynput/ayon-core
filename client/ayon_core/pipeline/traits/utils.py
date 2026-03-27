@@ -1,7 +1,7 @@
 """Utility functions for traits."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
 
 from ayon_core.addon import AddonsManager, ITraits
 

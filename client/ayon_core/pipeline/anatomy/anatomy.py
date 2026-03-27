@@ -24,7 +24,6 @@ from .templates import AnatomyTemplates
 
 
 if TYPE_CHECKING:
-    from .templates import AnatomyStringTemplate
     from .templates import TemplateItem
 
 

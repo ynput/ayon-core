@@ -72,7 +72,9 @@ def _create_file(file_path: Path, content: bytes = b"content") -> Path:
     return file_path
 
 
-def _make_template(instance: pyblish.api.Instance, pattern: str) -> dict[str, _DummyPathTemplate]:
+def _make_template(
+        instance: pyblish.api.Instance,
+        pattern: str) -> dict[str, _DummyPathTemplate]:
     publish_root = instance.data["publish_root"]
     return {
         "path": _DummyPathTemplate((publish_root / pattern).as_posix())
@@ -92,7 +94,9 @@ def test_get_transfers_from_representations_single_file_uses_variant(
 
     transfers = get_transfers_from_representations(
         instance,
-        _make_template(instance, "{representation}/{output}/publish.{ext}"),
+        _make_template(
+            instance,
+            "{representation}/{output}/publish.{ext}"),
         [representation],
     )
 
@@ -121,7 +125,8 @@ def test_get_transfers_from_representations_sequence_dispatches_file_locations(
         FrameRanged(frame_start=1, frame_end=2, frames_per_second="24"),
         Sequence(
             frame_padding=4,
-            frame_regex=re.compile(r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$"),
+            frame_regex=re.compile(
+                r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$"),
         ),
         FileLocations(file_paths=[
             FileLocation(file_path=file_path)
@@ -234,23 +239,27 @@ def test_get_transfers_from_representations_recurses_into_bundles(
     )
 
     assert len(transfers) == 2
-    assert {transfer.source for transfer in transfers} == {first_file, second_file}
+    assert {
+               transfer.source for transfer in transfers
+           } == {first_file, second_file}
     assert {transfer.destination.name for transfer in transfers} == {
         "publish.txt",
         "publish.json",
     }
 
 
-def test_get_transfers_from_representations_raises_publish_error_on_invalid_representation(
+def test_get_transfers_from_representations_raises_publish_error_on_invalid_representation(  # noqa: E501
     instance: pyblish.api.Instance,
 ) -> None:
-    """Invalid representations should be rejected before transfers are built."""
+    """Invalid repres should be rejected before transfers are built."""
     representation = Representation(
         name="broken",
         traits=[FileLocations(file_paths=[])],
     )
 
-    with pytest.raises(PublishError, match=r"Representation 'broken' is invalid"):
+    with pytest.raises(
+            PublishError,
+            match=r"Representation 'broken' is invalid"):
         get_transfers_from_representations(
             instance,
             _make_template(instance, "{representation}/publish.dat"),

@@ -10,7 +10,6 @@ import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
     get_product_by_name,
-    # get_representations,
     get_version_by_name,
 )
 from ayon_api.operations import (
@@ -41,13 +40,10 @@ from ayon_core.pipeline.traits import (
     get_transfers_from_representations,
     get_template_data_from_representation,
     get_legacy_files_for_representation,
-    TransferItem,
 )
 
 if TYPE_CHECKING:
     import logging
-
-    from ayon_core.pipeline import Anatomy
 
 
 class RepresentationEntity:
