@@ -7,9 +7,10 @@ class CollectFarmVersionLock(pyblish.api.ContextPlugin):
 
     Collect whether the version should be locked in the farm metadata JSON.
 
-    Note: this locking will only occur if enabled AND the instance data has a
-        version collected, so e.g. "Collect Scene Version" may need to still
-        be enabled and run for the host for the locking to occur.
+    Note: this locking will only occur if enabled AND a ``version`` is
+        present on the instances used for farm submission (e.g. set on
+        ``instance.data["version"]`` by collectors such as
+        ``CollectAnatomyInstanceData`` or "Collect Scene Version").
     """
     order = pyblish.api.CollectorOrder + 0.499
     label = "Collect Farm Version Lock"
