@@ -52,7 +52,7 @@ QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
     border: 1px solid {color:border};
     border-radius: 0.2em;
     background: {color:bg-inputs};
-    padding: 0.1em;
+    padding: 1px;
 }
 
 QAbstractSpinBox:disabled, QLineEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled {
@@ -1553,7 +1553,7 @@ AttributeDefinitionsLabel[overridden="1"] {
     color: {color:font-overridden};
 }
 
-AttributeDefinitionsWidget QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
+AttributeDefinitionsWidget QAbstractSpinBox, AttributeDefinitionsWidget QLineEdit, AttributeDefinitionsWidget QPlainTextEdit, AttributeDefinitionsWidget QTextEdit {
     padding: 1px;
 }
 AttributeDefinitionsWidget QComboBox {
