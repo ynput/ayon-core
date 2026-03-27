@@ -1133,8 +1133,10 @@ class LogItemMessage(QtWidgets.QTextEdit):
         pal.setColor(QtGui.QPalette.Base, QtCore.Qt.transparent)
         self.setPalette(pal)
         self.setContentsMargins(0, 0, 0, 0)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         viewport = self.viewport()
         viewport.setContentsMargins(0, 0, 0, 0)
+        viewport.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.setTextInteractionFlags(
             QtCore.Qt.TextBrowserInteraction)
@@ -1181,6 +1183,8 @@ class LogItemWidget(QtWidgets.QWidget):
 
     def __init__(self, log, parent):
         super().__init__(parent)
+
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         type_flag, level_n = self._get_log_info(log)
         icon_label = LogIconFrame(
