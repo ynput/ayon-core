@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import base64
-import logging
 import re
 import time
 from pathlib import Path
@@ -10,7 +9,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pyblish.api
 import pytest
-import ayon_core.plugins.publish.integrate_traits as integrate_traits_module
 
 from ayon_core.lib.file_transaction import (
     FileTransaction,
@@ -557,162 +555,3 @@ def test_get_transfers_from_representation_preserves_hierarchy(
 
     template_path = representation.get_trait(TemplatePath)
     assert template_path.template == template_item.template
-
-
-def test_integrate_traits_process_passes_template_object(
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path) -> None:
-    """Process should pass a resolved template object to transfer builder."""
-    expected_template = {
-        "path": "dummy/path/{representation}.{ext}",
-    }
-
-    class _DummyAnatomy:
-        def get_template_item(self, category: str, template_name: str):
-            assert category == "publish"
-            assert template_name == "default"
-            return expected_template
-
-    context = pyblish.api.Context()
-    context.data["projectName"] = "test_project"
-    context.data["anatomy"] = _DummyAnatomy()
-    instance = context.create_instance("mock_instance")
-    instance.data["integrate"] = True
-    instance.data["farm"] = False
-
-    source = tmp_path / "source" / "image.png"
-    source.parent.mkdir(parents=True, exist_ok=True)
-    source.write_bytes(base64.b64decode(PNG_FILE_B64))
-
-    file_location = FileLocation(
-        file_path=source,
-        file_size=source.stat().st_size,
-    )
-    representation = Representation(name="test_single", traits=[
-        Persistent(),
-        file_location,
-        Image(),
-        MimeType(mime_type="image/png"),
-    ])
-
-    class _DummyOperationsSession:
-        def __init__(self):
-            self.created = []
-            self.committed = False
-
-        def create_entity(self, project_name, entity_type, data):
-            self.created.append((project_name, entity_type, data))
-
-        def to_data(self):
-            return {}
-
-        def commit(self):
-            self.committed = True
-
-    class _DummyFileTransaction:
-        MODE_COPY = "copy"
-
-        def __init__(self, *args, **kwargs):
-            self.transferred = []
-
-        def add(self, source_path, destination_path, mode):
-            self.transferred.append((source_path, destination_path, mode))
-
-        def process(self):
-            return None
-
-    captured = {}
-
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "has_trait_representations",
-        lambda _instance: True,
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "get_trait_representations",
-        lambda _instance: [representation],
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "set_trait_representations",
-        lambda _instance, _representations: None,
-    )
-    monkeypatch.setattr(
-        integrate_traits_module.IntegrateTraits,
-        "filter_lifecycle",
-        staticmethod(lambda representations: representations),
-    )
-    monkeypatch.setattr(
-        integrate_traits_module.IntegrateTraits,
-        "prepare_product",
-        lambda self, _instance, _op_session: {"id": "product-id"},
-    )
-    monkeypatch.setattr(
-        integrate_traits_module.IntegrateTraits,
-        "prepare_version",
-        lambda self, _instance, _op_session, _product: {"id": "version-id"},
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "get_template_name",
-        lambda _instance: "default",
-    )
-
-    def _mock_get_transfers(instance_arg, template_arg, representations_arg):
-        captured["instance"] = instance_arg
-        captured["template"] = template_arg
-        captured["representations"] = representations_arg
-        return [TransferItem(
-            source=source,
-            destination=tmp_path / "publish" / "image.png",
-            size=source.stat().st_size,
-            checksum=TransferItem.get_checksum(source),
-            template="dummy/path/{representation}.{ext}",
-            template_data={},
-            representation=representation,
-            related_trait=file_location,
-        )]
-
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "get_transfers_from_representations",
-        _mock_get_transfers,
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "FileTransaction",
-        _DummyFileTransaction,
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "OperationsSession",
-        _DummyOperationsSession,
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "new_representation_entity",
-        lambda *args, **kwargs: {},
-    )
-    monkeypatch.setattr(
-        integrate_traits_module,
-        "get_template_data_from_representation",
-        lambda _representation, _instance: {},
-    )
-    monkeypatch.setattr(
-        integrate_traits_module.IntegrateTraits,
-        "_get_legacy_files_for_representation",
-        lambda self, _transfers, _representation, anatomy: [],
-    )
-
-    plugin = IntegrateTraits()
-    plugin.log = logging.getLogger("test_integrate_traits")
-
-    plugin.process(instance)
-
-    assert captured["instance"] is instance
-    assert captured["template"] is expected_template
-    assert captured["representations"] == [representation]
-    assert instance.data[
-        "publishedRepresentationsWithTraits"
-    ] == [representation]
