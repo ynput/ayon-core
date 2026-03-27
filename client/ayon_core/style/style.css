@@ -485,6 +485,11 @@ QAbstractItemView::item {
     border: none;
 }
 
+QListView::item {
+    padding: 2px 0px 2px 0px;
+    height: 1.0em;
+}
+
 QAbstractItemView:disabled{
     background: {color:bg-view-disabled};
     alternate-background-color: {color:bg-view-alternate-disabled};
