@@ -1143,7 +1143,7 @@ class CreateModel:
 
             self._creator_items[identifier] = creator_item
             for ui_item in creator_item.ui_items:
-                ui_item.filtered = self._is_label_allowed(
+                ui_item.filtered = not self._is_label_allowed(
                     ui_item.label, allowed_creator_pattern
                 )
                 if ui_item.filtered:
