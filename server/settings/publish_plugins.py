@@ -1342,7 +1342,7 @@ class PublishPluginsModel(BaseSettingsModel):
     )
     CollectFarmVersionLock: CollectFarmVersionLockModel = SettingsField(
         default_factory=CollectFarmVersionLockModel,
-        title="Collect Farm Target"
+        title="Collect Farm Version Lock"
     )
 
 
