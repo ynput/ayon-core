@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Dict, List, Any, Callable, Literal
+from typing import Dict, List, Any
 
 from qtpy import QtWidgets, QtCore
 
