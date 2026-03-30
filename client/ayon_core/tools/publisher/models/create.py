@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import re
 import copy
@@ -10,6 +12,7 @@ from typing import (
     Optional,
     Iterable,
     Pattern,
+    Literal,
 )
 
 from ayon_core.lib.attribute_definitions import (
@@ -926,6 +929,15 @@ class CreateModel:
         self._set_instances_publish_attr_values(
             instance_ids, plugin_name, key, _DEFAULT_VALUE
         )
+
+    def trigger_button_attribute_callback(
+        self,
+        source: Literal["create", "publish"],
+        plugin_name: str | None,
+        key: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        pass
 
     def get_publish_attribute_definitions(
         self,
