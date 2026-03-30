@@ -20,6 +20,7 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     AbstractAttrDef,
     EnumDef,
+    ButtonDef,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib.attribute_definitions import UIDef
@@ -33,6 +34,7 @@ from ayon_core.pipeline.create import (
     CreatedInstance,
     AttributeValues,
     ProductTypeItem,
+    ButtonCallbackInfo,
 )
 from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
@@ -937,7 +939,62 @@ class CreateModel:
         key: str,
         instance_ids: list[str | None],
     ) -> None:
-        pass
+        if source not in ("create", "publish"):
+            raise ValueError(
+                f"Unknown source '{source}'. Expected 'create' or 'publish'."
+            )
+
+        attr_def = None
+        for instance_id in instance_ids:
+            if instance_id is None:
+                if plugin_name is None:
+                    continue
+                plugin_defs = (
+                    self._create_context
+                    .publish_attributes
+                    .get(plugin_name)
+                )
+                if plugin_defs is None:
+                    continue
+                attr_def = plugin_defs.get_attr_def(key)
+                if attr_def is None:
+                    continue
+                break
+
+            instance = self._create_context.get_instance_by_id(
+                instance_id
+            )
+            if source == "create":
+                attr_def = instance.creator_attributes.get_attr_def(key)
+                if attr_def is not None:
+                    break
+            else:
+                plugin_defs = (
+                    instance
+                    .publish_attributes
+                    .get(plugin_name)
+                )
+                if plugin_defs is None:
+                    continue
+                attr_def = plugin_defs.get_attr_def(key)
+                if attr_def is not None:
+                    break
+
+        if not isinstance(attr_def, ButtonDef):
+            self.log.warning(
+                "Triggered button callback for non-button attribute"
+                f" got '{type(attr_def)}' expected 'ButtonDef'"
+            )
+            return
+
+        callback = attr_def.get_callback()
+        if callback is None:
+            return
+        info = ButtonCallbackInfo(instance_ids)
+        if is_func_signature_supported(callback, info):
+            callback(info)
+        else:
+            callback()
 
     def get_publish_attribute_definitions(
         self,
