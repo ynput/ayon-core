@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from typing import (
@@ -467,8 +469,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def trigger_button_attribute_callback(
         self,
-        source: Literal["create", "publish"],
-        plugin_name: str | None,
+        source: Literal["precreate", "create", "publish"],
+        plugin_id: str | None,
         key: str,
         instance_ids: list[str | None],
     ):

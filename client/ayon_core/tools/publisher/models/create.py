@@ -934,25 +934,35 @@ class CreateModel:
 
     def trigger_button_attribute_callback(
         self,
-        source: Literal["create", "publish"],
-        plugin_name: str | None,
+        source: Literal["precreate", "create", "publish"],
+        plugin_id: str | None,
         key: str,
         instance_ids: list[str | None],
     ) -> None:
-        if source not in ("create", "publish"):
+        if source not in ("precreate", "create", "publish"):
             raise ValueError(
                 f"Unknown source '{source}'. Expected 'create' or 'publish'."
             )
 
         attr_def = None
+        if source == "precreate":
+            item = self.get_creator_item_by_id(plugin_id)
+            if item is None:
+                return
+
+            for attr_def in item.pre_create_attributes_defs:
+                if attr_def.key == key:
+                    attr_def.trigger()
+                    return
+
         for instance_id in instance_ids:
             if instance_id is None:
-                if plugin_name is None:
+                if plugin_id is None:
                     continue
                 plugin_defs = (
                     self._create_context
                     .publish_attributes
-                    .get(plugin_name)
+                    .get(plugin_id)
                 )
                 if plugin_defs is None:
                     continue
@@ -972,7 +982,7 @@ class CreateModel:
                 plugin_defs = (
                     instance
                     .publish_attributes
-                    .get(plugin_name)
+                    .get(plugin_id)
                 )
                 if plugin_defs is None:
                     continue

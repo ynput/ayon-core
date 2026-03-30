@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import logging
 import tempfile
@@ -472,13 +474,13 @@ class PublisherController(
 
     def trigger_button_attribute_callback(
         self,
-        source: Literal["create", "publish"],
-        plugin_name: str | None,
+        source: Literal["precreate", "create", "publish"],
+        plugin_id: str | None,
         key: str,
         instance_ids: list[str | None],
     ) -> None:
         self._create_model.trigger_button_attribute_callback(
-            source, plugin_name, key, instance_ids
+            source, plugin_id, key, instance_ids
         )
 
     def get_product_name(

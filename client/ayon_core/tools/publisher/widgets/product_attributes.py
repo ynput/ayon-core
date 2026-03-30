@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Dict, List, Any, Callable
+from typing import Dict, List, Any, Callable, Literal
 
 from qtpy import QtWidgets, QtCore
 
@@ -19,6 +19,8 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+from .utils import ButtonCallback
 
 if typing.TYPE_CHECKING:
     from typing import Union
@@ -58,26 +60,6 @@ class _PublishAttrDefInfo:
         self.label_widget: "Union[AttributeDefinitionsLabel, None]" = (
             label_widget
         )
-
-
-class ButtonCallback:
-    def __init__(
-        self,
-        callback_source: str,
-        plugin_name: str | None,
-        key: str,
-        instance_ids: list[str | None],
-        callback: Callable,
-    ) -> None:
-        self.callback_source = callback_source
-        self.plugin_name = plugin_name
-        self.key = key
-        self.instance_ids = instance_ids
-
-        self._callback = callback
-
-    def __call__(self) -> None:
-        self._callback(self)
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
@@ -169,11 +151,11 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         for attr_def, info_by_id in result:
             if isinstance(attr_def, ButtonDef):
                 inner_callback = ButtonCallback(
+                    self._controller,
                     "create",
-                    None,
                     attr_def.key,
+                    None,
                     list(info_by_id),
-                    self._on_button_click,
                 )
                 attr_def = attr_def.clone()
                 attr_def.set_callback(inner_callback)
@@ -273,14 +255,6 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             ):
                 self._refresh_content()
                 break
-
-    def _on_button_click(self, callback: ButtonCallback) -> None:
-        self._controller.trigger_button_attribute_callback(
-            callback.callback_source,
-            callback.plugin_name,
-            callback.key,
-            callback.instance_ids,
-        )
 
     def _input_value_changed(self, value, attr_id):
         attr_def_info = self._attr_def_info_by_id.get(attr_id)
@@ -426,11 +400,11 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 if isinstance(attr_def, ButtonDef):
                     inner_callback = ButtonCallback(
+                        self._controller,
                         "publish",
-                        plugin_name,
                         attr_def.key,
+                        plugin_name,
                         list(instance_ids),
-                        self._on_button_click,
                     )
                     attr_def = attr_def.clone()
                     attr_def.set_callback(inner_callback)
@@ -558,11 +532,3 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             ):
                 self._refresh_content()
                 break
-
-    def _on_button_click(self, callback: ButtonCallback) -> None:
-        self._controller.trigger_button_attribute_callback(
-            callback.callback_source,
-            callback.plugin_name,
-            callback.key,
-            callback.instance_ids,
-        )
