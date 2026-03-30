@@ -584,7 +584,7 @@ class AnatomyTemplates:
         category_name: str,
         template_name: str,
         subkey: Optional[str] = None,
-        default: Any = _PLACEHOLDER
+        default: Any = PLACEHOLDER
     ) -> Any:
         """Get template item from category.
 
@@ -605,13 +605,13 @@ class AnatomyTemplates:
         self._validate_discovery()
         category = self.get(category_name)
         if category is None:
-            if default is not _PLACEHOLDER:
+            if default is not PLACEHOLDER:
                 return default
             raise KeyError("Category '{}' not found.".format(category_name))
 
         template_item = category.get(template_name)
         if template_item is None:
-            if default is not _PLACEHOLDER:
+            if default is not PLACEHOLDER:
                 return default
             raise KeyError(
                 "Template '{}' not found in category '{}'.".format(
@@ -626,7 +626,7 @@ class AnatomyTemplates:
         if item is not None:
             return item
 
-        if default is not _PLACEHOLDER:
+        if default is not PLACEHOLDER:
             return default
         raise KeyError(
             "Subkey '{}' not found in '{}/{}'.".format(
