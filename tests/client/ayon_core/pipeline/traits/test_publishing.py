@@ -75,6 +75,15 @@ def _create_file(file_path: Path, content: bytes = b"content") -> Path:
 def _make_template(
         instance: pyblish.api.Instance,
         pattern: str) -> dict[str, _DummyPathTemplate]:
+    """Create template based on instance and pattern.
+
+    Args:
+        instance: pyblish.api.Instance
+        pattern: str
+
+    Returns:
+        dict[str, str]: Template data with path template.
+    """
     publish_root = instance.data["publish_root"]
     return {
         "path": _DummyPathTemplate((publish_root / pattern).as_posix())
@@ -240,8 +249,8 @@ def test_get_transfers_from_representations_recurses_into_bundles(
 
     assert len(transfers) == 2
     assert {
-               transfer.source for transfer in transfers
-           } == {first_file, second_file}
+        transfer.source for transfer in transfers
+    } == {first_file, second_file}
     assert {transfer.destination.name for transfer in transfers} == {
         "publish.txt",
         "publish.json",
@@ -258,8 +267,8 @@ def test_get_transfers_from_representations_raises_publish_error_on_invalid_repr
     )
 
     with pytest.raises(
-            PublishError,
-            match=r"Representation 'broken' is invalid"):
+        PublishError,
+        match=r"Representation 'broken' is invalid"):
         get_transfers_from_representations(
             instance,
             _make_template(instance, "{representation}/publish.dat"),
