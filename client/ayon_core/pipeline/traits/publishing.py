@@ -119,10 +119,6 @@ class TransferItem:
         ).hexdigest()
 
 
-def get_template_item_from_template_str():
-    ...
-
-
 def get_publish_template_object(
         instance: pyblish.api.Instance,
         category_name: str = "publish",
@@ -137,7 +133,8 @@ def get_publish_template_object(
         category_name (str): Category name of the template to use.
             Defaults to "publish".
         template_name (str, optional): Template name to use.
-            If not provided, it will
+            If not provided, it will get the template name from
+            the provided instance.
 
     Returns:
         AnatomyTemplateItem: Anatomy template object
