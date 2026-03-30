@@ -186,7 +186,7 @@ class IntegrateHeroVersionTraits(
 
         if not repre_entities:
             msg = (
-                f"Version '{new_hero_version['id']}' does not have any "
+                f"Version '{src_version_entity['id']}' does not have any "
                 "representations. At least one representation with traits "
                 "has to be published to create hero version."
             )
@@ -212,8 +212,19 @@ class IntegrateHeroVersionTraits(
                     old_repres_by_name.pop(repre_name_low)
                 )
 
+        # deactivate old representations that are to be replaced
+        if old_repres_to_replace:
+            for repre in old_repres_to_replace.values():
+                if repre["active"]:
+                    op_session.update_representation(
+                        project_name=project_name,
+                        representation_id=repre["id"],
+                        active=False
+                    )
+
+        backup_hero_publish_dir = None
         if os.path.exists(hero_publish_dir):
-            _ = self._backup_hero_version_dir(
+            backup_hero_publish_dir = self._backup_hero_version_dir(
                 hero_publish_dir)
 
         # prepare new representation entities for hero version
@@ -284,6 +295,7 @@ class IntegrateHeroVersionTraits(
                 "cause conflicts and unintended overwrites. Please check the "
                 "representations and their traits to ensure they are unique."
             )
+            file_transactions.rollback()
             self.log.error(msg)
             raise KnownPublishError(msg) from e
         except Exception as e:
@@ -291,6 +303,7 @@ class IntegrateHeroVersionTraits(
                 "An error occurred during file transfer for hero version. "
                 "Please check the logs for more details."
             )
+            file_transactions.rollback()
             self.log.error(msg)
             raise KnownPublishError(msg) from e
         finally:
@@ -299,12 +312,13 @@ class IntegrateHeroVersionTraits(
         # create new representation entities and prepare legacy file attrib
         for new_repre in new_repre_entities:
             representation = repre_id_map[new_repre["id"]]
+            transfer_items = [
+                transfer
+                for transfer in transfers
+                if getattr(transfer, "representation", None) is representation
+            ]
             files = get_legacy_files_for_representation(
-                transfer_items=get_transfers_from_representations(
-                    instance,
-                    template=hero_template,
-                    representations=[representation]
-                ),
+                transfer_items=transfer_items,
                 representation=representation,
                 anatomy=anatomy,
             )
@@ -313,6 +327,11 @@ class IntegrateHeroVersionTraits(
                 project_name, "representation", new_repre
             )
         op_session.commit()
+        if (
+                backup_hero_publish_dir is not None and
+                os.path.exists(backup_hero_publish_dir)
+        ):
+            shutil.rmtree(backup_hero_publish_dir)
 
     def _backup_hero_version_dir(self, hero_publish_dir: str) -> str:
         """Backup current hero version publish directory.
@@ -386,7 +405,7 @@ class IntegrateHeroVersionTraits(
         """
         for rep in repres:
             version = ayon_api.get_version_by_id(
-                project_name, rep["versionId"]
+                project_name, rep.representation_id
             )
             if version:
                 return version
