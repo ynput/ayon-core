@@ -172,16 +172,9 @@ def get_transfers_from_sequence(
     """
     sequence: Sequence = representation.get_trait(Sequence)
     path_template_object = template_item.template_object["path"]
-
-    # get the padding from the sequence if the padding on the
-    # template is higher, us the one from the template
-    dst_padding = representation.get_trait(
-        Sequence).frame_padding
     frames: list[int] = sequence.get_frame_list(
         representation.get_trait(FileLocations),
         regex=sequence.frame_regex)
-    template_padding = template_item.anatomy.templates_obj.frame_padding
-    dst_padding = max(template_padding, dst_padding)
 
     # Go through all frames in the sequence and
     # find their corresponding file locations, then
