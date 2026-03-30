@@ -15,7 +15,8 @@ from ayon_core.lib.attribute_definitions import (
     FileDef,
     UIDef,
     UISeparatorDef,
-    UILabelDef
+    UILabelDef,
+    ButtonDef,
 )
 from ayon_core.tools.utils import (
     CustomTextComboBox,
@@ -89,6 +90,9 @@ def _create_widget_for_attr_def(
 
     elif isinstance(attr_def, UILabelDef):
         cls = LabelAttrWidget
+
+    elif isinstance(attr_def, ButtonDef):
+        cls = ButtonAttrWidget
 
     if cls is None:
         raise ValueError("Unknown attribute definition \"{}\"".format(
@@ -357,6 +361,25 @@ class LabelAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+
+class ButtonAttrWidget(_BaseAttrDefWidget):
+    def _ui_init(self):
+        input_widget = QtWidgets.QPushButton(self)
+        label = self.attr_def.label
+        if label:
+            input_widget.setText(str(label))
+
+        input_widget.clicked.connect(self._on_click)
+
+        self._input_widget = input_widget
+
+        self.main_layout.addStretch(1)
+        self.main_layout.addWidget(input_widget, 2)
+        self.main_layout.addStretch(1)
+
+    def _on_click(self):
+        self.attr_def.trigger()
 
 
 class ClickableLineEdit(QtWidgets.QLineEdit):
