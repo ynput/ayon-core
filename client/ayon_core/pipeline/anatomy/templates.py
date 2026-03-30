@@ -5,7 +5,6 @@ import platform
 import collections
 import numbers
 from typing import Any, Optional
-import logging
 
 from ayon_core.lib.path_templates import (
     TemplateResult,
@@ -17,8 +16,6 @@ from .exceptions import (
     TemplateMissingKey,
     AnatomyTemplateUnsolved,
 )
-
-log = logging.getLogger(__name__)
 
 
 _IS_WINDOWS = platform.system().lower() == "windows"
