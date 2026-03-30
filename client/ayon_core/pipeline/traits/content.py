@@ -579,7 +579,6 @@ class OriginalFilename(TraitBase):
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
-        original_filename (str): Original filename.
     """
 
     name: ClassVar[str] = "OriginalFilename"
