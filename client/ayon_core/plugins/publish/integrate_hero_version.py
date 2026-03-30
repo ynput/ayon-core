@@ -78,8 +78,8 @@ class IntegrateHeroVersion(
     ]
 
     # Can specify representation names that will be ignored (lower case)
-    ignored_representation_names: list[str] = []
-    db_representation_context_keys: list[str] = [
+    ignored_representation_names = []
+    db_representation_context_keys = [
         "project",
         "folder",
         "hierarchy",
