@@ -75,7 +75,7 @@ class IntegrateHeroVersionTraits(
 
     order = pyblish.api.IntegratorOrder + 0.1
     label = "Integrate Hero version with representation traits"
-    setting_category = "core"
+    settings_category = "core"
     optional = True
     active = True
 
