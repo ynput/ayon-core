@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import collections
@@ -15,6 +17,7 @@ from typing import (
     Dict,
     Iterable,
     TypeVar,
+    Callable,
 )
 
 import clique
@@ -318,6 +321,43 @@ class UILabelDef(UIDef):
 
     def _def_type_compare(self, other: "UILabelDef") -> bool:
         return self.label == other.label
+
+
+class ButtonDef(UIDef):
+    """Button definition.
+
+    UI element to allow to trigger a callback.
+    """
+    type = "button"
+
+    def __init__(self, key, callback, *args, **kwargs):
+        self._callback = callback
+        super().__init__(key=key, *args, **kwargs)
+
+    def get_callback(self) -> Callable:
+        return self._callback
+
+    def set_callback(self, callback: Callable):
+        self._callback = callback
+
+    def trigger(self) -> None:
+        self._callback()
+
+    def serialize(self) -> dict[str, Any]:
+        """Serialize object to data so it's possible to recreate it.
+
+        Serialization of button definition does not include callback function.
+            Logic after deserialization has to be handled manually.
+
+        """
+        data = super().serialize()
+        data["callback"] = None
+        return data
+
+    def clone(self) -> "Self":
+        attr_def = super().clone()
+        attr_def.set_callback(self._callback)
+        return attr_def
 
 
 # ---------------------------------------
