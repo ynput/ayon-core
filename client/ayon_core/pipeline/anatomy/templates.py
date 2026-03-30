@@ -19,7 +19,7 @@ from .exceptions import (
 
 
 _IS_WINDOWS = platform.system().lower() == "windows"
-_PLACEHOLDER = object()
+PLACEHOLDER = object()
 
 
 class AnatomyTemplateResult(TemplateResult):

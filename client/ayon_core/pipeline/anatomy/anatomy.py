@@ -5,7 +5,7 @@ import re
 import copy
 import platform
 import collections
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import ayon_api
 
@@ -20,7 +20,7 @@ from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
 from .roots import AnatomyRoots
-from .templates import AnatomyTemplates
+from .templates import AnatomyTemplates, PLACEHOLDER
 
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ class BaseAnatomy(object):
             category_name: str,
             template_name: str,
             subkey: Optional[str] = None,
-            default: Optional[str] = None,
+            default: Any = PLACEHOLDER,
     ) -> Union[TemplateItem, str, None]:
         """Get template item from category.
 
