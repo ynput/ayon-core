@@ -330,15 +330,22 @@ class ButtonDef(UIDef):
     """
     type = "button"
 
-    def __init__(self, key, callback, *args, **kwargs):
+    def __init__(
+        self,
+        key: str,
+        callback: Callable | None,
+        *args, **kwargs
+    ):
         self._callback = callback
         super().__init__(key=key, *args, **kwargs)
 
-    def get_callback(self) -> Callable:
+    def get_callback(self) -> Callable | None:
         return self._callback
 
-    def set_callback(self, callback: Callable):
+    def set_callback(self, callback: Callable) -> None:
         self._callback = callback
+
+    callback = property(get_callback, set_callback)
 
     def trigger(self) -> None:
         self._callback()
