@@ -31,15 +31,6 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             self._upload_reviewable(project_name, version_id, instance)
 
     def _upload_reviewable(self, project_name, version_id, instance):
-        ayon_con = ayon_api.get_server_api_connection()
-        major, minor, _, _, _ = ayon_con.get_server_version_tuple()
-        if (major, minor) < (1, 3):
-            self.log.info(
-                "Skipping reviewable upload, supported from server 1.3.x."
-                f" Current server version {ayon_con.get_server_version()}"
-            )
-            return
-
         uploaded_labels = set()
         for repre in instance.data["representations"]:
             repre_tags = repre.get("tags") or []
