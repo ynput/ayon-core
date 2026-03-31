@@ -188,7 +188,6 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 exc_info=True,
             )
 
-
         # Exhausted retries - raise a user-friendly validation error with help
         raise PublishXmlValidationError(
             self,
