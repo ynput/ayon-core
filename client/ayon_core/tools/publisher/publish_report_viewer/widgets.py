@@ -165,6 +165,7 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         view = QtWidgets.QTreeView(self)
+        view.setIndentation(20)
         view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         view.setTextElideMode(QtCore.Qt.ElideLeft)
         view.setHeaderHidden(True)

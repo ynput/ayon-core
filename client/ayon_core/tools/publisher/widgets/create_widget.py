@@ -481,6 +481,9 @@ class CreateWidget(QtWidgets.QWidget):
 
             # TODO add details about creator
             for ui_item in creator_item.ui_items:
+                if ui_item.filtered:
+                    continue
+
                 items_by_identifier = new_creators[identifier]
                 items_by_identifier.add(ui_item.product_type)
                 is_new = False
