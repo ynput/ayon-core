@@ -74,6 +74,8 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                     repre_path,
                     content_type=content_type,
                     label=label,
+                    # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
+                    headers={},
                 )
             except Exception as exc:
                 self.log.warning(
