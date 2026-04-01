@@ -196,7 +196,7 @@ class ProductsWidget(QtWidgets.QWidget):
         products_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
-        products_view.setAllColumnsShowFocus(True)
+        products_view.setAllColumnsShowFocus(False)
         # TODO - add context menu
         products_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         products_view.setSortingEnabled(True)
