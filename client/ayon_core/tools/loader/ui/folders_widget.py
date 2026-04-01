@@ -13,11 +13,6 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
 
-if qtpy.API == "pyside":
-    from PySide.QtGui import QStyleOptionViewItemV4
-elif qtpy.API == "pyqt4":
-    from PyQt4.QtGui import QStyleOptionViewItemV4
-
 UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 50
 
 
@@ -47,9 +42,6 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
     def paint(self, painter, option, index):
         """Replicate painting of an item and draw color bars if needed."""
-        # Qt4 compat
-        if qtpy.API in ("pyside", "pyqt4"):
-            option = QStyleOptionViewItemV4(option)
 
         painter.save()
 
