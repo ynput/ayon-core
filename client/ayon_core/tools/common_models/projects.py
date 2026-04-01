@@ -360,7 +360,7 @@ class ProjectsModel(object):
         if not project_cache.is_valid:
             entity = None
             if project_name:
-                entity = ayon_api.get_project(project_name)
+                entity = ayon_api.get_rest_project(project_name)
             project_cache.update_data(entity)
         return project_cache.get_data()
 
