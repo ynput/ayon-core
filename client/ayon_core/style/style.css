@@ -490,6 +490,10 @@ QListView::item {
     height: 1.0em;
 }
 
+QTreeView::item:!enabled {
+    background: {color:bg-view};
+}
+
 QAbstractItemView:disabled{
     background: {color:bg-view-disabled};
     alternate-background-color: {color:bg-view-alternate-disabled};
