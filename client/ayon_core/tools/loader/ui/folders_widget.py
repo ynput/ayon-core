@@ -1,6 +1,5 @@
 from typing import Optional
 
-import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_objected_colors
