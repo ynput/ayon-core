@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import io
 import urllib.request
+from typing import ClassVar
 
 import ayon_api
 
@@ -26,47 +27,56 @@ class IconBase(ABC):
         passed to functions.
     """
 
+    @property
+    @abstractmethod
+    def type(self) -> str:
+        pass
+
     @abstractmethod
     def get_unique_id(self) -> str:
-        return ""
+        pass
 
 
 @dataclass
 class PathIcon(IconBase):
     """Path to image file on disk."""
+    type: ClassVar[str] = "path"
     path: str
 
     def get_unique_id(self):
-        return f"path|{self.path}"
+        return f"{self.type}|{self.path}"
 
 
 @dataclass
 class MaterialSymbolsIcon(IconBase):
     """Material Symbols icon."""
+    type: ClassVar[str] = "material-symbols"
     name: str
     color: str = field(default=DEFAULT_WEB_ICON_COLOR)
 
     def get_unique_id(self):
-        return f"material-symbols|{self.name}|{self.color}"
+        return f"{self.type}|{self.name}|{self.color}"
 
 
 @dataclass
 class AwesomeFontIcon(IconBase):
     """Awesome Font icon."""
+    type: ClassVar[str] = "awesome-font"
     name: str
     color: str = field(default=DEFAULT_WEB_ICON_COLOR)
 
     def get_unique_id(self):
-        return f"awesome-font|{self.name}|{self.color}"
+        return f"{self.type}|{self.name}|{self.color}"
 
 
 @dataclass
 class UrlIcon(IconBase):
     """Url to an image file."""
+    type: ClassVar[str] = "url"
     url: str
 
     def get_unique_id(self):
-        return f"url|{self.url}"
+        return f"{self.type}|{self.url}"
 
     def get_content(self) -> bytes | None:
         try:
@@ -90,13 +100,14 @@ class AYONUrlIcon(IconBase):
         to endpoints that do require authentication.
 
     """
+    type: ClassVar[str] = "ayon_url"
     url: str
 
     def __post_init__(self):
         self.url = self.url.lstrip("/")
 
     def get_unique_id(self):
-        return f"ayon_url|{self.url}"
+        return f"{self.type}|{self.url}"
 
     def get_content(self) -> bytes:
         url = f"{ayon_api.get_base_url()}/{self.url}"
@@ -114,7 +125,8 @@ class AYONUrlIcon(IconBase):
 @dataclass
 class TransparentIcon(IconBase):
     """Transparent icon."""
+    type: ClassVar[str] = "transparent"
     size: int = 256
 
     def get_unique_id(self):
-        return f"transparent-{self.size}"
+        return f"{self.type}|{self.size}"
