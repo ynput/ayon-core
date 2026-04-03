@@ -155,7 +155,7 @@ class ReviewController(QtCore.QObject):
         self._graphql_cursor: str = ""
         self._folder_cursors: dict[str, str] = {}
         self._folder_has_more: dict[str, bool] = {}
-        self._tree_mode: bool = False
+        self._tree_mode: bool = True
         self._selected_folder_id: str | None = None
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}

@@ -7,7 +7,6 @@ from typing import Any, Callable
 import ayon_api
 from ayon_ui_qt import get_ayon_style_data
 from ayon_ui_qt.components.buttons import AYButton  # noqa: F401
-from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
 from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
@@ -391,18 +390,13 @@ class ReviewTable(AYContainer):
             columns=self._build_columns(self._controller.current_category),
             page_size=250,
         )
+        self._controller.set_tree_mode(True)
+        self._model.set_tree_mode(True)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
-        self._tree_toggle = AYCheckBox(
-            "Show Hierarchy",
-            variant=AYCheckBox.Variants.Button,
-            parent=self,
-        )
-        self._tree_toggle.toggled.connect(self._on_tree_mode_toggle)
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
-        toolbar_lyt.addWidget(self._tree_toggle, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
         self.add_widget(self._table)
 
@@ -421,16 +415,6 @@ class ReviewTable(AYContainer):
         self._model.set_columns(
             self._build_columns(self._controller.current_category)
         )
-
-    def _on_tree_mode_toggle(self, enabled: bool) -> None:
-        # Update the controller state first so that the fetch triggered
-        # by model.set_tree_mode() sees the correct mode.
-        self._controller.set_tree_mode(enabled)
-        # Set auto-expand before the model reset so that the very first
-        # batch of inserted rows is expanded immediately.
-        has_selection = bool(self._controller.selected_folder_id)
-        self._auto_expand = enabled and has_selection
-        self._model.set_tree_mode(enabled)
 
     def set_auto_expand(self, enabled: bool) -> None:
         """Enable or disable automatic expansion of folder rows.
@@ -638,16 +622,6 @@ class ReviewTable(AYContainer):
 
     def on_category_changed(self, category: str) -> None:
         """Reset the table when the slicer category changes."""
-        is_hierarchy = category == "Hierarchy"
-        self._tree_toggle.setEnabled(is_hierarchy)
-        if not is_hierarchy and self._tree_toggle.isChecked():
-            # Suppress tree mode when leaving Hierarchy; block signals to
-            # avoid a redundant reset_data from the toggle signal.
-            self._tree_toggle.blockSignals(True)
-            self._tree_toggle.setChecked(False)
-            self._tree_toggle.blockSignals(False)
-            self._controller.set_tree_mode(False)
-            self._model.set_tree_mode(False)
         self._auto_expand = False
         self._model.reset_data()
         self._model.set_columns(self._build_columns(category))
@@ -696,7 +670,6 @@ class ReviewsWidget(AYContainer):
         self._controller.project_info_changed.connect(
             self._table.on_project_info_changed
         )
-        # auto-expand on mode toggle is handled inside ReviewTable
 
         # Set initial project
         initial_project = self._slicer.current_project()
