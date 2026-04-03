@@ -409,6 +409,12 @@ class ReviewTable(AYContainer):
         self._auto_expand: bool = False
         self._model.rowsInserted.connect(self._on_rows_inserted_expand)
 
+        self._model.page_fetched.connect(self._on_page_fetched)
+
+    def _on_page_fetched(self, page: int, total_pages: int) -> None:
+        # Keep UI responsive during large fetches.
+        QtWidgets.QApplication.processEvents()
+
     def on_project_info_changed(self) -> None:
         """Rebuild columns now that version attributes are available."""
         self._model.reset_data()
