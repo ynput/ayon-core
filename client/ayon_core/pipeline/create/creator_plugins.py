@@ -27,7 +27,7 @@ from .utils import get_next_versions_for_instances
 from .structures import CreatedInstance, ProductTypeItem
 
 if TYPE_CHECKING:
-    from ayon_core.lib import AbstractAttrDef
+    from ayon_core.lib import AbstractAttrDef, IconBase
 
     # Avoid cyclic imports
     from .context import CreateContext, UpdateData  # noqa: F401
@@ -177,7 +177,7 @@ class BaseCreator(ABC):
 
     # Creator (and product base type) icon
     # - may not be used if `get_icon` is reimplemented
-    icon = None
+    icon: IconBase | str | None = None
 
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
@@ -542,7 +542,7 @@ class BaseCreator(ABC):
                 removed.
         """
 
-    def get_icon(self):
+    def get_icon(self) -> IconBase | str | None:
         """Icon of creator (product base type).
 
         Can return path to image file or awesome icon name.
