@@ -1741,8 +1741,8 @@ DEFAULT_PUBLISH_VALUES = {
             "font_size": 42,
             "font_color": [255, 255, 255, 1.0],
             "bg_color": [0, 0, 0, 0.5],
-            "x_offset": 5,
-            "y_offset": 5,
+            "x_offset": 0,
+            "y_offset": 0,
             "bg_padding": 5,
             "font_filepath": {
                 "windows": "",
