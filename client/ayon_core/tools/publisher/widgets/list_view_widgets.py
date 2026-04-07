@@ -402,6 +402,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.setIndentation(20)
         self.setObjectName("InstanceListView")
         self.setHeaderHidden(True)
         self.setExpandsOnDoubleClick(False)

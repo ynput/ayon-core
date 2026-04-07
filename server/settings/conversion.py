@@ -2,6 +2,8 @@ import re
 import copy
 from typing import Any
 
+from semver import VersionInfo
+
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
 
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
@@ -331,10 +333,40 @@ def _convert_extract_thumbnail(overrides):
     extract_thumbnail_profiles.append(base_value)
 
 
+def _convert_burnin_offset_1_8_6(
+    overrides: dict[str, Any], version: VersionInfo
+) -> None:
+    """Burnins changed that the padding is also considered as offset."""
+    # Ignore newer versions
+    if (version.major, version.minor, version.patch) > (1, 8, 6):
+        return
+
+    burnin_options = (
+        overrides
+        .get("publish", {})
+        .get("ExtractBurnin", {})
+        .get("options")
+    )
+    if burnin_options:
+        return
+
+    x_offset = burnin_options.get("x_offset")
+    y_offset = burnin_options.get("y_offset")
+    bg_padding = burnin_options.get("bg_padding")
+    if bg_padding is None:
+        return
+
+    if x_offset is not None:
+        burnin_options["x_offset"] = max(x_offset - bg_padding, 0)
+    if y_offset is not None:
+        burnin_options["x_offset"] = max(y_offset - bg_padding, 0)
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
+    version = VersionInfo.parse(source_version)
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
     _convert_product_name_templates_1_6_5(overrides)
@@ -343,4 +375,5 @@ def convert_settings_overrides(
     _convert_extract_thumbnail(overrides)
     _convert_product_base_types_1_8_0(overrides)
     _convert_unify_profile_keys_1_8_0(overrides)
+    _convert_burnin_offset_1_8_6(overrides, version)
     return overrides
