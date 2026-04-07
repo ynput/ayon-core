@@ -1,8 +1,13 @@
 from __future__ import annotations
+
 from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
+from ayon_core.lib.icon_definitions import (
+    AwesomeFontIcon,
+    MaterialSymbolsIcon,
+)
 from ayon_core.style import (
     get_disabled_entity_icon_color,
     get_default_entity_icon_color,
@@ -117,11 +122,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
         if self._invalid_selection_item is None:
             item = QtGui.QStandardItem("Select a folder")
             item.setFlags(QtCore.Qt.NoItemFlags)
-            icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.times",
-                "color": get_disabled_entity_icon_color(),
-            })
+            icon = get_qt_icon(AwesomeFontIcon(
+                "fa.times",
+                color=get_disabled_entity_icon_color(),
+            ))
             item.setData(icon, QtCore.Qt.DecorationRole)
             self._invalid_selection_item = item
         return self._invalid_selection_item
@@ -129,11 +133,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
     def _get_empty_task_item(self):
         if self._empty_tasks_item is None:
             item = QtGui.QStandardItem("No task")
-            icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.exclamation-circle",
-                "color": get_disabled_entity_icon_color(),
-            })
+            icon = get_qt_icon(AwesomeFontIcon(
+                "fa.exclamation-circle",
+                color=get_disabled_entity_icon_color(),
+            ))
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setFlags(QtCore.Qt.NoItemFlags)
             self._empty_tasks_item = item
@@ -212,11 +215,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
     @classmethod
     def _get_default_task_icon(cls):
         if cls._default_task_icon is None:
-            cls._default_task_icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.male",
-                "color": get_default_entity_icon_color()
-            })
+            cls._default_task_icon = get_qt_icon(AwesomeFontIcon(
+                "fa.male",
+                color=get_default_entity_icon_color()
+            ))
         return cls._default_task_icon
 
     def _get_task_item_icon(
@@ -235,11 +237,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
         icon = None
         if task_type_item is not None:
             color = task_type_item.color or get_default_entity_icon_color()
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": task_type_item.icon,
-                "color": color,
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                task_type_item.icon,
+                color=color,
+            ))
 
         if icon is None:
             icon = self._get_default_task_icon()

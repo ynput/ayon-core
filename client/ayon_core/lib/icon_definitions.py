@@ -43,7 +43,7 @@ class PathIcon(IconBase):
     type: ClassVar[str] = "path"
     path: str
 
-    def get_unique_id(self):
+    def get_unique_id(self) -> str:
         return f"{self.type}|{self.path}"
 
 
@@ -54,7 +54,7 @@ class MaterialSymbolsIcon(IconBase):
     name: str
     color: str = field(default=DEFAULT_WEB_ICON_COLOR)
 
-    def get_unique_id(self):
+    def get_unique_id(self) -> str:
         return f"{self.type}|{self.name}|{self.color}"
 
 
@@ -65,7 +65,7 @@ class AwesomeFontIcon(IconBase):
     name: str
     color: str = field(default=DEFAULT_WEB_ICON_COLOR)
 
-    def get_unique_id(self):
+    def get_unique_id(self) -> str:
         return f"{self.type}|{self.name}|{self.color}"
 
 
@@ -75,7 +75,7 @@ class UrlIcon(IconBase):
     type: ClassVar[str] = "url"
     url: str
 
-    def get_unique_id(self):
+    def get_unique_id(self) -> str:
         return f"{self.type}|{self.url}"
 
     def get_content(self) -> bytes | None:
@@ -106,7 +106,7 @@ class AYONUrlIcon(IconBase):
     def __post_init__(self):
         self.url = self.url.lstrip("/")
 
-    def get_unique_id(self):
+    def get_unique_id(self) -> str:
         return f"{self.type}|{self.url}"
 
     def get_content(self) -> bytes:

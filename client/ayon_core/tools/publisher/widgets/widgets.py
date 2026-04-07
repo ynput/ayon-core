@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 import os
 import functools
+
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_objected_colors
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
@@ -308,10 +309,7 @@ class ChangeViewBtn(IconButton):
 
         # "format_align_right"
         # "segment"
-        icon = get_qt_icon({
-            "type": "material-symbols",
-            "name": icon_name,
-        })
+        icon = get_qt_icon(MaterialSymbolsIcon(icon_name))
         self.setIcon(icon)
         self.setToolTip(tooltip)
 

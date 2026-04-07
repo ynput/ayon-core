@@ -4,6 +4,7 @@ from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
 from typing import Union
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import (
     NiceCheckbox,
     ElideLabel,
@@ -15,7 +16,6 @@ from ayon_core.tools.utils import (
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
 
-# from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (
     ITEM_ID_ROLE,
     ITEM_IS_GROUP_ROLE
@@ -131,11 +131,9 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
     @classmethod
     def _get_blocking_icon(cls):
         if cls._blocking_icon is None:
-            cls._blocking_icon = get_qt_icon({
-                    "type": "material-symbols",
-                    "name": "block",
-                    "color": "red",
-                })
+            cls._blocking_icon = get_qt_icon(
+                MaterialSymbolsIcon("block", color="red")
+            )
         return cls._blocking_icon
 
 

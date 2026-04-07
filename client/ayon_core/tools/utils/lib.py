@@ -516,22 +516,35 @@ class _IconsCache:
 
     @classmethod
     def get_icon(
-        cls, icon_def: IconBase | dict, default: Any = _PLACEHOLDER
-    ):
-        if not icon_def:
-            return None
+        cls,
+        icon_def: IconBase | dict,
+        default: Any = _PLACEHOLDER,
+    ) -> QtGui.QIcon | Any:
+        if icon_def is None:
+            if default is _PLACEHOLDER:
+                return None
+            return default
 
         if isinstance(icon_def, IconBase):
             cache_key = icon_def.get_unique_id()
-        else:
+        elif isinstance(icon_def, dict):
             cache_key = cls._get_cache_key(icon_def)
+        else:
+            raise TypeError(
+                "Unsupported icon type. Expected 'IconBase' or 'dict',"
+                f" got '{type(icon_def)}'"
+            )
 
         cache = cls._cache.get(cache_key)
         if cache is not None:
             return cache
 
         if not isinstance(icon_def, IconBase):
-            icon = cls._get_old_icon(icon_def)
+            icon = cls._get_icon_from_dict(icon_def)
+            if icon is None:
+                if default is not _PLACEHOLDER:
+                    return default
+                icon = cls.get_default()
             cls._cache[cache_key] = icon
             return icon
 
@@ -598,6 +611,12 @@ class _IconsCache:
     def _get_icon_from_dict(
         cls, icon_def: dict[str, Any]
     ) -> QtGui.QIcon | None:
+        """Get icon from dictionary definition.
+
+        In ideal case dictionary definitions should be replace with 'IconBase'
+            but that is request for future.
+
+        """
         icon_type = icon_def["type"]
         icon = None
         if icon_type == "path":
@@ -654,9 +673,6 @@ class _IconsCache:
             pix = QtGui.QPixmap(size, size)
             pix.fill(QtCore.Qt.transparent)
             icon = QtGui.QIcon(pix)
-
-        if icon is None:
-            icon = cls.get_default()
         return icon
 
     @classmethod
@@ -702,17 +718,21 @@ class _IconsCache:
         return icon
 
 
-def get_qt_icon(icon_def):
+def get_qt_icon(
+    icon_def: IconBase | dict[str, Any],
+    default: Any = _PLACEHOLDER,
+) -> QtGui.QIcon | Any:
     """Returns icon from cache or creates new one.
 
     Args:
-        icon_def (dict[str, Any]): Icon definition.
+        icon_def (IconBase | dict[str, Any): Icon definition.
+        default (Any): Default value to return if icon is not found.
 
     Returns:
         QtGui.QIcon: Icon.
 
     """
-    return _IconsCache.get_icon(icon_def)
+    return _IconsCache.get_icon(icon_def, default)
 
 
 def get_qta_icon_by_name_and_color(icon_name, icon_color):
