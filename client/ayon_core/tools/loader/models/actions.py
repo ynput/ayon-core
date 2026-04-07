@@ -10,7 +10,6 @@ from typing import Optional, Callable, Any
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem, Logger
-from ayon_core.lib.icon_definitions import IconBase, AwesomeFontIcon
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,

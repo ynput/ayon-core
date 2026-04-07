@@ -4,7 +4,7 @@ import functools
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from ayon_core.lib import MaterialSymbolsIcon, TransparentIcon
+from ayon_core.lib import MaterialSymbolsIcon
 from ayon_core.style import get_objected_colors
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
