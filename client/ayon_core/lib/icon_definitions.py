@@ -36,6 +36,10 @@ class IconBase(ABC):
     def get_unique_id(self) -> str:
         pass
 
+    @abstractmethod
+    def to_data(self) -> dict:
+        pass
+
 
 @dataclass
 class PathIcon(IconBase):
@@ -45,6 +49,12 @@ class PathIcon(IconBase):
 
     def get_unique_id(self) -> str:
         return f"{self.type}|{self.path}"
+
+    def to_data(self) -> dict:
+        return {
+            "type": self.type,
+            "path": self.path,
+        }
 
 
 @dataclass
@@ -57,6 +67,13 @@ class MaterialSymbolsIcon(IconBase):
     def get_unique_id(self) -> str:
         return f"{self.type}|{self.name}|{self.color}"
 
+    def to_data(self) -> dict:
+        return {
+            "type": self.type,
+            "name": self.name,
+            "color": self.color,
+        }
+
 
 @dataclass
 class AwesomeFontIcon(IconBase):
@@ -67,6 +84,13 @@ class AwesomeFontIcon(IconBase):
 
     def get_unique_id(self) -> str:
         return f"{self.type}|{self.name}|{self.color}"
+
+    def to_data(self) -> dict:
+        return {
+            "type": self.type,
+            "name": self.name,
+            "color": self.color,
+        }
 
 
 @dataclass
@@ -86,6 +110,12 @@ class UrlIcon(IconBase):
                 "Failed to download image '%s'", self.url, exc_info=True
             )
             return b""
+
+    def to_data(self) -> dict:
+        return {
+            "type": self.type,
+            "url": self.url,
+        }
 
 
 @dataclass
@@ -121,6 +151,12 @@ class AYONUrlIcon(IconBase):
             )
             return b""
 
+    def to_data(self) -> dict:
+        return {
+            "type": self.type,
+            "url": self.url,
+        }
+
 
 @dataclass
 class TransparentIcon(IconBase):
@@ -130,6 +166,12 @@ class TransparentIcon(IconBase):
 
     def get_unique_id(self):
         return f"{self.type}|{self.size}"
+
+    def to_data(self) -> dict:
+        return {
+            "type": self.type,
+            "size": self.size,
+        }
 
 
 def get_icon_def_from_data(icon_data: dict) -> IconBase:
