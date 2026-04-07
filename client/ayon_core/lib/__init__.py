@@ -35,6 +35,17 @@ from .vendor_bin_utils import (
     is_oiio_supported,
 )
 
+from .icon_definitions import (
+    IconBase,
+    PathIcon,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    UrlIcon,
+    AYONUrlIcon,
+    TransparentIcon,
+    get_icon_def_from_data,
+)
+
 from .attribute_definitions import (
     AbstractAttrDef,
 
@@ -186,6 +197,15 @@ __all__ = [
     "get_ffmpeg_tool_path",
     "get_ffmpeg_tool_args",
     "is_oiio_supported",
+
+    "IconBase",
+    "PathIcon",
+    "MaterialSymbolsIcon",
+    "AwesomeFontIcon",
+    "UrlIcon",
+    "AYONUrlIcon",
+    "TransparentIcon",
+    "get_icon_def_from_data",
 
     "AbstractAttrDef",
 
