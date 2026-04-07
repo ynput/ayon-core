@@ -130,3 +130,34 @@ class TransparentIcon(IconBase):
 
     def get_unique_id(self):
         return f"{self.type}|{self.size}"
+
+
+def get_icon_def_from_data(icon_data: dict) -> IconBase:
+    icon_type = icon_data["type"]
+    if icon_type == "path":
+        return PathIcon(path=icon_data["path"])
+
+    if icon_type == "material-symbols":
+        kwargs = {}
+        color = icon_data.get("color")
+        if color:
+            kwargs["color"] = color
+        return MaterialSymbolsIcon(icon_data["name"], **kwargs)
+
+    if icon_type == "awesome-font":
+        kwargs = {}
+        color = icon_data.get("color")
+        if color:
+            kwargs["color"] = color
+        return AwesomeFontIcon(icon_data["name"], **kwargs)
+
+    if icon_type == "url":
+        return UrlIcon(url=icon_data["url"])
+
+    if icon_type == "ayon_url":
+        return AYONUrlIcon(url=icon_data["url"])
+
+    if icon_type == "transparent":
+        return TransparentIcon(size=icon_data["size"])
+
+    raise ValueError(f"Unknown icon type: {icon_type}")
