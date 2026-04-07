@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import os
 import platform
 import uuid
@@ -25,6 +26,155 @@ from .path_resolving import (
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
+
+
+log = logging.getLogger(__name__)
+
+_WORKFILE_DEBUG_LIST_CAP = 20
+
+
+def _get_workfiles_last_current_and_list(
+    host: Any,
+    project_name: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    *,
+    prepared_data: Optional[SaveWorkfileOptionalData] = None,
+    current_workfile_path: Optional[str] = None,
+) -> tuple[Optional[Any], Optional[Any], list[Any]]:
+    """List workfiles and return max-version row, path match, and full list."""
+    from ayon_core.pipeline import Anatomy
+
+    if prepared_data is None:
+        prepared_data = SaveWorkfileOptionalData()
+
+    project_entity = prepared_data.project_entity
+    anatomy = prepared_data.anatomy
+    project_settings = prepared_data.project_settings
+
+    if project_entity is None:
+        project_entity = ayon_api.get_project(project_name)
+        prepared_data.project_entity = project_entity
+
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+        prepared_data.project_settings = project_settings
+
+    if anatomy is None:
+        anatomy = Anatomy(project_name, project_entity=project_entity)
+        prepared_data.anatomy = anatomy
+
+    template_key = get_workfile_template_key(
+        project_name,
+        task_entity["taskType"],
+        host.name,
+        project_settings=project_settings,
+    )
+
+    normalized_current = None
+    if current_workfile_path:
+        normalized_current = os.path.normpath(current_workfile_path)
+
+    workfiles = host.list_workfiles(
+        project_name,
+        folder_entity,
+        task_entity,
+        prepared_data=ListWorkfilesOptionalData(
+            project_entity=project_entity,
+            anatomy=anatomy,
+            project_settings=project_settings,
+            template_key=template_key,
+        ),
+    )
+
+    last_workfile = None
+    current_workfile = None
+    for workfile in workfiles:
+        if normalized_current is not None:
+            wf_path = os.path.normpath(workfile.filepath)
+            if wf_path == normalized_current:
+                current_workfile = workfile
+
+        if workfile.version is None:
+            continue
+
+        if (
+            last_workfile is None
+            or last_workfile.version < workfile.version
+        ):
+            last_workfile = workfile
+
+    return last_workfile, current_workfile, workfiles
+
+
+def get_next_workfile_version(
+    host: Any,
+    project_name: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    *,
+    prepared_data: Optional[SaveWorkfileOptionalData] = None,
+    current_workfile_path: Optional[str] = None,
+) -> int:
+    """Next workfile version: max known version from ``list_workfiles`` + 1, else versioning start.
+
+    Uses the same rules as :func:`save_next_version` when no explicit version is passed.
+    Intended for hosts (e.g. Harmony post-publish increment) that must stay aligned with
+    the Workfiles tool.
+
+    Args:
+        host: Registered host implementing ``list_workfiles``.
+        project_name: Active project.
+        folder_entity: Target folder entity.
+        task_entity: Target task entity.
+        prepared_data: Optional cached project/anatomy/settings.
+        current_workfile_path: Optional path to mark current row (does not change version).
+
+    Returns:
+        int: Next version number.
+
+    """
+    last_workfile, _, workfiles = _get_workfiles_last_current_and_list(
+        host,
+        project_name,
+        folder_entity,
+        task_entity,
+        prepared_data=prepared_data,
+        current_workfile_path=current_workfile_path,
+    )
+
+    if last_workfile is not None:
+        version = last_workfile.version + 1
+    else:
+        version = get_versioning_start(
+            project_name,
+            host.name,
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
+            product_type="workfile",
+        )
+
+    sample = [
+        f"{getattr(w, 'filepath', '')} v={getattr(w, 'version', None)}"
+        for w in workfiles[:_WORKFILE_DEBUG_LIST_CAP]
+    ]
+    extra = (
+        f" (+{len(workfiles) - _WORKFILE_DEBUG_LIST_CAP} more)"
+        if len(workfiles) > _WORKFILE_DEBUG_LIST_CAP
+        else ""
+    )
+    log.debug(
+        "get_next_workfile_version: project=%r task=%r workfile_count=%s "
+        "last_version=%s next=%s samples=%s%s",
+        project_name,
+        task_entity.get("name"),
+        len(workfiles),
+        last_workfile.version if last_workfile else None,
+        version,
+        sample,
+        extra,
+    )
+    return version
 
 
 class MissingWorkdirError(Exception):
@@ -507,27 +657,36 @@ def save_next_version(
     last_workfile = None
     current_workfile = None
     if version is None or comment is None:
-        workfiles = host.list_workfiles(
-            project_name, folder_entity, task_entity,
-            prepared_data=ListWorkfilesOptionalData(
-                project_entity=project_entity,
-                anatomy=anatomy,
-                project_settings=project_settings,
-                template_key=template_key,
+        last_workfile, current_workfile, workfiles = (
+            _get_workfiles_last_current_and_list(
+                host,
+                project_name,
+                folder_entity,
+                task_entity,
+                prepared_data=prepared_data,
+                current_workfile_path=current_path,
             )
         )
-        for workfile in workfiles:
-            if current_workfile is None and workfile.filepath == current_path:
-                current_workfile = workfile
-
-            if workfile.version is None:
-                continue
-
-            if (
-                last_workfile is None
-                or last_workfile.version < workfile.version
-            ):
-                last_workfile = workfile
+        sample = [
+            f"{getattr(w, 'filepath', '')} v={getattr(w, 'version', None)}"
+            for w in workfiles[:_WORKFILE_DEBUG_LIST_CAP]
+        ]
+        extra = (
+            f" (+{len(workfiles) - _WORKFILE_DEBUG_LIST_CAP} more)"
+            if len(workfiles) > _WORKFILE_DEBUG_LIST_CAP
+            else ""
+        )
+        log.debug(
+            "save_next_version: project=%r task=%r workfile_count=%s "
+            "last_version=%s current_match=%s samples=%s%s",
+            project_name,
+            task_entity.get("name"),
+            len(workfiles),
+            last_workfile.version if last_workfile else None,
+            current_workfile is not None,
+            sample,
+            extra,
+        )
 
     if version is None and last_workfile is not None:
         version = last_workfile.version + 1
@@ -540,6 +699,8 @@ def save_next_version(
             task_type=task_entity["taskType"],
             product_base_type="workfile",
         )
+
+    log.debug("save_next_version: resolved_version=%s", version)
 
     # Re-use comment from the current workfile if is not passed in
     if comment is None and current_workfile is not None:
