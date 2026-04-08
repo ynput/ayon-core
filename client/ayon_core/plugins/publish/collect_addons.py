@@ -3,6 +3,7 @@
 import os
 
 import pyblish.api
+import ayon_api
 
 from ayon_core.lib.ayon_info import (
     get_settings_variant,
@@ -43,11 +44,14 @@ class CollectAddons(pyblish.api.ContextPlugin):
         else:
             settings_variant = get_settings_variant()
 
+        server_version = ayon_api.get_server_version()
+
         ayon_info = get_ayon_info()
         launcher_version = ayon_info["ayon_launcher_version"]
         launcher_type = ayon_info["version_type"]
         lines = [
             "Basic AYON information:",
+            f"AYON server: {server_version}",
             f"Bundle: {bundle_name} ({settings_variant})",
             f"AYON launcher: {launcher_version} ({launcher_type})",
             "Addons:",
