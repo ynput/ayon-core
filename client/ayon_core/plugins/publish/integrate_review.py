@@ -2,8 +2,6 @@ import os
 import time
 
 import ayon_api
-from ayon_api import TransferProgress
-from ayon_api.server_api import RequestTypes
 import pyblish.api
 
 from ayon_core.lib import get_media_mime_type, format_file_size
@@ -11,7 +9,6 @@ from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     get_publish_repre_path,
 )
-import requests.exceptions
 
 
 class IntegrateAYONReview(pyblish.api.InstancePlugin):
@@ -34,15 +31,6 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             self._upload_reviewable(project_name, version_id, instance)
 
     def _upload_reviewable(self, project_name, version_id, instance):
-        ayon_con = ayon_api.get_server_api_connection()
-        major, minor, _, _, _ = ayon_con.get_server_version_tuple()
-        if (major, minor) < (1, 3):
-            self.log.info(
-                "Skipping reviewable upload, supported from server 1.3.x."
-                f" Current server version {ayon_con.get_server_version()}"
-            )
-            return
-
         uploaded_labels = set()
         for repre in instance.data["representations"]:
             repre_tags = repre.get("tags") or []
@@ -73,22 +61,40 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 continue
 
             label = self._get_review_label(repre, uploaded_labels)
-            query = ""
-            if label:
-                query = f"?label={label}"
 
-            endpoint = (
-                f"/projects/{project_name}"
-                f"/versions/{version_id}/reviewables{query}"
+            size = os.path.getsize(repre_path)
+            start = time.time()
+            self.log.info(
+                f"Uploading '{repre_path}' (size: {format_file_size(size)})"
             )
-            self.log.info(f"Uploading reviewable {repre_path}")
-            # Upload with retries and clear help if it keeps failing
-            self._upload_with_retries(
-                ayon_con,
-                endpoint,
-                repre_path,
-                content_type,
-            )
+            try:
+                ayon_api.upload_reviewable(
+                    project_name,
+                    version_id,
+                    repre_path,
+                    content_type=content_type,
+                    label=label,
+                    # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
+                    headers={},
+                )
+            except Exception as exc:
+                self.log.warning(
+                    f"Review upload failed after {time.time() - start}s.",
+                    exc_info=True,
+                )
+                raise PublishXmlValidationError(
+                    self,
+                    (
+                        "Upload of reviewable timed out or failed after"
+                        " multiple attempts. Please try publishing again."
+                    ),
+                    formatting_data={
+                        "upload_type": "Review",
+                        "file": repre_path,
+                        "error": str(exc),
+                    },
+                    help_filename="upload_file.xml",
+                )
 
     def _get_review_label(self, repre, uploaded_labels):
         # Use output name as label if available
@@ -101,74 +107,3 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             idx += 1
             label = f"{orig_label}_{idx}"
         return label
-
-    def _upload_with_retries(
-        self,
-        ayon_con: ayon_api.ServerAPI,
-        endpoint: str,
-        repre_path: str,
-        content_type: str,
-    ):
-        """Upload file with simple retries."""
-        filename = os.path.basename(repre_path)
-
-        headers = ayon_con.get_headers(content_type)
-        headers["x-file-name"] = filename
-        max_retries = ayon_con.get_default_max_retries()
-        # Retries are already implemented in 'ayon_api.upload_file'
-        # - added in ayon api 1.2.7
-        if hasattr(TransferProgress, "get_attempt"):
-            max_retries = 1
-
-        size = os.path.getsize(repre_path)
-        self.log.info(
-            f"Uploading '{repre_path}' (size: {format_file_size(size)})"
-        )
-
-        # How long to sleep before next attempt
-        wait_time = 1
-        last_error = None
-        for attempt in range(max_retries):
-            attempt += 1
-            start = time.time()
-            try:
-                output = ayon_con.upload_file(
-                    endpoint,
-                    repre_path,
-                    headers=headers,
-                    request_type=RequestTypes.post,
-                )
-                self.log.debug(f"Uploaded in {time.time() - start}s.")
-                return output
-
-            except (
-                requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError
-            ) as exc:
-                # Log and retry with backoff if attempts remain
-                if attempt >= max_retries:
-                    last_error = exc
-                    break
-
-                self.log.warning(
-                    f"Review upload failed ({attempt}/{max_retries})"
-                    f" after {time.time() - start}s."
-                    f" Retrying in {wait_time}s...",
-                    exc_info=True,
-                )
-                time.sleep(wait_time)
-
-        # Exhausted retries - raise a user-friendly validation error with help
-        raise PublishXmlValidationError(
-            self,
-            (
-                "Upload of reviewable timed out or failed after multiple"
-                " attempts. Please try publishing again."
-            ),
-            formatting_data={
-                "upload_type": "Review",
-                "file": repre_path,
-                "error": str(last_error),
-            },
-            help_filename="upload_file.xml",
-        )
