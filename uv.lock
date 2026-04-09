@@ -25,7 +25,7 @@ wheels = [
 
 [[package]]
 name = "ayon-core"
-version = "1.8.2+dev"
+version = "1.8.7+dev"
 source = { virtual = "." }
 dependencies = [
     { name = "arrow" },

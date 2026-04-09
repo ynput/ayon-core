@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import tempfile
+from enum import Enum
 from typing import Any, Callable
 
 import ayon_api
 from ayon_ui_qt import get_ayon_style_data
-from ayon_ui_qt.components.buttons import AYButton  # noqa: F401
+from ayon_ui_qt.components.buttons import AYButton, AYButtonMenu
+from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
 from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
@@ -21,10 +23,13 @@ from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
 from ayon_ui_qt.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.tools.loader.ui.review_controller import ReviewController
+from ayon_core.lib import Logger, log_timing
+from ayon_core.tools.loader.ui.review_controller import (
+    GroupBy,
+    ReviewController,
+)
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.user_prefs import UserPreferences
-from ayon_core.lib import Logger
 
 log = Logger.get_logger(__name__)
 
@@ -40,35 +45,37 @@ def _thumbnail_loader(key: str) -> str:
         Absolute path to the saved image file, or empty string when the
         version has no thumbnail (which will be caught by the factory).
     """
-    log.debug("Fetching thumbnail for key %r", key)
-    if not key:
-        log.debug("  |_ No thumbnail key provided; skipping fetch")
-        return ""
-
-    ic = ImageCache.get_instance()
-
-    def _fetch() -> str:
-        log.debug("  |_ Cache miss; fetching from ayon API: %r", key)
-        project_name, version_id, thumbnail_id = key.split("/", 2)
-        content = ayon_api.get_version_thumbnail(
-            project_name, version_id, thumbnail_id
-        )
-        if not content.is_valid:
+    with log_timing(f"Fetching thumbnail for key {key}"):
+        if not key:
+            log.debug("  |_ No thumbnail key provided; skipping fetch")
             return ""
-        ext = (
-            ".jpg"
-            if content.content_type and "jpeg" in content.content_type
-            else ".png"
-        )
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
-            fh.write(content.content)
-            return fh.name
 
-    try:
-        return ic.get(key, _fetch)
-    except Exception:
-        log.debug("Failed to fetch thumbnail for key %r", key, exc_info=True)
-        return ""
+        ic = ImageCache.get_instance()
+
+        def _fetch() -> str:
+            log.debug("  |_ Cache miss; fetching from ayon API: %r", key)
+            project_name, version_id, thumbnail_id = key.split("/", 2)
+            content = ayon_api.get_version_thumbnail(
+                project_name, version_id, thumbnail_id
+            )
+            if not content.is_valid:
+                return ""
+            ext = (
+                ".jpg"
+                if content.content_type and "jpeg" in content.content_type
+                else ".png"
+            )
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
+                fh.write(content.content)
+                return fh.name
+
+        try:
+            return ic.get(key, _fetch)
+        except Exception:
+            log.debug(
+                "Failed to fetch thumbnail for key %r", key, exc_info=True
+            )
+            return ""
 
 
 class LazyThumbnailWidget(AYEntityThumbnail):
@@ -79,11 +86,16 @@ class LazyThumbnailWidget(AYEntityThumbnail):
     fetch to the first paint, we avoid issuing network requests for
     off-screen rows.
 
+    Thumbnail tasks are enqueued on the shared
+    :class:`AsyncTaskQueue` at priority 2 so they can start promptly
+    once visible page data has arrived, while off-screen page fetches
+    remain deprioritized.
+
     Args:
         key: ImageCache key in the form
             ``"<project>/<version_id>/<thumbnail_id>"``.
-        context_id: Model request-ID used to scope the task-queue entry
-            so stale tasks can be cancelled on model reset.
+        context_id: Model request-ID used to scope the task-queue
+            entry so stale tasks can be cancelled on model reset.
         size: ``(width, height)`` dimensions for the thumbnail.
         parent: Optional parent widget.
     """
@@ -103,25 +115,49 @@ class LazyThumbnailWidget(AYEntityThumbnail):
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
     ) -> None:
-        """Enqueue the thumbnail fetch on the first paint, then paint.
+        """Load the thumbnail on the first paint, using the cache when hot.
+
+        On the first paint event:
+
+        1. Check ``ImageCache`` — if the image is already cached (e.g.
+           because an eager pre-fetch fired in :meth:`_on_page_fetched`),
+           call :meth:`set_thumbnail` synchronously and skip the async
+           enqueue.
+        2. Otherwise, enqueue an async fetch at priority 2.  The callback
+           calls :meth:`set_thumbnail` once the worker thread completes.
 
         Args:
             event: The paint event forwarded to the parent class.
         """
         if not self._load_requested:
             self._load_requested = True
-            w = self
-            get_task_queue().enqueue(
-                AsyncTask(
-                    name=f"thumbnail_loader_{self._thumb_key}",
-                    function=lambda: _thumbnail_loader(self._thumb_key),
-                    callback=lambda fpath: w.set_thumbnail(fpath)
-                    if shiboken.isValid(w)
-                    else None,
-                    priority=5,
-                    context_id=self._context_id,
-                )
+            ic = ImageCache.get_instance()
+            cached_path = (
+                ic.get_path(self._thumb_key) if self._thumb_key else None
             )
+            if cached_path:
+                # Cache hit — load synchronously, no async task needed.
+                with log_timing(
+                    "Thumbnail sync-load for key %r" % self._thumb_key
+                ):
+                    self.set_thumbnail(cached_path)
+            else:
+                w = self
+
+                def _on_thumb_loaded(_w, _fpath) -> None:
+                    if not shiboken.isValid(_w):
+                        return
+                    _w.set_thumbnail(_fpath)
+
+                get_task_queue().enqueue(
+                    AsyncTask(
+                        name=f"thumbnail_loader_{self._thumb_key}",
+                        function=lambda: _thumbnail_loader(self._thumb_key),
+                        callback=lambda fpath: (_on_thumb_loaded(w, fpath)),
+                        priority=2,
+                        context_id=self._context_id,
+                    )
+                )
         super().paintEvent(event)
 
 
@@ -191,6 +227,136 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
                 assert self._lyt is not None
                 self._lyt.addWidget(self._real, stretch=1)
         super().paintEvent(event)
+
+
+class VisibilityAwarePaginatedTableModel(PaginatedTableModel):
+    """Paginated table model that deprioritises off-screen page fetches.
+
+    Overrides :meth:`_get_fetch_priority` so that page-fetch tasks for a
+    parent node that is **not** currently visible in the table's viewport
+    are enqueued at priority **20** (very low / background prefetch)
+    instead of the default 0 (Critical) or 1 (High).  This keeps the task
+    queue fully responsive for visible rows and thumbnail fetches (priority
+    2) when many nodes are expanded simultaneously (e.g. via auto-expand).
+
+    Priority scale used by this widget:
+
+    - ``0`` – Visible first-page fetches
+    - ``1`` – Visible subsequent-page fetches
+    - ``2`` – Thumbnail fetches
+    - ``20`` – Off-screen page fetches
+
+    Call :meth:`set_view` after construction to attach the view whose
+    viewport is used for visibility checks.  When no view is attached the
+    class falls back to the default behaviour (high priority for all
+    fetches).
+    """
+
+    _OFF_SCREEN_PRIORITY: int = 20
+
+    def __init__(self, *args, **kwargs) -> None:
+        self._view: AYTableView | None = None
+        self._priority_cache: dict[tuple[int, int], int] = {}
+        self._priority_cache_clear_scheduled: bool = False
+        super().__init__(*args, **kwargs)
+
+    def set_view(self, view: AYTableView) -> None:
+        """Attach the view whose viewport is used for visibility checks.
+
+        Args:
+            view: The :class:`AYTableView` that displays this model.
+                Its viewport geometry and visual rects are used to
+                determine whether a parent row is currently on-screen.
+        """
+        self._view = view
+
+    def _is_parent_visible(self, node: object) -> bool:
+        """Return True when *node*'s row is within the viewport.
+
+        Fails open (returns ``True``) in all ambiguous situations so
+        that a fetch is never permanently starved:
+
+        - Root nodes (invisible root that owns all top-level rows).
+        - No view attached yet.
+        - Source model index is invalid.
+        - Proxy model has filtered the row out (not on screen anyway).
+
+        Args:
+            node: A :class:`_TableNode` instance from the base model.
+
+        Returns:
+            ``True`` if the parent row is visible or if the check
+            cannot be performed conclusively; ``False`` only when a
+            valid visual rect lies entirely outside the viewport.
+        """
+        if getattr(node, "is_root", True) or self._view is None:
+            return True
+
+        src_idx = self._index_for_node(node)  # type: ignore[attr-defined]
+        if not src_idx.isValid():
+            return True
+
+        proxy_model = self._view.model()
+        if proxy_model is None:
+            return True
+
+        if isinstance(proxy_model, QtCore.QAbstractProxyModel):
+            proxy_idx = proxy_model.mapFromSource(src_idx)
+        else:
+            proxy_idx = src_idx
+
+        if not proxy_idx.isValid():
+            # Row is filtered out — not on screen.
+            return False
+
+        vp_rect = self._view.viewport().rect()
+        visual = self._view.visualRect(proxy_idx)
+        return vp_rect.intersects(visual)
+
+    def _get_fetch_priority(self, node: object, page: int) -> int:
+        """Return priority for off-screen or visible parents.
+
+        Results are cached per event-loop tick to avoid redundant
+        ``visualRect()`` calls when the same ``(node, page)`` pair is
+        evaluated multiple times (e.g. by ``canFetchMore``,
+        ``fetchMore``, and ``_dispatch_batch``).
+
+        Args:
+            node: The parent :class:`_TableNode` whose children are
+                being fetched.
+            page: Zero-based page number being requested.
+
+        Returns:
+            ``20`` when the parent row is not visible in the viewport;
+            ``0`` for the first page of a visible parent; ``1`` for
+            subsequent pages of a visible parent.
+        """
+        cache_key = (id(node), page)
+        if cache_key in self._priority_cache:
+            return self._priority_cache[cache_key]
+
+        parent_is_visible = self._is_parent_visible(node)
+        priority = (
+            self._OFF_SCREEN_PRIORITY
+            if not parent_is_visible
+            else (0 if page == 0 else 1)
+        )
+        self._priority_cache[cache_key] = priority
+
+        if not self._priority_cache_clear_scheduled:
+            self._priority_cache_clear_scheduled = True
+            QtCore.QTimer.singleShot(0, self._clear_priority_cache)
+
+        return priority
+
+    def _clear_priority_cache(self) -> None:
+        """Clear the per-tick priority cache.
+
+        Scheduled via ``QTimer.singleShot(0)`` after the first cache
+        write so it fires at the next event-loop iteration.
+        """
+        self._priority_cache.clear()
+        self._priority_cache_clear_scheduled = False
 
 
 class ProjectModel(QtGui.QStandardItemModel):
@@ -366,6 +532,83 @@ class ReviewSlicer(AYContainer):
         return self._selector.current_project()
 
 
+class GroupByMenu(AYButtonMenu):
+    group_by_changed = QtCore.Signal(GroupBy)  # type: ignore
+    show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
+
+    def __init__(self, *args, **kwargs) -> None:
+        self._show_empty_groups: bool = False
+        super().__init__(
+            "Group By",
+            populate_callback=self.populate,
+            variant=AYButtonMenu.Variants.Surface,
+            icon="view_agenda",
+            **kwargs,
+        )
+
+    def populate(self, menu: AYContainer) -> None:
+        self.show_empty_grps = AYCheckBox(
+            "Show empty groups",
+            checked=self._show_empty_groups,
+            variant=AYCheckBox.Variants.Menu,
+            parent=self,
+        )
+        self.show_empty_grps.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        menu.add_widget(self.show_empty_grps, stretch=0)
+        self.show_empty_grps.toggled.connect(self.show_empty_groups_changed)
+
+        menu._layout.addSpacerItem(
+            QtWidgets.QSpacerItem(
+                0,
+                10,
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+        )
+
+        kw = {
+            "variant": AYButton.Variants.Text,
+            "checkable": True,
+            "label_alignment": QtCore.Qt.AlignmentFlag.AlignLeft,
+            "fixed_width": False,
+        }
+
+        self._menu_grp = QtWidgets.QButtonGroup(menu)
+        self._menu_grp.setExclusive(True)
+
+        for val in GroupBy:
+            wdgt_name = f"grp_by_{val.name.lower()}"
+            setattr(self, wdgt_name, AYButton(val.value, icon=val.icon, **kw))
+            widget = getattr(self, wdgt_name)
+            menu.add_widget(widget, stretch=1)
+            self._menu_grp.addButton(widget)
+
+        self._menu_grp.buttonClicked.connect(self._on_group_by_changed)
+
+    def _on_group_by_changed(self, button: AYButton) -> None:
+        self.setText(f"Group By: {button.text()}")
+        log.debug(f"Group By: {button.text()}")
+        self.group_by_changed.emit(GroupBy(button.text()))
+
+    def set_show_empty_groups(self, enabled: bool) -> None:
+        """Update checkbox state without re-emitting change signal."""
+        self._show_empty_groups = enabled
+        if not hasattr(self, "show_empty_grps"):
+            return
+        self.show_empty_grps.blockSignals(True)
+        self.show_empty_grps.setChecked(enabled)
+        self.show_empty_grps.blockSignals(False)
+
+
+class _ExpansionPhase(Enum):
+    IDLE = "idle"
+    VISIBLE = "visible"
+    SPECULATIVE = "speculative"
+
+
 class ReviewTable(AYContainer):
     """Right-hand panel that shows a paginated table of versions."""
 
@@ -385,32 +628,173 @@ class ReviewTable(AYContainer):
         )
         self._controller = controller
         self._table = AYTableView(self)
-        self._model = PaginatedTableModel(
+        self._model = VisibilityAwarePaginatedTableModel(
             fetch_page=self._controller.fetch_versions_page,
+            fetch_page_batch=(self._controller.fetch_versions_page_batch),
             columns=self._build_columns(self._controller.current_category),
             page_size=250,
         )
+        self._model.set_view(self._table)
         self._controller.set_tree_mode(True)
         self._model.set_tree_mode(True)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
+        self._group_by_menu = GroupByMenu()
+        self._group_by_menu.group_by_changed.connect(self._on_group_by_changed)
+        self._group_by_menu.show_empty_groups_changed.connect(
+            self._on_show_empty_groups_changed
+        )
+        self._group_by_menu.set_show_empty_groups(
+            not self._controller.hide_empty_groups
+        )
+        self._group_by_menu.setVisible(
+            self._controller.current_category == "Hierarchy"
+        )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
+        toolbar_lyt.addWidget(self._group_by_menu, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
         self.add_widget(self._table)
 
         self._auto_expand: bool = False
+        self._deferred_expand_queue: list[tuple[QtCore.QModelIndex, int]] = []
+        # "visible" -> "speculative" -> "idle" state machine.
+        # See _on_loading_changed and _expand_deferred_batch.
+        self._expansion_phase: _ExpansionPhase = _ExpansionPhase.IDLE
+        self._enqueued_thumb_keys: set[str] = set()
+        self._scroll_catch_up_timer: QtCore.QTimer | None = None
         self._model.rowsInserted.connect(self._on_rows_inserted_expand)
+        self._model.loading_changed.connect(
+            self._on_loading_changed,
+            QtCore.Qt.ConnectionType.QueuedConnection,
+        )
+        self._table.verticalScrollBar().valueChanged.connect(
+            self._on_scroll_catch_up
+        )
 
         self._model.page_fetched.connect(self._on_page_fetched)
 
+    def _on_group_by_changed(self, group_by: GroupBy) -> None:
+        self._controller.set_group_by(group_by)
+        self._auto_expand = False
+        self._deferred_expand_queue.clear()
+        self._expansion_phase = _ExpansionPhase.IDLE
+        self._enqueued_thumb_keys.clear()
+        self._model.reset_data()
+
+    def _on_show_empty_groups_changed(self, show_empty: bool) -> None:
+        self._controller.set_hide_empty_groups(not show_empty)
+        self._auto_expand = False
+        self._deferred_expand_queue.clear()
+        self._expansion_phase = _ExpansionPhase.IDLE
+        self._enqueued_thumb_keys.clear()
+        self._model.reset_data()
+
     def _on_page_fetched(self, page: int, total_pages: int) -> None:
-        # Keep UI responsive during large fetches.
-        QtWidgets.QApplication.processEvents()
+        """Repaint the viewport and eagerly pre-fetch visible thumbnails.
+
+        After repainting, iterate over all rows visible in the viewport
+        and enqueue thumbnail fetch tasks (at priority 2) for those that
+        have not yet been requested.  The fetched image is stored in
+        ``ImageCache``; when ``LazyThumbnailWidget.paintEvent`` fires
+        later, it checks the cache first and loads synchronously —
+        eliminating the usual 2-paint-cycle delay for initially visible
+        rows.
+        """
+        if not shiboken.isValid(self._table.viewport()):
+            return
+        self._table.viewport().update()
+        self._eagerly_enqueue_visible_thumbnails()
+
+    def _visible_proxy_range(self) -> tuple[int, int]:
+        """Return the (first, last) visible proxy-model row indices.
+
+        Uses ``QAbstractItemView.indexAt()`` to locate the first and
+        last rows whose visual rectangles intersect the viewport,
+        avoiding an O(n) scan over all proxy rows.
+
+        Returns:
+            ``(first_row, last_row)`` inclusive indices.  Both are
+            ``-1`` when the viewport is empty or no rows are visible.
+        """
+        vp = self._table.viewport()
+        vp_rect = vp.rect()
+        if vp_rect.isEmpty():
+            return (-1, -1)
+
+        top_idx = self._table.indexAt(vp_rect.topLeft())
+        if not top_idx.isValid():
+            return (-1, -1)
+
+        bot_idx = self._table.indexAt(vp_rect.bottomLeft())
+        if not bot_idx.isValid():
+            # bottomLeft() falls past the last row — use the last
+            # row in the model as the boundary.
+            proxy_model = self._table_filter.filter_model
+            last = proxy_model.rowCount() - 1
+            return (top_idx.row(), max(last, top_idx.row()))
+
+        return (top_idx.row(), bot_idx.row())
+
+    def _eagerly_enqueue_visible_thumbnails(self) -> None:
+        """Enqueue thumbnail tasks for currently visible version rows.
+
+        Uses :meth:`_visible_proxy_range` to restrict iteration to
+        only the rows whose visual rects intersect the viewport,
+        rather than scanning all proxy rows.
+
+        Already-enqueued or already-cached keys are skipped.
+        """
+        ic = ImageCache.get_instance()
+        proxy_model = self._table_filter.filter_model
+        request_id = self._model._request_id
+        project = self._controller.current_project
+        if not project:
+            return
+
+        first, last = self._visible_proxy_range()
+        if first < 0:
+            return
+
+        for proxy_row in range(first, last + 1):
+            proxy_idx = proxy_model.index(proxy_row, 0)
+
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            thumbnail_id = row_dict.get("thumbnailId", "")
+            version_id = row_dict.get("id", "")
+            if not thumbnail_id or not version_id:
+                continue
+
+            key = f"{project}/{version_id}/{thumbnail_id}"
+            if key in self._enqueued_thumb_keys:
+                continue
+            if ic.has(key):
+                continue
+
+            self._enqueued_thumb_keys.add(key)
+            vp = self._table.viewport()
+
+            def _update_viewport(_fpath: str, _vp=vp) -> None:
+                if shiboken.isValid(_vp):
+                    _vp.update()
+
+            get_task_queue().enqueue(
+                AsyncTask(
+                    name=f"eager_thumb_{key}",
+                    function=lambda k=key: _thumbnail_loader(k),
+                    callback=_update_viewport,
+                    priority=2,
+                    context_id=request_id,
+                    cancellable=True,
+                )
+            )
 
     def on_project_info_changed(self) -> None:
         """Rebuild columns now that version attributes are available."""
+        self._enqueued_thumb_keys.clear()
+        self._deferred_expand_queue.clear()
+        self._expansion_phase = _ExpansionPhase.IDLE
         self._model.reset_data()
         self._model.set_columns(
             self._build_columns(self._controller.current_category)
@@ -424,10 +808,18 @@ class ReviewTable(AYContainer):
         displayed.  Cascades recursively until version-leaf rows
         (which have no children) are reached.
 
+        Disabling also discards any pending deferred-expansion work so
+        that stale rows from the previous selection are never expanded.
+
         Args:
             enabled: ``True`` to auto-expand, ``False`` to disable.
         """
         self._auto_expand = enabled
+        if enabled:
+            self._expansion_phase = _ExpansionPhase.VISIBLE
+        else:
+            self._deferred_expand_queue.clear()
+            self._expansion_phase = _ExpansionPhase.IDLE
 
     def _on_rows_inserted_expand(
         self,
@@ -437,13 +829,21 @@ class ReviewTable(AYContainer):
     ) -> None:
         """Expand newly inserted folder rows when auto-expand is active.
 
-        Connected to ``PaginatedTableModel.rowsInserted``.  For each
-        inserted row, if the source model reports that it can fetch
-        more children (i.e. it is a folder node), the corresponding
-        proxy index is expanded.  Expanding triggers Qt's
-        ``fetchMore`` cycle, which inserts more rows, which fires this
-        handler again — the recursion terminates naturally when version
-        leaf rows (``canFetchMore == False``) are reached.
+        Connected to ``PaginatedTableModel.rowsInserted``.  Expansion is
+        split into two phases:
+
+        1. **Visible phase** — rows whose proxy rect intersects the
+           viewport are expanded straight away (high-priority fetches at
+           priority 0/1).  ``_expansion_phase`` remains ``"visible"``
+           until ``loading_changed(False)`` fires.
+        2. **Speculative phase** — off-screen rows are collected into
+           ``_deferred_expand_queue`` and expanded in batches of 20 via
+           recurring ``QTimer.singleShot(0)`` calls once the visible
+           phase completes.  These use priority 20 (background).
+
+        No row is ever skipped — GroupBy mode and Hierarchy mode are
+        treated identically here.  The ``_on_loading_changed`` handler
+        drives the phase transition.
 
         Args:
             parent: Source model parent index of the inserted rows.
@@ -452,14 +852,154 @@ class ReviewTable(AYContainer):
         """
         if not self._auto_expand:
             return
+
+        proxy_model = self._table_filter.filter_model
+        vp_rect = self._table.viewport().rect()
+
         for row in range(first, last + 1):
             src_idx = self._model.index(row, 0, parent)
-            if self._model.canFetchMore(src_idx):
-                proxy_idx = self._table_filter.filter_model.mapFromSource(
-                    src_idx
-                )
-                if proxy_idx.isValid():
-                    self._table.expand(proxy_idx)
+            if not self._model.canFetchMore(src_idx):
+                continue
+
+            proxy_idx = proxy_model.mapFromSource(src_idx)
+            if not proxy_idx.isValid():
+                continue
+
+            visual = self._table.visualRect(proxy_idx)
+            if vp_rect.intersects(visual):
+                # Visible row — expand immediately (priority 0/1 fetch).
+                self._table.expand(proxy_idx)
+            else:
+                # Off-screen — collect for speculative Phase 2.
+                self._deferred_expand_queue.append((parent, row))
+
+    def _on_loading_changed(self, is_loading: bool) -> None:
+        """Transition to speculative phase when visible loads finish.
+
+        Connected to ``PaginatedTableModel.loading_changed`` with a
+        ``QueuedConnection`` to avoid re-entrant issues when the signal
+        fires during ``endInsertRows()`` processing.
+
+        When ``is_loading`` transitions to ``False`` during the
+        ``"visible"`` phase and there are deferred rows waiting, the
+        phase advances to ``"speculative"`` and the first batch of
+        off-screen expansions is scheduled.
+
+        Args:
+            is_loading: ``True`` while fetch tasks are pending,
+                ``False`` when all pending tasks have completed.
+        """
+        if is_loading:
+            return
+        if self._expansion_phase != _ExpansionPhase.VISIBLE:
+            return
+        if not self._deferred_expand_queue:
+            self._expansion_phase = _ExpansionPhase.IDLE
+            return
+
+        self._expansion_phase = _ExpansionPhase.SPECULATIVE
+        self._expand_deferred_batch()
+
+    def _expand_deferred_batch(self) -> None:
+        """Expand the next chunk of off-screen deferred rows.
+
+        Pops up to 20 items from ``_deferred_expand_queue`` and expands
+        them.  If more rows remain, re-schedules itself via
+        ``QTimer.singleShot(0)`` so that at least one paint event can
+        fire between batches, keeping the UI responsive.
+
+        Only runs during the ``"speculative"`` phase; exits immediately
+        otherwise.
+        """
+        _BATCH_SIZE = 20
+
+        if not self._auto_expand:
+            self._deferred_expand_queue.clear()
+            self._expansion_phase = _ExpansionPhase.IDLE
+            return
+
+        if self._expansion_phase != _ExpansionPhase.SPECULATIVE:
+            return
+
+        proxy_model = self._table_filter.filter_model
+        batch = self._deferred_expand_queue[:_BATCH_SIZE]
+        self._deferred_expand_queue = self._deferred_expand_queue[_BATCH_SIZE:]
+
+        for parent, row in batch:
+            src_idx = self._model.index(row, 0, parent)
+            if not src_idx.isValid():
+                continue
+            if not self._model.canFetchMore(src_idx):
+                continue
+            proxy_idx = proxy_model.mapFromSource(src_idx)
+            if proxy_idx.isValid():
+                self._table.expand(proxy_idx)
+
+        if self._deferred_expand_queue:
+            QtCore.QTimer.singleShot(0, self._expand_deferred_batch)
+        # When the queue is empty we stay in "speculative" until
+        # loading_changed(False) fires — but since the handler only
+        # re-triggers on "visible", the phase effectively goes idle
+        # once all speculative fetches complete.
+
+    def _on_scroll_catch_up(self) -> None:
+        """Expand visible unexpanded groups the user scrolled to.
+
+        Connected to the vertical scrollbar's ``valueChanged`` signal.
+        Speculative Phase 2 expansion is **not** interrupted — it runs
+        to completion in the background.  This handler is a pure
+        catch-up mechanism: if the user scrolls to a group that Phase 2
+        hasn't expanded yet, the group is expanded immediately so the
+        user never sees a collapsed row.
+
+        The actual expansion is debounced via a 100 ms single-shot timer
+        so that rapid scroll events are coalesced into a single pass.
+        """
+        if not self._auto_expand:
+            return
+
+        if self._scroll_catch_up_timer is None:
+            self._scroll_catch_up_timer = QtCore.QTimer(self)
+            self._scroll_catch_up_timer.setSingleShot(True)
+            self._scroll_catch_up_timer.setInterval(100)  # 100 ms
+            self._scroll_catch_up_timer.timeout.connect(
+                self._expand_visible_unexpanded
+            )
+        self._scroll_catch_up_timer.start()  # (re)start on each event
+
+    def _expand_visible_unexpanded(self) -> None:
+        """Expand any collapsed groups currently in the viewport.
+
+        Uses :meth:`_visible_proxy_range` to restrict iteration to
+        only the rows visible in the viewport, rather than scanning
+        all proxy rows.
+
+        Acts as a catch-up for groups that speculative Phase 2 hasn't
+        reached yet.  Does **not** cancel speculative work — Phase 2
+        continues expanding the remaining off-screen groups in the
+        background.
+        """
+        if not self._auto_expand:
+            return
+
+        proxy_model = self._table_filter.filter_model
+
+        first, last = self._visible_proxy_range()
+        if first < 0:
+            return
+
+        for proxy_row in range(first, last + 1):
+            proxy_idx = proxy_model.index(proxy_row, 0)
+            if self._table.isExpanded(proxy_idx):
+                continue
+
+            src_idx = proxy_model.mapToSource(proxy_idx)
+            if not src_idx.isValid():
+                continue
+            if not self._model.canFetchMore(src_idx):
+                continue
+
+            self._table.expand(proxy_idx)
 
     def _build_columns(self, category: str) -> list[TableColumn]:
         _style = get_ayon_style_data("AYTableView", "default")
@@ -623,8 +1163,12 @@ class ReviewTable(AYContainer):
     def on_category_changed(self, category: str) -> None:
         """Reset the table when the slicer category changes."""
         self._auto_expand = False
+        self._deferred_expand_queue.clear()
+        self._expansion_phase = _ExpansionPhase.IDLE
+        self._enqueued_thumb_keys.clear()
         self._model.reset_data()
         self._model.set_columns(self._build_columns(category))
+        self._group_by_menu.setVisible(category == "Hierarchy")
 
 
 class ReviewsWidget(AYContainer):

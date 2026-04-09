@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from enum import Enum
 import datetime
 import json
 from typing import Any
+from types import MappingProxyType
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
+from ayon_ui_qt.components.table_model import BatchFetchRequest
 from ayon_ui_qt.components.tree_model import TreeNode
 from qtpy import QtCore
 
@@ -99,6 +102,47 @@ query GetVersions(
 }
 """
 
+GET_PRODUCTS_QUERY = """
+query GetProducts(
+  $projectName: String!,
+  $folderIds: [String!],
+  $productFilter: String,
+  $after: String,
+  $first: Int,
+  $before: String,
+  $last: Int,
+  $sortBy: String
+) {
+  project(name: $projectName) {
+    products(
+      folderIds: $folderIds,
+      filter: $productFilter,
+      includeFolderChildren: true,
+      after: $after,
+      first: $first,
+      before: $before,
+      last: $last,
+      sortBy: $sortBy
+    ) {
+      pageInfo {
+        startCursor
+        endCursor
+        hasNextPage
+        hasPreviousPage
+      }
+      edges {
+        node {
+          id
+          name
+          productType
+        }
+        cursor
+      }
+    }
+  }
+}
+"""
+
 #: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
 #: the AYON versions resolver.  Only direct version fields and version
 #: attrib entries are supported; columns that originate from related
@@ -117,6 +161,29 @@ COLUMN_TO_SORT_BY: dict[str, str] = {
     "comment": "attrib.comment",
 }
 
+# A template for building version and folder rows.
+EMPTY_ROW: MappingProxyType[str, Any] = MappingProxyType(
+    {
+        "id": "",
+        "has_children": False,
+        "product/version": "",
+        "product/version__icon": "",
+        "folderName": "",
+        "entityType": "",
+        "entityType__icon": "",
+        "status": "",
+        "productType": "",
+        "author": "",
+        "version": "",
+        "productName": "",
+        "taskType": "",
+        "task": "",
+        "tags": "",
+        "createdAt": "",
+        "updatedAt": "",
+    }
+)
+
 
 def timestamp_to_date(timestamp: str) -> str:
     """Convert ISO timestamp string to human-readable date.
@@ -130,6 +197,32 @@ def timestamp_to_date(timestamp: str) -> str:
     return datetime.datetime.fromisoformat(timestamp).strftime(
         "%d-%m-%Y %H:%M:%S"
     )
+
+
+class GroupBy(Enum):
+    NONE = "None"
+    STATUS = "Status"
+    PRODUCT_TYPE = "Product type"
+    PRODUCT = "Product"
+
+    @property
+    def icon(self) -> str:
+        """Return a Material icon name for this group-by mode."""
+        if self == GroupBy.NONE:
+            return "close"
+        if self == GroupBy.STATUS:
+            return "arrow_circle_right"
+        if self == GroupBy.PRODUCT_TYPE:
+            return "category"
+        if self == GroupBy.PRODUCT:
+            return "inventory_2"
+        return "label"
+
+
+# Maximum number of pages to fetch when building product group
+# headers.  Each page contains up to 1 000 products, so this caps
+# the total at 50 000 products before a warning is logged.
+_MAX_GROUP_PAGES: int = 50
 
 
 class ReviewController(QtCore.QObject):
@@ -159,6 +252,8 @@ class ReviewController(QtCore.QObject):
         self._selected_folder_id: str | None = None
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
+        self._group_by: GroupBy = GroupBy.NONE
+        self._hide_empty_groups: bool = True
         self.log = Logger.get_logger(self.__class__.__name__)
 
     # ------------------------------------------------------------------
@@ -194,6 +289,16 @@ class ReviewController(QtCore.QObject):
     def selected_folder_id(self) -> str | None:
         """Return the folder ID currently selected in the slicer tree."""
         return self._selected_folder_id
+
+    @property
+    def group_by(self) -> GroupBy:
+        """Return the current group-by mode."""
+        return self._group_by
+
+    @property
+    def hide_empty_groups(self) -> bool:
+        """Return whether empty group headers should be hidden."""
+        return self._hide_empty_groups
 
     # ------------------------------------------------------------------
     # Public methods
@@ -258,6 +363,26 @@ class ReviewController(QtCore.QObject):
                 expandable nodes instead of a flat version list.
         """
         self._tree_mode = enabled
+        self._reset_pagination()
+
+    def set_group_by(self, group_by: GroupBy) -> None:
+        """Set the group-by mode for the version table.
+
+        Args:
+            group_by: One of ``GroupBy.NONE``, ``GroupBy.STATUS``,
+                ``GroupBy.PRODUCT_TYPE``, or ``GroupBy.PRODUCT``.
+        """
+        self._group_by = group_by
+        self._reset_pagination()
+
+    def set_hide_empty_groups(self, hide_empty: bool) -> None:
+        """Set whether group headers with no rows should be hidden.
+
+        Args:
+            hide_empty: When ``True``, only groups with matching rows are
+                shown. When ``False``, all configured groups are shown.
+        """
+        self._hide_empty_groups = hide_empty
         self._reset_pagination()
 
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
@@ -336,6 +461,69 @@ class ReviewController(QtCore.QObject):
             parent_id,
         )
 
+        # -- Group-by mode -----------------------------------------------
+        if (
+            self._current_category == "Hierarchy"
+            and self.group_by != GroupBy.NONE
+        ):
+            # Root level: return group header rows.
+            if parent_id is None:
+                return self._fetch_group_headers()
+
+            # Expanding a group header: fetch filtered versions.
+            if parent_id.startswith("grp:"):
+                group_type, group_value = self._parse_group_id(parent_id)
+
+                product_ids: list[str] | None = None
+                version_filter = ""
+                product_filter = ""
+
+                if group_type == GroupBy.PRODUCT:
+                    product_ids = [group_value]
+                else:
+                    version_filter, product_filter = (
+                        self._build_version_filter(group_type, group_value)
+                    )
+
+                cursor = self._folder_cursors.get(parent_id, "")
+                if page_number > 0 and not self._folder_has_more.get(
+                    parent_id, False
+                ):
+                    return []
+
+                folder_id = self._selected_folder_id
+                version_ids = None
+
+                edges, page_info = self._get_versions_page(
+                    self._current_project,
+                    folder_id,
+                    page_size,
+                    cursor=cursor,
+                    sort_by=sort_by,
+                    descending=descending,
+                    version_ids=version_ids,
+                    include_folder_children=True,
+                    product_ids=product_ids,
+                    version_filter=version_filter,
+                    product_filter=product_filter,
+                )
+                rows = [
+                    self._transform_version_edge(e)
+                    for e in edges
+                    if e.get("node", {}).get("name") != "HERO"
+                ]
+                if descending:
+                    self._folder_has_more[parent_id] = page_info[
+                        "hasPreviousPage"
+                    ]
+                    self._folder_cursors[parent_id] = page_info["startCursor"]
+                else:
+                    self._folder_has_more[parent_id] = page_info["hasNextPage"]
+                    self._folder_cursors[parent_id] = page_info["endCursor"]
+                return rows
+
+        # -- Default hierarchy / flat mode --------------------------------
+
         # Tree root: return folder rows so the model has expandable nodes.
         if (
             parent_id is None
@@ -393,7 +581,7 @@ class ReviewController(QtCore.QObject):
         if self._current_category == "Reviews":
             folder_id = None
             version_ids = self._review_session_version_ids  # None = no filter
-            if version_ids is None:
+            if not version_ids:
                 # No review session selected yet — show nothing
                 return []
         else:
@@ -426,6 +614,117 @@ class ReviewController(QtCore.QObject):
             self._graphql_cursor = page_info["endCursor"]
 
         return page
+
+    def fetch_versions_page_batch(
+        self,
+        requests: list[BatchFetchRequest],
+    ) -> dict[str | None, list[dict[str, Any]]]:
+        """Fetch child pages for multiple parents in one batch callback.
+
+        Group-by requests (``parent_id`` starts with ``"grp:"``) are
+        delegated to :meth:`fetch_versions_page` individually because
+        they carry heterogeneous filter parameters.
+
+        Hierarchy requests are processed inside one worker-task callback,
+        but each parent is fetched with its own cursor state to preserve
+        correctness for cursor-based pagination.
+
+        Args:
+            requests: List of :class:`BatchFetchRequest` objects produced
+                by :class:`PaginatedTableModel._dispatch_batch`.
+
+        Returns:
+            Dict mapping each ``parent_id`` to its list of row dicts,
+            exactly as expected by
+            :meth:`PaginatedTableModel._on_batch_ready`.
+        """
+        if not self._current_project:
+            return {}
+
+        result: dict[str | None, list[dict[str, Any]]] = {}
+
+        # Separate group-by requests (must be fetched individually) from
+        # plain hierarchy requests (can be batched).
+        grp_requests: list[BatchFetchRequest] = []
+        batch_requests: list[BatchFetchRequest] = []
+        for req in requests:
+            if req.parent_id and req.parent_id.startswith("grp:"):
+                grp_requests.append(req)
+            else:
+                batch_requests.append(req)
+
+        # -- Individual group-by fetches ---------------------------------
+        for req in grp_requests:
+            rows = self.fetch_versions_page(
+                req.page,
+                req.page_size,
+                req.sort_key,
+                req.descending,
+                req.parent_id,
+            )
+            result[req.parent_id] = rows
+
+        # -- Hierarchy fetches -------------------------------------------
+        if not batch_requests:
+            return result
+
+        # Keep execution inside one worker task (batch callback path),
+        # but fetch each parent with its own cursor state to preserve
+        # correctness for cursor-based pagination.
+        for req in batch_requests:
+            if req.parent_id is None:
+                rows = self.fetch_versions_page(
+                    req.page,
+                    req.page_size,
+                    req.sort_key,
+                    req.descending,
+                    req.parent_id,
+                )
+                result[req.parent_id] = rows
+                continue
+
+            parent_id = req.parent_id
+            sort_by = (
+                COLUMN_TO_SORT_BY.get(req.sort_key) if req.sort_key else None
+            )
+
+            if req.page == 0:
+                self._folder_cursors.pop(parent_id, None)
+                self._folder_has_more.pop(parent_id, None)
+            elif not self._folder_has_more.get(parent_id, False):
+                result[parent_id] = []
+                continue
+
+            cursor = self._folder_cursors.get(parent_id, "")
+            edges, page_info = self._get_versions_page(
+                self._current_project,
+                parent_id,
+                req.page_size,
+                cursor=cursor,
+                sort_by=sort_by,
+                descending=req.descending,
+                include_folder_children=False,
+            )
+
+            version_rows = [
+                self._transform_version_edge(e)
+                for e in edges
+                if e.get("node", {}).get("name") != "HERO"
+            ]
+            folder_rows = (
+                self._get_child_folder_rows(parent_id) if req.page == 0 else []
+            )
+
+            if req.descending:
+                self._folder_has_more[parent_id] = page_info["hasPreviousPage"]
+                self._folder_cursors[parent_id] = page_info["startCursor"]
+            else:
+                self._folder_has_more[parent_id] = page_info["hasNextPage"]
+                self._folder_cursors[parent_id] = page_info["endCursor"]
+
+            result[parent_id] = folder_rows + version_rows
+
+        return result
 
     def fetch_projects(self) -> list[dict[str, Any]]:
         """Fetch all projects using GraphQL.
@@ -537,25 +836,397 @@ class ReviewController(QtCore.QObject):
         folder_type = folder.get("folderType", "")
         label = folder.get("label") or folder.get("name", "")
         icon = self._pinfo("folderTypes", folder_type, "icon", "folder")
-        return {
-            "id": folder.get("id", ""),
-            "has_children": True,
-            "product/version": label,
-            "product/version__icon": icon,
-            "folderName": label,
-            "entityType": "Folder",
-            "entityType__icon": "folder",
-            "status": "",
-            "productType": "",
-            "author": "",
-            "version": "",
-            "productName": "",
-            "taskType": "",
-            "task": "",
-            "tags": "",
-            "createdAt": "",
-            "updatedAt": "",
+        row = dict(EMPTY_ROW)
+        row.update(
+            {
+                "id": folder.get("id", ""),
+                "has_children": True,
+                "product/version": label,
+                "product/version__icon": icon,
+                "folderName": label,
+                "entityType": "Folder",
+                "entityType__icon": "folder",
+            }
+        )
+        return row
+
+    # -- Group-by helpers ------------------------------------------------
+
+    def _build_group_header_row(
+        self,
+        group_type: GroupBy,
+        value: str,
+        icon: str = "",
+        color: str | None = None,
+        label: str | None = None,
+    ) -> dict[str, Any]:
+        """Build an expandable group-header row.
+
+        Args:
+            group_type: GroupBy axis.
+            value: The specific group value (e.g. ``"In Progress"``).
+                Stored in the row ``id`` and used as the display label
+                when *label* is not provided.
+            icon: Material icon name for the tree cell.
+            color: Optional colour hint for the status/type badge.
+            label: Optional display label. When provided, used for the
+                ``"product/version"`` column instead of *value*. This
+                allows callers such as PRODUCT group-by to store a UUID
+                in the group id while showing a human-readable name.
+
+        Returns:
+            Row dict with ``has_children=True`` and an id of the form
+            ``"grp:<group_type.value>:<value>"``.
+        """
+        row = dict(EMPTY_ROW)
+        row.update(
+            {
+                "id": f"grp:{group_type.value}:{value}",
+                "has_children": True,
+                "product/version": label if label is not None else value,
+                "product/version__icon": icon or "label",
+            }
+        )
+        if color:
+            row["product/version__color"] = color
+        return row
+
+    def _fetch_group_headers(self) -> list[dict[str, Any]]:
+        """Dispatch to the appropriate group-header fetcher.
+
+        Returns:
+            List of expandable group-header rows.
+        """
+        if self.group_by == GroupBy.STATUS:
+            return self._fetch_status_group_headers()
+        if self.group_by == GroupBy.PRODUCT_TYPE:
+            return self._fetch_product_type_group_headers()
+        if self.group_by == GroupBy.PRODUCT:
+            return self._fetch_product_group_headers()
+        return []
+
+    def _fetch_status_group_headers(self) -> list[dict[str, Any]]:
+        """Return one expandable row per status that has versions.
+
+        Uses a single large-page fetch to discover which statuses
+        actually contain versions for the current scope, then builds
+        group-header rows only for those statuses.
+        """
+        all_statuses: dict[str, dict[str, Any]] = self._project_info.get(
+            "by_name", {}
+        ).get("statuses", {})
+        if not all_statuses:
+            return []
+
+        if self._hide_empty_groups:
+            present = self._get_distinct_field_values("status")
+            status_names = [s for s in all_statuses if s in present]
+        else:
+            status_names = list(all_statuses)
+
+        return [
+            self._build_group_header_row(
+                GroupBy.STATUS,
+                name,
+                icon=all_statuses[name].get("icon", "circle"),
+                color=all_statuses[name].get("color"),
+            )
+            for name in status_names
+        ]
+
+    def _fetch_product_type_group_headers(self) -> list[dict[str, Any]]:
+        """Return one expandable row per product type with versions."""
+        present = self._get_distinct_field_values("productType")
+        return [
+            self._build_group_header_row(
+                GroupBy.PRODUCT_TYPE,
+                pt,
+                icon=self._pinfo("productTypes", pt, "icon", "category"),
+                color=self._pinfo("productTypes", pt, "color"),
+            )
+            for pt in sorted(present)
+        ]
+
+    def _get_products_page(
+        self,
+        project_name: str,
+        folder_id: str | None,
+        page_size: int,
+        cursor: str | None = None,
+        sort_by: str | None = None,
+        descending: bool = False,
+        folder_ids: list[str] | None = None,
+        product_filter: str = "",
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Fetch a single page of products via GraphQL.
+
+        Only the fields needed for group-header rows (``id``,
+        ``name``, ``productType``) are requested from the server.
+
+        Args:
+            project_name: AYON project name.
+            folder_id: Filter by a single folder ID, or ``None``.
+                Ignored when *folder_ids* is provided.
+            page_size: Maximum number of edges to return.
+            cursor: GraphQL cursor from the previous page, or ``None``
+                for the first page.
+            sort_by: Valid GraphQL ``sortBy`` value, or ``None``.
+            descending: When ``True`` use ``last``/``before`` pagination.
+            folder_ids: When provided, filters by this explicit list of
+                folder IDs instead of the single *folder_id*.
+            product_filter: JSON-encoded product filter string.
+
+        Returns:
+            Tuple of (edges list, pageInfo dict).
+
+        Raises:
+            RuntimeError: If there is no server connection or the
+                query returns errors.
+        """
+        con = ayon_api.get_server_api_connection()
+        if not con:
+            raise RuntimeError("No server connection")
+
+        resolved_folder_ids: list[str] | None
+        if folder_ids is not None:
+            resolved_folder_ids = folder_ids
+        elif folder_id is not None:
+            resolved_folder_ids = [folder_id]
+        else:
+            resolved_folder_ids = None
+
+        variables: dict[str, Any] = {
+            "projectName": project_name,
+            "productFilter": product_filter or "",
+            "sortBy": sort_by,
+            "folderIds": resolved_folder_ids,
         }
+        if descending:
+            variables["last"] = page_size
+            variables["before"] = cursor or None
+        else:
+            variables["first"] = page_size
+            variables["after"] = cursor or None
+
+        resp = con.query_graphql(GET_PRODUCTS_QUERY, variables)
+        if resp.errors:
+            raise RuntimeError(resp.errors)
+        payload = resp.data["data"]
+        products_block = payload["project"]["products"]
+        return products_block["edges"], products_block["pageInfo"]
+
+    @staticmethod
+    def _extract_product_group_data(
+        edges: list[dict[str, Any]],
+    ) -> list[tuple[str, str, str]]:
+        """Transform raw product edges into structured tuples.
+
+        Args:
+            edges: List of GraphQL product edges from
+                :meth:`_get_products_page`.
+
+        Returns:
+            List of ``(product_id, product_name, product_type)`` tuples.
+        """
+        result: list[tuple[str, str, str]] = []
+        for edge in edges:
+            node = edge.get("node", {})
+            product_id = node.get("id", "")
+            product_name = node.get("name", "")
+            product_type = node.get("productType", "")
+            if product_id and product_name:
+                result.append((product_id, product_name, product_type))
+        return result
+
+    def _fetch_product_group_headers(self) -> list[dict[str, Any]]:
+        """Return one expandable row per product in the current scope.
+
+        Fetches products via :meth:`_get_products_page`, extracts
+        structured tuples via :meth:`_extract_product_group_data`, then
+        builds group-header rows using product ID as the group value and
+        product name as the display label.
+
+        Returns:
+            List of expandable group-header rows keyed by product ID.
+        """
+        folder_id = self._selected_folder_id
+        all_edges: list[dict[str, Any]] = []
+        cursor: str | None = None
+
+        for _page in range(_MAX_GROUP_PAGES):
+            edges, page_info = self._get_products_page(
+                self._current_project,
+                folder_id=folder_id,
+                page_size=1000,
+                cursor=cursor,
+                sort_by="path",
+            )
+            all_edges.extend(edges)
+
+            if not page_info.get("hasNextPage"):
+                break
+            cursor = page_info.get("endCursor")
+            if not cursor:
+                break
+        else:
+            self.log.warning(
+                "Product group pagination reached the safety"
+                " limit of %d pages (%d products fetched)."
+                " Results may be incomplete.",
+                _MAX_GROUP_PAGES,
+                len(all_edges),
+            )
+
+        product_data = self._extract_product_group_data(all_edges)
+        # Keep first-seen product order while dropping duplicates.
+        seen_product_ids: set[str] = set()
+        unique_product_data: list[tuple[str, str, str]] = []
+        for product_id, product_name, product_type in product_data:
+            if product_id in seen_product_ids:
+                continue
+            seen_product_ids.add(product_id)
+            unique_product_data.append(
+                (product_id, product_name, product_type)
+            )
+
+        return [
+            self._build_group_header_row(
+                GroupBy.PRODUCT,
+                value=product_id,
+                label=product_name,
+                icon=self._pinfo(
+                    "productTypes", product_type, "icon", "view_in_ar"
+                ),
+                color=self._pinfo("productTypes", product_type, "color"),
+            )
+            for product_id, product_name, product_type in unique_product_data
+        ]
+
+    def get_used_statuses(self) -> set[str]:
+        """Fetch a list of statuses that have versions in the current scope.
+
+        NOTE: it returns results for the entire project, not the current scope.
+
+        Returns:
+            Set of statuses that have versions in the current scope.
+        """
+        pld = ayon_api.get(
+            f"projects/{self._current_project}/grouping/version/status",
+            empty=True,
+        )
+        data = pld.data or {}
+        used = [
+            s.get("value")
+            for s in data.get("groups", [])
+            if s.get("count", 0) > 0
+        ]
+        return set(used)
+
+    def get_used_product_types(self) -> set[str]:
+        """Fetch a list of product types that have versions in the current
+        scope.
+
+        NOTE: it returns results for the entire project, not the current scope.
+
+        Returns:
+            Set of product types that have versions in the current scope.
+        """
+        pld = ayon_api.get(
+            f"projects/{self._current_project}/grouping/version/productType",
+            empty=True,
+        )
+        data = pld.data or {}
+        used = [
+            s.get("value")
+            for s in data.get("groups", [])
+            if s.get("count", 0) > 0
+        ]
+        return set(used)
+
+    def _get_distinct_field_values(self, field: str) -> set[str]:
+        """Fetch a  list of distinct values for a field.
+
+        Args:
+            field: One of ``"status"`` or ``"productType"``.
+
+        Returns:
+            Set of distinct values for that field among versions in the
+            current scope.
+        """
+
+        if self._current_category == "Reviews":
+            if not self._review_session_version_ids:
+                return set()
+
+        if field == "status":
+            return self.get_used_statuses()
+        if field == "productType":
+            return self.get_used_product_types()
+
+        raise ValueError(f"Unknown field: {field}")
+
+    @staticmethod
+    def _parse_group_id(group_id: str) -> tuple[GroupBy, str]:
+        """Parse a group header id into (group_type, group_value).
+
+        Args:
+            group_id: String in the form ``"grp:<type>:<value>"``.
+
+        Returns:
+            Tuple of ``(group_type, group_value)``.
+        """
+        _, group_type, group_value = group_id.split(":", 2)
+        return GroupBy(group_type), group_value
+
+    def _build_version_filter(
+        self,
+        group_type: GroupBy,
+        group_value: str,
+    ) -> tuple[str, str]:
+        """Build ``versionFilter`` and ``productFilter`` JSON strings.
+
+        Handles ``GroupBy.STATUS`` and ``GroupBy.PRODUCT_TYPE``.
+        ``GroupBy.PRODUCT`` is intentionally excluded — it passes
+        ``product_ids`` directly to :meth:`_get_versions_page` in the
+        expand flow and does not need a filter expression.
+
+        Args:
+            group_type: One of ``GroupBy.STATUS`` or
+                ``GroupBy.PRODUCT_TYPE``.
+            group_value: The value to filter on.
+
+        Returns:
+            Tuple of ``(version_filter, product_filter)`` JSON strings.
+            Either or both may be empty when no filter is needed for
+            that axis.
+        """
+        version_filter = ""
+        product_filter = ""
+        if group_type == GroupBy.STATUS:
+            version_filter = json.dumps(
+                {
+                    "conditions": [
+                        {
+                            "key": "status",
+                            "value": [group_value],
+                            "operator": "in",
+                        },
+                    ]
+                }
+            )
+        elif group_type == GroupBy.PRODUCT_TYPE:
+            product_filter = json.dumps(
+                {
+                    "conditions": [
+                        {
+                            "key": "productType",
+                            "value": [group_value],
+                            "operator": "in",
+                        },
+                    ]
+                }
+            )
+        return version_filter, product_filter
 
     def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for review sessions.
@@ -661,9 +1332,15 @@ class ReviewController(QtCore.QObject):
         if not con:
             return []
         versions_gen = ayon_api.get_entity_lists(
-            project_name=self._current_project, list_ids=[session_id]
+            project_name=self._current_project,
+            list_ids=[session_id],
+            fields={"items"},
         )
-        items = next(versions_gen).get("items", []) if versions_gen else []
+        try:
+            entity_list = next(versions_gen)
+        except StopIteration:
+            return []
+        items = entity_list.get("items", [])
         return [
             item["entityId"]
             for item in items
@@ -748,6 +1425,9 @@ class ReviewController(QtCore.QObject):
         version_ids: list[str] | None = None,
         include_folder_children: bool = True,
         folder_ids: list[str] | None = None,
+        product_ids: list[str] | None = None,
+        version_filter: str = "",
+        product_filter: str = "",
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
 
@@ -772,6 +1452,9 @@ class ReviewController(QtCore.QObject):
                 folder IDs instead of the single *folder_id*. Used by
                 :meth:`fetch_versions_page_batch` to query multiple
                 parents in one shot.
+            product_ids: When provided, filters versions to only those
+                belonging to these product IDs. Used when expanding a
+                ``GroupBy.PRODUCT`` group header.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -794,13 +1477,14 @@ class ReviewController(QtCore.QObject):
 
         variables: dict[str, Any] = {
             "projectName": project_name,
-            "versionFilter": "",
-            "productFilter": "",
+            "versionFilter": version_filter or "",
+            "productFilter": product_filter or "",
             "taskFilter": "",
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
             "includeFolderChildren": include_folder_children,
             "versionIds": version_ids if version_ids else None,
+            "productIds": product_ids if product_ids else None,
         }
         if descending:
             variables["last"] = page_size
