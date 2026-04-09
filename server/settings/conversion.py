@@ -347,7 +347,7 @@ def _convert_burnin_offset_1_8_6(
         .get("ExtractBurnin", {})
         .get("options")
     )
-    if burnin_options:
+    if not burnin_options:
         return
 
     x_offset = burnin_options.get("x_offset")
