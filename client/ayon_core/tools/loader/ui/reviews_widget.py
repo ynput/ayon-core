@@ -28,6 +28,7 @@ from ayon_core.tools.loader.ui.review_controller import (
     GroupBy,
     ReviewController,
 )
+from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.user_prefs import UserPreferences
 
@@ -442,13 +443,13 @@ class ReviewSlicer(AYContainer):
 
     CATEGORIES = [
         {
-            "text": "Hierarchy",
+            "text": ReviewCategory.HIERARCHY.value,
             "short_text": "HIE",
             "icon": "table_rows",
             "color": "#f4f5f5",
         },
         {
-            "text": "Reviews",
+            "text": ReviewCategory.REVIEWS.value,
             "short_text": "REV",
             "icon": "subscriptions",
             "color": "#f4f5f5",
@@ -460,7 +461,7 @@ class ReviewSlicer(AYContainer):
         controller: ReviewController,
         *args: Any,
         initial_project: str = "",
-        initial_category: str = "Hierarchy",
+        initial_category: str = ReviewCategory.HIERARCHY.value,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -648,7 +649,7 @@ class ReviewTable(AYContainer):
             not self._controller.hide_empty_groups
         )
         self._group_by_menu.setVisible(
-            self._controller.current_category == "Hierarchy"
+            self._controller.current_category == ReviewCategory.HIERARCHY.value
         )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
@@ -1154,7 +1155,7 @@ class ReviewTable(AYContainer):
 
         cols = (
             common + hierarchy + attributes
-            if category == "Hierarchy"
+            if category == ReviewCategory.HIERARCHY.value
             else common + review_sessions + attributes
         )
 
@@ -1183,7 +1184,9 @@ class ReviewsWidget(AYContainer):
         )
         prefs = UserPreferences()
         saved_project = prefs.get("loader.review.last_project", "")
-        saved_category = prefs.get("loader.review.last_category", "Hierarchy")
+        saved_category = prefs.get(
+            "loader.review.last_category", ReviewCategory.HIERARCHY.value
+        )
 
         self._controller = ReviewController(parent=self)
         self._slicer = ReviewSlicer(

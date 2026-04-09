@@ -14,6 +14,7 @@ from qtpy import QtCore
 
 from ayon_core.lib import Logger
 from ayon_core.tools.utils.user_prefs import UserPreferences
+from ayon_core.tools.loader.ui.review_types import ReviewCategory
 
 GET_VERSIONS_QUERY = """
 query GetVersions(
@@ -347,7 +348,7 @@ class ReviewController(QtCore.QObject):
         self._selected_folder_id = id if id else None
         self._review_session_version_ids = None  # always clear first
 
-        if self._current_category == "Reviews" and id:
+        if self._current_category == ReviewCategory.REVIEWS.value and id:
             self._review_session_version_ids = (
                 self._get_review_session_version_ids(id)
             )
@@ -398,7 +399,7 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of :class:`TreeNode` instances.
         """
-        if self._current_category == "Hierarchy":
+        if self._current_category == ReviewCategory.HIERARCHY.value:
             return self._fetch_products(parent_id)
         return self._fetch_reviews(parent_id)
 
@@ -463,7 +464,7 @@ class ReviewController(QtCore.QObject):
 
         # -- Group-by mode -----------------------------------------------
         if (
-            self._current_category == "Hierarchy"
+            self._current_category == ReviewCategory.HIERARCHY.value
             and self.group_by != GroupBy.NONE
         ):
             # Root level: return group header rows.
@@ -528,7 +529,7 @@ class ReviewController(QtCore.QObject):
         if (
             parent_id is None
             and self._tree_mode
-            and self._current_category == "Hierarchy"
+            and self._current_category == ReviewCategory.HIERARCHY.value
         ):
             return self._fetch_root_folders(self._selected_folder_id)
 
@@ -578,7 +579,7 @@ class ReviewController(QtCore.QObject):
             return folder_rows + version_rows
 
         # Flat mode: existing behaviour.
-        if self._current_category == "Reviews":
+        if self._current_category == ReviewCategory.REVIEWS.value:
             folder_id = None
             version_ids = self._review_session_version_ids  # None = no filter
             if not version_ids:
@@ -1154,7 +1155,7 @@ class ReviewController(QtCore.QObject):
             current scope.
         """
 
-        if self._current_category == "Reviews":
+        if self._current_category == ReviewCategory.REVIEWS.value:
             if not self._review_session_version_ids:
                 return set()
 
