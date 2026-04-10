@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 import ayon_api
 from ayon_ui_qt import get_ayon_style_data
@@ -663,7 +663,7 @@ class ReviewTable(AYContainer):
         self.add_widget(self._table)
 
         self._auto_expand: bool = False
-        self._deferred_expand_queue: list[tuple[QtCore.QModelIndex, int]] = []
+        self._deferred_expand_queue: list[QtCore.QPersistentModelIndex] = []
         # "visible" -> "speculative" -> "idle" state machine.
         # See _on_loading_changed and _expand_deferred_batch.
         self._expansion_phase: _ExpansionPhase = _ExpansionPhase.IDLE
@@ -712,59 +712,66 @@ class ReviewTable(AYContainer):
         self._table.viewport().update()
         self._eagerly_enqueue_visible_thumbnails()
 
-    def _visible_proxy_range(self) -> tuple[int, int]:
-        """Return the (first, last) visible proxy-model row indices.
+    def _table_row_height(self) -> int:
+        first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
+        return (
+            self._table.rowHeight(first_row_index)
+            if self._table.children()
+            else 32
+        )
 
-        Uses ``QAbstractItemView.indexAt()`` to locate the first and
-        last rows whose visual rectangles intersect the viewport,
-        avoiding an O(n) scan over all proxy rows.
+    def _iter_visible_proxy_indices(self) -> Iterator[QtCore.QModelIndex]:
+        """Yield unique proxy indices that intersect the viewport.
 
-        Returns:
-            ``(first_row, last_row)`` inclusive indices.  Both are
-            ``-1`` when the viewport is empty or no rows are visible.
+        The walk uses ``indexAt`` by vertical pixel position so nested
+        tree rows are included. Duplicate indices are suppressed to avoid
+        repeated work when row heights are small.
         """
         vp = self._table.viewport()
         vp_rect = vp.rect()
         if vp_rect.isEmpty():
-            return (-1, -1)
+            return
 
-        top_idx = self._table.indexAt(vp_rect.topLeft())
-        if not top_idx.isValid():
-            return (-1, -1)
+        row_height = self._table_row_height()
+        y = vp_rect.top()
+        seen: set[QtCore.QPersistentModelIndex] = set()
 
-        bot_idx = self._table.indexAt(vp_rect.bottomLeft())
-        if not bot_idx.isValid():
-            # bottomLeft() falls past the last row — use the last
-            # row in the model as the boundary.
-            proxy_model = self._table_filter.filter_model
-            last = proxy_model.rowCount() - 1
-            return (top_idx.row(), max(last, top_idx.row()))
+        while y <= vp_rect.bottom():
+            proxy_idx = self._table.indexAt(QtCore.QPoint(0, y))
+            if not proxy_idx.isValid():
+                y += row_height
+                continue
 
-        return (top_idx.row(), bot_idx.row())
+            persistent_idx = QtCore.QPersistentModelIndex(proxy_idx)
+            if persistent_idx not in seen:
+                seen.add(persistent_idx)
+                yield proxy_idx
+
+            vis = self._table.visualRect(proxy_idx)
+            if vis.isValid() and vis.height() > 0:
+                y = vis.bottom() + 1
+            else:
+                y += row_height
 
     def _eagerly_enqueue_visible_thumbnails(self) -> None:
         """Enqueue thumbnail tasks for currently visible version rows.
 
-        Uses :meth:`_visible_proxy_range` to restrict iteration to
-        only the rows whose visual rects intersect the viewport,
-        rather than scanning all proxy rows.
+        Iterates visible indices via :meth:`_iter_visible_proxy_indices`
+        so nested tree rows at any depth are visited.
 
         Already-enqueued or already-cached keys are skipped.
         """
         ic = ImageCache.get_instance()
-        proxy_model = self._table_filter.filter_model
         request_id = self._model._request_id
         project = self._controller.current_project
         if not project:
             return
 
-        first, last = self._visible_proxy_range()
-        if first < 0:
+        vp = self._table.viewport()
+        if vp.rect().isEmpty():
             return
 
-        for proxy_row in range(first, last + 1):
-            proxy_idx = proxy_model.index(proxy_row, 0)
-
+        for proxy_idx in self._iter_visible_proxy_indices():
             row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             thumbnail_id = row_dict.get("thumbnailId", "")
             version_id = row_dict.get("id", "")
@@ -772,15 +779,14 @@ class ReviewTable(AYContainer):
                 continue
 
             key = f"{project}/{version_id}/{thumbnail_id}"
-            if key in self._enqueued_thumb_keys:
-                continue
-            if ic.has(key):
+            if key in self._enqueued_thumb_keys or ic.has(key):
                 continue
 
             self._enqueued_thumb_keys.add(key)
-            vp = self._table.viewport()
 
-            def _update_viewport(_fpath: str, _vp=vp) -> None:
+            def _update_viewport(
+                _fpath: str, _vp: QtWidgets.QWidget = vp
+            ) -> None:
                 if shiboken.isValid(_vp):
                     _vp.update()
 
@@ -876,7 +882,11 @@ class ReviewTable(AYContainer):
                 self._table.expand(proxy_idx)
             else:
                 # Off-screen — collect for speculative Phase 2.
-                self._deferred_expand_queue.append((parent, row))
+                # QPersistentModelIndex survives sibling insertions
+                # that would shift a plain integer row number.
+                self._deferred_expand_queue.append(
+                    QtCore.QPersistentModelIndex(src_idx)
+                )
 
     def _on_loading_changed(self, is_loading: bool) -> None:
         """Transition to speculative phase when visible loads finish.
@@ -896,14 +906,20 @@ class ReviewTable(AYContainer):
         """
         if is_loading:
             return
-        if self._expansion_phase != _ExpansionPhase.VISIBLE:
-            return
-        if not self._deferred_expand_queue:
-            self._expansion_phase = _ExpansionPhase.IDLE
-            return
-
-        self._expansion_phase = _ExpansionPhase.SPECULATIVE
-        self._expand_deferred_batch()
+        if self._expansion_phase == _ExpansionPhase.VISIBLE:
+            if not self._deferred_expand_queue:
+                self._expansion_phase = _ExpansionPhase.IDLE
+                return
+            self._expansion_phase = _ExpansionPhase.SPECULATIVE
+            self._expand_deferred_batch()
+        elif self._expansion_phase == _ExpansionPhase.SPECULATIVE:
+            # Async results from earlier speculative batches may have
+            # added new expandable rows to the queue after the batch
+            # chain stopped.  Re-kick the batch processor.
+            if self._deferred_expand_queue:
+                QtCore.QTimer.singleShot(0, self._expand_deferred_batch)
+            else:
+                self._expansion_phase = _ExpansionPhase.IDLE
 
     def _expand_deferred_batch(self) -> None:
         """Expand the next chunk of off-screen deferred rows.
@@ -930,22 +946,21 @@ class ReviewTable(AYContainer):
         batch = self._deferred_expand_queue[:_BATCH_SIZE]
         self._deferred_expand_queue = self._deferred_expand_queue[_BATCH_SIZE:]
 
-        for parent, row in batch:
-            src_idx = self._model.index(row, 0, parent)
-            if not src_idx.isValid():
+        for persistent_idx in batch:
+            if not persistent_idx.isValid():
                 continue
-            if not self._model.canFetchMore(src_idx):
+            if not self._model.canFetchMore(persistent_idx):
                 continue
-            proxy_idx = proxy_model.mapFromSource(src_idx)
+            proxy_idx = proxy_model.mapFromSource(persistent_idx)
             if proxy_idx.isValid():
                 self._table.expand(proxy_idx)
 
         if self._deferred_expand_queue:
             QtCore.QTimer.singleShot(0, self._expand_deferred_batch)
-        # When the queue is empty we stay in "speculative" until
-        # loading_changed(False) fires — but since the handler only
-        # re-triggers on "visible", the phase effectively goes idle
-        # once all speculative fetches complete.
+        # When the queue empties here the phase stays "speculative".
+        # _on_loading_changed will re-kick the chain if async results
+        # from these expansions add new items, or transition to IDLE
+        # once all in-flight fetches complete.
 
     def _on_scroll_catch_up(self) -> None:
         """Expand visible unexpanded groups the user scrolled to.
@@ -973,38 +988,31 @@ class ReviewTable(AYContainer):
         self._scroll_catch_up_timer.start()  # (re)start on each event
 
     def _expand_visible_unexpanded(self) -> None:
-        """Expand any collapsed groups currently in the viewport.
+        """Expand any collapsed expandable rows currently in the viewport.
 
-        Uses :meth:`_visible_proxy_range` to restrict iteration to
-        only the rows visible in the viewport, rather than scanning
-        all proxy rows.
+        Iterates visible indices via :meth:`_iter_visible_proxy_indices`
+        so nested tree rows are found correctly at any depth.
 
-        Acts as a catch-up for groups that speculative Phase 2 hasn't
+        Acts as a catch-up for rows that speculative Phase 2 hasn't
         reached yet.  Does **not** cancel speculative work — Phase 2
-        continues expanding the remaining off-screen groups in the
+        continues expanding the remaining off-screen rows in the
         background.
         """
         if not self._auto_expand:
             return
 
         proxy_model = self._table_filter.filter_model
-
-        first, last = self._visible_proxy_range()
-        if first < 0:
+        vp = self._table.viewport()
+        if vp.rect().isEmpty():
             return
 
-        for proxy_row in range(first, last + 1):
-            proxy_idx = proxy_model.index(proxy_row, 0)
+        for proxy_idx in self._iter_visible_proxy_indices():
             if self._table.isExpanded(proxy_idx):
                 continue
 
             src_idx = proxy_model.mapToSource(proxy_idx)
-            if not src_idx.isValid():
-                continue
-            if not self._model.canFetchMore(src_idx):
-                continue
-
-            self._table.expand(proxy_idx)
+            if src_idx.isValid() and self._model.canFetchMore(src_idx):
+                self._table.expand(proxy_idx)
 
     def _build_columns(self, category: str) -> list[TableColumn]:
         _style = get_ayon_style_data("AYTableView", "default")
@@ -1173,7 +1181,9 @@ class ReviewTable(AYContainer):
         self._enqueued_thumb_keys.clear()
         self._model.reset_data()
         self._model.set_columns(self._build_columns(category))
-        self._group_by_menu.setVisible(category == "Hierarchy")
+        self._group_by_menu.setVisible(
+            category == ReviewCategory.HIERARCHY.value
+        )
 
 
 class ReviewsWidget(AYContainer):

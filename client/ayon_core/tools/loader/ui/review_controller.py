@@ -242,7 +242,7 @@ class ReviewController(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._current_project: str = ""
-        self._current_category: str = "Hierarchy"
+        self._current_category: str = ReviewCategory.HIERARCHY.value
         self._project_info: dict[str, Any] = {}
         self._review_sessions_cache: list[dict[str, Any]] = []
         self._graphql_has_more: bool = False
