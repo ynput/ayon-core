@@ -583,6 +583,7 @@ class GroupByMenu(AYButtonMenu):
 
         self._menu_grp = QtWidgets.QButtonGroup(menu)
         self._menu_grp.setExclusive(True)
+        self._menu_grp.buttonClicked.connect(self._dropdown.close)
 
         for val in GroupBy:
             wdgt_name = f"grp_by_{val.name.lower()}"
