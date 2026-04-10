@@ -18,6 +18,7 @@ from ayon_ui_qt.components.table_filter import AYTableFilter
 from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
 from ayon_ui_qt.components.table_view import AYTableView
 from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
+from ayon_ui_qt.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_ui_qt.components.tree_model import LazyTreeModel
 from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
 from ayon_ui_qt.image_cache import ImageCache
@@ -488,6 +489,9 @@ class ReviewSlicer(AYContainer):
 
         self._tree_view = ReviewTreeView(self)
         self.add_widget(self._tree_view, stretch=0)
+
+        self._progress = AsyncTaskQueueMonitor(get_task_queue(), parent=self)
+        self.add_widget(self._progress, stretch=0)
 
         self._slicer.category_changed.connect(self._on_category_changed)
         self._tree_view.selection_changed.connect(self._on_selection_changed)
