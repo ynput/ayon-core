@@ -32,6 +32,7 @@ from ayon_core.tools.loader.ui.review_controller import (
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.user_prefs import UserPreferences
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
 
 log = Logger.get_logger(__name__)
 
@@ -681,6 +682,10 @@ class ReviewTable(AYContainer):
 
         self._model.page_fetched.connect(self._on_page_fetched)
 
+    @property
+    def table(self) -> AYTableView:
+        return self._table
+
     def _on_group_by_changed(self, group_by: GroupBy) -> None:
         self._controller.set_group_by(group_by)
         self._auto_expand = False
@@ -1190,7 +1195,12 @@ class ReviewTable(AYContainer):
 class ReviewsWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        loader_controller: Any = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(
             *args,
             layout=AYContainer.Layout.HBox,
@@ -1203,7 +1213,9 @@ class ReviewsWidget(AYContainer):
             "loader.review.last_category", ReviewCategory.HIERARCHY.value
         )
 
-        self._controller = ReviewController(parent=self)
+        self._controller = ReviewController(
+            parent=self, loader_controller=loader_controller
+        )
         self._slicer = ReviewSlicer(
             self._controller,
             self,
@@ -1215,6 +1227,12 @@ class ReviewsWidget(AYContainer):
         )
         self._slicer.set_model(self._model)
         self._table = ReviewTable(self._controller, self)
+        self._table.table.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._table.table.customContextMenuRequested.connect(
+            self._on_context_menu
+        )
         self._selected_folder_id: str = ""
         self._build()
 
@@ -1283,3 +1301,64 @@ class ReviewsWidget(AYContainer):
         self._table._model.reset_data()
         # Re-apply active filter criteria to the freshly loaded data.
         self._table._table_filter.filter_model.refresh_filter()
+
+    def _on_context_menu(self, pos: QtCore.QPoint) -> None:
+        """Show a contextual actions menu for the selected rows.
+
+        Collects the version IDs from the current table selection,
+        queries the loader controller for applicable action items and
+        presents them via :func:`show_actions_menu`.  Falls back to a
+        plain refresh-only menu when no loader controller is available
+        or no version rows are selected.
+        """
+        project_name = self._controller.current_project
+        selection_model = self._table.table.selectionModel()
+        proxy_model = self._table.table.model()
+
+        version_ids: set[str] = set()
+        for proxy_idx in selection_model.selectedIndexes():
+            if proxy_idx.column() != 0:
+                continue
+            row_dict = (
+                proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            )
+            entity_type = row_dict.get("entityType", "")
+            if entity_type == "Folder":
+                continue
+            version_id = row_dict.get("id", "")
+            if version_id:
+                version_ids.add(version_id)
+
+        global_point = self._table.table.viewport().mapToGlobal(pos)
+
+        if not version_ids or not project_name:
+            log.warning("No version ids or project name")
+            return
+
+        action_items = self._controller.get_action_items(
+            project_name, version_ids, "version"
+        )
+
+        if not action_items:
+            log.warning("No action items available")
+            return
+
+        result = show_actions_menu(
+            action_items,
+            global_point,
+            len(version_ids) == 1,
+            self,
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=project_name,
+            selected_ids=version_ids,
+            selected_entity_type="version",
+            data=action_item.data,
+            options=options,
+            form_values={},
+        )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 import datetime
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from types import MappingProxyType
 
 import ayon_api
@@ -15,6 +15,12 @@ from qtpy import QtCore
 from ayon_core.lib import Logger
 from ayon_core.tools.utils.user_prefs import UserPreferences
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.loader.abstract import ActionItem
+
+if TYPE_CHECKING:
+    from ayon_core.tools.loader.abstract import (
+        FrontendLoaderController,
+    )
 
 GET_VERSIONS_QUERY = """
 query GetVersions(
@@ -239,8 +245,13 @@ class ReviewController(QtCore.QObject):
     tree_reset_requested = QtCore.Signal()  # type: ignore
     selection_changed = QtCore.Signal(str, str)  # type: ignore
 
-    def __init__(self, parent: QtCore.QObject | None = None) -> None:
+    def __init__(
+        self,
+        parent: QtCore.QObject | None = None,
+        loader_controller: FrontendLoaderController | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._loader_controller = loader_controller
         self._current_project: str = ""
         self._current_category: str = ReviewCategory.HIERARCHY.value
         self._project_info: dict[str, Any] = {}
@@ -746,6 +757,69 @@ class ReviewController(QtCore.QObject):
                     project["data"] = json.loads(project_data)
                 projects.append(project)
         return projects
+
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        """Return action items for the given entity selection.
+
+        Delegates to the main loader controller when one was provided at
+        construction time.  Returns an empty list when no loader
+        controller is available.
+
+        Args:
+            project_name: AYON project name.
+            entity_ids: Set of selected entity IDs.
+            entity_type: Entity type string (e.g. ``"version"``).
+
+        Returns:
+            List of :class:`ActionItem` objects.
+        """
+        if self._loader_controller is None:
+            return []
+        return self._loader_controller.get_action_items(
+            project_name, entity_ids, entity_type
+        )
+
+    def trigger_action_item(
+        self,
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: dict[str, Any] | None,
+        options: dict[str, Any],
+        form_values: dict[str, Any],
+    ) -> None:
+        """Trigger an action item by identifier.
+
+        Delegates to the main loader controller when one was provided at
+        construction time.  Does nothing when no loader controller is
+        available.
+
+        Args:
+            identifier: Action plugin identifier.
+            project_name: AYON project name.
+            selected_ids: Set of selected entity IDs.
+            selected_entity_type: Entity type string (e.g. ``"version"``).
+            data: Optional action-specific payload.
+            options: Loader option values.
+            form_values: Form values returned by the action dialog.
+        """
+        if self._loader_controller is None:
+            return
+        self._loader_controller.trigger_action_item(
+            identifier=identifier,
+            project_name=project_name,
+            selected_ids=selected_ids,
+            selected_entity_type=selected_entity_type,
+            data=data,
+            options=options,
+            form_values=form_values,
+        )
 
     # ------------------------------------------------------------------
     # Private methods
