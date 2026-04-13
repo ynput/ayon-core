@@ -205,6 +205,12 @@ class ActionsModel:
                 "failed": failed,
                 "error_message": error_message,
                 "full_label": action_label,
+                "project_name": project_name,
+                "folder_id": folder_id,
+                "task_id": task_id,
+                "workfile_id": workfile_id,
+                "addon_name": None,
+                "addon_version": None,
             }
         )
 

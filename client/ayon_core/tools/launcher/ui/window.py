@@ -12,6 +12,7 @@ from ayon_core.tools.utils import (
 
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
+from .recent_actions_widget import RecentActionsButton
 
 
 class LauncherWindow(QtWidgets.QWidget):
@@ -61,11 +62,15 @@ class LauncherWindow(QtWidgets.QWidget):
         projects_filter_text.setPlaceholderText("Filter projects...")
 
         refresh_btn = RefreshButton(projects_header_widget)
+        recent_actions_btn = RecentActionsButton(
+            controller, projects_header_widget
+        )
 
         projects_header_layout = QtWidgets.QHBoxLayout(projects_header_widget)
         projects_header_layout.setContentsMargins(0, 0, 0, 0)
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)
+        projects_header_layout.addWidget(recent_actions_btn, 0)
 
         projects_widget = ProjectsWidget(controller, pages_widget)
 
