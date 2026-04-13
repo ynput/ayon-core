@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import math
 import os
+import string
 import sys
 import subprocess
 import platform
@@ -10,6 +14,12 @@ try:
     from otio_burnins_adapter import ffmpeg_burnins
 except ImportError:
     import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+
+try:
+    from fontTools.ttLib import TTFont
+except ImportError:
+    TTFont = None
+
 from PIL import ImageFont
 
 from ayon_core.lib import (
@@ -17,21 +27,18 @@ from ayon_core.lib import (
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
     convert_ffprobe_fps_value,
+    StringTemplate,
 )
 
-FFMPEG_EXE_COMMAND = subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
+FFMPEG_EXE_ARGS = get_ffmpeg_tool_args("ffmpeg")
+FFMPEG_EXE_COMMAND = subprocess.list2cmdline(FFMPEG_EXE_ARGS)
 FFMPEG = (
     '{}%(input_args)s -i "%(input)s" %(filters)s %(args)s%(output)s'
 ).format(FFMPEG_EXE_COMMAND)
 
-DRAWTEXT = (
-    "drawtext@'%(label)s'=fontfile='%(font)s':text=\\'%(text)s\\':"
-    "x=%(x)s:y=%(y)s:fontcolor=%(color)s@%(opacity).1f:fontsize=%(size)d"
-)
+DRAWTEXT = "drawtext@%(label)s=%(args)s"
 TIMECODE = (
-    "drawtext=timecode=\\'%(timecode)s\\':text=\\'%(text)s\\'"
-    ":timecode_rate=%(fps).2f:x=%(x)s:y=%(y)s:fontcolor="
-    "%(color)s@%(opacity).1f:fontsize=%(size)d:fontfile='%(font)s'"
+    "drawtext=timecode=\\'%(timecode)s\\':timecode_rate=%(fps).02f:%(args)s"
 )
 
 MISSING_KEY_VALUE = "N/A"
@@ -41,34 +48,201 @@ TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
 
 
-def _drawtext(align, resolution, text, options):
+def _get_text_width_fonttools(
+    text: str, font_path: str, font_size: int
+) -> int | None:
+    if TTFont is None:
+        return None
+
+    # Ignore if file cannot be read by TTF
+    try:
+        font = TTFont(font_path)
+    except Exception:
+        return None
+
+    # Get Units Per Em (usually 2048 or 1000)
+    units_per_em = font["head"].unitsPerEm
+
+    # Get the horizontal metrics table
+    hmtx = font["hmtx"]
+
+    # Get the character map to map characters to glyph names
+    cmap = font.getBestCmap()
+
+    total_advance = 0
+    for char in text:
+        # Get glyph name for the character
+        glyph_name = cmap.get(ord(char))
+        if glyph_name:
+            # Get advance width in font units
+            advance_width, left_side_bearing = hmtx[glyph_name]
+            total_advance += advance_width
+
+    # Scale from font units to pixels: (units * size) / unitsPerEm
+    width_px = (total_advance * font_size) / units_per_em
+
+    # FFmpeg usually applies ceil() to the final result
+    return math.ceil(width_px)
+
+
+def _get_text_width_ffmpeg(
+    text: str,
+    font_file: str,
+    font_size: int,
+):
+    text = (
+        text
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(":", "\\:")
+    )
+    font_file = (
+        font_file
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(":", "\\:")
+    )
+    draw_text_filter = (
+        f"drawtext=text='{text}':fontfile='{font_file}':fontsize={font_size}"
+        f":x=0+0*print(tw\\,8):y=0"
+    )
+    args = list(FFMPEG_EXE_ARGS)
+    args.extend([
+        "-hide_banner", "-loglevel", "fatal",
+        "-f", "lavfi", "-i", "color=c=blue:s=1920x1080",
+        "-vf", draw_text_filter,
+        "-frames:v", "1",
+        "-f", "null", "-",
+    ])
+    process = subprocess.run(
+        args,
+        stderr=subprocess.PIPE,
+    )
+    if process.returncode != 0:
+        return None
+    text_width = None
+    for line in process.stderr.splitlines():
+        try:
+            line = float(line.decode("utf-8"))
+            width = math.ceil(line)
+            if text_width is None:
+                text_width = width
+            elif width > text_width:
+                text_width = width
+
+        except ValueError:
+            pass
+    return text_width
+
+
+def get_text_width(text: str, font_path: str, font_size: int) -> int:
+    width = _get_text_width_fonttools(text, font_path, font_size)
+    if width is not None:
+        return width
+    width = _get_text_width_ffmpeg(text, font_path, font_size)
+    if width is not None:
+        return width
+
+    font = ImageFont.truetype(font_path, font_size)
+    return math.ceil(font.getlength(text))
+
+
+def get_metrics(font: ImageFont.FreeTypeFont) -> tuple[float, float]:
+    """Return a ascent, descent for a font in pixels.
+
+    Pillow's `font.getmetrics()` can under-report extremes for some fonts.
+    To avoid clipping when aligning text, we additionally measure a broad set
+    of printable characters via `font.getbbox(..., anchor="ms")` and clamp the
+    returned metrics to those observed bounds.
+
+    Returns:
+        tuple[float, float]: A 2-tuple of `(ascent, descent)` where both values
+            are positive pixel distances above and below the baseline,
+            respectively, rounded up to whole pixels.
+
     """
-    :rtype: {'x': int, 'y': int}
-    """
-    x_pos = "0"
+    # official metrics
+    ascent, descent = font.getmetrics()
+
+    # measured real metrics
+    _, top, _, bottom = font.getbbox(string.printable, anchor="ms")
+
+    ascent = max(ascent, abs(math.ceil(top)))
+    descent = max(descent, abs(math.ceil(bottom)))
+    return ascent, descent
+
+
+def get_drawtext_kwargs(align, resolution, text: str, options: dict):
+    """Returns a dictionary of arguments for the drawtext filter."""
+
+    font_file = options["font"]
+    font_size = options["font_size"]
+
+    font = ImageFont.truetype(font_file, font_size)
+    ascent, descent = get_metrics(font)
+    ffmpeg_font_file = (
+        font_file
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(":", "\\:")
+    )
+    args = {
+        "fontfile": f"'{ffmpeg_font_file}'",
+        "fontsize": font_size,
+        "fontcolor": f"{options['font_color']}@{options['opacity']:.1f}",
+        "y_align": "font",
+    }
+
+    # padding
+    pad_l = pad_r = pad_t = pad_b = 0
+    if padding := options.get("bg_padding"):
+        # distance from the top of an uppercase A to the ascend
+        pad_t = max(padding - ascent, 0)
+        pad_b = max(padding - descent, 0)
+        pad_l = pad_r = padding
+
+    # border box
+    if options.get("bg_color") is not None:
+        args["box"] = "1"
+        args["boxcolor"] = f"{options['bg_color']}@{options['bg_opacity']}"
+        args["boxborderw"] = f"{pad_t}|{pad_r}|{pad_b}|{pad_l}"
+
+    # x position
+    x_pos = 0
     if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
         x_pos = "w/2-tw/2"
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
-        ifont = ImageFont.truetype(options["font"], options["font_size"])
-        if hasattr(ifont, "getbbox"):
-            left, top, right, bottom = ifont.getbbox(text)
-            box_size = right - left, bottom - top
-        else:
-            box_size = ifont.getsize(text)
-        x_pos = resolution[0] - (box_size[0] + options["x_offset"])
-    elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
-        x_pos = options["x_offset"]
+        text_width = get_text_width(text, font_file, font_size)
+        x_offset = options["x_offset"]
+        x_pos = f"w-{text_width + x_offset + pad_r}"
 
+    elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
+        x_pos = options["x_offset"] + pad_l
+
+    # y position
+    y_offset = options["y_offset"]
     if align in (
         ffmpeg_burnins.TOP_CENTERED,
         ffmpeg_burnins.TOP_RIGHT,
         ffmpeg_burnins.TOP_LEFT
     ):
-        y_pos = "%d" % options["y_offset"]
+        y_pos = y_offset + pad_t
     else:
-        y_pos = "h-text_h-%d" % (options["y_offset"])
-    return {"x": x_pos, "y": y_pos}
+        y_pos = f"h-{y_offset + ascent + descent + pad_b}"
+
+    args["x"] = x_pos
+    args["y"] = y_pos
+
+    return args
+
+
+def _drawtext(align, resolution, text, options):
+    """
+    :rtype: {'x': int, 'y': int}
+    """
+    text_args = get_drawtext_kwargs(align, resolution, text, options)
+    return {"x": text_args["x"], "y": text_args["y"]}
 
 
 ffmpeg_burnins._drawtext = _drawtext
@@ -372,7 +546,9 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             lines.append(
                 f"{seconds} drawtext@{align} reinit text='{new_text}';")
 
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp:
+        with tempfile.NamedTemporaryFile(
+            prefix="ayon_burnin_", mode="w", delete=False,
+        ) as temp:
             path = temp.name
             temp.write("\n".join(lines))
 
@@ -418,46 +594,31 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
                 CURRENT_FRAME_SPLITTER, size_replacement
             )
 
-        resolution = self.resolution
-        data = {
-            'text': (
-                final_text
-                .replace(",", r"\,")
-                .replace(':', r'\:')
-            ),
-            'color': options['font_color'],
-            'size': options['font_size']
-        }
         timecode_text = options.get("timecode") or ""
         text_for_size += timecode_text
 
         font_path = options.get("font")
         if not font_path or not os.path.exists(font_path):
-            font_path = ffmpeg_burnins.FONT
+            options["font"] = ffmpeg_burnins.FONT
 
-        options["font"] = font_path
-
-        data.update(options)
-        data.update(
-            ffmpeg_burnins._drawtext(align, resolution, text_for_size, options)
+        drawtext_kwargs = get_drawtext_kwargs(
+            align,
+            self.resolution,
+            text_for_size,
+            options
         )
 
-        arg_font_path = (
-            font_path
-            .replace("\\", "\\\\")
-            .replace(':', r'\:')
-        )
-        data["font"] = arg_font_path
+        final_text = final_text.replace(",", r"\,").replace(':', r'\:')
+        drawtext_kwargs["text"] = f"'{final_text}'"
 
-        self.filters['drawtext'].append(draw % data)
+        args = ":".join(f"{k}={v}" for k, v in drawtext_kwargs.items())
+        drawtext = draw % {
+            **options,
+            "args": args,
+            "label": align,
+        }
 
-        if options.get('bg_color') is not None:
-            box = ffmpeg_burnins.BOX % {
-                'border': options['bg_padding'],
-                'color': options['bg_color'],
-                'opacity': options['bg_opacity']
-            }
-            self.filters['drawtext'][-1] += ':%s' % box
+        self.filters["drawtext"].append(drawtext)
 
     def command(self, output=None, args=None, overwrite=False):
         """
@@ -476,7 +637,9 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         filters = ""
         filter_string = self.filter_string
         if filter_string:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp:
+            with tempfile.NamedTemporaryFile(
+                prefix="ayon_burnin_", mode="w", delete=False
+            ) as temp:
                 temp.write(filter_string)
                 filters_path = temp.name
             filters = '-filter_script:v "{}"'.format(filters_path)
@@ -601,6 +764,7 @@ def prepare_fill_values(burnin_template, data):
     fill_values = {}
     listed_keys = {}
     missing_keys = set()
+
     for item in Formatter().parse(burnin_template):
         _, field_name, format_spec, conversion = item
         if not field_name:
@@ -608,10 +772,9 @@ def prepare_fill_values(burnin_template, data):
         # Calculate nested keys '{project[name]}' -> ['project', 'name']
         keys = [key.rstrip("]") for key in field_name.split("[")]
         # Calculate original full key for replacement
-        conversion = "!{}".format(conversion) if conversion else ""
-        format_spec = ":{}".format(format_spec) if format_spec else ""
-        orig_key = "{{{}{}{}}}".format(
-            field_name, conversion, format_spec)
+        conversion = f"!{conversion}" if conversion else ""
+        format_spec = f":{format_spec}" if format_spec else ""
+        orig_key = f"{{{field_name}{conversion}{format_spec}}}"
 
         key_value = data
         try:
@@ -631,9 +794,16 @@ def prepare_fill_values(burnin_template, data):
 
 
 def burnins_from_data(
-    input_path, output_path, data,
-    codec_data=None, options=None, burnin_values=None, overwrite=True,
-    full_input_path=None, first_frame=None, source_ffmpeg_cmd=None
+    input_path,
+    output_path,
+    data,
+    codec_data=None,
+    options=None,
+    burnin_values=None,
+    overwrite=True,
+    full_input_path=None,
+    first_frame=None,
+    source_ffmpeg_cmd=None,
 ):
     """This method adds burnins to video/image file based on presets setting.
 
@@ -787,6 +957,10 @@ def burnins_from_data(
             has_source_timecode = False
             print("Source does not have set timecode value.")
             value = value.replace(SOURCE_TIMECODE_KEY, MISSING_KEY_VALUE)
+
+        # Remove optional parts for which are data not available
+        value_t = StringTemplate(value)
+        value = value_t.remove_optional_parts_for_data(data)
 
         # Failsafe for missing keys.
         fill_values, listed_keys, missing_keys = prepare_fill_values(
