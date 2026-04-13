@@ -16,6 +16,8 @@ from ayon_ui_qt.components.container import (
     AYVBoxLayout,
 )
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
+from ayon_ui_qt.components.dropdown import AYDropdownPopup
+from ayon_ui_qt.components.filter import AYFilter, FilterItem
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
 from ayon_ui_qt.components.slicer import AYSlicer
 from ayon_ui_qt.components.table_filter import AYTableFilter
@@ -29,6 +31,7 @@ from ayon_ui_qt.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, log_timing
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
 from ayon_core.tools.loader.ui.review_controller import (
     GroupBy,
     ReviewController,
@@ -36,7 +39,6 @@ from ayon_core.tools.loader.ui.review_controller import (
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.user_prefs import UserPreferences
-from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
 
 log = Logger.get_logger(__name__)
 
@@ -542,21 +544,31 @@ class ReviewSlicer(AYContainer):
         return self._selector.current_project()
 
 
-class GroupByMenu(AYButtonMenu):
+class GroupByMenu(AYFilter):
     group_by_changed = QtCore.Signal(GroupBy)  # type: ignore
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        default: GroupBy = GroupBy.PRODUCT,
+    ) -> None:
+        self._filters: dict[GroupBy, FilterItem] = {
+            m.value: FilterItem(key=m.value, label=m.value) for m in GroupBy
+        }
+        if default.value in self._filters:
+            self._filters[default.value].selected = True
         self._show_empty_groups: bool = False
         super().__init__(
-            "Group By",
-            populate_callback=self.populate,
-            variant=AYButtonMenu.Variants.Surface,
-            icon="view_agenda",
-            **kwargs,
+            parent=parent,
+            label="Group By ",
         )
+        self._sync_tags()
 
-    def populate(self, menu: AYContainer) -> None:
+    def _create_dropdown_popup(self) -> AYDropdownPopup | None:
+        d = AYDropdownPopup(parent=self)
+        layout = AYVBoxLayout(d, margin=10, spacing=5)
+
         self.show_empty_grps = AYCheckBox(
             "Show empty groups",
             checked=self._show_empty_groups,
@@ -567,12 +579,6 @@ class GroupByMenu(AYButtonMenu):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
-        layout = menu.layout()
-        if not isinstance(layout, AYVBoxLayout):
-            raise RuntimeError(
-                "Menu has no layout or unexpected layout type: %s"
-                % type(layout)
-            )
         layout.addWidget(self.show_empty_grps, stretch=0)
         self.show_empty_grps.toggled.connect(self.show_empty_groups_changed)
 
@@ -592,23 +598,40 @@ class GroupByMenu(AYButtonMenu):
             "fixed_width": False,
         }
 
-        self._menu_grp = QtWidgets.QButtonGroup(menu)
+        self._menu_grp = QtWidgets.QButtonGroup(d)
         self._menu_grp.setExclusive(True)
-        self._menu_grp.buttonClicked.connect(self._dropdown.close)
+        self._menu_grp.buttonClicked.connect(d.close)
 
         for val in GroupBy:
             wdgt_name = f"grp_by_{val.name.lower()}"
-            setattr(self, wdgt_name, AYButton(val.value, icon=val.icon, **kw))
-            widget = getattr(self, wdgt_name)
-            layout.addWidget(widget, stretch=1)
-            self._menu_grp.addButton(widget)
+            w = AYButton(val.value, icon=val.icon, **kw)
+            setattr(self, wdgt_name, w)
+            if self._filters[val.value].selected:  # type: ignore
+                w.setChecked(True)
+            layout.addWidget(w, stretch=1)
+            self._menu_grp.addButton(w)
 
         self._menu_grp.buttonClicked.connect(self._on_group_by_changed)
 
+        self.set_label("Group By")
+
+        return d
+
+    def _set_filter_state(self, key: str, selected: bool) -> None:
+        if key not in self._filters:
+            return
+        self._filters[key].selected = selected
+
+    def _sync_tags(self) -> None:
+        self._sync_tags_from_items(list(self._filters.values()))
+
     def _on_group_by_changed(self, button: AYButton) -> None:
-        self.setText(f"Group By: {button.text()}")
         log.debug(f"Group By: {button.text()}")
-        self.group_by_changed.emit(GroupBy(button.text()))
+        grp = GroupBy(button.text())
+        for k, v in self._filters.items():
+            v.selected = k == grp.value
+        self._sync_tags()
+        self.group_by_changed.emit(grp)
 
     def set_show_empty_groups(self, enabled: bool) -> None:
         """Update checkbox state without re-emitting change signal."""
@@ -618,6 +641,30 @@ class GroupByMenu(AYButtonMenu):
         self.show_empty_grps.blockSignals(True)
         self.show_empty_grps.setChecked(enabled)
         self.show_empty_grps.blockSignals(False)
+
+    def _handle_tag_removed(self, key: str) -> None:
+        """React to a tag dismissal.
+
+        Called when the user clicks the X on a tag. Subclasses override
+        this to update their data model (e.g. call
+        ``set_filter_selected(key, False)``).
+
+        Args:
+            key: Key of the dismissed tag.
+        """
+        print(f"Remove {key}")
+        for v in self._filters.values():
+            v.selected = False if v.key != GroupBy.NONE.value else True
+            print(f"  |_ {v.key}: {v.selected}")
+        self._sync_tags()
+
+    def get_selected_keys(self) -> list[str]:
+        """Return the list of selected filter keys.
+
+        Returns:
+            List of selected keys.
+        """
+        return [v.key for v in self._filters.values() if v.selected]
 
 
 class _ExpansionPhase(Enum):
@@ -656,7 +703,7 @@ class ReviewTable(AYContainer):
         self._model.set_tree_mode(True)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
-        self._group_by_menu = GroupByMenu()
+        self._group_by_menu = GroupByMenu(parent=self)
         self._group_by_menu.group_by_changed.connect(self._on_group_by_changed)
         self._group_by_menu.show_empty_groups_changed.connect(
             self._on_show_empty_groups_changed
