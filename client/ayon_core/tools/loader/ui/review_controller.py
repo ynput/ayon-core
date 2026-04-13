@@ -156,6 +156,11 @@ query GetProducts(
             version
             featuredVersionType
           }
+          versions: versionList {
+            id
+            name
+            version
+          }
         }
         cursor
       }
@@ -950,6 +955,7 @@ class ReviewController(QtCore.QObject):
         label: str | None = None,
         product_type: str | None = None,
         featured_version: dict[str, Any] | None = None,
+        num_versions: int = 0,
     ) -> dict[str, Any]:
         """Build an expandable group-header row.
 
@@ -967,6 +973,7 @@ class ReviewController(QtCore.QObject):
             product_type: Optional product type string, required when
                 *featured_version* is provided.
             featured_version: Optional dict representing the featured version.
+            num_versions: Optional number of versions in the group.
         Returns:
             Row dict with ``has_children=True`` and an id of the form
             ``"grp:<group_type.value>:<value>"``.
@@ -1003,7 +1010,12 @@ class ReviewController(QtCore.QObject):
             )
             row["folderName"] = featured_version.get("parents", ["", ""])[-2]
             row["author"] = featured_version.get("author", "")
-            row["version"] = featured_version.get("name", "")
+            v_str = (
+                f"{'(' + str(num_versions) + ' versions)'}"
+                if num_versions
+                else ""
+            )
+            row["version"] = f"{featured_version.get('name', '')} {v_str}"
             row["productName"] = featured_version.get("parents", [""])[-1]
             row["createdAt"] = featured_version.get("createdAt", "")
             row["updatedAt"] = featured_version.get("updatedAt", "")
@@ -1137,7 +1149,7 @@ class ReviewController(QtCore.QObject):
     @staticmethod
     def _extract_product_group_data(
         edges: list[dict[str, Any]],
-    ) -> list[tuple[str, str, str, dict[str, Any]]]:
+    ) -> list[tuple[str, str, str, dict[str, Any], int]]:
         """Transform raw product edges into structured tuples.
 
         Args:
@@ -1146,18 +1158,25 @@ class ReviewController(QtCore.QObject):
 
         Returns:
             List of ``(product_id, product_name, product_type,
-            featured_version)`` tuples.
+            featured_version, num_versions)`` tuples.
         """
-        result: list[tuple[str, str, str, dict[str, Any]]] = []
+        result: list[tuple[str, str, str, dict[str, Any], int]] = []
         for edge in edges:
             node = edge.get("node", {})
             product_id = node.get("id", "")
             product_name = node.get("name", "")
             product_type = node.get("productType", "")
             featured_version = node.get("featuredVersion", {})
+            num_versions = len(node.get("versions", []))
             if product_id and product_name:
                 result.append(
-                    (product_id, product_name, product_type, featured_version)
+                    (
+                        product_id,
+                        product_name,
+                        product_type,
+                        featured_version,
+                        num_versions,
+                    )
                 )
         return result
 
@@ -1203,18 +1222,27 @@ class ReviewController(QtCore.QObject):
         product_data = self._extract_product_group_data(all_edges)
         # Keep first-seen product order while dropping duplicates.
         seen_product_ids: set[str] = set()
-        unique_product_data: list[tuple[str, str, str, dict[str, Any]]] = []
+        unique_product_data: list[
+            tuple[str, str, str, dict[str, Any], int]
+        ] = []
         for (
             product_id,
             product_name,
             product_type,
             featured_version,
+            num_versions,
         ) in product_data:
             if product_id in seen_product_ids:
                 continue
             seen_product_ids.add(product_id)
             unique_product_data.append(
-                (product_id, product_name, product_type, featured_version)
+                (
+                    product_id,
+                    product_name,
+                    product_type,
+                    featured_version,
+                    num_versions,
+                )
             )
 
         return [
@@ -1225,9 +1253,10 @@ class ReviewController(QtCore.QObject):
                 icon=self._pinfo("productTypes", p_type, "icon", "view_in_ar"),
                 color=self._pinfo("productTypes", p_type, "color"),
                 product_type=p_type,
-                featured_version=featured_version,
+                featured_version=featured_v,
+                num_versions=n_vers,
             )
-            for p_id, p_name, p_type, featured_version in unique_product_data
+            for p_id, p_name, p_type, featured_v, n_vers in unique_product_data
         ]
 
     def get_used_statuses(self) -> set[str]:
