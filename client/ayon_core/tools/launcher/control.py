@@ -298,9 +298,15 @@ class BaseLauncherController(
         if item is None:
             return
 
+        task_name = item.task_name
+        if task_name is None and item.project_name and item.task_id:
+            task_entity = self.get_task_entity(item.project_name, item.task_id)
+            if task_entity:
+                task_name = task_entity.get("name")
+
         self.set_selected_project(item.project_name)
         self.set_selected_folder(item.folder_id)
-        self.set_selected_task(item.task_id, item.task_name)
+        self.set_selected_task(item.task_id, task_name)
         self.set_selected_workfile(item.workfile_id)
 
         # Signal the UI to visibly navigate – selection events alone do not
@@ -311,7 +317,7 @@ class BaseLauncherController(
                 "project_name": item.project_name,
                 "folder_id": item.folder_id,
                 "task_id": item.task_id,
-                "task_name": item.task_name,
+                "task_name": task_name,
                 "workfile_id": item.workfile_id,
             },
         )

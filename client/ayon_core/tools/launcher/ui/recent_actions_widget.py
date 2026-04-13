@@ -4,6 +4,7 @@ import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.tools.utils import (
+    ElideLabel,
     SquareButton,
     get_qt_icon,
 )
@@ -125,6 +126,26 @@ def _get_recent_action_icon(action_item, controller, fallback_icon):
     return fallback_icon
 
 
+class _RecentActionBreadcrumbLabel(ElideLabel):
+    """Breadcrumbs, but elide text when too long"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_elide_mode(QtCore.Qt.ElideMiddle)
+
+    def sizeHint(self):
+        hint = super().sizeHint()
+        text = getattr(self, "_text", "")
+        if text:
+            width = self.fontMetrics().horizontalAdvance(text)
+            hint.setWidth(width)
+        return hint
+
+    def minimumSizeHint(self):
+        hint = super().minimumSizeHint()
+        hint.setWidth(0)
+        return hint
+
+
 class _RecentActionRow(QtWidgets.QWidget):
     """Single row in the recent-actions popup.
 
@@ -185,7 +206,8 @@ class _RecentActionRow(QtWidgets.QWidget):
         text_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
         # Breadcrumb line – shown only when context is available
-        breadcrumb_label = QtWidgets.QLabel(breadcrumb, self)
+        breadcrumb_label = _RecentActionBreadcrumbLabel(self)
+        breadcrumb_label.setText(breadcrumb)
         breadcrumb_label.setAlignment(
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
         )
@@ -200,12 +222,33 @@ class _RecentActionRow(QtWidgets.QWidget):
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
         )
         timestamp_widget.setObjectName("RecentActionTimestamp")
-        timestamp_font = timestamp_widget.font()
-        timestamp_font.setPointSizeF(timestamp_font.pointSizeF() * 0.74)
-        timestamp_widget.setFont(timestamp_font)
         timestamp_widget.setVisible(bool(timestamp_label))
         timestamp_widget.setAlignment(
             QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
+        )
+        font_info = QtGui.QFontInfo(timestamp_widget.font())
+        pixel_size = font_info.pixelSize()
+        if pixel_size <= 0:
+            pixel_size = max(9, int(font_info.pointSizeF() * 96 / 72))
+        timestamp_font_size = max(9, int(round(pixel_size * 0.82)))
+        timestamp_color = timestamp_widget.palette().color(
+            QtGui.QPalette.WindowText
+        )
+
+        print((
+                "color: rgba({0}, {1}, {2}, {3});"
+                " font-size: {4}px;"
+            ).format(
+                timestamp_color.red(),
+                timestamp_color.green(),
+                timestamp_color.blue(),
+                timestamp_color.alpha(),
+                timestamp_font_size,
+            ))
+
+        # Dimmed, and sligthly smaller
+        timestamp_widget.setStyleSheet(
+            "color: rgba(211, 216, 222, 255); font-size: 11px;"
         )
 
         top_row_layout = QtWidgets.QHBoxLayout()
@@ -227,10 +270,9 @@ class _RecentActionRow(QtWidgets.QWidget):
             f"Re-run action: {label}"
         )
         play_btn.setFlat(True)
-        play_btn.setFixedSize(28, 28)
         play_btn.setSizePolicy(
             QtWidgets.QSizePolicy.Fixed,
-            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Expanding,
         )
         play_btn.setCursor(QtCore.Qt.PointingHandCursor)
         play_btn.setObjectName("RecentPlayBtn")
@@ -241,17 +283,19 @@ class _RecentActionRow(QtWidgets.QWidget):
         row_layout.addWidget(icon_label, 0, QtCore.Qt.AlignVCenter)
         row_layout.addLayout(text_layout, 1)
         row_layout.addSpacing(6)
-        row_layout.addWidget(play_btn, 0, QtCore.Qt.AlignTop)
+        row_layout.addWidget(play_btn, 0)
 
         self._icon_label = icon_label
         self._text_label = text_label
         self._breadcrumb_label = breadcrumb_label
         self._timestamp_label = timestamp_widget
         self._play_btn = play_btn
+        self._row_layout = row_layout
 
         play_btn.clicked.connect(self._on_play_clicked)
 
         self.setObjectName("RecentActionRow")
+        self._update_play_button_size()
 
     # ------------------------------------------------------------------
     # Hover highlight – paint a subtle selection background on hover
@@ -276,6 +320,10 @@ class _RecentActionRow(QtWidgets.QWidget):
             painter.fillRect(self.rect(), color)
             painter.end()
 
+    def resizeEvent(self, event):
+        self._update_play_button_size()
+        super().resizeEvent(event)
+
     # ------------------------------------------------------------------
 
     def mousePressEvent(self, event):
@@ -289,6 +337,17 @@ class _RecentActionRow(QtWidgets.QWidget):
 
     def _on_play_clicked(self):
         self.replay_requested.emit(self._record_id)
+
+    def _update_play_button_size(self):
+        # Ensure play button matches full size of row
+        margins = self._row_layout.contentsMargins()
+        side = max(
+            28,
+            self.height() - margins.top() - margins.bottom(),
+        )
+        self._play_btn.setFixedSize(side, side)
+        icon_side = max(16, side - 10)
+        self._play_btn.setIconSize(QtCore.QSize(icon_side, icon_side))
 
 
 class RecentActionsPopup(QtWidgets.QFrame):
@@ -384,12 +443,6 @@ class RecentActionsPopup(QtWidgets.QFrame):
         self.refresh()
 
         min_width = max(widget.topLevelWidget().width() // 2, 320)
-        self.setMinimumWidth(min_width)
-
-        # Determine available vertical space below the button so we can cap
-        # the scroll area *before* adjustSize() computes the popup height.
-        # This ensures adjustSize() produces the correct final dimensions and
-        # no scrollbar appears when the content fits.
         btn_bottom_right = widget.mapToGlobal(
             QtCore.QPoint(widget.width(), widget.height())
         )
@@ -397,18 +450,23 @@ class RecentActionsPopup(QtWidgets.QFrame):
             QtWidgets.QApplication.screenAt(btn_bottom_right)
             or QtWidgets.QApplication.primaryScreen()
         )
+        preferred_width = self.sizeHint().width()
         if screen is not None:
             avail = screen.availableGeometry()
+            max_width = max(min_width, btn_bottom_right.x() - avail.left() - 2)
             available_h = avail.bottom() - btn_bottom_right.y() - 2
-            # Give the scroll area the full available height; adjustSize()
-            # will shrink the popup to its actual content if smaller.
             self._scroll_area.setMaximumHeight(max(50, available_h))
         else:
             avail = None
+            max_width = max(min_width, preferred_width)
+
+        target_width = min(max(preferred_width, min_width), max_width)
+        self.setMinimumWidth(target_width)
+        self.setMaximumWidth(max_width)
 
         self.adjustSize()
 
-        popup_w = self.width()
+        popup_w = target_width
         popup_h = self.height()
         x = btn_bottom_right.x() - popup_w
         y = btn_bottom_right.y() + 2
@@ -419,6 +477,7 @@ class RecentActionsPopup(QtWidgets.QFrame):
             y = max(avail.top(), min(y, avail.bottom() - popup_h))
 
         self.move(x, y)
+        self.resize(popup_w, popup_h)
         self.show()
 
     # ------------------------------------------------------------------
