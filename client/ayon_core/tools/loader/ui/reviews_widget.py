@@ -10,7 +10,11 @@ from ayon_ui_qt import get_ayon_style_data
 from ayon_ui_qt.components.buttons import AYButton, AYButtonMenu
 from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
-from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
+from ayon_ui_qt.components.container import (
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+)
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
 from ayon_ui_qt.components.slicer import AYSlicer
@@ -563,10 +567,16 @@ class GroupByMenu(AYButtonMenu):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
-        menu.add_widget(self.show_empty_grps, stretch=0)
+        layout = menu.layout()
+        if not isinstance(layout, AYVBoxLayout):
+            raise RuntimeError(
+                "Menu has no layout or unexpected layout type: %s"
+                % type(layout)
+            )
+        layout.addWidget(self.show_empty_grps, stretch=0)
         self.show_empty_grps.toggled.connect(self.show_empty_groups_changed)
 
-        menu._layout.addSpacerItem(
+        layout.addSpacerItem(
             QtWidgets.QSpacerItem(
                 0,
                 10,
@@ -590,7 +600,7 @@ class GroupByMenu(AYButtonMenu):
             wdgt_name = f"grp_by_{val.name.lower()}"
             setattr(self, wdgt_name, AYButton(val.value, icon=val.icon, **kw))
             widget = getattr(self, wdgt_name)
-            menu.add_widget(widget, stretch=1)
+            layout.addWidget(widget, stretch=1)
             self._menu_grp.addButton(widget)
 
         self._menu_grp.buttonClicked.connect(self._on_group_by_changed)
