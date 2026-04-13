@@ -780,7 +780,7 @@ class ReviewTable(AYContainer):
         for proxy_idx in self._iter_visible_proxy_indices():
             row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             thumbnail_id = row_dict.get("thumbnailId", "")
-            version_id = row_dict.get("id", "")
+            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
             if not thumbnail_id or not version_id:
                 continue
 
@@ -1056,7 +1056,7 @@ class ReviewTable(AYContainer):
             """
             row_dict = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             thumbnail_id = row_dict.get("thumbnailId", "")
-            version_id = row_dict.get("id", "")
+            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
             project = controller.current_project
             request_id = self._model._request_id
 
@@ -1319,9 +1319,7 @@ class ReviewsWidget(AYContainer):
         for proxy_idx in selection_model.selectedIndexes():
             if proxy_idx.column() != 0:
                 continue
-            row_dict = (
-                proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-            )
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             entity_type = row_dict.get("entityType", "")
             if entity_type == "Folder":
                 continue

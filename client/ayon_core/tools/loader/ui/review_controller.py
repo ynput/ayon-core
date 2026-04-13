@@ -114,6 +114,7 @@ query GetProducts(
   $projectName: String!,
   $folderIds: [String!],
   $productFilter: String,
+  $featuredVersionOrder: [String!],
   $after: String,
   $first: Int,
   $before: String,
@@ -142,6 +143,19 @@ query GetProducts(
           id
           name
           productType
+          featuredVersion(order: $featuredVersionOrder) {
+            name
+            id
+            thumbnailId
+            parents
+            author
+            createdAt
+            status
+            tags
+            updatedAt
+            version
+            featuredVersionType
+          }
         }
         cursor
       }
@@ -934,6 +948,8 @@ class ReviewController(QtCore.QObject):
         icon: str = "",
         color: str | None = None,
         label: str | None = None,
+        product_type: str | None = None,
+        featured_version: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Build an expandable group-header row.
 
@@ -948,7 +964,9 @@ class ReviewController(QtCore.QObject):
                 ``"product/version"`` column instead of *value*. This
                 allows callers such as PRODUCT group-by to store a UUID
                 in the group id while showing a human-readable name.
-
+            product_type: Optional product type string, required when
+                *featured_version* is provided.
+            featured_version: Optional dict representing the featured version.
         Returns:
             Row dict with ``has_children=True`` and an id of the form
             ``"grp:<group_type.value>:<value>"``.
@@ -960,10 +978,35 @@ class ReviewController(QtCore.QObject):
                 "has_children": True,
                 "product/version": label if label is not None else value,
                 "product/version__icon": icon or "label",
+                "entityType": group_type.value.title(),
+                "entityType__icon": group_type.icon,
             }
         )
         if color:
             row["product/version__color"] = color
+        if featured_version:
+            assert product_type is not None, (
+                "product_type is required when featured_version is provided"
+            )
+            row["thumbnailId"] = featured_version.get("thumbnailId", "")
+            row["_version_id"] = featured_version.get("id", "")
+            row["status"] = featured_version.get("status", "")
+            row["status__icon"] = self._pinfo(
+                "statuses", row["status"], "icon", ""
+            )
+            row["status__color"] = self._pinfo(
+                "statuses", row["status"], "color", ""
+            )
+            row["productType"] = product_type
+            row["productType__icon"] = self._pinfo(
+                "productTypes", product_type, "icon", "category"
+            )
+            row["folderName"] = featured_version.get("parents", ["", ""])[-2]
+            row["author"] = featured_version.get("author", "")
+            row["version"] = featured_version.get("name", "")
+            row["productName"] = featured_version.get("parents", [""])[-1]
+            row["createdAt"] = featured_version.get("createdAt", "")
+            row["updatedAt"] = featured_version.get("updatedAt", "")
         return row
 
     def _fetch_group_headers(self) -> list[dict[str, Any]]:
@@ -1075,6 +1118,7 @@ class ReviewController(QtCore.QObject):
             "productFilter": product_filter or "",
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
+            "featuredVersionOrder": ["latestDone", "latest", "hero"],
         }
         if descending:
             variables["last"] = page_size
@@ -1093,7 +1137,7 @@ class ReviewController(QtCore.QObject):
     @staticmethod
     def _extract_product_group_data(
         edges: list[dict[str, Any]],
-    ) -> list[tuple[str, str, str]]:
+    ) -> list[tuple[str, str, str, dict[str, Any]]]:
         """Transform raw product edges into structured tuples.
 
         Args:
@@ -1101,16 +1145,20 @@ class ReviewController(QtCore.QObject):
                 :meth:`_get_products_page`.
 
         Returns:
-            List of ``(product_id, product_name, product_type)`` tuples.
+            List of ``(product_id, product_name, product_type,
+            featured_version)`` tuples.
         """
-        result: list[tuple[str, str, str]] = []
+        result: list[tuple[str, str, str, dict[str, Any]]] = []
         for edge in edges:
             node = edge.get("node", {})
             product_id = node.get("id", "")
             product_name = node.get("name", "")
             product_type = node.get("productType", "")
+            featured_version = node.get("featuredVersion", {})
             if product_id and product_name:
-                result.append((product_id, product_name, product_type))
+                result.append(
+                    (product_id, product_name, product_type, featured_version)
+                )
         return result
 
     def _fetch_product_group_headers(self) -> list[dict[str, Any]]:
@@ -1155,26 +1203,31 @@ class ReviewController(QtCore.QObject):
         product_data = self._extract_product_group_data(all_edges)
         # Keep first-seen product order while dropping duplicates.
         seen_product_ids: set[str] = set()
-        unique_product_data: list[tuple[str, str, str]] = []
-        for product_id, product_name, product_type in product_data:
+        unique_product_data: list[tuple[str, str, str, dict[str, Any]]] = []
+        for (
+            product_id,
+            product_name,
+            product_type,
+            featured_version,
+        ) in product_data:
             if product_id in seen_product_ids:
                 continue
             seen_product_ids.add(product_id)
             unique_product_data.append(
-                (product_id, product_name, product_type)
+                (product_id, product_name, product_type, featured_version)
             )
 
         return [
             self._build_group_header_row(
                 GroupBy.PRODUCT,
-                value=product_id,
-                label=product_name,
-                icon=self._pinfo(
-                    "productTypes", product_type, "icon", "view_in_ar"
-                ),
-                color=self._pinfo("productTypes", product_type, "color"),
+                value=p_id,
+                label=p_name,
+                icon=self._pinfo("productTypes", p_type, "icon", "view_in_ar"),
+                color=self._pinfo("productTypes", p_type, "color"),
+                product_type=p_type,
+                featured_version=featured_version,
             )
-            for product_id, product_name, product_type in unique_product_data
+            for p_id, p_name, p_type, featured_version in unique_product_data
         ]
 
     def get_used_statuses(self) -> set[str]:
