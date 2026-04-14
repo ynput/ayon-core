@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum
 import datetime
 import json
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from enum import Enum
 from types import MappingProxyType
+from typing import TYPE_CHECKING, Any
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
@@ -13,9 +14,9 @@ from ayon_ui_qt.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.utils.user_prefs import UserPreferences
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.loader.abstract import ActionItem
+from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.utils.user_prefs import UserPreferences
 
 if TYPE_CHECKING:
     from ayon_core.tools.loader.abstract import (
@@ -225,24 +226,129 @@ def timestamp_to_date(timestamp: str) -> str:
     )
 
 
-class GroupBy(Enum):
-    NONE = "None"
-    STATUS = "Status"
-    PRODUCT_TYPE = "Product type"
-    PRODUCT = "Product"
+def get_attribute_icon(
+    name: str,
+    attr_type: str | None,
+    has_enum: bool,
+    # entity_types_with_icons: list[str] | set[str],
+    # get_entity_type_icon,
+) -> str:
+    """Based on shared/src/util/getAttributeIcon.ts.
 
-    @property
-    def icon(self) -> str:
-        """Return a Material icon name for this group-by mode."""
-        if self == GroupBy.NONE:
-            return "close"
-        if self == GroupBy.STATUS:
-            return "arrow_circle_right"
-        if self == GroupBy.PRODUCT_TYPE:
-            return "category"
-        if self == GroupBy.PRODUCT:
-            return "inventory_2"
-        return "label"
+    Args:
+        name: Attribute name.
+        attr_type: Attribute type.
+        has_enum: Whether the attribute has an enum.
+        entity_types_with_icons: List of entity types with icons.
+        get_entity_type_icon: Function to get entity type icon.
+    Returns:
+        Icon name string.
+    """
+
+    icon = "format_list_bulleted"
+
+    # Some attributes have custom icons
+    custom_icons: dict[str, str] = {
+        "status": "arrow_circle_right",
+        "assignees": "person",
+        "author": "person",
+        "tags": "local_offer",
+        "priority": "keyboard_double_arrow_up",
+        "fps": "30fps_select",
+        "resolutionWidth": "settings_overscan",
+        "resolutionHeight": "settings_overscan",
+        "pixelAspect": "stop",
+        "clipIn": "line_start_diamond",
+        "clipOut": "line_end_diamond",
+        "frameStart": "line_start_circle",
+        "frameEnd": "line_end_circle",
+        "handleStart": "line_start_square",
+        "handleEnd": "line_end_square",
+        "fullName": "id_card",
+        "email": "alternate_email",
+        "developerMode": "code",
+        "productGroup": "inventory_2",
+        "machine": "computer",
+        "comment": "comment",
+        "colorSpace": "palette",
+        "description": "description",
+    }
+
+    type_icons: dict[str, str] = {
+        "integer": "pin",
+        "float": "speed_1_2",
+        "boolean": "radio_button_checked",
+        "datetime": "calendar_month",
+        "list_of_strings": "format_list_bulleted",
+        "list_of_integers": "format_list_numbered",
+        "list_of_any": "format_list_bulleted",
+        "list_of_submodels": "format_list_bulleted",
+        "dict": "format_list_bulleted",
+        "string": "title",
+    }
+
+    if name in custom_icons:
+        icon = custom_icons[name]
+    # elif name in entity_types_with_icons:
+    #     icon = get_entity_type_icon(name)
+    elif has_enum:
+        icon = "format_list_bulleted"
+    elif attr_type and attr_type in type_icons:
+        icon = type_icons[attr_type]
+
+    return icon
+
+
+class GroupBySource(Enum):
+    BUILTIN = "builtin"
+    ATTRIBUTE = "attribute"
+
+
+@dataclass(frozen=True)
+class GroupByOption:
+    key: str
+    label: str
+    icon: str = "label"
+    source: GroupBySource = GroupBySource.BUILTIN
+    attribute_name: str | None = None
+
+
+BUILTIN_GROUPS = [
+    GroupByOption("none", "None", "close"),
+    GroupByOption("product", "Product", "inventory_2"),
+    GroupByOption("status", "Status", "arrow_circle_right"),
+    GroupByOption("tags", "Tags", "local_offer"),
+    GroupByOption("task_type", "Task type", "check_circle"),
+    GroupByOption("product_type", "Product type", "category"),
+]
+
+NUM_BUILTIN_GROUPS = len(BUILTIN_GROUPS)
+
+GROUP_BY_NONE_KEY = "none"
+GROUP_BY_PRODUCT_KEY = "product"
+GROUP_BY_STATUS_KEY = "status"
+GROUP_BY_TAGS_KEY = "tags"
+GROUP_BY_TASK_TYPE_KEY = "task_type"
+GROUP_BY_PRODUCT_TYPE_KEY = "product_type"
+
+
+def build_attribute_groups(
+    version_attributes: dict[str, dict[str, Any]],
+) -> list[GroupByOption]:
+    return [
+        GroupByOption(
+            key=f"attr:{attr_name}",
+            label=attr_def.get("title") or attr_name,
+            icon=get_attribute_icon(
+                attr_name,
+                attr_def.get("type"),
+                attr_def.get("enum") is not None,
+            ),
+            source=GroupBySource.ATTRIBUTE,
+            attribute_name=attr_name,
+        )
+        for attr_name, attr_def in version_attributes.items()
+    ]
 
 
 # Maximum number of pages to fetch when building product group
@@ -263,6 +369,7 @@ class ReviewController(QtCore.QObject):
     category_changed = QtCore.Signal(str)  # type: ignore
     tree_reset_requested = QtCore.Signal()  # type: ignore
     selection_changed = QtCore.Signal(str, str)  # type: ignore
+    group_by_options_changed = QtCore.Signal(dict)  # type: ignore
 
     def __init__(
         self,
@@ -283,7 +390,10 @@ class ReviewController(QtCore.QObject):
         self._selected_folder_id: str | None = None
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
-        self._group_by: GroupBy = GroupBy.NONE
+        self._group_by_options: dict[str, GroupByOption] = {
+            option.key: option for option in BUILTIN_GROUPS
+        }
+        self._group_by_key: str = GROUP_BY_NONE_KEY
         self._hide_empty_groups: bool = True
         self.log = Logger.get_logger(self.__class__.__name__)
 
@@ -322,9 +432,20 @@ class ReviewController(QtCore.QObject):
         return self._selected_folder_id
 
     @property
-    def group_by(self) -> GroupBy:
-        """Return the current group-by mode."""
-        return self._group_by
+    def group_by(self) -> GroupByOption:
+        """Return the current group-by option."""
+        return self._group_by_options.get(
+            self._group_by_key, self._group_by_options[GROUP_BY_NONE_KEY]
+        )
+
+    @property
+    def group_by_key(self) -> str:
+        """Return key of the current group-by option."""
+        return self._group_by_key
+
+    def get_group_by_options(self) -> list[GroupByOption]:
+        """Return available group-by options, including custom attrs."""
+        return list(self._group_by_options.values())
 
     @property
     def hide_empty_groups(self) -> bool:
@@ -349,6 +470,7 @@ class ReviewController(QtCore.QObject):
         self._get_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
+        # print(f"PROJECT_INFO: {self.project_info}")
         self.tree_reset_requested.emit()
         UserPreferences().set("loader.review.last_project", project_name)
 
@@ -396,14 +518,14 @@ class ReviewController(QtCore.QObject):
         self._tree_mode = enabled
         self._reset_pagination()
 
-    def set_group_by(self, group_by: GroupBy) -> None:
+    def set_group_by(self, group_by: GroupByOption | str) -> None:
         """Set the group-by mode for the version table.
 
         Args:
-            group_by: One of ``GroupBy.NONE``, ``GroupBy.STATUS``,
-                ``GroupBy.PRODUCT_TYPE``, or ``GroupBy.PRODUCT``.
+            group_by: Dynamic option key or :class:`GroupByOption`.
         """
-        self._group_by = group_by
+        key = self._normalize_group_by_key(group_by)
+        self._group_by_key = key
         self._reset_pagination()
 
     def set_hide_empty_groups(self, hide_empty: bool) -> None:
@@ -495,7 +617,7 @@ class ReviewController(QtCore.QObject):
         # -- Group-by mode -----------------------------------------------
         if (
             self._current_category == ReviewCategory.HIERARCHY.value
-            and self.group_by != GroupBy.NONE
+            and self.group_by_key != GROUP_BY_NONE_KEY
         ):
             # Root level: return group header rows.
             if parent_id is None:
@@ -503,17 +625,17 @@ class ReviewController(QtCore.QObject):
 
             # Expanding a group header: fetch filtered versions.
             if parent_id.startswith("grp:"):
-                group_type, group_value = self._parse_group_id(parent_id)
+                group_key, group_value = self._parse_group_id(parent_id)
 
                 product_ids: list[str] | None = None
                 version_filter = ""
                 product_filter = ""
 
-                if group_type == GroupBy.PRODUCT:
+                if group_key == GROUP_BY_PRODUCT_KEY:
                     product_ids = [group_value]
                 else:
                     version_filter, product_filter = (
-                        self._build_version_filter(group_type, group_value)
+                        self._build_version_filter(group_key, group_value)
                     )
 
                 cursor = self._folder_cursors.get(parent_id, "")
@@ -948,7 +1070,7 @@ class ReviewController(QtCore.QObject):
 
     def _build_group_header_row(
         self,
-        group_type: GroupBy,
+        group_option: GroupByOption,
         value: str,
         icon: str = "",
         color: str | None = None,
@@ -960,7 +1082,7 @@ class ReviewController(QtCore.QObject):
         """Build an expandable group-header row.
 
         Args:
-            group_type: GroupBy axis.
+            group_option: Group-by axis.
             value: The specific group value (e.g. ``"In Progress"``).
                 Stored in the row ``id`` and used as the display label
                 when *label* is not provided.
@@ -981,12 +1103,12 @@ class ReviewController(QtCore.QObject):
         row = dict(EMPTY_ROW)
         row.update(
             {
-                "id": f"grp:{group_type.value}:{value}",
+                "id": f"grp:{group_option.key}:{value}",
                 "has_children": True,
                 "product/version": label if label is not None else value,
                 "product/version__icon": icon or "label",
-                "entityType": group_type.value.title(),
-                "entityType__icon": group_type.icon,
+                "entityType": group_option.label,
+                "entityType__icon": group_option.icon,
             }
         )
         if color:
@@ -1027,12 +1149,19 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of expandable group-header rows.
         """
-        if self.group_by == GroupBy.STATUS:
+        if self.group_by_key == GROUP_BY_STATUS_KEY:
             return self._fetch_status_group_headers()
-        if self.group_by == GroupBy.PRODUCT_TYPE:
+        if self.group_by_key == GROUP_BY_PRODUCT_TYPE_KEY:
             return self._fetch_product_type_group_headers()
-        if self.group_by == GroupBy.PRODUCT:
+        if self.group_by_key == GROUP_BY_PRODUCT_KEY:
             return self._fetch_product_group_headers()
+        if self.group_by_key == GROUP_BY_TAGS_KEY:
+            return self._fetch_tags_group_headers()
+        if self.group_by_key == GROUP_BY_TASK_TYPE_KEY:
+            return self._fetch_task_type_group_headers()
+        if self.group_by.source == GroupBySource.ATTRIBUTE:
+            return self._fetch_attribute_group_headers(self.group_by)
+        self.log.warning(f"Unknown group-by key: {self.group_by_key}")
         return []
 
     def _fetch_status_group_headers(self) -> list[dict[str, Any]]:
@@ -1056,7 +1185,7 @@ class ReviewController(QtCore.QObject):
 
         return [
             self._build_group_header_row(
-                GroupBy.STATUS,
+                self._group_by_options[GROUP_BY_STATUS_KEY],
                 name,
                 icon=all_statuses[name].get("icon", "circle"),
                 color=all_statuses[name].get("color"),
@@ -1069,12 +1198,35 @@ class ReviewController(QtCore.QObject):
         present = self._get_distinct_field_values("productType")
         return [
             self._build_group_header_row(
-                GroupBy.PRODUCT_TYPE,
+                self._group_by_options[GROUP_BY_PRODUCT_TYPE_KEY],
                 pt,
                 icon=self._pinfo("productTypes", pt, "icon", "category"),
                 color=self._pinfo("productTypes", pt, "color"),
             )
             for pt in sorted(present)
+        ]
+
+    def _fetch_tags_group_headers(self) -> list[dict[str, Any]]:
+        self.log.warning("TODO: fetch tags group headers")
+        return []
+
+    def _fetch_task_type_group_headers(self) -> list[dict[str, Any]]:
+        self.log.warning("TODO: fetch task type group headers")
+        return []
+
+    def _fetch_attribute_group_headers(
+        self,
+        group_option: GroupByOption,
+    ) -> list[dict[str, Any]]:
+        """Return one expandable row per used custom attribute value."""
+        attr_name = group_option.attribute_name
+        if not attr_name:
+            return []
+
+        values = self.get_used_attribute_values(attr_name)
+        return [
+            self._build_group_header_row(group_option, value)
+            for value in sorted(values, key=str.casefold)
         ]
 
     def _get_products_page(
@@ -1247,7 +1399,7 @@ class ReviewController(QtCore.QObject):
 
         return [
             self._build_group_header_row(
-                GroupBy.PRODUCT,
+                self._group_by_options[GROUP_BY_PRODUCT_KEY],
                 value=p_id,
                 label=p_name,
                 icon=self._pinfo("productTypes", p_type, "icon", "view_in_ar"),
@@ -1300,6 +1452,20 @@ class ReviewController(QtCore.QObject):
         ]
         return set(used)
 
+    def get_used_attribute_values(self, attribute_name: str) -> set[str]:
+        """Fetch distinct values for a version attribute in scope."""
+        pld = ayon_api.get(
+            f"projects/{self._current_project}/grouping/version/attrib.{attribute_name}",
+            empty=True,
+        )
+        data = pld.data or {}
+        used = [
+            str(group.get("value"))
+            for group in data.get("groups", [])
+            if group.get("count", 0) > 0 and group.get("value") is not None
+        ]
+        return set(used)
+
     def _get_distinct_field_values(self, field: str) -> set[str]:
         """Fetch a  list of distinct values for a field.
 
@@ -1323,7 +1489,7 @@ class ReviewController(QtCore.QObject):
         raise ValueError(f"Unknown field: {field}")
 
     @staticmethod
-    def _parse_group_id(group_id: str) -> tuple[GroupBy, str]:
+    def _parse_group_id(group_id: str) -> tuple[str, str]:
         """Parse a group header id into (group_type, group_value).
 
         Args:
@@ -1333,23 +1499,22 @@ class ReviewController(QtCore.QObject):
             Tuple of ``(group_type, group_value)``.
         """
         _, group_type, group_value = group_id.split(":", 2)
-        return GroupBy(group_type), group_value
+        return group_type, group_value
 
     def _build_version_filter(
         self,
-        group_type: GroupBy,
+        group_key: str,
         group_value: str,
     ) -> tuple[str, str]:
         """Build ``versionFilter`` and ``productFilter`` JSON strings.
 
-        Handles ``GroupBy.STATUS`` and ``GroupBy.PRODUCT_TYPE``.
-        ``GroupBy.PRODUCT`` is intentionally excluded — it passes
+        Handles built-in status/product-type groups and attribute groups.
+        ``product`` is intentionally excluded — it passes
         ``product_ids`` directly to :meth:`_get_versions_page` in the
         expand flow and does not need a filter expression.
 
         Args:
-            group_type: One of ``GroupBy.STATUS`` or
-                ``GroupBy.PRODUCT_TYPE``.
+            group_key: Group option key.
             group_value: The value to filter on.
 
         Returns:
@@ -1359,7 +1524,7 @@ class ReviewController(QtCore.QObject):
         """
         version_filter = ""
         product_filter = ""
-        if group_type == GroupBy.STATUS:
+        if group_key == GROUP_BY_STATUS_KEY:
             version_filter = json.dumps(
                 {
                     "conditions": [
@@ -1371,13 +1536,36 @@ class ReviewController(QtCore.QObject):
                     ]
                 }
             )
-        elif group_type == GroupBy.PRODUCT_TYPE:
+        elif group_key == GROUP_BY_PRODUCT_TYPE_KEY:
             product_filter = json.dumps(
                 {
                     "conditions": [
                         {
                             "key": "productType",
                             "value": [group_value],
+                            "operator": "in",
+                        },
+                    ]
+                }
+            )
+        elif group_key.startswith("attr:"):
+            attribute_name = group_key.split(":", 1)[1]
+            attr_type = self._version_attributes.get(attribute_name, {}).get("type")
+            if attr_type == "integer":
+                typed_value = int(group_value)
+            elif attr_type == "float":
+                typed_value = float(group_value)
+            elif attr_type == "boolean":
+                typed_value = group_value.lower() in {"1", "true", "yes"}
+            else:
+                typed_value = group_value
+
+            version_filter = json.dumps(
+                {
+                    "conditions": [
+                        {
+                            "key": f"attrib.{attribute_name}",
+                            "value": [typed_value],
                             "operator": "in",
                         },
                     ]
@@ -1549,6 +1737,42 @@ class ReviewController(QtCore.QObject):
             },
         }
         self._version_attributes = ayon_api.get_attributes_for_type("version")
+        # print(f"_version_attributes = {self._version_attributes}")
+        self._rebuild_group_by_options()
+
+    def _rebuild_group_by_options(self) -> None:
+        """Recompute available group-by options from project metadata."""
+        old_options = self._group_by_options.copy()
+        options = list(BUILTIN_GROUPS)
+        if self._version_attributes:
+            options.extend(build_attribute_groups(self._version_attributes))
+            # print(f"options; {options}")
+        self._group_by_options = {option.key: option for option in options}
+        if self._group_by_key not in self._group_by_options:
+            self._group_by_key = GROUP_BY_NONE_KEY
+        if old_options != self._group_by_options:
+            self.group_by_options_changed.emit(self._group_by_options.copy())
+
+    def _normalize_group_by_key(
+        self,
+        group_by: GroupByOption | str,
+    ) -> str:
+        """Normalize option/label input to a registered key."""
+        if isinstance(group_by, GroupByOption):
+            return (
+                group_by.key
+                if group_by.key in self._group_by_options
+                else GROUP_BY_NONE_KEY
+            )
+
+        if group_by in self._group_by_options:
+            return group_by
+
+        for option in self._group_by_options.values():
+            if option.label == group_by:
+                return option.key
+
+        return GROUP_BY_NONE_KEY
 
     def _pinfo(self, category: str, name: str, key: str, default=None) -> Any:
         """Get a project info value by category and key.
@@ -1611,7 +1835,7 @@ class ReviewController(QtCore.QObject):
                 parents in one shot.
             product_ids: When provided, filters versions to only those
                 belonging to these product IDs. Used when expanding a
-                ``GroupBy.PRODUCT`` group header.
+                product group header.
 
         Returns:
             Tuple of (edges list, pageInfo dict).

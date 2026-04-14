@@ -15,9 +15,10 @@ from ayon_ui_qt.components.container import (
     AYHBoxLayout,
     AYVBoxLayout,
 )
-from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.dropdown import AYDropdownPopup
+from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.filter import AYFilter, FilterItem
+from ayon_ui_qt.components.filterable_list import FilterableList
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
 from ayon_ui_qt.components.slicer import AYSlicer
 from ayon_ui_qt.components.table_filter import AYTableFilter
@@ -33,7 +34,7 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 from ayon_core.lib import Logger, log_timing
 from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
 from ayon_core.tools.loader.ui.review_controller import (
-    GroupBy,
+    GroupByOption,
     ReviewController,
 )
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
@@ -239,7 +240,7 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
 
 
 class VisibilityAwarePaginatedTableModel(PaginatedTableModel):
-    """Paginated table model that deprioritises off-screen page fetches.
+    """Paginated table model that deprioritize off-screen page fetches.
 
     Overrides :meth:`_get_fetch_priority` so that page-fetch tasks for a
     parent node that is **not** currently visible in the table's viewport
@@ -544,52 +545,162 @@ class ReviewSlicer(AYContainer):
         return self._selector.current_project()
 
 
-class GroupByMenu(AYFilter):
-    group_by_changed = QtCore.Signal(GroupBy)  # type: ignore
+class Customize(AYButtonMenu):
+    """Customize button for the reviews widget."""
+
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
 
-    def __init__(
-        self,
-        parent: QtWidgets.QWidget | None = None,
-        default: GroupBy = GroupBy.PRODUCT,
-    ) -> None:
-        self._filters: dict[GroupBy, FilterItem] = {
-            m.value: FilterItem(key=m.value, label=m.value) for m in GroupBy
-        }
-        if default.value in self._filters:
-            self._filters[default.value].selected = True
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         self._show_empty_groups: bool = False
         super().__init__(
+            "Customize",
+            populate_callback=self._populate,
             parent=parent,
-            label="Group By ",
+            icon="settings",
+            variant=AYButton.Variants.Surface,
+            icon_size=16,
         )
-        self._sync_tags()
 
-    def _create_dropdown_popup(self) -> AYDropdownPopup | None:
-        d = AYDropdownPopup(parent=self)
-        layout = AYVBoxLayout(d, margin=10, spacing=5)
+    def _populate(self, container: QtWidgets.QFrame) -> None:
+        layout = container.layout()
+        if not isinstance(layout, AYVBoxLayout):
+            log.warning(
+                "Customize menu layout is not an AYVBoxLayout: %r", layout
+            )
+            return
 
-        self.show_empty_grps = AYCheckBox(
+        self.show_empty_grps_ui = AYCheckBox(
             "Show empty groups",
             checked=self._show_empty_groups,
             variant=AYCheckBox.Variants.Menu,
             parent=self,
         )
-        self.show_empty_grps.setSizePolicy(
+        self.show_empty_grps_ui.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
-        layout.addWidget(self.show_empty_grps, stretch=0)
-        self.show_empty_grps.toggled.connect(self.show_empty_groups_changed)
+        layout.addWidget(self.show_empty_grps_ui, stretch=0)
+        self.show_empty_grps_ui.toggled.connect(self.show_empty_groups_changed)
 
-        layout.addSpacerItem(
-            QtWidgets.QSpacerItem(
-                0,
-                10,
-                QtWidgets.QSizePolicy.Policy.Expanding,
-                QtWidgets.QSizePolicy.Policy.Fixed,
-            )
+    def set_show_empty_groups(self, enabled: bool) -> None:
+        """Update checkbox state without re-emitting change signal."""
+        self._show_empty_groups = enabled
+        if not hasattr(self, "show_empty_grps_ui"):
+            return
+        self.show_empty_grps_ui.blockSignals(True)
+        self.show_empty_grps_ui.setChecked(enabled)
+        self.show_empty_grps_ui.blockSignals(False)
+
+
+class DisplayType(AYContainer):
+    """Widget that lets the user choose between different display types."""
+
+    display_type_changed = QtCore.Signal(str)  # type: ignore
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        initial_display_type: str = "list",
+    ) -> None:
+        super().__init__(
+            parent=parent,
+            variant=AYContainer.Variants.Surface,
+            layout_margin=1,
+            layout_spacing=1,
         )
+        self._display_type = initial_display_type
+        self._display_type_changed = False
+        self._build()
+
+    def _build(self) -> None:
+        self._button_grp = QtWidgets.QButtonGroup(parent=self, exclusive=True)
+
+        self._table_btn = AYButton(
+            parent=self,
+            icon="table_rows",
+            variant=AYButton.Variants.Surface,
+            icon_size=16,
+            checkable=True,
+        )
+        self._table_btn.setObjectName("table")
+        self._button_grp.addButton(self._table_btn)
+        self.add_widget(self._table_btn, stretch=0)
+
+        self._grid_btn = AYButton(
+            parent=self,
+            icon="grid_view",
+            variant=AYButton.Variants.Surface,
+            icon_size=16,
+            checkable=True,
+        )
+        self._grid_btn.setObjectName("grid")
+        self._button_grp.addButton(self._grid_btn)
+        self.add_widget(self._grid_btn, stretch=0)
+
+        self._button_grp.buttonClicked.connect(self._on_button_clicked)
+
+        if self._display_type == "table":
+            self._table_btn.setChecked(True)
+        else:
+            self._grid_btn.setChecked(True)
+
+    @property
+    def display_type(self) -> str:
+        return self._display_type
+
+    def _on_button_clicked(self, button: QtWidgets.QAbstractButton) -> None:
+        self.display_type_changed.emit(button.objectName())
+        self._display_type = button.objectName()
+
+
+class GroupByMenu(AYFilter):
+    group_by_changed = QtCore.Signal(str)  # type: ignore
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        options: list[GroupByOption] | None = None,
+        default_key: str = "product",
+    ) -> None:
+        self._options_by_key: dict[str, GroupByOption] = {
+            option.key: option for option in (options or [])
+        }
+        self._filters: dict[str, FilterItem] = {
+            option.key: FilterItem(key=option.key, label=option.label)
+            for option in self._options_by_key.values()
+        }
+        if default_key in self._filters:
+            self._filters[default_key].selected = True
+        elif "none" in self._filters:
+            self._filters["none"].selected = True
+
+        super().__init__(
+            parent=parent,
+            label="Group By  ",
+        )
+        self._sync_tags()
+
+    def _create_dropdown_popup(self) -> AYDropdownPopup | None:
+        self._dropdown = AYDropdownPopup(
+            parent=self,
+            variant=AYDropdownPopup.Variants.Low_Framed_Thin,
+            translucent_bg=True,
+        )
+        lyt = AYVBoxLayout(self._dropdown, margin=2, spacing=0)
+        self._filterable_list = FilterableList(
+            placeholder="",
+            parent=self._dropdown,
+        )
+        lyt.addWidget(self._filterable_list, stretch=10)
+        search = self._filterable_list.search_field()
+        search.textChanged.connect(self._on_search_changed)
+
+        self._populate_list()
+
+        return self._dropdown
+
+    def _populate_list(self) -> None:
+        self._filterable_list.clear_items()
 
         kw = {
             "variant": AYButton.Variants.Text,
@@ -598,24 +709,36 @@ class GroupByMenu(AYFilter):
             "fixed_width": False,
         }
 
-        self._menu_grp = QtWidgets.QButtonGroup(d)
+        self._menu_grp = QtWidgets.QButtonGroup(self._dropdown)
         self._menu_grp.setExclusive(True)
-        self._menu_grp.buttonClicked.connect(d.close)
+        self._menu_grp.buttonClicked.connect(self._on_dropdown_closed)
 
-        for val in GroupBy:
-            wdgt_name = f"grp_by_{val.name.lower()}"
-            w = AYButton(val.value, icon=val.icon, **kw)
+        for option in self._options_by_key.values():
+            wdgt_name = f"grp_by_{option.key.replace(':', '_')}"
+            w = AYButton(option.label, icon=option.icon, **kw)
+            w.setProperty("group_by_key", option.key)
             setattr(self, wdgt_name, w)
-            if self._filters[val.value].selected:  # type: ignore
+            if self._filters[option.key].selected:
                 w.setChecked(True)
-            layout.addWidget(w, stretch=1)
+            self._filterable_list.add_item(
+                w,
+                match_fn=lambda text, n=option.label: (
+                    not text.lower().strip()
+                    or text.lower().strip() in n.lower()
+                ),
+            )
             self._menu_grp.addButton(w)
 
         self._menu_grp.buttonClicked.connect(self._on_group_by_changed)
 
-        self.set_label("Group By")
+    def _on_dropdown_closed(self) -> None:
+        """Close the dropdown and clear the search field so it's fresh
+        next time."""
+        self._dropdown.close()
+        self._filterable_list.search_field().clear()
 
-        return d
+    def _on_search_changed(self, text: str) -> None:
+        self._filterable_list.adjustSize()
 
     def _set_filter_state(self, key: str, selected: bool) -> None:
         if key not in self._filters:
@@ -624,23 +747,18 @@ class GroupByMenu(AYFilter):
 
     def _sync_tags(self) -> None:
         self._sync_tags_from_items(list(self._filters.values()))
+        if self._filters["none"].selected:
+            self._remove_tag("none")
 
     def _on_group_by_changed(self, button: AYButton) -> None:
-        log.debug(f"Group By: {button.text()}")
-        grp = GroupBy(button.text())
-        for k, v in self._filters.items():
-            v.selected = k == grp.value
-        self._sync_tags()
-        self.group_by_changed.emit(grp)
-
-    def set_show_empty_groups(self, enabled: bool) -> None:
-        """Update checkbox state without re-emitting change signal."""
-        self._show_empty_groups = enabled
-        if not hasattr(self, "show_empty_grps"):
+        grp_key = button.property("group_by_key")
+        if not isinstance(grp_key, str):
             return
-        self.show_empty_grps.blockSignals(True)
-        self.show_empty_grps.setChecked(enabled)
-        self.show_empty_grps.blockSignals(False)
+        log.debug("Group By: %s", grp_key)
+        for k, v in self._filters.items():
+            v.selected = k == grp_key
+        self._sync_tags()
+        self.group_by_changed.emit(grp_key)
 
     def _handle_tag_removed(self, key: str) -> None:
         """React to a tag dismissal.
@@ -652,11 +770,31 @@ class GroupByMenu(AYFilter):
         Args:
             key: Key of the dismissed tag.
         """
-        print(f"Remove {key}")
         for v in self._filters.values():
-            v.selected = False if v.key != GroupBy.NONE.value else True
-            print(f"  |_ {v.key}: {v.selected}")
+            v.selected = False
+        self._filters["none"].selected = True
         self._sync_tags()
+        self.group_by_changed.emit("none")
+
+    def set_options(
+        self,
+        options: list[GroupByOption],
+        selected_key: str,
+    ) -> None:
+        """Replace group-by options and keep the current selection."""
+        self._options_by_key = {option.key: option for option in options}
+        self._filters = {
+            option.key: FilterItem(
+                key=option.key,
+                label=option.label,
+                selected=(option.key == selected_key),
+            )
+            for option in options
+        }
+        if selected_key not in self._filters and "none" in self._filters:
+            self._filters["none"].selected = True
+        self._sync_tags()
+        self._populate_list()
 
     def get_selected_keys(self) -> list[str]:
         """Return the list of selected filter keys.
@@ -703,21 +841,38 @@ class ReviewTable(AYContainer):
         self._model.set_tree_mode(True)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
-        self._group_by_menu = GroupByMenu(parent=self)
+        # group by
+        self._group_by_menu = GroupByMenu(
+            parent=self,
+            options=self._controller.get_group_by_options(),
+            default_key=self._controller.group_by_key,
+        )
         self._group_by_menu.group_by_changed.connect(self._on_group_by_changed)
-        self._group_by_menu.show_empty_groups_changed.connect(
-            self._on_show_empty_groups_changed
-        )
-        self._group_by_menu.set_show_empty_groups(
-            not self._controller.hide_empty_groups
-        )
         self._group_by_menu.setVisible(
             self._controller.current_category == ReviewCategory.HIERARCHY.value
+        )
+        self._controller.group_by_options_changed.connect(
+            self._on_group_by_options_changed
+        )
+        # display type
+        self._display_type = DisplayType(self, initial_display_type="table")
+        self._display_type.display_type_changed.connect(
+            self._on_display_type_changed
+        )
+        # customize
+        self._customize = Customize(parent=self)
+        self._customize.set_show_empty_groups(
+            not self._controller.hide_empty_groups
+        )
+        self._customize.show_empty_groups_changed.connect(
+            self._on_show_empty_groups_changed
         )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
         toolbar_lyt.addWidget(self._group_by_menu, stretch=0)
+        toolbar_lyt.addWidget(self._display_type, stretch=0)
+        toolbar_lyt.addWidget(self._customize, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
         self.add_widget(self._table)
 
@@ -743,8 +898,23 @@ class ReviewTable(AYContainer):
     def table(self) -> AYTableView:
         return self._table
 
-    def _on_group_by_changed(self, group_by: GroupBy) -> None:
-        self._controller.set_group_by(group_by)
+    def _on_display_type_changed(self, display_type: str) -> None:
+        log.debug("Display type changed: %s", display_type)
+        # For now we only have one display type, so this is a no-op.
+        # In the future, this could switch between different views (e.g.
+        # table vs grid) or apply different proxy models for alternate
+        # presentations of the same data.
+        pass
+
+    def _on_group_by_options_changed(
+        self, options: dict[str, GroupByOption]
+    ) -> None:
+        self._group_by_menu.set_options(
+            list(options.values()), self._controller.group_by_key
+        )
+
+    def _on_group_by_changed(self, group_by_key: str) -> None:
+        self._controller.set_group_by(group_by_key)
         self._auto_expand = False
         self._deferred_expand_queue.clear()
         self._expansion_phase = _ExpansionPhase.IDLE
@@ -869,6 +1039,10 @@ class ReviewTable(AYContainer):
         self._enqueued_thumb_keys.clear()
         self._deferred_expand_queue.clear()
         self._expansion_phase = _ExpansionPhase.IDLE
+        self._group_by_menu.set_options(
+            self._controller.get_group_by_options(),
+            self._controller.group_by_key,
+        )
         self._model.reset_data()
         self._model.set_columns(
             self._build_columns(self._controller.current_category)
@@ -1370,7 +1544,6 @@ class ReviewsWidget(AYContainer):
         """
         project_name = self._controller.current_project
         selection_model = self._table.table.selectionModel()
-        proxy_model = self._table.table.model()
 
         version_ids: set[str] = set()
         for proxy_idx in selection_model.selectedIndexes():
