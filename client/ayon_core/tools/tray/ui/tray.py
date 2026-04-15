@@ -492,10 +492,16 @@ class TrayManager:
         login_action = QtWidgets.QAction("Login", self.tray_widget)
         login_action.triggered.connect(self._on_ayon_login)
         tray_menu.addAction(login_action)
-        bundle_name = os.getenv("AYON_BUNDLE_NAME") or "—"
+        tray_menu.addSeparator()
+        if is_dev_mode_enabled():
+            bundle_type_label = os.getenv("AYON_BUNDLE_NAME")
+        elif is_staging_enabled():
+            bundle_type_label = "Staging"
+        else:
+            bundle_type_label = "Production"
         launcher_version = os.getenv("AYON_VERSION", "AYON Info")
         version_string = (
-            f"{bundle_name} | Launcher: {launcher_version}"
+            f"{bundle_type_label} | AYON: {launcher_version}"
         )
 
         version_action = QtWidgets.QAction(version_string, self.tray_widget)
