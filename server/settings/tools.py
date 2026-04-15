@@ -1,4 +1,10 @@
 from pydantic import validator
+
+from ayon_server.access.access_groups import AccessGroups
+
+from ayon_server.enum import EnumRegistry
+from ayon_server.enum.enum_item import EnumItem
+
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
@@ -301,9 +307,85 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
     )
 
 
+def _filter_mode_enum():
+    return [
+        {"value": "allowlist", "label": "Allowlist"},
+        {"value": "denylist", "label": "Denylist"},
+    ]
+
+
+def _filter_type_enum():
+    return [
+        {"value": "usergroups", "label": "User Groups"},
+        {"value": "usernames", "label": "Users"},
+    ]
+
+
+async def _users_enum() -> list[EnumItem]:
+    return await EnumRegistry.resolve("users")
+
+
+async def _access_groups_enum(project_name: str) -> list[str]:
+    if not project_name:
+        output = {
+            name
+            for name, _ in AccessGroups.access_groups
+        }
+        return list(sorted(output))
+
+    output = set()
+    for name, project in AccessGroups.access_groups:
+        if project in ("_", project_name):
+            output.add(name)
+    return list(sorted(output))
+
+
+class ProductGroupEditingModel(BaseSettingsModel):
+    groups_filter_mode: str = SettingsField(
+        "denylist",
+        enum_resolver=_filter_mode_enum,
+        section="User groups",
+        title="User groups filter mode",
+        description="Filter mode for user groups.",
+    )
+    usergroups: list[str] = SettingsField(
+        default_factory=list,
+        title="User groups",
+        description="List of user groups that will be used for filtering.",
+        enum_resolver=_access_groups_enum,
+    )
+    users_filter_mode: str = SettingsField(
+        "allowlist",
+        section="Users",
+        enum_resolver=_filter_mode_enum,
+        title="Users filter mode",
+        description=(
+            "Filter mode for users. Users filtering has priority"
+            " over User groups."
+        ),
+    )
+    usernames: list[str] = SettingsField(
+        default_factory=list,
+        title="Users",
+        description="List of users that will be used for filtering.",
+        enum_resolver=_users_enum,
+    )
+
+
+class ProductGroupLoaderSettings(BaseSettingsModel):
+    group_editing: ProductGroupEditingModel = SettingsField(
+        default_factory=ProductGroupEditingModel,
+        title="Allow product group editing",
+    )
+
+
 class LoaderToolModel(BaseSettingsModel):
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
+    )
+    product_group: ProductGroupLoaderSettings = SettingsField(
+        default_factory=ProductGroupLoaderSettings,
+        title="Product grouping",
     )
 
 
