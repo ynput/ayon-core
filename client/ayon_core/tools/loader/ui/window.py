@@ -377,6 +377,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         self._controller = controller
         self._refresh_handler = RefreshHandler()
+        self._product_group_editable = False
         self._first_show = True
         self._reset_on_show = True
         self._show_counter = 0
@@ -492,6 +493,13 @@ class LoaderWindow(QtWidgets.QWidget):
         if not product_ids:
             return
 
+        if not self._product_group_editable:
+            self._show_toast_message(
+                "Product grouping is not available..",
+                False
+            )
+            return
+
         self._group_dialog.set_product_ids(
             project_name,
             self._selected_folder_ids,
@@ -577,6 +585,19 @@ class LoaderWindow(QtWidgets.QWidget):
         self._on_my_tasks_checkbox_state_changed(
             self._filters_widget.is_my_tasks_checked()
         )
+        self._update_product_group_editable(project_name)
+
+    def _update_product_group_editable(self, project_name=None):
+        if project_name is None:
+            project_name = self._selected_project_name
+        product_group_editable = self._controller.is_product_group_editable(
+            project_name
+        )
+        if product_group_editable is self._product_group_editable:
+            return
+
+        self._product_group_editable = product_group_editable
+        self._on_products_selection_change()
 
     def _on_load_finished(self, event):
         error_info = event["error_info"]
@@ -659,6 +680,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_project_selection_changed(self, event):
         self._selected_project_name = event["project_name"]
+        self._update_product_group_editable()
         self._update_filters()
 
     def _update_filters(self):
