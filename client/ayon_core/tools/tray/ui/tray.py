@@ -209,7 +209,7 @@ class TrayManager:
 
         # Add Exit action to menu
         exit_action = QtWidgets.QAction("Exit", self.tray_widget)
-        exit_action.triggered.connect(self.tray_widget.exit)
+        exit_action.triggered.connect(self._confirm_exit_from_menu)
         tray_menu.addAction(exit_action)
 
         # Tell each addon which addons were imported
@@ -317,6 +317,17 @@ class TrayManager:
         run_detached_process(args, env=envs)
         # Exit current tray process
         self.exit()
+
+    def _confirm_exit_from_menu(self):
+        reply = QtWidgets.QMessageBox.question(
+            self.main_window,
+            "Close AYON",
+            "Are you sure you want to close AYON?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if reply == QtWidgets.QMessageBox.Yes:
+            self.tray_widget.exit()
 
     def exit(self):
         self._closing = True
