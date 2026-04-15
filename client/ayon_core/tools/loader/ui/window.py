@@ -2,40 +2,36 @@ from __future__ import annotations
 
 from typing import Optional
 
-from qtpy import QtWidgets, QtCore, QtGui
+from ayon_ui_qt.components.container import AYContainer
+from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.pipeline.actions import LoaderActionResult
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
-from ayon_core.pipeline.actions import LoaderActionResult
-from ayon_core.tools.utils import (
-    MessageOverlayObject,
-    ErrorMessageBox,
-    ThumbnailPainterWidget,
-    RefreshButton,
-    GoToCurrentButton,
-    ProjectsCombobox,
-    get_qt_icon,
-    FoldersFiltersWidget,
-)
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
-from ayon_core.tools.utils.lib import center_window
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
-
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+from ayon_core.tools.utils import (
+    ErrorMessageBox,
+    FoldersFiltersWidget,
+    GoToCurrentButton,
+    MessageOverlayObject,
+    ProjectsCombobox,
+    RefreshButton,
+    ThumbnailPainterWidget,
+    get_qt_icon,
+)
+from ayon_core.tools.utils.lib import center_window
 
 from .folders_widget import LoaderFoldersWidget
-from .tasks_widget import LoaderTasksWidget
-from .products_widget import ProductsWidget
-from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
+from .product_group_dialog import ProductGroupDialog
+from .products_widget import ProductsWidget
 from .repres_widget import RepresentationsWidget
-from .search_bar import FiltersBar, FilterDefinition
-
 from .reviews_widget import ReviewsWidget
-from ayon_ui_qt import get_ayon_style
+from .search_bar import FilterDefinition, FiltersBar
+from .tasks_widget import LoaderTasksWidget
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F

@@ -6,7 +6,6 @@ from enum import Enum
 from typing import Any, Callable, Iterator
 
 import ayon_api
-from ayon_ui_qt import get_ayon_style_data
 from ayon_ui_qt.components.buttons import AYButton, AYButtonMenu
 from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
@@ -29,6 +28,7 @@ from ayon_ui_qt.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_ui_qt.components.tree_model import LazyTreeModel
 from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
 from ayon_ui_qt.image_cache import ImageCache
+from ayon_ui_qt.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, log_timing
