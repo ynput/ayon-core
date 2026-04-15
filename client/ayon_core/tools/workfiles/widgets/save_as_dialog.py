@@ -2,6 +2,8 @@ from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import PlaceholderLineEdit, PlaceholderPlainTextEdit
 
+from .thumbnail_widget import WorkfileThumbnailWidget
+
 
 class SubversionLineEdit(QtWidgets.QWidget):
     """QLineEdit with QPushButton for drop down selection of list of strings"""
@@ -168,6 +170,16 @@ class SaveAsDialog(QtWidgets.QDialog):
         extension_label = QtWidgets.QLabel("Extension:", inputs_widget)
         preview_label = QtWidgets.QLabel("Preview:", inputs_widget)
         description_label = QtWidgets.QLabel("Artist Note:", inputs_widget)
+        thumbnail_label = QtWidgets.QLabel("Thumbnail:", inputs_widget)
+        thumbnail_workfile_widget = WorkfileThumbnailWidget(
+            controller.get_thumbnail_temp_dir_path,
+            inputs_widget,
+            window_to_minimize=parent.window(),
+            dialog_to_hide=self,
+            post_capture_focus_widget=subversion_input,
+        )
+        thumbnail_workfile_widget.setMinimumHeight(120)
+        thumbnail_workfile_widget.setMinimumWidth(180)
 
         # Build inputs
         inputs_layout = QtWidgets.QGridLayout(inputs_widget)
@@ -181,6 +193,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(preview_widget, 3, 1)
         inputs_layout.addWidget(description_label, 4, 0, 1, 2)
         inputs_layout.addWidget(description_input, 5, 0, 1, 2)
+        inputs_layout.addWidget(thumbnail_label, 6, 0)
+        inputs_layout.addWidget(thumbnail_workfile_widget, 6, 1)
 
         # Build layout
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -222,6 +236,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_label = extension_label
         self._preview_label = preview_label
         self._description_label = description_label
+        self._thumbnail_workfile_widget = thumbnail_workfile_widget
 
         # Post init setup
 
@@ -296,6 +311,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         if template_has_comment:
             self._subversion_input.set_text(comment or "")
             self._subversion_input.set_values(comment_hints)
+        self._thumbnail_workfile_widget.set_current_thumbnails(None)
         self._update_filename()
 
     def _on_version_spinbox_change(self, value):
@@ -338,6 +354,7 @@ class SaveAsDialog(QtWidgets.QDialog):
             "version": self._version_value,
             "comment": self._comment_value,
             "description": self._description_input.toPlainText(),
+            "thumbnail_path": self._thumbnail_workfile_widget.get_thumbnail_path(),
         }
         self.close()
 
