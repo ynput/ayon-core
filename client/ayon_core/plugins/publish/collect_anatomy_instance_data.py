@@ -14,7 +14,8 @@ Optional:
     instance    -> task
     instance    -> taskEntity
     instance    -> version
-    instance    -> comment # Subversion comment from workfile
+    instance    -> comment # Publish/version note (non-workfile: template token)
+    instance    -> workfileSubversion # Harmony workfile Subversion for ``{comment}``
     instance    -> resolutionWidth
     instance    -> resolutionHeight
     instance    -> fps
@@ -377,9 +378,12 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if fps:
                 anatomy_data["fps"] = float("{:0.2f}".format(float(fps)))
 
-            # Add "comment" token to anatomy data if it exists from the workfile save as
-            # Subversion field for the "comment" token in templates or product names
-            comment_val = instance.data.get("comment")
+            # "comment" in anatomy templates: workfile uses ``workfileSubversion``
+            # (e.g. Harmony); Pyblish ``instance.data["comment"]`` is Publisher-only.
+            if product_type == "workfile":
+                comment_val = instance.data.get("workfileSubversion")
+            else:
+                comment_val = instance.data.get("comment")
             if comment_val:
                 anatomy_data["comment"] = comment_val
                 self.log.debug(
