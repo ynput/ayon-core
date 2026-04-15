@@ -841,6 +841,11 @@ class ReviewTable(AYContainer):
         self._model.set_tree_mode(True)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
+        # set the initial sorting column to 1 (version name) ascending
+        self._table.header().setSortIndicator(
+            1, QtCore.Qt.SortOrder.AscendingOrder
+        )
+
         # group by
         self._group_by_menu = GroupByMenu(
             parent=self,
