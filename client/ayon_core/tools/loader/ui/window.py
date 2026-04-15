@@ -242,10 +242,17 @@ class LoaderWindow(QtWidgets.QWidget):
 
         product_group_checkbox = GroupButton(products_inputs_widget)
 
+        change_group_btn = SquareButton(products_inputs_widget)
+        change_group_btn.setIcon(qtmaterialsymbols.get_icon(
+            "group_add", DEFAULT_WEB_ICON_COLOR
+        ))
+        change_group_btn.setToolTip("Add/change group (Ctrl + G)")
+
         products_inputs_layout = QtWidgets.QGridLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
         products_inputs_layout.addWidget(search_bar, 0, 0, 3, 1)
         products_inputs_layout.addWidget(product_group_checkbox, 1, 1, 1, 1)
+        products_inputs_layout.addWidget(change_group_btn, 1, 2, 1, 1)
         products_inputs_layout.setColumnStretch(0, 1)
         products_inputs_layout.setColumnStretch(1, 0)
         products_inputs_layout.setRowStretch(0, 1)
@@ -318,6 +325,8 @@ class LoaderWindow(QtWidgets.QWidget):
         refresh_btn.clicked.connect(
             self._on_refresh_click
         )
+        change_group_btn.clicked.connect(self._show_group_dialog)
+
         controller.register_event_callback(
             "load.finished",
             self._on_load_finished,
@@ -368,6 +377,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         self._search_bar = search_bar
         self._product_group_checkbox = product_group_checkbox
+        self._change_group_btn = change_group_btn
         self._products_widget = products_widget
 
         self._right_panel_splitter = right_panel_splitter
@@ -558,6 +568,9 @@ class LoaderWindow(QtWidgets.QWidget):
         self._info_widget.set_selected_version_info(
             self._projects_combobox.get_selected_project_name(),
             items
+        )
+        self._change_group_btn.setEnabled(
+            self._product_group_editable and bool(items)
         )
 
     def _on_go_to_current_context_click(self):
