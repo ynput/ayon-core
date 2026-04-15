@@ -119,13 +119,15 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
         self._event_system = self._create_event_system()
 
+        self._user = None
         self._project_settings_cache = NestedCacheItem(
             levels=1, lifetime=60
         )
         self._project_anatomy_cache = NestedCacheItem(
             levels=1, lifetime=60)
         self._loaded_products_cache = CacheItem(
-            default_factory=set, lifetime=60)
+            default_factory=set, lifetime=60
+        )
 
         self._selection_model = SelectionModel(self)
         self._expected_selection = ExpectedSelection(self)
@@ -145,13 +147,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def get_project_settings(self, project_name: str | None) -> dict:
         cache = self._project_settings_cache[project_name]
-        if not cache.is_valid():
+        if not cache.is_valid:
             if project_name:
                 settings = get_project_settings(project_name)
             else:
                 settings = get_studio_settings()
             cache.update_data(settings)
         return cache.get_data()
+
+    def get_current_user(self) -> dict:
+        if self._user is None:
+            self._user = ayon_api.get_user()
+        return self._user
 
     # ---------------------------------
     # Implementation of abstract methods
@@ -178,6 +185,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name = self.get_selected_project_name()
         folder_ids = self.get_selected_folder_ids()
 
+        self._user = None
+        self._project_settings_cache.reset()
         self._project_anatomy_cache.reset()
         self._loaded_products_cache.reset()
 
@@ -215,8 +224,50 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._expected_selection.expected_folder_selected(folder_id)
 
     def is_product_group_editable(self, project_name: str | None) -> bool:
+        # No project selected
         if not project_name:
             return False
+
+        user = self.get_current_user()
+        user_data = user["data"]
+        # Admin and manager have automatically permissions for all projects
+        if user_data.get("isAdmin") or user_data.get("isManager"):
+            return True
+
+        settings = self.get_project_settings(project_name)
+        username = user["name"]
+        # This part may crash because we're loading project settings that
+        #   might use different version of ayon-core
+        try:
+            product_group_settings = (
+                settings["core"]["tools"]["loader"]["product_group"]
+            )
+            group_editing = product_group_settings["group_editing"]
+            users_filter_mode = group_editing["users_filter_mode"]
+            if username in group_editing["usernames"]:
+                return users_filter_mode == "allowlist"
+
+            groups_filter_mode = group_editing["groups_filter_mode"]
+            access_groups = group_editing["access_groups"]
+            if not access_groups:
+                return groups_filter_mode == "denylist"
+
+            user_access_groups = user_data["accessGroups"]
+            p_access_groups = user_access_groups.get(project_name)
+            if p_access_groups is None:
+                p_access_groups = user_access_groups["defaultAccessGroups"]
+
+            for group_name in p_access_groups:
+                if group_name in access_groups:
+                    return True
+            return False
+
+        except (KeyError, TypeError):
+            # Invalid settings -> user can change product groups
+            self.log.warning(
+                "Failed to get product group settings.", exc_info=True
+            )
+
         return True
 
     # Entity model wrappers
