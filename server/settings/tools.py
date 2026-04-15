@@ -1,9 +1,7 @@
 from pydantic import validator
 
+from ayon_server.lib.postgres import Postgres
 from ayon_server.access.access_groups import AccessGroups
-
-from ayon_server.enum import EnumRegistry
-from ayon_server.enum.enum_item import EnumItem
 
 from ayon_server.settings import (
     BaseSettingsModel,
@@ -314,15 +312,37 @@ def _filter_mode_enum():
     ]
 
 
-def _filter_type_enum():
-    return [
-        {"value": "usergroups", "label": "User Groups"},
-        {"value": "usernames", "label": "Users"},
-    ]
+USERS_QUERY = """
+    SELECT name, attrib, data FROM public.users
+    ORDER BY COALESCE(attrib->>'fullName', name)
+"""
 
+async def _users_enum(project_name) -> list[dict]:
+    # TODO use users enum registry
+    # - there is a bug, artist users are not returned when
+    #   project_name is None
+    # return await EnumRegistry.resolve("users")
 
-async def _users_enum() -> list[EnumItem]:
-    return await EnumRegistry.resolve("users")
+    result = []
+
+    async with Postgres.transaction():
+        stmt = await Postgres.prepare(USERS_QUERY)
+        async for row in stmt.cursor():
+            name, attrib, udata = row
+
+            is_admin = udata.get("isAdmin", False)
+            is_manager = udata.get("isManager", False)
+
+            if project_name and not (is_admin or is_manager):
+                ags = udata.get("accessGroups", {}).get(project_name, [])
+                if not ags:
+                    continue
+
+            result.append({
+                "value": name,
+                "label": attrib.get("fullName") or name,
+            })
+    return result
 
 
 async def _access_groups_enum(project_name: str) -> list[str]:
