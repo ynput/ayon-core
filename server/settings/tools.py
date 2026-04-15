@@ -344,14 +344,14 @@ class ProductGroupEditingModel(BaseSettingsModel):
     groups_filter_mode: str = SettingsField(
         "denylist",
         enum_resolver=_filter_mode_enum,
-        section="User groups",
-        title="User groups filter mode",
-        description="Filter mode for user groups.",
+        section="Access groups",
+        title="Access groups filter mode",
+        description="Filter mode for Access groups.",
     )
-    usergroups: list[str] = SettingsField(
+    access_groups: list[str] = SettingsField(
         default_factory=list,
-        title="User groups",
-        description="List of user groups that will be used for filtering.",
+        title="Access groups",
+        description="List of access groups that will be used for filtering.",
         enum_resolver=_access_groups_enum,
     )
     users_filter_mode: str = SettingsField(
