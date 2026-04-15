@@ -6,7 +6,7 @@ from typing import Optional, Any
 
 import ayon_api
 
-from ayon_core.settings import get_project_settings
+from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.pipeline import get_current_host_name
 from ayon_core.lib import (
     NestedCacheItem,
@@ -119,6 +119,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
         self._event_system = self._create_event_system()
 
+        self._project_settings_cache = NestedCacheItem(
+            levels=1, lifetime=60
+        )
         self._project_anatomy_cache = NestedCacheItem(
             levels=1, lifetime=60)
         self._loaded_products_cache = CacheItem(
@@ -139,6 +142,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         if self._log is None:
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
+
+    def get_project_settings(self, project_name: str | None) -> dict:
+        cache = self._project_settings_cache[project_name]
+        if not cache.is_valid():
+            if project_name:
+                settings = get_project_settings(project_name)
+            else:
+                settings = get_studio_settings()
+            cache.update_data(settings)
+        return cache.get_data()
 
     # ---------------------------------
     # Implementation of abstract methods
@@ -517,7 +530,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name = context.get("project_name")
         if not project_name:
             return output
-        settings = get_project_settings(project_name)
+        settings = self.get_project_settings(project_name)
         profiles = (
             settings
             ["core"]
