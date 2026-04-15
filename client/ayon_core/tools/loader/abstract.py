@@ -552,6 +552,10 @@ class FrontendLoaderController(_BaseLoaderController):
 
         pass
 
+    @abstractmethod
+    def is_product_group_editable(self, project_name: str | None) -> bool:
+        """Is product group editable for a project."""
+
     # Model wrapper calls
     @abstractmethod
     def get_project_items(self, sender=None):

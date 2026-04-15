@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
+import qtmaterialsymbols
 
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
@@ -11,6 +12,7 @@ from ayon_core.tools.utils import (
     MessageOverlayObject,
     ErrorMessageBox,
     ThumbnailPainterWidget,
+    SquareButton,
     RefreshButton,
     GoToCurrentButton,
     ProjectsCombobox,
@@ -18,7 +20,7 @@ from ayon_core.tools.utils import (
     FoldersFiltersWidget,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
-from ayon_core.tools.utils.lib import center_window
+from ayon_core.tools.utils.lib import center_window, DEFAULT_WEB_ICON_COLOR
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
@@ -133,6 +135,39 @@ class RefreshHandler:
         self._products_refreshed = True
 
 
+class GroupButton(SquareButton):
+    state_changed = QtCore.Signal(bool)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self._disabled_icon = qtmaterialsymbols.get_icon(
+            "group", DEFAULT_WEB_ICON_COLOR
+        )
+        self._enabled_icon = qtmaterialsymbols.get_icon(
+            "group_off", DEFAULT_WEB_ICON_COLOR
+        )
+        self._enabled = None
+        self.set_enabled(True)
+
+        self.clicked.connect(self._on_click)
+
+    def is_enabled(self) -> bool:
+        return self._enabled
+
+    def set_enabled(self, enabled: bool) -> None:
+        if enabled is self._enabled:
+            return
+
+        self._enabled = enabled
+        self.state_changed.emit(self._enabled)
+        self.setIcon(self._enabled_icon if enabled else self._disabled_icon)
+        self.setToolTip("Show groups" if enabled else "Hide groups")
+
+    def _on_click(self) -> None:
+        self.set_enabled(not self._enabled)
+
+
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
         super().__init__(parent)
@@ -205,14 +240,17 @@ class LoaderWindow(QtWidgets.QWidget):
         products_inputs_widget = QtWidgets.QWidget(products_wrap_widget)
         search_bar = FiltersBar(products_inputs_widget)
 
-        product_group_checkbox = QtWidgets.QCheckBox(
-            "Enable grouping", products_inputs_widget)
-        product_group_checkbox.setChecked(True)
+        product_group_checkbox = GroupButton(products_inputs_widget)
 
-        products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
+        products_inputs_layout = QtWidgets.QGridLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
-        products_inputs_layout.addWidget(search_bar, 1)
-        products_inputs_layout.addWidget(product_group_checkbox, 0)
+        products_inputs_layout.addWidget(search_bar, 0, 0, 3, 1)
+        products_inputs_layout.addWidget(product_group_checkbox, 1, 1, 1, 1)
+        products_inputs_layout.setColumnStretch(0, 1)
+        products_inputs_layout.setColumnStretch(1, 0)
+        products_inputs_layout.setRowStretch(0, 1)
+        products_inputs_layout.setRowStretch(1, 0)
+        products_inputs_layout.setRowStretch(2, 1)
 
         products_widget = ProductsWidget(controller, products_wrap_widget)
 
@@ -265,7 +303,7 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_my_tasks_checkbox_state_changed
         )
         search_bar.filter_changed.connect(self._on_filter_change)
-        product_group_checkbox.stateChanged.connect(
+        product_group_checkbox.state_changed.connect(
             self._on_product_group_change
         )
         products_widget.merged_products_selection_changed.connect(
@@ -350,7 +388,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._set_product_type_filters = True
 
         self._products_widget.set_enable_grouping(
-            self._product_group_checkbox.isChecked()
+            self._product_group_checkbox.is_enabled()
         )
 
     def refresh(self):
@@ -476,10 +514,8 @@ class LoaderWindow(QtWidgets.QWidget):
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
 
-    def _on_product_group_change(self):
-        self._products_widget.set_enable_grouping(
-            self._product_group_checkbox.isChecked()
-        )
+    def _on_product_group_change(self, enabled: bool):
+        self._products_widget.set_enable_grouping(enabled)
 
     def _on_filter_change(self, filter_name):
         if filter_name == "product_name":

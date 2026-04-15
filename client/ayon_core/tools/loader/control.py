@@ -214,6 +214,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def expected_folder_selected(self, folder_id):
         self._expected_selection.expected_folder_selected(folder_id)
 
+    def is_product_group_editable(self, project_name: str | None) -> bool:
+        if not project_name:
+            return False
+        return True
+
     # Entity model wrappers
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
