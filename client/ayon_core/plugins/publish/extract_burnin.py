@@ -56,6 +56,7 @@ class ExtractBurnin(publish.Extractor):
         "blender",
         "unreal",
         "batchdelivery",
+        "workflow",
     ]
     settings_category = "core"
 
@@ -522,10 +523,10 @@ class ExtractBurnin(publish.Extractor):
         if "slate.farm" in instance.data["families"]:
             frame_start_handle += 1
 
-        burnin_data.update({
-            "version": int(version),
-            "comment": instance.data["comment"]
-        })
+        burnin_data["version"] = int(version)
+        comment = instance.data["comment"]
+        if comment:
+            burnin_data["comment"] = comment
 
         intent_label = context.data.get("intent") or ""
         if intent_label and isinstance(intent_label, dict):
