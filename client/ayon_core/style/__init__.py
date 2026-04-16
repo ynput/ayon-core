@@ -1,4 +1,5 @@
 import os
+import sys
 import copy
 import json
 import collections
@@ -151,6 +152,16 @@ def _load_stylesheet():
     for key, value in fill_data.items():
         replacement_key = "{" + key + "}"
         stylesheet = stylesheet.replace(replacement_key, value)
+
+    # Add macOS-only overrides for issues like size hints being too small
+    if sys.platform == "darwin":
+        darwin_path = os.path.join(current_dir, "style_darwin.css")
+        with open(darwin_path, "r") as f:
+            darwin_sheet = f.read()
+        for key, value in fill_data.items():
+            darwin_sheet = darwin_sheet.replace("{" + key + "}", value)
+        stylesheet = stylesheet + "\n" + darwin_sheet
+
     return stylesheet
 
 

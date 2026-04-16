@@ -1,0 +1,7 @@
+/* macOS-only overrides: Publisher field min-width (Qt size hints are too small on darwin) */
+#VariantInput,
+#FolderPathInputWidget,
+#TasksCombobox,
+#CreateProductInput {
+    min-width: 240px;
+}
