@@ -4,7 +4,7 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 VERSION_ROLE = QtCore.Qt.UserRole + 1
@@ -131,10 +131,72 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._cached_icons[icon_url] = icon
         return icon
 
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.ToolTipRole:
+            item = self.itemFromIndex(index)
+            if item is None:
+                return None
+            workfile_id = item.data(WORKFILE_ID_ROLE)
+            if workfile_id is None:
+                return None
+            if hasattr(self._controller, "get_workfile_tooltip_data"):
+                tooltip = self._controller.get_workfile_tooltip_data(
+                    workfile_id
+                )
+                if tooltip:
+                    return tooltip
+            filename = item.data(QtCore.Qt.DisplayRole) or ""
+            version = item.data(VERSION_ROLE)
+            version_str = str(version) if version is not None else "?"
+            host_name = item.data(HOST_NAME_ROLE)
+            host_str = f"Host: {host_name}\n" if host_name else ""
+            exists = (item.flags() & QtCore.Qt.ItemIsEnabled) != 0
+            status = "On disk" if exists else "Missing"
+            return f"{filename}\n{host_str}Version: {version_str}\n{status}"
+        return super().data(index, role)
 
-class WorkfilesView(DeselectableTreeView):
+
+class WorkfilesView(QtWidgets.QTreeView):
     def drawBranches(self, painter, rect, index):
         return
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._tooltip_style_applied = False
+
+    def _apply_tooltip_stylesheet(self):
+        if self._tooltip_style_applied:
+            return
+        self._tooltip_style_applied = True
+        app = QtWidgets.QApplication.instance()
+        if not app:
+            return
+        rule = (
+            "QToolTip { background-color: #21252b; color: #d3d8de; "
+            "border: none; }"
+        )
+        old = app.styleSheet() or ""
+        if "QToolTip" not in old:
+            app.setStyleSheet(old + ("\n" if old else "") + rule)
+
+    def viewportEvent(self, event):
+        if event.type() == QtCore.QEvent.ToolTip:
+            help_ev = event
+            index = self.indexAt(help_ev.pos())
+            if index.isValid():
+                tip = index.data(QtCore.Qt.ToolTipRole)
+                if tip:
+                    self._apply_tooltip_stylesheet()
+                    font = QtGui.QFont()
+                    font.setStyleHint(QtGui.QFont.TypeWriter)
+                    QtWidgets.QToolTip.setFont(font)
+                    QtWidgets.QToolTip.showText(
+                        help_ev.globalPos(), tip, self.viewport()
+                    )
+                    return True
+            QtWidgets.QToolTip.hideText()
+            return True
+        return super().viewportEvent(event)
 
 
 class WorkfilesPage(QtWidgets.QWidget):
@@ -147,6 +209,7 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view = WorkfilesView(self)
         workfiles_view.setIndentation(0)
+        workfiles_view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = QtCore.QSortFilterProxyModel()
         workfiles_proxy.setSourceModel(workfiles_model)
@@ -173,10 +236,6 @@ class WorkfilesPage(QtWidgets.QWidget):
 
     def refresh(self) -> None:
         self._workfiles_model.refresh()
-
-    def deselect(self):
-        sel_model = self._workfiles_view.selectionModel()
-        sel_model.clearSelection()
 
     def _on_refresh(self) -> None:
         self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder)
