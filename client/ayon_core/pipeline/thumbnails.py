@@ -222,8 +222,20 @@ class ThumbnailsCache:
         return thumbnail_path
 
 
-class _CacheItems:
-    thumbnails_cache = ThumbnailsCache()
+_thumbnails_cache_singleton = None
+
+
+def _get_thumbnails_cache():
+    """Return shared ThumbnailsCache; create on first use with cleanup.
+
+    Avoid constructing ``ThumbnailsCache(cleanup=True)`` at module import time
+    (``cleanup`` walks the cache tree and can block tray/launcher startup).
+    """
+
+    global _thumbnails_cache_singleton
+    if _thumbnails_cache_singleton is None:
+        _thumbnails_cache_singleton = ThumbnailsCache(cleanup=True)
+    return _thumbnails_cache_singleton
 
 
 def get_thumbnail_path(
@@ -256,7 +268,7 @@ def get_thumbnail_path(
     if not thumbnail_id:
         return None
 
-    filepath = _CacheItems.thumbnails_cache.get_thumbnail_filepath(
+    filepath = _get_thumbnails_cache().get_thumbnail_filepath(
         project_name, thumbnail_id
     )
     if filepath is not None:
@@ -269,7 +281,7 @@ def get_thumbnail_path(
     result = con.get_thumbnail(project_name, entity_type, entity_id)
 
     if result is not None and result.is_valid:
-        return _CacheItems.thumbnails_cache.store_thumbnail(
+        return _get_thumbnails_cache().store_thumbnail(
             project_name,
             thumbnail_id,
             result.content,
