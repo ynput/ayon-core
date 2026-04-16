@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+from typing import Optional
 
 import ayon_api
 from ayon_api import get_workfiles_info
@@ -165,6 +166,11 @@ class BaseWorkfileController(
         if self._log is None:
             self._log = Logger.get_logger("WorkfilesUI")
         return self._log
+
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
 
     def is_host_valid(self):
         return self._host_is_valid

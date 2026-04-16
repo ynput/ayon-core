@@ -58,22 +58,21 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
 
-    @property
-    def title(self):
-        """Get window title with application name."""
-        base_title = "AYON Workfiles"
-        app_name = os.environ.get("AYON_APP_NAME") or get_current_host_name()
-        if app_name:
-            return f"{base_title} - {app_name}"
-        return base_title
-
     def __init__(self, controller=None, parent=None):
-        super(WorkfilesToolWindow, self).__init__(parent=parent)
-
         if controller is None:
             controller = BaseWorkfileController()
 
-        self.setWindowTitle(self.title)
+        title = "AYON Workfiles"
+        app_name = os.environ.get("AYON_APP_NAME") or get_current_host_name()
+        if app_name:
+            title += f" - {app_name}"
+        subtitle = controller.get_window_subtitle()
+        if subtitle and (not app_name or subtitle != app_name):
+            title += f" - {subtitle}"
+
+        super(WorkfilesToolWindow, self).__init__(parent=parent)
+
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
