@@ -1,4 +1,4 @@
-"""Workfile thumbnail UI (capture, paste, browse, clear)."""
+"""Workfile thumbnail widget: capture, paste, browse, clear; no publisher dependency."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from ayon_core.tools.publisher.widgets.icons import get_image
 
 
 class WorkfileThumbnailWidget(QtWidgets.QWidget):
-    """Thumbnail UI for workfiles (screenshot, paste, browse, clear).
+    """Thumbnail widget for workfiles: display and capture (screenshot / paste / browse / clear).
 
-    Uses get_temp_dir_path() and optional message_callback. Emits
-    thumbnail_created(path) and thumbnail_cleared.
+    Uses temp dir from get_temp_dir_path() and optional message_callback for errors.
+    Emits thumbnail_created(path) and thumbnail_cleared.
     """
 
     thumbnail_created = QtCore.Signal(str)
@@ -36,6 +36,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         message_callback=None,
         window_to_minimize=None,
         dialog_to_hide=None,
+        post_capture_focus_widget=None,
     ):
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -43,6 +44,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         self._message_callback = message_callback or (lambda _: None)
         self._window_to_minimize = window_to_minimize
         self._dialog_to_hide = dialog_to_hide
+        self._post_capture_focus_widget = post_capture_focus_widget
 
         self._thumbnail_painter = ThumbnailPainterWidget(self)
         icon_color = get_objected_colors("bg-view-selection").get_qcolor()
@@ -151,7 +153,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         self._update_buttons_position()
 
     def set_thumbnail_path(self, path):
-        """Load a single thumbnail image from a file path."""
+        """Set single thumbnail from path (e.g. from Ctrl+Shift+S host capture)."""
         if path and os.path.isfile(path):
             self.set_current_thumbnails([path])
         else:
@@ -194,22 +196,61 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         self.thumbnail_cleared.emit()
         self._clear_button.setEnabled(False)
 
+    def _schedule_screenshot_capture_focus(self, main_window, dialog):
+        """Raise windows and restore focus after opacity restore (next event loop tick)."""
+
+        focus_widget = self._post_capture_focus_widget
+
+        def _restore():
+            if main_window is not None:
+                main_window.raise_()
+            if dialog is not None:
+                dialog.raise_()
+                dialog.activateWindow()
+            if focus_widget is not None:
+                focus_widget.setFocus(QtCore.Qt.OtherFocusReason)
+
+        QtCore.QTimer.singleShot(0, _restore)
+
     def _on_take_screenshot(self):
         dialog = self._dialog_to_hide
-        dialog_pos = None
-        if dialog is not None:
-            dialog_pos = dialog.pos()
-            dialog.move(-32000, -32000)
+        main_window = self._window_to_minimize
+        dialog_prev_opacity = None
+        main_prev_opacity = None
+        masked_dialog = False
+        masked_main = False
+        app = QtWidgets.QApplication.instance()
+
+        # Use opacity instead of hide() so exec()'d modal dialogs stay valid for Qt/Windows.
+        if dialog is not None and dialog.isVisible():
+            dialog_prev_opacity = dialog.windowOpacity()
+            dialog.setWindowOpacity(0.0)
+            masked_dialog = True
+        if main_window is not None and main_window.isVisible():
+            main_prev_opacity = main_window.windowOpacity()
+            main_window.setWindowOpacity(0.0)
+            masked_main = True
+        if app is not None:
+            app.processEvents()
+            app.processEvents()
+
+        capture_owner = dialog if masked_dialog else None
 
         try:
             output_dir = self._get_output_dir()
             output_path = os.path.join(output_dir, uuid.uuid4().hex + ".png")
-            if capture_to_file(output_path, owner=dialog):
+            if capture_to_file(output_path, owner=capture_owner):
                 self.set_current_thumbnails([output_path])
                 self.thumbnail_created.emit(output_path)
         finally:
-            if dialog is not None:
-                dialog.move(dialog_pos)
+            if masked_main and main_window is not None:
+                main_window.setWindowOpacity(main_prev_opacity)
+            if masked_dialog and dialog is not None:
+                dialog.setWindowOpacity(dialog_prev_opacity)
+            if app is not None:
+                app.processEvents()
+            if masked_main or masked_dialog:
+                self._schedule_screenshot_capture_focus(main_window, dialog)
 
     def _on_paste_from_clipboard(self):
         clipboard = QtWidgets.QApplication.clipboard()
@@ -223,7 +264,9 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
             self.thumbnail_created.emit(output_path)
 
     def _on_browse_clicked(self):
-        ext_filter = "Source (*{0})".format(" *".join(self._review_extensions))
+        ext_filter = "Source (*{0})".format(
+            " *".join(self._review_extensions)
+        )
         filepath, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Choose thumbnail", os.path.expanduser("~"), ext_filter
         )
