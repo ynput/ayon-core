@@ -382,7 +382,7 @@ class BaseWorkfileController(
         )
 
     def get_task_ids_with_workfiles(self, project_name: str, folder_id: str):
-        """Task ids in folder that have at least one workfile (for tasks widget grey styling)."""
+        """Task ids in folder that have at least one workfile."""
         task_items = self._hierarchy_model.get_task_items(
             project_name, folder_id, sender=None
         )
@@ -443,11 +443,6 @@ class BaseWorkfileController(
             representation_id
         )
 
-    def get_published_workfile_version_comment(self, representation_id):
-        return self._workfiles_model.get_published_workfile_version_comment(
-            representation_id
-        )
-
     def get_workfile_info(self, folder_id, task_id, rootless_path):
         return self._workfiles_model.get_workfile_info(
             folder_id, task_id, rootless_path
@@ -472,11 +467,10 @@ class BaseWorkfileController(
             shutil.rmtree(dirpath)
 
     def get_host_capture_thumbnail_path(self):
-        """Ask host to capture editor (e.g. Camera/Node view); return image path or None.
+        """Ask host to capture an editor view; return temp image path or None.
 
         Returns:
-            Optional[str]: Path to temporary image file, or None if host does not
-                support capture or user cancelled.
+            Optional[str]: Temp image path, or None if unsupported/cancelled.
         """
         if not self._host_is_valid:
             return None
@@ -646,7 +640,9 @@ class BaseWorkfileController(
             description,
         )
 
-    def delete_workfile(self, folder_id, task_id, filepath, workfile_entity_id):
+    def delete_workfile(
+        self, folder_id, task_id, filepath, workfile_entity_id
+    ):
         """Delete a workfile and its database entry.
 
         Args:

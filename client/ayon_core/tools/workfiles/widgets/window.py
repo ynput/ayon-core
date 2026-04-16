@@ -35,7 +35,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
                 "<br/><br/>This may be caused by a bug."
                 " Please contact your TD for more information."
             ),
-            self
+            self,
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
         label_widget.setObjectName("OverlayFrameLabel")
@@ -62,10 +62,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
     def title(self):
         """Get window title with application name."""
         base_title = "AYON Workfiles"
-        app_name = (
-            os.environ.get("AYON_APP_NAME")
-            or get_current_host_name()
-        )
+        app_name = os.environ.get("AYON_APP_NAME") or get_current_host_name()
         if app_name:
             return f"{base_title} - {app_name}"
         return base_title
@@ -159,12 +156,10 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             self._on_copy_representation_finished,
         )
         controller.register_event_callback(
-            "workfile_duplicate.finished",
-            self._on_duplicate_finished
+            "workfile_duplicate.finished", self._on_duplicate_finished
         )
         controller.register_event_callback(
-            "workfile_delete.finished",
-            self._on_delete_finished
+            "workfile_delete.finished", self._on_delete_finished
         )
         controller.register_event_callback(
             "open_workfile.started",
@@ -175,8 +170,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             self._on_open_workfile_progress,
         )
         controller.register_event_callback(
-            "open_workfile.finished",
-            self._on_open_finished
+            "open_workfile.finished", self._on_open_finished
         )
         controller.register_event_callback(
             "controller.reset.started",
@@ -210,7 +204,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._post_init()
 
     def _on_capture_thumbnail_shortcut(self):
-        """Ctrl+Shift+S: capture host editor (e.g. Harmony Camera/Node view) as thumbnail."""
+        """Shortcut: capture host editor view as workfile thumbnail."""
         path = self._controller.get_host_capture_thumbnail_path()
         if path and os.path.isfile(path):
             temp_dir = self._controller.get_thumbnail_temp_dir_path()
@@ -307,7 +301,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         col_layout.addWidget(files_widget, 1)
 
         files_filter_input.textChanged.connect(
-            self._on_file_text_filter_change)
+            self._on_file_text_filter_change
+        )
         published_checkbox.stateChanged.connect(
             self._on_published_checkbox_changed
         )
@@ -481,9 +476,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
                 "error",
             )
         else:
-            self._overlay_messages_widget.add_message(
-                "Publish workfile saved"
-            )
+            self._overlay_messages_widget.add_message("Publish workfile saved")
 
     def _on_duplicate_finished(self, event):
         if event["failed"]:
@@ -492,9 +485,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
                 "error",
             )
         else:
-            self._overlay_messages_widget.add_message(
-                "Workfile duplicated"
-            )
+            self._overlay_messages_widget.add_message("Workfile duplicated")
 
     def _on_delete_finished(self, event):
         if event["failed"]:
@@ -503,9 +494,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
                 "error",
             )
         else:
-            self._overlay_messages_widget.add_message(
-                "Workfile deleted"
-            )
+            self._overlay_messages_widget.add_message("Workfile deleted")
 
     def _on_open_workfile_started(self, event):
         """Handle open_workfile.started event."""

@@ -57,7 +57,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
-            item.setData(getattr(workfile_item, "host_name", None), HOST_NAME_ROLE)
+            item.setData(
+                getattr(workfile_item, "host_name", None), HOST_NAME_ROLE
+            )
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -138,7 +140,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             if workfile_id is None:
                 return None
             if hasattr(self._controller, "get_workfile_tooltip_data"):
-                tooltip = self._controller.get_workfile_tooltip_data(workfile_id)
+                tooltip = self._controller.get_workfile_tooltip_data(
+                    workfile_id
+                )
                 if tooltip:
                     return tooltip
             filename = item.data(QtCore.Qt.DisplayRole) or ""
@@ -202,7 +206,9 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view = WorkfilesView(self)
         workfiles_view.setIndentation(0)
-        workfiles_view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        workfiles_view.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = QtCore.QSortFilterProxyModel()
         workfiles_proxy.setSourceModel(workfiles_model)
@@ -252,7 +258,9 @@ class WorkfilesPage(QtWidgets.QWidget):
             return
         workfile_id = source_index.data(WORKFILE_ID_ROLE)
         host_name = source_index.data(HOST_NAME_ROLE)
-        if workfile_id is None or not (source_index.flags() & QtCore.Qt.ItemIsEnabled):
+        if workfile_id is None or not (
+            source_index.flags() & QtCore.Qt.ItemIsEnabled
+        ):
             return
         now = time.monotonic()
         if (

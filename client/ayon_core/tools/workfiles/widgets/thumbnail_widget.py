@@ -1,4 +1,4 @@
-"""Workfile thumbnail widget: capture, paste, browse, clear; no publisher dependency."""
+"""Workfile thumbnail UI (capture, paste, browse, clear)."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from ayon_core.tools.publisher.widgets.icons import get_image
 
 
 class WorkfileThumbnailWidget(QtWidgets.QWidget):
-    """Thumbnail widget for workfiles: display and capture (screenshot / paste / browse / clear).
+    """Thumbnail UI for workfiles (screenshot, paste, browse, clear).
 
-    Uses temp dir from get_temp_dir_path() and optional message_callback for errors.
-    Emits thumbnail_created(path) and thumbnail_cleared.
+    Uses get_temp_dir_path() and optional message_callback. Emits
+    thumbnail_created(path) and thumbnail_cleared.
     """
 
     thumbnail_created = QtCore.Signal(str)
@@ -151,7 +151,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         self._update_buttons_position()
 
     def set_thumbnail_path(self, path):
-        """Set single thumbnail from path (e.g. from Ctrl+Shift+S host capture)."""
+        """Load a single thumbnail image from a file path."""
         if path and os.path.isfile(path):
             self.set_current_thumbnails([path])
         else:
@@ -223,9 +223,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
             self.thumbnail_created.emit(output_path)
 
     def _on_browse_clicked(self):
-        ext_filter = "Source (*{0})".format(
-            " *".join(self._review_extensions)
-        )
+        ext_filter = "Source (*{0})".format(" *".join(self._review_extensions))
         filepath, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Choose thumbnail", os.path.expanduser("~"), ext_filter
         )

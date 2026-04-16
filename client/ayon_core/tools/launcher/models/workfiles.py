@@ -6,16 +6,10 @@ from typing import Optional, Any
 
 import ayon_api
 from qtpy import QtCore, QtGui
-from ayon_core.lib import (
-    Logger,
-    NestedCacheItem
-)
+from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.lib.local_settings import get_launcher_local_dir
 
-from ayon_core.tools.utils.lib import (
-    _file_size_to_string,
-    _format_ascii_table
-)
+from ayon_core.tools.utils.lib import _file_size_to_string, _format_ascii_table
 
 
 from ayon_core.pipeline import Anatomy
@@ -26,7 +20,8 @@ from ayon_core.tools.launcher.abstract import (
     AbstractLauncherBackend,
 )
 
-# Max thumbnail size in tooltip; Qt rich text often ignores CSS max-width on img
+# Max thumbnail size in tooltip; Qt rich text often ignores CSS max-width
+# on img tags.
 _TOOLTIP_THUMB_MAX = 160
 
 
@@ -37,7 +32,7 @@ def _get_scaled_thumbnail_path(
     thumbnail_id: str,
     max_size: int = _TOOLTIP_THUMB_MAX,
 ) -> Optional[str]:
-    """Write thumbnail scaled to max_size to cache; return path for tooltip img (file://)."""
+    """Scale thumbnail to max_size in cache; return tooltip file URI."""
     img = QtGui.QImage(thumb_path)
     if img.isNull():
         return thumb_path
@@ -45,7 +40,8 @@ def _get_scaled_thumbnail_path(
     if w <= max_size and h <= max_size:
         return thumb_path
     scaled = img.scaled(
-        max_size, max_size,
+        max_size,
+        max_size,
         QtCore.Qt.KeepAspectRatio,
         QtCore.Qt.SmoothTransformation,
     )
@@ -70,7 +66,9 @@ class WorkfilesModel:
 
         self._host_icons = None
         self._workfile_items = NestedCacheItem(
-            levels=2, default_factory=list, lifetime=60,
+            levels=2,
+            default_factory=list,
+            lifetime=60,
         )
         self._tooltip_cache = {}
 
@@ -110,14 +108,16 @@ class WorkfilesModel:
             host_name = workfile_data.get("host_name")
             version = workfile_data.get("version")
 
-            items.append(WorkfileItem(
-                workfile_id=workfile_entity["id"],
-                filename=os.path.basename(rootless_path),
-                exists=exists,
-                icon=self._get_host_icon(host_name),
-                version=version,
-                host_name=host_name,
-            ))
+            items.append(
+                WorkfileItem(
+                    workfile_id=workfile_entity["id"],
+                    filename=os.path.basename(rootless_path),
+                    exists=exists,
+                    icon=self._get_host_icon(host_name),
+                    version=version,
+                    host_name=host_name,
+                )
+            )
         cache.update_data(items)
         return items
 
@@ -158,14 +158,16 @@ class WorkfilesModel:
         task_id: Optional[str],
         workfile_id: Optional[str],
     ) -> str:
-        """Formatted tooltip string for a workfile (Size, Created, Modified, Comment)."""
+        """Rich-text tooltip for a workfile (size, dates, comment)."""
         if not project_name or not task_id or not workfile_id:
             return ""
         cache_key = (project_name, task_id, workfile_id)
         if cache_key in self._tooltip_cache:
             return self._tooltip_cache[cache_key]
         try:
-            out = self._build_workfile_tooltip(project_name, task_id, workfile_id)
+            out = self._build_workfile_tooltip(
+                project_name, task_id, workfile_id
+            )
         except Exception:
             self._log.warning(
                 "Failed to build workfile tooltip",
@@ -189,7 +191,11 @@ class WorkfilesModel:
                 project_name,
                 task_ids={task_id},
                 fields={
-                    "id", "path", "createdBy", "updatedBy", "attrib",
+                    "id",
+                    "path",
+                    "createdBy",
+                    "updatedBy",
+                    "attrib",
                     "thumbnailId",
                 },
             )
@@ -216,9 +222,7 @@ class WorkfilesModel:
         usernames = [u for u in (created_by, updated_by) if u]
         user_by_name = {}
         if usernames and project_name:
-            for user in get_users(
-                project_name, usernames=usernames
-            ):
+            for user in get_users(project_name, usernames=usernames):
                 name = user.get("name")
                 if name:
                     full = (user.get("attrib") or {}).get("fullName") or name
@@ -259,9 +263,11 @@ class WorkfilesModel:
         if not rows:
             return ""
         table_ascii = _format_ascii_table(rows, max_width=50)
-        pre_block = "<pre style='font-family: monospace; white-space: pre; margin: 0'>%s</pre>" % (
-            html.escape(table_ascii)
+        pre_fmt = (
+            "<pre style='font-family: monospace; white-space: pre; margin: 0'>"
+            "%s</pre>"
         )
+        pre_block = pre_fmt % (html.escape(table_ascii),)
         img_html = ""
         if thumbnail_id:
             try:
@@ -274,12 +280,16 @@ class WorkfilesModel:
                     )
                     if display_path:
                         uri = Path(display_path).as_uri()
-                        img_html = (
-                            "<div style=\"text-align: center; margin: 0 0 4px 0;\">"
-                            "<img src=\"%s\" style=\"display: block; margin: 0 auto; "
-                            "border: 1px solid #3d434e; border-radius: 2px;\" />"
-                            "</div>"
-                        ) % html.escape(uri)
+                        esc_uri = html.escape(uri)
+                        div = (
+                            '<div style="text-align:center;margin:0 0 4px 0">'
+                        )
+                        img = (
+                            '<img src="%s" style="display: block; '
+                            "margin: 0 auto; border: 1px solid #3d434e; "
+                            'border-radius: 2px;" />'
+                        )
+                        img_html = (div + img + "</div>") % esc_uri
             except Exception:
                 pass
         if img_html:

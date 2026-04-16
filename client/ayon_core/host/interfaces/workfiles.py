@@ -29,11 +29,7 @@ def deprecated(reason):
         @functools.wraps(func)
         def new_func(*args, **kwargs):
             warnings.simplefilter("always", DeprecationWarning)
-            warnings.warn(
-                message,
-                category=DeprecationWarning,
-                stacklevel=2
-            )
+            warnings.warn(message, category=DeprecationWarning, stacklevel=2)
             warnings.simplefilter("default", DeprecationWarning)
             return func(*args, **kwargs)
 
@@ -45,13 +41,14 @@ def deprecated(reason):
 # Wrappers for optional arguments that might change in future
 class _WorkfileOptionalData:
     """Base class for optional data used in workfile operations."""
+
     def __init__(
         self,
         *,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
         project_settings: Optional[dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         if kwargs:
             cls_name = self.__class__.__name__
@@ -77,10 +74,7 @@ class _WorkfileOptionalData:
             project_entity = ayon_api.get_project(project_name)
 
         if anatomy is None:
-            anatomy = Anatomy(
-                project_name,
-                project_entity=project_entity
-            )
+            anatomy = Anatomy(project_name, project_entity=project_entity)
 
         if project_settings is None:
             project_settings = get_project_settings(project_name)
@@ -93,11 +87,13 @@ class _WorkfileOptionalData:
 
 class OpenWorkfileOptionalData(_WorkfileOptionalData):
     """Optional data for opening workfile."""
+
     data_version = 1
 
 
 class ListWorkfilesOptionalData(_WorkfileOptionalData):
     """Optional data to list workfiles."""
+
     data_version = 1
 
     def __init__(
@@ -108,13 +104,13 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
         project_settings: Optional[dict[str, Any]] = None,
         template_key: Optional[str] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             project_entity=project_entity,
             anatomy=anatomy,
             project_settings=project_settings,
-            **kwargs
+            **kwargs,
         )
         self.template_key = template_key
         self.workfile_entities = workfile_entities
@@ -144,13 +140,14 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
         """Fill workfile entities if not provided."""
         if self.workfile_entities is not None:
             return self.workfile_entities
-        return list(ayon_api.get_workfiles_info(
-            project_name, task_ids=[task_id]
-        ))
+        return list(
+            ayon_api.get_workfiles_info(project_name, task_ids=[task_id])
+        )
 
 
 class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
     """Optional data to list published workfiles."""
+
     data_version = 1
 
     def __init__(
@@ -162,13 +159,13 @@ class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
         product_entities: Optional[list[dict[str, Any]]] = None,
         version_entities: Optional[list[dict[str, Any]]] = None,
         repre_entities: Optional[list[dict[str, Any]]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             project_entity=project_entity,
             anatomy=anatomy,
             project_settings=project_settings,
-            **kwargs
+            **kwargs,
         )
 
         self.product_entities = product_entities
@@ -180,40 +177,45 @@ class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
         project_name: str,
         folder_id: str,
     ) -> tuple[
-        list[dict[str, Any]],
-        list[dict[str, Any]],
-        list[dict[str, Any]]
+        list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]
     ]:
         product_entities = self.product_entities
         if product_entities is None:
-            product_entities = list(ayon_api.get_products(
-                project_name,
-                folder_ids={folder_id},
-                product_types={"workfile"},
-                fields={"id", "name"},
-            ))
+            product_entities = list(
+                ayon_api.get_products(
+                    project_name,
+                    folder_ids={folder_id},
+                    product_types={"workfile"},
+                    fields={"id", "name"},
+                )
+            )
 
         version_entities = self.version_entities
         if version_entities is None:
             product_ids = {p["id"] for p in product_entities}
-            version_entities = list(ayon_api.get_versions(
-                project_name,
-                product_ids=product_ids,
-                fields={"id", "author", "taskId"},
-            ))
+            version_entities = list(
+                ayon_api.get_versions(
+                    project_name,
+                    product_ids=product_ids,
+                    fields={"id", "author", "taskId"},
+                )
+            )
 
         repre_entities = self.repre_entities
         if repre_entities is None:
             version_ids = {v["id"] for v in version_entities}
-            repre_entities = list(ayon_api.get_representations(
-                project_name,
-                version_ids=version_ids,
-            ))
+            repre_entities = list(
+                ayon_api.get_representations(
+                    project_name,
+                    version_ids=version_ids,
+                )
+            )
         return product_entities, version_entities, repre_entities
 
 
 class SaveWorkfileOptionalData(_WorkfileOptionalData):
     """Optional data to save workfile."""
+
     data_version = 1
 
     def __init__(
@@ -224,13 +226,13 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
         project_settings: Optional[dict[str, Any]] = None,
         rootless_path: Optional[str] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             project_entity=project_entity,
             anatomy=anatomy,
             project_settings=project_settings,
-            **kwargs
+            **kwargs,
         )
 
         self.rootless_path = rootless_path
@@ -240,9 +242,9 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
         """Fill workfile entities if not provided."""
         if self.workfile_entities is not None:
             return self.workfile_entities
-        return list(ayon_api.get_workfiles_info(
-            project_name, task_ids=[task_id]
-        ))
+        return list(
+            ayon_api.get_workfiles_info(project_name, task_ids=[task_id])
+        )
 
     def get_rootless_path(
         self,
@@ -256,7 +258,7 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
         anatomy: "Anatomy",
     ):
         from ayon_core.pipeline.workfile.utils import (
-            find_workfile_rootless_path
+            find_workfile_rootless_path,
         )
 
         if self.rootless_path is not None:
@@ -276,11 +278,13 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
 
 class CopyWorkfileOptionalData(SaveWorkfileOptionalData):
     """Optional data to copy workfile."""
+
     data_version = 1
 
 
 class CopyPublishedWorkfileOptionalData(SaveWorkfileOptionalData):
     """Optional data to copy published workfile."""
+
     data_version = 1
 
     def __init__(
@@ -292,7 +296,7 @@ class CopyPublishedWorkfileOptionalData(SaveWorkfileOptionalData):
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         src_anatomy: Optional["Anatomy"] = None,
         src_representation_path: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             rootless_path=rootless_path,
@@ -300,7 +304,7 @@ class CopyPublishedWorkfileOptionalData(SaveWorkfileOptionalData):
             project_entity=project_entity,
             anatomy=anatomy,
             project_settings=project_settings,
-            **kwargs
+            **kwargs,
         )
         self.src_anatomy = src_anatomy
         self.src_representation_path = src_representation_path
@@ -313,7 +317,7 @@ class CopyPublishedWorkfileOptionalData(SaveWorkfileOptionalData):
     ) -> tuple["Anatomy", str]:
         from ayon_core.pipeline import Anatomy
         from ayon_core.pipeline.load import (
-            get_representation_path_with_anatomy
+            get_representation_path_with_anatomy,
         )
 
         src_anatomy = self.src_anatomy
@@ -414,9 +418,9 @@ def get_open_workfile_context(
 ) -> OpenWorkfileContext:
     if prepared_data is None:
         prepared_data = OpenWorkfileOptionalData()
-    (
-        project_entity, anatomy, project_settings
-    ) = prepared_data.get_project_data(project_name)
+    (project_entity, anatomy, project_settings) = (
+        prepared_data.get_project_data(project_name)
+    )
     return OpenWorkfileContext(
         data_version=prepared_data.data_version,
         filepath=filepath,
@@ -438,9 +442,9 @@ def get_list_workfiles_context(
 ) -> ListWorkfilesContext:
     if prepared_data is None:
         prepared_data = ListWorkfilesOptionalData()
-    (
-        project_entity, anatomy, project_settings
-    ) = prepared_data.get_project_data(project_name)
+    (project_entity, anatomy, project_settings) = (
+        prepared_data.get_project_data(project_name)
+    )
 
     template_key = prepared_data.get_template_key(
         project_name,
@@ -471,9 +475,9 @@ def get_list_published_workfiles_context(
 ) -> ListPublishedWorkfilesContext:
     if prepared_data is None:
         prepared_data = ListPublishedWorkfilesOptionalData()
-    (
-        project_entity, anatomy, project_settings
-    ) = prepared_data.get_project_data(project_name)
+    (project_entity, anatomy, project_settings) = (
+        prepared_data.get_project_data(project_name)
+    )
     (
         product_entities,
         version_entities,
@@ -504,9 +508,9 @@ def get_save_workfile_context(
     if prepared_data is None:
         prepared_data = SaveWorkfileOptionalData()
 
-    (
-        project_entity, anatomy, project_settings
-    ) = prepared_data.get_project_data(project_name)
+    (project_entity, anatomy, project_settings) = (
+        prepared_data.get_project_data(project_name)
+    )
 
     rootless_path = prepared_data.get_rootless_path(
         filepath,
@@ -658,6 +662,7 @@ class WorkfileInfo:
         thumbnail_id (Optional[str]): Thumbnail entity id linked to workfile.
 
     """
+
     filepath: str
     rootless_path: str
     version: Optional[int]
@@ -759,6 +764,7 @@ class PublishedWorkfileInfo:
             modified on the filesystem.
 
     """
+
     project_name: str
     folder_id: str
     task_id: Optional[str]
@@ -832,6 +838,7 @@ class IWorkfileHost(AbstractHost):
         all host integrations.
 
     """
+
     @abstractmethod
     def save_workfile(self, dst_path: Optional[str] = None) -> None:
         """Save the currently opened scene.
@@ -893,7 +900,7 @@ class IWorkfileHost(AbstractHost):
         return []
 
     def capture_workfile_thumbnail_source(self) -> Optional[str]:
-        """Optional: capture host editor (e.g. Camera/Node view) to a temp image.
+        """Capture host editor view to a temp image (optional).
 
         Used by the Workfiles tool when the user presses Ctrl+Shift+S to
         capture the host's editor (e.g. Harmony Camera view or Node View) as
@@ -1137,9 +1144,7 @@ class IWorkfileHost(AbstractHost):
             filepath = os.path.join(workdir, filename)
 
             rootless_path = f"{rootless_workdir}/{filename}"
-            workfile_entity = workfile_entities_by_path.pop(
-                filepath, None
-            )
+            workfile_entity = workfile_entities_by_path.pop(filepath, None)
             version = comment = None
             if workfile_entity is not None:
                 _data = workfile_entity["data"]
@@ -1179,14 +1184,16 @@ class IWorkfileHost(AbstractHost):
                 comment = parsed_data.comment
 
             available = os.path.exists(filepath)
-            items.append(WorkfileInfo.new(
-                filepath,
-                rootless_path,
-                version=version,
-                comment=comment,
-                available=available,
-                workfile_entity=workfile_entity,
-            ))
+            items.append(
+                WorkfileInfo.new(
+                    filepath,
+                    rootless_path,
+                    version=version,
+                    comment=comment,
+                    available=available,
+                    workfile_entity=workfile_entity,
+                )
+            )
 
         return items
 
@@ -1230,8 +1237,7 @@ class IWorkfileHost(AbstractHost):
             for version_entity in list_workfiles_context.version_entities
         }
         extensions = {
-            ext.lstrip(".")
-            for ext in self.get_workfile_extensions()
+            ext.lstrip(".") for ext in self.get_workfile_extensions()
         }
         items = []
         for repre_entity in list_workfiles_context.repre_entities:
@@ -1243,9 +1249,7 @@ class IWorkfileHost(AbstractHost):
             workfile_path = None
             for repre_file in repre_entity["files"]:
                 ext = (
-                    os.path.splitext(repre_file["name"])[1]
-                    .lower()
-                    .lstrip(".")
+                    os.path.splitext(repre_file["name"])[1].lower().lstrip(".")
                 )
                 if ext in extensions:
                     workfile_path = repre_file["path"]
@@ -1510,8 +1514,7 @@ class IWorkfileHost(AbstractHost):
         if not os.path.exists(dst_dir):
             os.makedirs(dst_dir, exist_ok=True)
         shutil.copy(
-            copy_workfile_context.src_path,
-            copy_workfile_context.dst_path
+            copy_workfile_context.src_path, copy_workfile_context.dst_path
         )
 
         self._save_workfile_entity(
@@ -1552,9 +1555,7 @@ class IWorkfileHost(AbstractHost):
             Optional[dict[str, Any]]: Workfile entity.
 
         """
-        from ayon_core.pipeline.workfile.utils import (
-            save_workfile_info
-        )
+        from ayon_core.pipeline.workfile.utils import save_workfile_info
 
         project_name = self.get_current_project_name()
         if not description:
@@ -1623,7 +1624,7 @@ class IWorkfileHost(AbstractHost):
 
         """
         from ayon_core.pipeline.workfile.path_resolving import (
-            create_workdir_extra_folders
+            create_workdir_extra_folders,
         )
 
         project_name = self.get_current_project_name()
@@ -1634,7 +1635,7 @@ class IWorkfileHost(AbstractHost):
             self.name,
             task_entity["taskType"],
             task_entity["name"],
-            project_name
+            project_name,
         )
 
     def _get_workfile_event_data(
@@ -1735,7 +1736,7 @@ class IWorkfileHost(AbstractHost):
         self._create_extra_folders(
             save_workfile_context.folder_entity,
             save_workfile_context.task_entity,
-            workdir
+            workdir,
         )
 
     def _before_workfile_copy(

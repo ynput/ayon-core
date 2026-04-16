@@ -55,9 +55,7 @@ class WorkfilesModel:
     """Workfiles model."""
 
     def __init__(
-        self,
-        host: IWorkfileHost,
-        controller: AbstractWorkfilesBackend
+        self, host: IWorkfileHost, controller: AbstractWorkfilesBackend
     ):
         self._host: IWorkfileHost = host
         self._controller: AbstractWorkfilesBackend = controller
@@ -113,8 +111,8 @@ class WorkfilesModel:
         Args:
             event_name (str): Name of the event to emit.
             event_data (dict): Event data to emit.
-            ensure_visible (bool): If True, process events multiple times with delay
-                to ensure UI widgets are fully visible before returning.
+            ensure_visible (bool): If True, process events repeatedly with
+                delay so UI widgets are visible before returning.
         """
         self._emit_event(event_name, event_data)
         # Process Qt events to update UI immediately
@@ -247,7 +245,6 @@ class WorkfilesModel:
         description,
         thumbnail_path=None,
     ):
-
         message_id = str(uuid.uuid4())
 
         # Start heartbeat BEFORE emitting started event for smooth animation
@@ -311,7 +308,9 @@ class WorkfilesModel:
                 prepared_data=prepared_data,
             )
             self._update_workfile_info(
-                task_id, rootless_path, description,
+                task_id,
+                rootless_path,
+                description,
                 thumbnail_path=thumbnail_path,
             )
             self._update_current_context(
@@ -358,9 +357,7 @@ class WorkfilesModel:
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
-        task_entity = self._controller.get_task_entity(
-            project_name, task_id
-        )
+        task_entity = self._controller.get_task_entity(project_name, task_id)
         repre_entity = self._repre_by_id.get(representation_id)
         dst_filepath = os.path.join(workdir, filename)
         rootless_path = f"{rootless_workdir}/{filename}"
@@ -387,9 +384,7 @@ class WorkfilesModel:
                 description=description,
                 prepared_data=prepared_data,
             )
-            self._update_workfile_info(
-                task_id, rootless_path, description
-            )
+            self._update_workfile_info(task_id, rootless_path, description)
             self._update_current_context(
                 folder_id, folder_entity["path"], task_entity["name"]
             )
@@ -415,7 +410,7 @@ class WorkfilesModel:
         filename,
         version,
         comment,
-        description
+        description,
     ):
         self._emit_event("workfile_duplicate.started")
 
@@ -458,7 +453,9 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
-    def delete_workfile(self, folder_id, task_id, filepath, workfile_entity_id):
+    def delete_workfile(
+        self, folder_id, task_id, filepath, workfile_entity_id
+    ):
         """Delete a workfile and its database entry.
 
         Args:
@@ -484,11 +481,13 @@ class WorkfilesModel:
                     project_name, "workfile", workfile_entity_id
                 )
                 op_session.commit()
-                self._log.info(f"Deleted workfile entity: {workfile_entity_id}")
+                self._log.info(
+                    f"Deleted workfile entity: {workfile_entity_id}"
+                )
 
             # Reset cache for this task to refresh the file list
             self._reset_workarea_file_items(task_id)
-            
+
             # Also invalidate the workfile entities cache for this task
             self._workfile_entities_by_task_id.pop(task_id, None)
 
@@ -506,10 +505,12 @@ class WorkfilesModel:
             return []
         workfile_entities = self._workfile_entities_by_task_id.get(task_id)
         if workfile_entities is None:
-            workfile_entities = list(ayon_api.get_workfiles_info(
-                self._project_name,
-                task_ids=[task_id],
-            ))
+            workfile_entities = list(
+                ayon_api.get_workfiles_info(
+                    self._project_name,
+                    task_ids=[task_id],
+                )
+            )
             self._workfile_entities_by_task_id[task_id] = workfile_entities
         return workfile_entities
 
@@ -517,7 +518,7 @@ class WorkfilesModel:
         self,
         folder_id: Optional[str],
         task_id: Optional[str],
-        rootless_path: Optional[str]
+        rootless_path: Optional[str],
     ):
         if not folder_id or not task_id or not rootless_path:
             return None
@@ -546,9 +547,7 @@ class WorkfilesModel:
             thumbnail_path=thumbnail_path,
         )
 
-        self._update_file_description(
-            task_id, rootless_path, description
-        )
+        self._update_file_description(task_id, rootless_path, description)
 
     def get_workarea_dir_by_context(
         self, folder_id: str, task_id: str
@@ -649,12 +648,10 @@ class WorkfilesModel:
         if used_roots:
             used_root_name = next(iter(used_roots))
             root_value = used_roots[used_root_name]
-            workdir_end = rootless_workdir[len(root_value):].lstrip("/")
+            workdir_end = rootless_workdir[len(root_value) :].lstrip("/")
             rootless_workdir = f"{{root[{used_root_name}]}}/{workdir_end}"
 
-        file_template = anatomy.get_template_item(
-            "work", template_key, "file"
-        )
+        file_template = anatomy.get_template_item("work", template_key, "file")
         file_template_str = file_template.template
 
         template_has_version = "{version" in file_template_str
@@ -673,9 +670,7 @@ class WorkfilesModel:
                 comment_hints.add(item.comment)
         comment_hints = list(comment_hints)
 
-        last_version = self._get_last_workfile_version(
-            file_items, task_entity
-        )
+        last_version = self._get_last_workfile_version(file_items, task_entity)
 
         return {
             "template_key": template_key,
@@ -720,18 +715,14 @@ class WorkfilesModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        file_template = anatomy.get_template_item(
-            "work", template_key, "file"
-        )
+        file_template = anatomy.get_template_item("work", template_key, "file")
 
         if use_last_version:
             file_items = self.get_workarea_file_items(folder_id, task_id)
             task_entity = self._controller.get_task_entity(
                 self._project_name, task_id
             )
-            version = self._get_last_workfile_version(
-                file_items, task_entity
-            )
+            version = self._get_last_workfile_version(file_items, task_entity)
         fill_data["version"] = version
         fill_data["ext"] = extension.lstrip(".")
 
@@ -747,11 +738,7 @@ class WorkfilesModel:
             filepath = os.path.join(workdir, filename)
             exists = os.path.exists(filepath)
 
-        return WorkareaFilepathResult(
-            workdir,
-            filename,
-            exists
-        )
+        return WorkareaFilepathResult(workdir, filename, exists)
 
     def get_published_file_items(
         self, folder_id: str, task_id: str
@@ -774,34 +761,42 @@ class WorkfilesModel:
             project_name = self._project_name
             anatomy = self._controller.project_anatomy
 
-            product_entities = list(ayon_api.get_products(
-                project_name,
-                folder_ids={folder_id},
-                product_types={"workfile"},
-                fields={"id", "name"}
-            ))
+            product_entities = list(
+                ayon_api.get_products(
+                    project_name,
+                    folder_ids={folder_id},
+                    product_types={"workfile"},
+                    fields={"id", "name"},
+                )
+            )
 
             version_entities = []
             product_ids = {product["id"] for product in product_entities}
             if product_ids:
                 # Get version docs of products with their families
-                version_entities = list(ayon_api.get_versions(
-                    project_name,
-                    product_ids=product_ids,
-                    fields={"id", "author", "taskId", "attrib.comment"},
-                ))
+                version_entities = list(
+                    ayon_api.get_versions(
+                        project_name,
+                        product_ids=product_ids,
+                        fields={"id", "author", "taskId", "attrib.comment"},
+                    )
+                )
 
             repre_entities = []
             if version_entities:
-                repre_entities = list(ayon_api.get_representations(
-                    project_name,
-                    version_ids={v["id"] for v in version_entities}
-                ))
+                repre_entities = list(
+                    ayon_api.get_representations(
+                        project_name,
+                        version_ids={v["id"] for v in version_entities},
+                    )
+                )
 
-            self._repre_by_id.update({
-                repre_entity["id"]: repre_entity
-                for repre_entity in repre_entities
-            })
+            self._repre_by_id.update(
+                {
+                    repre_entity["id"]: repre_entity
+                    for repre_entity in repre_entities
+                }
+            )
 
             # Map versions by representation ID for easy lookup
             version_by_id = {
@@ -826,20 +821,18 @@ class WorkfilesModel:
                 version_entities=version_entities,
                 repre_entities=repre_entities,
             )
-            cache.update_data(self._host.list_published_workfiles(
-                project_name,
-                folder_id,
-                prepared_data=prepared_data,
-            ))
+            cache.update_data(
+                self._host.list_published_workfiles(
+                    project_name,
+                    folder_id,
+                    prepared_data=prepared_data,
+                )
+            )
 
         items = cache.get_data()
 
         if task_id:
-            items = [
-                item
-                for item in items
-                if item.task_id == task_id
-            ]
+            items = [item for item in items if item.task_id == task_id]
         return items
 
     def get_published_workfile_info(
@@ -918,9 +911,7 @@ class WorkfilesModel:
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
-        task_entity = self._controller.get_task_entity(
-            project_name, task_id
-        )
+        task_entity = self._controller.get_task_entity(project_name, task_id)
         prepared_data = OpenWorkfileOptionalData(
             project_entity=project_entity,
             anatomy=self._controller.project_anatomy,
@@ -965,10 +956,7 @@ class WorkfilesModel:
         return copy.deepcopy(fill_data)
 
     def _get_task_data(
-        self,
-        project_entity: dict[str, Any],
-        folder_id: str,
-        task_id: str
+        self, project_entity: dict[str, Any], folder_id: str, task_id: str
     ) -> dict[str, Any]:
         task_data = self._task_data_by_folder_id.setdefault(folder_id, {})
         if task_id not in task_data:
@@ -1042,8 +1030,7 @@ class WorkfilesModel:
 
         # Cache items by entity ids and rootless path
         self._workarea_file_items_mapping[task_id] = {
-            item.rootless_path: item
-            for item in items
+            item.rootless_path: item for item in items
         }
 
         return items
@@ -1076,9 +1063,7 @@ class WorkfilesModel:
 
         """
         versions = {
-            item.version
-            for item in file_items
-            if item.version is not None
+            item.version for item in file_items if item.version is not None
         }
         if versions:
             return max(versions) + 1

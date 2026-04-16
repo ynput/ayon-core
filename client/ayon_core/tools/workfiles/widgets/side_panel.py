@@ -91,12 +91,8 @@ class SidePanelWidget(QtWidgets.QWidget):
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAsNeeded
-        )
-        scroll_area.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAsNeeded
-        )
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setWidget(content_widget)
 
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -152,12 +148,12 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._set_context(None, None, None, None, None)
 
     def set_thumbnail_path(self, path):
-        """Set current thumbnail from path (e.g. from Ctrl+Shift+S host capture)."""
+        """Set thumbnail from disk path (e.g. host capture shortcut)."""
         self._thumbnail_workfile_widget.set_thumbnail_path(path)
         self._update_thumbnail_save_enabled()
 
     def _show_message(self, message):
-        """Show a message to the user (e.g. error). Override or use status bar."""
+        """Show a user-visible message (stub for subclasses)."""
         pass
 
     def _on_thumbnail_changed(self):
@@ -350,7 +346,11 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._orig_description = description
         self._description_input.setPlainText(description)
 
-        if workfile_info and workfile_info.thumbnail_id and workfile_info.workfile_entity_id:
+        if (
+            workfile_info
+            and workfile_info.thumbnail_id
+            and workfile_info.workfile_entity_id
+        ):
             project_name = self._controller.get_current_project_name()
             thumb_path = get_thumbnail_path(
                 project_name,
