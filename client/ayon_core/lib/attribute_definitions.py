@@ -719,6 +719,49 @@ class BoolDef(AbstractAttrDef):
         return self.default
 
 
+def _color_value_to_hex(value: Any) -> Optional[str]:
+    """Normalize color value to #rrggbb or None if invalid."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        if re.match(r"^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$", s):
+            if len(s) == 4:
+                return "#" + "".join(c * 2 for c in s[1:])
+            return s
+        return None
+    if isinstance(value, (list, tuple)) and len(value) >= 3:
+        try:
+            r, g, b = int(value[0]), int(value[1]), int(value[2])
+            if 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255:
+                return "#{:02x}{:02x}{:02x}".format(r, g, b)
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+class ColorDef(AbstractAttrDef):
+    """Color definition. Value is hex string #rrggbb."""
+
+    type = "color"
+    type_attributes: List[str] = []
+
+    def __init__(self, key: str, default: Optional[str] = None, **kwargs):
+        if default is None:
+            default = "#000000"
+        else:
+            normalized = _color_value_to_hex(default)
+            default = normalized if normalized else "#000000"
+        super().__init__(key, default=default, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return _color_value_to_hex(value) is not None
+
+    def convert_value(self, value: Any) -> str:
+        normalized = _color_value_to_hex(value)
+        return normalized if normalized else self.default
+
+
 class FileDefItem:
     def __init__(
         self,
@@ -1244,6 +1287,7 @@ for _attr_class in (
     TextDef,
     EnumDef,
     BoolDef,
+    ColorDef,
     FileDef
 ):
     register_attr_def_class(_attr_class)
