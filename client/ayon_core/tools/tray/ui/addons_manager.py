@@ -1,5 +1,7 @@
 import os
+import threading
 import time
+import traceback
 from typing import Callable
 
 from ayon_core.addon import AddonsManager, ITrayAddon, ITrayService
@@ -7,6 +9,9 @@ from ayon_core.tools.tray.webserver import (
     find_free_port,
     WebServerManager,
 )
+
+# Timeout for addon tray_exit to finish
+_TRAY_EXIT_TIMEOUT = 8.0
 
 
 class TrayAddonsManager(AddonsManager):
@@ -218,16 +223,38 @@ class TrayAddonsManager(AddonsManager):
     def on_exit(self):
         self._webserver_manager.stop_server()
         for addon in self.get_enabled_tray_addons():
-            if addon.tray_initialized:
+            if not addon.tray_initialized:
+                continue
+            exc_holder = []
+
+            def run_tray_exit():
                 try:
                     addon.tray_exit()
-                except Exception:
+                except SystemExit:
+                    exc_holder.append(("SystemExit", None))
+                except Exception as e:
+                    exc_holder.append((e, traceback.format_exc()))
+
+            thread = threading.Thread(target=run_tray_exit, daemon=True)
+            thread.start()
+            thread.join(timeout=_TRAY_EXIT_TIMEOUT)
+            if thread.is_alive():
+                self.log.warning(
+                    f"Addon \"{addon.name}\" tray_exit did not finish within {_TRAY_EXIT_TIMEOUT}s; continuing shutdown."
+                )
+            elif exc_holder:
+                exc_type_or_pair = exc_holder[0]
+                if exc_type_or_pair[0] == "SystemExit":
                     self.log.warning(
-                        "Addon \"{}\" crashed on `tray_exit`.".format(
-                            addon.name
-                        ),
-                        exc_info=True
+                        f"Addon \"{addon.name}\" called sys.exit in tray_exit; ignoring."
                     )
+                else:
+                    exc, tb = exc_type_or_pair
+                    self.log.warning(
+                        f"Addon \"{addon.name}\" crashed on `tray_exit`: {exc}"
+                    )
+                    if tb:
+                        self.log.debug(tb)
 
     def get_tray_webserver(self):
         # TODO rename/remove method
