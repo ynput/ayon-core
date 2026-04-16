@@ -1,5 +1,6 @@
 import collections
 import logging
+import uuid
 from functools import partial
 
 from qtpy import QtWidgets, QtCore
@@ -95,6 +96,36 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self._selected = None
 
         self._controller = controller
+        self._operation_heartbeat = None
+
+    def _start_operation_heartbeat(self):
+        """Start Qt heartbeat for long-running operations.
+
+        Uses 16ms interval (~60fps) for smooth toast animations.
+        """
+        if not self._operation_heartbeat:
+            app = QtWidgets.QApplication.instance()
+            if app:
+                timer = QtCore.QTimer()
+                timer.timeout.connect(lambda: app.processEvents())
+                timer.start(16)  # Process events every 16ms (~60fps)
+                self._operation_heartbeat = timer
+
+    def _stop_operation_heartbeat(self):
+        """Stop Qt heartbeat."""
+        if self._operation_heartbeat:
+            try:
+                self._operation_heartbeat.stop()
+            except Exception:
+                pass
+            finally:
+                self._operation_heartbeat = None
+
+    def _process_qt_events(self):
+        """Process Qt events for smooth UI updates."""
+        app = QtWidgets.QApplication.instance()
+        if app:
+            app.processEvents()
 
     def refresh(self):
         with preserve_expanded_rows(
@@ -124,6 +155,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
     def set_filter_outdated(self, enabled):
         self._proxy_model.set_filter_outdated(enabled)
+
+    def set_enable_grouping(self, enabled):
+        self._model.set_enable_grouping(enabled)
 
     def get_selected_indexes(self):
         """Get the selected rows"""
@@ -620,20 +654,60 @@ class SceneInventoryView(QtWidgets.QTreeView):
         Returns:
             None
         """
-        containers_by_id = self._controller.get_containers_by_item_ids(
-            item_ids
+        # Generate unique message ID for this operation
+        message_id = str(uuid.uuid4())
+        action_label = getattr(action, "label", action.__class__.__name__)
+        total = len(item_ids) if item_ids else 1
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        # Emit started event
+        self._controller.emit_event(
+            "inventory_action.started",
+            {
+                "id": message_id,
+                "message": f"Running {action_label} on {total} item(s)...",
+                "total": total,
+            }
         )
-        result = action.process(list(containers_by_id.values()))
-        if result:
-            self.data_changed.emit()
+        # Process Qt events to show the toast immediately
+        self._process_qt_events()
 
-            if isinstance(result, (list, set)):
-                self._select_items_by_action(result)
+        failed = False
+        error_info = None
+        try:
+            containers_by_id = self._controller.get_containers_by_item_ids(
+                item_ids
+            )
+            result = action.process(list(containers_by_id.values()))
+            if result:
+                self.data_changed.emit()
 
-            elif isinstance(result, dict):
-                self._select_items_by_action(
-                    result["objectNames"], result["options"]
-                )
+                if isinstance(result, (list, set)):
+                    self._select_items_by_action(result)
+
+                elif isinstance(result, dict):
+                    self._select_items_by_action(
+                        result["objectNames"], result["options"]
+                    )
+        except Exception as exc:
+            failed = True
+            error_info = str(exc)
+            log.warning("Inventory action failed", exc_info=True)
+        finally:
+            self._stop_operation_heartbeat()
+            # Emit finished event
+            self._controller.emit_event(
+                "inventory_action.finished",
+                {
+                    "id": message_id,
+                    "failed": failed,
+                    "error_info": error_info,
+                }
+            )
+            # Process events one final time to ensure finished event is handled
+            self._process_qt_events()
 
     def _select_items_by_action(self, object_names, options=None):
         """Select view items by the result of action
@@ -963,9 +1037,67 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if state != accept:
             return
 
-        for container in containers:
-            remove_container(container)
-        self.data_changed.emit()
+        # Generate unique message ID for this operation
+        message_id = str(uuid.uuid4())
+        total = len(containers)
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        # Emit started event
+        self._controller.emit_event(
+            "remove.started",
+            {
+                "id": message_id,
+                "message": f"Removing {total} item(s)...",
+                "total": total,
+            }
+        )
+        # Process Qt events to show the toast immediately
+        self._process_qt_events()
+
+        failed = False
+        error_info = None
+        try:
+            for index, container in enumerate(containers):
+                try:
+                    # Store message_id in container for load plugins to access
+                    container["_remove_message_id"] = message_id
+                    remove_container(container)
+                    # Emit progress for batch removals
+                    if total > 1:
+                        current = index + 1
+                        progress = int((current / total) * 100)
+                        self._controller.emit_event(
+                            "remove.progress",
+                            {
+                                "id": message_id,
+                                "progress": progress,
+                                "current": current,
+                                "total": total,
+                                "message": f"Removing item {current}/{total}...",
+                            }
+                        )
+                        # Process events for smooth UI updates
+                        self._process_qt_events()
+                except Exception as exc:
+                    failed = True
+                    error_info = str(exc)
+                    log.warning("Remove failed", exc_info=True)
+        finally:
+            self._stop_operation_heartbeat()
+            # Emit finished event
+            self._controller.emit_event(
+                "remove.finished",
+                {
+                    "id": message_id,
+                    "failed": failed,
+                    "error_info": error_info,
+                }
+            )
+            # Process events one final time to ensure finished event is handled
+            self._process_qt_events()
+            self.data_changed.emit()
 
     def _show_version_error_dialog(self, version, item_ids, exception):
         """Shows QMessageBox when version switch doesn't work
@@ -1014,7 +1146,12 @@ class SceneInventoryView(QtWidgets.QTreeView):
             log.info("Nothing to update.")
             return
 
+        # Start heartbeat for smooth animation
+        self._start_operation_heartbeat()
+
         # Trigger update to latest
+        # Note: _update_containers will use the same heartbeat, so we don't
+        # need to stop it here - it will be stopped by _update_containers
         self._update_containers_to_version(item_ids, version=-1)
 
     def _on_switch_to_versioned(self, item_ids):
@@ -1107,23 +1244,94 @@ class SceneInventoryView(QtWidgets.QTreeView):
             f"{len(item_ids)} items - {len(versions)} versions"
         )
 
+        # Convert to lists for easier handling
+        item_ids = list(item_ids)
+        versions = list(versions)
+        total = len(item_ids)
+
+        # Generate unique message ID for this operation
+        message_id = str(uuid.uuid4())
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        # Emit started event
+        self._controller.emit_event(
+            "update.started",
+            {
+                "id": message_id,
+                "message": f"Updating {total} container(s)...",
+                "total": total,
+            }
+        )
+        # Process Qt events to show the toast immediately
+        self._process_qt_events()
+
         # Trigger update to latest
         containers_by_id = self._controller.get_containers_by_item_ids(
             item_ids
         )
+        failed = False
+        error_info = None
         try:
-            for item_id, item_version in zip(item_ids, versions):
+            for index, (item_id, item_version) in enumerate(zip(item_ids, versions)):
                 container = containers_by_id[item_id]
                 if container.get("version_locked"):
                     continue
                 try:
+                    # Store message_id in container for load plugins to access
+                    container["_update_message_id"] = message_id
                     update_container(container, item_version)
+                    # Emit progress event after each successful update
+                    current = index + 1
+                    progress = int((current / total) * 100)
+                    self._controller.emit_event(
+                        "update.progress",
+                        {
+                            "id": message_id,
+                            "progress": progress,
+                            "current": current,
+                            "total": total,
+                            "message": f"Updating container {current}/{total}...",
+                        }
+                    )
+                    # Process events for smooth UI updates
+                    self._process_qt_events()
                 except Exception as exc:
+                    failed = True
+                    error_info = str(exc)
                     log.warning("Update failed", exc_info=True)
                     self._show_version_error_dialog(
                         item_version, [item_id], exc
                     )
+                    # Still emit progress even on failure
+                    current = index + 1
+                    progress = int((current / total) * 100)
+                    self._controller.emit_event(
+                        "update.progress",
+                        {
+                            "id": message_id,
+                            "progress": progress,
+                            "current": current,
+                            "total": total,
+                            "message": f"Updating container {current}/{total}...",
+                        }
+                    )
+                    # Process events for smooth UI updates
+                    self._process_qt_events()
         finally:
+            self._stop_operation_heartbeat()
+            # Emit finished event
+            self._controller.emit_event(
+                "update.finished",
+                {
+                    "id": message_id,
+                    "failed": failed,
+                    "error_info": error_info,
+                }
+            )
+            # Process events one final time to ensure finished event is handled
+            self._process_qt_events()
             # Always update the scene inventory view, even if errors occurred
             self.data_changed.emit()
 

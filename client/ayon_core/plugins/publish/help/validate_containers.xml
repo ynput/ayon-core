@@ -7,11 +7,14 @@
 
 Scene contains one or more outdated loaded containers, eg. versions loaded into scene by Loader are not latest.
 
-### How to repair?
+### How to repair/update to the latest version?
 
-Use 'Scene Inventory' and update all highlighted old container to latest OR
-refresh Publish and switch 'Validate Containers' toggle on 'Context' tab.
+Use 'Scene Inventory' and update all highlighted old containers to latest by clicking the 'Update' button.
 
+### How to override and publish anyway?
+
+Refresh the Publisher window and select the 'Context' tab. Uncheck the 'Validate Containers' toggle and click 'Publish'.
+    
     WARNING: Skipping this validator will result in publishing (and probably rendering) old version of loaded assets.
 </description>
 <detail>
