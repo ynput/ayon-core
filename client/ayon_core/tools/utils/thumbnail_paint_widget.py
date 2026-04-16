@@ -1,6 +1,4 @@
 import os
-import subprocess
-import sys
 
 from qtpy import QtCore, QtGui, QtWidgets
 
