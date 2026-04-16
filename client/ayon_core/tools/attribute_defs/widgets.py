@@ -16,7 +16,8 @@ from ayon_core.lib.attribute_definitions import (
     FileDef,
     UIDef,
     UISeparatorDef,
-    UILabelDef
+    UILabelDef,
+    UIClickableLabelDef,
 )
 from ayon_core.tools.utils import (
     CustomTextComboBox,
@@ -94,6 +95,9 @@ def _create_widget_for_attr_def(
 
     elif isinstance(attr_def, UISeparatorDef):
         cls = SeparatorAttrWidget
+
+    elif isinstance(attr_def, UIClickableLabelDef):
+        cls = ClickableLabelAttrWidget
 
     elif isinstance(attr_def, UILabelDef):
         cls = LabelAttrWidget
@@ -365,6 +369,70 @@ class LabelAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+
+class ClickableLabelAttrWidget(_BaseAttrDefWidget):
+    """Label that on click sets another attribute's value (e.g. fill Layer Name from write node)."""
+
+    def _ui_init(self):
+        input_widget = MarkdownLabel(self)
+        label = self.attr_def.label
+        if label:
+            input_widget.setText(str(label))
+        input_widget.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        input_widget.setStyleSheet("color: #6ab0ff; text-decoration: underline;")
+        input_widget.installEventFilter(self)
+
+        self._input_widget = input_widget
+        self.main_layout.addWidget(input_widget, 0)
+
+    def _find_target_widget(self, target_key):
+        """Find the widget whose attr_def.key == target_key in the same form."""
+        parent = self.parent()
+        while parent is not None:
+            if hasattr(parent, "_widgets_by_id"):
+                for w in parent._widgets_by_id.values():
+                    if getattr(getattr(w, "attr_def", None), "key", None) == target_key:
+                        return w
+                return None
+            parent = parent.parent() if hasattr(parent, "parent") else None
+        # Fallback: creator panel uses a plain QWidget parent, no _widgets_by_id
+        root = self.parent()
+        if root is None:
+            return None
+        return self._find_widget_by_key_in_layout(root, target_key)
+
+    def _find_widget_by_key_in_layout(self, widget, target_key):
+        """Recursively find a child widget with attr_def.key == target_key."""
+        layout = widget.layout()
+        if layout is not None:
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item is not None:
+                    w = item.widget()
+                    if w is not None:
+                        if getattr(getattr(w, "attr_def", None), "key", None) == target_key:
+                            return w
+                        found = self._find_widget_by_key_in_layout(w, target_key)
+                        if found is not None:
+                            return found
+        return None
+
+    def eventFilter(self, obj, event):
+        if obj is self._input_widget and event.type() == QtCore.QEvent.MouseButtonPress:
+            if event.button() == QtCore.Qt.LeftButton:
+                target_key = self.attr_def.target_attr_key
+                value = self.attr_def.value_to_set
+                target_widget = self._find_target_widget(target_key)
+                if target_widget is not None and hasattr(target_widget, "set_value"):
+                    target_widget.set_value(value)
+        return super().eventFilter(obj, event)
+
+    def current_value(self):
+        return None
+
+    def set_value(self, value, multivalue=False):
+        pass
 
 
 class ClickableLineEdit(QtWidgets.QLineEdit):
