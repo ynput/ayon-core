@@ -96,16 +96,83 @@ def pretty_timestamp(t, now=None):
     return pretty_date(dt, now=now)
 
 
-class PrettyTimeDelegate(QtWidgets.QStyledItemDelegate):
-    """A delegate that displays a timestamp as a pretty date.
+def format_full_timestamp(t):
+    """Format timestamp as full readable date with ordinal day.
 
-    This displays dates like `pretty_date`.
+    Args:
+        t (float or str): Timestamp value
+
+    Returns:
+        str: Formatted string like "Wednesday, Aug. 1st, 11:30am EST"
+    """
+    if t is None:
+        return None
+
+    if isinstance(t, float):
+        dt = datetime.fromtimestamp(t)
+    else:
+        try:
+            t_struct = time.strptime(t, "%Y%m%dT%H%M%SZ")
+        except (ValueError, TypeError):
+            return None
+        dt = datetime.fromtimestamp(time.mktime(t_struct))
+
+    day = dt.day
+    if 4 <= day <= 20 or 24 <= day <= 30:
+        suffix = "th"
+    else:
+        suffix = ["st", "nd", "rd"][day % 10 - 1]
+
+    weekday = dt.strftime("%A")
+    month = dt.strftime("%b")
+    hour = dt.hour
+    minute = dt.minute
+    am_pm = "am" if hour < 12 else "pm"
+    hour_12 = hour % 12 if hour % 12 != 0 else 12
+
+    # Get timezone name
+    import time as time_module
+    if time_module.daylight and dt.dst():
+        timezone = time_module.tzname[1]
+    else:
+        timezone = time_module.tzname[0]
+
+    return "{}, {}. {}{}, {}:{:02d}{} {}".format(
+        weekday, month, day, suffix, hour_12, minute, am_pm, timezone
+    )
+
+
+class PrettyTimeDelegate(QtWidgets.QStyledItemDelegate):
+    """A delegate that displays a timestamp as a pretty date with tooltip.
+
+    This displays dates like `pretty_date` and shows full formatted date
+    on hover.
 
     """
 
     def displayText(self, value, locale):
         if value is not None:
             return pretty_timestamp(value)
+
+    def helpEvent(self, event, view, option, index):
+        """Show tooltip with full formatted timestamp on hover."""
+        if event.type() == QtCore.QEvent.ToolTip and index.isValid():
+            # Get the raw timestamp value - try EditRole first as it
+            # often contains the raw data before delegate formatting
+            value = index.data(QtCore.Qt.EditRole)
+            if value is None:
+                # Fallback to DisplayRole
+                value = index.data(QtCore.Qt.DisplayRole)
+
+            if value is not None:
+                tooltip = format_full_timestamp(value)
+                if tooltip:
+                    QtWidgets.QToolTip.showText(
+                        event.globalPos(), tooltip, view
+                    )
+                    return True
+
+        return super().helpEvent(event, view, option, index)
 
 
 class StatusDelegate(QtWidgets.QStyledItemDelegate):
