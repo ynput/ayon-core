@@ -26,6 +26,7 @@ from .utils import (
     save_current_workfile_to,
     save_workfile_with_current_context,
     save_next_version,
+    get_next_workfile_version,
     copy_workfile_to_context,
     find_workfile_rootless_path,
 )
@@ -69,6 +70,7 @@ __all__ = (
     "save_current_workfile_to",
     "save_workfile_with_current_context",
     "save_next_version",
+    "get_next_workfile_version",
     "copy_workfile_to_context",
 
     "BuildWorkfile",

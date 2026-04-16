@@ -304,6 +304,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             product_base_type = instance.data.get("productBaseType")
             if not product_base_type:
                 product_base_type = product_type
+            pre_instance_version = instance.data.get("version")
             anatomy_data.update({
                 "product": {
                     "name": product_name,
@@ -354,6 +355,24 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     product_name=instance.data["productName"],
                 )
             anatomy_data["version"] = version_number
+
+            if product_type == "workfile" or "workfile" in (
+                instance.data.get("families") or []
+            ):
+                self.log.debug(
+                    "CollectAnatomyInstanceData [workfile] name=%r "
+                    "follow_workfile_version_plugin=%s followWorkfileVersion=%s "
+                    "use_context_version=%s context_version=%s "
+                    "instance_version_before=%s latestVersion=%s -> version_number=%s",
+                    instance.data.get("name"),
+                    self.follow_workfile_version,
+                    instance.data.get("followWorkfileVersion"),
+                    use_context_version,
+                    context.data.get("version"),
+                    pre_instance_version,
+                    instance.data.get("latestVersion"),
+                    version_number,
+                )
 
             # Additional data
             resolution_width = instance.data.get("resolutionWidth")
