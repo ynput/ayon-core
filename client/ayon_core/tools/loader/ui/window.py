@@ -288,6 +288,10 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_load_progress,
         )
         controller.register_event_callback(
+            "load.started",
+            self._on_load_started,
+        )
+        controller.register_event_callback(
             "load.finished",
             self._on_load_finished,
         )
