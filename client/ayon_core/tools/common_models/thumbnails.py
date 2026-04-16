@@ -12,14 +12,30 @@ class ThumbnailsModel:
     def __init__(self):
         self._paths_cache = collections.defaultdict(dict)
         self._folders_cache = NestedCacheItem(
-            levels=2, lifetime=self.entity_cache_lifetime)
+            levels=2, lifetime=self.entity_cache_lifetime
+        )
         self._versions_cache = NestedCacheItem(
-            levels=2, lifetime=self.entity_cache_lifetime)
+            levels=2, lifetime=self.entity_cache_lifetime
+        )
 
     def reset(self):
         self._paths_cache = collections.defaultdict(dict)
         self._folders_cache.reset()
         self._versions_cache.reset()
+
+    def invalidate_versions(self, project_name, version_ids):
+        """Invalidate cache for specific version IDs.
+
+        Args:
+            project_name (str): Project name
+            version_ids (set[str]): Version IDs to invalidate
+        """
+        if not version_ids:
+            return
+        project_cache = self._versions_cache[project_name]
+        for version_id in version_ids:
+            # Reset the cache for this version by getting a new cache item
+            project_cache._data_by_key.pop(version_id, None)
 
     def get_thumbnail_paths(
         self,
@@ -27,10 +43,7 @@ class ThumbnailsModel:
         entity_type,
         entity_ids,
     ):
-        output = {
-            entity_id: None
-            for entity_id in entity_ids
-        }
+        output = {entity_id: None for entity_id in entity_ids}
         if not project_name or not entity_type or not entity_ids:
             return output
 
@@ -98,11 +111,7 @@ class ThumbnailsModel:
         return output
 
     def _get_thumbnail_path(
-        self,
-        project_name,
-        entity_type,
-        entity_id,
-        thumbnail_id
+        self, project_name, entity_type, entity_id, thumbnail_id
     ):
         if not thumbnail_id:
             return None
@@ -112,10 +121,7 @@ class ThumbnailsModel:
             return project_cache[thumbnail_id]
 
         filepath = get_thumbnail_path(
-            project_name,
-            entity_type,
-            entity_id,
-            thumbnail_id
+            project_name, entity_type, entity_id, thumbnail_id
         )
         project_cache[thumbnail_id] = filepath
         return filepath
@@ -125,9 +131,7 @@ class ThumbnailsModel:
             return
 
         folders = ayon_api.get_folders(
-            project_name,
-            folder_ids=folder_ids,
-            fields=["id", "thumbnailId"]
+            project_name, folder_ids=folder_ids, fields=["id", "thumbnailId"]
         )
         project_cache = self._folders_cache[project_name]
         for folder in folders:
@@ -138,9 +142,7 @@ class ThumbnailsModel:
             return
 
         versions = ayon_api.get_versions(
-            project_name,
-            version_ids=version_ids,
-            fields=["id", "thumbnailId"]
+            project_name, version_ids=version_ids, fields=["id", "thumbnailId"]
         )
         project_cache = self._versions_cache[project_name]
         for version in versions:

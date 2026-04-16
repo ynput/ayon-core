@@ -352,6 +352,9 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_project_name = None
         self._selected_folder_ids = set()
         self._selected_version_ids = set()
+        self._has_made_selection = (
+            False  # Track if user has made any selection
+        )
 
         self._set_product_type_filters = True
 
@@ -678,10 +681,17 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_folders_selection_changed(self, event):
         self._selected_folder_ids = set(event["folder_ids"])
+        if self._selected_folder_ids:
+            self._has_made_selection = True
         self._update_thumbnails()
 
     def _on_versions_selection_changed(self, event):
         self._selected_version_ids = set(event["version_ids"])
+        self._controller.log.debug(
+            f"Version selection changed: {self._selected_version_ids}"
+        )
+        if self._selected_version_ids:
+            self._has_made_selection = True
         self._update_thumbnails()
 
     def _get_video_representation_path(self, project_name, version_ids):

@@ -82,6 +82,11 @@ class OverlayMessageWidget(QtWidgets.QFrame):
     ):
         super(OverlayMessageWidget, self).__init__(parent)
         self.setObjectName("OverlayMessageWidget")
+        # Set size policy to not expand unnecessarily - size to content
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Minimum,
+            QtWidgets.QSizePolicy.Minimum
+        )
 
         if message_type:
             set_style_property(self, "type", message_type)
@@ -258,8 +263,8 @@ class MessageOverlayObject(QtCore.QObject):
         self._closing_messages = set()
         self._messages = {}
         self._spacing = 5
-        self._move_size = 4
-        self._move_size_remove = 8
+        self._move_size = 8
+        self._move_size_remove = 12
         self._default_timeout = default_timeout
 
     def add_message(

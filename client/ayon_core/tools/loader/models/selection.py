@@ -32,7 +32,7 @@ class SelectionModel(object):
         self._controller.emit_event(
             "selection.project.changed",
             {"project_name": self._project_name},
-            self.event_source
+            self.event_source,
         )
 
     def get_selected_folder_ids(self):
@@ -49,7 +49,7 @@ class SelectionModel(object):
                 "project_name": self._project_name,
                 "folder_ids": folder_ids,
             },
-            self.event_source
+            self.event_source,
         )
 
     def get_selected_task_ids(self):
@@ -66,16 +66,16 @@ class SelectionModel(object):
                 "project_name": self._project_name,
                 "task_ids": task_ids,
             },
-            self.event_source
+            self.event_source,
         )
 
     def get_selected_version_ids(self):
         return self._version_ids
 
     def set_selected_versions(self, version_ids):
-        if version_ids == self._version_ids:
-            return
-
+        # Always emit event even if version_ids are the same
+        # Different products can share the same version ID but have different thumbnails
+        # Cache invalidation in window.py ensures fresh data
         self._version_ids = version_ids
         self._controller.emit_event(
             "selection.versions.changed",
@@ -84,7 +84,7 @@ class SelectionModel(object):
                 "folder_ids": self._folder_ids,
                 "version_ids": self._version_ids,
             },
-            self.event_source
+            self.event_source,
         )
 
     def get_selected_representation_ids(self):
@@ -102,5 +102,5 @@ class SelectionModel(object):
                 "folder_ids": self._folder_ids,
                 "version_ids": self._version_ids,
                 "representation_ids": self._representation_ids,
-            }
+            },
         )
