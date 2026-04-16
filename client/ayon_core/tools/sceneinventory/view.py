@@ -595,8 +595,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 if any(plugin_instance.is_compatible(c) for c in containers):
                     compatible.append(plugin_instance)
             except Exception:
-                # Skip actions that fail during instantiation or compatibility check
-                # This prevents a single broken action from breaking the entire menu
+                # Skip broken action plugins; keep menu usable
                 continue
 
         return sorted(compatible, key=sorter)
@@ -628,7 +627,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 "id": message_id,
                 "message": f"Running {action_label} on {total} item(s)...",
                 "total": total,
-            }
+            },
         )
         # Process Qt events to show the toast immediately
         self._process_qt_events()
@@ -663,7 +662,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     "id": message_id,
                     "failed": failed,
                     "error_info": error_info,
-                }
+                },
             )
             # Process events one final time to ensure finished event is handled
             self._process_qt_events()
@@ -1011,7 +1010,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 "id": message_id,
                 "message": f"Removing {total} item(s)...",
                 "total": total,
-            }
+            },
         )
         # Process Qt events to show the toast immediately
         self._process_qt_events()
@@ -1038,7 +1037,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                                 "message": (
                                     f"Removing item {current}/{total}..."
                                 ),
-                            }
+                            },
                         )
                         # Process events for smooth UI updates
                         self._process_qt_events()
@@ -1055,7 +1054,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     "id": message_id,
                     "failed": failed,
                     "error_info": error_info,
-                }
+                },
             )
             # Process events one final time to ensure finished event is handled
             self._process_qt_events()
@@ -1224,7 +1223,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 "id": message_id,
                 "message": f"Updating {total} container(s)...",
                 "total": total,
-            }
+            },
         )
         # Process Qt events to show the toast immediately
         self._process_qt_events()
@@ -1259,7 +1258,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                             "message": (
                                 f"Updating container {current}/{total}..."
                             ),
-                        }
+                        },
                     )
                     # Process events for smooth UI updates
                     self._process_qt_events()
@@ -1283,7 +1282,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                             "message": (
                                 f"Updating container {current}/{total}..."
                             ),
-                        }
+                        },
                     )
                     # Process events for smooth UI updates
                     self._process_qt_events()
@@ -1296,7 +1295,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     "id": message_id,
                     "failed": failed,
                     "error_info": error_info,
-                }
+                },
             )
             # Process events one final time to ensure finished event is handled
             self._process_qt_events()

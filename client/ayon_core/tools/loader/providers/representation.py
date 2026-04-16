@@ -75,7 +75,7 @@ class RepresentationProvider(ReviewableProvider):
                     else:
                         other_video_repres.append(repre_item)
 
-                # Try in priority order: h264 videos → other videos → thumbnails
+                # Priority: h264 video, other video, then thumbnails
                 for repre_item in (
                     h264_video_repres + other_video_repres + thumbnail_repres
                 ):
@@ -100,13 +100,17 @@ class RepresentationProvider(ReviewableProvider):
                                     # For videos, verify it's a video file
                                     if controller.is_video_file(file_path_str):
                                         controller.log.info(
-                                            f"Found video representation on disk: {file_path_str}"
+                                            "Found video representation on "
+                                            "disk: %s",
+                                            file_path_str,
                                         )
                                         return file_path_str
                                     # For images, verify it's an image file
                                     elif self._is_image_file(file_path_str):
                                         controller.log.info(
-                                            f"Found thumbnail representation on disk: {file_path_str}"
+                                            "Found thumbnail representation "
+                                            "on disk: %s",
+                                            file_path_str,
                                         )
                                         return file_path_str
                     except Exception as e:

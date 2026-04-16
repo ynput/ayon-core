@@ -523,7 +523,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                     continue
             except Exception as e:
                 self.log.warning(
-                    f"Provider '{provider.label}' availability check failed: {e}"
+                    f"Provider '{provider.label}' "
+                    f"availability check failed: {e}"
                 )
                 continue
 
@@ -534,7 +535,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 )
                 if video_path:
                     self.log.debug(
-                        f"Found reviewable via '{provider.label}': {video_path}"
+                        f"Found reviewable via '{provider.label}': "
+                        f"{video_path}"
                     )
                     return video_path
             except Exception as e:

@@ -1,4 +1,5 @@
 """Products model for loader tools."""
+
 from __future__ import annotations
 
 import collections
@@ -96,9 +97,7 @@ def product_item_from_entity(
     product_type = product_entity["productType"]
     product_base_type = product_entity.get("productBaseType")
 
-    product_icon = icons_mapping.get_icon(
-        product_base_type, product_type
-    )
+    product_icon = icons_mapping.get_icon(product_base_type, product_type)
     version_items = {
         version_entity["id"]: version_item_from_entity(version_entity)
         for version_entity in version_entities
@@ -119,7 +118,7 @@ def product_item_from_entity(
 
 
 def product_base_type_item_from_data(
-    product_base_type_data: ProductBaseTypeDict
+    product_base_type_data: ProductBaseTypeDict,
 ) -> ProductBaseTypeItem:
     """Create product base type item from data.
 
@@ -135,10 +134,7 @@ def product_base_type_item_from_data(
         "name": "fa.folder",
         "color": "#0091B2",
     }
-    return ProductBaseTypeItem(
-        name=product_base_type_data["name"],
-        icon=icon
-    )
+    return ProductBaseTypeItem(name=product_base_type_data["name"], icon=icon)
 
 
 class ProductsModel:
@@ -165,13 +161,17 @@ class ProductsModel:
 
         # Cache helpers
         self._product_type_items_cache = NestedCacheItem(
-            levels=1, default_factory=list, lifetime=self.lifetime)
+            levels=1, default_factory=list, lifetime=self.lifetime
+        )
         self._product_base_type_items_cache = NestedCacheItem(
-            levels=1, default_factory=list, lifetime=self.lifetime)
+            levels=1, default_factory=list, lifetime=self.lifetime
+        )
         self._product_items_cache = NestedCacheItem(
-            levels=2, default_factory=dict, lifetime=self.lifetime)
+            levels=2, default_factory=dict, lifetime=self.lifetime
+        )
         self._repre_items_cache = NestedCacheItem(
-            levels=2, default_factory=dict, lifetime=self.lifetime)
+            levels=2, default_factory=dict, lifetime=self.lifetime
+        )
 
     def reset(self):
         """Reset model with all cached data."""
@@ -202,18 +202,22 @@ class ProductsModel:
         cache = self._product_type_items_cache[project_name]
         if not cache.is_valid:
             icons_mapping = self._get_product_type_icons(project_name)
-            
+
             # Get registered product types from API
-            registered_product_types = ayon_api.get_project_product_types(project_name)
+            registered_product_types = ayon_api.get_project_product_types(
+                project_name
+            )
             registered_type_names = {
-                product_type["name"] for product_type in registered_product_types
+                product_type["name"]
+                for product_type in registered_product_types
             }
-            
-            # Get product types from anatomy settings
-            # This includes custom product types defined in anatomy.product_types.definitions
+
+            # Get product types from anatomy settings (incl. anatomy
+            # product_types.definitions)
             anatomy_product_types = {}
             try:
                 from ayon_core.pipeline import Anatomy
+
                 anatomy = Anatomy(project_name)
                 product_types_data = anatomy.get("product_types")
                 if product_types_data:
@@ -225,14 +229,13 @@ class ProductsModel:
             except Exception:
                 # If anatomy access fails, continue with API types only
                 pass
-            
+
             # Also get product types from actual products in the project
             # This ensures all product types that exist are included
             actual_product_types = set()
             try:
                 products = ayon_api.get_products(
-                    project_name,
-                    fields=["productType"]
+                    project_name, fields=["productType"]
                 )
                 actual_product_types = {
                     product["productType"]
@@ -242,19 +245,19 @@ class ProductsModel:
             except Exception:
                 # If query fails, continue without actual product types
                 pass
-            
-            # Merge: start with registered types, then add anatomy types, then actual product types
+
+            # Merge registered, anatomy, and on-disk product type names
             all_product_type_names = (
-                registered_type_names 
-                | set(anatomy_product_types.keys()) 
+                registered_type_names
+                | set(anatomy_product_types.keys())
                 | actual_product_types
             )
-            
+
             # Create product type items, preserving registered ones first
             product_type_items = []
             seen_names = set()
-            
-            # Add registered product types first (preserves order and any API-specific data)
+
+            # Registered types first (order + API fields preserved)
             for product_type in registered_product_types:
                 name = product_type["name"]
                 if name in all_product_type_names:
@@ -265,7 +268,7 @@ class ProductsModel:
                         )
                     )
                     seen_names.add(name)
-            
+
             # Add anatomy product types that aren't in registered types
             for pt_name in sorted(anatomy_product_types.keys()):
                 if pt_name not in seen_names:
@@ -276,8 +279,8 @@ class ProductsModel:
                         )
                     )
                     seen_names.add(pt_name)
-            
-            # Add actual product types that aren't in registered or anatomy types
+
+            # Add on-disk types missing from registered/anatomy
             for pt_name in sorted(actual_product_types):
                 if pt_name not in seen_names:
                     product_type_items.append(
@@ -286,7 +289,7 @@ class ProductsModel:
                             icons_mapping.get_icon(product_type=pt_name),
                         )
                     )
-            
+
             cache.update_data(product_type_items)
         return cache.get_data()
 
@@ -319,13 +322,15 @@ class ProductsModel:
                 product_base_types = ayon_api.get_project_product_base_types(
                     project_name
                 )
-            cache.update_data([
-                ProductBaseTypeItem(
-                    product_base_type["name"],
-                    icons_mapping.get_icon(product_base_type["name"]),
-                )
-                for product_base_type in product_base_types
-            ])
+            cache.update_data(
+                [
+                    ProductBaseTypeItem(
+                        product_base_type["name"],
+                        icons_mapping.get_icon(product_base_type["name"]),
+                    )
+                    for product_base_type in product_base_types
+                ]
+            )
         return cache.get_data()
 
     def get_product_items(self, project_name, folder_ids, sender):
@@ -356,8 +361,7 @@ class ProductsModel:
             else:
                 folder_ids_to_update.add(folder_id)
 
-        self._refresh_product_items(
-            project_name, folder_ids_to_update, sender)
+        self._refresh_product_items(project_name, folder_ids_to_update, sender)
 
         for folder_id in folder_ids_to_update:
             cache = project_cache[folder_id]
@@ -523,7 +527,7 @@ class ProductsModel:
                 project_name,
                 "product",
                 product_item.product_id,
-                {"attrib": {"productGroup": group_name}}
+                {"attrib": {"productGroup": group_name}},
             )
             folder_ids.add(product_item.folder_id)
             product_item.group_name = group_name
@@ -537,7 +541,7 @@ class ProductsModel:
                 "product_ids": product_ids,
                 "group_name": group_name,
             },
-            PRODUCTS_MODEL_SENDER
+            PRODUCTS_MODEL_SENDER,
         )
 
     def _get_product_type_icons(
@@ -575,9 +579,7 @@ class ProductsModel:
                 missing_version_ids.add(version_id)
 
         output.update(
-            self._query_version_items_by_ids(
-                project_name, missing_version_ids
-            )
+            self._query_version_items_by_ids(project_name, missing_version_ids)
         )
         return output
 
@@ -623,7 +625,7 @@ class ProductsModel:
         project_name,
         folder_ids=None,
         product_ids=None,
-        folder_items=None
+        folder_items=None,
     ):
         """Query product items.
 
@@ -654,7 +656,7 @@ class ProductsModel:
             kwargs["product_ids"] = product_ids
 
         products = list(ayon_api.get_products(project_name, **kwargs))
-        
+
         # Apply product type filtering based on loader settings
         product_types_filter = self._controller.get_product_types_filter()
         if product_types_filter.product_types:
@@ -671,7 +673,7 @@ class ProductsModel:
                     if product_type not in filter_types_set:
                         filtered_products.append(product)
             products = filtered_products
-        
+
         product_ids = {product["id"] for product in products}
 
         # Add 'status' to fields -> fixed in ayon-python-api 1.0.4
@@ -686,13 +688,13 @@ class ProductsModel:
         )
 
     def _query_version_items_by_ids(self, project_name, version_ids):
-        versions = list(ayon_api.get_versions(
-            project_name, version_ids=version_ids
-        ))
+        versions = list(
+            ayon_api.get_versions(project_name, version_ids=version_ids)
+        )
         product_ids = {version["productId"] for version in versions}
-        products = list(ayon_api.get_products(
-            project_name, product_ids=product_ids
-        ))
+        products = list(
+            ayon_api.get_products(project_name, product_ids=product_ids)
+        )
         product_items = self._create_product_items(
             project_name, products, versions
         )
@@ -757,14 +759,9 @@ class ProductsModel:
             project_name, folder_ids, sender
         ):
             folder_items = self._controller.get_folder_items(project_name)
-            items_by_folder_id = {
-                folder_id: {}
-                for folder_id in folder_ids
-            }
+            items_by_folder_id = {folder_id: {} for folder_id in folder_ids}
             product_items_by_id = self._query_product_items_by_ids(
-                project_name,
-                folder_ids=folder_ids,
-                folder_items=folder_items
+                project_name, folder_ids=folder_ids, folder_items=folder_items
             )
             for product_id, product_item in product_items_by_id.items():
                 folder_id = product_item.folder_id
@@ -774,9 +771,10 @@ class ProductsModel:
 
                 project_mapping[folder_id].add(product_id)
                 product_item_by_id[product_id] = product_item
-                for version_id, version_item in (
-                    product_item.version_items.items()
-                ):
+                for (
+                    version_id,
+                    version_item,
+                ) in product_item.version_items.items():
                     version_item_by_id[version_id] = version_item
 
             project_cache = self._product_items_cache[project_name]
@@ -784,9 +782,7 @@ class ProductsModel:
                 project_cache[folder_id].update_data(product_items)
 
     @contextlib.contextmanager
-    def _product_refresh_event_manager(
-        self, project_name, folder_ids, sender
-    ):
+    def _product_refresh_event_manager(self, project_name, folder_ids, sender):
         self._controller.emit_event(
             "products.refresh.started",
             {
@@ -794,7 +790,7 @@ class ProductsModel:
                 "folder_ids": folder_ids,
                 "sender": sender,
             },
-            PRODUCTS_MODEL_SENDER
+            PRODUCTS_MODEL_SENDER,
         )
         try:
             yield
@@ -807,12 +803,10 @@ class ProductsModel:
                     "folder_ids": folder_ids,
                     "sender": sender,
                 },
-                PRODUCTS_MODEL_SENDER
+                PRODUCTS_MODEL_SENDER,
             )
 
-    def refresh_representation_items(
-        self, project_name, version_ids, sender
-    ):
+    def refresh_representation_items(self, project_name, version_ids, sender):
         if not any((project_name, version_ids)):
             return
         self._controller.emit_event(
@@ -822,7 +816,7 @@ class ProductsModel:
                 "version_ids": version_ids,
                 "sender": sender,
             },
-            PRODUCTS_MODEL_SENDER
+            PRODUCTS_MODEL_SENDER,
         )
         failed = False
         try:
@@ -839,15 +833,17 @@ class ProductsModel:
                 "sender": sender,
                 "failed": failed,
             },
-            PRODUCTS_MODEL_SENDER
+            PRODUCTS_MODEL_SENDER,
         )
 
     def _refresh_representation_items(self, project_name, version_ids):
-        representations = list(ayon_api.get_representations(
-            project_name,
-            version_ids=version_ids,
-            fields=["id", "name", "versionId"]
-        ))
+        representations = list(
+            ayon_api.get_representations(
+                project_name,
+                version_ids=version_ids,
+                fields=["id", "name", "versionId"],
+            )
+        )
 
         version_items_by_id = self._get_version_items_by_id(
             project_name, version_ids

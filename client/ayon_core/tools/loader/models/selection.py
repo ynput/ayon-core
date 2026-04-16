@@ -74,7 +74,7 @@ class SelectionModel(object):
 
     def set_selected_versions(self, version_ids):
         # Always emit event even if version_ids are the same
-        # Different products can share the same version ID but have different thumbnails
+        # Products can share a version id but need distinct thumbnails
         # Cache invalidation in window.py ensures fresh data
         self._version_ids = version_ids
         self._controller.emit_event(

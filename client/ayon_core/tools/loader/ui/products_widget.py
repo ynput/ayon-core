@@ -422,32 +422,34 @@ class ProductsWidget(QtWidgets.QWidget):
         version_ids = set()
         processed_rows = set()
         indexes_queue = collections.deque()
-        
+
         # Only process column 0 indexes to avoid duplicates
         selected_indexes = [
-            idx for idx in selection_model.selectedIndexes()
+            idx
+            for idx in selection_model.selectedIndexes()
             if idx.column() == 0
         ]
-        
+
         if not selected_indexes:
             return
-        
+
         indexes_queue.extend(selected_indexes)
-        
+
         while indexes_queue:
             index = indexes_queue.popleft()
-            
+
             # Create unique identifier using row, column, and parent
-            parent_id = index.parent().internalId() if index.parent().isValid() else -1
+            parent_id = (
+                index.parent().internalId() if index.parent().isValid() else -1
+            )
             index_key = (index.row(), index.column(), parent_id)
             if index_key in processed_rows:
                 continue
             processed_rows.add(index_key)
-            
+
             group_type = model.data(index, GROUP_TYPE_ROLE)
-            
-            # For product groups (group_type == 1), collect all child version_ids efficiently
-            # without recursive traversal
+
+            # Product groups: collect child version_ids without recursion
             if group_type == 1:
                 # Product group - directly collect all children's version_ids
                 row_count = model.rowCount(index)
