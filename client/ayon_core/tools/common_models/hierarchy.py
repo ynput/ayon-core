@@ -664,6 +664,16 @@ class HierarchyModel(object):
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type", "tags"}
+            # Request taskType (canonical) and type (legacy) — explicit fields
+            # otherwise GraphQL omits taskType and anatomy icon lookup fails.
+            fields={
+                "id",
+                "name",
+                "label",
+                "folderId",
+                "type",
+                "taskType",
+                "tags",
+            },
         ))
         return _get_task_items_from_tasks(tasks)
