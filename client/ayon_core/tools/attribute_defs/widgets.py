@@ -353,6 +353,9 @@ class LabelAttrWidget(_BaseAttrDefWidget):
         label = self.attr_def.label
         if label:
             input_widget.setText(str(label))
+        input_widget.setWordWrap(True)
+        input_widget.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        input_widget.setOpenExternalLinks(True)
 
         self._input_widget = input_widget
 
