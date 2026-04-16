@@ -825,6 +825,7 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+        self.main_layout.addStretch(1)
 
         input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         input_widget.customContextMenuRequested.connect(self._on_context_menu)
