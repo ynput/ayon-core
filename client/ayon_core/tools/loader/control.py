@@ -21,9 +21,11 @@ from ayon_core.tools.common_models import (
     ThumbnailsModel,
     TagItem,
     ProductTypeIconMapping,
+    UsersModel,
 )
 
 from .abstract import (
+    ActionItem,
     BackendLoaderController,
     FrontendLoaderController,
     ProductTypesFilter,
@@ -127,12 +129,49 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
         if self._log is None:
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
+
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
+
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        if entity_type == "version":
+            action_items = self._loader_actions_model.get_versions_action_items(
+                project_name, entity_ids
+            )
+            action_items.extend(
+                self._sitesync_model.get_sitesync_action_items(
+                    project_name, entity_ids, entity_type
+                )
+            )
+            return action_items
+        return self.get_representations_action_items(
+            project_name, entity_ids
+        )
 
     # ---------------------------------
     # Implementation of abstract methods
@@ -163,6 +202,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._projects_model.reset()
         self._thumbnails_model.reset()
         self._sitesync_model.reset()
+        self._users_model.reset()
 
         self._projects_model.refresh()
 
