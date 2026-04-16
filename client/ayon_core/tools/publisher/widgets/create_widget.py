@@ -89,8 +89,12 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         description = creator_item.description or ""
 
         self._icon_widget.set_icon_def(plugin_icon)
-        self._product_type_label.setText("<b>{}</b>".format(creator_item.product_type))
-        self._product_type_label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self._product_type_label.setText(
+            "<b>{}</b>".format(creator_item.product_type)
+        )
+        self._product_type_label.setTextInteractionFlags(
+            QtCore.Qt.NoTextInteraction
+        )
         self._description_label.setText(description)
 
 
@@ -264,7 +268,7 @@ class CreateWidget(QtWidgets.QWidget):
         )
         controller.register_event_callback(
             "create.context.pre.create.attrs.changed",
-            self._pre_create_attr_changed
+            self._pre_create_attr_changed,
         )
 
         self._main_splitter_widget = main_splitter_widget
@@ -356,13 +360,10 @@ class CreateWidget(QtWidgets.QWidget):
 
         # Replace by current context if last loaded context was
         #   'current context' before reset
-        if (
-            self._use_current_context
-            or (
-                self._last_current_context_folder_path
-                and folder_path == self._last_current_context_folder_path
-                and task_name == self._last_current_context_task
-            )
+        if self._use_current_context or (
+            self._last_current_context_folder_path
+            and folder_path == self._last_current_context_folder_path
+            and task_name == self._last_current_context_task
         ):
             folder_path = current_folder_path
             task_name = current_task_name
@@ -484,14 +485,14 @@ class CreateWidget(QtWidgets.QWidget):
             item.setData(identifier, CREATOR_IDENTIFIER_ROLE)
             item.setData(
                 creator_item.create_allow_thumbnail,
-                CREATOR_THUMBNAIL_ENABLED_ROLE
+                CREATOR_THUMBNAIL_ENABLED_ROLE,
             )
             item.setData(creator_item.product_type, PRODUCT_TYPE_ROLE)
             if is_new:
                 self._creators_model.appendRow(item)
 
         # Remove create plugins that are no more available
-        for identifier in (old_creators - new_creators):
+        for identifier in old_creators - new_creators:
             item = existing_items[identifier]
             self._creators_model.takeRow(item.row())
 
@@ -553,11 +554,7 @@ class CreateWidget(QtWidgets.QWidget):
         if creator_item is not None:
             description = creator_item.detailed_description or description
         self._controller.emit_event(
-            "show.detailed.help",
-            {
-                "message": description
-            },
-            "create.widget"
+            "show.detailed.help", {"message": description}, "create.widget"
         )
 
     def _set_creator_by_identifier(self, identifier):
@@ -590,9 +587,7 @@ class CreateWidget(QtWidgets.QWidget):
             self._set_context_enabled(creator_item.create_allow_context_change)
             self._refresh_product_name()
 
-        self._thumbnail_widget.setVisible(
-            creator_item.create_allow_thumbnail
-        )
+        self._thumbnail_widget.setVisible(creator_item.create_allow_thumbnail)
 
         default_variants = creator_item.default_variants
         if not default_variants:
@@ -645,7 +640,7 @@ class CreateWidget(QtWidgets.QWidget):
                 self._selected_creator_identifier,
                 variant_value,
                 task_name,
-                folder_path
+                folder_path,
             )
         except TaskNotSetError:
             self._create_btn.setEnabled(False)
@@ -665,14 +660,13 @@ class CreateWidget(QtWidgets.QWidget):
         else:
             existing_product_names = set()
         existing_product_names_low = set(
-            _name.lower()
-            for _name in existing_product_names
+            _name.lower() for _name in existing_product_names
         )
 
         # Replace
-        compare_regex = re.compile(re.sub(
-            variant_value, "(.+)", product_name, flags=re.IGNORECASE
-        ))
+        compare_regex = re.compile(
+            re.sub(variant_value, "(.+)", product_name, flags=re.IGNORECASE)
+        )
         variant_hints = set()
         if variant_value:
             for _name in existing_product_names:
@@ -760,20 +754,21 @@ class CreateWidget(QtWidgets.QWidget):
             "folderPath": folder_path,
             "task": task_name,
             "variant": variant,
-            "productType": product_type
+            "productType": product_type,
         }
 
         # # Notify user that creation has started
         # if hasattr(self._controller, "creation_started_message"):
-        #     self._controller.emit_card_message(self._controller.creation_started_message)
+        #     self._controller.emit_card_message(
+        #         self._controller.creation_started_message
+        #     )
         # else:
-        #     self._controller.emit_card_message("Creation started, Please wait...")
+        #     self._controller.emit_card_message(
+        #         "Creation started, Please wait..."
+        #     )
 
         success = self._controller.create(
-            creator_identifier,
-            product_name,
-            instance_data,
-            pre_create_data
+            creator_identifier, product_name, instance_data, pre_create_data
         )
 
         if success:

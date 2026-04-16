@@ -98,10 +98,7 @@ def _get_workfiles_last_current_and_list(
         if workfile.version is None:
             continue
 
-        if (
-            last_workfile is None
-            or last_workfile.version < workfile.version
-        ):
+        if last_workfile is None or last_workfile.version < workfile.version:
             last_workfile = workfile
 
     return last_workfile, current_workfile, workfiles
@@ -116,11 +113,10 @@ def get_next_workfile_version(
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
     current_workfile_path: Optional[str] = None,
 ) -> int:
-    """Next workfile version: max known version from ``list_workfiles`` + 1, else versioning start.
+    """Next workfile version from listed workfiles (or versioning start).
 
-    Uses the same rules as :func:`save_next_version` when no explicit version is passed.
-    Intended for hosts (e.g. Harmony post-publish increment) that must stay aligned with
-    the Workfiles tool.
+    Same rules as :func:`save_next_version` without an explicit version. For
+    hosts that must match the Workfiles tool (e.g. post-publish increment).
 
     Args:
         host: Registered host implementing ``list_workfiles``.
@@ -128,7 +124,7 @@ def get_next_workfile_version(
         folder_entity: Target folder entity.
         task_entity: Target task entity.
         prepared_data: Optional cached project/anatomy/settings.
-        current_workfile_path: Optional path to mark current row (does not change version).
+        current_workfile_path: Optional path to highlight current row only.
 
     Returns:
         int: Next version number.
@@ -179,6 +175,7 @@ def get_next_workfile_version(
 
 class MissingWorkdirError(Exception):
     """Raised when accessing a work directory not found on disk."""
+
     pass
 
 
@@ -209,10 +206,12 @@ def get_workfiles_info(
         anatomy = Anatomy(project_name)
 
     if workfile_entities is None:
-        workfile_entities = list(ayon_api.get_workfiles_info(
-            project_name,
-            task_ids=[task_id],
-        ))
+        workfile_entities = list(
+            ayon_api.get_workfiles_info(
+                project_name,
+                task_ids=[task_id],
+            )
+        )
 
     if platform.system().lower() == "windows":
         workfile_path = workfile_path.replace("\\", "/")
@@ -261,13 +260,9 @@ def should_use_last_workfile_on_launch(
     """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["last_workfile_on_startup"]
-    )
+    profiles = project_settings["core"]["tools"]["Workfiles"][
+        "last_workfile_on_startup"
+    ]
 
     if not profiles:
         return default_output
@@ -321,13 +316,9 @@ def should_open_workfiles_tool_on_launch(
 
     if project_settings is None:
         project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["open_workfile_tool_on_startup"]
-    )
+    profiles = project_settings["core"]["tools"]["Workfiles"][
+        "open_workfile_tool_on_startup"
+    ]
 
     if not profiles:
         return default_output
@@ -383,18 +374,16 @@ def save_workfile_info(
 
     """
     if workfile_entities is None:
-        workfile_entities = list(ayon_api.get_workfiles_info(
-            project_name,
-            task_ids=[task_id],
-        ))
+        workfile_entities = list(
+            ayon_api.get_workfiles_info(
+                project_name,
+                task_ids=[task_id],
+            )
+        )
 
     workfile_entity = next(
-        (
-            _ent
-            for _ent in workfile_entities
-            if _ent["path"] == rootless_path
-        ),
-        None
+        (_ent for _ent in workfile_entities if _ent["path"] == rootless_path),
+        None,
     )
 
     if username is None:
@@ -512,9 +501,7 @@ def save_current_workfile_to(
     host = registered_host()
     context = host.get_current_context()
     project_name = context["project_name"]
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name, folder_path
-    )
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
     task_entity = ayon_api.get_task_by_name(
         project_name, folder_entity["id"], task_name
     )
@@ -641,7 +628,7 @@ def save_next_version(
         project_name,
         task_entity["taskType"],
         host.name,
-        project_settings=project_settings
+        project_settings=project_settings,
     )
     file_template = anatomy.get_template_item("work", template_key, "file")
     template_data = get_template_data(
@@ -793,9 +780,7 @@ def copy_workfile_to_context(
     anatomy = prepared_data.anatomy
     if anatomy is None:
         if prepared_data.project_entity is None:
-            prepared_data.project_entity = ayon_api.get_project(
-                project_name
-            )
+            prepared_data.project_entity = ayon_api.get_project(project_name)
         anatomy = Anatomy(
             project_name, project_entity=prepared_data.project_entity
         )
@@ -820,13 +805,10 @@ def copy_workfile_to_context(
             project_name,
             folder_entity,
             task_entity,
-            prepared_data=list_prepared_data
+            prepared_data=list_prepared_data,
         )
         if workfiles:
-            version = max(
-                workfile.version
-                for workfile in workfiles
-            ) + 1
+            version = max(workfile.version for workfile in workfiles) + 1
         else:
             version = get_versioning_start(
                 project_name,
@@ -841,7 +823,7 @@ def copy_workfile_to_context(
         project_name,
         task_type,
         host.name,
-        project_settings=prepared_data.project_settings
+        project_settings=prepared_data.project_settings,
     )
 
     template_data = get_template_data(
@@ -860,9 +842,7 @@ def copy_workfile_to_context(
         ext = os.path.splitext(src_workfile_path)[1].lstrip(".")
         template_data["ext"] = ext
 
-    workfile_template = anatomy.get_template_item(
-        "work", template_key, "path"
-    )
+    workfile_template = anatomy.get_template_item("work", template_key, "path")
     workfile_path = workfile_template.format_strict(template_data)
     prepared_data.rootless_path = workfile_path.rootless
     host.copy_workfile(
@@ -897,14 +877,9 @@ def find_workfile_rootless_path(
 
     task_type = task_entity["taskType"]
     template_key = get_workfile_template_key(
-        project_name,
-        task_type,
-        host_name,
-        project_settings=project_settings
+        project_name, task_type, host_name, project_settings=project_settings
     )
-    dir_template = anatomy.get_template_item(
-        "work", template_key, "directory"
-    )
+    dir_template = anatomy.get_template_item("work", template_key, "directory")
     result = dir_template.format({"root": anatomy.roots})
     used_root = result.used_values.get("root")
     rootless_path = str(workfile_path)
@@ -918,7 +893,7 @@ def find_workfile_rootless_path(
             root_value = root_value.replace("\\", "/")
 
     if root_value and rootless_path.startswith(root_value):
-        rootless_path = rootless_path[len(root_value):].lstrip("/")
+        rootless_path = rootless_path[len(root_value) :].lstrip("/")
         rootless_path = f"{{root[{root_key}]}}/{rootless_path}"
     else:
         success, result = anatomy.find_root_template_from_path(rootless_path)
@@ -957,11 +932,13 @@ def _create_workfile_info_entity(
         dict[str, Any]: Created workfile entity data.
 
     """
-    data.update({
-        "host_name": host_name,
-        "version": version,
-        "comment": comment,
-    })
+    data.update(
+        {
+            "host_name": host_name,
+            "version": version,
+            "comment": comment,
+        }
+    )
 
     workfile_info = {
         "id": uuid.uuid4().hex,
@@ -978,8 +955,6 @@ def _create_workfile_info_entity(
         workfile_info["thumbnailId"] = thumbnail_id
 
     session = OperationsSession()
-    session.create_entity(
-        project_name, "workfile", workfile_info
-    )
+    session.create_entity(project_name, "workfile", workfile_info)
     session.commit()
     return workfile_info

@@ -108,7 +108,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         progress_bar.setMinimum(0)
         progress_bar.setMaximum(100)
         progress_bar.setValue(0)
-        # Disable text in progress bar since it's too skinny - use label instead
+        # Hide progress bar text; label shows status
         progress_bar.setTextVisible(False)
         progress_bar.setAlignment(QtCore.Qt.AlignCenter)
         progress_bar.setVisible(False)
@@ -143,7 +143,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         self._hover_timer = hover_timer
         self._progress_active = False
 
-        # Completion delay timer - waits 2 seconds after progress completes before starting timeout
+        # Delay before idle timeout after progress completes
         completion_delay_timer = QtCore.QTimer()
         completion_delay_timer.setInterval(2000)
         completion_delay_timer.setSingleShot(True)
@@ -170,7 +170,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         self._progress_active = visible
 
         if not visible:
-            # Progress completed - stop timeout timer and start completion delay
+            # Progress done: stop idle timeout, start completion delay
             self._timeout_timer.stop()
             self._completion_delay_timer.start()
         else:
@@ -197,7 +197,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
             self._timeout_timer.start()
 
     def _on_completion_delay_timeout(self):
-        """Called after completion delay - starts timeout timer if progress is not active."""
+        """After completion delay, start idle timeout if inactive."""
         if not self._progress_active:
             self._timeout_timer.start()
 
@@ -372,7 +372,7 @@ class MessageOverlayObject(QtCore.QObject):
 
         # Calculate maximum widget width based on parent widget width
         # Reserve space only for parent widget spacing on both sides
-        # Qt's layout system will handle internal sizing with Expanding size policy
+        # Qt layout handles internal sizing (Expanding policy)
         reserved_width = 2 * self._spacing
         max_widget_width = max(300, widget_width - reserved_width)
         widget_half_width = widget_width / 2
@@ -410,7 +410,7 @@ class MessageOverlayObject(QtCore.QObject):
             if all_at_place and dst_pos_y != pos_y:
                 all_at_place = False
 
-            # Set maximum width constraint and let Qt's layout system handle sizing
+            # Clamp width; Qt layout handles the rest
             widget.setMaximumWidth(max_widget_width)
             # Let the widget size itself based on content and size policies
             widget.adjustSize()

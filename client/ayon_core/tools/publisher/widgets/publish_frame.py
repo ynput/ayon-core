@@ -38,7 +38,7 @@ class PublishFrame(QtWidgets.QWidget):
         self,
         controller: AbstractPublisherFrontend,
         borders: int,
-        parent: QtWidgets.QWidget
+        parent: QtWidgets.QWidget,
     ):
         super().__init__(parent)
 
@@ -298,9 +298,7 @@ class PublishFrame(QtWidgets.QWidget):
     def _on_shrunk_anim_finish(self):
         self._top_content_widget.setVisible(not self._shrunken)
         self._top_content_widget.setMinimumHeight(0)
-        self._top_content_widget.setMaximumHeight(
-            self._top_widget_max_height
-        )
+        self._top_content_widget.setMaximumHeight(self._top_widget_max_height)
         self._top_content_widget.setSizePolicy(self._top_widget_size_policy)
 
         if self._shrunken:
@@ -314,9 +312,7 @@ class PublishFrame(QtWidgets.QWidget):
             layout = self.layout()
             margins = layout.contentsMargins()
             window_height = (
-                content_frame_hint.height()
-                + margins.bottom()
-                + margins.top()
+                content_frame_hint.height() + margins.bottom() + margins.top()
             )
             diff = self.height() - window_height
             window_pos = self.pos()
@@ -346,9 +342,7 @@ class PublishFrame(QtWidgets.QWidget):
         self._validate_btn.setEnabled(True)
         self._publish_btn.setEnabled(True)
 
-        self._progress_bar.setValue(
-            self._controller.get_publish_progress()
-        )
+        self._progress_bar.setValue(self._controller.get_publish_progress())
         self._progress_bar.setMaximum(
             self._controller.get_publish_max_progress()
         )
@@ -394,7 +388,7 @@ class PublishFrame(QtWidgets.QWidget):
         QtWidgets.QApplication.processEvents()
 
     def _on_plugin_progress(self, event):
-        """Update progress message when plugin reports sub-operation progress."""
+        """Handle per-plugin sub-step progress updates."""
 
         message = event.get("message", "")
         progress = event.get("progress", 0)
@@ -521,11 +515,13 @@ class PublishFrame(QtWidgets.QWidget):
     def _on_report_triggered(self, identifier):
         if identifier == "export_report":
             self._controller.emit_event(
-                "export_report.request", {}, "publish_frame")
+                "export_report.request", {}, "publish_frame"
+            )
 
         elif identifier == "copy_report":
             self._controller.emit_event(
-                "copy_report.request", {}, "publish_frame")
+                "copy_report.request", {}, "publish_frame"
+            )
 
         elif identifier == "go_to_report":
             self.details_page_requested.emit()

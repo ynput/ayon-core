@@ -87,18 +87,18 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 instance.data["folderEntity"] = context_folder_entity
 
             else:
-                instances_missing_folder[_folder_path].append(
-                    instance
-                )
+                instances_missing_folder[_folder_path].append(instance)
 
         if not instances_missing_folder:
             self.log.debug("All instances already had right folder entity.")
             return
 
         folder_paths = list(instances_missing_folder.keys())
-        self.log.debug("Querying folder entities with paths: {}".format(
-            ", ".join(["\"{}\"".format(path) for path in folder_paths])
-        ))
+        self.log.debug(
+            "Querying folder entities with paths: {}".format(
+                ", ".join(['"{}"'.format(path) for path in folder_paths])
+            )
+        )
 
         folder_entities_by_path = {
             folder_entity["path"]: folder_entity
@@ -119,7 +119,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         if not_found_folder_paths:
             joined_folder_paths = ", ".join(
-                [f"\"{path}\"" for path in not_found_folder_paths]
+                [f'"{path}"' for path in not_found_folder_paths]
             )
             self.log.warning(
                 f"Not found folder entities with paths {joined_folder_paths}."
@@ -190,7 +190,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             task_entities = ayon_api.get_tasks(
                 project_name,
                 folder_ids=all_folder_ids,
-                task_names=all_task_names
+                task_names=all_task_names,
             )
         task_entity_by_ids = {}
         for task_entity in task_entities:
@@ -202,10 +202,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         not_found_task_paths = []
         for folder_id, by_task in instances_missing_task.items():
             for task_name, instances in by_task.items():
-                task_entity = (
-                    task_entity_by_ids
-                    .get(folder_id, {})
-                    .get(task_name)
+                task_entity = task_entity_by_ids.get(folder_id, {}).get(
+                    task_name
                 )
                 if task_name and not task_entity:
                     folder_path = folder_path_by_id[folder_id]
@@ -218,10 +216,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         if not_found_task_paths:
             joined_paths = ", ".join(
-                ["\"{}\"".format(path) for path in not_found_task_paths]
+                ['"{}"'.format(path) for path in not_found_task_paths]
             )
             self.log.warning(
-                f"Not found task entities with paths {joined_paths}.")
+                f"Not found task entities with paths {joined_paths}."
+            )
 
     def fill_latest_versions(self, context, project_name):
         """Try to find latest version for each instance's product name.
@@ -263,13 +262,14 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         product_entities = []
         if names_by_folder_ids:
-            product_entities = list(ayon_api.get_products(
-                project_name, names_by_folder_ids=names_by_folder_ids
-            ))
+            product_entities = list(
+                ayon_api.get_products(
+                    project_name, names_by_folder_ids=names_by_folder_ids
+                )
+            )
 
         product_ids = {
-            product_entity["id"]
-            for product_entity in product_entities
+            product_entity["id"] for product_entity in product_entities
         }
 
         last_versions_by_product_id = ayon_api.get_last_versions(
@@ -305,13 +305,15 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if not product_base_type:
                 product_base_type = product_type
             pre_instance_version = instance.data.get("version")
-            anatomy_data.update({
-                "product": {
-                    "name": product_name,
-                    "type": product_type,
-                    "basetype": product_base_type,
+            anatomy_data.update(
+                {
+                    "product": {
+                        "name": product_name,
+                        "type": product_type,
+                        "basetype": product_base_type,
+                    }
                 }
-            })
+            )
 
             self._fill_folder_data(instance, project_entity, anatomy_data)
             self._fill_task_data(instance, task_types_by_name, anatomy_data)
@@ -361,9 +363,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             ):
                 self.log.debug(
                     "CollectAnatomyInstanceData [workfile] name=%r "
-                    "follow_workfile_version_plugin=%s followWorkfileVersion=%s "
+                    "follow_workfile_version_plugin=%s "
+                    "followWorkfileVersion=%s "
                     "use_context_version=%s context_version=%s "
-                    "instance_version_before=%s latestVersion=%s -> version_number=%s",
+                    "instance_version_before=%s "
+                    "latestVersion=%s -> version_number=%s",
                     instance.data.get("name"),
                     self.follow_workfile_version,
                     instance.data.get("followWorkfileVersion"),
@@ -403,10 +407,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             instance_label = instance.data.get("label")
             if instance_label:
                 instance_name += " ({})".format(instance_label)
-            self.log.debug("Anatomy data for instance {}: {}".format(
-                instance_name,
-                json.dumps(anatomy_data, indent=4)
-            ))
+            self.log.debug(
+                "Anatomy data for instance {}: {}".format(
+                    instance_name, json.dumps(anatomy_data, indent=4)
+                )
+            )
 
             # make render layer available in anatomy data
             render_layer = instance.data.get("renderlayer")
@@ -425,8 +430,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         folder_entity = instance.data.get("folderEntity")
         if folder_entity:
             folder_data = get_folder_template_data(
-                folder_entity,
-                project_entity["name"]
+                folder_entity, project_entity["name"]
             )
             anatomy_data.update(folder_data)
             return
@@ -446,20 +450,23 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 parent_name = parents[-1]
                 hierarchy = "/".join(parents)
 
-            anatomy_data.update({
-                "asset": folder_name,
-                "hierarchy": hierarchy,
-                "parent": parent_name,
-                "folder": {
-                    "name": folder_name,
-                    "path": instance.data["folderPath"],
-                    # TODO get folder type from hierarchy
-                    #   Using 'Shot' is current default behavior of editorial
-                    #   (or 'newHierarchyIntegration') publishing.
-                    "type": "Shot",
-                    "parents": parents,
-                },
-            })
+            anatomy_data.update(
+                {
+                    "asset": folder_name,
+                    "hierarchy": hierarchy,
+                    "parent": parent_name,
+                    "folder": {
+                        "name": folder_name,
+                        "path": instance.data["folderPath"],
+                        # TODO get folder type from hierarchy
+                        #   Using 'Shot' is current default behavior of
+                        #   editorial
+                        #   (or 'newHierarchyIntegration') publishing.
+                        "type": "Shot",
+                        "parents": parents,
+                    },
+                }
+            )
 
     def _fill_task_data(self, instance, task_types_by_name, anatomy_data):
         # QUESTION: should we make sure that all task data are popped if task
@@ -512,29 +519,21 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             current_data = hierarchy_context.get(project_name, {})
             for key in folder_path.split("/"):
                 if key:
-                    current_data = (
-                        current_data
-                        .get("children", {})
-                        .get(key, {})
+                    current_data = current_data.get("children", {}).get(
+                        key, {}
                     )
             tasks_info = current_data.get("tasks", {})
 
         task_info = tasks_info.get(task_name, {})
         task_type = task_info.get("type")
-        task_code = (
-            task_types_by_name
-            .get(task_type, {})
-            .get("shortName")
-        )
+        task_code = task_types_by_name.get(task_type, {}).get("shortName")
         anatomy_data["task"] = {
             "name": task_name,
             "type": task_type,
-            "short": task_code
+            "short": task_code,
         }
 
-    def _get_task_data_from_entity(
-        self, task_entity, task_types_by_name
-    ):
+    def _get_task_data_from_entity(self, task_entity, task_types_by_name):
         """
 
         Args:
@@ -550,15 +549,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             return None
 
         task_type = task_entity["taskType"]
-        task_code = (
-            task_types_by_name
-            .get(task_type, {})
-            .get("shortName")
-        )
+        task_code = task_types_by_name.get(task_type, {}).get("shortName")
         return {
             "name": task_entity["name"],
             "type": task_type,
-            "short": task_code
+            "short": task_code,
         }
 
     def _find_tasks_info_in_hierarchy(self, hierarchy_context, folder_name):

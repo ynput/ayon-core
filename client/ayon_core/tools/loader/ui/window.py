@@ -524,7 +524,7 @@ class LoaderWindow(QtWidgets.QWidget):
         message = event.get("message")
 
         if message_id:
-            # If there's a message from the plugin, use it; otherwise show current/total
+            # Prefer plugin message; otherwise show current/total
             if message:
                 display_message = f"{message} ({progress}%)"
             elif total > 0:

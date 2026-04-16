@@ -47,11 +47,14 @@ class LoaderActionsModel:
         self._controller = controller
         self._current_context_project = NOT_SET
         self._loaders_by_identifier = NestedCacheItem(
-            levels=1, lifetime=self.loaders_cache_lifetime)
+            levels=1, lifetime=self.loaders_cache_lifetime
+        )
         self._product_loaders = NestedCacheItem(
-            levels=1, lifetime=self.loaders_cache_lifetime)
+            levels=1, lifetime=self.loaders_cache_lifetime
+        )
         self._repre_loaders = NestedCacheItem(
-            levels=1, lifetime=self.loaders_cache_lifetime)
+            levels=1, lifetime=self.loaders_cache_lifetime
+        )
 
     def reset(self):
         """Reset the model with all cached items."""
@@ -72,17 +75,11 @@ class LoaderActionsModel:
             list[ActionItem]: List of action items.
         """
 
-        (
-            version_context_by_id,
-            repre_context_by_id
-        ) = self._contexts_for_versions(
-            project_name,
-            version_ids
+        (version_context_by_id, repre_context_by_id) = (
+            self._contexts_for_versions(project_name, version_ids)
         )
         return self._get_action_items_for_contexts(
-            project_name,
-            version_context_by_id,
-            repre_context_by_id
+            project_name, version_context_by_id, repre_context_by_id
         )
 
     def get_representations_action_items(
@@ -98,17 +95,13 @@ class LoaderActionsModel:
             list[ActionItem]: List of action items.
         """
 
-        (
-            product_context_by_id,
-            repre_context_by_id
-        ) = self._contexts_for_representations(
-            project_name,
-            representation_ids
+        (product_context_by_id, repre_context_by_id) = (
+            self._contexts_for_representations(
+                project_name, representation_ids
+            )
         )
         return self._get_action_items_for_contexts(
-            project_name,
-            product_context_by_id,
-            repre_context_by_id
+            project_name, product_context_by_id, repre_context_by_id
         )
 
     def trigger_action_item(
@@ -117,7 +110,7 @@ class LoaderActionsModel:
         options,
         project_name,
         version_ids,
-        representation_ids
+        representation_ids,
     ):
         """Trigger action by identifier.
 
@@ -143,7 +136,10 @@ class LoaderActionsModel:
         }
 
         # Add custom loading message if loader provides one
-        if hasattr(loader, 'loading_started_message') and loader.loading_started_message:
+        if (
+            hasattr(loader, "loading_started_message")
+            and loader.loading_started_message
+        ):
             event_data["message"] = loader.loading_started_message
 
         self._controller.emit_event(
@@ -176,7 +172,8 @@ class LoaderActionsModel:
             )
         else:
             raise NotImplementedError(
-                "Invalid arguments to trigger action item")
+                "Invalid arguments to trigger action item"
+            )
 
         event_data["error_info"] = error_info
         self._controller.emit_event(
@@ -236,7 +233,7 @@ class LoaderActionsModel:
             icon = {
                 "type": "awesome-font",
                 "name": icon,
-                "color": getattr(loader, "color", None) or "white"
+                "color": getattr(loader, "color", None) or "white",
             }
         return icon
 
@@ -438,7 +435,8 @@ class LoaderActionsModel:
             }
 
         repre_entities = ayon_api.get_representations(
-            project_name, version_ids=version_ids)
+            project_name, version_ids=version_ids
+        )
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
             version_entity = version_entities_by_id[version_id]
@@ -481,32 +479,28 @@ class LoaderActionsModel:
         if not project_name and not repre_ids:
             return product_context_by_id, repre_context_by_id
 
-        repre_entities = list(ayon_api.get_representations(
-            project_name, representation_ids=repre_ids
-        ))
+        repre_entities = list(
+            ayon_api.get_representations(
+                project_name, representation_ids=repre_ids
+            )
+        )
         version_ids = {r["versionId"] for r in repre_entities}
         version_entities = ayon_api.get_versions(
             project_name, version_ids=version_ids
         )
-        version_entities_by_id = {
-            v["id"]: v for v in version_entities
-        }
+        version_entities_by_id = {v["id"]: v for v in version_entities}
 
         product_ids = {v["productId"] for v in version_entities_by_id.values()}
         product_entities = ayon_api.get_products(
             project_name, product_ids=product_ids
         )
-        product_entities_by_id = {
-            p["id"]: p for p in product_entities
-        }
+        product_entities_by_id = {p["id"]: p for p in product_entities}
 
         folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
         folder_entities = ayon_api.get_folders(
             project_name, folder_ids=folder_ids
         )
-        folder_entities_by_id = {
-            f["id"]: f for f in folder_entities
-        }
+        folder_entities_by_id = {f["id"]: f for f in folder_entities}
 
         project_entity = ayon_api.get_project(project_name)
 
@@ -537,10 +531,7 @@ class LoaderActionsModel:
         return product_context_by_id, repre_context_by_id
 
     def _get_action_items_for_contexts(
-        self,
-        project_name,
-        version_context_by_id,
-        repre_context_by_id
+        self, project_name, version_context_by_id, repre_context_by_id
     ):
         """Prepare action items based on contexts.
 
@@ -582,7 +573,8 @@ class LoaderActionsModel:
                     continue
             for repre_name, repre_contexts in repre_contexts_by_name.items():
                 filtered_repre_contexts = filter_repre_contexts_by_loader(
-                    repre_contexts, loader)
+                    repre_contexts, loader
+                )
                 if not filtered_repre_contexts:
                     continue
 
@@ -661,9 +653,9 @@ class LoaderActionsModel:
 
         project_entity = ayon_api.get_project(project_name)
 
-        version_entities = list(ayon_api.get_versions(
-            project_name, version_ids=version_ids
-        ))
+        version_entities = list(
+            ayon_api.get_versions(project_name, version_ids=version_ids)
+        )
         product_ids = {v["productId"] for v in version_entities}
         product_entities = ayon_api.get_products(
             project_name, product_ids=product_ids
@@ -680,12 +672,14 @@ class LoaderActionsModel:
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
-            product_contexts.append({
-                "project": project_entity,
-                "folder": folder_entity,
-                "product": product_entity,
-                "version": version_entity,
-            })
+            product_contexts.append(
+                {
+                    "project": project_entity,
+                    "folder": folder_entity,
+                    "product": product_entity,
+                    "version": version_entity,
+                }
+            )
 
         return self._load_products_by_loader(
             loader, product_contexts, options, event_id
@@ -714,17 +708,17 @@ class LoaderActionsModel:
         """
 
         project_entity = ayon_api.get_project(project_name)
-        repre_entities = list(ayon_api.get_representations(
-            project_name, representation_ids=representation_ids
-        ))
+        repre_entities = list(
+            ayon_api.get_representations(
+                project_name, representation_ids=representation_ids
+            )
+        )
         version_ids = {r["versionId"] for r in repre_entities}
         version_entities = ayon_api.get_versions(
             project_name, version_ids=version_ids
         )
         version_entities_by_id = {v["id"]: v for v in version_entities}
-        product_ids = {
-            v["productId"] for v in version_entities_by_id.values()
-        }
+        product_ids = {v["productId"] for v in version_entities_by_id.values()}
         product_entities = ayon_api.get_products(
             project_name, product_ids=product_ids
         )
@@ -742,13 +736,15 @@ class LoaderActionsModel:
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
-            repre_contexts.append({
-                "project": project_entity,
-                "folder": folder_entity,
-                "product": product_entity,
-                "version": version_entity,
-                "representation": repre_entity,
-            })
+            repre_contexts.append(
+                {
+                    "project": project_entity,
+                    "folder": folder_entity,
+                    "product": product_entity,
+                    "version": version_entity,
+                    "representation": repre_entity,
+                }
+            )
 
         return self._load_representations_by_loader(
             loader, repre_contexts, options, event_id
@@ -771,8 +767,6 @@ class LoaderActionsModel:
             options (dict): Data from options.
             event_id (str): Event ID for progress tracking.
         """
-
-        from qtpy import QtWidgets
 
         error_info = []
         total_count = len(repre_contexts)
@@ -804,29 +798,35 @@ class LoaderActionsModel:
 
             except IncompatibleLoaderError as exc:
                 print(exc)
-                error_info.append((
-                    "Incompatible Loader",
-                    None,
-                    repre_context["representation"]["name"],
-                    repre_context["product"]["name"],
-                    version
-                ))
+                error_info.append(
+                    (
+                        "Incompatible Loader",
+                        None,
+                        repre_context["representation"]["name"],
+                        repre_context["product"]["name"],
+                        version,
+                    )
+                )
 
             except Exception as exc:
                 formatted_traceback = None
                 if not isinstance(exc, LoadError):
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    formatted_traceback = "".join(traceback.format_exception(
-                        exc_type, exc_value, exc_traceback
-                    ))
+                    formatted_traceback = "".join(
+                        traceback.format_exception(
+                            exc_type, exc_value, exc_traceback
+                        )
+                    )
 
-                error_info.append((
-                    str(exc),
-                    formatted_traceback,
-                    repre_context["representation"]["name"],
-                    repre_context["product"]["name"],
-                    version
-                ))
+                error_info.append(
+                    (
+                        str(exc),
+                        formatted_traceback,
+                        repre_context["representation"]["name"],
+                        repre_context["product"]["name"],
+                        version,
+                    )
+                )
         return error_info
 
     def _load_products_by_loader(
@@ -878,9 +878,7 @@ class LoaderActionsModel:
                 loader_options = dict(options) if options else {}
                 loader_options["event_id"] = event_id
                 load_with_product_contexts(
-                    loader,
-                    version_contexts,
-                    options=loader_options
+                    loader, version_contexts, options=loader_options
                 )
 
                 # Emit completion progress
@@ -903,16 +901,20 @@ class LoaderActionsModel:
                 formatted_traceback = None
                 if not isinstance(exc, LoadError):
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    formatted_traceback = "".join(traceback.format_exception(
-                        exc_type, exc_value, exc_traceback
-                    ))
-                error_info.append((
-                    str(exc),
-                    formatted_traceback,
-                    None,
-                    ", ".join(product_names),
-                    None
-                ))
+                    formatted_traceback = "".join(
+                        traceback.format_exception(
+                            exc_type, exc_value, exc_traceback
+                        )
+                    )
+                error_info.append(
+                    (
+                        str(exc),
+                        formatted_traceback,
+                        None,
+                        ", ".join(product_names),
+                        None,
+                    )
+                )
         else:
             for idx, version_context in enumerate(version_contexts):
                 # Emit progress event
@@ -933,13 +935,11 @@ class LoaderActionsModel:
                     version_context.get("product", {}).get("name") or "N/A"
                 )
                 try:
-                    # Pass event_id in options so loaders can emit progress events
+                    # Pass event_id so loaders can emit progress events
                     loader_options = dict(options) if options else {}
                     loader_options["event_id"] = event_id
                     load_with_product_context(
-                        loader,
-                        version_context,
-                        options=loader_options
+                        loader, version_context, options=loader_options
                     )
 
                 except Exception as exc:
@@ -952,12 +952,14 @@ class LoaderActionsModel:
                             )
                         )
 
-                    error_info.append((
-                        str(exc),
-                        formatted_traceback,
-                        None,
-                        product_name,
-                        None
-                    ))
+                    error_info.append(
+                        (
+                            str(exc),
+                            formatted_traceback,
+                            None,
+                            product_name,
+                            None,
+                        )
+                    )
 
         return error_info
