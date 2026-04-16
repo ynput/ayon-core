@@ -14,6 +14,8 @@ Optional:
     instance    -> task
     instance    -> taskEntity
     instance    -> version
+    instance    -> comment # Publish/version note (non-workfile: template token)
+    instance    -> workfileSubversion # Harmony workfile Subversion for ``{comment}``
     instance    -> resolutionWidth
     instance    -> resolutionHeight
     instance    -> fps
@@ -299,6 +301,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         for instance in context:
             anatomy_data = copy.deepcopy(context.data["anatomyData"])
+            # Avoid leaking a stale context comment into instances that did not set one
+            anatomy_data.pop("comment", None)
             product_name = instance.data["productName"]
             product_type = instance.data["productType"]
             product_base_type = instance.data.get("productBaseType")
@@ -396,6 +400,20 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             fps = instance.data.get("fps")
             if fps:
                 anatomy_data["fps"] = float("{:0.2f}".format(float(fps)))
+
+            # "comment" in anatomy templates: workfile uses ``workfileSubversion``
+            # (e.g. Harmony); Pyblish ``instance.data["comment"]`` is Publisher-only.
+            if product_type == "workfile":
+                comment_val = instance.data.get("workfileSubversion")
+            else:
+                comment_val = instance.data.get("comment")
+            if comment_val:
+                anatomy_data["comment"] = comment_val
+                self.log.debug(
+                    "Instance %r: anatomyData includes comment for templates: %r",
+                    instance.data["name"],
+                    comment_val,
+                )
 
             # Store anatomy data
             instance.data["projectEntity"] = project_entity
@@ -576,4 +594,3 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
             for subitem in item.values():
                 hierarchy_queue.extend(subitem.get("children") or [])
-        return {}
