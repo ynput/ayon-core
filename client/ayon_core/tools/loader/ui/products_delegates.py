@@ -17,6 +17,8 @@ from .products_model import (
     REPRESENTATIONS_COUNT_ROLE,
     SYNC_ACTIVE_SITE_AVAILABILITY,
     SYNC_REMOTE_SITE_AVAILABILITY,
+    ACTIVE_SITE_NAME_ROLE,
+    REMOTE_SITE_NAME_ROLE,
 )
 
 COMBO_VERSION_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -432,6 +434,8 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
 
         active_icon = index.data(ACTIVE_SITE_ICON_ROLE)
         remote_icon = index.data(REMOTE_SITE_ICON_ROLE)
+        active_site_name = index.data(ACTIVE_SITE_NAME_ROLE)
+        remote_site_name = index.data(REMOTE_SITE_NAME_ROLE)
 
         availability_active = "{}/{}".format(
             index.data(SYNC_ACTIVE_SITE_AVAILABILITY),
@@ -446,10 +450,10 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
             return
 
         items_to_draw = [
-            (value, icon)
-            for value, icon in (
-                (availability_active, active_icon),
-                (availability_remote, remote_icon),
+            (value, icon, site_name)
+            for value, icon, site_name in (
+                (availability_active, active_icon, active_site_name),
+                (availability_remote, remote_icon, remote_site_name),
             )
             if icon
         ]
@@ -464,13 +468,15 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
         if item_width < 1:
             item_width = 0
 
-        for value, icon in items_to_draw:
+        self._items_rects = []
+        for value, icon, site_name in items_to_draw:
             item_rect = QtCore.QRect(
                 pos_x,
                 option.rect.y(),
                 item_width,
                 option.rect.height()
             )
+            self._items_rects.append((item_rect, site_name))
             # Prepare pos_x for next item
             pos_x = item_rect.x() + item_rect.width()
 
@@ -492,6 +498,25 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
                 option.displayAlignment,
                 value
             )
+
+    def editorEvent(self, event, model, option, index):
+        result = super(SiteSyncDelegate, self).editorEvent(
+            event, model, option, index
+        )
+        if event.type() == QtCore.QEvent.MouseMove:
+            mouse_pos = event.pos()
+            tooltip = ""
+            for item_rect, site_name in getattr(self, "_items_rects", []):
+                if item_rect.contains(mouse_pos) and site_name:
+                    tooltip = site_name
+                    break
+            if tooltip:
+                QtWidgets.QToolTip.showText(event.globalPos(), tooltip)
+            else:
+                QtWidgets.QToolTip.hideText()
+        elif event.type() == QtCore.QEvent.Leave:
+            QtWidgets.QToolTip.hideText()
+        return result
 
     def displayText(self, value, locale):
         pass
