@@ -8,11 +8,7 @@ def file_size_to_string(file_size):
     if not file_size:
         return "N/A"
     size = 0
-    size_ending_mapping = {
-        "KB": 1024**1,
-        "MB": 1024**2,
-        "GB": 1024**3,
-    }
+    size_ending_mapping = {"KB": 1024**1, "MB": 1024**2, "GB": 1024**3}
     ending = "B"
     for _ending, _size in size_ending_mapping.items():
         if file_size < _size:
@@ -148,22 +144,35 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._orig_description = description
         self._btn_description_save.setEnabled(False)
 
-    def _set_workarea_context(
-        self,
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        rootless_path: Optional[str],
-        filepath: Optional[str],
-    ) -> None:
-        self._rootless_path = rootless_path
-        self._filepath = filepath
-
+    def _set_context(
+        self, folder_id, task_id, rootless_path, filepath, representation_id
+    ):
         workfile_info = None
-        # Check if folder, task and file are selected
+        published_workfile_info = None
+
+        # Check if folder, task and file are selected (workarea mode)
         if folder_id and task_id and rootless_path:
             workfile_info = self._controller.get_workfile_info(
                 folder_id, task_id, rootless_path
             )
+        # Check if representation is selected (published mode)
+        elif representation_id:
+            published_workfile_info = (
+                self._controller.get_published_workfile_info(representation_id)
+            )
+
+        # Get version comment for published workfiles
+        version_comment = None
+        if representation_id and published_workfile_info:
+            version_comment = (
+                self._controller.get_published_workfile_version_comment(
+                    representation_id
+                )
+            )
+
+        enabled = (
+            workfile_info is not None or published_workfile_info is not None
+        )
 
         if workfile_info is None:
             self._orig_description = ""
@@ -171,79 +180,24 @@ class SidePanelWidget(QtWidgets.QWidget):
             self._set_context(False, folder_id, task_id)
             return
 
-        self._set_context(
-            True,
-            folder_id,
-            task_id,
-            file_created=workfile_info.file_created,
-            file_modified=workfile_info.file_modified,
-            size_value=workfile_info.file_size,
-            created_by=workfile_info.created_by,
-            updated_by=workfile_info.updated_by,
+        # Use published workfile info if available, otherwise use workarea
+        # info
+        info = (
+            published_workfile_info
+            if published_workfile_info
+            else workfile_info
         )
 
-        description = workfile_info.description
-        self._orig_description = description
-        self._description_input.setPlainText(description)
-
-    def _set_publish_context(
-        self,
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        representation_id: Optional[str],
-    ) -> None:
-        self._representation_id = representation_id
-        published_workfile_wrap = self._controller.get_published_workfile_info(
-            folder_id,
-            representation_id,
-        )
-        info = published_workfile_wrap.info
-        comment = published_workfile_wrap.comment
-        if info is None:
-            self._set_context(False, folder_id, task_id)
-            return
-
-        self._set_context(
-            True,
-            folder_id,
-            task_id,
-            file_created=info.file_created,
-            file_modified=info.file_modified,
-            size_value=info.file_size,
-            created_by=info.author,
-            comment=comment,
-        )
-
-    def _set_context(
-        self,
-        is_valid: bool,
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        *,
-        file_created: Optional[int] = None,
-        file_modified: Optional[int] = None,
-        size_value: Optional[int] = None,
-        created_by: Optional[str] = None,
-        updated_by: Optional[str] = None,
-        comment: Optional[str] = None,
-    ) -> None:
-        self._folder_id = folder_id
-        self._task_id = task_id
-
-        self._details_input.setEnabled(is_valid)
-        self._description_input.setEnabled(is_valid)
-        self._btn_description_save.setEnabled(is_valid)
-        if not is_valid:
-            self._details_input.setPlainText("")
-            return
+        description = info.description if hasattr(info, "description") else ""
+        size_value = file_size_to_string(info.file_size)
 
         datetime_format = "%b %d %Y %H:%M:%S"
         if file_created:
             file_created = datetime.datetime.fromtimestamp(file_created)
 
-        if file_modified:
-            file_modified = datetime.datetime.fromtimestamp(
-                file_modified
+        if modification_time:
+            modification_time = datetime.datetime.fromtimestamp(
+                modification_time
             )
 
         user_items_by_name = self._controller.get_user_items_by_name()
@@ -270,12 +224,32 @@ class SidePanelWidget(QtWidgets.QWidget):
             if file_created:
                 lines.append(file_created.strftime(datetime_format))
 
-        if updated_by or file_modified:
-            lines.append("<b>Modified:</b>")
-            if updated_by:
-                lines.append(convert_username(updated_by))
-            if file_modified:
-                lines.append(file_modified.strftime(datetime_format))
+        if created_lines:
+            created_lines.insert(0, "<b>Created:</b>")
+
+        modified_lines = []
+        # For workarea workfiles, show 'updated_by'
+        if workfile_info and workfile_info.updated_by:
+            modified_lines.append(convert_username(workfile_info.updated_by))
+        if modification_time:
+            modified_lines.append(modification_time.strftime(datetime_format))
+        if modified_lines:
+            modified_lines.insert(0, "<b>Modified:</b>")
+
+        lines = [
+            "<b>Size:</b>",
+            size_value,
+        ]
+        # Add version comment for published workfiles
+        if version_comment:
+            lines.append(f"<b>Comment:</b><br/>{version_comment}")
+        if created_lines:
+            lines.append("<br/>".join(created_lines))
+        if modified_lines:
+            lines.append("<br/>".join(modified_lines))
+
+        self._orig_description = description
+        self._description_input.setPlainText(description)
 
         # Set as empty string
         self._details_input.setPlainText("")

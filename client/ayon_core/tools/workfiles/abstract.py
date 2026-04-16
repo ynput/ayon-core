@@ -834,6 +834,19 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
+    def get_published_workfile_version_comment(self, representation_id: str):
+        """Get version comment for published workfile.
+
+        Args:
+            representation_id (str): Representation id.
+
+        Returns:
+            Optional[str]: Version comment or None.
+
+        """
+        pass
+
+    @abstractmethod
     def get_workfile_info(self, folder_id, task_id, rootless_path):
         """Workfile info from database.
 
