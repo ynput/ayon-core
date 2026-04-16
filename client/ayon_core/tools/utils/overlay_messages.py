@@ -18,8 +18,7 @@ class CloseButton(QtWidgets.QFrame):
         self._color = close_btn_color.get_qcolor()
         self._mouse_pressed = False
         policy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Fixed,
-            QtWidgets.QSizePolicy.Fixed
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
         )
         self.setSizePolicy(policy)
 
@@ -55,14 +54,8 @@ class CloseButton(QtWidgets.QFrame):
         left = rect.left() + offset
         right = rect.right() - offset
         bottom = rect.bottom() - offset
-        painter.drawLine(
-            left, top,
-            right, bottom
-        )
-        painter.drawLine(
-            left, bottom,
-            right, top
-        )
+        painter.drawLine(left, top, right, bottom)
+        painter.drawLine(left, bottom, right, top)
 
 
 class OverlayMessageWidget(QtWidgets.QFrame):
@@ -106,11 +99,37 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         label_widget = QtWidgets.QLabel(message, self)
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
         label_widget.setWordWrap(True)
+        label_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Minimum,
+        )
+
+        progress_bar = QtWidgets.QProgressBar(self)
+        progress_bar.setMinimum(0)
+        progress_bar.setMaximum(100)
+        progress_bar.setValue(0)
+        # Disable text in progress bar since it's too skinny - use label instead
+        progress_bar.setTextVisible(False)
+        progress_bar.setAlignment(QtCore.Qt.AlignCenter)
+        progress_bar.setVisible(False)
+        # Make progress bar skinnier (half the default height)
+        progress_bar.setMaximumHeight(8)
+        progress_bar.setMinimumHeight(8)
+        progress_bar.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+
         close_btn = CloseButton(self)
 
+        content_layout = QtWidgets.QVBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(8)
+        content_layout.addWidget(label_widget)
+        content_layout.addWidget(progress_bar)
+
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 0, 5)
-        layout.addWidget(label_widget, 1)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.addLayout(content_layout, 1)
         layout.addWidget(close_btn, 0)
 
         close_btn.clicked.connect(self._on_close_clicked)
@@ -118,30 +137,69 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         hover_timer.timeout.connect(self._on_hover_timeout)
 
         self._label_widget = label_widget
+        self._progress_bar = progress_bar
         self._message_id = message_id
         self._timeout_timer = timeout_timer
         self._hover_timer = hover_timer
+        self._progress_active = False
+
+        # Completion delay timer - waits 2 seconds after progress completes before starting timeout
+        completion_delay_timer = QtCore.QTimer()
+        completion_delay_timer.setInterval(2000)
+        completion_delay_timer.setSingleShot(True)
+        completion_delay_timer.timeout.connect(
+            self._on_completion_delay_timeout
+        )
+        self._completion_delay_timer = completion_delay_timer
 
     def update_message(self, message, message_type=None, timeout=None):
         self._label_widget.setText(message)
+
         if timeout:
             self._timeout_timer.setInterval(timeout)
 
         set_style_property(self, "type", message_type)
 
-        self._timeout_timer.start()
+        # Only start timeout timer if progress is not active
+        if not self._progress_active:
+            self._timeout_timer.start()
 
-    def size_hint_without_word_wrap(self):
-        """Size hint in cases that word wrap of label is disabled."""
-        self._label_widget.setWordWrap(False)
-        size_hint = self.sizeHint()
-        self._label_widget.setWordWrap(True)
-        return size_hint
+    def set_progress_visible(self, visible):
+        """Show or hide the progress bar."""
+        self._progress_bar.setVisible(visible)
+        self._progress_active = visible
+
+        if not visible:
+            # Progress completed - stop timeout timer and start completion delay
+            self._timeout_timer.stop()
+            self._completion_delay_timer.start()
+        else:
+            # Progress started - stop completion delay and timeout timers
+            self._completion_delay_timer.stop()
+            self._timeout_timer.stop()
+
+    def update_progress(self, progress, message=None):
+        """Update progress bar value and optionally message text.
+
+        Args:
+            progress (int): Progress percentage (0-100).
+            message (str, optional): New message text to display.
+        """
+        self._progress_bar.setValue(int(progress))
+        if message:
+            self._label_widget.setText(message)
 
     def showEvent(self, event):
         """Start timeout on show."""
         super(OverlayMessageWidget, self).showEvent(event)
-        self._timeout_timer.start()
+        # Only start timeout timer if progress is not active
+        if not self._progress_active:
+            self._timeout_timer.start()
+
+    def _on_completion_delay_timeout(self):
+        """Called after completion delay - starts timeout timer if progress is not active."""
+        if not self._progress_active:
+            self._timeout_timer.start()
 
     def _on_timer_timeout(self):
         """On message timeout."""
@@ -264,6 +322,30 @@ class MessageOverlayObject(QtCore.QObject):
 
         return message_id
 
+    def set_progress_visible(self, message_id, visible):
+        """Show or hide progress bar for a specific message.
+
+        Args:
+            message_id (str): Message ID to update.
+            visible (bool): Whether progress bar should be visible.
+        """
+        widget = self._messages.get(message_id)
+        if widget is not None:
+            widget.set_progress_visible(visible)
+            self._recalculate_timer.start()
+
+    def update_progress(self, message_id, progress, message=None):
+        """Update progress for an existing message.
+
+        Args:
+            message_id (str): Message ID to update.
+            progress (int): Progress percentage (0-100).
+            message (str, optional): New message text.
+        """
+        widget = self._messages.get(message_id)
+        if widget is not None:
+            widget.update_progress(progress, message)
+
     def _on_message_close_request(self, message_id):
         """Message widget requested removement."""
 
@@ -287,7 +369,12 @@ class MessageOverlayObject(QtCore.QObject):
         pos_y = self._spacing
         # Current widget width
         widget_width = self._widget.width()
-        max_width = widget_width - (2 * self._spacing)
+
+        # Calculate maximum widget width based on parent widget width
+        # Reserve space only for parent widget spacing on both sides
+        # Qt's layout system will handle internal sizing with Expanding size policy
+        reserved_width = 2 * self._spacing
+        max_widget_width = max(300, widget_width - reserved_width)
         widget_half_width = widget_width / 2
 
         # Store message ids that should be removed
@@ -323,10 +410,10 @@ class MessageOverlayObject(QtCore.QObject):
             if all_at_place and dst_pos_y != pos_y:
                 all_at_place = False
 
-            # Calculate ideal width and height of message widget
-            height = widget.heightForWidth(max_width)
-            w_size_hint = widget.size_hint_without_word_wrap()
-            widget.resize(min(max_width, w_size_hint.width()), height)
+            # Set maximum width constraint and let Qt's layout system handle sizing
+            widget.setMaximumWidth(max_widget_width)
+            # Let the widget size itself based on content and size policies
+            widget.adjustSize()
 
             # Center message widget
             size = widget.size()

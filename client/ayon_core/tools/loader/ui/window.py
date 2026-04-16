@@ -1,35 +1,33 @@
 from __future__ import annotations
 
-from typing import Optional
+import os
 
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
-from ayon_core.pipeline.actions import LoaderActionResult
-from ayon_core.tools.utils import (
-    MessageOverlayObject,
-    ErrorMessageBox,
-    ThumbnailPainterWidget,
-    RefreshButton,
-    GoToCurrentButton,
-    ProjectsCombobox,
-    get_qt_icon,
-    FoldersFiltersWidget,
-)
-from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
-from ayon_core.tools.utils.lib import center_window
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
+from ayon_core.tools.utils import (
+    ErrorMessageBox,
+    GoToCurrentButton,
+    MessageOverlayObject,
+    PlaceholderLineEdit,
+    ProjectsCombobox,
+    RefreshButton,
+    ThumbnailPainterWidget,
+)
+from ayon_core.tools.utils.lib import center_window
 
 from .folders_widget import LoaderFoldersWidget
-from .tasks_widget import LoaderTasksWidget
-from .products_widget import ProductsWidget
-from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
+from .product_group_dialog import ProductGroupDialog
+from .products_widget import ProductsWidget
 from .repres_widget import RepresentationsWidget
-from .search_bar import FiltersBar, FilterDefinition
+from .search_bar import FilterDefinition, FiltersBar
+from .tasks_widget import LoaderTasksWidget
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -42,7 +40,7 @@ GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
 class LoadErrorMessageBox(ErrorMessageBox):
     def __init__(self, messages, parent=None):
         self._messages = messages
-        super().__init__("Loading failed", parent)
+        super(LoadErrorMessageBox, self).__init__("Loading failed", parent)
 
     def _create_top_widget(self, parent_widget):
         label_widget = QtWidgets.QLabel(parent_widget)
@@ -55,14 +53,11 @@ class LoadErrorMessageBox(ErrorMessageBox):
         report_data = []
         for exc_msg, tb_text, repre, product, version in self._messages:
             report_message = (
-                "During load error happened on Product: \"{product}\""
-                " Representation: \"{repre}\" Version: {version}"
+                'During load error happened on Product: "{product}"'
+                ' Representation: "{repre}" Version: {version}'
                 "\n\nError message: {message}"
             ).format(
-                product=product,
-                repre=repre,
-                version=version,
-                message=exc_msg
+                product=product, repre=repre, version=version, message=exc_msg
             )
             if tb_text:
                 report_message += "\n\n{}".format(tb_text)
@@ -135,21 +130,25 @@ class RefreshHandler:
 
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
+        super(LoaderWindow, self).__init__(parent)
 
-        if controller is None:
-            controller = LoaderController()
-
-        subtitle = controller.get_window_subtitle()
-        title = "AYON Loader"
-        if subtitle:
-            title += f" - {subtitle}"
-        self.setWindowTitle(title)
         icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
+
+        # Set window title with application name
+        base_title = "AYON Loader"
+        app_name = os.environ.get("AYON_APP_NAME") or get_current_host_name()
+        if app_name:
+            window_title = f"{base_title} - {app_name}"
+        else:
+            window_title = base_title
+        self.setWindowTitle(window_title)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
+
+        if controller is None:
+            controller = LoaderController()
 
         overlay_object = MessageOverlayObject(self)
 
@@ -163,9 +162,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         context_top_widget = QtWidgets.QWidget(context_widget)
         projects_combobox = ProjectsCombobox(
-            controller,
-            context_top_widget,
-            handle_expected_selection=True
+            controller, context_top_widget, handle_expected_selection=True
         )
         projects_combobox.set_select_item_visible(True)
         projects_combobox.set_libraries_separator_visible(True)
@@ -177,19 +174,25 @@ class LoaderWindow(QtWidgets.QWidget):
         refresh_btn = RefreshButton(context_top_widget)
 
         context_top_layout = QtWidgets.QHBoxLayout(context_top_widget)
-        context_top_layout.setContentsMargins(0, 0, 0, 0,)
+        context_top_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
         context_top_layout.addWidget(projects_combobox, 1)
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
 
-        filters_widget = FoldersFiltersWidget(context_widget)
+        folders_filter_input = PlaceholderLineEdit(context_widget)
+        folders_filter_input.setPlaceholderText("Folder name filter...")
 
         folders_widget = LoaderFoldersWidget(controller, context_widget)
 
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
         context_layout.addWidget(context_top_widget, 0)
-        context_layout.addWidget(filters_widget, 0)
+        context_layout.addWidget(folders_filter_input, 0)
         context_layout.addWidget(folders_widget, 1)
 
         tasks_widget = LoaderTasksWidget(controller, context_widget)
@@ -206,7 +209,8 @@ class LoaderWindow(QtWidgets.QWidget):
         search_bar = FiltersBar(products_inputs_widget)
 
         product_group_checkbox = QtWidgets.QCheckBox(
-            "Enable grouping", products_inputs_widget)
+            "Enable grouping", products_inputs_widget
+        )
         product_group_checkbox.setChecked(True)
 
         products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
@@ -226,6 +230,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
         thumbnails_widget = ThumbnailPainterWidget(right_panel_splitter)
         thumbnails_widget.set_use_checkboard(False)
+        # Connect double-click signal to open thumbnail
+        thumbnails_widget.thumbnail_double_clicked.connect(
+            self._on_thumbnail_double_clicked
+        )
 
         info_widget = InfoWidget(controller, right_panel_splitter)
 
@@ -258,12 +266,7 @@ class LoaderWindow(QtWidgets.QWidget):
         projects_combobox.refreshed.connect(self._on_projects_refresh)
         folders_widget.refreshed.connect(self._on_folders_refresh)
         products_widget.refreshed.connect(self._on_products_refresh)
-        filters_widget.text_changed.connect(
-            self._on_folder_filter_change
-        )
-        filters_widget.my_tasks_changed.connect(
-            self._on_my_tasks_checkbox_state_changed
-        )
+        folders_filter_input.textChanged.connect(self._on_folder_filter_change)
         search_bar.filter_changed.connect(self._on_filter_change)
         product_group_checkbox.stateChanged.connect(
             self._on_product_group_change
@@ -274,11 +277,15 @@ class LoaderWindow(QtWidgets.QWidget):
         products_widget.selection_changed.connect(
             self._on_products_selection_change
         )
-        go_to_current_btn.clicked.connect(
-            self._on_go_to_current_context_click
+        go_to_current_btn.clicked.connect(self._on_go_to_current_context_click)
+        refresh_btn.clicked.connect(self._on_refresh_click)
+        controller.register_event_callback(
+            "load.started",
+            self._on_load_started,
         )
-        refresh_btn.clicked.connect(
-            self._on_refresh_click
+        controller.register_event_callback(
+            "load.progress",
+            self._on_load_progress,
         )
         controller.register_event_callback(
             "load.finished",
@@ -308,12 +315,6 @@ class LoaderWindow(QtWidgets.QWidget):
             "controller.reset.finished",
             self._on_controller_reset_finish,
         )
-        controller.register_event_callback(
-            "loader.action.finished",
-            self._on_loader_action_finished,
-        )
-
-        self._overlay_object = overlay_object
 
         self._group_dialog = ProductGroupDialog(controller, self)
 
@@ -323,7 +324,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._refresh_btn = refresh_btn
         self._projects_combobox = projects_combobox
 
-        self._filters_widget = filters_widget
+        self._folders_filter_input = folders_filter_input
         self._folders_widget = folders_widget
 
         self._tasks_widget = tasks_widget
@@ -338,6 +339,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._repre_widget = repre_widget
 
         self._controller = controller
+        self._overlay_object = overlay_object
         self._refresh_handler = RefreshHandler()
         self._first_show = True
         self._reset_on_show = True
@@ -375,19 +377,13 @@ class LoaderWindow(QtWidgets.QWidget):
             combination = event.keyCombination()
         else:
             combination = QtGui.QKeySequence(event.modifiers() | event.key())
-        if (
-            FIND_KEY_SEQUENCE == combination
-            and not event.isAutoRepeat()
-        ):
+        if FIND_KEY_SEQUENCE == combination and not event.isAutoRepeat():
             self._search_bar.show_filters_popup()
             event.setAccepted(True)
             return
 
         # Grouping products on pressing Ctrl + G
-        if (
-            GROUP_KEY_SEQUENCE == combination
-            and not event.isAutoRepeat()
-        ):
+        if GROUP_KEY_SEQUENCE == combination and not event.isAutoRepeat():
             self._show_group_dialog()
             event.setAccepted(True)
             return
@@ -403,9 +399,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         mid_width = int(width / 1.8)
         sides_width = int((width - mid_width) * 0.5)
-        self._main_splitter.setSizes(
-            [sides_width, mid_width, sides_width]
-        )
+        self._main_splitter.setSizes([sides_width, mid_width, sides_width])
 
         thumbnail_height = int(height / 3.6)
         info_height = int((height - thumbnail_height) * 0.5)
@@ -426,55 +420,23 @@ class LoaderWindow(QtWidgets.QWidget):
         if self._reset_on_show:
             self.refresh()
 
-    def _show_toast_message(
-        self,
-        message: str,
-        success: bool = True,
-        message_id: Optional[str] = None,
-    ):
-        message_type = None
-        if not success:
-            message_type = "error"
-
-        self._overlay_object.add_message(
-            message, message_type, message_id=message_id
-        )
-
     def _show_group_dialog(self):
         project_name = self._projects_combobox.get_selected_project_name()
         if not project_name:
             return
 
         product_ids = {
-            version_info["product_id"]
-            for version_info in (
-                self._products_widget.get_selected_version_info()
-            )
+            i["product_id"]
+            for i in self._products_widget.get_selected_version_info()
         }
         if not product_ids:
             return
 
-        self._group_dialog.set_product_ids(
-            project_name,
-            self._selected_folder_ids,
-            product_ids,
-        )
+        self._group_dialog.set_product_ids(project_name, product_ids)
         self._group_dialog.show()
 
-    def _on_folder_filter_change(self, text: str) -> None:
+    def _on_folder_filter_change(self, text):
         self._folders_widget.set_name_filter(text)
-
-    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
-        folder_ids = None
-        task_ids = None
-        if enabled:
-            entity_ids = self._controller.get_my_tasks_entity_ids(
-                self._selected_project_name
-            )
-            folder_ids = entity_ids["folder_ids"]
-            task_ids = entity_ids["task_ids"]
-        self._folders_widget.set_folder_ids_filter(folder_ids)
-        self._tasks_widget.set_task_ids_filter(task_ids)
 
     def _on_product_group_change(self):
         self._products_widget.set_enable_grouping(
@@ -512,8 +474,7 @@ class LoaderWindow(QtWidgets.QWidget):
     def _on_products_selection_change(self):
         items = self._products_widget.get_selected_version_info()
         self._info_widget.set_selected_version_info(
-            self._projects_combobox.get_selected_project_name(),
-            items
+            self._projects_combobox.get_selected_project_name(), items
         )
 
     def _on_go_to_current_context_click(self):
@@ -537,89 +498,60 @@ class LoaderWindow(QtWidgets.QWidget):
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
         self._update_filters()
-        # Update my tasks
-        self._on_my_tasks_checkbox_state_changed(
-            self._filters_widget.is_my_tasks_checked()
-        )
+
+    def _on_load_started(self, event):
+        """Handle load.started event and show toast notification."""
+        message = event.get("message")
+        message_id = event["id"]
+
+        if message:
+            self._overlay_object.add_message(message, message_id=message_id)
+        else:
+            # Fallback message if loader doesn't provide one
+            self._overlay_object.add_message(
+                "Loading...", message_id=message_id
+            )
+
+        # Show progress bar for this message
+        self._overlay_object.set_progress_visible(message_id, True)
+
+    def _on_load_progress(self, event):
+        """Handle load.progress event to update progress bar."""
+        message_id = event.get("id")
+        progress = event.get("progress", 0)
+        current = event.get("current", 0)
+        total = event.get("total", 0)
+        message = event.get("message")
+
+        if message_id:
+            # If there's a message from the plugin, use it; otherwise show current/total
+            if message:
+                display_message = f"{message} ({progress}%)"
+            elif total > 0:
+                display_message = f"Loading {current}/{total}... ({progress}%)"
+            else:
+                display_message = f"Progress: {progress}%"
+            self._overlay_object.update_progress(
+                message_id, progress, display_message
+            )
 
     def _on_load_finished(self, event):
+        message_id = event["id"]
+        # Hide the progress bar when finished
+        self._overlay_object.set_progress_visible(message_id, False)
+
         error_info = event["error_info"]
         if not error_info:
+            # Show completion message if load was successful
+            self._overlay_object.add_message(
+                "Loading completed successfully",
+                message_id=message_id,
+                message_type="success",
+            )
             return
 
         box = LoadErrorMessageBox(error_info, self)
         box.show()
-
-    def _on_loader_action_finished(self, event):
-        crashed = event["crashed"]
-        if crashed:
-            self._show_toast_message(
-                "Action failed",
-                success=False,
-            )
-            return
-
-        result: Optional[LoaderActionResult] = event["result"]
-        if result is None:
-            return
-
-        if result.message:
-            self._show_toast_message(
-                result.message, result.success
-            )
-
-        if result.form is None:
-            return
-
-        form = result.form
-        dialog = AttributeDefinitionsDialog(
-            form.fields,
-            title=form.title,
-            parent=self,
-        )
-        if result.form_values:
-            dialog.set_values(result.form_values)
-        submit_label = form.submit_label
-        submit_icon = form.submit_icon
-        cancel_label = form.cancel_label
-        cancel_icon = form.cancel_icon
-
-        if submit_icon:
-            submit_icon = get_qt_icon(submit_icon)
-        if cancel_icon:
-            cancel_icon = get_qt_icon(cancel_icon)
-
-        if submit_label:
-            dialog.set_submit_label(submit_label)
-        else:
-            dialog.set_submit_visible(False)
-
-        if submit_icon:
-            dialog.set_submit_icon(submit_icon)
-
-        if cancel_label:
-            dialog.set_cancel_label(cancel_label)
-        else:
-            dialog.set_cancel_visible(False)
-
-        if cancel_icon:
-            dialog.set_cancel_icon(cancel_icon)
-
-        dialog.setMinimumSize(300, 140)
-        result = dialog.exec_()
-        if result != QtWidgets.QDialog.Accepted:
-            return
-
-        form_values = dialog.get_values()
-        self._controller.trigger_action_item(
-            identifier=event["identifier"],
-            project_name=event["project_name"],
-            selected_ids=event["selected_ids"],
-            selected_entity_type=event["selected_entity_type"],
-            options={},
-            data=event["data"],
-            form_values=form_values,
-        )
 
     def _on_project_selection_changed(self, event):
         self._selected_project_name = event["project_name"]
@@ -642,8 +574,7 @@ class LoaderWindow(QtWidgets.QWidget):
         )
         tag_items = self._controller.get_project_anatomy_tags(project_name)
         tag_color_by_name = {
-            tag_item.name: tag_item.color
-            for tag_item in tag_items
+            tag_item.name: tag_item.color for tag_item in tag_items
         }
 
         filter_product_type_items = [
@@ -658,7 +589,7 @@ class LoaderWindow(QtWidgets.QWidget):
                 "icon": {
                     "type": "material-symbols",
                     "name": status_item.icon,
-                    "color": status_item.color
+                    "color": status_item.color,
                 },
                 "color": status_item.color,
                 "value": status_item.name,
@@ -680,44 +611,46 @@ class LoaderWindow(QtWidgets.QWidget):
             for tag_name in tags_by_entity_type.get("tasks") or []
         ]
 
-        self._search_bar.set_search_items([
-            FilterDefinition(
-                name="product_name",
-                title="Product name",
-                filter_type="text",
-                icon=None,
-                placeholder="Product name filter...",
-                items=None,
-            ),
-            FilterDefinition(
-                name="product_types",
-                title="Product type",
-                filter_type="list",
-                icon=None,
-                items=filter_product_type_items,
-            ),
-            FilterDefinition(
-                name="statuses",
-                title="Statuses",
-                filter_type="list",
-                icon=None,
-                items=filter_status_items,
-            ),
-            FilterDefinition(
-                name="version_tags",
-                title="Version tags",
-                filter_type="list",
-                icon=None,
-                items=version_tags,
-            ),
-            FilterDefinition(
-                name="task_tags",
-                title="Task tags",
-                filter_type="list",
-                icon=None,
-                items=task_tags,
-            ),
-        ])
+        self._search_bar.set_search_items(
+            [
+                FilterDefinition(
+                    name="product_name",
+                    title="Product name",
+                    filter_type="text",
+                    icon=None,
+                    placeholder="Product name filter...",
+                    items=None,
+                ),
+                FilterDefinition(
+                    name="product_types",
+                    title="Product type",
+                    filter_type="list",
+                    icon=None,
+                    items=filter_product_type_items,
+                ),
+                FilterDefinition(
+                    name="statuses",
+                    title="Statuses",
+                    filter_type="list",
+                    icon=None,
+                    items=filter_status_items,
+                ),
+                FilterDefinition(
+                    name="version_tags",
+                    title="Version tags",
+                    filter_type="list",
+                    icon=None,
+                    items=version_tags,
+                ),
+                FilterDefinition(
+                    name="task_tags",
+                    title="Task tags",
+                    filter_type="list",
+                    icon=None,
+                    items=task_tags,
+                ),
+            ]
+        )
 
         # Set product types filter from settings
         if self._set_product_type_filters:
@@ -726,20 +659,17 @@ class LoaderWindow(QtWidgets.QWidget):
             product_types = []
             for item in filter_product_type_items:
                 product_type = item["value"]
-                matching = (
-                    int(product_type in product_types_filter.product_types)
-                    + int(product_types_filter.is_allow_list)
-                )
+                matching = int(
+                    product_type in product_types_filter.product_types
+                ) + int(product_types_filter.is_allow_list)
                 if matching % 2 == 0:
                     product_types.append(product_type)
 
-            if (
-                product_types
-                and len(product_types) < len(filter_product_type_items)
+            if product_types and len(product_types) < len(
+                filter_product_type_items
             ):
                 self._search_bar.set_filter_value(
-                    "product_types",
-                    product_types
+                    "product_types", product_types
                 )
 
     def _on_folders_selection_changed(self, event):
@@ -750,18 +680,107 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_version_ids = set(event["version_ids"])
         self._update_thumbnails()
 
+    def _get_video_representation_path(self, project_name, version_ids):
+        """Get h264_* video representation path for versions.
+
+        Returns path to h264_* representation if available, otherwise None.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (set[str]): Version ids.
+
+        Returns:
+            Union[str, None]: Path to video representation or None.
+        """
+        if not version_ids or not project_name:
+            return None
+
+        try:
+            import ayon_api
+            from ayon_core.pipeline import Anatomy
+            from ayon_core.pipeline.load import (
+                get_representation_path_with_anatomy,
+            )
+
+            # Get representations for versions
+            repre_items = self._controller.get_representation_items(
+                project_name, version_ids
+            )
+
+            # Look for h264_* representations first (prioritize them)
+            h264_repres = []
+            other_video_repres = []
+
+            for repre_item in repre_items:
+                repre_name = repre_item.representation_name.lower()
+                if "h264" in repre_name:
+                    h264_repres.append(repre_item)
+                elif any(
+                    ext in repre_name
+                    for ext in ["mp4", "mov", "avi", "mkv", "webm"]
+                ):
+                    other_video_repres.append(repre_item)
+
+            # Prioritize h264_* representations
+            target_repres = h264_repres if h264_repres else other_video_repres
+
+            for repre_item in target_repres:
+                representation_id = repre_item.representation_id
+                try:
+                    repre_entity = ayon_api.get_representation_by_id(
+                        project_name, representation_id
+                    )
+                    if repre_entity:
+                        anatomy = Anatomy(project_name)
+                        video_path = get_representation_path_with_anatomy(
+                            repre_entity, anatomy
+                        )
+                        if video_path:
+                            if hasattr(video_path, "normalized"):
+                                video_path_str = str(video_path.normalized())
+                            else:
+                                video_path_str = str(video_path)
+                            if os.path.exists(video_path_str):
+                                return video_path_str
+                except Exception as e:
+                    print(
+                        f"Failed to get representation path "
+                        f"for {representation_id}: {e}"
+                    )
+                    continue
+
+        except Exception as e:
+            print(f"Failed to get h264 representation path: {e}")
+
+        return None
+
     def _update_thumbnails(self):
         # TODO make this threaded and show loading animation while running
         project_name = self._selected_project_name
         entity_type = None
         entity_ids = set()
+
+        # First check for video representations in selected versions
+        video_path = None
         if self._selected_version_ids:
             entity_ids = set(self._selected_version_ids)
             entity_type = "version"
+
+            # Try to get h264_* video representation
+            video_path = self._get_video_representation_path(
+                project_name, entity_ids
+            )
+
         elif self._selected_folder_ids:
             entity_ids = set(self._selected_folder_ids)
             entity_type = "folder"
 
+        # If we have a video path, use it directly
+        if video_path:
+            self._thumbnails_widget.set_current_thumbnail_paths([video_path])
+            return
+
+        # Otherwise use standard thumbnail system
         thumbnail_path_by_entity_id = self._controller.get_thumbnail_paths(
             project_name, entity_type, entity_ids
         )
@@ -770,7 +789,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         if thumbnail_paths:
             self._thumbnails_widget.set_current_thumbnail_paths(
-                thumbnail_paths
+                list(thumbnail_paths)
             )
         else:
             self._thumbnails_widget.set_current_thumbnails(None)
@@ -787,3 +806,19 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_products_refresh(self):
         self._refresh_handler.set_products_refreshed()
+
+    def _on_thumbnail_double_clicked(self, thumbnail_path):
+        """Handle thumbnail double-click to open image with system default."""
+        import os
+        import subprocess
+        import sys
+
+        try:
+            if sys.platform.startswith("darwin"):
+                subprocess.call(("open", thumbnail_path))
+            elif os.name == "nt":
+                os.startfile(thumbnail_path)
+            elif os.name == "posix":
+                subprocess.call(("xdg-open", thumbnail_path))
+        except Exception as e:
+            print(f"Failed to open thumbnail {thumbnail_path}: {e}")
