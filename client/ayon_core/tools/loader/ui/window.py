@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 
 import os
 
@@ -19,6 +18,8 @@ from ayon_core.tools.utils import (
     ProjectsCombobox,
     RefreshButton,
     ThumbnailPainterWidget,
+    restore_tool_window_state,
+    save_tool_window_state,
 )
 from ayon_core.tools.utils.lib import center_window
 
@@ -30,19 +31,12 @@ from .repres_widget import RepresentationsWidget
 from .search_bar import FilterDefinition, FiltersBar
 from .tasks_widget import LoaderTasksWidget
 
-# Use string-based key sequences for Qt5/Qt6 compatibility
-# In Qt6, you cannot use | operator to combine Qt.Modifier and Qt.Key enums
-# String-based sequences work in both Qt5 and Qt6
-
-# FIND_KEY_SEQUENCE = QtGui.QKeySequence(
-#     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
-# )
-# GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
-#     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
-# )
-
-FIND_KEY_SEQUENCE = QtGui.QKeySequence("Ctrl+F")
-GROUP_KEY_SEQUENCE = QtGui.QKeySequence("Ctrl+G")
+FIND_KEY_SEQUENCE = QtGui.QKeySequence(
+    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
+)
+GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
+    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
+)
 
 
 class LoadErrorMessageBox(ErrorMessageBox):
@@ -296,10 +290,6 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_load_progress,
         )
         controller.register_event_callback(
-            "load.started",
-            self._on_load_started,
-        )
-        controller.register_event_callback(
             "load.finished",
             self._on_load_finished,
         )
@@ -360,9 +350,6 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_project_name = None
         self._selected_folder_ids = set()
         self._selected_version_ids = set()
-        self._has_made_selection = (
-            False  # Track if user has made any selection
-        )
 
         self._set_product_type_filters = True
 
@@ -415,20 +402,6 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_first_show(self):
         self._first_show = False
-        # width, height = 1800, 900
-        width, height = 1500, 750
-
-        self.resize(width, height)
-
-        mid_width = int(width / 1.8)
-        sides_width = int((width - mid_width) * 0.5)
-        self._main_splitter.setSizes([sides_width, mid_width, sides_width])
-
-        thumbnail_height = int(height / 3.6)
-        info_height = int((height - thumbnail_height) * 0.5)
-        self._right_panel_splitter.setSizes(
-            [thumbnail_height, info_height, info_height]
-        )
         self.setStyleSheet(load_stylesheet())
         if not restore_tool_window_state(
             "loader",
@@ -717,17 +690,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_folders_selection_changed(self, event):
         self._selected_folder_ids = set(event["folder_ids"])
-        if self._selected_folder_ids:
-            self._has_made_selection = True
         self._update_thumbnails()
 
     def _on_versions_selection_changed(self, event):
         self._selected_version_ids = set(event["version_ids"])
-        self._controller.log.debug(
-            f"Version selection changed: {self._selected_version_ids}"
-        )
-        if self._selected_version_ids:
-            self._has_made_selection = True
         self._update_thumbnails()
 
     def _get_video_representation_path(self, project_name, version_ids):

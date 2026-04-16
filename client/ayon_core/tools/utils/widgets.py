@@ -1081,7 +1081,7 @@ class OptionalAction(QtWidgets.QWidgetAction):
             self.option_tip = sep.join(mak(opt) for opt in options)
             return
 
-        # Simple tooltip: just explain what the button does and list option names
+        # Tooltip: describe the action and list option names
         option_names = []
         if isinstance(options[0], AbstractAttrDef):
             for option in options:
@@ -1093,7 +1093,9 @@ class OptionalAction(QtWidgets.QWidgetAction):
             # Legacy qargparse format (dicts or qargparse QArgument objects)
             for opt in options:
                 if isinstance(opt, dict):
-                    option_names.append(opt.get("label", opt.get("name", "Option")))
+                    option_names.append(
+                        opt.get("label", opt.get("name", "Option"))
+                    )
                 else:
                     try:
                         name = opt["label"] or opt["name"]

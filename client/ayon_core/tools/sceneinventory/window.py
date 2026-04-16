@@ -4,11 +4,17 @@ import qtawesome
 
 from ayon_core import style, resources
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.tools.utils import PlaceholderLineEdit, MessageOverlayObject
+from ayon_core.tools.utils import (
+    MessageOverlayObject,
+    PlaceholderLineEdit,
+    restore_tool_window_state,
+    save_tool_window_state,
+)
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
 from .view import SceneInventoryView
+
 
 class SceneInventoryWindow(QtWidgets.QDialog):
     """Scene Inventory window"""

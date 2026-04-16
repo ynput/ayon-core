@@ -1,4 +1,4 @@
-"""Persist and restore tool window geometry and splitter state via QSettings."""
+"""Persist/restore tool window geometry and splitter state (QSettings)."""
 
 from __future__ import annotations
 
@@ -40,12 +40,20 @@ def restore_tool_window_state(
     geometry_restored = False
     try:
         geo = settings.value("geometry")
-        if geo is not None and isinstance(geo, QtCore.QByteArray) and not geo.isEmpty():
+        if (
+            geo is not None
+            and isinstance(geo, QtCore.QByteArray)
+            and not geo.isEmpty()
+        ):
             geometry_restored = window.restoreGeometry(geo)
         if splitters:
             for key, splitter in splitters:
                 state = settings.value(key)
-                if state is not None and isinstance(state, QtCore.QByteArray) and not state.isEmpty():
+                if (
+                    state is not None
+                    and isinstance(state, QtCore.QByteArray)
+                    and not state.isEmpty()
+                ):
                     splitter.restoreState(state)
     finally:
         settings.endGroup()
