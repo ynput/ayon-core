@@ -29,12 +29,19 @@ from .repres_widget import RepresentationsWidget
 from .search_bar import FilterDefinition, FiltersBar
 from .tasks_widget import LoaderTasksWidget
 
-FIND_KEY_SEQUENCE = QtGui.QKeySequence(
-    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
-)
-GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
-    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
-)
+# Use string-based key sequences for Qt5/Qt6 compatibility
+# In Qt6, you cannot use | operator to combine Qt.Modifier and Qt.Key enums
+# String-based sequences work in both Qt5 and Qt6
+
+# FIND_KEY_SEQUENCE = QtGui.QKeySequence(
+#     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
+# )
+# GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
+#     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
+# )
+
+FIND_KEY_SEQUENCE = QtGui.QKeySequence("Ctrl+F")
+GROUP_KEY_SEQUENCE = QtGui.QKeySequence("Ctrl+G")
 
 
 class LoadErrorMessageBox(ErrorMessageBox):
@@ -375,6 +382,14 @@ class LoaderWindow(QtWidgets.QWidget):
         self._show_timer.start()
 
     def closeEvent(self, event):
+        save_tool_window_state(
+            "loader",
+            self,
+            [
+                ("main_splitter", self._main_splitter),
+                ("right_panel_splitter", self._right_panel_splitter),
+            ],
+        )
         super().closeEvent(event)
 
         self._reset_on_show = True
@@ -414,7 +429,27 @@ class LoaderWindow(QtWidgets.QWidget):
             [thumbnail_height, info_height, info_height]
         )
         self.setStyleSheet(load_stylesheet())
-        center_window(self)
+        if not restore_tool_window_state(
+            "loader",
+            self,
+            [
+                ("main_splitter", self._main_splitter),
+                ("right_panel_splitter", self._right_panel_splitter),
+            ],
+        ):
+            width, height = 1500, 750
+            self.resize(width, height)
+            mid_width = int(width / 1.8)
+            sides_width = int((width - mid_width) * 0.5)
+            self._main_splitter.setSizes(
+                [sides_width, mid_width, sides_width]
+            )
+            thumbnail_height = int(height / 3.6)
+            info_height = int((height - thumbnail_height) * 0.5)
+            self._right_panel_splitter.setSizes(
+                [thumbnail_height, info_height, info_height]
+            )
+            center_window(self)
 
     def _on_show_timer(self):
         if self._show_counter < 2:

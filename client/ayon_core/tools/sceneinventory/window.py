@@ -10,7 +10,6 @@ from ayon_core.tools.sceneinventory import SceneInventoryController
 
 from .view import SceneInventoryView
 
-
 class SceneInventoryWindow(QtWidgets.QDialog):
     """Scene Inventory window"""
 
@@ -143,10 +142,15 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         super(SceneInventoryWindow, self).showEvent(event)
         if self._first_show:
             self._first_show = False
+            restore_tool_window_state("scene_inventory", self)
             self.setStyleSheet(style.load_stylesheet())
 
         self._show_counter = 0
         self._show_timer.start()
+
+    def closeEvent(self, event):
+        save_tool_window_state("scene_inventory", self)
+        super(SceneInventoryWindow, self).closeEvent(event)
 
     def keyPressEvent(self, event):
         """Custom keyPressEvent.
