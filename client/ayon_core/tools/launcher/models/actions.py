@@ -104,6 +104,11 @@ class ActionsModel:
             default_factory=list,
             lifetime=20,
         )
+        self._workfile_path_cache = NestedCacheItem(
+            levels=2,
+            default_factory=lambda: None,
+            lifetime=60,
+        )
         self._last_triggered_action_by_host = {}
 
         self._variant = get_settings_variant()
@@ -349,24 +354,29 @@ class ActionsModel:
                     task_name = task_entity.get("name") or ""
             workfile_path = None
             if workfile_id:
-                try:
-                    from ayon_core.pipeline import Anatomy
+                cache = self._workfile_path_cache[project_name][workfile_id]
+                if cache.is_valid:
+                    workfile_path = cache.get_data()
+                else:
+                    try:
+                        from ayon_core.pipeline import Anatomy
 
-                    workfile_entity = ayon_api.get_workfile_info_by_id(
-                        project_name, workfile_id
-                    )
-                    if workfile_entity and workfile_entity.get("path"):
-                        anatomy = Anatomy(
-                            project_name,
-                            project_entity=controller.get_project_entity(
-                                project_name
-                            ),
+                        workfile_entity = ayon_api.get_workfile_info_by_id(
+                            project_name, workfile_id
                         )
-                        workfile_path = anatomy.fill_root(
-                            workfile_entity["path"]
-                        )
-                except Exception:
-                    pass
+                        if workfile_entity and workfile_entity.get("path"):
+                            anatomy = Anatomy(
+                                project_name,
+                                project_entity=controller.get_project_entity(
+                                    project_name
+                                ),
+                            )
+                            workfile_path = anatomy.fill_root(
+                                workfile_entity["path"]
+                            )
+                    except Exception:
+                        pass
+                    cache.update_data(workfile_path)
             failed = False
             error_message = None
             try:
