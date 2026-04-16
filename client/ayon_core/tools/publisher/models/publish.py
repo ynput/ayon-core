@@ -1340,23 +1340,75 @@ class PublishModel:
         plugin: pyblish.api.Plugin,
         instance: pyblish.api.Instance
     ):
-        with self._log_manager(plugin) as log_handler:
-            result = pyblish.plugin.process(
-                plugin, self._publish_context, instance
+        # Create progress callback for plugins to report sub-operation progress
+        def progress_callback(progress: int, message: str = ""):
+            """Progress callback for plugins to report sub-operation progress.
+
+            Args:
+                progress (int): Progress percentage (0-100) for current plugin operation.
+                message (str): Status message to display.
+            """
+            # Emit event with progress information
+            plugin_label = plugin.__name__
+            if hasattr(plugin, "label") and plugin.label:
+                plugin_label = plugin.label
+            self._emit_event(
+                "publish.process.plugin.progress",
+                {
+                    "plugin_label": plugin_label,
+                    "progress": progress,
+                    "message": message
+                }
             )
-            if log_handler is not None:
-                records = log_handler.get_records()
-                exception = result.get("error")
-                if exception is not None and records:
-                    last_record = records[-1]
-                    if (
-                        last_record.name == "pyblish.plugin"
-                        and last_record.levelno == logging.ERROR
-                    ):
-                        # Remove last record made by pyblish
-                        # - `log.exception(formatted_traceback)`
-                        records.pop(-1)
-                result["records"] = records
+            # Also log progress for debugging
+            if message:
+                logging.getLogger("ayon.publisher").info(
+                    f"[{plugin_label}] {progress}%: {message}"
+                )
+            # Process Qt events to ensure UI updates immediately
+            try:
+                from qtpy import QtWidgets
+                app = QtWidgets.QApplication.instance()
+                if app:
+                    app.processEvents()
+            except Exception:
+                # Ignore errors if events can't be processed
+                pass
+
+        # Set progress callback in context data for plugins to use
+        self._publish_context.data["progress_callback"] = progress_callback
+
+        try:
+            with self._log_manager(plugin) as log_handler:
+                result = pyblish.plugin.process(
+                    plugin, self._publish_context, instance
+                )
+                # Extract records BEFORE context exits to prevent them from being cleared
+                if log_handler is not None:
+                    records = log_handler.get_records()
+                    exception = result.get("error")
+                    if exception is not None and records:
+                        last_record = records[-1]
+                        if (
+                            last_record.name == "pyblish.plugin"
+                            and last_record.levelno == logging.ERROR
+                        ):
+                            # Remove last record made by pyblish
+                            # - `log.exception(formatted_traceback)`
+                            records.pop(-1)
+                    result["records"] = records
+        finally:
+            # Clear progress message when plugin finishes
+            self._emit_event(
+                "publish.process.plugin.progress",
+                {
+                    "plugin_label": plugin.__name__ if not hasattr(plugin, "label") or not plugin.label else plugin.label,
+                    "progress": 100,
+                    "message": ""  # Empty message clears the status
+                }
+            )
+            # Remove progress callback from context after plugin finishes
+            self._publish_context.data.pop("progress_callback", None)
 
         exception = result.get("error")
         if exception:
