@@ -1,10 +1,25 @@
-from typing import Optional
+from typing import Any, Iterable, Iterator, Optional
 
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem, get_ayon_username
 
 NOT_SET = object()
+
+
+def get_users(
+    project_name: str,
+    usernames: Optional[Iterable[str]] = None,
+) -> Iterator[dict[str, Any]]:
+    """Yield user entities for a project, optionally filtered by username.
+
+    Delegates to :func:`ayon_api.get_users`. Used by launcher workfile
+    tooltips without going through :class:`UsersModel` cache.
+    """
+    yield from ayon_api.get_users(
+        project_name=project_name,
+        usernames=usernames,
+    )
 
 
 class UserItem:
