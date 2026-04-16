@@ -306,15 +306,15 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         self._remove_invalid_items()
 
-        task_type_item_by_name = {
-            task_type_item.name: task_type_item
-            for task_type_item in task_type_items
-        }
-        # Build order mapping from project anatomy task type list order
-        task_type_order_by_name = {
-            task_type_item.name: index
-            for index, task_type_item in enumerate(task_type_items)
-        }
+        task_type_item_by_name = {}
+        task_type_order_by_name = {}
+        for index, task_type_item in enumerate(task_type_items):
+            task_type_item_by_name[task_type_item.name] = task_type_item
+            task_type_order_by_name[task_type_item.name] = index
+            short = getattr(task_type_item, "short", None) or ""
+            if short and short != task_type_item.name:
+                task_type_item_by_name.setdefault(short, task_type_item)
+                task_type_order_by_name.setdefault(short, index)
         task_type_icon_cache = {}
         new_items = []
         new_names = set()

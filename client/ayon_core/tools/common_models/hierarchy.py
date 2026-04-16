@@ -164,6 +164,21 @@ class TaskItem:
         return cls(**data)
 
 
+def _task_type_name_from_task(task: dict) -> str:
+    """Resolve task type string for anatomy / UI (API may use type or taskType)."""
+    raw = task.get("taskType", task.get("type"))
+    if raw is None:
+        return ""
+    if isinstance(raw, dict):
+        return str(
+            raw.get("name")
+            or raw.get("shortName")
+            or raw.get("short")
+            or ""
+        )
+    return str(raw)
+
+
 def _get_task_items_from_tasks(tasks):
     """
 
@@ -178,7 +193,7 @@ def _get_task_items_from_tasks(tasks):
             task["id"],
             task["name"],
             task["label"],
-            task["type"],
+            _task_type_name_from_task(task),
             folder_id,
             task["tags"],
         ))
