@@ -255,6 +255,9 @@ class PublishErrorInstanceList(QtWidgets.QListView):
         self.setObjectName("PublishErrorInstanceList")
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        # Disable vertical scrollbar to avoid nested scrollbars inside the
+        # main logs view. The view auto-sizes its height to the content.
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
     def minimumSizeHint(self):
@@ -900,6 +903,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         scroll_area = VerticalScrollArea(self)
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        # Force-enable main vertical scrollbar so it's always visible
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scrollbar_bg = scroll_area.verticalScrollBar().parent()
         if scrollbar_bg:
