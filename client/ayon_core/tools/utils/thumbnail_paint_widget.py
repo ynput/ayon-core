@@ -45,6 +45,14 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         default_image = get_image("thumbnail.png")
         default_pix = paint_image_with_color(default_image, border_color)
 
+        # Video player components
+        self._media_player = None
+        self._video_widget = None
+        self._play_overlay_visible = True
+        self._is_video_content = False
+        self._current_video_path = None
+        self._is_playing = False
+
         self._border_color = border_color
         self._thumbnail_bg_color = thumbnail_bg_color
         self._default_pix = default_pix

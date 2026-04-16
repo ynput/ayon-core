@@ -113,8 +113,7 @@ class SidePanelWidget(QtWidgets.QWidget):
             "selection.workarea.changed", self._on_workarea_selection_change
         )
         controller.register_event_callback(
-            "selection.representation.changed",
-            self._on_representation_selection_change,
+            "selection.representation.changed", self._on_representation_selection_change
         )
 
         self._details_input = details_input
