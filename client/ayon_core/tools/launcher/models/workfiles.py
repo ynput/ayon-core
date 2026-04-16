@@ -9,9 +9,6 @@ from qtpy import QtCore, QtGui
 from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.lib.local_settings import get_launcher_local_dir
 
-from ayon_core.tools.utils.lib import _file_size_to_string, _format_ascii_table
-
-
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.thumbnails import get_thumbnail_path
 from ayon_core.tools.common_models.users import get_users
@@ -23,6 +20,51 @@ from ayon_core.tools.launcher.abstract import (
 # Max thumbnail size in tooltip; Qt rich text often ignores CSS max-width
 # on img tags.
 _TOOLTIP_THUMB_MAX = 160
+
+
+def _file_size_to_string(size: Optional[int]) -> str:
+    """Human-readable byte size for tooltips; empty if unknown."""
+    if size is None:
+        return ""
+    try:
+        n = int(size)
+    except (TypeError, ValueError):
+        return ""
+    if n < 0:
+        return ""
+    units = ("B", "KB", "MB", "GB", "TB", "PB")
+    value = float(n)
+    idx = 0
+    while value >= 1024.0 and idx < len(units) - 1:
+        value /= 1024.0
+        idx += 1
+    if idx == 0:
+        return f"{int(value)} {units[idx]}"
+    text = f"{value:.2f}".rstrip("0").rstrip(".")
+    return f"{text} {units[idx]}"
+
+
+def _workfile_tooltip_metadata_table(rows: list[tuple[str, str]]) -> str:
+    """Two-column HTML table for workfile tooltip (replaces ASCII pre block)."""
+    if not rows:
+        return ""
+    parts = [
+        "<table style='border-collapse:collapse;margin:0'>",
+    ]
+    for key, val in rows:
+        esc_key = html.escape(str(key))
+        esc_val = html.escape(str(val) if val is not None else "").replace(
+            "\n", "<br/>"
+        )
+        parts.append(
+            "<tr>"
+            "<td style='padding:2px 8px 2px 0;white-space:nowrap;"
+            "vertical-align:top;font-weight:600'>%s</td>"
+            "<td style='padding:2px 0;vertical-align:top'>%s</td>"
+            "</tr>" % (esc_key, esc_val)
+        )
+    parts.append("</table>")
+    return "".join(parts)
 
 
 def _get_scaled_thumbnail_path(
@@ -262,12 +304,7 @@ class WorkfilesModel:
             rows.append(("Comment", description))
         if not rows:
             return ""
-        table_ascii = _format_ascii_table(rows, max_width=50)
-        pre_fmt = (
-            "<pre style='font-family: monospace; white-space: pre; margin: 0'>"
-            "%s</pre>"
-        )
-        pre_block = pre_fmt % (html.escape(table_ascii),)
+        table_block = _workfile_tooltip_metadata_table(rows)
         img_html = ""
         if thumbnail_id:
             try:
@@ -293,5 +330,5 @@ class WorkfilesModel:
             except Exception:
                 pass
         if img_html:
-            return img_html + pre_block
-        return pre_block
+            return img_html + table_block
+        return table_block
