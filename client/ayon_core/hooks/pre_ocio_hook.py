@@ -85,7 +85,20 @@ class OCIOEnvHook(PreLaunchHook):
                 var_value = os.path.normpath(var_value)
                 if self.host_name in ["nuke", "hiero"]:
                     var_value = var_value.replace("\\", "/")
-                
+
+                # If the value has an extension, split it into DIR and FILE
+                _, ext = os.path.splitext(var_value)
+                if ext:
+                    var_dir, var_file = os.path.split(var_value)
+                    
+                    for suffix, val in [("_DIR", var_dir), ("_FILE", var_file)]:
+                        new_var = f"{var_name}{suffix}"
+                        self.log.info(
+                            f"Setting OCIO custom variable '{new_var}' to '{val}'"
+                        )
+                        self.launch_context.env[new_var] = val
+                    continue
+
             self.log.info(
                 f"Setting OCIO custom variable '{var_name}' to '{var_value}'"
             )
