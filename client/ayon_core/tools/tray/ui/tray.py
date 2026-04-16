@@ -41,10 +41,10 @@ from ayon_core.tools.publisher.publish_report_viewer import (
     PublishReportViewerWindow,
 )
 
-from .addons_manager import TrayAddonsManager
-from .host_console_listener import HostListener
-from .info_widget import InfoWidget
-from .dialogs import (
+from .addons_manager import TrayAddonsManager  # noqa: E402
+from .host_console_listener import HostListener  # noqa: E402
+from .info_widget import InfoWidget  # noqa: E402
+from .dialogs import (  # noqa: E402
     UpdateDialog,
 )
 
@@ -99,8 +99,8 @@ class TrayManager:
 
         self._launcher_window = None
         self._browser_window = None
-        self._console_window = ConsoleInterpreterWindow()
-        self._publish_report_viewer_window = PublishReportViewerWindow()
+        self._console_window = None
+        self._publish_report_viewer_window = None
 
         self._update_check_timer = update_check_timer
         self._update_check_interval = update_check_interval
@@ -622,11 +622,15 @@ class TrayManager:
         self._browser_window.activateWindow()
 
     def _show_console_window(self):
+        if self._console_window is None:
+            self._console_window = ConsoleInterpreterWindow()
         self._console_window.show()
         self._console_window.raise_()
         self._console_window.activateWindow()
 
     def _show_publish_report_viewer(self):
+        if self._publish_report_viewer_window is None:
+            self._publish_report_viewer_window = PublishReportViewerWindow()
         self._publish_report_viewer_window.refresh()
         self._publish_report_viewer_window.show()
         self._publish_report_viewer_window.raise_()
