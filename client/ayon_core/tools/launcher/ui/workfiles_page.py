@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 import ayon_api
@@ -8,6 +9,7 @@ from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 VERSION_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
+HOST_NAME_ROLE = QtCore.Qt.UserRole + 3
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -55,6 +57,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
+            item.setData(getattr(workfile_item, "host_name", None), HOST_NAME_ROLE)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -155,12 +158,16 @@ class WorkfilesPage(QtWidgets.QWidget):
         workfiles_view.selectionModel().selectionChanged.connect(
             self._on_selection_changed
         )
+        workfiles_view.doubleClicked.connect(self._on_double_clicked_open)
         workfiles_model.refreshed.connect(self._on_refresh)
 
         self._controller = controller
         self._workfiles_view = workfiles_view
         self._workfiles_model = workfiles_model
         self._workfiles_proxy = workfiles_proxy
+        self._last_open_workfile_id = None
+        self._last_open_time = 0.0
+        self._open_cooldown_seconds = 2.0
 
     def refresh(self) -> None:
         self._workfiles_model.refresh()
@@ -177,3 +184,28 @@ class WorkfilesPage(QtWidgets.QWidget):
         for index in selected.indexes():
             workfile_id = index.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
+
+    def _on_double_clicked_open(self, index: QtCore.QModelIndex) -> None:
+        view = self._workfiles_view
+        proxy = self._workfiles_proxy
+        if not index.isValid():
+            index = view.currentIndex()
+        if not index.isValid():
+            return
+        index = index.sibling(index.row(), 0)
+        source_index = proxy.mapToSource(index)
+        if not source_index.isValid():
+            return
+        workfile_id = source_index.data(WORKFILE_ID_ROLE)
+        host_name = source_index.data(HOST_NAME_ROLE)
+        if workfile_id is None or not (source_index.flags() & QtCore.Qt.ItemIsEnabled):
+            return
+        now = time.monotonic()
+        if (
+            self._last_open_workfile_id == workfile_id
+            and (now - self._last_open_time) < self._open_cooldown_seconds
+        ):
+            return
+        self._last_open_workfile_id = workfile_id
+        self._last_open_time = now
+        self._controller.open_workfile_with_app(workfile_id, host_name)

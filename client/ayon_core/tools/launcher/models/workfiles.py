@@ -2,7 +2,6 @@ import os
 from typing import Optional, Any
 
 import ayon_api
-
 from ayon_core.lib import (
     Logger,
     NestedCacheItem,
@@ -66,6 +65,7 @@ class WorkfilesModel:
                 exists=exists,
                 icon=self._get_host_icon(host_name),
                 version=version,
+                host_name=host_name,
             ))
         cache.update_data(items)
         return items

@@ -65,6 +65,7 @@ class WorkfileItem:
     exists: bool
     icon: Optional[str]
     version: Optional[int]
+    host_name: Optional[str] = None
 
 
 class AbstractLauncherCommon(ABC):
