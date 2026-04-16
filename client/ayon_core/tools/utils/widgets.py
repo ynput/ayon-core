@@ -862,7 +862,11 @@ class OptionalMenu(QtWidgets.QMenu):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())
         # Guard: Only our OptionalAction has 'use_option' and 'widget'
-        if active is not None and isinstance(active, OptionalAction) and active.use_option:
+        if (
+            active is not None
+            and isinstance(active, OptionalAction)
+            and active.use_option
+        ):
             option = active.widget.option
             if option.is_hovered(event.globalPos()):
                 option.clicked.emit()
