@@ -109,20 +109,21 @@ class _Cache:
 
 class PlaceholderLineEdit(QtWidgets.QLineEdit):
     """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Change placeholder palette color
         if hasattr(QtGui.QPalette, "PlaceholderText"):
             filter_palette = self.palette()
             filter_palette.setColor(
-                QtGui.QPalette.PlaceholderText,
-                _Cache.get_placeholder_color()
+                QtGui.QPalette.PlaceholderText, _Cache.get_placeholder_color()
             )
             self.setPalette(filter_palette)
 
 
 class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
     """Set placeholder color of QPlainTextEdit in Qt 5.12 and higher."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Change placeholder palette color
@@ -130,8 +131,7 @@ class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
             viewport = self.viewport()
             filter_palette = viewport.palette()
             filter_palette.setColor(
-                QtGui.QPalette.PlaceholderText,
-                _Cache.get_placeholder_color()
+                QtGui.QPalette.PlaceholderText, _Cache.get_placeholder_color()
             )
             viewport.setPalette(filter_palette)
 
@@ -211,7 +211,10 @@ class _ResizeGrip(QtWidgets.QWidget):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton and self._drag_start_y is not None:
+        if (
+            event.button() == QtCore.Qt.LeftButton
+            and self._drag_start_y is not None
+        ):
             self.releaseMouse()
             self._drag_start_y = None
             self._drag_start_h = None
@@ -324,11 +327,11 @@ class ElideLabel(QtWidgets.QLabel):
     It is not possible to use other features of QLabel like word wrap or
     interactive text. This is a simple label which elide text.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Preferred
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
         )
         # Store text set during init
         self._text = self.text()
@@ -401,9 +404,7 @@ class ElideLabel(QtWidgets.QLabel):
 
         painter = QtGui.QPainter(self)
         fm = painter.fontMetrics()
-        elided_line = fm.elidedText(
-            self._text, self._elide_mode, self.width()
-        )
+        elided_line = fm.elidedText(self._text, self._elide_mode, self.width())
         painter.drawText(QtCore.QPoint(0, fm.ascent()), elided_line)
 
     def _on_copy_text(self):
@@ -419,12 +420,8 @@ def get_down_arrow_icon() -> QtGui.QIcon:
     if _LocalCache.down_arrow_icon is not None:
         return _LocalCache.down_arrow_icon
 
-    normal_pixmap = QtGui.QPixmap(
-        get_style_image_path("down_arrow")
-    )
-    on_pixmap = QtGui.QPixmap(
-        get_style_image_path("down_arrow_on")
-    )
+    normal_pixmap = QtGui.QPixmap(get_style_image_path("down_arrow"))
+    on_pixmap = QtGui.QPixmap(get_style_image_path("down_arrow_on"))
     disabled_pixmap = QtGui.QPixmap(
         get_style_image_path("down_arrow_disabled")
     )
@@ -453,7 +450,7 @@ class HintedLineEdit(QtWidgets.QWidget):
     def __init__(
         self,
         options: Optional[List[str]] = None,
-        parent: Optional[QtWidgets.QWidget] = None
+        parent: Optional[QtWidgets.QWidget] = None,
     ):
         super().__init__(parent)
 
@@ -471,7 +468,8 @@ class HintedLineEdit(QtWidgets.QWidget):
         for widget in (text_input, options_button):
             w_size_policy = widget.sizePolicy()
             w_size_policy.setVerticalPolicy(
-                QtWidgets.QSizePolicy.MinimumExpanding)
+                QtWidgets.QSizePolicy.MinimumExpanding
+            )
             widget.setSizePolicy(w_size_policy)
 
         # Set size hint of this frame to fixed so size hint height is
@@ -609,6 +607,7 @@ class BaseClickableFrame(QtWidgets.QFrame):
 
     Callback is defined by overriding `_mouse_release_callback`.
     """
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -639,6 +638,7 @@ class BaseClickableFrame(QtWidgets.QFrame):
 
 class ClickableFrame(BaseClickableFrame):
     """Extended clickable frame which triggers 'clicked' signal."""
+
     clicked = QtCore.Signal()
 
     def _mouse_release_callback(self):
@@ -647,6 +647,7 @@ class ClickableFrame(BaseClickableFrame):
 
 class ClickableLabel(QtWidgets.QLabel):
     """Label that catch left mouse click and can trigger 'clicked' signal."""
+
     clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
@@ -670,6 +671,7 @@ class ClickableLabel(QtWidgets.QLabel):
 
 class ExpandBtnLabel(QtWidgets.QLabel):
     """Label showing expand icon meant for ExpandBtn."""
+
     state_changed = QtCore.Signal()
 
     branch_closed_path = get_style_image_path("branch_closed")
@@ -720,7 +722,7 @@ class ExpandBtnLabel(QtWidgets.QLabel):
                 size,
                 size,
                 QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation
+                QtCore.Qt.SmoothTransformation,
             )
         )
 
@@ -775,8 +777,7 @@ class ClassicExpandBtnLabel(ExpandBtnLabel):
         new_pix.fill(QtCore.Qt.transparent)
         painter = QtGui.QPainter(new_pix)
         render_hints = (
-            QtGui.QPainter.Antialiasing
-            | QtGui.QPainter.SmoothPixmapTransform
+            QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform
         )
         painter.setRenderHints(render_hints)
         painter.drawPixmap(QtCore.QPoint(pos_x, pos_y), pixmap)
@@ -850,6 +851,7 @@ class IconButton(QtWidgets.QPushButton):
 
 class PixmapLabel(QtWidgets.QLabel):
     """Label resizing image to height of font."""
+
     def __init__(self, pixmap, parent):
         super(PixmapLabel, self).__init__(parent)
         self._empty_pixmap = QtGui.QPixmap(0, 0)
@@ -884,7 +886,7 @@ class PixmapLabel(QtWidgets.QLabel):
                 width,
                 height,
                 QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation
+                QtCore.Qt.SmoothTransformation,
             )
         )
         self._last_width = width
@@ -926,7 +928,7 @@ class PixmapButtonPainter(QtWidgets.QWidget):
             size.width(),
             size.height(),
             QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
+            QtCore.Qt.SmoothTransformation,
         )
 
     def paintEvent(self, event):
@@ -937,8 +939,7 @@ class PixmapButtonPainter(QtWidgets.QWidget):
             return
 
         render_hints = (
-            QtGui.QPainter.Antialiasing
-            | QtGui.QPainter.SmoothPixmapTransform
+            QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform
         )
 
         painter.setRenderHints(render_hints)
@@ -994,7 +995,7 @@ class PixmapButton(ClickableFrame):
             left,
             top,
             size.width() - (left + right),
-            size.height() - (top + bottom)
+            size.height() - (top + bottom),
         )
 
 
@@ -1006,6 +1007,7 @@ class OptionalMenu(QtWidgets.QMenu):
     actions that were instances of `QtWidgets.QWidgetAction`.
 
     """
+
     def mouseReleaseEvent(self, event):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())
@@ -1072,8 +1074,10 @@ class OptionalAction(QtWidgets.QWidgetAction):
     def set_option_tip(self, options):
         sep = "\n\n"
         if not options or not isinstance(options[0], AbstractAttrDef):
+
             def mak(opt):
                 return opt["name"] + " :\n    " + opt["help"]
+
             self.option_tip = sep.join(mak(opt) for opt in options)
             return
 

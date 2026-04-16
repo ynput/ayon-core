@@ -1,4 +1,4 @@
-"""Minimal color picker using QColorDialog and optional swatches (default + user)."""
+"""Minimal QColorDialog-based picker with default and user swatches."""
 
 import json
 from qtpy import QtWidgets, QtCore, QtGui
@@ -91,7 +91,7 @@ class _SwatchButton(QtWidgets.QPushButton):
 
 
 class SimpleColorPicker(QtWidgets.QWidget):
-    """Color picker: one button (opens QColorDialog) + row of default and user swatches."""
+    """Dialog button plus default and user swatch rows."""
 
     value_changed = QtCore.Signal(str)
 
@@ -118,13 +118,17 @@ class SimpleColorPicker(QtWidgets.QWidget):
         swatch_widget.setLayout(swatch_layout)
 
         self._default_swatch_container = QtWidgets.QWidget(self)
-        self._default_swatch_layout = QtWidgets.QHBoxLayout(self._default_swatch_container)
+        self._default_swatch_layout = QtWidgets.QHBoxLayout(
+            self._default_swatch_container
+        )
         self._default_swatch_layout.setContentsMargins(0, 0, 0, 0)
         self._default_swatch_layout.setSpacing(4)
         swatch_layout.addWidget(self._default_swatch_container)
 
         self._user_swatch_container = QtWidgets.QWidget(self)
-        self._user_swatch_layout = QtWidgets.QHBoxLayout(self._user_swatch_container)
+        self._user_swatch_layout = QtWidgets.QHBoxLayout(
+            self._user_swatch_container
+        )
         self._user_swatch_layout.setContentsMargins(0, 0, 0, 0)
         self._user_swatch_layout.setSpacing(4)
         swatch_layout.addWidget(self._user_swatch_container)
@@ -148,9 +152,7 @@ class SimpleColorPicker(QtWidgets.QWidget):
 
     def _on_color_button_clicked(self):
         initial = QtGui.QColor(self._current_hex)
-        color = QtWidgets.QColorDialog.getColor(
-            initial, self, "Choose color"
-        )
+        color = QtWidgets.QColorDialog.getColor(initial, self, "Choose color")
         if color.isValid():
             self._set_hex(color.name())
 
@@ -179,16 +181,24 @@ class SimpleColorPicker(QtWidgets.QWidget):
         for item in DEFAULT_SWATCHES:
             hex_val = item.get("hex", "#000000")
             name = item.get("name")
-            btn = _SwatchButton(hex_val, name, is_user_swatch=False, parent=self)
-            btn.clicked.connect(lambda checked=False, h=hex_val: self._set_hex(h))
+            btn = _SwatchButton(
+                hex_val, name, is_user_swatch=False, parent=self
+            )
+            btn.clicked.connect(
+                lambda checked=False, h=hex_val: self._set_hex(h)
+            )
             self._default_swatch_layout.addWidget(btn)
             self._swatch_buttons.append(btn)
 
         for item in self._user_swatches:
             hex_val = item.get("hex", "#000000")
             name = item.get("name", "")
-            btn = _SwatchButton(hex_val, name, is_user_swatch=True, parent=self)
-            btn.clicked.connect(lambda checked=False, h=hex_val: self._set_hex(h))
+            btn = _SwatchButton(
+                hex_val, name, is_user_swatch=True, parent=self
+            )
+            btn.clicked.connect(
+                lambda checked=False, h=hex_val: self._set_hex(h)
+            )
             btn.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
             btn.customContextMenuRequested.connect(
                 lambda pos, b=btn: self._on_user_swatch_context(pos, b)
@@ -201,12 +211,16 @@ class SimpleColorPicker(QtWidgets.QWidget):
             return
         menu = QtWidgets.QMenu(self)
         action = QtWidgets.QAction("Remove swatch", self)
-        action.triggered.connect(lambda: self._remove_user_swatch(swatch_btn.hex_value()))
+        action.triggered.connect(
+            lambda: self._remove_user_swatch(swatch_btn.hex_value())
+        )
         menu.addAction(action)
         menu.exec_(swatch_btn.mapToGlobal(pos))
 
     def _remove_user_swatch(self, hex_str):
-        self._user_swatches = [s for s in self._user_swatches if s.get("hex") != hex_str]
+        self._user_swatches = [
+            s for s in self._user_swatches if s.get("hex") != hex_str
+        ]
         _save_user_swatches(self._user_swatches)
         self._rebuild_swatches()
 
@@ -214,7 +228,11 @@ class SimpleColorPicker(QtWidgets.QWidget):
         if len(self._user_swatches) >= _USER_SWATCHES_CAP:
             return
         name, ok = QtWidgets.QInputDialog.getText(
-            self, "Add swatch", "Name (optional):", QtWidgets.QLineEdit.Normal, ""
+            self,
+            "Add swatch",
+            "Name (optional):",
+            QtWidgets.QLineEdit.Normal,
+            "",
         )
         if not ok:
             return

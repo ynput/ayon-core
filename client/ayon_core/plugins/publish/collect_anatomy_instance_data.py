@@ -14,8 +14,10 @@ Optional:
     instance    -> task
     instance    -> taskEntity
     instance    -> version
-    instance    -> comment # Publish/version note (non-workfile: template token)
-    instance    -> workfileSubversion # Harmony workfile Subversion for ``{comment}``
+    instance    -> comment
+        (publish/version note; ``{comment}`` for non-workfile products)
+    instance    -> workfileSubversion
+        (Harmony workfile field; maps to ``{comment}`` for workfiles)
     instance    -> resolutionWidth
     instance    -> resolutionHeight
     instance    -> fps
@@ -301,7 +303,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         for instance in context:
             anatomy_data = copy.deepcopy(context.data["anatomyData"])
-            # Avoid leaking a stale context comment into instances that did not set one
+            # Drop stale context comment when the instance did not set one
             anatomy_data.pop("comment", None)
             product_name = instance.data["productName"]
             product_type = instance.data["productType"]
@@ -401,8 +403,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if fps:
                 anatomy_data["fps"] = float("{:0.2f}".format(float(fps)))
 
-            # "comment" in anatomy templates: workfile uses ``workfileSubversion``
-            # (e.g. Harmony); Pyblish ``instance.data["comment"]`` is Publisher-only.
+            # Anatomy ``{comment}``: workfile uses ``workfileSubversion``;
+            # non-workfile uses ``instance.data["comment"]`` (Publisher).
             if product_type == "workfile":
                 comment_val = instance.data.get("workfileSubversion")
             else:
@@ -410,7 +412,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if comment_val:
                 anatomy_data["comment"] = comment_val
                 self.log.debug(
-                    "Instance %r: anatomyData includes comment for templates: %r",
+                    "Instance %r: anatomyData comment for templates: %r",
                     instance.data["name"],
                     comment_val,
                 )

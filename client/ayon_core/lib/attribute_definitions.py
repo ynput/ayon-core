@@ -27,10 +27,7 @@ if typing.TYPE_CHECKING:
         value: Any
 
     EnumItemsInputType = Union[
-        Dict[Any, str],
-        List[Tuple[Any, str]],
-        List[Any],
-        List[EnumItemDict]
+        Dict[Any, str], List[Tuple[Any, str]], List[Any], List[EnumItemDict]
     ]
 
     class FileDefItemDict(TypedDict):
@@ -55,13 +52,14 @@ class AbstractAttrDefMeta(ABCMeta):
     Each object of `AbstractAttrDef` must have defined 'key' attribute.
 
     """
+
     def __call__(cls, *args, **kwargs):
         obj = super(AbstractAttrDefMeta, cls).__call__(*args, **kwargs)
         init_class = getattr(obj, "__init__class__", None)
         if init_class is not AbstractAttrDef:
-            raise TypeError("{} super was not called in __init__.".format(
-                type(obj)
-            ))
+            raise TypeError(
+                "{} super was not called in __init__.".format(type(obj))
+            )
         return obj
 
 
@@ -119,6 +117,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         disabled (Optional[bool]): DEPRECATED: Use 'enabled' instead.
 
     """
+
     type_attributes = []
 
     is_value_def = True
@@ -258,7 +257,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             "default": self.default,
             "is_label_horizontal": self.is_label_horizontal,
             "visible": self.visible,
-            "enabled": self.enabled
+            "enabled": self.enabled,
         }
         for attr in self.type_attributes:
             data[attr] = getattr(self, attr)
@@ -295,7 +294,7 @@ class UIDef(AbstractAttrDef):
         key: Optional[str] = None,
         default: Optional[Any] = None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(key, default, *args, **kwargs)
 
@@ -325,6 +324,7 @@ class UIClickableLabelDef(UIDef):
 
     Used e.g. to show "Write node: path" and fill a Layer Name field on click.
     """
+
     type = "clickable_label"
     type_attributes = ["target_attr_key", "value_to_set"]
 
@@ -338,7 +338,9 @@ class UIClickableLabelDef(UIDef):
         *args,
         **kwargs,
     ):
-        super().__init__(label=label, key=key, tooltip=tooltip, *args, **kwargs)
+        super().__init__(
+            label=label, key=key, tooltip=tooltip, *args, **kwargs
+        )
         self.target_attr_key = target_attr_key
         self.value_to_set = value_to_set
 
@@ -354,6 +356,7 @@ class UIClickableLabelDef(UIDef):
 # Attribute definitions should hold value
 # ---------------------------------------
 
+
 class UnknownDef(AbstractAttrDef):
     """Definition is not known because definition is not available.
 
@@ -361,6 +364,7 @@ class UnknownDef(AbstractAttrDef):
     have known definition of type.
 
     """
+
     type = "unknown"
 
     def __init__(self, key: str, default: Optional[Any] = None, **kwargs):
@@ -383,6 +387,7 @@ class HiddenDef(AbstractAttrDef):
     Keep in mind the value should be possible to parse by json parser.
 
     """
+
     type = "hidden"
 
     def __init__(self, key: str, default: Optional[Any] = None, **kwargs):
@@ -410,12 +415,9 @@ class NumberDef(AbstractAttrDef):
         default(int, float): Default value for conversion.
 
     """
+
     type = "number"
-    type_attributes = [
-        "minimum",
-        "maximum",
-        "decimals"
-    ]
+    type_attributes = ["minimum", "maximum", "decimals"]
 
     def __init__(
         self,
@@ -424,7 +426,7 @@ class NumberDef(AbstractAttrDef):
         maximum: Optional[IntFloatType] = None,
         decimals: Optional[int] = None,
         default: Optional[IntFloatType] = None,
-        **kwargs
+        **kwargs,
     ):
         minimum = 0 if minimum is None else minimum
         maximum = 999999 if maximum is None else maximum
@@ -436,9 +438,11 @@ class NumberDef(AbstractAttrDef):
             default = 0
 
         elif not isinstance(default, (int, float)):
-            raise TypeError((
-                "'default' argument must be 'int' or 'float', not '{}'"
-            ).format(type(default)))
+            raise TypeError(
+                (
+                    "'default' argument must be 'int' or 'float', not '{}'"
+                ).format(type(default))
+            )
 
         # Fix default value by mim/max values
         if default < minimum:
@@ -500,6 +504,7 @@ class TextDef(AbstractAttrDef):
         default(str, None): Default value. Empty string used when not defined.
 
     """
+
     type = "text"
     type_attributes = [
         "multiline",
@@ -513,7 +518,7 @@ class TextDef(AbstractAttrDef):
         regex: Optional[str] = None,
         placeholder: Optional[str] = None,
         default: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         if default is None:
             default = ""
@@ -524,9 +529,9 @@ class TextDef(AbstractAttrDef):
             multiline = False
 
         elif not isinstance(default, str):
-            raise TypeError((
-                f"'default' argument must be a str, not '{type(default)}'"
-            ))
+            raise TypeError(
+                (f"'default' argument must be a str, not '{type(default)}'")
+            )
 
         if isinstance(regex, str):
             regex = re.compile(regex)
@@ -558,10 +563,7 @@ class TextDef(AbstractAttrDef):
         return data
 
     def _def_type_compare(self, other: "TextDef") -> bool:
-        return (
-            self.multiline == other.multiline
-            and self.regex == other.regex
-        )
+        return self.multiline == other.multiline and self.regex == other.regex
 
 
 class EnumDef(AbstractAttrDef):
@@ -582,6 +584,7 @@ class EnumDef(AbstractAttrDef):
             multiselection enumeration.
 
     """
+
     type = "enum"
 
     type_attributes = [
@@ -596,7 +599,7 @@ class EnumDef(AbstractAttrDef):
         default: "Union[str, List[Any]]" = None,
         multiselection: Optional[bool] = False,
         placeholder: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         if multiselection is None:
             multiselection = False
@@ -634,11 +637,7 @@ class EnumDef(AbstractAttrDef):
 
         if value is None:
             return copy.deepcopy(self.default)
-        return [
-            v
-            for v in value
-            if v in self._item_values
-        ]
+        return [v for v in value if v in self._item_values]
 
     def is_value_valid(self, value: Any) -> bool:
         """Check if item is available in possible values."""
@@ -658,7 +657,7 @@ class EnumDef(AbstractAttrDef):
 
     @staticmethod
     def prepare_enum_items(
-        items: "EnumItemsInputType"
+        items: "EnumItemsInputType",
     ) -> List["EnumItemDict"]:
         """Convert items to unified structure.
 
@@ -702,10 +701,12 @@ class EnumDef(AbstractAttrDef):
                         value = item[0]
                         label = str(value)
                     else:
-                        raise ValueError((
-                            "Invalid items count {}."
-                            " Expected 1 or 2. Value: {}"
-                        ).format(len(item), str(item)))
+                        raise ValueError(
+                            (
+                                "Invalid items count {}."
+                                " Expected 1 or 2. Value: {}"
+                            ).format(len(item), str(item))
+                        )
 
                     item = {"label": label, "value": value}
                 else:
@@ -733,6 +734,7 @@ class BoolDef(AbstractAttrDef):
         default(bool): Default value. Set to `False` if not defined.
 
     """
+
     type = "bool"
 
     def __init__(self, key: str, default: Optional[bool] = None, **kwargs):
@@ -821,9 +823,8 @@ class FileDefItem:
         else:
             filename = self.filenames[0]
 
-        return "<{}: \"{}\">".format(
-            self.__class__.__name__,
-            os.path.join(self.directory, filename)
+        return '<{}: "{}">'.format(
+            self.__class__.__name__, os.path.join(self.directory, filename)
         )
 
     @property
@@ -866,9 +867,7 @@ class FileDefItem:
                     _range = str(_frame_start)
                 ranges.append(_range)
                 _frame_start = _frame_end = None
-        return "{} [{}]".format(
-            filename_template, ",".join(ranges)
-        )
+        return "{} [{}]".format(filename_template, ",".join(ranges))
 
     def split_sequence(self) -> List["Self"]:
         if not self.is_sequence:
@@ -966,7 +965,7 @@ class FileDefItem:
                 str_filepaths.append(item)
             else:
                 raise TypeError(
-                    "Unknown type \"{}\". Can't convert to {}".format(
+                    'Unknown type "{}". Can\'t convert to {}'.format(
                         str(type(item)), cls.__name__
                     )
                 )
@@ -982,7 +981,7 @@ class FileDefItem:
             data["directory"],
             data["filenames"],
             data.get("frames"),
-            data.get("template")
+            data.get("template"),
         )
 
     @classmethod
@@ -1013,9 +1012,7 @@ class FileDefItem:
                 paths = [filename for filename in col]
                 template = col.format("{head}{padding}{tail}")
 
-                output.append(cls(
-                    directory, paths, frames, template
-                ))
+                output.append(cls(directory, paths, frames, template))
 
         return output
 
@@ -1026,10 +1023,12 @@ class FileDefItem:
             "filenames": list(self.filenames),
         }
         if self.is_sequence:
-            output.update({
-                "template": self.template,
-                "frames": list(sorted(self.frames)),
-            })
+            output.update(
+                {
+                    "template": self.template,
+                    "frames": list(sorted(self.frames)),
+                }
+            )
 
         return output
 
@@ -1065,7 +1064,7 @@ class FileDef(AbstractAttrDef):
         allow_sequences: Optional[bool] = True,
         extensions_label: Optional[str] = None,
         default: Optional["Union[FileDefItemDict, List[str]]"] = None,
-        **kwargs
+        **kwargs,
     ):
         if folders is None and extensions is None:
             folders = True
@@ -1087,16 +1086,16 @@ class FileDef(AbstractAttrDef):
                     )[0]
 
                 else:
-                    raise TypeError((
-                        "'default' argument must be 'str' or 'dict' not '{}'"
-                    ).format(type(default)))
+                    msg = "'default' argument must be 'str' or 'dict' not '{}'"
+                    raise TypeError(msg.format(type(default)))
 
             else:
                 if not isinstance(default, (tuple, list, set)):
-                    raise TypeError((
-                        "'default' argument must be 'list', 'tuple' or 'set'"
-                        ", not '{}'"
-                    ).format(type(default)))
+                    msg = (
+                        "'default' argument must be 'list', 'tuple' or 'set', "
+                        "not '{}'"
+                    )
+                    raise TypeError(msg.format(type(default)))
 
         # Change horizontal label
         is_label_horizontal = kwargs.get("is_label_horizontal")
@@ -1167,10 +1166,9 @@ class FileDef(AbstractAttrDef):
                 file_items = FileDefItem.from_paths(
                     string_paths, self.allow_sequences
                 )
-                dict_items.extend([
-                    file_item.to_dict()
-                    for file_item in file_items
-                ])
+                dict_items.extend(
+                    [file_item.to_dict() for file_item in file_items]
+                )
 
             if not self.single_item:
                 return dict_items
@@ -1198,13 +1196,11 @@ def register_attr_def_class(cls: AttrDefType):
 
     """
     if cls.type in _attr_defs_by_type:
-        raise KeyError("Type \"{}\" was already registered".format(cls.type))
+        raise KeyError('Type "{}" was already registered'.format(cls.type))
     _attr_defs_by_type[cls.type] = cls
 
 
-def get_attributes_keys(
-    attribute_definitions: List[AttrDefType]
-) -> Set[str]:
+def get_attributes_keys(attribute_definitions: List[AttrDefType]) -> Set[str]:
     """Collect keys from list of attribute definitions.
 
     Args:
@@ -1226,7 +1222,7 @@ def get_attributes_keys(
 
 
 def get_default_values(
-    attribute_definitions: List[AttrDefType]
+    attribute_definitions: List[AttrDefType],
 ) -> Dict[str, Any]:
     """Receive default values for attribute definitions.
 
@@ -1262,9 +1258,7 @@ def serialize_attr_def(attr_def: AttrDefType) -> Dict[str, Any]:
     return attr_def.serialize()
 
 
-def serialize_attr_defs(
-    attr_defs: List[AttrDefType]
-) -> List[Dict[str, Any]]:
+def serialize_attr_defs(attr_defs: List[AttrDefType]) -> List[Dict[str, Any]]:
     """Serialize attribute definitions to data.
 
     Args:
@@ -1274,10 +1268,7 @@ def serialize_attr_defs(
         List[Dict[str, Any]]: Serialized data.
 
     """
-    return [
-        serialize_attr_def(attr_def)
-        for attr_def in attr_defs
-    ]
+    return [serialize_attr_def(attr_def) for attr_def in attr_defs]
 
 
 def deserialize_attr_def(attr_def_data: Dict[str, Any]) -> AttrDefType:
@@ -1294,7 +1285,7 @@ def deserialize_attr_def(attr_def_data: Dict[str, Any]) -> AttrDefType:
 
 
 def deserialize_attr_defs(
-    attr_defs_data: List[Dict[str, Any]]
+    attr_defs_data: List[Dict[str, Any]],
 ) -> List[AttrDefType]:
     """Deserialize attribute definitions.
 
@@ -1303,8 +1294,7 @@ def deserialize_attr_defs(
 
     """
     return [
-        deserialize_attr_def(attr_def_data)
-        for attr_def_data in attr_defs_data
+        deserialize_attr_def(attr_def_data) for attr_def_data in attr_defs_data
     ]
 
 
@@ -1319,6 +1309,6 @@ for _attr_class in (
     EnumDef,
     BoolDef,
     ColorDef,
-    FileDef
+    FileDef,
 ):
     register_attr_def_class(_attr_class)

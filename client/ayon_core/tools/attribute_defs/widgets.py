@@ -64,9 +64,11 @@ def _create_widget_for_attr_def(
     handle_revert_to_default: bool,
 ):
     if not isinstance(attr_def, AbstractAttrDef):
-        raise TypeError("Unexpected type \"{}\" expected \"{}\"".format(
-            str(type(attr_def)), AbstractAttrDef
-        ))
+        raise TypeError(
+            'Unexpected type "{}" expected "{}"'.format(
+                str(type(attr_def)), AbstractAttrDef
+            )
+        )
 
     cls = None
     if isinstance(attr_def, NumberDef):
@@ -103,9 +105,9 @@ def _create_widget_for_attr_def(
         cls = LabelAttrWidget
 
     if cls is None:
-        raise ValueError("Unknown attribute definition \"{}\"".format(
-            str(type(attr_def))
-        ))
+        raise ValueError(
+            'Unknown attribute definition "{}"'.format(str(type(attr_def)))
+        )
 
     return cls(attr_def, parent, handle_revert_to_default)
 
@@ -118,6 +120,7 @@ class AttributeDefinitionsLabel(QtWidgets.QLabel):
 
     Label can be right-clicked to revert value to default.
     """
+
     revert_to_default_requested = QtCore.Signal(str)
 
     def __init__(
@@ -138,11 +141,7 @@ class AttributeDefinitionsLabel(QtWidgets.QLabel):
         if self._overridden == overridden:
             return
         self._overridden = overridden
-        set_style_property(
-            self,
-            "overridden",
-            "1" if overridden else ""
-        )
+        set_style_property(self, "overridden", "1" if overridden else "")
 
     def _on_context_menu(self, point: QtCore.QPoint):
         menu = QtWidgets.QMenu(self)
@@ -213,8 +212,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         for attr_def in attr_defs:
             if attr_def.is_value_def:
                 if attr_def.key in self._current_keys:
-                    raise KeyError(
-                        "Duplicated key \"{}\"".format(attr_def.key))
+                    raise KeyError('Duplicated key "{}"'.format(attr_def.key))
 
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
@@ -238,12 +236,9 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                     label_widget.setToolTip(tooltip)
                 if attr_def.is_label_horizontal:
                     label_widget.setAlignment(
-                        QtCore.Qt.AlignRight
-                        | QtCore.Qt.AlignVCenter
+                        QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
                     )
-                layout.addWidget(
-                    label_widget, row, col_num, 1, 1
-                )
+                layout.addWidget(label_widget, row, col_num, 1, 1)
                 if attr_def.is_label_horizontal:
                     col_num += 1
                     expand_cols = 1
@@ -253,9 +248,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if attr_def.is_value_def:
                 widget.value_changed.connect(self._on_value_change)
 
-            layout.addWidget(
-                widget, row, col_num, 1, expand_cols
-            )
+            layout.addWidget(widget, row, col_num, 1, expand_cols)
             row += 1
 
     def set_value(self, value):
@@ -372,7 +365,7 @@ class LabelAttrWidget(_BaseAttrDefWidget):
 
 
 class ClickableLabelAttrWidget(_BaseAttrDefWidget):
-    """Label that on click sets another attribute's value (e.g. fill Layer Name from write node)."""
+    """Clickable label that copies a value into another attribute."""
 
     def _ui_init(self):
         input_widget = MarkdownLabel(self)
@@ -380,23 +373,28 @@ class ClickableLabelAttrWidget(_BaseAttrDefWidget):
         if label:
             input_widget.setText(str(label))
         input_widget.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        input_widget.setStyleSheet("color: #6ab0ff; text-decoration: underline;")
+        input_widget.setStyleSheet(
+            "color: #6ab0ff; text-decoration: underline;"
+        )
         input_widget.installEventFilter(self)
 
         self._input_widget = input_widget
         self.main_layout.addWidget(input_widget, 0)
 
     def _find_target_widget(self, target_key):
-        """Find the widget whose attr_def.key == target_key in the same form."""
+        """Return the form widget for ``target_key``."""
         parent = self.parent()
         while parent is not None:
             if hasattr(parent, "_widgets_by_id"):
                 for w in parent._widgets_by_id.values():
-                    if getattr(getattr(w, "attr_def", None), "key", None) == target_key:
+                    if (
+                        getattr(getattr(w, "attr_def", None), "key", None)
+                        == target_key
+                    ):
                         return w
                 return None
             parent = parent.parent() if hasattr(parent, "parent") else None
-        # Fallback: creator panel uses a plain QWidget parent, no _widgets_by_id
+        # Fallback when parent has no _widgets_by_id (e.g. creator panel)
         root = self.parent()
         if root is None:
             return None
@@ -411,20 +409,30 @@ class ClickableLabelAttrWidget(_BaseAttrDefWidget):
                 if item is not None:
                     w = item.widget()
                     if w is not None:
-                        if getattr(getattr(w, "attr_def", None), "key", None) == target_key:
+                        if (
+                            getattr(getattr(w, "attr_def", None), "key", None)
+                            == target_key
+                        ):
                             return w
-                        found = self._find_widget_by_key_in_layout(w, target_key)
+                        found = self._find_widget_by_key_in_layout(
+                            w, target_key
+                        )
                         if found is not None:
                             return found
         return None
 
     def eventFilter(self, obj, event):
-        if obj is self._input_widget and event.type() == QtCore.QEvent.MouseButtonPress:
+        if (
+            obj is self._input_widget
+            and event.type() == QtCore.QEvent.MouseButtonPress
+        ):
             if event.button() == QtCore.Qt.LeftButton:
                 target_key = self.attr_def.target_attr_key
                 value = self.attr_def.value_to_set
                 target_widget = self._find_target_widget(target_key)
-                if target_widget is not None and hasattr(target_widget, "set_value"):
+                if target_widget is not None and hasattr(
+                    target_widget, "set_value"
+                ):
                     target_widget.set_value(value)
         return super().eventFilter(obj, event)
 
@@ -586,9 +594,8 @@ class TextAttrWidget(_BaseAttrDefWidget):
         # Override context menu event to add revert to default action
         input_widget.contextMenuEvent = self._input_widget_context_event
 
-        if (
-            self.attr_def.placeholder
-            and hasattr(input_widget, "setPlaceholderText")
+        if self.attr_def.placeholder and hasattr(
+            input_widget, "setPlaceholderText"
         ):
             input_widget.setPlaceholderText(self.attr_def.placeholder)
 
@@ -752,7 +759,11 @@ class ColorAttrWidget(_BaseAttrDefWidget):
         self._multisel_widget.setVisible(visible)
         if visible:
             return
-        value = self._last_multivalue if self._last_multivalue is not None else self.attr_def.default
+        value = (
+            self._last_multivalue
+            if self._last_multivalue is not None
+            else self.attr_def.default
+        )
         self._input_widget.blockSignals(True)
         self._input_widget.set_value(value)
         self._input_widget.blockSignals(False)
@@ -883,8 +894,7 @@ class EnumAttrWidget(_BaseAttrDefWidget):
     def set_value(self, value, multivalue=False):
         if multivalue:
             if self.multiselection:
-                value, multivalue = self._multiselection_multivalue_prep(
-                    value)
+                value, multivalue = self._multiselection_multivalue_prep(value)
             else:
                 set_value = set(value)
                 if len(set_value) == 1:
@@ -951,9 +961,11 @@ class HiddenAttrWidget(_BaseAttrDefWidget):
 
     def current_value(self):
         if self._multivalue:
-            raise ValueError("{} can't output for multivalue.".format(
-                self.__class__.__name__
-            ))
+            raise ValueError(
+                "{} can't output for multivalue.".format(
+                    self.__class__.__name__
+                )
+            )
         return self._value
 
     def set_value(self, value, multivalue=False):
@@ -967,7 +979,7 @@ class FileAttrWidget(_BaseAttrDefWidget):
             self.attr_def.single_item,
             self.attr_def.allow_sequences,
             self.attr_def.extensions_label,
-            self
+            self,
         )
 
         if self.attr_def.tooltip:
