@@ -1075,7 +1075,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                                 "progress": progress,
                                 "current": current,
                                 "total": total,
-                                "message": f"Removing item {current}/{total}...",
+                                "message": (
+                                    f"Removing item {current}/{total}..."
+                                ),
                             }
                         )
                         # Process events for smooth UI updates
@@ -1274,7 +1276,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         failed = False
         error_info = None
         try:
-            for index, (item_id, item_version) in enumerate(zip(item_ids, versions)):
+            for index, (item_id, item_version) in enumerate(
+                zip(item_ids, versions)
+            ):
                 container = containers_by_id[item_id]
                 if container.get("version_locked"):
                     continue
@@ -1292,7 +1296,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                             "progress": progress,
                             "current": current,
                             "total": total,
-                            "message": f"Updating container {current}/{total}...",
+                            "message": (
+                                f"Updating container {current}/{total}..."
+                            ),
                         }
                     )
                     # Process events for smooth UI updates
@@ -1314,7 +1320,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                             "progress": progress,
                             "current": current,
                             "total": total,
-                            "message": f"Updating container {current}/{total}...",
+                            "message": (
+                                f"Updating container {current}/{total}..."
+                            ),
                         }
                     )
                     # Process events for smooth UI updates

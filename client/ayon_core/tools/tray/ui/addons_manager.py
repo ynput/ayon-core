@@ -64,9 +64,11 @@ class TrayAddonsManager(AddonsManager):
                 self.doubleclick_callback = callback_name
             return
 
-        self.log.warning((
-            "Callback with name \"{}\" is already registered."
-        ).format(callback_name))
+        self.log.warning(
+            ('Callback with name "{}" is already registered.').format(
+                callback_name
+            )
+        )
 
     def initialize(self, tray_menu):
         self.initialize_addons()
@@ -85,22 +87,15 @@ class TrayAddonsManager(AddonsManager):
         addon_name: str,
         path: str,
         request_method: str,
-        handler: Callable
+        handler: Callable,
     ) -> str:
         return self._webserver_manager.add_addon_route(
-            addon_name,
-            path,
-            request_method,
-            handler
+            addon_name, path, request_method, handler
         )
 
-    def add_addon_static(
-        self, addon_name: str, prefix: str, path: str
-    ) -> str:
+    def add_addon_static(self, addon_name: str, prefix: str, path: str) -> str:
         return self._webserver_manager.add_addon_static(
-            addon_name,
-            prefix,
-            path
+            addon_name, prefix, path
         )
 
     def get_enabled_tray_addons(self):
@@ -132,10 +127,8 @@ class TrayAddonsManager(AddonsManager):
                 addon.tray_initialized = True
             except Exception:
                 self.log.warning(
-                    "Addon \"{}\" crashed on `tray_init`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
+                    'Addon "{}" crashed on `tray_init`.'.format(addon.name),
+                    exc_info=True,
                 )
 
             now = time.time()
@@ -147,16 +140,13 @@ class TrayAddonsManager(AddonsManager):
             self._report["Tray init"] = report
 
     def connect_addons(self):
-        self._webserver_manager.connect_with_addons(
-            self.get_enabled_addons()
-        )
+        self._webserver_manager.connect_with_addons(self.get_enabled_addons())
         super().connect_addons()
 
     def tray_menu(self, tray_menu):
         ordered_addons = []
         enabled_by_name = {
-            addon.name: addon
-            for addon in self.get_enabled_tray_addons()
+            addon.name: addon for addon in self.get_enabled_tray_addons()
         }
 
         for name in self.addons_menu_order:
@@ -178,10 +168,8 @@ class TrayAddonsManager(AddonsManager):
                 # Unset initialized mark
                 addon.tray_initialized = False
                 self.log.warning(
-                    "Addon \"{}\" crashed on `tray_menu`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
+                    'Addon "{}" crashed on `tray_menu`.'.format(addon.name),
+                    exc_info=True,
                 )
             now = time.time()
             report[addon.__class__.__name__] = now - prev_start_time
@@ -207,10 +195,8 @@ class TrayAddonsManager(AddonsManager):
                 addon.tray_start()
             except Exception:
                 self.log.warning(
-                    "Addon \"{}\" crashed on `tray_start`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
+                    'Addon "{}" crashed on `tray_start`.'.format(addon.name),
+                    exc_info=True,
                 )
             now = time.time()
             report[addon.__class__.__name__] = now - prev_start_time
@@ -240,18 +226,22 @@ class TrayAddonsManager(AddonsManager):
             thread.join(timeout=_TRAY_EXIT_TIMEOUT)
             if thread.is_alive():
                 self.log.warning(
-                    f"Addon \"{addon.name}\" tray_exit did not finish within {_TRAY_EXIT_TIMEOUT}s; continuing shutdown."
+                    'Addon "%s" tray_exit did not finish within %ss; '
+                    "continuing shutdown.",
+                    addon.name,
+                    _TRAY_EXIT_TIMEOUT,
                 )
             elif exc_holder:
                 exc_type_or_pair = exc_holder[0]
                 if exc_type_or_pair[0] == "SystemExit":
                     self.log.warning(
-                        f"Addon \"{addon.name}\" called sys.exit in tray_exit; ignoring."
+                        'Addon "%s" called sys.exit in tray_exit; ignoring.',
+                        addon.name,
                     )
                 else:
                     exc, tb = exc_type_or_pair
                     self.log.warning(
-                        f"Addon \"{addon.name}\" crashed on `tray_exit`: {exc}"
+                        f'Addon "{addon.name}" crashed on `tray_exit`: {exc}'
                     )
                     if tb:
                         self.log.debug(tb)

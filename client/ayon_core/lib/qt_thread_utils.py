@@ -5,7 +5,7 @@ from typing import Any, Callable
 
 
 def schedule_on_qt_main_thread(fn: Callable[[], Any]) -> None:
-    """Run ``fn`` on the Qt main thread soon, or immediately if no Qt app exists.
+    """Run ``fn`` on the Qt main thread soon, or immediately if no Qt app.
 
     Uses ``QTimer.singleShot(0, ...)`` when ``QApplication.instance()`` is
     available; otherwise calls ``fn()`` on the current thread (headless/tests).

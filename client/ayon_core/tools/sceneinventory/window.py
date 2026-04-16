@@ -27,10 +27,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
 
         # Set window title with application name and project name
         base_title = "AYON Scene Inventory"
-        app_name = (
-            os.environ.get("AYON_APP_NAME")
-            or get_current_host_name()
-        )
+        app_name = os.environ.get("AYON_APP_NAME") or get_current_host_name()
         if app_name:
             window_title = f"{base_title} - {app_name} - {project_name}"
         else:
@@ -50,9 +47,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         outdated_only_checkbox.setToolTip("Show outdated files only")
         outdated_only_checkbox.setChecked(False)
 
-        grouping_checkbox = QtWidgets.QCheckBox(
-            "Enable grouping", self
-        )
+        grouping_checkbox = QtWidgets.QCheckBox("Enable grouping", self)
         grouping_checkbox.setToolTip("Group items by product group")
         grouping_checkbox.setChecked(True)
 
@@ -92,12 +87,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         outdated_only_checkbox.stateChanged.connect(
             self._on_outdated_state_change
         )
-        grouping_checkbox.stateChanged.connect(
-            self._on_grouping_state_change
-        )
-        view.hierarchy_view_changed.connect(
-            self._on_hierarchy_view_change
-        )
+        grouping_checkbox.stateChanged.connect(self._on_grouping_state_change)
+        view.hierarchy_view_changed.connect(self._on_hierarchy_view_change)
         view.data_changed.connect(self._on_refresh_request)
         refresh_button.clicked.connect(self._on_refresh_request)
         update_all_button.clicked.connect(self._on_update_all)
@@ -114,19 +105,39 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._first_show = True
 
         # Register event callbacks for load notifications
-        controller.register_event_callback("load.started", self._on_load_started)
-        controller.register_event_callback("load.finished", self._on_load_finished)
+        controller.register_event_callback(
+            "load.started", self._on_load_started
+        )
+        controller.register_event_callback(
+            "load.finished", self._on_load_finished
+        )
         # Register event callbacks for update notifications
-        controller.register_event_callback("update.started", self._on_update_started)
-        controller.register_event_callback("update.progress", self._on_update_progress)
-        controller.register_event_callback("update.finished", self._on_update_finished)
+        controller.register_event_callback(
+            "update.started", self._on_update_started
+        )
+        controller.register_event_callback(
+            "update.progress", self._on_update_progress
+        )
+        controller.register_event_callback(
+            "update.finished", self._on_update_finished
+        )
         # Register event callbacks for remove notifications
-        controller.register_event_callback("remove.started", self._on_remove_started)
-        controller.register_event_callback("remove.progress", self._on_remove_progress)
-        controller.register_event_callback("remove.finished", self._on_remove_finished)
+        controller.register_event_callback(
+            "remove.started", self._on_remove_started
+        )
+        controller.register_event_callback(
+            "remove.progress", self._on_remove_progress
+        )
+        controller.register_event_callback(
+            "remove.finished", self._on_remove_finished
+        )
         # Register event callbacks for inventory action notifications
-        controller.register_event_callback("inventory_action.started", self._on_inventory_action_started)
-        controller.register_event_callback("inventory_action.finished", self._on_inventory_action_finished)
+        controller.register_event_callback(
+            "inventory_action.started", self._on_inventory_action_started
+        )
+        controller.register_event_callback(
+            "inventory_action.finished", self._on_inventory_action_finished
+        )
 
     def showEvent(self, event):
         super(SceneInventoryWindow, self).showEvent(event)
@@ -176,9 +187,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         )
 
     def _on_grouping_state_change(self):
-        self._view.set_enable_grouping(
-            self._grouping_checkbox.isChecked()
-        )
+        self._view.set_enable_grouping(self._grouping_checkbox.isChecked())
 
     def _on_update_all(self):
         self._view.update_all()
@@ -190,37 +199,32 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._overlay_object.add_message(message, message_id=event["id"])
         else:
             # Fallback message if loader doesn't provide one
-            self._overlay_object.add_message("Loading...", message_id=event["id"])
+            self._overlay_object.add_message(
+                "Loading...", message_id=event["id"]
+            )
 
     def _on_load_finished(self, event):
-        """Handle load.finished event and show completion/error notification."""
+        """Show load finished overlay (success or error)."""
         error_info = event["error_info"]
         if not error_info:
             # Show completion message if load was successful
             self._overlay_object.add_message(
-                "Action completed successfully",
-                message_id=event["id"]
+                "Action completed successfully", message_id=event["id"]
             )
         else:
             # Show error message if load failed
             self._overlay_object.add_message(
-                "Action failed",
-                "error",
-                message_id=event["id"]
+                "Action failed", "error", message_id=event["id"]
             )
 
     def _on_update_started(self, event):
-        """Handle update.started event and show toast notification with progress."""
+        """Show update started toast with progress."""
         message_id = event.get("id")
         message = event.get("message", "Updating containers...")
 
         if message_id:
-            self._overlay_object.add_message(
-                message, message_id=message_id
-            )
-            self._overlay_object.set_progress_visible(
-                message_id, True
-            )
+            self._overlay_object.add_message(message, message_id=message_id)
+            self._overlay_object.set_progress_visible(message_id, True)
 
     def _on_update_progress(self, event):
         """Handle update.progress event to update progress bar."""
@@ -239,12 +243,10 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             )
 
     def _on_update_finished(self, event):
-        """Handle update.finished event and show completion/error notification."""
+        """Show update finished overlay (success or error)."""
         message_id = event.get("id")
         if message_id:
-            self._overlay_object.set_progress_visible(
-                message_id, False
-            )
+            self._overlay_object.set_progress_visible(message_id, False)
 
         if event.get("failed"):
             self._overlay_object.add_message(
@@ -262,14 +264,10 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         total = event.get("total", 0)
 
         if message_id:
-            self._overlay_object.add_message(
-                message, message_id=message_id
-            )
+            self._overlay_object.add_message(message, message_id=message_id)
             # Show progress bar for batch removals
             if total > 1:
-                self._overlay_object.set_progress_visible(
-                    message_id, True
-                )
+                self._overlay_object.set_progress_visible(message_id, True)
 
     def _on_remove_progress(self, event):
         """Handle remove.progress event to update progress bar."""
@@ -288,12 +286,10 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             )
 
     def _on_remove_finished(self, event):
-        """Handle remove.finished event and show completion/error notification."""
+        """Show remove finished overlay (success or error)."""
         message_id = event.get("id")
         if message_id:
-            self._overlay_object.set_progress_visible(
-                message_id, False
-            )
+            self._overlay_object.set_progress_visible(message_id, False)
 
         if event.get("failed"):
             self._overlay_object.add_message(
@@ -305,17 +301,15 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             )
 
     def _on_inventory_action_started(self, event):
-        """Handle inventory_action.started event and show toast notification."""
+        """Show inventory action started toast."""
         message_id = event.get("id")
         message = event.get("message", "Running action...")
 
         if message_id:
-            self._overlay_object.add_message(
-                message, message_id=message_id
-            )
+            self._overlay_object.add_message(message, message_id=message_id)
 
     def _on_inventory_action_finished(self, event):
-        """Handle inventory_action.finished event and show completion/error notification."""
+        """Show inventory action finished overlay (success or error)."""
         message_id = event.get("id")
 
         if event.get("failed"):

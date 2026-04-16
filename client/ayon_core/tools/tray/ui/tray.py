@@ -50,8 +50,8 @@ from .dialogs import (
 
 _shutdown_scheduled = False
 
-# Set to True when macOS applicationShouldTerminate_ returns NSTerminateLater;
-# main() uses this to call replyToApplicationShouldTerminate_(True) after exec_() returns.
+# True when macOS applicationShouldTerminate_ returns NSTerminateLater;
+# main() replies to applicationShouldTerminate after exec_() returns.
 _macos_pending_terminate_reply = False
 
 
@@ -60,6 +60,7 @@ class TrayManager:
 
     Load submenus, actions, separators and addons into tray's context.
     """
+
     def __init__(self, tray_widget, main_window):
         self.tray_widget = tray_widget
         self.main_window = main_window
@@ -115,9 +116,7 @@ class TrayManager:
         self._cached_username = None
         self._closing = False
         try:
-            set_tray_server_url(
-                self._addons_manager.webserver_url, False
-            )
+            set_tray_server_url(self._addons_manager.webserver_url, False)
         except TrayIsRunningError:
             self.log.error("Tray is already running.")
             self._closing = True
@@ -167,9 +166,7 @@ class TrayManager:
 
         tray_menu = self.tray_widget.menu
         # Add launcher at first place
-        launcher_action = QtWidgets.QAction(
-            "Launcher", tray_menu
-        )
+        launcher_action = QtWidgets.QAction("Launcher", tray_menu)
         launcher_action.triggered.connect(self._show_launcher_window)
         tray_menu.addAction(launcher_action)
 
@@ -188,15 +185,11 @@ class TrayManager:
         self._addons_manager.initialize(tray_menu)
 
         # Add browser action after addon actions
-        browser_action = QtWidgets.QAction(
-            "Browser", tray_menu
-        )
+        browser_action = QtWidgets.QAction("Browser", tray_menu)
         browser_action.triggered.connect(self._show_browser_window)
         tray_menu.addAction(browser_action)
 
-        self._addons_manager.add_route(
-            "GET", "/tray", self._web_get_tray_info
-        )
+        self._addons_manager.add_route("GET", "/tray", self._web_get_tray_info)
         self._addons_manager.add_route(
             "POST", "/tray/message", self._web_show_tray_message
         )
@@ -224,10 +217,7 @@ class TrayManager:
         try:
             self._addons_manager.start_addons()
         except Exception:
-            self.log.error(
-                "Failed to start addons.",
-                exc_info=True
-            )
+            self.log.error("Failed to start addons.", exc_info=True)
             return self.exit()
 
         # Print time report
@@ -240,9 +230,7 @@ class TrayManager:
 
         self.execute_in_main_thread(self._startup_validations)
         try:
-            set_tray_server_url(
-                self._addons_manager.webserver_url, True
-            )
+            set_tray_server_url(self._addons_manager.webserver_url, True)
         except TrayIsRunningError:
             self.log.warning("Other tray started meanwhile. Exiting.")
             self.exit()
@@ -353,19 +341,21 @@ class TrayManager:
         if self._cached_username is None:
             self._cached_username = ayon_api.get_user()["name"]
 
-        return json_response({
-            "username": self._cached_username,
-            "bundle": os.getenv("AYON_BUNDLE_NAME"),
-            "studio_bundle": os.getenv("AYON_STUDIO_BUNDLE_NAME"),
-            "dev_mode": is_dev_mode_enabled(),
-            "staging_mode": is_staging_enabled(),
-            "addons": {
-                addon.name: addon.version
-                for addon in self._addons_manager.get_enabled_addons()
-            },
-            "installer_version": os.getenv("AYON_VERSION"),
-            "running_time": time.time() - self._start_time,
-        })
+        return json_response(
+            {
+                "username": self._cached_username,
+                "bundle": os.getenv("AYON_BUNDLE_NAME"),
+                "studio_bundle": os.getenv("AYON_STUDIO_BUNDLE_NAME"),
+                "dev_mode": is_dev_mode_enabled(),
+                "staging_mode": is_staging_enabled(),
+                "addons": {
+                    addon.name: addon.version
+                    for addon in self._addons_manager.get_enabled_addons()
+                },
+                "installer_version": os.getenv("AYON_VERSION"),
+                "running_time": time.time() - self._start_time,
+            }
+        )
 
     async def _web_show_tray_message(self, request: Request) -> Response:
         data = await request.json()
@@ -418,9 +408,7 @@ class TrayManager:
             return
 
         bundle_type = (
-            "stagingBundle"
-            if is_staging_enabled()
-            else "productionBundle"
+            "stagingBundle" if is_staging_enabled() else "productionBundle"
         )
 
         expected_bundle = bundles.get(bundle_type)
@@ -469,7 +457,7 @@ class TrayManager:
             (
                 "Please restart AYON launcher as soon as possible"
                 " to propagate updates."
-            )
+            ),
         )
 
     def _main_thread_execution(self):
@@ -521,8 +509,7 @@ class TrayManager:
 
     def _on_ayon_login(self):
         self.execute_in_main_thread(
-            self._show_ayon_login,
-            restart_on_token_change=True
+            self._show_ayon_login, restart_on_token_change=True
         )
 
     def _show_ayon_login(self, restart_on_token_change):
@@ -719,11 +706,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         """Exit whole application.
 
         - If called from a non-main thread, skip Qt and force exit.
-        - On macOS, skip self.hide(): QCocoaSystemTrayIcon::cleanup() synchronously
-          dispatches to the main thread and blocks, deadlocking when the main thread
-          is the caller. The icon disappears when the process exits.
-        - Run blocking cleanup (stop_server, addon tray_exit) in a worker thread so
-          the main thread stays responsive; schedule QCoreApplication.exit() when done.
+        - On macOS, skip self.hide(): tray icon cleanup can block the main
+          thread and deadlock when exit() runs on the main thread.
+        - Run blocking cleanup in a worker thread; schedule
+          QCoreApplication.exit() when done.
         """
         if self._exited:
             return
@@ -745,13 +731,14 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
 
 def _install_macos_terminate_handler(tray_widget):
-    """On Darwin, install NSApplication delegate to catch Cmd+Q/dock Quit when Qt doesn't."""
+    """Install NSApplication delegate for Cmd+Q / dock Quit on Darwin."""
     global _macos_pending_terminate_reply
     if platform.system() != "Darwin":
         return
     try:
         import AppKit
         import objc
+
         NSApp = AppKit.NSApplication.sharedApplication()
         # NSTerminateLater = 2
         NSTerminateLater = 2
@@ -770,7 +757,7 @@ def _install_macos_terminate_handler(tray_widget):
 
 
 class _AppQuitEventFilter(QtCore.QObject):
-    """Catch application-level Close and Quit (e.g. dock Quit / Cmd+Q on macOS)."""
+    """Catch app-level Close and Quit (dock Quit / Cmd+Q on macOS)."""
 
     def __init__(self, tray_widget, app, main_window=None):
         super(_AppQuitEventFilter, self).__init__()
@@ -788,7 +775,7 @@ class _AppQuitEventFilter(QtCore.QObject):
         if obj is self._app:
             self._tray_widget.exit()
             return super(_AppQuitEventFilter, self).eventFilter(obj, event)
-        # On macOS, dock Quit / Cmd+Q can deliver Close to the tray's parent window.
+        # macOS: dock Quit / Cmd+Q may deliver Close to the tray parent window.
         if self._main_window is not None and obj is self._main_window:
             self._tray_widget.exit()
         return super(_AppQuitEventFilter, self).eventFilter(obj, event)
@@ -801,6 +788,7 @@ def _make_signal_exit_handler(tray_widget):
             return
         _shutdown_scheduled = True
         QtCore.QTimer.singleShot(0, tray_widget.exit)
+
     return _handler
 
 
@@ -885,8 +873,9 @@ def main():
 
     if not is_running_from_build() and os.name == "nt":
         import ctypes
+
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            u"ayon_tray"
+            "ayon_tray"
         )
 
     exit_code = app.exec_()
@@ -894,7 +883,10 @@ def main():
         if _macos_pending_terminate_reply:
             try:
                 import AppKit
-                AppKit.NSApplication.sharedApplication().replyToApplicationShouldTerminate_(True)
+
+                AppKit.NSApplication.sharedApplication().replyToApplicationShouldTerminate_(
+                    True
+                )
             except Exception:
                 pass
         log = Logger.get_logger("TrayMain")
