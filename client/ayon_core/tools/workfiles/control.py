@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 import os
-from typing import Optional
+import shutil
+import tempfile
 
 import ayon_api
 from ayon_api import get_workfiles_info
@@ -9,7 +8,7 @@ from ayon_api import get_workfiles_info
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.pipeline import Anatomy, registered_host
+from ayon_core.pipeline import Anatomy, get_process_id, registered_host
 from ayon_core.pipeline.context_tools import get_global_context
 from ayon_core.settings import get_project_settings
 from ayon_core.tools.common_models import (
@@ -22,7 +21,6 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractWorkfilesBackend,
     AbstractWorkfilesFrontend,
-    PublishedWorkfileWrap,
 )
 from .models import SelectionModel, WorkfilesModel
 
@@ -31,7 +29,7 @@ NOT_SET = object()
 
 class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
     def __init__(self, controller):
-        super().__init__(
+        super(WorkfilesToolExpectedSelection, self).__init__(
             controller,
             handle_project=False,
             handle_folder=True,
@@ -58,14 +56,16 @@ class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
         self._workfile_selected = False
         self._representation_selected = False
 
-        super().set_expected_selection(
+        super(WorkfilesToolExpectedSelection, self).set_expected_selection(
             project_name,
             folder_id,
             task_name,
         )
 
     def get_expected_selection_data(self):
-        data = super().get_expected_selection_data()
+        data = super(
+            WorkfilesToolExpectedSelection, self
+        ).get_expected_selection_data()
 
         _is_current = (
             self._project_selected
@@ -165,11 +165,6 @@ class BaseWorkfileController(
         if self._log is None:
             self._log = Logger.get_logger("WorkfilesUI")
         return self._log
-
-    def get_window_subtitle(self) -> Optional[str]:
-        if self._host is None:
-            return None
-        return self._host.name
 
     def is_host_valid(self):
         return self._host_is_valid
@@ -387,7 +382,7 @@ class BaseWorkfileController(
         )
 
     def get_task_ids_with_workfiles(self, project_name: str, folder_id: str):
-        """Task ids in folder that have at least one workfile."""
+        """Task ids in folder that have at least one workfile (for tasks widget grey styling)."""
         task_items = self._hierarchy_model.get_task_items(
             project_name, folder_id, sender=None
         )
@@ -438,13 +433,14 @@ class BaseWorkfileController(
             folder_id, task_id
         )
 
-    def get_published_workfile_info(
-        self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
-    ) -> PublishedWorkfileWrap:
+    def get_published_workfile_info(self, representation_id):
         return self._workfiles_model.get_published_workfile_info(
-            folder_id, representation_id
+            representation_id
+        )
+
+    def get_published_workfile_version_comment(self, representation_id):
+        return self._workfiles_model.get_published_workfile_version_comment(
+            representation_id
         )
 
     def get_published_workfile_version_comment(self, representation_id):
@@ -457,6 +453,42 @@ class BaseWorkfileController(
             folder_id, task_id, rootless_path
         )
 
+    def get_thumbnail_temp_dir_path(self):
+        """Return path to directory where thumbnails can be temporarily stored.
+
+        Returns:
+            str: Path to a directory.
+        """
+        return os.path.join(
+            tempfile.gettempdir(),
+            "workfiles_thumbnails",
+            get_process_id(),
+        )
+
+    def clear_thumbnail_temp_dir_path(self):
+        """Remove content of thumbnail temp directory."""
+        dirpath = self.get_thumbnail_temp_dir_path()
+        if os.path.exists(dirpath):
+            shutil.rmtree(dirpath)
+
+    def get_host_capture_thumbnail_path(self):
+        """Ask host to capture editor (e.g. Camera/Node view); return image path or None.
+
+        Returns:
+            Optional[str]: Path to temporary image file, or None if host does not
+                support capture or user cancelled.
+        """
+        if not self._host_is_valid:
+            return None
+        method = getattr(
+            self._host,
+            "capture_workfile_thumbnail_source",
+            None,
+        )
+        if method is None or not callable(method):
+            return None
+        return method()
+
     def save_workfile_info(
         self,
         task_id,
@@ -464,6 +496,7 @@ class BaseWorkfileController(
         version=None,
         comment=None,
         description=None,
+        thumbnail_path=None,
     ):
         self._workfiles_model.save_workfile_info(
             task_id,
@@ -471,6 +504,7 @@ class BaseWorkfileController(
             version,
             comment,
             description,
+            thumbnail_path=thumbnail_path,
         )
 
     def get_workfile_entities(self, task_id):
@@ -548,6 +582,7 @@ class BaseWorkfileController(
         version,
         comment,
         description,
+        thumbnail_path=None,
     ):
         self._workfiles_model.save_as_workfile(
             folder_id,
@@ -558,6 +593,7 @@ class BaseWorkfileController(
             version,
             comment,
             description,
+            thumbnail_path=thumbnail_path,
         )
 
     def copy_workfile_representation(

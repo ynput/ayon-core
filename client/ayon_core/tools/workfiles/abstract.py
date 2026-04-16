@@ -870,11 +870,12 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         version=None,
         comment=None,
         description=None,
+        thumbnail_path=None,
     ):
         """Save workfile info to database.
 
         At this moment the only information which can be saved about
-            workfile is 'description'.
+            workfile is 'description' and optional thumbnail.
 
         If value of 'version', 'comment' or 'description' is 'None' it is not
             added/updated to entity.
@@ -885,6 +886,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             version (Optional[int]): Version of workfile.
             comment (Optional[str]): User's comment (subversion).
             description (Optional[str]): Workfile description.
+            thumbnail_path (Optional[str]): Path to thumbnail image to upload
+                and link to workfile.
 
         """
         pass
@@ -930,6 +933,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         version,
         comment,
         description,
+        thumbnail_path=None,
     ):
         """Save current state of workfile to workarea.
 
@@ -943,6 +947,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             version (Optional[int]): Version of workfile.
             comment (Optional[str]): User's comment (subversion).
             description (Optional[str]): Workfile description.
+            thumbnail_path (Optional[str]): Path to thumbnail image to upload
+                and link to the new workfile.
 
         """
         pass

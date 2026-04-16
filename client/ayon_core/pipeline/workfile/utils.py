@@ -209,6 +209,7 @@ def save_workfile_info(
     username: Optional[str] = None,
     data: Optional[dict[str, Any]] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
+    thumbnail_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Save workfile info entity for a workfile path.
 
@@ -225,6 +226,7 @@ def save_workfile_info(
         data (Optional[dict[str, Any]]): Additional workfile entity data.
         workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
             workfile entities related to task.
+        thumbnail_id (Optional[str]): Thumbnail entity id to link to workfile.
 
     Returns:
         dict[str, Any]: Workfile info entity.
@@ -271,6 +273,7 @@ def save_workfile_info(
             comment,
             attrib,
             data,
+            thumbnail_id=thumbnail_id,
         )
 
     for key, value in (
@@ -312,6 +315,10 @@ def save_workfile_info(
     if workfile_entity.get("updatedBy") != username:
         update_data["updatedBy"] = username
         workfile_entity["updatedBy"] = username
+
+    if thumbnail_id is not None:
+        update_data["thumbnailId"] = thumbnail_id
+        workfile_entity["thumbnailId"] = thumbnail_id
 
     if not update_data:
         return workfile_entity
@@ -769,6 +776,7 @@ def _create_workfile_info_entity(
     comment: Optional[str],
     attrib: dict[str, Any],
     data: dict[str, Any],
+    thumbnail_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Create workfile entity data.
 
@@ -782,6 +790,7 @@ def _create_workfile_info_entity(
         comment (Optional[str]): Workfile comment.
         attrib (dict[str, Any]): Workfile entity attributes.
         data (dict[str, Any]): Workfile entity data.
+        thumbnail_id (Optional[str]): Thumbnail entity id to link to workfile.
 
     Returns:
         dict[str, Any]: Created workfile entity data.
@@ -804,6 +813,8 @@ def _create_workfile_info_entity(
         "createdBy": username,
         "updatedBy": username,
     }
+    if thumbnail_id is not None:
+        workfile_info["thumbnailId"] = thumbnail_id
 
     session = OperationsSession()
     session.create_entity(

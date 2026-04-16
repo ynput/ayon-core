@@ -1,7 +1,10 @@
 import datetime
-from typing import Optional
 
 from qtpy import QtCore, QtWidgets
+
+from ayon_core.pipeline.thumbnails import get_thumbnail_path
+
+from .thumbnail_widget import WorkfileThumbnailWidget
 
 
 def file_size_to_string(file_size):
@@ -38,11 +41,14 @@ class SidePanelWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent):
         super(SidePanelWidget, self).__init__(parent)
 
-        details_label = QtWidgets.QLabel("Details", self)
-        details_input = QtWidgets.QPlainTextEdit(self)
+        content_widget = QtWidgets.QWidget(self)
+        content_widget.setMinimumHeight(320)
+
+        details_label = QtWidgets.QLabel("Details", content_widget)
+        details_input = QtWidgets.QPlainTextEdit(content_widget)
         details_input.setReadOnly(True)
 
-        description_widget = QtWidgets.QWidget(self)
+        description_widget = QtWidgets.QWidget(content_widget)
         description_label = QtWidgets.QLabel("Artist note", description_widget)
         description_input = QtWidgets.QPlainTextEdit(description_widget)
         btn_description_save = QtWidgets.QPushButton(
@@ -57,18 +63,58 @@ class SidePanelWidget(QtWidgets.QWidget):
             btn_description_save, 0, alignment=QtCore.Qt.AlignRight
         )
 
+        thumbnail_widget = QtWidgets.QWidget(content_widget)
+        thumbnail_label = QtWidgets.QLabel("Thumbnail", thumbnail_widget)
+        self._thumbnail_workfile_widget = WorkfileThumbnailWidget(
+            controller.get_thumbnail_temp_dir_path,
+            thumbnail_widget,
+            message_callback=self._show_message,
+        )
+        self._thumbnail_workfile_widget.setMinimumSize(180, 120)
+        btn_thumbnail_save = QtWidgets.QPushButton(
+            "Save thumbnail", thumbnail_widget
+        )
+        thumbnail_layout = QtWidgets.QVBoxLayout(thumbnail_widget)
+        thumbnail_layout.setContentsMargins(0, 0, 0, 0)
+        thumbnail_layout.addWidget(thumbnail_label, 0)
+        thumbnail_layout.addWidget(self._thumbnail_workfile_widget, 1)
+        thumbnail_layout.addWidget(
+            btn_thumbnail_save, 0, alignment=QtCore.Qt.AlignRight
+        )
+
+        content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.addWidget(thumbnail_widget, 0)
+        content_layout.addWidget(details_label, 0)
+        content_layout.addWidget(details_input, 1)
+        content_layout.addWidget(description_widget, 1)
+
+        scroll_area = QtWidgets.QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+        scroll_area.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+        scroll_area.setWidget(content_widget)
+
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(details_label, 0)
-        main_layout.addWidget(details_input, 1)
-        main_layout.addWidget(description_widget, 1)
+        main_layout.addWidget(scroll_area, 1)
 
         description_input.textChanged.connect(self._on_description_change)
         btn_description_save.clicked.connect(self._on_save_click)
+        self._thumbnail_workfile_widget.thumbnail_created.connect(
+            self._on_thumbnail_changed
+        )
+        self._thumbnail_workfile_widget.thumbnail_cleared.connect(
+            self._on_thumbnail_changed
+        )
+        btn_thumbnail_save.clicked.connect(self._on_save_thumbnail_click)
 
         controller.register_event_callback(
-            "selection.workarea.changed",
-            self._on_workarea_selection_change
+            "selection.workarea.changed", self._on_workarea_selection_change
         )
         controller.register_event_callback(
             "selection.representation.changed",
@@ -79,6 +125,9 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._description_widget = description_widget
         self._description_input = description_input
         self._btn_description_save = btn_description_save
+        self._thumbnail_widget = thumbnail_widget
+        self._btn_thumbnail_save = btn_thumbnail_save
+        self._saved_thumbnail_id = None
 
         self._folder_id = None
         self._task_id = None
@@ -88,9 +137,9 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._orig_description = ""
         self._controller = controller
 
-        self._set_context(False, None, None)
+        self._set_context(None, None, None, None, None)
 
-    def set_published_mode(self, published_mode: bool) -> None:
+    def set_published_mode(self, published_mode):
         """Change published mode.
 
         Args:
@@ -98,20 +147,53 @@ class SidePanelWidget(QtWidgets.QWidget):
         """
 
         self._description_widget.setVisible(not published_mode)
+        self._thumbnail_widget.setVisible(not published_mode)
         # Clear the context when switching modes to avoid showing stale data
-        if published_mode:
-            self._set_publish_context(
-                self._folder_id,
-                self._task_id,
-                self._representation_id,
-            )
-        else:
-            self._set_workarea_context(
-                self._folder_id,
-                self._task_id,
-                self._rootless_path,
-                self._filepath,
-            )
+        self._set_context(None, None, None, None, None)
+
+    def set_thumbnail_path(self, path):
+        """Set current thumbnail from path (e.g. from Ctrl+Shift+S host capture)."""
+        self._thumbnail_workfile_widget.set_thumbnail_path(path)
+        self._update_thumbnail_save_enabled()
+
+    def _show_message(self, message):
+        """Show a message to the user (e.g. error). Override or use status bar."""
+        pass
+
+    def _on_thumbnail_changed(self):
+        self._update_thumbnail_save_enabled()
+
+    def _update_thumbnail_save_enabled(self):
+        path = self._thumbnail_workfile_widget.get_thumbnail_path()
+        self._btn_thumbnail_save.setEnabled(path is not None)
+
+    def _on_save_thumbnail_click(self):
+        path = self._thumbnail_workfile_widget.get_thumbnail_path()
+        if not path:
+            return
+        self._controller.save_workfile_info(
+            self._task_id,
+            self._rootless_path,
+            thumbnail_path=path,
+        )
+        workfile_info = self._controller.get_workfile_info(
+            self._folder_id, self._task_id, self._rootless_path
+        )
+        if workfile_info:
+            self._saved_thumbnail_id = workfile_info.thumbnail_id
+            project_name = self._controller.get_current_project_name()
+            if workfile_info.thumbnail_id and workfile_info.workfile_entity_id:
+                thumb_path = get_thumbnail_path(
+                    project_name,
+                    "workfile",
+                    workfile_info.workfile_entity_id,
+                    workfile_info.thumbnail_id,
+                )
+                if thumb_path:
+                    self._thumbnail_workfile_widget.set_thumbnail_path(
+                        thumb_path
+                    )
+        self._btn_thumbnail_save.setEnabled(False)
 
     def _on_workarea_selection_change(self, event):
         folder_id = event["folder_id"]
@@ -119,16 +201,12 @@ class SidePanelWidget(QtWidgets.QWidget):
         filepath = event["path"]
         rootless_path = event["rootless_path"]
 
-        self._set_workarea_context(
-            folder_id, task_id, rootless_path, filepath
-        )
+        self._set_context(folder_id, task_id, rootless_path, filepath, None)
 
     def _on_representation_selection_change(self, event):
-        folder_id = event["folder_id"]
-        task_id = event["task_id"]
         representation_id = event["representation_id"]
 
-        self._set_publish_context(folder_id, task_id, representation_id)
+        self._set_context(None, None, None, None, representation_id)
 
     def _on_description_change(self):
         text = self._description_input.toPlainText()
@@ -174,10 +252,26 @@ class SidePanelWidget(QtWidgets.QWidget):
             workfile_info is not None or published_workfile_info is not None
         )
 
-        if workfile_info is None:
+        self._details_input.setEnabled(enabled)
+        self._description_input.setEnabled(workfile_info is not None)
+        self._btn_description_save.setEnabled(workfile_info is not None)
+        self._thumbnail_widget.setEnabled(workfile_info is not None)
+        self._btn_thumbnail_save.setEnabled(False)
+
+        self._folder_id = folder_id
+        self._task_id = task_id
+        self._filepath = filepath
+        self._rootless_path = rootless_path
+        self._representation_id = representation_id
+
+        # Disable inputs and remove texts if any required arguments are
+        #   missing
+        if not enabled:
             self._orig_description = ""
+            self._saved_thumbnail_id = None
+            self._details_input.setPlainText("")
             self._description_input.setPlainText("")
-            self._set_context(False, folder_id, task_id)
+            self._thumbnail_workfile_widget.set_current_thumbnails(None)
             return
 
         # Use published workfile info if available, otherwise use workarea
@@ -191,7 +285,10 @@ class SidePanelWidget(QtWidgets.QWidget):
         description = info.description if hasattr(info, "description") else ""
         size_value = file_size_to_string(info.file_size)
 
+        # Append html string
         datetime_format = "%b %d %Y %H:%M:%S"
+        file_created = info.file_created
+        modification_time = info.file_modified
         if file_created:
             file_created = datetime.datetime.fromtimestamp(file_created)
 
@@ -202,27 +299,29 @@ class SidePanelWidget(QtWidgets.QWidget):
 
         user_items_by_name = self._controller.get_user_items_by_name()
 
-        def convert_username(username_v):
-            user_item = user_items_by_name.get(username_v)
+        def convert_username(username):
+            user_item = user_items_by_name.get(username)
             if user_item is not None and user_item.full_name:
                 return user_item.full_name
-            return username_v
+            return username
 
-        lines = []
-        if size_value is not None:
-            size_value = file_size_to_string(size_value)
-            lines.append(f"<b>Size:</b><br/>{size_value}")
-
-        # Add version comment for published workfiles
-        if comment:
-            lines.append(f"<b>Comment:</b><br/>{comment}")
-
-        if created_by or file_created:
-            lines.append("<b>Created:</b>")
-            if created_by:
-                lines.append(convert_username(created_by))
+        created_lines = []
+        # For published workfiles, use 'author' field
+        if published_workfile_info:
+            if published_workfile_info.author:
+                created_lines.append(
+                    convert_username(published_workfile_info.author)
+                )
             if file_created:
-                lines.append(file_created.strftime(datetime_format))
+                created_lines.append(file_created.strftime(datetime_format))
+        else:
+            # For workarea workfiles, use 'created_by' field
+            if workfile_info.created_by:
+                created_lines.append(
+                    convert_username(workfile_info.created_by)
+                )
+            if file_created:
+                created_lines.append(file_created.strftime(datetime_format))
 
         if created_lines:
             created_lines.insert(0, "<b>Created:</b>")
@@ -250,6 +349,27 @@ class SidePanelWidget(QtWidgets.QWidget):
 
         self._orig_description = description
         self._description_input.setPlainText(description)
+
+        if workfile_info and workfile_info.thumbnail_id and workfile_info.workfile_entity_id:
+            project_name = self._controller.get_current_project_name()
+            thumb_path = get_thumbnail_path(
+                project_name,
+                "workfile",
+                workfile_info.workfile_entity_id,
+                workfile_info.thumbnail_id,
+            )
+            self._saved_thumbnail_id = workfile_info.thumbnail_id
+            if thumb_path:
+                self._thumbnail_workfile_widget.set_current_thumbnails(
+                    [thumb_path]
+                )
+            else:
+                self._thumbnail_workfile_widget.set_current_thumbnails(None)
+        else:
+            self._saved_thumbnail_id = None
+            self._thumbnail_workfile_widget.set_current_thumbnails(None)
+
+        self._update_thumbnail_save_enabled()
 
         # Set as empty string
         self._details_input.setPlainText("")
