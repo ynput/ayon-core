@@ -1,4 +1,4 @@
-"""Workfile thumbnail widget: capture, paste, browse, clear; no publisher dependency."""
+"""Workfile thumbnail UI (capture, paste, browse, clear)."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from ayon_core.tools.publisher.widgets.icons import get_image
 
 
 class WorkfileThumbnailWidget(QtWidgets.QWidget):
-    """Thumbnail widget for workfiles: display and capture (screenshot / paste / browse / clear).
+    """Thumbnail UI for workfiles (screenshot, paste, browse, clear).
 
-    Uses temp dir from get_temp_dir_path() and optional message_callback for errors.
-    Emits thumbnail_created(path) and thumbnail_cleared.
+    Uses get_temp_dir_path() and optional message_callback. Emits
+    thumbnail_created(path) and thumbnail_cleared.
     """
 
     thumbnail_created = QtCore.Signal(str)
@@ -153,7 +153,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         self._update_buttons_position()
 
     def set_thumbnail_path(self, path):
-        """Set single thumbnail from path (e.g. from Ctrl+Shift+S host capture)."""
+        """Load a single thumbnail image from a file path."""
         if path and os.path.isfile(path):
             self.set_current_thumbnails([path])
         else:
@@ -197,7 +197,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         self._clear_button.setEnabled(False)
 
     def _schedule_screenshot_capture_focus(self, main_window, dialog):
-        """Raise windows and restore focus after opacity restore (next event loop tick)."""
+        """Restore window stacking and focus after screenshot capture."""
 
         focus_widget = self._post_capture_focus_widget
 
@@ -221,7 +221,7 @@ class WorkfileThumbnailWidget(QtWidgets.QWidget):
         masked_main = False
         app = QtWidgets.QApplication.instance()
 
-        # Use opacity instead of hide() so exec()'d modal dialogs stay valid for Qt/Windows.
+        # Opacity instead of hide() keeps exec() modals valid on Qt/Windows.
         if dialog is not None and dialog.isVisible():
             dialog_prev_opacity = dialog.windowOpacity()
             dialog.setWindowOpacity(0.0)

@@ -354,7 +354,9 @@ class SaveAsDialog(QtWidgets.QDialog):
             "version": self._version_value,
             "comment": self._comment_value,
             "description": self._description_input.toPlainText(),
-            "thumbnail_path": self._thumbnail_workfile_widget.get_thumbnail_path(),
+            "thumbnail_path": (
+                self._thumbnail_workfile_widget.get_thumbnail_path()
+            ),
         }
         self.close()
 
