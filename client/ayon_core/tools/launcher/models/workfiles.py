@@ -10,7 +10,6 @@ from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.lib.local_settings import get_launcher_local_dir
 
 from ayon_core.pipeline import Anatomy
-from ayon_core.pipeline.thumbnails import get_thumbnail_path
 from ayon_core.tools.common_models.users import get_users
 from ayon_core.tools.launcher.abstract import (
     WorkfileItem,
@@ -308,6 +307,10 @@ class WorkfilesModel:
         img_html = ""
         if thumbnail_id:
             try:
+                # Lazy import: pipeline.thumbnails runs ThumbnailsCache cleanup at
+                # import; defer until tooltip build (tray eager-import path).
+                from ayon_core.pipeline.thumbnails import get_thumbnail_path
+
                 thumb_path = get_thumbnail_path(
                     project_name, "workfile", workfile_id, thumbnail_id
                 )
