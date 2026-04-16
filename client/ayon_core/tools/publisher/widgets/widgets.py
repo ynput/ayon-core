@@ -482,7 +482,11 @@ class MultipleItemWidget(QtWidgets.QWidget):
         if model.rowCount() == 0:
             return
         height = self._view.sizeHintForRow(0)
-        self.setMaximumHeight(height + (2 * self._view.spacing()))
+        # Account for view padding from stylesheet (3px top + 3px bottom)
+        view_vertical_padding = 6
+        self.setMaximumHeight(
+            height + (2 * self._view.spacing()) + view_vertical_padding
+        )
 
     def showEvent(self, event):
         super().showEvent(event)
