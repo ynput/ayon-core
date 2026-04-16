@@ -1,7 +1,7 @@
 import uuid
-from typing import Optional, Any
+import re
 
-from qtpy import QtWidgets, QtGui, QtCore
+from qtpy import QtWidgets, QtGui
 import qtawesome
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
@@ -12,29 +12,9 @@ from ayon_core.tools.utils.widgets import (
     OptionDialog,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.loader.abstract import ActionItem
 
 
-def _actions_sorter(item: tuple[ActionItem, str, str]):
-    """Sort the Loaders by their order and then their name.
-
-    Returns:
-        tuple[int, str]: Sort keys.
-
-    """
-    action_item, group_label, label = item
-    if group_label is None:
-        group_label = label
-        label = ""
-    return action_item.order, group_label, label
-
-
-def show_actions_menu(
-    action_items: list[ActionItem],
-    global_point: QtCore.QPoint,
-    one_item_selected: bool,
-    parent: QtWidgets.QWidget,
-) -> tuple[Optional[ActionItem], Optional[dict[str, Any]]]:
+def show_actions_menu(action_items, global_point, one_item_selected, parent):
     selected_action_item = None
     selected_options = None
 
@@ -47,50 +27,74 @@ def show_actions_menu(
 
     menu = OptionalMenu(parent)
 
-    action_items_with_labels = []
-    for action_item in action_items:
-        action_items_with_labels.append(
-            (action_item, action_item.group_label, action_item.label)
-        )
+    # Group representation-based actions by their loader label so we can
+    # display a submenu with the representations instead of duplicating the
+    # loader entry for each representation.
+    # We rely on the current label convention "<Loader Label> (<repre>)" to
+    # extract the representation name from the label. Non-representation
+    # actions stay flat in the root menu.
+    label_re = re.compile(r"^(.+?)\s\(([^()]+)\)$")
 
-    group_menu_by_label = {}
+    grouped: dict[str, list[tuple[str, object]]] = {}
+    flat_items = []
+    for ai in action_items:
+        # Consider it representation-based when it has representation ids and
+        # the label contains a trailing " (name)".
+        if getattr(ai, "representation_ids", None):
+            m = label_re.match(ai.label)
+            if m:
+                base_label = m.group(1)
+                repre_label = m.group(2)
+                grouped.setdefault(base_label, []).append((repre_label, ai))
+                continue
+        flat_items.append(ai)
+
     action_items_by_id = {}
-    for item in sorted(action_items_with_labels, key=_actions_sorter):
-        action_item, _, _ = item
+
+    def _add_qaction_for_item(qmenu, item_label, ai):
         item_id = uuid.uuid4().hex
-        action_items_by_id[item_id] = action_item
-        item_options = action_item.options
-        icon = get_qt_icon(action_item.icon)
+        action_items_by_id[item_id] = ai
+        item_options = ai.options
+        icon = get_qt_icon(ai.icon)
         use_option = bool(item_options)
         action = OptionalAction(
-            action_item.label,
+            item_label,
             icon,
             use_option,
-            menu
+            qmenu
         )
         if use_option:
-            # Add option box tip
             action.set_option_tip(item_options)
-
-        tip = action_item.tooltip
+        tip = ai.tooltip
         if tip:
             action.setToolTip(tip)
             action.setStatusTip(tip)
-
         action.setData(item_id)
+        qmenu.addAction(action)
 
-        group_label = action_item.group_label
-        if group_label:
-            group_menu = group_menu_by_label.get(group_label)
-            if group_menu is None:
-                group_menu = OptionalMenu(group_label, menu)
-                if icon is not None:
-                    group_menu.setIcon(icon)
-                menu.addMenu(group_menu)
-                group_menu_by_label[group_label] = group_menu
-            group_menu.addAction(action)
-        else:
-            menu.addAction(action)
+    # Add flat actions first
+    for ai in flat_items:
+        _add_qaction_for_item(menu, ai.label, ai)
+
+    # Add grouped actions. If only a single representation exists for a
+    # loader, keep it flat for compactness; otherwise create submenu.
+    for base_label, items in grouped.items():
+        if len(items) == 1:
+            # Single representation - show as a single flat action with the
+            # existing label to avoid unnecessary submenu nesting.
+            repre_label, ai = items[0]
+            _add_qaction_for_item(menu, f"{base_label} ({repre_label})", ai)
+            continue
+
+        sub = OptionalMenu(menu)
+        sub.setTitle(base_label)
+        # Use the icon from the first item for the submenu title
+        sub_icon = get_qt_icon(items[0][1].icon)
+        if sub_icon is not None:
+            sub.setIcon(sub_icon)
+        for repre_label, ai in sorted(items, key=lambda t: t[0].lower()):
+            _add_qaction_for_item(sub, repre_label, ai)
+        menu.addMenu(sub)
 
     action = menu.exec_(global_point)
     if action is not None:

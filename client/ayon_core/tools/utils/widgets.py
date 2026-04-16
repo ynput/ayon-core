@@ -111,7 +111,6 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
     """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setMaxLength(2147483647)
         # Change placeholder palette color
         if hasattr(QtGui.QPalette, "PlaceholderText"):
             filter_palette = self.palette()
@@ -419,7 +418,7 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
     """QTextEdit which does not have sroll area but expands height."""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super(ExpandingTextEdit, self).__init__(parent)
 
         size_policy = self.sizePolicy()
         size_policy.setHeightForWidth(True)
@@ -442,18 +441,14 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
         margins = self.contentsMargins()
 
         document_width = 0
-        margins_size = margins.left() + margins.right()
-        if width >= margins_size:
-            document_width = width - margins_size
+        if width >= margins.left() + margins.right():
+            document_width = width - margins.left() - margins.right()
 
         document = self.document().clone()
         document.setTextWidth(document_width)
 
         return math.ceil(
-            margins.top()
-            + document.size().height()
-            + margins.bottom()
-            + 2
+            margins.top() + document.size().height() + margins.bottom()
         )
 
     def sizeHint(self):
@@ -866,26 +861,28 @@ class OptionalMenu(QtWidgets.QMenu):
     def mouseReleaseEvent(self, event):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())
-        if isinstance(active, OptionalAction) and active.use_option:
+        # Guard: Only our OptionalAction has 'use_option' and 'widget'
+        if active is not None and isinstance(active, OptionalAction) and active.use_option:
             option = active.widget.option
             if option.is_hovered(event.globalPos()):
                 option.clicked.emit()
-        super().mouseReleaseEvent(event)
+        super(OptionalMenu, self).mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         """Add highlight to active action"""
         active = self.actionAt(event.pos())
         for action in self.actions():
+            # Only OptionalAction supports highlighting API
             if isinstance(action, OptionalAction):
                 action.set_highlight(action is active, event.globalPos())
-        super().mouseMoveEvent(event)
+        super(OptionalMenu, self).mouseMoveEvent(event)
 
     def leaveEvent(self, event):
         """Remove highlight from all actions"""
         for action in self.actions():
             if isinstance(action, OptionalAction):
                 action.set_highlight(False)
-        super().leaveEvent(event)
+        super(OptionalMenu, self).leaveEvent(event)
 
 
 class OptionalAction(QtWidgets.QWidgetAction):
@@ -897,7 +894,7 @@ class OptionalAction(QtWidgets.QWidgetAction):
     """
 
     def __init__(self, label, icon, use_option, parent):
-        super().__init__(parent)
+        super(OptionalAction, self).__init__(parent)
         self.label = label
         self.icon = icon
         self.use_option = use_option
@@ -958,7 +955,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
     """Main widget class for `OptionalAction`"""
 
     def __init__(self, label, parent=None):
-        super().__init__(parent)
+        super(OptionalActionWidget, self).__init__(parent)
 
         body_widget = QtWidgets.QWidget(self)
         body_widget.setObjectName("OptionalActionBody")
