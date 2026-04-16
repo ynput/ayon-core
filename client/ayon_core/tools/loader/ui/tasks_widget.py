@@ -5,6 +5,7 @@ from typing import Optional
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.settings import get_project_settings
 from ayon_core.tools.utils import (
     DeselectableTreeView,
     TasksQtModel,
@@ -14,6 +15,7 @@ from ayon_core.tools.utils.tasks_widget import (
     ITEM_ID_ROLE,
     ITEM_NAME_ROLE,
     PARENT_ID_ROLE,
+    TASK_SORT_ROLE,
     TASK_TYPE_ROLE,
     TasksProxyModel,
 )
@@ -84,6 +86,22 @@ class LoaderTasksQtModel(TasksQtModel):
         self._is_refreshing = True
         self._last_project_name = project_name
         self._last_folder_ids = folder_ids
+        try:
+            if project_name:
+                settings = get_project_settings(project_name)
+                tools_settings = settings.get("core", {}).get("tools", {})
+                display_settings = tools_settings.get("display", {})
+                if "task_display_order" in display_settings:
+                    self._task_display_order = display_settings.get(
+                        "task_display_order", "anatomy"
+                    )
+                else:
+                    menu_settings = tools_settings.get("ayon_menu", {})
+                    self._task_display_order = menu_settings.get(
+                        "task_display_order", "anatomy"
+                    )
+        except Exception:
+            self._task_display_order = "anatomy"
         if not folder_ids:
             self._add_invalid_selection_item()
             self._current_refresh_thread = None
@@ -174,10 +192,15 @@ class LoaderTasksQtModel(TasksQtModel):
             return
         self._remove_invalid_items()
 
-        task_type_item_by_name = {
-            task_type_item.name: task_type_item
-            for task_type_item in task_type_items
-        }
+        task_type_item_by_name = {}
+        task_type_order_by_name = {}
+        for index, task_type_item in enumerate(task_type_items):
+            task_type_item_by_name[task_type_item.name] = task_type_item
+            task_type_order_by_name[task_type_item.name] = index
+            short = getattr(task_type_item, "short", None) or ""
+            if short and short != task_type_item.name:
+                task_type_item_by_name.setdefault(short, task_type_item)
+                task_type_order_by_name.setdefault(short, index)
         task_type_icon_cache = {}
         current_ids = set()
         items_by_name = collections.defaultdict(list)
@@ -204,6 +227,12 @@ class LoaderTasksQtModel(TasksQtModel):
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
+            sort_value = None
+            if self._task_display_order == "alphabetical":
+                sort_value = task_item.full_label.lower()
+            else:
+                sort_value = task_type_order_by_name.get(task_item.task_type)
+            item.setData(sort_value, TASK_SORT_ROLE)
             item.setData(folder_id, PARENT_ID_ROLE)
             item.setData(folder_label, FOLDER_LABEL_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
