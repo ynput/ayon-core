@@ -111,6 +111,10 @@ class Logger:
     initialized = False
     _init_lock = threading.Lock()
 
+    # Debug file log (AYON_DEBUG); shared handler attached per logger
+    _debug_file_handler = None
+    _debug_file_handler_lock = threading.Lock()
+
     # Logging level - AYON_LOG_LEVEL
     log_level = None
 
@@ -136,6 +140,13 @@ class Logger:
 
         if add_console_handler:
             logger.addHandler(cls._get_console_handler())
+
+        cls._ensure_debug_file_handler()
+        if cls._debug_file_handler is not None:
+            if cls._debug_file_handler not in logger.handlers:
+                with cls._debug_file_handler_lock:
+                    if cls._debug_file_handler not in logger.handlers:
+                        logger.addHandler(cls._debug_file_handler)
 
         # Do not propagate logs to root logger
         logger.propagate = False
@@ -178,6 +189,8 @@ class Logger:
             else:
                 log_level = 20
         cls.log_level = int(log_level)
+
+        cls._ensure_debug_file_handler()
 
         # Mark as initialized
         cls.initialized = True
@@ -247,3 +260,18 @@ class Logger:
 
         cls._process_name = process_name
         return cls._process_name
+
+    @classmethod
+    def _ensure_debug_file_handler(cls):
+        """Install shared file handler when AYON_DEBUG is enabled (Harmony parity)."""
+        op_debug = os.getenv("AYON_DEBUG")
+        if not op_debug or int(op_debug) <= 0:
+            return
+        if cls._debug_file_handler is not None:
+            return
+        with cls._debug_file_handler_lock:
+            if cls._debug_file_handler is not None:
+                return
+            from .file_log_handlers import build_ayon_core_debug_file_handler
+
+            cls._debug_file_handler = build_ayon_core_debug_file_handler()
