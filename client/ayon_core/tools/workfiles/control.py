@@ -91,10 +91,7 @@ class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
         return data
 
     def is_expected_workfile_selected(self, workfile_name):
-        return (
-            workfile_name == self._workfile_name
-            and self._workfile_selected
-        )
+        return workfile_name == self._workfile_name and self._workfile_selected
 
     def is_expected_representation_selected(self, representation_id):
         return (
@@ -217,7 +214,8 @@ class BaseWorkfileController(
     def project_settings(self):
         if self._project_settings is None:
             self._project_settings = get_project_settings(
-                self.get_current_project_name())
+                self.get_current_project_name()
+            )
         return self._project_settings
 
     @property
@@ -227,26 +225,19 @@ class BaseWorkfileController(
         return self._project_anatomy
 
     def get_project_entity(self, project_name):
-        return self._projects_model.get_project_entity(
-            project_name)
+        return self._projects_model.get_project_entity(project_name)
 
     def get_folder_type_items(self, project_name, sender=None):
-        return self._projects_model.get_folder_type_items(
-            project_name, sender
-        )
+        return self._projects_model.get_folder_type_items(project_name, sender)
 
     def get_task_type_items(self, project_name, sender=None):
-        return self._projects_model.get_task_type_items(
-            project_name, sender
-        )
+        return self._projects_model.get_task_type_items(project_name, sender)
 
     def get_folder_entity(self, project_name, folder_id):
-        return self._hierarchy_model.get_folder_entity(
-            project_name, folder_id)
+        return self._hierarchy_model.get_folder_entity(project_name, folder_id)
 
     def get_task_entity(self, project_name, task_id):
-        return self._hierarchy_model.get_task_entity(
-            project_name, task_id)
+        return self._hierarchy_model.get_task_entity(project_name, task_id)
 
     # ---------------------------------
     # Implementation of abstract methods
@@ -281,10 +272,7 @@ class BaseWorkfileController(
             return
 
         self._save_is_enabled = enabled
-        self._emit_event(
-            "workfile_save_enable.changed",
-            {"enabled": enabled}
-        )
+        self._emit_event("workfile_save_enable.changed", {"enabled": enabled})
 
     def get_user_items_by_name(self):
         project_name = self.get_current_project_name()
@@ -343,22 +331,17 @@ class BaseWorkfileController(
         return self._selection_model.get_selected_representation_id()
 
     def set_selected_representation_id(self, representation_id):
-        self._selection_model.set_selected_representation_id(
-            representation_id)
+        self._selection_model.set_selected_representation_id(representation_id)
 
     def set_expected_selection(
-        self,
-        folder_id,
-        task_name,
-        workfile_name=None,
-        representation_id=None
+        self, folder_id, task_name, workfile_name=None, representation_id=None
     ):
         self._expected_selection.set_expected_selection(
             self.get_current_project_name(),
             folder_id,
             task_name,
             workfile_name,
-            representation_id
+            representation_id,
         )
         self._trigger_expected_selection_changed()
 
@@ -404,7 +387,7 @@ class BaseWorkfileController(
         )
 
     def get_task_ids_with_workfiles(self, project_name: str, folder_id: str):
-        """Task ids in folder that have at least one workfile (for tasks widget grey styling)."""
+        """Task ids in folder that have at least one workfile."""
         task_items = self._hierarchy_model.get_task_items(
             project_name, folder_id, sender=None
         )
@@ -418,7 +401,8 @@ class BaseWorkfileController(
 
     def get_workarea_dir_by_context(self, folder_id, task_id):
         return self._workfiles_model.get_workarea_dir_by_context(
-            folder_id, task_id)
+            folder_id, task_id
+        )
 
     def get_workarea_file_items(self, folder_id, task_name, sender=None):
         task_id = self._get_task_id(folder_id, task_name)
@@ -428,7 +412,8 @@ class BaseWorkfileController(
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         return self._workfiles_model.get_workarea_save_as_data(
-            folder_id, task_id)
+            folder_id, task_id
+        )
 
     def fill_workarea_filepath(
         self,
@@ -606,7 +591,7 @@ class BaseWorkfileController(
         filename,
         version,
         comment,
-        description
+        description,
     ):
         self._workfiles_model.duplicate_workfile(
             folder_id,
@@ -639,10 +624,7 @@ class BaseWorkfileController(
 
     def _get_task_id(self, folder_id, task_name, sender=None):
         task_item = self._hierarchy_model.get_task_item_by_name(
-            self.get_current_project_name(),
-            folder_id,
-            task_name,
-            sender
+            self.get_current_project_name(), folder_id, task_name, sender
         )
         if not task_item:
             return None

@@ -59,11 +59,7 @@ def get_action_icon(action):
 
     icon = action.icon
     if not icon:
-        return {
-            "type": "awesome-font",
-            "name": "fa.cube",
-            "color": "white"
-        }
+        return {"type": "awesome-font", "name": "fa.cube", "color": "white"}
 
     if isinstance(icon, dict):
         return icon
@@ -84,7 +80,7 @@ def get_action_icon(action):
     return {
         "type": "awesome-font",
         "name": icon,
-        "color": action.color or "white"
+        "color": action.color or "white",
     }
 
 
@@ -104,7 +100,9 @@ class ActionsModel:
         self._actions = None
         self._action_items = {}
         self._webaction_items = NestedCacheItem(
-            levels=2, default_factory=list, lifetime=20,
+            levels=2,
+            default_factory=list,
+            lifetime=20,
         )
         self._last_triggered_action_by_host = {}
 
@@ -165,7 +163,7 @@ class ActionsModel:
         return output
 
     def get_launch_action_ids_for_host(self, host_name: str) -> list[str]:
-        """Action identifiers that launch the given host (applications addon sets host_name)."""
+        """Return action ids that launch the given host."""
         ids = [
             identifier
             for identifier, action in self._get_action_objects().items()
@@ -177,25 +175,30 @@ class ActionsModel:
         fallback_ids = [
             identifier
             for identifier in self._get_action_objects()
-            if identifier == host_name or identifier.startswith(host_name + "/")
+            if identifier == host_name
+            or identifier.startswith(host_name + "/")
         ]
         if fallback_ids:
             self.log.debug(
-                "get_launch_action_ids_for_host: host_name=%r matched by identifier, ids=%s",
+                "get_launch_action_ids_for_host: host_name=%r "
+                "matched by identifier, ids=%s",
                 host_name,
                 fallback_ids,
             )
         else:
             all_ids = list(self._get_action_objects().keys())
             self.log.debug(
-                "get_launch_action_ids_for_host: host_name=%r no match. known identifiers=%s",
+                "get_launch_action_ids_for_host: host_name=%r "
+                "no match. known identifiers=%s",
                 host_name,
                 all_ids,
             )
         return fallback_ids
 
-    def get_preferred_launch_action_id_for_host(self, host_name: str) -> Optional[str]:
-        """Single action id for host, or last-triggered in session, or first available."""
+    def get_preferred_launch_action_id_for_host(
+        self, host_name: str
+    ) -> Optional[str]:
+        """Preferred launch id (session last or first match)."""
         ids = self.get_launch_action_ids_for_host(host_name)
         if not ids:
             return None
@@ -233,7 +236,7 @@ class ActionsModel:
                     "trigger_id": trigger_id,
                     "identifier": identifier,
                     "full_label": action_label,
-                }
+                },
             )
 
             action.process(selection)
@@ -250,7 +253,7 @@ class ActionsModel:
                 "failed": failed,
                 "error_message": error_message,
                 "full_label": action_label,
-            }
+            },
         )
         action_obj = self._actions.get(identifier)
         if action_obj is not None:
@@ -258,14 +261,19 @@ class ActionsModel:
             if host_name:
                 self._last_triggered_action_by_host[host_name] = identifier
 
-    def _trigger_launch_by_host(self, host_name: str, selection: LauncherActionSelection) -> None:
-        """Launch via applications addon when identifier is a host name with no launcher action."""
-        applications_addon = self._controller.get_addons_manager().get_enabled_addon(
-            "applications"
+    def _trigger_launch_by_host(
+        self, host_name: str, selection: LauncherActionSelection
+    ) -> None:
+        """Launch bare host name via applications addon."""
+        applications_addon = (
+            self._controller.get_addons_manager().get_enabled_addon(
+                "applications"
+            )
         )
         if not applications_addon:
             self.log.debug(
-                "trigger_action(host): host_name=%r, applications addon not enabled",
+                "trigger_action(host): host_name=%r, "
+                "applications addon not enabled",
                 host_name,
             )
             trigger_id = uuid.uuid4().hex
@@ -284,7 +292,8 @@ class ActionsModel:
         app = apps_manager.find_latest_available_variant_for_group(host_name)
         if not app:
             self.log.debug(
-                "trigger_action(host): host_name=%r no application variant found",
+                "trigger_action(host): host_name=%r "
+                "no application variant found",
                 host_name,
             )
             trigger_id = uuid.uuid4().hex
@@ -331,7 +340,9 @@ class ActionsModel:
             folder_path = ""
             task_name = ""
             if folder_id and task_id:
-                folder_entity = controller.get_folder_entity(project_name, folder_id)
+                folder_entity = controller.get_folder_entity(
+                    project_name, folder_id
+                )
                 task_entity = controller.get_task_entity(project_name, task_id)
                 if folder_entity and task_entity:
                     folder_path = folder_entity.get("path") or ""
@@ -340,15 +351,20 @@ class ActionsModel:
             if workfile_id:
                 try:
                     from ayon_core.pipeline import Anatomy
+
                     workfile_entity = ayon_api.get_workfile_info_by_id(
                         project_name, workfile_id
                     )
                     if workfile_entity and workfile_entity.get("path"):
                         anatomy = Anatomy(
                             project_name,
-                            project_entity=controller.get_project_entity(project_name),
+                            project_entity=controller.get_project_entity(
+                                project_name
+                            ),
                         )
-                        workfile_path = anatomy.fill_root(workfile_entity["path"])
+                        workfile_path = anatomy.fill_root(
+                            workfile_entity["path"]
+                        )
                 except Exception:
                     pass
             failed = False
@@ -433,7 +449,7 @@ class ActionsModel:
                     "trigger_id": trigger_id,
                     "identifier": identifier,
                     "full_label": action_label,
-                }
+                },
             )
 
             conn = ayon_api.get_server_api_connection()
@@ -460,18 +476,20 @@ class ActionsModel:
             )
 
         data = asdict(handle_response)
-        data.update({
-            "trigger_failed": failed,
-            "trigger_id": trigger_id,
-            "identifier": identifier,
-            "full_label": action_label,
-            "project_name": project_name,
-            "folder_id": folder_id,
-            "task_id": task_id,
-            "workfile_id": workfile_id,
-            "addon_name": addon_name,
-            "addon_version": addon_version,
-        })
+        data.update(
+            {
+                "trigger_failed": failed,
+                "trigger_id": trigger_id,
+                "identifier": identifier,
+                "full_label": action_label,
+                "project_name": project_name,
+                "folder_id": folder_id,
+                "task_id": task_id,
+                "workfile_id": workfile_id,
+                "addon_name": addon_name,
+                "addon_version": addon_version,
+            }
+        )
         self._controller.emit_event(
             "webaction.trigger.finished",
             data,
@@ -501,8 +519,7 @@ class ActionsModel:
             response.raise_for_status()
         except Exception:
             self.log.warning(
-                "Failed to collect webaction config values.",
-                exc_info=True
+                "Failed to collect webaction config values.", exc_info=True
             )
             return {}
         return response.data
@@ -532,8 +549,7 @@ class ActionsModel:
             response.raise_for_status()
         except Exception:
             self.log.warning(
-                "Failed to store webaction config values.",
-                exc_info=True
+                "Failed to store webaction config values.", exc_info=True
             )
 
     def _prepare_selection(
@@ -607,9 +623,7 @@ class ActionsModel:
         try:
             # 'variant' query is supported since AYON backend 1.10.4
             query = urlencode({"variant": self._variant, "mode": "all"})
-            response = ayon_api.post(
-                f"actions/list?{query}", **request_data
-            )
+            response = ayon_api.post(f"actions/list?{query}", **request_data)
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
@@ -631,22 +645,22 @@ class ActionsModel:
                 group_label = variant_label
                 variant_label = None
 
-            full_label = self.calculate_full_label(
-                group_label, variant_label
+            full_label = self.calculate_full_label(group_label, variant_label)
+            action_items.append(
+                ActionItem(
+                    action_type="webaction",
+                    identifier=action["identifier"],
+                    order=action["order"],
+                    label=group_label,
+                    variant_label=variant_label,
+                    full_label=full_label,
+                    icon=icon,
+                    addon_name=action["addonName"],
+                    addon_version=action["addonVersion"],
+                    config_fields=config_fields,
+                    # category=action["category"],
+                )
             )
-            action_items.append(ActionItem(
-                action_type="webaction",
-                identifier=action["identifier"],
-                order=action["order"],
-                label=group_label,
-                variant_label=variant_label,
-                full_label=full_label,
-                icon=icon,
-                addon_name=action["addonName"],
-                addon_version=action["addonVersion"],
-                config_fields=config_fields,
-                # category=action["category"],
-            ))
 
         cache.update_data(action_items)
         return cache.get_data()
@@ -754,9 +768,7 @@ class ActionsModel:
             for path in actions_paths:
                 if path and os.path.exists(path):
                     register_launcher_action_path(path)
-            self._discovered_actions = (
-                discover_launcher_actions()
-            )
+            self._discovered_actions = discover_launcher_actions()
         return self._discovered_actions
 
     def _get_action_objects(self):
@@ -791,9 +803,7 @@ class ActionsModel:
 
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
-            full_label = self.calculate_full_label(
-                label, variant_label
-            )
+            full_label = self.calculate_full_label(label, variant_label)
             icon = get_action_icon(action)
 
             item = ActionItem(

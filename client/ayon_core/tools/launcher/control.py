@@ -1,7 +1,7 @@
 from typing import Optional
 
 from ayon_api import get_workfiles_info
-from ayon_core.lib import Logger, get_ayon_username
+from ayon_core.lib import Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
@@ -78,11 +78,11 @@ class BaseLauncherController(
         self.event_system.add_callback(topic, callback)
 
     def set_run_on_main_thread(self, executor):
-        """Set callable(fn) that runs fn on the main UI thread (e.g. QTimer.singleShot(0, fn))."""
+        """Set executor(fn) to run ``fn`` on the main UI thread."""
         self._run_on_main_thread = executor
 
     def run_on_main_thread(self, fn):
-        """Run fn on the main thread. If set_run_on_main_thread was used, defers; otherwise runs now."""
+        """Run ``fn`` on the main thread (defer if executor set)."""
         if getattr(self, "_run_on_main_thread", None):
             self._run_on_main_thread(fn)
         else:
@@ -116,7 +116,7 @@ class BaseLauncherController(
         )
 
     def get_task_ids_with_workfiles(self, project_name: str, folder_id: str):
-        """Task ids in folder that have at least one workfile (for launcher UI)."""
+        """Task ids in folder that have at least one workfile."""
         task_items = self._hierarchy_model.get_task_items(
             project_name, folder_id, sender=None
         )
@@ -206,7 +206,11 @@ class BaseLauncherController(
         return self._actions_model.get_launch_action_ids_for_host(host_name)
 
     def get_preferred_launch_action_id_for_host(self, host_name: str):
-        return self._actions_model.get_preferred_launch_action_id_for_host(host_name)
+        return (
+            self._actions_model.get_preferred_launch_action_id_for_host(
+                host_name
+            )
+        )
 
     def trigger_action(
         self,
@@ -224,8 +228,10 @@ class BaseLauncherController(
             workfile_id,
         )
 
-    def open_workfile_with_app(self, workfile_id: str, host_name: Optional[str]) -> None:
-        """Launch preferred app for host with this workfile selected (e.g. from double-click)."""
+    def open_workfile_with_app(
+        self, workfile_id: str, host_name: Optional[str]
+    ) -> None:
+        """Launch preferred app for host with this workfile selected."""
         from ayon_api import get_server_api_connection
         project_name = self.get_selected_project_name()
         if not project_name:
@@ -240,7 +246,10 @@ class BaseLauncherController(
             host_name = (entity.get("data") or {}).get("host_name")
         if not host_name:
             return
-        effective_id = self.get_preferred_launch_action_id_for_host(host_name) or host_name
+        effective_id = (
+            self.get_preferred_launch_action_id_for_host(host_name)
+            or host_name
+        )
         self.trigger_action(
             effective_id,
             project_name,

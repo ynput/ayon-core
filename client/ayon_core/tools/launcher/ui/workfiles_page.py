@@ -57,7 +57,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
-            item.setData(getattr(workfile_item, "host_name", None), HOST_NAME_ROLE)
+            item.setData(
+                getattr(workfile_item, "host_name", None), HOST_NAME_ROLE
+            )
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -99,9 +101,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
     def _get_transparent_icon(self) -> QtGui.QIcon:
         if self._transparent_icon is None:
-            self._transparent_icon = get_qt_icon({
-                "type": "transparent", "size": 256
-            })
+            self._transparent_icon = get_qt_icon(
+                {"type": "transparent", "size": 256}
+            )
         return self._transparent_icon
 
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
@@ -115,7 +117,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if icon_url.startswith(base_url):
             icon_def = {
                 "type": "ayon_url",
-                "url": icon_url[len(base_url) + 1:],
+                "url": icon_url[len(base_url) + 1 :],
             }
         else:
             icon_def = {
@@ -198,7 +200,9 @@ class WorkfilesPage(QtWidgets.QWidget):
             return
         workfile_id = source_index.data(WORKFILE_ID_ROLE)
         host_name = source_index.data(HOST_NAME_ROLE)
-        if workfile_id is None or not (source_index.flags() & QtCore.Qt.ItemIsEnabled):
+        if workfile_id is None or not (
+            source_index.flags() & QtCore.Qt.ItemIsEnabled
+        ):
             return
         now = time.monotonic()
         if (
