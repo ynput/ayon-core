@@ -591,6 +591,9 @@ class PublisherController(
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
 
+    def get_publish_timing_data(self):
+        return self._publish_model.get_publish_timing_data()
+
     def get_publish_errors_report(self):
         return self._publish_model.get_publish_errors_report()
 

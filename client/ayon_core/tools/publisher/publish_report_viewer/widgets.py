@@ -1,8 +1,5 @@
-from __future__ import annotations
-
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
-from typing import Union
 
 from ayon_core.tools.utils import (
     NiceCheckbox,
@@ -10,28 +7,26 @@ from ayon_core.tools.utils import (
     SeparatorWidget,
     IconButton,
     paint_image_with_color,
-    get_qt_icon,
 )
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
 
 # from ayon_core.tools.utils import DeselectableTreeView
-from .constants import (
-    ITEM_ID_ROLE,
-    ITEM_IS_GROUP_ROLE
-)
+from .constants import ITEM_ID_ROLE, ITEM_IS_GROUP_ROLE
 from .delegates import GroupItemDelegate
 from .model import (
     InstancesModel,
     InstanceProxyModel,
     PluginsModel,
-    PluginProxyModel
+    PluginProxyModel,
 )
 from .report_items import PublishReport
 
 FILEPATH_ROLE = QtCore.Qt.UserRole + 1
 TRACEBACK_ROLE = QtCore.Qt.UserRole + 2
 IS_DETAIL_ITEM_ROLE = QtCore.Qt.UserRole + 3
+ORDER_ROLE = QtCore.Qt.UserRole + 10
+TIME_MS_ROLE = QtCore.Qt.UserRole + 11
 
 
 def get_pretty_milliseconds(value):
@@ -49,14 +44,40 @@ def get_pretty_milliseconds(value):
     return f"{value:.2f}h {minutes:.2f}m"
 
 
-class PluginLoadReportModel(QtGui.QStandardItemModel):
-    _blocking_icon = None
+def format_publish_time(seconds):
+    """Format time in seconds to clean human-readable string.
 
+    Args:
+        seconds (float): Time in seconds
+
+    Returns:
+        str: Formatted time string (e.g., "2m 48s", "45s", "250ms", "0.5ms")
+    """
+    if seconds < 1:
+        milliseconds = seconds * 1000
+        if milliseconds < 1:
+            return f"{milliseconds:.2f}ms"
+        return f"{milliseconds:.0f}ms"
+
+    if seconds < 60:
+        return f"{seconds:.2f}s"
+
+    minutes = int(seconds // 60)
+    remaining_seconds = int(seconds % 60)
+
+    if minutes < 60:
+        return f"{minutes}m {remaining_seconds}s"
+
+    hours = int(minutes // 60)
+    remaining_minutes = int(minutes % 60)
+    return f"{hours}h {remaining_minutes}m"
+
+
+class PluginLoadReportModel(QtGui.QStandardItemModel):
     def __init__(self):
         super().__init__()
         self._traceback_by_filepath = {}
         self._items_by_filepath = {}
-        self._blocking_crashed_paths = set()
         self._is_active = True
         self._need_refresh = False
 
@@ -82,7 +103,6 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
 
         for filepath in to_remove:
             self._traceback_by_filepath.pop(filepath)
-        self._blocking_crashed_paths = set(report.blocking_crashed_paths)
         self._update_items()
 
     def _update_items(self):
@@ -91,27 +111,20 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         parent = self.invisibleRootItem()
         if not self._traceback_by_filepath:
             parent.removeRows(0, parent.rowCount())
-            self._items_by_filepath = {}
             return
 
         new_items = []
         new_items_by_filepath = {}
-        to_remove = (
-            set(self._items_by_filepath) - set(self._traceback_by_filepath)
+        to_remove = set(self._items_by_filepath) - set(
+            self._traceback_by_filepath
         )
         for filepath in self._traceback_by_filepath:
-            item = self._items_by_filepath.get(filepath)
-            if item is None:
-                item = QtGui.QStandardItem(filepath)
-                new_items.append(item)
-                new_items_by_filepath[filepath] = item
-                self._items_by_filepath[filepath] = item
-
-            icon = None
-            if filepath.replace("\\", "/") in self._blocking_crashed_paths:
-                icon = self._get_blocking_icon()
-
-            item.setData(icon, QtCore.Qt.DecorationRole)
+            if filepath in self._items_by_filepath:
+                continue
+            item = QtGui.QStandardItem(filepath)
+            new_items.append(item)
+            new_items_by_filepath[filepath] = item
+            self._items_by_filepath[filepath] = item
 
         if new_items:
             parent.appendRows(new_items)
@@ -128,16 +141,6 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
             item = self._items_by_filepath.pop(filepath)
             parent.removeRow(item.row())
 
-    @classmethod
-    def _get_blocking_icon(cls):
-        if cls._blocking_icon is None:
-            cls._blocking_icon = get_qt_icon({
-                    "type": "material-symbols",
-                    "name": "block",
-                    "color": "red",
-                })
-        return cls._blocking_icon
-
 
 class DetailWidget(QtWidgets.QTextEdit):
     def __init__(self, text, *args, **kwargs):
@@ -146,14 +149,11 @@ class DetailWidget(QtWidgets.QTextEdit):
         self.setReadOnly(True)
         self.setHtml(text)
         self.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
-        self.setWordWrapMode(
-            QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere
-        )
+        self.setWordWrapMode(QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere)
 
     def sizeHint(self):
         content_margins = (
-            self.contentsMargins().top()
-            + self.contentsMargins().bottom()
+            self.contentsMargins().top() + self.contentsMargins().bottom()
         )
         size = self.document().documentLayout().documentSize().toSize()
         size.setHeight(size.height() + content_margins)
@@ -224,10 +224,7 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
 
         traceback_txt = index.data(TRACEBACK_ROLE)
         detail_text = (
-            "<b>Filepath:</b><br/>"
-            "{}<br/><br/>"
-            "<b>Traceback:</b><br/>"
-            "{}"
+            "<b>Filepath:</b><br/>{}<br/><br/><b>Traceback:</b><br/>{}"
         ).format(filepath, traceback_txt.replace("\n", "<br/>"))
         widget = DetailWidget(detail_text, self)
         self._view.setIndexWidget(index, widget)
@@ -263,7 +260,7 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
         degrees = float(delta) / 8
         steps = int(ceil(degrees / 5))
         self._scheduled_scalings += steps
-        if (self._scheduled_scalings * steps < 0):
+        if self._scheduled_scalings * steps < 0:
             self._scheduled_scalings = steps
 
         self._anim_timer.start()
@@ -298,9 +295,8 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
         #   are applied on this widget
         self.setStyleSheet("font-size: {}pt".format(font.pointSize()))
 
-        if (
-            (max_hit and self._scheduled_scalings > 0)
-            or (min_hit and self._scheduled_scalings < 0)
+        if (max_hit and self._scheduled_scalings > 0) or (
+            min_hit and self._scheduled_scalings < 0
         ):
             self._scheduled_scalings = 0
 
@@ -533,7 +529,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         empty_label = QtWidgets.QLabel(
             "<br/><br/>Select plugins to view more information...",
-            scroll_content_widget
+            scroll_content_widget,
         )
         empty_label.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -684,15 +680,279 @@ class DetailsPopup(QtWidgets.QDialog):
         layout.insertWidget(0, self._center_widget)
         if self._first_show:
             self._first_show = False
-            self.resize(
-                max(cw_size.width(), 700),
-                max(cw_size.height(), 400)
-            )
+            self.resize(max(cw_size.width(), 700), max(cw_size.height(), 400))
         super().showEvent(event)
 
     def closeEvent(self, event):
         super().closeEvent(event)
         self.closed.emit()
+
+
+class SortableTimingTreeItem(QtWidgets.QTreeWidgetItem):
+    """Custom tree item with numeric sorting for timing columns."""
+
+    def __lt__(self, other):
+        if not isinstance(other, QtWidgets.QTreeWidgetItem):
+            return False
+
+        tree = self.treeWidget()
+        if tree is None:
+            return False
+
+        try:
+            column = tree.sortColumn()
+        except (RuntimeError, AttributeError):
+            return False
+
+        # Sort by numeric value for Order column (0)
+        if column == 0:
+            try:
+                self_order = self.data(0, ORDER_ROLE)
+                other_order = other.data(0, ORDER_ROLE)
+                if self_order is not None and other_order is not None:
+                    return self_order < other_order
+            except (RuntimeError, AttributeError, TypeError):
+                pass
+            return False
+
+        # Sort by numeric value for Time column (2)
+        elif column == 2:
+            try:
+                self_time = self.data(2, TIME_MS_ROLE)
+                other_time = other.data(2, TIME_MS_ROLE)
+
+                if self_time is None:
+                    self_time = 0
+                if other_time is None:
+                    other_time = 0
+
+                return self_time < other_time
+            except (RuntimeError, AttributeError, TypeError):
+                pass
+            return False
+
+        # Sort by numeric value for Instances column (3)
+        elif column == 3:
+            try:
+                self_inst = self.data(3, ORDER_ROLE)
+                other_inst = other.data(3, ORDER_ROLE)
+                if self_inst is not None and other_inst is not None:
+                    return self_inst < other_inst
+            except (RuntimeError, AttributeError, TypeError):
+                pass
+            return False
+
+        # Default: sort by text in column 1 (Plugin name)
+        try:
+            return self.text(column) < other.text(column)
+        except (RuntimeError, AttributeError, TypeError):
+            return False
+
+
+class TimingOverviewWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        scroll_area = QtWidgets.QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setObjectName("PublishDetailViews")
+
+        content_widget = QtWidgets.QWidget(scroll_area)
+
+        total_time_label = QtWidgets.QLabel(
+            "Total Publish Time:", content_widget
+        )
+        total_time_label.setObjectName("TimingOverviewLabel")
+        total_time_value = QtWidgets.QLabel("", content_widget)
+        total_time_value.setObjectName("TimingOverviewValue")
+
+        plugin_count_label = QtWidgets.QLabel(
+            "Plugins Processed:", content_widget
+        )
+        plugin_count_label.setObjectName("TimingOverviewLabel")
+        plugin_count_value = QtWidgets.QLabel("", content_widget)
+        plugin_count_value.setObjectName("TimingOverviewValue")
+
+        summary_layout = QtWidgets.QGridLayout()
+        summary_layout.addWidget(total_time_label, 0, 0)
+        summary_layout.addWidget(total_time_value, 0, 1)
+        summary_layout.addWidget(plugin_count_label, 1, 0)
+        summary_layout.addWidget(plugin_count_value, 1, 1)
+        summary_layout.setColumnStretch(2, 1)
+
+        longest_label = QtWidgets.QLabel(
+            "10 Longest Running Plugins:", content_widget
+        )
+        longest_label.setObjectName("TimingOverviewSectionLabel")
+
+        longest_tree = QtWidgets.QTreeWidget(content_widget)
+        longest_tree.setObjectName("PublishDetailViews")
+        longest_tree.setHeaderLabels(["Order", "Plugin", "Time"])
+        longest_tree.setAlternatingRowColors(True)
+        longest_tree.setIndentation(0)
+        longest_tree.setRootIsDecorated(False)
+        longest_tree.setSortingEnabled(False)
+
+        content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.addLayout(summary_layout)
+        content_layout.addWidget(SeparatorWidget(parent=content_widget))
+        content_layout.addWidget(longest_label)
+        content_layout.addWidget(longest_tree, 1)
+
+        scroll_area.setWidget(content_widget)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(scroll_area)
+
+        self._total_time_value = total_time_value
+        self._plugin_count_value = plugin_count_value
+        self._longest_tree = longest_tree
+        self._report = None
+        self._is_active = False
+
+    def set_active(self, is_active):
+        if self._is_active == is_active:
+            return
+        self._is_active = is_active
+
+    def set_report(self, report):
+        self._report = report
+        self._update_overview()
+
+    def _update_overview(self):
+        self._longest_tree.setSortingEnabled(False)
+        self._longest_tree.clear()
+        self._total_time_value.setText("")
+        self._plugin_count_value.setText("")
+
+        if not self._report:
+            self._longest_tree.setSortingEnabled(False)
+            return
+
+        timing = self._report.timing
+        if not timing:
+            self._longest_tree.setSortingEnabled(False)
+            return
+
+        total_time_seconds = timing.get("total_time", 0)
+        plugins_timing = timing.get("plugins_timing", [])
+
+        self._total_time_value.setText(format_publish_time(total_time_seconds))
+        self._plugin_count_value.setText(str(len(plugins_timing)))
+
+        sorted_plugins = sorted(
+            enumerate(plugins_timing, 1),
+            key=lambda x: x[1].get("total_time", 0),
+            reverse=True,
+        )[:10]
+
+        for order, plugin_info in sorted_plugins:
+            plugin_label = plugin_info.get("plugin_label", "Unknown")
+            plugin_time_ms = plugin_info.get("total_time", 0)
+            time_str = format_publish_time(plugin_time_ms / 1000)
+
+            item = SortableTimingTreeItem()
+            item.setText(0, str(order))
+            item.setText(1, plugin_label)
+            item.setText(2, time_str)
+            item.setData(0, ORDER_ROLE, order)
+            item.setData(2, TIME_MS_ROLE, plugin_time_ms)
+
+            self._longest_tree.addTopLevelItem(item)
+
+        for col in range(3):
+            self._longest_tree.resizeColumnToContents(col)
+
+        self._longest_tree.setSortingEnabled(False)
+
+
+class TimingWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        timing_tree = QtWidgets.QTreeWidget(self)
+        timing_tree.setObjectName("PublishDetailViews")
+        timing_tree.setHeaderLabels(
+            ["Order", "Plugin", "Total Time", "Instances"]
+        )
+        timing_tree.setAlternatingRowColors(True)
+        timing_tree.setIndentation(15)
+        timing_tree.setSortingEnabled(False)
+        timing_tree.header().setSortIndicatorShown(True)
+        timing_tree.header().setSectionsClickable(True)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(timing_tree)
+
+        self._timing_tree = timing_tree
+        self._report = None
+        self._is_active = False
+
+    def set_active(self, is_active):
+        if self._is_active == is_active:
+            return
+        self._is_active = is_active
+
+    def set_report(self, report):
+        self._report = report
+        self._update_timing()
+
+    def _update_timing(self):
+        self._timing_tree.setSortingEnabled(False)
+        self._timing_tree.clear()
+
+        if not self._report:
+            self._timing_tree.setSortingEnabled(True)
+            return
+
+        timing = self._report.timing
+        if not timing:
+            self._timing_tree.setSortingEnabled(True)
+            return
+
+        plugins_timing = timing.get("plugins_timing", [])
+
+        for idx, plugin_info in enumerate(plugins_timing, 1):
+            plugin_label = plugin_info.get("plugin_label", "Unknown")
+            plugin_time_ms = plugin_info.get("total_time", 0)
+            instances = plugin_info.get("instances", [])
+
+            time_str = format_publish_time(plugin_time_ms / 1000)
+
+            plugin_item = SortableTimingTreeItem()
+            plugin_item.setData(0, ORDER_ROLE, idx)
+            plugin_item.setData(2, TIME_MS_ROLE, plugin_time_ms)
+            plugin_item.setData(3, ORDER_ROLE, len(instances))
+
+            plugin_item.setText(0, str(idx))
+            plugin_item.setText(1, plugin_label)
+            plugin_item.setText(2, time_str)
+            plugin_item.setText(3, f"{len(instances)} instance(s)")
+
+            for instance_info in instances:
+                instance_label = instance_info.get("instance_label", "Unknown")
+                instance_time_ms = instance_info.get("time", 0)
+                if instance_time_ms > 0:
+                    instance_time_str = format_publish_time(
+                        instance_time_ms / 1000
+                    )
+                    instance_item = SortableTimingTreeItem()
+                    instance_item.setData(2, TIME_MS_ROLE, instance_time_ms)
+                    instance_item.setText(0, "")
+                    instance_item.setText(1, f"  {instance_label}")
+                    instance_item.setText(2, instance_time_str)
+                    instance_item.setText(3, "")
+                    plugin_item.addChild(instance_item)
+
+            self._timing_tree.addTopLevelItem(plugin_item)
+
+        self._timing_tree.expandAll()
+        for col in range(4):
+            self._timing_tree.resizeColumnToContents(col)
+
+        self._timing_tree.setSortingEnabled(True)
 
 
 class PublishReportViewerWidget(QtWidgets.QFrame):
@@ -724,9 +984,11 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         instances_view.setIndentation(0)
         instances_view.setHeaderHidden(True)
         instances_view.setEditTriggers(
-            QtWidgets.QAbstractItemView.NoEditTriggers)
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
         instances_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection)
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         instances_view.setExpandsOnDoubleClick(False)
 
         instances_delegate = GroupItemDelegate(instances_view)
@@ -747,9 +1009,11 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         plugins_view.setIndentation(0)
         plugins_view.setHeaderHidden(True)
         plugins_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection)
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         plugins_view.setEditTriggers(
-            QtWidgets.QAbstractItemView.NoEditTriggers)
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
         plugins_view.setExpandsOnDoubleClick(False)
 
         plugins_delegate = GroupItemDelegate(plugins_view)
@@ -784,15 +1048,19 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         logs_text_widget = DetailsWidget(details_tab_widget)
         plugin_load_report_widget = PluginLoadReportWidget(details_tab_widget)
         plugins_details_widget = PluginsDetailsWidget(details_tab_widget)
+        timing_overview_widget = TimingOverviewWidget(details_tab_widget)
+        timing_widget = TimingWidget(details_tab_widget)
 
         plugin_load_report_widget.set_active(False)
         plugins_details_widget.set_active(False)
+        timing_overview_widget.set_active(False)
+        timing_widget.set_active(False)
 
         details_tab_widget.addTab(logs_text_widget, "Logs")
         details_tab_widget.addTab(plugins_details_widget, "Plugins Details")
-        details_tab_widget.addTab(
-            plugin_load_report_widget, "Crashed plugins"
-        )
+        details_tab_widget.addTab(plugin_load_report_widget, "Crashed plugins")
+        details_tab_widget.addTab(timing_overview_widget, "Timing Overview")
+        details_tab_widget.addTab(timing_widget, "Timing")
 
         middle_widget = QtWidgets.QWidget(self)
         middle_layout = QtWidgets.QGridLayout(middle_widget)
@@ -834,6 +1102,8 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._logs_text_widget = logs_text_widget
         self._plugin_load_report_widget = plugin_load_report_widget
         self._plugins_details_widget = plugins_details_widget
+        self._timing_overview_widget = timing_overview_widget
+        self._timing_widget = timing_widget
 
         self._removed_instances_check = removed_instances_check
         self._instances_view = instances_view
@@ -882,7 +1152,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         report = PublishReport(report_data)
         self.set_report(report)
 
-    def set_report(self, report: Union[PublishReport, None]) -> None:
+    def set_report(self, report):
         self._ignore_selection_changes = True
 
         self._report_item = report
@@ -892,10 +1162,8 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
         self._plugins_details_widget.set_report(report)
-        if report is not None and report.blocking_crashed_paths:
-            self._details_tab_widget.setCurrentWidget(
-                self._plugin_load_report_widget
-            )
+        self._timing_overview_widget.set_report(report)
+        self._timing_widget.set_report(report)
 
         self._ignore_selection_changes = False
 

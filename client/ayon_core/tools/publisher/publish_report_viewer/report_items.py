@@ -139,6 +139,4 @@ class PublishReport:
         self.logs = logs
 
         self.crashed_plugin_paths = report_data["crashed_file_paths"]
-        self.blocking_crashed_paths = report_data.get(
-            "blocking_crashed_paths", []
-        )
+        self.timing = report_data.get("timing")

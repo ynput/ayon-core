@@ -673,6 +673,10 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_publish_timing_data(self) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
     def get_publish_errors_report(self):
         pass
 
