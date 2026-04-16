@@ -394,11 +394,15 @@ class BaseWorkfileController(
         )
         if not task_items:
             return set()
-        task_ids = {t.id for t in task_items}
+        task_ids = {str(t.id) for t in task_items}
         workfiles = get_workfiles_info(
             project_name, task_ids=task_ids, fields={"taskId"}
         )
-        return {w["taskId"] for w in workfiles}
+        return {
+            str(w["taskId"])
+            for w in workfiles
+            if w.get("taskId") is not None
+        }
 
     def get_workarea_dir_by_context(self, folder_id, task_id):
         return self._workfiles_model.get_workarea_dir_by_context(

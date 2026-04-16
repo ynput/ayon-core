@@ -262,9 +262,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
         task_type_icon_cache,
         task_ids_with_workfiles=None,
     ):
+        task_id_str = str(task_item.id) if task_item.id is not None else ""
         use_disabled_color = (
             task_ids_with_workfiles is not None
-            and task_item.id not in task_ids_with_workfiles
+            and task_id_str not in task_ids_with_workfiles
         )
         cache_key = (task_item.task_type, use_disabled_color)
         icon = task_type_icon_cache.get(cache_key)

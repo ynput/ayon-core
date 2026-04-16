@@ -122,11 +122,15 @@ class BaseLauncherController(
         )
         if not task_items:
             return set()
-        task_ids = {t.id for t in task_items}
+        task_ids = {str(t.id) for t in task_items}
         workfiles = get_workfiles_info(
             project_name, task_ids=task_ids, fields={"taskId"}
         )
-        return {w["taskId"] for w in workfiles}
+        return {
+            str(w["taskId"])
+            for w in workfiles
+            if w.get("taskId") is not None
+        }
 
     # Project settings for applications actions
     def get_project_settings(self, project_name):
@@ -192,6 +196,16 @@ class BaseLauncherController(
         return self._workfiles_model.get_workfile_items(
             project_name,
             task_id,
+        )
+
+    def get_workfile_tooltip_data(self, workfile_id: Optional[str]) -> str:
+        """On-demand tooltip string for a workfile (size, users, dates, comment)."""
+        if not workfile_id:
+            return ""
+        return self._workfiles_model.get_workfile_tooltip_data(
+            self.get_selected_project_name(),
+            self.get_selected_task_id(),
+            workfile_id,
         )
 
     # Actions
