@@ -274,8 +274,8 @@ class ExtractBurnin(publish.Extractor):
                 convert_input_paths_for_ffmpeg(
                     src_filepaths,
                     new_staging_dir,
-                    self.log,
-                    review_layers
+                    review_layers=review_layers,
+                    log=self.log,
                 )
 
             # Add anatomy keys to burnin_data.
