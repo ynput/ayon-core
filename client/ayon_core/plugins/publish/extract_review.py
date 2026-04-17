@@ -414,8 +414,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
                     new_staging_dir,
-                    self.log,
-                    review_layers
+                    review_layers=review_layers,
+                    logger=self.log,
                 )
                 # The OIIO conversion will remap the RGBA channels just to
                 # `R,G,B,A` so we will pass the intermediate file to FFMPEG
