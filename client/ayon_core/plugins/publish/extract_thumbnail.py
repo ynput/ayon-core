@@ -281,7 +281,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     full_input_path,
                     full_output_path,
                     thumbnail_def,
-                    review_layers
+                    review_layers,
                 )
 
             # Skip representation and try next one if wasn't created
