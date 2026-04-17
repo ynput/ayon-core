@@ -518,8 +518,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 target_view=repre_view or oiio_default_view,
                 target_colorspace=oiio_default_colorspace,
                 additional_command_args=resolution_arg,
+                review_layers=review_layers,
                 logger=self.log,
-                review_layers=review_layers
             )
         except Exception:
             self.log.warning(
