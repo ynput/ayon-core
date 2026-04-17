@@ -27,6 +27,9 @@ from ayon_core.pipeline.actions import (
 )
 
 
+class HeroCreationError(Exception):
+    pass
+
 def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     """Prepare changes dict for update entity operation.
 
@@ -226,12 +229,18 @@ class CreateHeroVersion(LoaderActionPlugin):
                     hero_version_entity,
                     hero_representations,
                 )
-            except Exception as exc:
+            except HeroCreationError as exc:
                 self.log.warning(
-                    "Failed to convert version to hero version",
+                    f"Failed to convert version to hero version: {exc}"
+                )
+                errors.append(str(exc))
+
+            except Exception:
+                self.log.warning(
+                    "Failed to convert version to hero version.",
                     exc_info=True,
                 )
-                errors.append(exc)
+                errors.append("Unexpected error")
 
         if not errors:
             if len(version_entities) == 1:
@@ -278,18 +287,18 @@ class CreateHeroVersion(LoaderActionPlugin):
                 context.
 
         Raises:
-            RuntimeError: If any required data is missing or an error occurs
+            HeroCreationError: If any required data is missing or an error occurs
                 during the hero version creation process.
 
         """
         if not version_entity:
-            raise RuntimeError("Can't find origin version in database.")
+            raise HeroCreationError("Can't find origin version in database.")
 
         if version_entity["version"] == 0:
-            raise RuntimeError("Version 0 cannot have hero version.")
+            raise HeroCreationError("Version 0 cannot have hero version.")
 
         if not src_representations:
-            raise RuntimeError("No published representations found.")
+            raise HeroCreationError("No published representations found.")
 
         for repre_id, repre_info in tuple(src_representations.items()):
             repre = repre_info["representation"]
@@ -297,7 +306,7 @@ class CreateHeroVersion(LoaderActionPlugin):
                 src_representations.pop(repre_id, None)
 
         if not src_representations:
-            raise RuntimeError(
+            raise HeroCreationError(
                 "All published representations were filtered by name."
             )
 
@@ -327,7 +336,7 @@ class CreateHeroVersion(LoaderActionPlugin):
             "publish", publish_template_key, "path", default=None
         )
         if published_template_obj is None:
-            raise RuntimeError(
+            raise HeroCreationError(
                 "Project anatomy does not have"
                 f" publish template key: {publish_template_key}"
             )
@@ -345,7 +354,7 @@ class CreateHeroVersion(LoaderActionPlugin):
             "hero", hero_template_key, "path", default=None
         )
         if hero_template is None:
-            raise RuntimeError(
+            raise HeroCreationError(
                 "Project anatomy does not have"
                 f" hero template key: {hero_template_key}"
             )
@@ -431,14 +440,14 @@ class CreateHeroVersion(LoaderActionPlugin):
                     backup_hero_publish_dir = candidate_backup_dir
                     break
             else:
-                raise AssertionError(
+                raise HeroCreationError(
                     f"Backup folders are fully occupied to max index {max_idx}"
                 )
 
             try:
                 os.rename(hero_publish_dir, backup_hero_publish_dir)
             except PermissionError as e:
-                raise AssertionError(
+                raise HeroCreationError(
                     "Could not create hero version because it is "
                     "not possible to replace current hero files."
                 ) from e
@@ -486,7 +495,7 @@ class CreateHeroVersion(LoaderActionPlugin):
                 else:
                     collections, remainders = clique.assemble(published_files)
                     if remainders or not collections or len(collections) > 1:
-                        raise RuntimeError(
+                        raise HeroCreationError(
                             "Integrity error. Files of published "
                             "representation is combination of frame "
                             "collections and single files."
