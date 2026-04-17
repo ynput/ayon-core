@@ -231,16 +231,28 @@ class CreateHeroVersion(LoaderActionPlugin):
                     "Failed to convert version to hero version",
                     exc_info=True,
                 )
+                errors.append(exc)
 
         if not errors:
-            return LoaderActionResult(
-                success=True,
-                message="Hero version created successfully."
-            )
+            if len(version_entities) == 1:
+                message = "Hero version created successfully."
+            else:
+                message = (
+                    f"Hero versions ({len(version_entities)})"
+                    " created successfully."
+                )
+            return LoaderActionResult(success=True, message=message)
 
+        if len(version_entities) == 1:
+            message = "Failed to create hero version"
+        else:
+            message = (
+                f"Failed to create {len(errors)}/{len(version_entities)}"
+                f" hero versions"
+            )
         return LoaderActionResult(
             success=False,
-            message=f"Failed to create hero version:\n{chr(10).join(errors)}"
+            message=f"{message}:\n{chr(10).join(errors)}"
         )
 
     def create_hero_version(
