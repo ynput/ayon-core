@@ -248,7 +248,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         application: str,
         input_path: str,
-        review_layers: Optional[list[str]] = None
+        review_layers: list[str],
     ) -> List[str]:
         # get settings
         if self.target_size["type"] == "source":
