@@ -177,6 +177,7 @@ class SaveAsDialog(QtWidgets.QDialog):
             inputs_widget,
             window_to_minimize=parent.window(),
             dialog_to_hide=self,
+            post_capture_focus_widget=subversion_input,
         )
         thumbnail_workfile_widget.setMinimumHeight(120)
         thumbnail_workfile_widget.setMinimumWidth(180)

@@ -104,7 +104,9 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             controller, home_body_widget, handle_expected_selection=True
         )
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
-        side_panel = SidePanelWidget(controller, home_body_widget)
+        side_panel = SidePanelWidget(
+            controller, home_body_widget, window_to_minimize=self
+        )
 
         pages_widget.addWidget(home_page_widget)
 

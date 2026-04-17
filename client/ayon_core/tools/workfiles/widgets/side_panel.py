@@ -31,6 +31,8 @@ class SidePanelWidget(QtWidgets.QWidget):
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): The parent widget.
+        window_to_minimize (QtWidgets.QWidget or None): Workfiles tool window
+            to opacity-hide during side-panel screenshot capture.
     """
 
     published_workfile_message = (
@@ -38,7 +40,7 @@ class SidePanelWidget(QtWidgets.QWidget):
         " temp directory on your machine. Current temp size: <b>{}</b>."
     )
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, window_to_minimize=None):
         super(SidePanelWidget, self).__init__(parent)
 
         content_widget = QtWidgets.QWidget(self)
@@ -69,6 +71,8 @@ class SidePanelWidget(QtWidgets.QWidget):
             controller.get_thumbnail_temp_dir_path,
             thumbnail_widget,
             message_callback=self._show_message,
+            window_to_minimize=window_to_minimize,
+            post_capture_focus_widget=description_input,
         )
         self._thumbnail_workfile_widget.setMinimumSize(180, 120)
         btn_thumbnail_save = QtWidgets.QPushButton(
