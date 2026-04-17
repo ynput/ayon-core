@@ -149,7 +149,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         # Artist note widget
         description_input = PlaceholderPlainTextEdit(inputs_widget)
         description_input.setPlaceholderText(
-            "Provide a note about this workfile.")
+            "Provide a note about this workfile."
+        )
 
         # Preview widget
         preview_widget = QtWidgets.QLabel("Preview filename", inputs_widget)
@@ -176,7 +177,6 @@ class SaveAsDialog(QtWidgets.QDialog):
             inputs_widget,
             window_to_minimize=parent.window(),
             dialog_to_hide=self,
-            post_capture_focus_widget=subversion_input,
         )
         thumbnail_workfile_widget.setMinimumHeight(120)
         thumbnail_workfile_widget.setMinimumWidth(180)
@@ -209,7 +209,8 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         subversion_input.text_changed.connect(self._on_comment_change)
         extension_combobox.currentIndexChanged.connect(
-            self._on_extension_change)
+            self._on_extension_change
+        )
 
         btn_ok.pressed.connect(self._on_ok_pressed)
         btn_cancel.pressed.connect(self._on_cancel_pressed)
@@ -376,10 +377,13 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._btn_ok.setEnabled(not result.exists)
 
         if result.exists:
-            self._preview_widget.setText((
-                "<font color='red'>Cannot create \"{}\" because file exists!"
-                "</font>"
-            ).format(result.filename))
+            self._preview_widget.setText(
+                (
+                    "<font color='red'>Cannot create \"{}\" "
+                    "because file exists!"
+                    "</font>"
+                ).format(result.filename)
+            )
         else:
             self._preview_widget.setText(
                 "<font color='green'>{}</font>".format(result.filename)
