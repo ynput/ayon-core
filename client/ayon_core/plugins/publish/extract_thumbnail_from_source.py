@@ -196,7 +196,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        review_layers: Optional[list[str]] = None
+        review_layers: list[str],
     ) -> bool:
         try:
             resolution_args = self._get_resolution_args(
