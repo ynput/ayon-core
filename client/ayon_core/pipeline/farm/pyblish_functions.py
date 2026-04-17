@@ -4,7 +4,6 @@ import copy
 import os
 import re
 import warnings
-from copy import deepcopy
 from typing import Any, Union, Optional
 
 import attr
@@ -826,7 +825,7 @@ def get_product_name_and_group_from_template(
     # for possible solution.
     if dynamic_data is None:
         dynamic_data = {}
-    _dynamic_data = deepcopy(dynamic_data)
+    _dynamic_data = copy.deepcopy(dynamic_data)
     _dynamic_data.pop("aov", None)
 
     resulting_group_name = get_product_name(
@@ -992,7 +991,7 @@ def _create_instances_for_aov(
             host_name, aov_patterns, render_file_name
         )
 
-        new_instance = deepcopy(skeleton)
+        new_instance = copy.deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
         new_instance["aov"] = aov
@@ -1383,7 +1382,7 @@ def create_instances_for_cache(instance, skeleton):
         except ValueError as e:
             log.warning(e)
 
-        new_instance = deepcopy(skeleton)
+        new_instance = copy.deepcopy(skeleton)
 
         log.info("Creating data for: {}".format(product_name))
         new_instance["productName"] = product_name
