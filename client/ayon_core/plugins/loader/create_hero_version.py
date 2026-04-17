@@ -28,7 +28,9 @@ from ayon_core.pipeline.actions import (
 
 
 class HeroCreationError(Exception):
+    """Used for internal error reporting during hero version creation."""
     pass
+
 
 def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     """Prepare changes dict for update entity operation.
