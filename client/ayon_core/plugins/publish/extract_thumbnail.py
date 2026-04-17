@@ -615,6 +615,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         Returns:
             bool: Whether the thumbnail was successfully created.
+
         """
         try:
             resolution_arg = self._get_resolution_args(
