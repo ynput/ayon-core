@@ -599,11 +599,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             return False
 
     def _create_thumbnail_ffmpeg(
-            self,
-            src_path: str,
-            dst_path: str,
-            thumbnail_def: ThumbnailDef,
-            review_layers: Optional[list[str]] = None) -> bool:
+        self,
+        src_path: str,
+        dst_path: str,
+        thumbnail_def: ThumbnailDef,
+        review_layers: list[str],
+) -> bool:
         """Create thumbnail using FFmpeg tool
 
         Args:
