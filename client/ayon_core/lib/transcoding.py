@@ -547,9 +547,9 @@ def get_default_reviewable_layers(project_settings: dict) -> list[str]:
 
 
 def get_convert_rgb_channels(
-        channel_names: list[str],
-        review_layers: Optional[list[str]] = None) -> Optional[
-            tuple[str, str, str, Optional[str]]]:
+    channel_names: list[str],
+    review_layers: Optional[list[str]] = None,
+) -> Optional[tuple[str, str, str, Optional[str]]]:
     """Get first available RGB(A) group from channels info.
 
     ## Examples
