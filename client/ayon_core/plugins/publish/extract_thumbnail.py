@@ -611,7 +611,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             src_path (str): source file path
             dst_path (str): destination file path
             thumbnail_def (ThumbnailDef): Thumbnail definition.
-            review_layers (Optional[list[str]]): List of reviewable layers.
+            review_layers (list[str]): List of reviewable layers.
 
         Returns:
             bool: Whether the thumbnail was successfully created.
