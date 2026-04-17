@@ -270,7 +270,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     repre,
                     thumbnail_def,
                     anatomy=anatomy,
-                    review_layers=review_layers
+                    review_layers=review_layers,
                 )
 
             # Try to use FFMPEG if OIIO is not supported or for cases when
