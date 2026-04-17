@@ -785,7 +785,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             application (str): Application name.
             input_path (str): Input file path.
             thumbnail_def (ThumbnailDef): Thumbnail definition.
-            review_layers (Optional[list[str]]): List of reviewable layers.
+            review_layers (list[str]): List of reviewable layers.
 
         Returns:
             list: List of command arguments for rescaling.
