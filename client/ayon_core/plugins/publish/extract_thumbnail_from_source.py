@@ -24,8 +24,8 @@ from ayon_core.lib import (
 
     run_subprocess,
     get_rescaled_command_arguments,
-    get_default_reviewable_layers,
 )
+from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 
 
 class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):

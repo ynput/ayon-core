@@ -455,13 +455,15 @@ def get_review_info_by_layer_name(
 
         channels_by_layer_name[layer_name][channel] = channel_name
 
-    # Put empty layer or 'rgba' to the beginning of the list
-    # - if input has R, G, B, A channels they should be used for review
+    if review_layers is None:
+        review_layers = []
+
     def _sort(_layer_name: str) -> int:
-        if review_layers:
-            for idx, layer in enumerate(review_layers):
-                if re.match(layer, _layer_name):
-                    return idx - len(review_layers)
+        # Put empty layer or 'rgba' to the beginning of the list
+        # - if input has R, G, B, A channels they should be used for review
+        for idx, layer in enumerate(review_layers):
+            if re.match(layer, _layer_name):
+                return idx - len(review_layers)
 
         if _layer_name == "rgba":
             return 0
@@ -531,19 +533,6 @@ def get_review_info_by_layer_name(
             }
         })
     return output
-
-
-def get_default_reviewable_layers(project_settings: dict) -> list[str]:
-    """Get default reviewable layers from project settings.
-
-    Args:
-        project_settings (dict): Project settings.
-
-    Returns:
-        list[str]: List of default reviewable layers.
-    """
-    review_layers = project_settings["core"].get("reviewable_layers", {})
-    return project_settings["core"]["reviewable_layers"]["review_layers"]
 
 
 def get_convert_rgb_channels(

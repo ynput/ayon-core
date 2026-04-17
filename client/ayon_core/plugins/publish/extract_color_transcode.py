@@ -8,11 +8,10 @@ from ayon_core.pipeline import (
     publish,
     get_temp_dir
 )
+from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
-from ayon_core.lib import (
-    is_oiio_supported,
-    get_default_reviewable_layers,
-)
+from ayon_core.lib import is_oiio_supported
+
 from ayon_core.lib.transcoding import (
     MissingRGBAChannelsError,
     oiio_color_convert,

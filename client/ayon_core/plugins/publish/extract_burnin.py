@@ -18,10 +18,12 @@ from ayon_core.lib import (
 
     convert_input_paths_for_ffmpeg,
     should_convert_for_ffmpeg,
-    get_default_reviewable_layers,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers
+)
 
 
 class ExtractBurnin(publish.Extractor):
