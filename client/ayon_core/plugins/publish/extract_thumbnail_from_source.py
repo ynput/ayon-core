@@ -161,7 +161,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        review_layers: Optional[list[str]] = None
+        review_layers: list[str] = None,
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
         try:
