@@ -457,7 +457,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     view (Optional[str])
             thumbnail_def (ThumbnailDefinition): Thumbnail definition.
             anatomy (Anatomy): Current project Anatomy.
-            review_layers (Optional[list[str]]): List of reviewable layers.
+            review_layers (list[str]): List of reviewable layers.
 
         Returns:
             bool: Whether a thumbnail has been created.
