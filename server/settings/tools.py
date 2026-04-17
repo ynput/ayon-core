@@ -392,10 +392,33 @@ class ProductGroupEditingModel(BaseSettingsModel):
     )
 
 
+class ProductGroupHintsModel(BaseSettingsModel):
+    hints: list[str] = SettingsField(
+        default_factory=list,
+        title="Product group name hints",
+        description=(
+            "List of hints that can be used in product grouping. "
+            "If product name contains any of the hints, it will be "
+            "grouped separately."
+        )
+    )
+    is_strict: bool = SettingsField(
+        False,
+        title="Strict product group name hints",
+        description=(
+            "If enabled, product group name must be one of the hints."
+        )
+    )
+
+
 class ProductGroupLoaderSettings(BaseSettingsModel):
     group_editing: ProductGroupEditingModel = SettingsField(
         default_factory=ProductGroupEditingModel,
         title="Allow product group editing",
+    )
+    name_hints: ProductGroupHintsModel = SettingsField(
+        default_factory=ProductGroupHintsModel,
+        title="Product group name hints",
     )
 
 
