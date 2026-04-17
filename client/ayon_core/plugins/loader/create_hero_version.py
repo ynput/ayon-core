@@ -272,19 +272,24 @@ class CreateHeroVersion(LoaderActionPlugin):
         version_entity: dict[str, Any],
         src_representations: dict[str, dict],
         template_data: dict[str, Any],
-        hero_version_entity: dict[str, Any],
+        hero_version_entity: dict[str, Any] | None,
         hero_representations: list[dict[str, Any]],
     ) -> None:
         """Create hero version from instance data.
 
         Args:
             anatomy (Anatomy): Anatomy object for the project.
-            version_entity (dict): Source version entity.
+            project_settings (dict[str, Any]): Project settings.
             task_entity (dict[str, Any] | None): Source task entity
                 if there was any.
+            version_entity (dict): Source version entity.
             src_representations (dict[str, dict]): Representations by id.
             template_data (dict[str, Any]): Base template data of source
                 context.
+            hero_version_entity (dict[str, Any] | None): Source hero version
+                if there was any.
+            hero_representations (list[dict[str, Any]]): Representations of
+                hero version.
 
         Raises:
             HeroCreationError: If any required data is missing or an error occurs
