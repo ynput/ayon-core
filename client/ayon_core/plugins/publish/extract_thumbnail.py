@@ -442,7 +442,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         repre: dict,
         thumbnail_def: ThumbnailDef,
         anatomy: "Anatomy",
-        review_layers: Optional[list[str]] = None
+        review_layers: list[str],
     ) -> bool:
         """Create thumbnail using OIIO tool oiiotool
 
