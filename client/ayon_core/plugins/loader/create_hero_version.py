@@ -294,8 +294,8 @@ class CreateHeroVersion(LoaderActionPlugin):
                 hero version.
 
         Raises:
-            HeroCreationError: If any required data is missing or an error occurs
-                during the hero version creation process.
+            HeroCreationError: If any required data is missing or an error
+                occurs ring the hero version creation process.
 
         """
         if not version_entity:
