@@ -596,8 +596,9 @@ def get_convert_rgb_channels(
 
 
 def get_review_layer_name(
-        src_filepath: str,
-        review_layers: Optional[list[str]] = None) -> Optional[str]:
+    src_filepath: str,
+    review_layers: Optional[list[str]] = None,
+) -> Optional[str]:
     """Find layer name that could be used for review.
 
     Args:
