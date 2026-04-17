@@ -238,7 +238,7 @@ class CreateHeroVersion(LoaderActionPlugin):
                 message = "Hero version created successfully."
             else:
                 message = (
-                    f"Hero versions ({len(version_entities)})"
+                    f"{len(version_entities)} Hero versions"
                     " created successfully."
                 )
             return LoaderActionResult(success=True, message=message)
