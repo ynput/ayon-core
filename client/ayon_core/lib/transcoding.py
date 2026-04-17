@@ -723,6 +723,7 @@ def _get_attributes_to_erase(
 def convert_input_paths_for_ffmpeg(
     input_paths: str,
     output_dir: str,
+    # TODO move 'review_layers' before logger
     logger: logging.Logger = None,
     review_layers: Optional[list[str]] = None,
 ) -> None:
