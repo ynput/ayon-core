@@ -17,7 +17,6 @@ from ayon_core.lib import (
     filter_profiles,
     path_to_subprocess_arg,
     run_subprocess,
-    get_default_reviewable_layers,
 )
 from ayon_core.pipeline.publish.lib import (
     fill_sequence_gaps_with_previous_version
@@ -35,7 +34,10 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_instance_label,
 )
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers,
+)
 
 
 class TempData:

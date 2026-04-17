@@ -13,7 +13,6 @@ from ayon_core.lib import (
 
     is_oiio_supported,
     get_rescaled_command_arguments,
-    get_default_reviewable_layers,
 
     path_to_subprocess_arg,
     run_subprocess,
@@ -25,6 +24,7 @@ from ayon_core.lib.transcoding import (
     get_oiio_input_and_channel_args,
     get_oiio_info_for_input,
 )
+from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
