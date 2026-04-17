@@ -547,6 +547,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         Returns:
             bool: Whether the thumbnail was successfully created.
+
         """
         self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
 
