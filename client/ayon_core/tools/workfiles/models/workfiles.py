@@ -29,6 +29,7 @@ from ayon_core.host.interfaces import (
     CopyWorkfileOptionalData,
     CopyPublishedWorkfileOptionalData,
 )
+from ayon_core.host.interfaces.workfiles import WORKFILE_LISTING_ENTITY_FIELDS
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -509,6 +510,7 @@ class WorkfilesModel:
                 ayon_api.get_workfiles_info(
                     self._project_name,
                     task_ids=[task_id],
+                    fields=WORKFILE_LISTING_ENTITY_FIELDS,
                 )
             )
             self._workfile_entities_by_task_id[task_id] = workfile_entities
@@ -1144,7 +1146,9 @@ class WorkfilesModel:
                 self._workfile_entities_by_task_id.pop(task_id, None)
                 self.get_workfile_entities(task_id)
             else:
-                target_workfile_entity["attrib"]["description"] = description
+                target_workfile_entity.setdefault("attrib", {})[
+                    "description"
+                ] = description
 
     def _update_file_description(
         self, task_id: str, rootless_path: str, description: str

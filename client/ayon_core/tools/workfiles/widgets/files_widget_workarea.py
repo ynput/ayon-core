@@ -3,12 +3,15 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
 from ayon_core.tools.utils import TreeView
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+
+_log = Logger.get_logger("workfiles.WorkAreaFilesModel")
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -189,6 +192,13 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
     def _fill_items(self):
         try:
             self._fill_items_impl()
+        except Exception:
+            _log.error(
+                "WorkAreaFilesModel._fill_items failed",
+                exc_info=True,
+            )
+            if is_dev_mode_enabled():
+                raise
         finally:
             self.refreshed.emit()
 

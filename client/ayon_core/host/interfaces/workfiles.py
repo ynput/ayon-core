@@ -22,6 +22,26 @@ if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
 
+WORKFILE_LISTING_ENTITY_FIELDS: frozenset[str] = frozenset(
+    {
+        "id",
+        "path",
+        "taskId",
+        "attrib",
+        "data",
+        "createdBy",
+        "updatedBy",
+        "thumbnailId",
+        "active",
+        "status",
+        "tags",
+        "name",
+        "createdAt",
+        "updatedAt",
+    }
+)
+
+
 def deprecated(reason):
     def decorator(func):
         message = f"Call to deprecated function {func.__name__} ({reason})."
@@ -145,7 +165,11 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
         if self.workfile_entities is not None:
             return self.workfile_entities
         return list(
-            ayon_api.get_workfiles_info(project_name, task_ids=[task_id])
+            ayon_api.get_workfiles_info(
+                project_name,
+                task_ids=[task_id],
+                fields=WORKFILE_LISTING_ENTITY_FIELDS,
+            )
         )
 
 
@@ -702,9 +726,9 @@ class WorkfileInfo:
         if workfile_entity is None:
             workfile_entity = {}
 
-        attrib = {}
+        attrib: dict[str, Any] = {}
         if workfile_entity:
-            attrib = workfile_entity["attrib"]
+            attrib = workfile_entity.get("attrib") or {}
 
         return cls(
             filepath=filepath,
@@ -1151,7 +1175,7 @@ class IWorkfileHost(AbstractHost):
             workfile_entity = workfile_entities_by_path.pop(filepath, None)
             version = comment = None
             if workfile_entity is not None:
-                _data = workfile_entity["data"]
+                _data = workfile_entity.get("data") or {}
                 version = _data.get("version")
                 comment = _data.get("comment")
 
@@ -1178,7 +1202,7 @@ class IWorkfileHost(AbstractHost):
             if ext not in extensions:
                 continue
 
-            _data = workfile_entity["data"]
+            _data = workfile_entity.get("data") or {}
             version = _data.get("version")
             comment = _data.get("comment")
             if version is None:

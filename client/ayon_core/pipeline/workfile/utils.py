@@ -424,18 +424,20 @@ def save_workfile_info(
             data[key] = value
 
     changed_data = {}
-    old_data = workfile_entity["data"]
+    data_dict = workfile_entity.setdefault("data", {})
+    old_data = dict(data_dict)
     for key, value in data.items():
         if key not in old_data or old_data[key] != value:
             changed_data[key] = value
-            workfile_entity["data"][key] = value
+            data_dict[key] = value
 
     changed_attrib = {}
-    old_attrib = workfile_entity["attrib"]
+    attrib_dict = workfile_entity.setdefault("attrib", {})
+    old_attrib = dict(attrib_dict)
     for key, value in attrib.items():
         if key not in old_attrib or old_attrib[key] != value:
             changed_attrib[key] = value
-            workfile_entity["attrib"][key] = value
+            attrib_dict[key] = value
 
     update_data = {}
     if changed_data:
