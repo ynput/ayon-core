@@ -32,6 +32,9 @@ class SidePanelWidget(QtWidgets.QWidget):
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): The parent widget.
+        window_to_minimize (Optional[QtWidgets.QWidget]): Workfiles tool
+            top-level window; opacity-hidden during side-panel screenshot
+            capture when thumbnail UI is present (integration branch).
     """
 
     published_workfile_message = (
@@ -39,8 +42,10 @@ class SidePanelWidget(QtWidgets.QWidget):
         " temp directory on your machine. Current temp size: <b>{}</b>."
     )
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, window_to_minimize=None):
         super(SidePanelWidget, self).__init__(parent)
+
+        self._window_to_minimize = window_to_minimize
 
         details_label = QtWidgets.QLabel("Details", self)
         details_input = QtWidgets.QPlainTextEdit(self)
