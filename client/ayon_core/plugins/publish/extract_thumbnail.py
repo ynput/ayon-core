@@ -777,7 +777,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         application: str,
         input_path: str,
         thumbnail_def: ThumbnailDef,
-        review_layers: Optional[list[str]] = None
+        review_layers: list[str],
     ) -> list:
         """Create command arguments for rescaling.
 
