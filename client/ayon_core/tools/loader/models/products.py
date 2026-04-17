@@ -30,10 +30,29 @@ if TYPE_CHECKING:
 
 PRODUCTS_MODEL_SENDER = "products.model"
 
+# Explicit GraphQL fields for loader product rows (defaults may omit `attrib`).
+LOADER_PRODUCT_LIST_FIELDS: frozenset[str] = frozenset(
+    {
+        "id",
+        "folderId",
+        "name",
+        "productType",
+        "productBaseType",
+        "attrib",
+    }
+)
+
+
+def _loader_version_query_fields() -> set[str]:
+    """Fields for loader version rows; ensures `attrib` and `status` are present."""
+    fields = set(ayon_api.get_default_fields_for_type("version"))
+    fields.update({"status", "attrib"})
+    return fields
+
 
 def version_item_from_entity(version):
-    version_attribs = version["attrib"]
-    tags = version["tags"]
+    version_attribs = version.get("attrib") or {}
+    tags = version.get("tags") or []
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
@@ -92,7 +111,7 @@ def product_item_from_entity(
     icons_mapping,
     product_in_scene,
 ):
-    product_attribs = product_entity["attrib"]
+    product_attribs = product_entity.get("attrib") or {}
     group = product_attribs.get("productGroup")
     product_type = product_entity["productType"]
     product_base_type = product_entity.get("productBaseType")
@@ -655,6 +674,7 @@ class ProductsModel:
         if product_ids is not None:
             kwargs["product_ids"] = product_ids
 
+        kwargs["fields"] = LOADER_PRODUCT_LIST_FIELDS
         products = list(ayon_api.get_products(project_name, **kwargs))
 
         # Apply product type filtering based on loader settings
@@ -676,11 +696,9 @@ class ProductsModel:
 
         product_ids = {product["id"] for product in products}
 
-        # Add 'status' to fields -> fixed in ayon-python-api 1.0.4
-        fields = ayon_api.get_default_fields_for_type("version")
-        fields.add("status")
+        version_fields = _loader_version_query_fields()
         versions = ayon_api.get_versions(
-            project_name, product_ids=product_ids, fields=fields
+            project_name, product_ids=product_ids, fields=version_fields
         )
 
         return self._create_product_items(
@@ -688,12 +706,21 @@ class ProductsModel:
         )
 
     def _query_version_items_by_ids(self, project_name, version_ids):
+        version_fields = _loader_version_query_fields()
         versions = list(
-            ayon_api.get_versions(project_name, version_ids=version_ids)
+            ayon_api.get_versions(
+                project_name,
+                version_ids=version_ids,
+                fields=version_fields,
+            )
         )
         product_ids = {version["productId"] for version in versions}
         products = list(
-            ayon_api.get_products(project_name, product_ids=product_ids)
+            ayon_api.get_products(
+                project_name,
+                product_ids=product_ids,
+                fields=LOADER_PRODUCT_LIST_FIELDS,
+            )
         )
         product_items = self._create_product_items(
             project_name, products, versions

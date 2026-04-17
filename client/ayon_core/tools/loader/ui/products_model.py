@@ -3,8 +3,11 @@ import collections
 import qtawesome
 from qtpy import QtGui, QtCore
 
+from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
+
+_log = Logger.get_logger("loader.ProductsModel")
 
 PRODUCTS_MODEL_SENDER_NAME = "qt_products_model"
 
@@ -490,6 +493,19 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         self._last_project_name = project_name
         self._last_folder_ids = folder_ids
+        try:
+            self._refresh_content(project_name, folder_ids)
+        except Exception:
+            _log.error(
+                "ProductsModel.refresh failed",
+                exc_info=True,
+            )
+            if is_dev_mode_enabled():
+                raise
+        finally:
+            self.refreshed.emit()
+
+    def _refresh_content(self, project_name, folder_ids):
         status_items = self._controller.get_project_status_items(project_name)
         self._last_project_statuses = {
             status_item.name: status_item
@@ -674,7 +690,6 @@ class ProductsModel(QtGui.QStandardItemModel):
         if new_root_items:
             root_item.appendRows(new_root_items)
 
-        self.refreshed.emit()
     # ---------------------------------
     #   This implementation does not call '_clear' at the start
     #       but is more complex and probably slower

@@ -69,11 +69,13 @@ class StatusItem:
     @classmethod
     def from_project_item(cls, status_data):
         return cls(
-            name=status_data["name"],
-            color=status_data["color"],
-            short=status_data["shortName"],
-            icon=status_data["icon"],
-            state=status_data["state"],
+            name=status_data.get("name") or "",
+            color=status_data.get("color") or get_default_entity_icon_color(),
+            short=status_data.get("shortName")
+            or status_data.get("short")
+            or "",
+            icon=status_data.get("icon") or "help",
+            state=status_data.get("state") or StatusStates.not_started,
         )
 
 
