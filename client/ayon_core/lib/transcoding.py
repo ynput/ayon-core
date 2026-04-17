@@ -386,9 +386,9 @@ def parse_oiio_xml_output(xml_string, logger=None):
 
 
 def get_review_info_by_layer_name(
-        channel_names: list[str],
-        review_layers: Optional[list[str]] = None
-    ) -> list[dict]:
+    channel_names: list[str],
+    review_layers: Optional[list[str]] = None
+) -> list[dict]:
     """Get channels info grouped by layer name.
 
     Finds all layers in channel names and returns list of dictionaries with
