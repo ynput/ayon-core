@@ -244,9 +244,12 @@ class LoaderWindow(QtWidgets.QWidget):
 
         change_group_btn = SquareButton(products_inputs_widget)
         change_group_btn.setIcon(qtmaterialsymbols.get_icon(
-            "group_add", DEFAULT_WEB_ICON_COLOR
+            "group_add",
+            DEFAULT_WEB_ICON_COLOR,
+            color_disabled="#4f5f5f",
         ))
         change_group_btn.setToolTip("Add/change group (Ctrl + G)")
+        change_group_btn.setEnabled(False)
 
         products_inputs_layout = QtWidgets.QGridLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
