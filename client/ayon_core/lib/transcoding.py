@@ -1433,14 +1433,15 @@ def oiio_color_convert(
 
 
 def get_rescaled_command_arguments(
-        application: str,
-        input_path: str,
-        target_width: int,
-        target_height: int,
-        target_par: float = None,
-        bg_color: Optional[list[int]] = None,
-        log: Optional[logging.Logger] = None,
-        review_layers: Optional[list[str]] = None
+    application: str,
+    input_path: str,
+    target_width: int,
+    target_height: int,
+    *,
+    target_par: float = None,
+    bg_color: Optional[list[int]] = None,
+    review_layers: Optional[list[str]] = None,
+    log: Optional[logging.Logger] = None,
 ) -> list[str]:
     """Get command arguments for rescaling input to target size.
 
