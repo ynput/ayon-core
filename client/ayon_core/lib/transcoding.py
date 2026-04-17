@@ -1660,9 +1660,10 @@ def convert_color_values(application, color_value):
 
 
 def get_oiio_input_and_channel_args(
-        oiio_input_info: dict,
-        alpha_default: float = None,
-        review_layers: Optional[list[str]] = None) -> tuple[str, str]:
+    oiio_input_info: dict,
+    alpha_default: float = None,
+    review_layers: Optional[list[str]] = None,
+) -> tuple[str, str]:
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
