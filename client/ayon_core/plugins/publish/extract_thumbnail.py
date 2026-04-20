@@ -630,7 +630,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         base_name = os.path.basename(video_file_path)
         filename = os.path.splitext(base_name)[0]
         output_thumb_file_path = os.path.join(
-            output_dir, "{}.png".format(filename))
+            output_dir, "{}.exr".format(filename))
 
         # Set video input attributes
         max_int = str(2147483647)
