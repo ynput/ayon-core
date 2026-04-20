@@ -67,7 +67,7 @@ def remap_source(path, anatomy):
     )
 
 
-def find_colorpsace_template(
+def find_colorspace_template(
     colorspace_path: str,
     anatomy: Anatomy,
 ) -> str | None:
@@ -705,7 +705,7 @@ def create_instances_for_aov(
 
         # Get templated path from absolute config path.
         anatomy = instance.context.data["anatomy"]
-        template = find_colorpsace_template(colorspace_config, anatomy)
+        template = find_colorspace_template(colorspace_config, anatomy)
         additional_data["colorspaceTemplate"] = template or colorspace_config
 
     # create instances for every AOV we found in expected files.
