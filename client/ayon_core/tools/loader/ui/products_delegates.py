@@ -500,7 +500,7 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
             )
 
     def editorEvent(self, event, model, option, index):
-        result = super(SiteSyncDelegate, self).editorEvent(
+        result = super().editorEvent(
             event, model, option, index
         )
         if event.type() == QtCore.QEvent.MouseMove:
