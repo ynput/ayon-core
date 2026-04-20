@@ -88,7 +88,6 @@ def find_colorpsace_template(
     if builtin_path:
         builtin_path = Path(builtin_path).resolve().absolute()
         path = Path(colorspace_path).resolve().absolute()
-        path.resolve().absolute()
         if path.is_relative_to(builtin_path):
             relative = str(path.relative_to(builtin_path))
             if platform.system().lower() == "windows":
