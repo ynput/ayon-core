@@ -1,4 +1,8 @@
-"""Rotating file logging for ayon_core (no addon dependency)."""
+"""Rotating file logging for ayon_core (no addon dependency).
+
+Enable the file sink with ``AYON_DEBUG=1`` (lowers global console log level
+and attaches the rotating file handler defined here).
+"""
 
 from __future__ import annotations
 

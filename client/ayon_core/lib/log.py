@@ -11,6 +11,18 @@ import copy
 from . import Terminal
 
 
+def _env_positive_int(name: str) -> bool:
+    """True if ``os.environ[name]`` is a positive int or common truthy string."""
+    raw = os.getenv(name)
+    if not raw:
+        return False
+    raw_stripped = raw.strip()
+    try:
+        return int(raw_stripped) > 0
+    except ValueError:
+        return raw_stripped.lower() in ("true", "yes", "on")
+
+
 class LogStreamHandler(logging.StreamHandler):
     """StreamHandler class.
 
@@ -263,9 +275,8 @@ class Logger:
 
     @classmethod
     def _ensure_debug_file_handler(cls):
-        """Install shared file handler when AYON_DEBUG is enabled (Harmony parity)."""
-        op_debug = os.getenv("AYON_DEBUG")
-        if not op_debug or int(op_debug) <= 0:
+        """Install shared file handler when AYON_DEBUG is set."""
+        if not _env_positive_int("AYON_DEBUG"):
             return
         if cls._debug_file_handler is not None:
             return
