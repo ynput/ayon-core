@@ -229,8 +229,8 @@ class ExtractOIIOTranscode(publish.Extractor):
                             frames=frames,
                             frame_padding=frame_padding,
                             parallel_frames=parallel_frames,
-                            logger=self.log,
                             review_layers=review_layers,
+                            logger=self.log,
                         )
                     except MissingRGBAChannelsError as exc:
                         missing_rgba_review_channels = True
