@@ -506,7 +506,7 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
         if event.type() == QtCore.QEvent.MouseMove:
             mouse_pos = event.pos()
             tooltip = ""
-            for item_rect, site_name in getattr(self, "_items_rects", []):
+            for item_rect, site_name in self._items_rects:
                 if item_rect.contains(mouse_pos) and site_name:
                     tooltip = site_name
                     break
