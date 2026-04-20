@@ -39,6 +39,8 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 29
 REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 30
 SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
 SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 32
+ACTIVE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 33
+REMOTE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 34
 
 STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
 TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
@@ -425,6 +427,8 @@ class ProductsModel(QtGui.QStandardItemModel):
         product_item,
         active_site_icon,
         remote_site_icon,
+        active_site_name,
+        remote_site_name,
         repre_count_by_version_id,
         sync_availability_by_version_id,
         last_version_by_product_id,
@@ -473,6 +477,8 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         model_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
         model_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
+        model_item.setData(active_site_name, ACTIVE_SITE_NAME_ROLE)
+        model_item.setData(remote_site_name, REMOTE_SITE_NAME_ROLE)
 
         self._set_version_data_to_product_item(
             model_item,
@@ -511,6 +517,8 @@ class ProductsModel(QtGui.QStandardItemModel):
         remote_site_icon_def = self._controller.get_remote_site_icon_def(
             project_name
         )
+        active_site_name = self._controller.get_active_site(project_name)
+        remote_site_name = self._controller.get_remote_site(project_name)
         active_site_icon = get_qt_icon(active_site_icon_def)
         remote_site_icon = get_qt_icon(remote_site_icon_def)
 
@@ -614,6 +622,8 @@ class ProductsModel(QtGui.QStandardItemModel):
                     product_item,
                     active_site_icon,
                     remote_site_icon,
+                    active_site_name,
+                    remote_site_name,
                     repre_count_by_version_id,
                     sync_availability_by_version_id,
                     last_version_by_product_id,
@@ -639,6 +649,8 @@ class ProductsModel(QtGui.QStandardItemModel):
                         product_item,
                         active_site_icon,
                         remote_site_icon,
+                        active_site_name,
+                        remote_site_name,
                         repre_count_by_version_id,
                         sync_availability_by_version_id,
                         last_version_by_product_id,

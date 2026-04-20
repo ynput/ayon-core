@@ -18,6 +18,8 @@ ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 6
 REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 7
 SYNC_ACTIVE_SITE_PROGRESS = QtCore.Qt.UserRole + 8
 SYNC_REMOTE_SITE_PROGRESS = QtCore.Qt.UserRole + 9
+ACTIVE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 10
+REMOTE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 11
 
 
 class RepresentationsModel(QtGui.QStandardItemModel):
@@ -82,6 +84,12 @@ class RepresentationsModel(QtGui.QStandardItemModel):
                 else:
                     return None
 
+            if role == QtCore.Qt.ToolTipRole:
+                if col == self.active_site_column:
+                    role = ACTIVE_SITE_NAME_ROLE
+                elif col == self.remote_site_column:
+                    role = REMOTE_SITE_NAME_ROLE
+
             if role == QtCore.Qt.DisplayRole:
                 if col == 1:
                     role = PRODUCT_NAME_ROLE
@@ -110,6 +118,8 @@ class RepresentationsModel(QtGui.QStandardItemModel):
         repre_item,
         active_site_icon,
         remote_site_icon,
+        active_site_name,
+        remote_site_name,
         repres_sync_status
     ):
         repre_id = repre_item.representation_id
@@ -139,6 +149,8 @@ class RepresentationsModel(QtGui.QStandardItemModel):
         item.setData(repre_item.folder_label, FOLDER_LABEL_ROLE)
         item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
         item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
+        item.setData(active_site_name, ACTIVE_SITE_NAME_ROLE)
+        item.setData(remote_site_name, REMOTE_SITE_NAME_ROLE)
         item.setData(active_site_progress, SYNC_ACTIVE_SITE_PROGRESS)
         item.setData(remote_site_progress, SYNC_REMOTE_SITE_PROGRESS)
         return is_new_item, item
@@ -173,6 +185,8 @@ class RepresentationsModel(QtGui.QStandardItemModel):
         remote_site_icon_def = self._controller.get_remote_site_icon_def(
             project_name
         )
+        active_site_name = self._controller.get_active_site(project_name)
+        remote_site_name = self._controller.get_remote_site(project_name)
         active_site_icon = get_qt_icon(active_site_icon_def)
         remote_site_icon = get_qt_icon(remote_site_icon_def)
 
@@ -215,6 +229,8 @@ class RepresentationsModel(QtGui.QStandardItemModel):
                     repre_item,
                     active_site_icon,
                     remote_site_icon,
+                    active_site_name,
+                    remote_site_name,
                     repres_sync_status
                 )
                 item_parent = item.parent()
