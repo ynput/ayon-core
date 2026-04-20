@@ -427,8 +427,13 @@ class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
 class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
     """Paints icons and downloaded representation ration for both sites."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._items_rects = []
+
     def paint(self, painter, option, index):
-        super(SiteSyncDelegate, self).paint(painter, option, index)
+        super().paint(painter, option, index)
+        self._items_rects = []
         option = QtWidgets.QStyleOptionViewItem(option)
         option.showDecorationSelected = True
 
@@ -468,7 +473,6 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
         if item_width < 1:
             item_width = 0
 
-        self._items_rects = []
         for value, icon, site_name in items_to_draw:
             item_rect = QtCore.QRect(
                 pos_x,
