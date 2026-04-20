@@ -1,25 +1,35 @@
 """Plugin to create hero version from selected context."""
 from __future__ import annotations
 import os
-import copy
-import shutil
-import errno
+import collections
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional, Union
+import copy
+import errno
+import shutil
+from typing import Any, Optional
 
 import clique
 import ayon_api
-from ayon_api.operations import OperationsSession, new_version_entity
 from ayon_api.utils import create_entity_id
-from qtpy import QtWidgets, QtCore
+from ayon_api.operations import OperationsSession, new_version_entity
 
-from ayon_core import style
-from ayon_core.pipeline import load, Anatomy
-from ayon_core.settings import get_project_settings
 from ayon_core.lib import create_hard_link, source_hash, StringTemplate
 from ayon_core.lib.file_transaction import wait_for_future_errors, copyfile
+from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.publish import get_publish_template_name
 from ayon_core.pipeline.template_data import get_template_data
+
+from ayon_core.pipeline.actions import (
+    LoaderActionPlugin,
+    LoaderActionItem,
+    LoaderActionSelection,
+    LoaderActionResult,
+)
+
+
+class HeroCreationError(Exception):
+    """Used for internal error reporting during hero version creation."""
+    pass
 
 
 def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
@@ -49,137 +59,253 @@ def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     return changes
 
 
-class CreateHeroVersion(load.ProductLoaderPlugin):
+class CreateHeroVersion(LoaderActionPlugin):
     """Create hero version from selected context."""
 
     is_multiple_contexts_compatible = False
-    representations = {"*"}
-    product_types = {"*"}
-    label = "Create Hero Version"
-    order = 36
-    icon = "star"
-    color = "#ffd700"
-
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
-        "project", "folder", "hierarchy", "task", "product",
-        "representation", "username", "user", "output"
+        "project",
+        "folder",
+        "hierarchy",
+        "task",
+        "product",
+        "representation",
+        "username",
+        "user",
+        "output"
     ]
     use_hardlinks = False
 
-    @staticmethod
-    def message(text: str) -> None:
-        """Show message box with text."""
-        msgBox = QtWidgets.QMessageBox()
-        msgBox.setText(text)
-        msgBox.setStyleSheet(style.load_stylesheet())
-        msgBox.setWindowFlags(
-            msgBox.windowFlags() | QtCore.Qt.WindowType.FramelessWindowHint
-            | QtCore.Qt.WindowType.WindowStaysOnTopHint
-        )
-        msgBox.exec_()
+    def get_action_items(
+        self, selection: LoaderActionSelection
+    ) -> list[LoaderActionItem]:
+        # Do not show in hosts
+        if self.host_name is not None:
+            return []
 
-    def load(self, context, name=None, namespace=None, options=None) -> None:
-        """Load hero version from context (dict as in context.py)."""
-        success = True
-        errors = []
+        versions = selection.get_selected_version_entities()
+        if not versions:
+            return []
 
-        # Extract project, product, version, folder from context
-        project_entity = context["project"]
-        project_name = project_entity["name"]
-        folder_entity = context["folder"]
-        product_entity = context["product"]
-        version_entity = context["version"]
+        return [
+            LoaderActionItem(
+                label="Create Hero Version",
+                order=36,
+                icon={
+                    "type": "awesome-font",
+                    "name": "fa5.star",
+                    "color": "#ffd700",
+                }
+            ),
+        ]
 
-        task_id = version_entity["taskId"]
-        task_entity = None
-        if task_id:
-            task_entity = ayon_api.get_task_by_id(project_name, task_id)
+    def execute_action(
+        self,
+        selection: LoaderActionSelection,
+        data: dict[str, Any],
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        project_name = selection.project_name
+        project_settings = selection.get_project_settings()
+        project_entity = ayon_api.get_project(project_name)
+        anatomy = selection.get_project_anatomy()
+        version_entities = selection.get_selected_version_entities()
 
-        anatomy = Anatomy(project_name, project_entity=project_entity)
+        # Prepare all necessary entities
+        product_ids = set()
+        task_ids = set()
+        version_ids = set()
+        for version in version_entities:
+            product_ids.add(version["productId"])
+            task_ids.add(version["taskId"])
+            version_ids.add(version["id"])
 
-        template_data = get_template_data(
-            project_entity=project_entity,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-        )
+        task_ids.discard(None)
 
-        product_type = product_entity.get("productType")
-        if not product_type:
-            product_type = product_entity["type"]
-
-        product_base_type = product_entity.get("productBaseType")
-        if not product_base_type:
-            product_base_type = product_type
-
-        template_data["product"] = {
-            "name": product_entity["name"],
-            "type": product_type,
-            "basetype": product_base_type,
-        }
-        template_data["version"] = version_entity["version"]
-
-        src_representations = {}
-        for repre in ayon_api.get_representations(
-            project_name, version_ids={version_entity["id"]}
-        ):
-            repre_template_data = copy.deepcopy(template_data)
-            ext = repre.get("context", {}).get("ext")
-            if ext:
-                repre_template_data["ext"] = ext
-
-            src_representations[repre["id"]] = {
-                "representation": repre,
-                "published_files": [
-                    file_info["path"]
-                    for file_info in repre.get("files", [])
-                ],
-                "template_data": repre_template_data
-            }
-
-        try:
-            self.create_hero_version(
-                anatomy,
-                task_entity,
-                version_entity,
-                src_representations,
-                template_data,
+        product_entities_by_id = {
+            product_entity["id"]: product_entity
+            for product_entity in ayon_api.get_products(
+                project_name, product_ids=product_ids
             )
-        except Exception as exc:
-            success = False
-            errors.append(str(exc))
-        if success:
-            self.message("Hero version created successfully.")
+        }
+        folder_ids = {
+            product_entity["folderId"]
+            for product_entity in product_entities_by_id.values()
+        }
+        folder_entities_by_id = {
+            folder_entity["id"]: folder_entity
+            for folder_entity in ayon_api.get_folders(
+                project_name, folder_ids=folder_ids
+            )
+        }
+        task_entities_by_id = {
+            task_entity["id"]: task_entity
+            for task_entity in ayon_api.get_tasks(
+                project_name, task_ids=task_ids
+            )
+        }
+
+        hero_version_ids = set()
+        hero_versions_by_product_id = {
+            product_id: None
+            for product_id in product_ids
+        }
+        for hero_version_entity in ayon_api.get_hero_versions(
+            project_name,
+            product_ids=product_ids,
+        ):
+            product_id = hero_version_entity["productId"]
+            hero_versions_by_product_id[product_id] = hero_version_entity
+            hero_version_ids.add(hero_version_entity["id"])
+
+        repres_by_version_id = collections.defaultdict(list)
+        for repre in ayon_api.get_representations(
+            project_name, version_ids=version_ids | hero_version_ids
+        ):
+            version_id = repre["versionId"]
+            repres_by_version_id[version_id].append(repre)
+
+        # Begin the conversion version by version
+        errors = []
+        for version_entity in version_entities:
+            version_id = version_entity["id"]
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
+            task_id = version_entity["taskId"]
+            task_entity = task_entities_by_id.get(task_id)
+
+            hero_version_entity = hero_versions_by_product_id[product_id]
+            hero_representations = []
+            if hero_version_entity:
+                hero_version_id = hero_version_entity["id"]
+                hero_representations = repres_by_version_id[hero_version_id]
+
+            template_data = get_template_data(
+                project_entity=project_entity,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+            )
+
+            product_type = product_entity.get("productType")
+            if not product_type:
+                product_type = product_entity["type"]
+
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_type
+
+            template_data["product"] = {
+                "name": product_entity["name"],
+                "type": product_type,
+                "basetype": product_base_type,
+            }
+            template_data["version"] = version_entity["version"]
+
+            src_representations = {}
+            for repre in repres_by_version_id[version_id]:
+                repre_template_data = copy.deepcopy(template_data)
+                ext = repre.get("context", {}).get("ext")
+                if ext:
+                    repre_template_data["ext"] = ext
+
+                src_representations[repre["id"]] = {
+                    "representation": repre,
+                    "published_files": [
+                        file_info["path"]
+                        for file_info in repre.get("files", [])
+                    ],
+                    "template_data": repre_template_data
+                }
+
+            try:
+                self.create_hero_version(
+                    anatomy,
+                    project_settings,
+                    task_entity,
+                    version_entity,
+                    src_representations,
+                    template_data,
+                    hero_version_entity,
+                    hero_representations,
+                )
+            except HeroCreationError as exc:
+                self.log.warning(
+                    f"Failed to convert version to hero version: {exc}"
+                )
+                errors.append(str(exc))
+
+            except Exception:
+                self.log.warning(
+                    "Failed to convert version to hero version.",
+                    exc_info=True,
+                )
+                errors.append("Unexpected error")
+
+        if not errors:
+            if len(version_entities) == 1:
+                message = "Hero version created successfully."
+            else:
+                message = (
+                    f"{len(version_entities)} Hero versions"
+                    " created successfully."
+                )
+            return LoaderActionResult(success=True, message=message)
+
+        if len(version_entities) == 1:
+            message = "Failed to create hero version"
         else:
-            self.message(
-                f"Failed to create hero version:\n{chr(10).join(errors)}")
+            message = (
+                f"Failed to create {len(errors)}/{len(version_entities)}"
+                f" hero versions"
+            )
+        return LoaderActionResult(
+            success=False,
+            message=f"{message}:\n{chr(10).join(errors)}"
+        )
 
     def create_hero_version(
         self,
         anatomy: Anatomy,
-        src_task_entity: Union[dict[str, Any], None],
-        src_version_entity: dict[str, Any],
+        project_settings: dict[str, Any],
+        task_entity: dict[str, Any] | None,
+        version_entity: dict[str, Any],
         src_representations: dict[str, dict],
         template_data: dict[str, Any],
+        hero_version_entity: dict[str, Any] | None,
+        hero_representations: list[dict[str, Any]],
     ) -> None:
         """Create hero version from instance data.
 
         Args:
             anatomy (Anatomy): Anatomy object for the project.
-            src_version_entity (dict): Source version entity.
-            src_task_entity (Union[dict[str, Any], None]): Source task entity
+            project_settings (dict[str, Any]): Project settings.
+            task_entity (dict[str, Any] | None): Source task entity
                 if there was any.
+            version_entity (dict): Source version entity.
             src_representations (dict[str, dict]): Representations by id.
             template_data (dict[str, Any]): Base template data of source
                 context.
+            hero_version_entity (dict[str, Any] | None): Source hero version
+                if there was any.
+            hero_representations (list[dict[str, Any]]): Representations of
+                hero version.
 
         Raises:
-            RuntimeError: If any required data is missing or an error occurs
-                during the hero version creation process.
+            HeroCreationError: If any required data is missing or an error
+                occurs ring the hero version creation process.
 
         """
+        if not version_entity:
+            raise HeroCreationError("Can't find origin version in database.")
+
+        if version_entity["version"] == 0:
+            raise HeroCreationError("Version 0 cannot have hero version.")
+
         if not src_representations:
-            raise RuntimeError("No published representations found.")
+            raise HeroCreationError("No published representations found.")
 
         for repre_id, repre_info in tuple(src_representations.items()):
             repre = repre_info["representation"]
@@ -187,33 +313,21 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 src_representations.pop(repre_id, None)
 
         if not src_representations:
-            raise RuntimeError(
+            raise HeroCreationError(
                 "All published representations were filtered by name."
             )
 
         project_name = anatomy.project_name
-        if src_version_entity is None:
-            src_version_entity = self.version_from_representations(
-                project_name, src_representations
-            )
-
-        if not src_version_entity:
-            raise RuntimeError("Can't find origin version in database.")
-
-        if src_version_entity["version"] == 0:
-            raise RuntimeError("Version 0 cannot have hero version.")
 
         task_name = task_type = None
-        if src_task_entity:
-            task_name = src_task_entity["name"]
-            task_type = src_task_entity["taskType"]
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
         product_base_type = template_data["product"]["basetype"]
 
         # TODO how to get host name?
         host_name = None
-
-        project_settings = get_project_settings(project_name)
 
         # get the publish directory
         publish_template_key = get_publish_template_name(
@@ -229,7 +343,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             "publish", publish_template_key, "path", default=None
         )
         if published_template_obj is None:
-            raise RuntimeError(
+            raise HeroCreationError(
                 "Project anatomy does not have"
                 f" publish template key: {publish_template_key}"
             )
@@ -247,7 +361,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             "hero", hero_template_key, "path", default=None
         )
         if hero_template is None:
-            raise RuntimeError(
+            raise HeroCreationError(
                 "Project anatomy does not have"
                 f" hero template key: {hero_template_key}"
             )
@@ -270,12 +384,9 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 if file_path not in all_repre_file_paths:
                     all_repre_file_paths.append(file_path)
 
-        old_version, old_repres = self.current_hero_ents(
-            project_name, src_version_entity
-        )
         inactive_old_repres_by_name = {}
         old_repres_by_name = {}
-        for repre in old_repres:
+        for repre in hero_representations:
             low_name = repre["name"].lower()
             if repre["active"]:
                 old_repres_by_name[low_name] = repre
@@ -283,24 +394,27 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 inactive_old_repres_by_name[low_name] = repre
 
         op_session = OperationsSession()
-        entity_id = old_version["id"] if old_version else None
+        hero_version_id = None
+        if hero_version_entity:
+            hero_version_id = hero_version_entity["id"]
+
         new_hero_version = new_version_entity(
-            -src_version_entity["version"],
-            src_version_entity["productId"],
-            task_id=src_version_entity["taskId"],
-            data=copy.deepcopy(src_version_entity["data"]),
-            attribs=copy.deepcopy(src_version_entity["attrib"]),
-            entity_id=entity_id,
+            -version_entity["version"],
+            version_entity["productId"],
+            task_id=version_entity["taskId"],
+            data=copy.deepcopy(version_entity["data"]),
+            attribs=copy.deepcopy(version_entity["attrib"]),
+            entity_id=hero_version_id,
         )
-        if old_version:
+        if hero_version_entity:
             update_data = prepare_changes(
-                old_version,
+                hero_version_entity,
                 new_hero_version
             )
             op_session.update_entity(
                 project_name,
                 "version",
-                old_version["id"],
+                hero_version_id,
                 update_data
             )
         else:
@@ -333,14 +447,14 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                     backup_hero_publish_dir = candidate_backup_dir
                     break
             else:
-                raise AssertionError(
+                raise HeroCreationError(
                     f"Backup folders are fully occupied to max index {max_idx}"
                 )
 
             try:
                 os.rename(hero_publish_dir, backup_hero_publish_dir)
             except PermissionError as e:
-                raise AssertionError(
+                raise HeroCreationError(
                     "Could not create hero version because it is "
                     "not possible to replace current hero files."
                 ) from e
@@ -388,7 +502,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 else:
                     collections, remainders = clique.assemble(published_files)
                     if remainders or not collections or len(collections) > 1:
-                        raise RuntimeError(
+                        raise HeroCreationError(
                             "Integrity error. Files of published "
                             "representation is combination of frame "
                             "collections and single files."
@@ -556,11 +670,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
 
         """
         dirname = os.path.dirname(dst_path)
-        try:
-            os.makedirs(dirname)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
+        os.makedirs(dirname, exist_ok=True)
+
         if self.use_hardlinks:
             try:
                 create_hard_link(src_path, dst_path)
@@ -569,29 +680,6 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 if exc.errno not in [errno.EXDEV, errno.EINVAL]:
                     raise
         copyfile(src_path, dst_path)
-
-    @staticmethod
-    def version_from_representations(
-        project_name: str,
-        repres: dict
-    ) -> Optional[dict[str, Any]]:
-        """Find version from representations.
-
-        Args:
-            project_name (str): Name of the project.
-            repres (dict): Dictionary of representations info.
-
-        Returns:
-            Optional[dict]: Version entity if found, else None.
-
-        """
-        for repre_info in repres.values():
-            version = ayon_api.get_version_by_id(
-                project_name, repre_info["representation"]["versionId"]
-            )
-            if version:
-                return version
-        return None
 
     @staticmethod
     def current_hero_ents(
