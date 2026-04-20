@@ -85,9 +85,9 @@ class RepresentationsModel(QtGui.QStandardItemModel):
                     return None
 
             if role == QtCore.Qt.ToolTipRole:
-                if col == self.active_site_column :
+                if col == self.active_site_column:
                     role = ACTIVE_SITE_NAME_ROLE
-                elif col == self.remote_site_column :
+                elif col == self.remote_site_column:
                     role = REMOTE_SITE_NAME_ROLE
 
             if role == QtCore.Qt.DisplayRole:
