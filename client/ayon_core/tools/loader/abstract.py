@@ -1190,6 +1190,7 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             Union[str, None]: Site name or None if site sync is not enabled.
+
         """
 
         pass
