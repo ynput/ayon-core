@@ -805,8 +805,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             target_width,
             target_height,
             bg_color=thumbnail_def.background_color,
-            log=self.log,
             review_layers=review_layers,
+            log=self.log,
         )
 
     def _get_config_from_profile(
