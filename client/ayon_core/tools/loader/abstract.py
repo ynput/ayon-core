@@ -1169,6 +1169,33 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_active_site(self, project_name: str) -> str | None:
+        """Active site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_remote_site(self, project_name: str) -> str | None:
+        """Remote site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
+        """
+
+        pass
+
+    @abstractmethod
     def get_version_sync_availability(self, project_name, version_ids):
         """Version sync availability.
 

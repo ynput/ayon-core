@@ -486,6 +486,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_remote_site_icon_def(self, project_name):
         return self._sitesync_model.get_remote_site_icon_def(project_name)
 
+    def get_active_site(self, project_name):
+        return self._sitesync_model.get_active_site(project_name)
+
+    def get_remote_site(self, project_name):
+        return self._sitesync_model.get_remote_site(project_name)
+
     def get_version_sync_availability(self, project_name, version_ids):
         return self._sitesync_model.get_version_sync_availability(
             project_name, version_ids
