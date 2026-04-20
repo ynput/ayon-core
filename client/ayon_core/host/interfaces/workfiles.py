@@ -13,7 +13,7 @@ from typing import Optional, Any
 import ayon_api
 import arrow
 
-from ayon_core.lib import emit_event
+from ayon_core.lib import emit_event, Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.host.abstract import AbstractHost
 from ayon_core.host.constants import ContextChangeReason
@@ -21,6 +21,8 @@ from ayon_core.host.constants import ContextChangeReason
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
+
+_list_workfiles_log = Logger.get_logger("workfiles.host_list_workfiles")
 
 WORKFILE_LISTING_ENTITY_FIELDS: frozenset[str] = frozenset(
     {
@@ -1161,6 +1163,19 @@ class IWorkfileHost(AbstractHost):
         if os.path.exists(workdir):
             filenames = list(os.listdir(workdir))
 
+        _list_workfiles_log.debug(
+            "list_workfiles project=%r host=%r template_key=%r extensions=%r "
+            "entity_count=%d workdir=%r exists=%s listdir_count=%d",
+            project_name,
+            self.name,
+            list_workfiles_context.template_key,
+            sorted(extensions),
+            len(list_workfiles_context.workfile_entities),
+            str(workdir),
+            os.path.exists(workdir),
+            len(filenames),
+        )
+
         data_parser = WorkfileDataParser(file_template, workdir_data)
         items = []
         for filename in filenames:
@@ -1194,6 +1209,13 @@ class IWorkfileHost(AbstractHost):
             )
             items.append(item)
 
+        _list_workfiles_log.debug(
+            "list_workfiles after_disk_pass item_count=%d "
+            "unmatched_entity_paths=%d",
+            len(items),
+            len(workfile_entities_by_path),
+        )
+
         for filepath, workfile_entity in workfile_entities_by_path.items():
             # Workfile entity is not in the filesystem
             #   but it is in the database
@@ -1222,6 +1244,11 @@ class IWorkfileHost(AbstractHost):
                     workfile_entity=workfile_entity,
                 )
             )
+
+        _list_workfiles_log.debug(
+            "list_workfiles final item_count=%d",
+            len(items),
+        )
 
         return items
 

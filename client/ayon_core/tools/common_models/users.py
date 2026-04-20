@@ -39,12 +39,17 @@ class UserItem:
 
     @classmethod
     def from_entity_data(cls, user_data):
+        # GraphQL may omit `attrib` or individual sub-keys depending on field
+        # selection / server version; fall back to safe defaults so the
+        # Workfiles tree can still build user labels.
+        attrib = user_data.get("attrib") or {}
+        username = user_data.get("name") or ""
         return cls(
-            user_data["name"],
-            user_data["attrib"]["fullName"],
-            user_data["attrib"]["email"],
-            user_data["attrib"]["avatarUrl"],
-            user_data["active"],
+            username,
+            attrib.get("fullName") or username,
+            attrib.get("email") or "",
+            attrib.get("avatarUrl") or "",
+            user_data.get("active", True),
         )
 
 

@@ -992,11 +992,22 @@ class WorkfilesModel:
         self, folder_id: Optional[str], task_id: Optional[str]
     ) -> list[WorkfileInfo]:
         if not folder_id or not task_id:
+            self._log.debug(
+                "_cache_file_items early exit folder_id=%r task_id=%r",
+                folder_id,
+                task_id,
+            )
             return []
 
         cache: CacheItem = self._workarea_file_items_cache[task_id]
         if cache.is_valid:
-            return cache.get_data()
+            data = cache.get_data()
+            self._log.debug(
+                "_cache_file_items cache hit task_id=%r len=%d",
+                task_id,
+                len(data),
+            )
+            return data
 
         project_entity = self._controller.get_project_entity(
             self._project_name
@@ -1022,11 +1033,27 @@ class WorkfilesModel:
             workfile_entities=workfile_entities,
         )
 
+        self._log.debug(
+            "_cache_file_items before list_workfiles project=%r folder_id=%r "
+            "task_id=%r template_key=%r entities=%d taskType=%r type=%r",
+            self._project_name,
+            folder_id,
+            task_id,
+            template_key,
+            len(workfile_entities),
+            task_entity.get("taskType"),
+            task_entity.get("type"),
+        )
         items = self._host.list_workfiles(
             self._project_name,
             folder_entity,
             task_entity,
             prepared_data=prepared_data,
+        )
+        self._log.debug(
+            "_cache_file_items after list_workfiles task_id=%r len(items)=%d",
+            task_id,
+            len(items),
         )
         cache.update_data(items)
 

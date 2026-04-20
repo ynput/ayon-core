@@ -78,6 +78,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         self._published_mode = False
         self._selected_folder_id = None
         self._selected_task_name = None
+        self._selected_task_id = None
 
         self._add_missing_context_item()
 
@@ -159,12 +160,15 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
 
     def _on_folder_changed(self, event):
         self._selected_folder_id = event["folder_id"]
+        self._selected_task_id = None
+        self._selected_task_name = None
         if not self._published_mode:
             self._fill_items()
 
     def _on_task_changed(self, event):
         self._selected_folder_id = event["folder_id"]
         self._selected_task_name = event["task_name"]
+        self._selected_task_id = event.get("task_id")
         if not self._published_mode:
             self._fill_items()
 
@@ -205,15 +209,40 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
     def _fill_items_impl(self):
         folder_id = self._selected_folder_id
         task_name = self._selected_task_name
+        _log.debug(
+            "WorkAreaFilesModel._fill_items_impl start folder_id=%r "
+            "task_name=%r task_id=%r published_mode=%s",
+            folder_id,
+            task_name,
+            self._selected_task_id,
+            self._published_mode,
+        )
         if not folder_id or not task_name:
             self._add_missing_context_item()
             return
 
         file_items = self._controller.get_workarea_file_items(
-            folder_id, task_name
+            folder_id, task_name, task_id=self._selected_task_id
+        )
+        sample = [
+            getattr(f, "rootless_path", None)
+            for f in (file_items or [])[:5]
+        ]
+        _log.debug(
+            "WorkAreaFilesModel._fill_items_impl got %d file_items sample=%s",
+            len(file_items or []),
+            sample,
         )
         root_item = self.invisibleRootItem()
         if not file_items:
+            _log.warning(
+                "WorkAreaFilesModel: empty work area file list folder_id=%r "
+                "task_name=%r task_id=%r (check ayon_core_debug.log with "
+                "AYON_DEBUG=1)",
+                folder_id,
+                task_name,
+                self._selected_task_id,
+            )
             self._add_empty_item()
             return
         self._remove_empty_item()

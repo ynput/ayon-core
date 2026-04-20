@@ -409,10 +409,26 @@ class BaseWorkfileController(
             folder_id, task_id
         )
 
-    def get_workarea_file_items(self, folder_id, task_name, sender=None):
-        task_id = self._get_task_id(folder_id, task_name)
+    def get_workarea_file_items(self, folder_id, task_name, sender=None, *, task_id=None):
+        resolved_id = task_id or self._get_task_id(folder_id, task_name)
+        if not resolved_id:
+            if (
+                folder_id == self.get_selected_folder_id()
+                and task_name
+                and task_name == self.get_selected_task_name()
+            ):
+                resolved_id = self.get_selected_task_id()
+        if not resolved_id:
+            Logger.get_logger("workfiles.WorkfilesController").debug(
+                "get_workarea_file_items unresolved task_id folder_id=%r "
+                "task_name=%r passed_task_id=%r selected_task_id=%r",
+                folder_id,
+                task_name,
+                task_id,
+                self.get_selected_task_id(),
+            )
         return self._workfiles_model.get_workarea_file_items(
-            folder_id, task_id
+            folder_id, resolved_id
         )
 
     def get_workarea_save_as_data(self, folder_id, task_id):

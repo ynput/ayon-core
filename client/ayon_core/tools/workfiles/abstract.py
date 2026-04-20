@@ -743,13 +743,15 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workarea_file_items(self, folder_id, task_name, sender=None):
+    def get_workarea_file_items(self, folder_id, task_name, sender=None, *, task_id=None):
         """Get workarea file items.
 
         Args:
             folder_id (str): Folder id.
             task_name (str): Task name.
             sender (Optional[str]): Who requested workarea file items.
+            task_id (Optional[str]): Task id from selection; avoids re-lookup by
+                name when hierarchy cache and name resolution disagree.
 
         Returns:
             list[WorkfileInfo]: List of workarea file items.
