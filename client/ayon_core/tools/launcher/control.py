@@ -90,10 +90,15 @@ class BaseLauncherController(
         return self._addons_manager
 
     def get_grouped_host_names(self) -> list[str | None]:
-        value = self._launcher_registry.get_item(
-            "grouped_hosts", default="[]"
-        )
-        return json.loads(value)
+        try:
+            value = self._launcher_registry.get_item(
+                "grouped_hosts", default="[]"
+            )
+            return json.loads(value)
+        except Exception:
+            # NOTE This is future-guarding in case we'd change the stored data
+            self.log.warning("Failed to get grouped hosts", exc_info=True)
+            return []
 
     def set_grouped_host_names(self, host_names: list[str | None]):
         value = json.dumps(host_names)
