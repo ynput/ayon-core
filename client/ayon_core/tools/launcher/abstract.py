@@ -63,8 +63,9 @@ class WorkfileItem:
     workfile_id: str
     filename: str
     exists: bool
-    icon: Optional[str]
-    version: Optional[int]
+    icon: str | None
+    version: int | None
+    updated_at_time: float | None
 
 
 class AbstractLauncherCommon(ABC):
