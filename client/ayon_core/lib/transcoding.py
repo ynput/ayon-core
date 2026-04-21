@@ -715,6 +715,7 @@ def convert_input_paths_for_ffmpeg(
     output_dir: str,
     # TODO move 'review_layers' before logger
     logger: logging.Logger = None,
+    *,
     review_layers: Optional[list[str]] = None,
 ) -> None:
     """Convert source file to format supported in ffmpeg.
