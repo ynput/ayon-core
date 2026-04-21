@@ -400,7 +400,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             layer_name = get_review_layer_name(
-                first_input_path, review_layers
+                first_input_path, review_layers=review_layers
             )
 
             # Do conversion if needed
