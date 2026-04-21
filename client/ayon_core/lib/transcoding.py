@@ -1229,6 +1229,7 @@ def oiio_color_convert(
     frame_padding: Optional[int] = None,
     parallel_frames: bool = False,
     logger: Optional[logging.Logger] = None,
+    *,
     review_layers: Optional[list[str]] = None,
 ) -> None:
     """Transcode source file to other with colormanagement.
