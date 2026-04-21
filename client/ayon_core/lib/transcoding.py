@@ -573,7 +573,7 @@ def get_convert_rgb_channels(
             if there is not any layer with RGB combination.
     """
     channels_info = get_review_info_by_layer_name(
-        channel_names, review_layers
+        channel_names, review_layers=review_layers
     )
     for item in channels_info:
         review_channels = item["review_channels"]
@@ -615,7 +615,7 @@ def get_review_layer_name(
 
     channel_names = input_info["channelnames"]
     channels_info = get_review_info_by_layer_name(
-        channel_names, review_layers
+        channel_names, review_layers=review_layers
     )
     for item in channels_info:
         # Layer name can be '', when review channels are 'R', 'G', 'B'
@@ -666,7 +666,10 @@ def should_convert_for_ffmpeg(
 
     # Check channels
     channel_names = input_info["channelnames"]
-    review_channels = get_convert_rgb_channels(channel_names, review_layers)
+    review_channels = get_convert_rgb_channels(
+        channel_names,
+        review_layers=review_layers
+    )
     if review_channels is None:
         return None
 
@@ -1676,7 +1679,10 @@ def get_oiio_input_and_channel_args(
 
     """
     channel_names = oiio_input_info["channelnames"]
-    review_channels = get_convert_rgb_channels(channel_names, review_layers)
+    review_channels = get_convert_rgb_channels(
+        channel_names,
+        review_layers=review_layers
+    )
 
     if review_channels is None:
         raise MissingRGBAChannelsError(
