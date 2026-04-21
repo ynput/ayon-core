@@ -82,6 +82,7 @@ class WorkfilesModel:
                 workfile_id=workfile_entity["id"],
                 filename=os.path.basename(rootless_path),
                 exists=exists,
+                host_name=host_name,
                 icon=self._get_host_icon(host_name),
                 version=version,
                 updated_at_time=mod_time,

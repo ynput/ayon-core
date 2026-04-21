@@ -10,6 +10,7 @@ from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 VERSION_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
+HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -54,11 +55,14 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         new_items = []
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
+            host_name = workfile_item.host_name
+
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
+            item.setData(host_name, HOST_NAME_ROLE)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -146,6 +150,21 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         return icon
 
 
+class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
+    def lessThan(self, source_left, source_right):
+        l_host = source_left.data(HOST_NAME_ROLE)
+        r_host = source_right.data(HOST_NAME_ROLE)
+        if l_host != r_host:
+            if l_host is None:
+                return True
+            if r_host is None:
+                return False
+            if self.sortOrder() == QtCore.Qt.DescendingOrder:
+                return l_host > r_host
+            return l_host < r_host
+        return super().lessThan(source_left, source_right)
+
+
 class WorkfilesView(DeselectableTreeView):
     def drawBranches(self, painter, rect, index):
         return
@@ -170,8 +189,10 @@ class WorkfilesPage(QtWidgets.QWidget):
         workfiles_view.setSortingEnabled(True)
 
         workfiles_model = WorkfilesModel(controller)
-        workfiles_proxy = QtCore.QSortFilterProxyModel()
+        workfiles_proxy = WorkfileSortFilterProxy()
         workfiles_proxy.setSourceModel(workfiles_model)
+
+        workfiles_view.setModel(workfiles_proxy)
 
         workfiles_delegate = WorkfilesDelegate()
         updated_at_delegate = PrettyTimeDelegate(
@@ -180,8 +201,6 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view.setItemDelegateForColumn(0, workfiles_delegate)
         workfiles_view.setItemDelegateForColumn(1, updated_at_delegate)
-
-        workfiles_view.setModel(workfiles_proxy)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

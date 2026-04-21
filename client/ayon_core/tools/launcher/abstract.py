@@ -63,6 +63,7 @@ class WorkfileItem:
     workfile_id: str
     filename: str
     exists: bool
+    host_name: str | None
     icon: str | None
     version: int | None
     updated_at_time: float | None
