@@ -183,32 +183,35 @@ class ExtractOIIOTranscode(publish.Extractor):
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
 
-                sequence_files = self._translate_to_sequence(
-                    files_to_convert)
-                self.log.debug("Files to convert: {}".format(sequence_files))
+                # Native Sequence Detection
+                collections, remainders = clique.assemble(
+                    files_to_convert,
+                    assume_padded_when_ambiguous=True
+                )
+                
+                is_sequence = len(collections) == 1 and not remainders
                 missing_rgba_review_channels = False
-                for file_name in sequence_files:
-                    if isinstance(file_name, clique.Collection):
-                        # Support sequences with holes by supplying
-                        # dedicated `--frames` argument to `oiiotool`
-                        # Create `frames` string like "1001-1002,1004,1010-1012
-                        # Create `filename` string like "file.#.exr"
-                        frames = file_name.format("{ranges}").replace(" ", "")
-                        frame_padding = file_name.padding
-                        file_name = file_name.format("{head}#{tail}")
-                        parallel_frames = True
-                    elif isinstance(file_name, str):
-                        # Single file
-                        frames = None
-                        frame_padding = None
-                        parallel_frames = False
-                    else:
-                        raise TypeError(
-                            f"Unsupported file name type: {type(file_name)}."
-                            " Expected str or clique.Collection."
-                        )
 
-                    self.log.debug("Transcoding file: `{}`".format(file_name))
+                if is_sequence:
+                    collection = collections[0]
+                    frames = collection.format("{ranges}").replace(" ", "")
+                    frame_padding = collection.padding
+                    
+                    # Dynamically assemble the input path into a format oiiotool understands
+                    wildcard = "#"
+                    file_name = collection.format(f"{{head}}{wildcard}{{tail}}")
+                    parallel_frames = True
+                    
+                    self.log.debug("Transcoding sequence natively: `{}`".format(file_name))
+                    sequence_files = [(file_name, frames, frame_padding, parallel_frames)]
+                else:
+                    self.log.debug("Fallback to single-file transcoding execution.")
+                    sequence_files = [
+                        (fname, None, None, False)
+                        for fname in files_to_convert
+                    ]
+
+                for file_name, frames, frame_padding, parallel_frames in sequence_files:
                     input_path = os.path.join(original_staging_dir, file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
@@ -335,32 +338,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             renamed_files.append(file_name)
         new_repre["files"] = renamed_files
 
-    def _translate_to_sequence(self, files_to_convert):
-        """Returns original individual filepaths or list of clique.Collection.
 
-        Uses clique to find frame sequence, and return the collections instead.
-        If sequence not detected in input filenames, it returns original list.
-
-        Args:
-            files_to_convert (list[str]): list of file names
-        Returns:
-            list[str | clique.Collection]: List of
-                filepaths ['fileA.exr', 'fileB.exr']
-                or clique.Collection for a sequence.
-
-        """
-        pattern = [clique.PATTERNS["frames"]]
-        collections, _ = clique.assemble(
-            files_to_convert, patterns=pattern,
-            assume_padded_when_ambiguous=True)
-        if collections:
-            if len(collections) > 1:
-                raise ValueError(
-                    "Too many collections {}".format(collections))
-
-            return collections
-
-        return files_to_convert
 
     def _get_output_file_path(self, input_path, output_dir,
                               output_extension):
