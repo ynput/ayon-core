@@ -152,9 +152,6 @@ class WorkfilesView(DeselectableTreeView):
 
 
 class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
     def paint(self, painter, option, index):
         option.textElideMode = QtCore.Qt.ElideMiddle
         super().paint(painter, option, index)
