@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import collections
+
 from typing import Optional
 
 import ayon_api
@@ -11,6 +15,7 @@ VERSION_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
+ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 5
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -36,23 +41,31 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             self._on_selection_task_changed,
         )
 
+        self._group_host_names = set()
+
         self._controller = controller
         self._selected_project_name = None
         self._selected_folder_id = None
         self._selected_task_id = None
 
+        # Cache
         self._transparent_icon = None
-
         self._cached_icons = {}
+        self._host_items_by_name = {}
+        self._items_by_host_name = collections.defaultdict(list)
 
     def refresh(self) -> None:
+        self._group_host_names = set(
+            self._controller.get_grouped_host_names()
+        )
+
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
         workfile_items = self._controller.get_workfile_items(
             self._selected_project_name, self._selected_task_id
         )
-        new_items = []
+        items_by_host_name = collections.defaultdict(list)
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
             host_name = workfile_item.host_name
@@ -63,11 +76,36 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
+            item.setData(0, ITEM_TYPE_ROLE)
+            item.setColumnCount(2)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
             item.setFlags(flags)
-            new_items.append(item)
+
+            items_by_host_name[host_name].append(item)
+
+        new_items = []
+        host_items_by_name = {}
+        for host_name, items in items_by_host_name.items():
+            icon = next(
+                (item.data(QtCore.Qt.DecorationRole) for item in items),
+                None
+            )
+
+            host_item = QtGui.QStandardItem(
+                host_name or "<Unknown Host>"
+            )
+            host_item.setData(icon, QtCore.Qt.DecorationRole)
+            host_item.setData(host_name, HOST_NAME_ROLE)
+            host_item.setData(1, ITEM_TYPE_ROLE)
+            host_item.setFlags(QtCore.Qt.ItemIsEnabled)
+            host_item.setColumnCount(2)
+            host_items_by_name[host_name] = host_item
+            if host_name in self._group_host_names:
+                new_items.append(host_item)
+            else:
+                new_items.extend(items)
 
         if not new_items:
             title = "< No workfiles >"
@@ -79,10 +117,46 @@ class WorkfilesModel(QtGui.QStandardItemModel):
                 title = "< Select a task >"
             item = QtGui.QStandardItem(title)
             item.setFlags(QtCore.Qt.NoItemFlags)
-            new_items.append(item)
+            new_items = [item]
+
         root_item.appendRows(new_items)
 
+        self._host_items_by_name = host_items_by_name
+        self._items_by_host_name = items_by_host_name
+
         self.refreshed.emit()
+
+    def set_group_by_host_name(
+        self,
+        host_name: str | None,
+        group: bool | None = None,
+    ) -> None:
+        if group is None:
+            group = host_name not in self._group_host_names
+
+        if group and host_name in self._group_host_names:
+            return
+
+        if not group and host_name not in self._group_host_names:
+            return
+
+        host_item = self._host_items_by_name.get(host_name)
+        items = self._items_by_host_name.get(host_name)
+        if host_item is None or not items:
+            return
+
+        root_item = self.invisibleRootItem()
+        if group:
+            for item in items:
+                root_item.takeRow(item.row())
+            root_item.appendRow(host_item)
+            self._group_host_names.add(host_name)
+        else:
+            root_item.takeRow(host_item.row())
+            root_item.appendRows(items)
+            self._group_host_names.discard(host_name)
+
+        self._controller.set_grouped_host_names(list(self._group_host_names))
 
     def flags(self, index):
         if index.column() != 0:
@@ -91,10 +165,11 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if index.column() == 1:
-            if role != QtCore.Qt.DisplayRole:
-                return None
+            if role == QtCore.Qt.DisplayRole:
+                role = UPDATED_AT_ROLE
 
-            role = UPDATED_AT_ROLE
+            elif role not in (HOST_NAME_ROLE, ITEM_TYPE_ROLE):
+                return None
 
             index = self.index(index.row(), 0, index.parent())
         return super().data(index, role)
@@ -187,6 +262,7 @@ class WorkfilesPage(QtWidgets.QWidget):
         workfiles_view = WorkfilesView(self)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
+        workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = WorkfileSortFilterProxy()
@@ -210,6 +286,10 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view.selectionModel().selectionChanged.connect(
             self._on_selection_changed
+        )
+        workfiles_view.doubleClicked.connect(self._on_view_clicked)
+        workfiles_view.customContextMenuRequested.connect(
+            self._on_custom_menu_request
         )
         resize_timer.timeout.connect(self._on_resize_timer)
 
@@ -275,3 +355,36 @@ class WorkfilesPage(QtWidgets.QWidget):
         for index in selected.indexes():
             workfile_id = index.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
+
+    def _on_view_clicked(self, index) -> None:
+        if not index.isValid() or index.data(ITEM_TYPE_ROLE) != 1:
+            return
+        host_name = index.data(HOST_NAME_ROLE)
+        self._workfiles_model.set_group_by_host_name(host_name)
+
+    def _on_custom_menu_request(self, point):
+        index = self._workfiles_view.indexAt(point)
+        if not index.isValid():
+            return
+
+        item_type = index.data(ITEM_TYPE_ROLE)
+        if item_type is None:
+            return
+
+        action_title = None
+        if item_type == 0:
+            action_title = "Group by host"
+        elif item_type == 1:
+            action_title = "Ungroup (double-click)"
+
+        if action_title is None:
+            return
+
+        menu = QtWidgets.QMenu(self._workfiles_view)
+        menu.addAction(action_title)
+
+        global_pos = self._workfiles_view.viewport().mapToGlobal(point)
+        action = menu.exec_(global_pos)
+        if action is not None:
+            host_name = index.data(HOST_NAME_ROLE)
+            self._workfiles_model.set_group_by_host_name(host_name)

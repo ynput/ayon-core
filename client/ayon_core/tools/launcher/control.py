@@ -1,6 +1,7 @@
+import json
 from typing import Optional
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
@@ -31,6 +32,11 @@ class BaseLauncherController(
         self._project_settings = {}
         self._event_system = None
         self._log = None
+
+        self._launcher_registry = JSONSettingRegistry(
+            "launcher",
+            get_launcher_local_dir("tools")
+        )
 
         self._addons_manager = None
 
@@ -80,6 +86,16 @@ class BaseLauncherController(
         if self._addons_manager is None:
             self._addons_manager = AddonsManager()
         return self._addons_manager
+
+    def get_grouped_host_names(self) -> list[str | None]:
+        value = self._launcher_registry.get_item(
+            "grouped_hosts", default="[]"
+        )
+        return json.loads(value)
+
+    def set_grouped_host_names(self, host_names: list[str | None]):
+        value = json.dumps(host_names)
+        self._launcher_registry.set_item("grouped_hosts", value)
 
     # Entity items for UI
     def get_project_items(self, sender=None):
