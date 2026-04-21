@@ -426,7 +426,9 @@ DEFAULT_VALUES = {
         "profiles": []
     },
     "reviewable_layers": {
-        "review_layers": []
+        "review_layers": [
+            "Beauty"
+        ]
     },
     "publish": DEFAULT_PUBLISH_VALUES,
     "project_folder_structure": json.dumps(
