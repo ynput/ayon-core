@@ -8,6 +8,7 @@ from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 VERSION_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
+UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -55,6 +56,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
+            item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
