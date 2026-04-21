@@ -623,6 +623,7 @@ def get_review_layer_name(
 
 def should_convert_for_ffmpeg(
     src_filepath: str,
+    *,
     review_layers: Optional[list[str]] = None,
 ) -> Optional[bool]:
     """Find out if input should be converted for ffmpeg.
