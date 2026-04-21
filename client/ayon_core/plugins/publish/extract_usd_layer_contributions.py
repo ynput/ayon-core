@@ -530,10 +530,12 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         product_base_type = instance.data.get("productBaseType")
         if not product_base_type:
             product_base_type = instance.data["productType"]
-        profile = filter_profiles(cls.profiles, {
+        filtering_criteria = {
             "product_base_types": product_base_type,
-            "task_types": current_context_task_type
-        })
+            "task_types": current_context_task_type,
+            "task_names": create_context.get_current_task_name()
+        }
+        profile = filter_profiles(cls.profiles, filtering_criteria)
         if not profile:
             profile = {}
 
