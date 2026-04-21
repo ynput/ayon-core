@@ -252,7 +252,7 @@ class ExtractBurnin(publish.Extractor):
             first_input_path = os.path.join(src_repre_staging_dir, filename)
             # Determine if representation requires pre conversion for ffmpeg
             do_convert = should_convert_for_ffmpeg(
-                first_input_path, review_layers
+                first_input_path, review_layers=review_layers
             )
             # If result is None the requirement of conversion can't be
             #   determined
