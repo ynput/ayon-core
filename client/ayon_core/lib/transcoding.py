@@ -537,6 +537,7 @@ def get_review_info_by_layer_name(
 
 def get_convert_rgb_channels(
     channel_names: list[str],
+    *,
     review_layers: Optional[list[str]] = None,
 ) -> Optional[tuple[str, str, str, Optional[str]]]:
     """Get first available RGB(A) group from channels info.
