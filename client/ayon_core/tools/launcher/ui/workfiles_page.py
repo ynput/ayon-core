@@ -4,6 +4,7 @@ import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
 from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
+from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 VERSION_ROLE = QtCore.Qt.UserRole + 1
@@ -17,8 +18,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
     def __init__(self, controller: AbstractLauncherFrontEnd) -> None:
         super().__init__()
 
-        self.setColumnCount(1)
+        self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Workfiles")
+        self.setHeaderData(1, QtCore.Qt.Horizontal, "Modified")
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -78,6 +80,21 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
         self.refreshed.emit()
 
+    def flags(self, index):
+        if index.column() != 0:
+            index = self.index(index.row(), 0, index.parent())
+        return super().flags(index)
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if index.column() == 1:
+            if role != QtCore.Qt.DisplayRole:
+                return None
+
+            role = UPDATED_AT_ROLE
+
+            index = self.index(index.row(), 0, index.parent())
+        return super().data(index, role)
+
     def _on_selection_project_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
@@ -134,6 +151,15 @@ class WorkfilesView(DeselectableTreeView):
         return
 
 
+class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def paint(self, painter, option, index):
+        option.textElideMode = QtCore.Qt.ElideMiddle
+        super().paint(painter, option, index)
+
+
 class WorkfilesPage(QtWidgets.QWidget):
     def __init__(
         self,
@@ -144,9 +170,19 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view = WorkfilesView(self)
         workfiles_view.setIndentation(0)
+        workfiles_view.setSortingEnabled(True)
+
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = QtCore.QSortFilterProxyModel()
         workfiles_proxy.setSourceModel(workfiles_model)
+
+        workfiles_delegate = WorkfilesDelegate()
+        updated_at_delegate = PrettyTimeDelegate(
+            default="N/A", parent=workfiles_view
+        )
+
+        workfiles_view.setItemDelegateForColumn(0, workfiles_delegate)
+        workfiles_view.setItemDelegateForColumn(1, updated_at_delegate)
 
         workfiles_view.setModel(workfiles_proxy)
 
@@ -154,15 +190,26 @@ class WorkfilesPage(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(workfiles_view, 1)
 
+        resize_timer = QtCore.QTimer()
+
         workfiles_view.selectionModel().selectionChanged.connect(
             self._on_selection_changed
         )
-        workfiles_model.refreshed.connect(self._on_refresh)
+        resize_timer.timeout.connect(self._on_resize_timer)
 
         self._controller = controller
         self._workfiles_view = workfiles_view
+        self._workfiles_delegate = workfiles_delegate
+        self._updated_at_delegate = updated_at_delegate
         self._workfiles_model = workfiles_model
         self._workfiles_proxy = workfiles_proxy
+        self._resize_timer = resize_timer
+        self._resize_counter = 0
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+
+        self._resize_timer.start()
 
     def refresh(self) -> None:
         self._workfiles_model.refresh()
@@ -171,8 +218,41 @@ class WorkfilesPage(QtWidgets.QWidget):
         sel_model = self._workfiles_view.selectionModel()
         sel_model.clearSelection()
 
-    def _on_refresh(self) -> None:
-        self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder)
+    def _on_resize_timer(self):
+        # --- NOTE ---
+        # Because the date column does not store string value to display
+        #   but float value then displayed using delegate we're not
+        #   able to get the width of the column using standard methods.
+        # For that a default width of date column is set to 160 but resizing
+        #   second column is not allowed, instead we can resize the first
+        #   column. For that we need size of the view which is known only
+        #   after 2 Qt app loops.
+
+        # Make sure the logic happens only once
+        if self._resize_counter == 2:
+            self._resize_timer.stop()
+            return
+
+        self._resize_counter += 1
+        if self._resize_counter < 2:
+            return
+
+        # NOTE changing resize mode during initialization crashes application
+        view_header = self._workfiles_view.header()
+        view_header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
+        view_header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
+
+        # Resize workfiles column
+        view_size = self._workfiles_view.size()
+        col_1_width = view_size.width() - 160
+        if col_1_width < 120:
+            col_1_width = 120
+        view_header = self._workfiles_view.header()
+        view_header.resizeSection(view_header.logicalIndex(0), col_1_width)
 
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
