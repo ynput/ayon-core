@@ -52,6 +52,15 @@ from .lib import (
     get_trait_representations,
     has_trait_representations,
     set_trait_representations,
+
+    get_template_name,
+    get_publish_template,
+    get_publish_template_object,
+    get_instance_families,
+    get_version_data_from_instance,
+    get_rootless_path,
+
+    TemplateItem,
 )
 
 from .abstract_expected_files import ExpectedFiles
@@ -116,4 +125,13 @@ __all__ = (
     "get_trait_representations",
     "has_trait_representations",
     "set_trait_representations",
+
+    "get_template_name",
+    "get_publish_template",
+    "get_publish_template_object",
+    "get_instance_families",
+    "get_version_data_from_instance",
+    "get_rootless_path",
+
+    "TemplateItem",
 )

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import os
 import re
 import copy
 import platform
 import collections
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import ayon_api
 
@@ -17,7 +20,12 @@ from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
 from .roots import AnatomyRoots
-from .templates import AnatomyTemplates
+from .templates import AnatomyTemplates, PLACEHOLDER
+
+
+if TYPE_CHECKING:
+    from .templates import TemplateItem
+
 
 log = Logger.get_logger(__name__)
 
@@ -104,7 +112,13 @@ class BaseAnatomy(object):
         """Return `AnatomyTemplates` object of current Anatomy instance."""
         return self._templates_obj
 
-    def get_template_item(self, *args, **kwargs):
+    def get_template_item(
+            self,
+            category_name: str,
+            template_name: str,
+            subkey: Optional[str] = None,
+            default: Any = PLACEHOLDER,
+    ) -> Union[TemplateItem, str, None]:
         """Get template item from category.
 
         Args:
@@ -117,7 +131,9 @@ class BaseAnatomy(object):
             Any: Template item, subkey value as AnatomyStringTemplate or None.
 
         """
-        return self._templates_obj.get_template_item(*args, **kwargs)
+        return self._templates_obj.get_template_item(
+            category_name, template_name, subkey, default
+        )
 
     def format(self, *args, **kwargs):
         """Wrap `format` method of Anatomy's `templates_obj`."""

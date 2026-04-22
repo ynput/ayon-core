@@ -4,6 +4,7 @@ import copy
 import platform
 import collections
 import numbers
+from typing import Any, Optional
 
 from ayon_core.lib.path_templates import (
     TemplateResult,
@@ -16,8 +17,9 @@ from .exceptions import (
     AnatomyTemplateUnsolved,
 )
 
+
 _IS_WINDOWS = platform.system().lower() == "windows"
-_PLACEHOLDER = object()
+PLACEHOLDER = object()
 
 
 class AnatomyTemplateResult(TemplateResult):
@@ -578,8 +580,12 @@ class AnatomyTemplates:
         return self.format(in_data, strict=False)
 
     def get_template_item(
-        self, category_name, template_name, subkey=None, default=_PLACEHOLDER
-    ):
+        self,
+        category_name: str,
+        template_name: str,
+        subkey: Optional[str] = None,
+        default: Any = PLACEHOLDER
+    ) -> Any:
         """Get template item from category.
 
         Args:
@@ -599,13 +605,13 @@ class AnatomyTemplates:
         self._validate_discovery()
         category = self.get(category_name)
         if category is None:
-            if default is not _PLACEHOLDER:
+            if default is not PLACEHOLDER:
                 return default
             raise KeyError("Category '{}' not found.".format(category_name))
 
         template_item = category.get(template_name)
         if template_item is None:
-            if default is not _PLACEHOLDER:
+            if default is not PLACEHOLDER:
                 return default
             raise KeyError(
                 "Template '{}' not found in category '{}'.".format(
@@ -620,7 +626,7 @@ class AnatomyTemplates:
         if item is not None:
             return item
 
-        if default is not _PLACEHOLDER:
+        if default is not PLACEHOLDER:
             return default
         raise KeyError(
             "Subkey '{}' not found in '{}/{}'.".format(

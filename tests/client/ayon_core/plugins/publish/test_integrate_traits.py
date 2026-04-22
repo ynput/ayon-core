@@ -5,7 +5,7 @@ import base64
 import re
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pyblish.api
 import pytest
@@ -15,6 +15,10 @@ from ayon_core.lib.file_transaction import (
 )
 
 from ayon_core.pipeline.anatomy import Anatomy
+from ayon_core.pipeline.publish import (
+    TemplateItem,
+    get_template_name,
+)
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
@@ -26,7 +30,16 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Representation,
     Sequence,
+    TemplatePath,
     Transient,
+
+    TransferItem
+)
+from ayon_core.pipeline.traits.publishing import (
+    get_transfers_from_file_locations_common_root,
+    get_template_data_from_representation,
+    get_transfers_from_representations,
+    get_legacy_files_for_representation,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 
@@ -34,7 +47,6 @@ from ayon_core.pipeline.version_start import get_versioning_start
 # TemplatePath,
 from ayon_core.plugins.publish.integrate_traits import (
     IntegrateTraits,
-    TransferItem,
 )
 
 from ayon_core.settings import get_project_settings
@@ -245,8 +257,7 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
         to set up the studio overrides in the test environment.
 
     """
-    integrator = IntegrateTraits()
-    template_name = integrator.get_template_name(
+    template_name = get_template_name(
         mock_context[0])
 
     assert template_name == "default"
@@ -256,13 +267,12 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
 def test_get_template_data_from_representation(
         mock_context: pyblish.api.Context) -> None:
     """Test get_template_data_from_representation."""
-    integrator = IntegrateTraits()
     instance = mock_context[0]
     representations: list[Representation] = instance.data[
         "representations_with_traits"]
 
     for representation in representations:
-        template_data = integrator.get_template_data_from_representation(
+        template_data = get_template_data_from_representation(
             representation, instance)
 
         assert template_data["project"]["name"] == instance.context.data[
@@ -441,13 +451,13 @@ def test_get_transfers_from_representation(
         representations and test the output of the function.
 
     """
-    integrator = IntegrateTraits()
-
     instance = mock_context[0]
+    anatomy = instance.context.data["anatomy"]
+    template_item = anatomy.get_template_item("hero", "default")
     representations: list[Representation] = instance.data[
         "representations_with_traits"]
-    transfers = integrator.get_transfers_from_representations(
-        instance, representations)
+    transfers = get_transfers_from_representations(
+        instance, template_item, representations)
 
     assert len(representations) == 3
     assert len(transfers) == 22
@@ -470,5 +480,78 @@ def test_get_transfers_from_representation(
     file_transactions.process()
 
     for representation in representations:
-        _ = integrator._get_legacy_files_for_representation(  # noqa: SLF001
+        _ = get_legacy_files_for_representation(  # noqa: SLF001
             transfers, representation, anatomy=instance.data["anatomy"])
+
+
+def test_get_transfers_from_representation_preserves_hierarchy(
+        tmp_path: Path) -> None:
+    """FileLocations without Sequence/UDIM should keep relative hierarchy."""
+    common_root = tmp_path / "textures"
+    destination_root = tmp_path / "publish"
+    file_paths = [
+        common_root / "diffuse" / "beauty.png",
+        common_root / "masks" / "crypto" / "object.png",
+    ]
+    for file_path in file_paths:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(base64.b64decode(PNG_FILE_B64))
+
+    representation = Representation(name="test_hierarchy", traits=[
+        Persistent(),
+        FileLocations(file_paths=[
+            FileLocation(
+                file_path=file_path,
+                file_size=file_path.stat().st_size,
+            )
+            for file_path in file_paths
+        ]),
+        Image(),
+        MimeType(mime_type="image/png"),
+    ])
+
+    class _DummyTemplateResult(str):
+        def __new__(cls, value: str):
+            obj = cast(_DummyTemplateResult, super().__new__(cls, value))
+            obj.used_values = {}
+            return obj
+
+    class _DummyPathTemplate:
+        def __init__(self, value: str):
+            self.value = value
+
+        def format_strict(self, _data: dict) -> _DummyTemplateResult:
+            return _DummyTemplateResult(self.value)
+
+    template_item = TemplateItem(
+        anatomy=cast(Anatomy, object()),
+        template="{root}/publish/placeholder.png",
+        template_data={},
+        template_object=cast(Any, {
+            "path": _DummyPathTemplate(
+                (destination_root / "placeholder.png").as_posix()
+            )
+        }),
+    )
+    transfers: list[TransferItem] = []
+
+    get_transfers_from_file_locations_common_root(
+        representation,
+        template_item,
+        transfers,
+    )
+
+    assert len(transfers) == len(file_paths)
+
+    relative_destinations = {
+        transfer.destination.relative_to(destination_root)
+        for transfer in transfers
+    }
+    expected_relative_destinations = {
+        file_path.relative_to(common_root)
+        for file_path in file_paths
+    }
+    assert relative_destinations == expected_relative_destinations
+
+    template_path = representation.get_trait(TemplatePath)
+    assert template_path.template == template_item.template

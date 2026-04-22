@@ -1,8 +1,6 @@
 """Integrate representations with traits."""
 from __future__ import annotations
-import contextlib
-import copy
-import hashlib
+
 import json
 from pathlib import Path
 from pprint import pformat
@@ -12,7 +10,6 @@ import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
     get_product_by_name,
-    # get_representations,
     get_version_by_name,
 )
 from ayon_api.operations import (
@@ -21,157 +18,32 @@ from ayon_api.operations import (
     new_representation_entity,
     new_version_entity,
 )
-from ayon_api.utils import create_entity_id
-from ayon_core.lib import source_hash
+
 from ayon_core.lib.file_transaction import (
     FileTransaction,
 )
 from ayon_core.pipeline import is_product_base_type_supported
 from ayon_core.pipeline.publish import (
     PublishError,
-    get_publish_template_name,
+    get_instance_families,
     has_trait_representations,
     get_trait_representations,
     set_trait_representations,
+    get_rootless_path,
+    get_version_data_from_instance,
+    get_template_name,
 )
 from ayon_core.pipeline.traits import (
-    UDIM,
-    Bundle,
-    ColorManaged,
-    FileLocation,
-    FileLocations,
-    FrameRanged,
-    MissingTraitError,
     Persistent,
-    PixelBased,
     Representation,
-    Sequence,
-    TemplatePath,
-    TraitValidationError,
-    Transient,
-    Variant,
+
+    get_transfers_from_representations,
+    get_template_data_from_representation,
+    get_legacy_files_for_representation,
 )
 
 if TYPE_CHECKING:
     import logging
-
-    from ayon_core.pipeline import Anatomy
-    from ayon_core.pipeline.anatomy.templates import (
-        AnatomyStringTemplate,
-    )
-    from ayon_core.pipeline.anatomy.templates import (
-        TemplateItem as AnatomyTemplateItem,
-    )
-
-
-class TransferItem:
-    """Represents a single transfer item.
-
-    Source file path, destination file path, template that was used to
-    construct the destination path, template data that was used in the
-    template, size of the file, checksum of the file.
-
-    Attributes:
-        source (Path): Source file path.
-        destination (Path): Destination file path.
-        size (int): Size of the file.
-        checksum (str): Checksum of the file.
-        template (str): Template path.
-        template_data (dict[str, Any]): Template data.
-        representation (Representation): Reference to representation
-
-    """
-    source: Path
-    destination: Path
-    size: int
-    checksum: str
-    template: str
-    template_data: dict[str, Any]
-    representation: Representation
-    related_trait: FileLocation
-
-    def __init__(self,
-        source: Path,
-        destination: Path,
-        size: int,
-        checksum: str,
-        template: str,
-        template_data: dict[str, Any],
-        representation: Representation,
-        related_trait: FileLocation):
-
-        self.source = source
-        self.destination = destination
-        self.size = size
-        self.checksum = checksum
-        self.template = template
-        self.template_data = template_data
-        self.representation = representation
-        self.related_trait = related_trait
-
-    @staticmethod
-    def get_size(file_path: Path) -> int:
-        """Get the size of the file.
-
-        Args:
-            file_path (Path): File path.
-
-        Returns:
-            int: Size of the file.
-
-        """
-        return file_path.stat().st_size
-
-    @staticmethod
-    def get_checksum(file_path: Path) -> str:
-        """Get checksum of the file.
-
-        Args:
-            file_path (Path): File path.
-
-        Returns:
-            str: Checksum of the file.
-
-        """
-        return hashlib.sha256(
-            file_path.read_bytes()
-        ).hexdigest()
-
-
-class TemplateItem:
-    """Represents single template item.
-
-    Template path, template data that was used in the template.
-
-    Attributes:
-        anatomy (Anatomy): Anatomy object.
-        template (str): Template path.
-        template_data (dict[str, Any]): Template data.
-        template_object (AnatomyTemplateItem): Template object
-    """
-    anatomy: Anatomy
-    template: str
-    template_data: dict[str, Any]
-    template_object: "AnatomyTemplateItem"
-
-    def __init__(self,
-        anatomy: "Anatomy",
-        template: str,
-        template_data: dict[str, Any],
-        template_object: "AnatomyTemplateItem"):
-        """Initialize TemplateItem.
-
-        Args:
-            anatomy (Anatomy): Anatomy object.
-            template (str): Template path.
-            template_data (dict[str, Any]): Template data.
-            template_object (AnatomyTemplateItem): Template object.
-
-        """
-        self.anatomy = anatomy
-        self.template = template
-        self.template_data = template_data
-        self.template_object = template_object
 
 
 class RepresentationEntity:
@@ -215,31 +87,6 @@ class RepresentationEntity:
         self.data = data
         self.tags = tags
         self.status = status
-
-
-def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
-    """Get all families of the instance.
-
-    Todo:
-        Move to the library.
-
-    Args:
-        instance (pyblish.api.Instance): Instance to get families from.
-
-    Returns:
-        list[str]: List of families.
-
-    """
-    family = instance.data.get("family")
-    families = []
-    if family:
-        families.append(family)
-
-    for _family in (instance.data.get("families") or []):
-        if _family not in families:
-            families.append(_family)
-
-    return families
 
 
 def get_changed_attributes(
@@ -317,9 +164,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate representations with traits.
 
-        Todo:
-            Refactor this method to be more readable and maintainable.
-
         Args:
             instance (pyblish.api.Instance): Instance to process.
 
@@ -327,18 +171,20 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         # 1) skip farm and integrate ==  False
 
         if instance.data.get("integrate", True) is False:
-            self.log.debug("Instance is marked to skip integrating. Skipping")
+            self.log.debug(f"Instance '{instance.name}' is marked to skip "
+                           "integrating. Skipping")
             return
 
         if instance.data.get("farm"):
             self.log.debug(
-                "Instance is marked to be processed on farm. Skipping")
+                f"Instance '{instance.name}' is marked to be processed on "
+                "farm. Skipping")
             return
 
-        # TODO (antirotor): Find better name for the key
         if not has_trait_representations(instance):
             self.log.debug(
-                "Instance has no representations with traits. Skipping")
+                f"Instance '{instance.name}' has no representations with "
+                "traits. Skipping")
             return
 
         # 2) filter representations based on LifeCycle traits
@@ -352,7 +198,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         if not representations:
             self.log.debug(
-                "Instance has no persistent representations. Skipping")
+                f"Instance '{instance.name}' has no persistent "
+                "representations. Skipping")
             return
 
         op_session = OperationsSession()
@@ -364,8 +211,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         instance.data["versionEntity"] = version_entity
 
-        transfers = self.get_transfers_from_representations(
-            instance, representations)
+        template_name = get_template_name(instance)
+        anatomy = instance.context.data["anatomy"]
+        template: Any = anatomy.get_template_item("publish", template_name)
+
+        transfers = get_transfers_from_representations(
+            instance, template, representations)
 
         # 8) Transfer files
         file_transactions = FileTransaction(
@@ -398,7 +249,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "template": transfers[0].template,
             }
 
-            data = {"context": self.get_template_data_from_representation(
+            data = {"context": get_template_data_from_representation(
                 representation, instance)}
 
             # Original integrator at this moment took all additional data
@@ -411,7 +262,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             representation_entity = new_representation_entity(
                 representation.name,
                 version_entity["id"],
-                files=self._get_legacy_files_for_representation(
+                files=get_legacy_files_for_representation(
                     transfers,
                     representation,
                     anatomy=instance.context.data["anatomy"]),
@@ -432,89 +283,13 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         self.log.debug(pformat(op_session.to_data()))
         op_session.commit()
 
-    def get_transfers_from_representations(
-            self,
-            instance: pyblish.api.Instance,
-            representations: list[Representation]) -> list[TransferItem]:
-        """Get transfers from representations.
+        # 11) Pass the list of published representations to the instance
+        # for further processing in Integrate Hero versions for example.
+        instance.data["publishedRepresentationsWithTraits"] = representations
 
-        This method will go through all representations and prepare transfers
-        based on the traits they contain. First it will validate the
-        representation, and then it will prepare template data for the
-        representation. It specifically handles FileLocations, FileLocation,
-        Bundle, Sequence and UDIM traits.
-
-        Args:
-            instance (pyblish.api.Instance): Instance to process.
-            representations (list[Representation]): List of representations.
-
-        Returns:
-            list[TransferItem]: List of transfers.
-
-        Raises:
-            PublishError: If representation is invalid.
-
-        """
-        template: str = self.get_publish_template(instance)
-        instance_template_data: dict[str, str] = {}
-        transfers: list[TransferItem] = []
-        # prepare template and data to format it
-        for representation in representations:
-
-            # validate representation first, this will go through all traits
-            # and check if they are valid
-            try:
-                representation.validate()
-            except TraitValidationError as e:
-                msg = f"Representation '{representation.name}' is invalid: {e}"
-                raise PublishError(msg) from e
-
-            template_data = self.get_template_data_from_representation(
-                representation, instance)
-            # add instance based template data
-
-            template_data.update(instance_template_data)
-
-            # treat Variant as `output` in template data
-            with contextlib.suppress(MissingTraitError):
-                template_data["output"] = (
-                    representation.get_trait(Variant).variant
-                )
-
-            template_item = TemplateItem(
-                anatomy=instance.context.data["anatomy"],
-                template=template,
-                template_data=copy.deepcopy(template_data),
-                template_object=self.get_publish_template_object(instance),
-            )
-
-            if representation.contains_trait(FileLocations):
-                # If representation has FileLocations trait (list of files)
-                # it can be either Sequence or UDIM tile set.
-                # We do not allow unrelated files in the single representation.
-                # Note: we do not support yet frame sequence of multiple UDIM
-                # tiles in the same representation
-                self.get_transfers_from_file_locations(
-                    representation, template_item, transfers
-                )
-            elif representation.contains_trait(FileLocation):
-                # This is just a single file representation
-                self.get_transfers_from_file_location(
-                    representation, template_item, transfers
-                )
-
-            elif representation.contains_trait(Bundle):
-                # Bundle groups multiple "sub-representations" together.
-                # It has a list of lists with traits, some might be
-                # FileLocations,but some might be "file-less" representations
-                # or even other bundles.
-                self.get_transfers_from_bundle(
-                    representation, template_item, transfers
-                )
-        return transfers
-
+    @staticmethod
     def _get_relative_to_root_original_dirname(
-            self, instance: pyblish.api.Instance) -> str:
+            instance: pyblish.api.Instance) -> str:
         """Get path stripped of root of the original directory name.
 
         If `originalDirname` or `stagingDir` is set in instance data,
@@ -533,7 +308,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 instance.data.get("stagingDir"))
         anatomy = instance.context.data["anatomy"]
 
-        rootless = self.get_rootless_path(anatomy, original_directory)
+        rootless = get_rootless_path(anatomy, original_directory)
         # this check works because _rootless will be the same as
         # original_directory if the original_directory cannot be transformed
         # to the rootless path.
@@ -568,74 +343,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             for representation in representations
             if representation.contains_trait(Persistent)
         ]
-
-    def get_template_name(self, instance: pyblish.api.Instance) -> str:
-        """Return anatomy template name to use for integration.
-
-        Args:
-            instance (pyblish.api.Instance): Instance to process.
-
-        Returns:
-            str: Anatomy template name
-
-        """
-        # Anatomy data is pre-filled by Collectors
-        context = instance.context
-        project_name = context.data["projectName"]
-
-        # Task can be optional in anatomy data
-        host_name = context.data["hostName"]
-        anatomy_data = instance.data["anatomyData"]
-        product_type = instance.data["productType"]
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = product_type
-        task_info = anatomy_data.get("task") or {}
-
-        return get_publish_template_name(
-            project_name,
-            host_name,
-            product_base_type=product_base_type,
-            task_name=task_info.get("name"),
-            task_type=task_info.get("type"),
-            project_settings=context.data["project_settings"],
-            logger=self.log,
-        )
-
-    def get_publish_template(self, instance: pyblish.api.Instance) -> str:
-        """Return anatomy template name to use for integration.
-
-        Args:
-            instance (pyblish.api.Instance): Instance to process.
-
-        Returns:
-            str: Anatomy template name
-
-        """
-        # Anatomy data is pre-filled by Collectors
-        template_name = self.get_template_name(instance)
-        anatomy = instance.context.data["anatomy"]
-        publish_template = anatomy.get_template_item("publish", template_name)
-        path_template_obj = publish_template["path"]
-        return path_template_obj.template.replace("\\", "/")
-
-    def get_publish_template_object(
-            self, instance: pyblish.api.Instance) -> "AnatomyTemplateItem":
-        """Return anatomy template object to use for integration.
-
-        Note: What is the actual type of the object?
-
-        Args:
-            instance (pyblish.api.Instance): Instance to process.
-
-        Returns:
-            AnatomyTemplateItem: Anatomy template object
-
-        """
-        # Anatomy data is pre-filled by Collectors
-        template_name = self.get_template_name(instance)
-        anatomy = instance.context.data["anatomy"]
-        return anatomy.get_template_item("publish", template_name)
 
     def prepare_product(
             self,
@@ -760,7 +467,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             product_entity["id"]
         )
         version_id = existing_version["id"] if existing_version else None
-        all_version_data = self.get_version_data_from_instance(instance)
+        all_version_data = get_version_data_from_instance(instance)
         version_data = {}
         version_attributes = {}
         attr_defs = self.get_attributes_for_type(instance.context, "version")
@@ -802,95 +509,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
 
         return version_entity
-
-    def get_version_data_from_instance(
-            self, instance: pyblish.api.Instance) -> dict:
-        """Get version data from the Instance.
-
-        Args:
-            instance (pyblish.api.Instance): the current instance
-                being published.
-
-        Returns:
-            dict: the required information for ``version["data"]``
-
-        """
-        context = instance.context
-
-        # create relative source path for DB
-        if "source" in instance.data:
-            source = instance.data["source"]
-        else:
-            source = context.data["currentFile"]
-            anatomy = instance.context.data["anatomy"]
-            source = self.get_rootless_path(anatomy, source)
-        self.log.debug("Source: %s", source)
-
-        version_data = {
-            "families": get_instance_families(instance),
-            "time": context.data["time"],
-            "author": context.data["user"],
-            "source": source,
-            "comment": instance.data["comment"],
-            "machine": context.data.get("machine"),
-            "fps": instance.data.get("fps", context.data.get("fps"))
-        }
-
-        intent_value = context.data.get("intent")
-        if intent_value and isinstance(intent_value, dict):
-            intent_value = intent_value.get("value")
-
-        if intent_value:
-            version_data["intent"] = intent_value
-
-        # Include optional data if present in
-        optionals = [
-            "frameStart", "frameEnd", "step",
-            "handleEnd", "handleStart", "sourceHashes"
-        ]
-        for key in optionals:
-            if key in instance.data:
-                version_data[key] = instance.data[key]
-
-        # Include instance.data[versionData] directly
-        version_data_instance = instance.data.get("versionData")
-        if version_data_instance:
-            version_data.update(version_data_instance)
-
-        return version_data
-
-    def get_rootless_path(self, anatomy: "Anatomy", path: str) -> str:
-        r"""Get rootless variant of the path.
-
-        Returns, if possible, a path without an absolute portion from the root
-        (e.g. 'c:\' or '/opt/..'). This is basically a wrapper for the
-        meth:`Anatomy.find_root_template_from_path` method that displays
-        a warning if the root path is not found.
-
-         This information is platform-dependent and shouldn't be captured.
-         For example::
-
-             'c:/projects/MyProject1/Assets/publish...'
-             will be transformed to:
-             '{root}/MyProject1/Assets...'
-
-        Args:
-            anatomy (Anatomy): Project anatomy.
-            path (str): Absolute path.
-
-        Returns:
-            str: Path where root path is replaced by formatting string.
-
-        """
-        success, rootless_path = anatomy.find_root_template_from_path(path)
-        if success:
-            path = rootless_path
-        else:
-            self.log.warning((
-                'Could not find root path for remapping "%s".'
-                " This may cause issues on farm."
-            ), path)
-        return path
 
     def get_attributes_for_type(
             self,
@@ -934,390 +552,3 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             }
             context.data["ayonAttributes"] = attributes
         return attributes
-
-    def get_template_data_from_representation(
-            self,
-            representation: Representation,
-            instance: pyblish.api.Instance) -> dict:
-        """Get template data from representation.
-
-        Using representation traits and data on instance
-        prepare data for formatting template.
-
-        Args:
-            representation (Representation): Representation to process.
-            instance (pyblish.api.Instance): Instance to process.
-
-        Returns:
-            dict: Template data.
-
-        """
-        template_data = copy.deepcopy(instance.data["anatomyData"])
-        template_data["representation"] = representation.name
-        template_data["version"] = instance.data["version"]
-        # template_data["hierarchy"] = instance.data["hierarchy"]
-
-        # add colorspace data to template data
-        if representation.contains_trait(ColorManaged):
-            colorspace_data: ColorManaged = representation.get_trait(
-                ColorManaged)
-
-            template_data["colorspace"] = {
-                "colorspace": colorspace_data.color_space,
-                "config": colorspace_data.config
-            }
-
-        # add explicit list of traits properties to template data
-        # there must be some better way to handle this.
-
-        with contextlib.suppress(MissingTraitError):
-            # resolution from PixelBased trait
-            template_data["resolution_width"] = representation.get_trait(
-                PixelBased).display_window_width
-            template_data["resolution_height"] = representation.get_trait(
-                PixelBased).display_window_height
-
-        with contextlib.suppress(MissingTraitError):
-            # get fps from representation traits
-            template_data["fps"] = representation.get_trait(
-                FrameRanged).frames_per_second
-
-        with contextlib.suppress(MissingTraitError):
-            template_data["ext"] = representation.get_trait(
-                FileLocation).file_path.suffix.lstrip(".")
-        if not template_data.get("ext"):
-            with contextlib.suppress(MissingTraitError):
-                # Try FileLocations trait if FileLocation ext is empty
-                file_locations_trait = representation.get_trait(
-                    FileLocations)
-                if file_locations_trait.file_paths:
-                    first_file_loc = file_locations_trait.file_paths[0]
-                    template_data["ext"] = (
-                        first_file_loc.file_path.suffix.lstrip(".")
-                        )
-            # Note: handle "output" and "originalBasename"
-        return template_data
-
-    @staticmethod
-    def get_transfers_from_file_locations(
-            representation: Representation,
-            template_item: TemplateItem,
-            transfers: list[TransferItem]) -> None:
-        """Get transfers from FileLocations trait.
-
-        Args:
-            representation (Representation): Representation to process.
-            template_item (TemplateItem): Template item.
-            transfers (list): List of transfers.
-
-        Mutates:
-            transfers (list): List of transfers.
-            template_item (TemplateItem): Template item.
-
-        Raises:
-            PublishError: If representation is invalid.
-
-        """
-        if representation.contains_trait(Sequence):
-            IntegrateTraits.get_transfers_from_sequence(
-                representation, template_item, transfers
-            )
-
-        elif representation.contains_trait(UDIM) and \
-                not representation.contains_trait(Sequence):
-            # handle UDIM not in sequence
-            IntegrateTraits.get_transfers_from_udim(
-                representation, template_item, transfers
-            )
-
-        else:
-            # This should never happen because the representation
-            # validation should catch this.
-            msg = (
-                "Representation contains FileLocations trait, but "
-                "is not a Sequence or UDIM."
-            )
-            raise PublishError(msg)
-
-    @staticmethod
-    def get_transfers_from_sequence(
-            representation: Representation,
-            template_item: TemplateItem,
-            transfers: list[TransferItem]
-    ) -> None:
-        """Get transfers from Sequence trait.
-
-        Args:
-            representation (Representation): Representation to process.
-            template_item (TemplateItem): Template item.
-            transfers (list): List of transfers.
-
-        Mutates:
-            transfers (list): List of transfers.
-            template_item (TemplateItem): Template item.
-
-        """
-        sequence: Sequence = representation.get_trait(Sequence)
-        path_template_object = template_item.template_object["path"]
-
-        # get the padding from the sequence if the padding on the
-        # template is higher, us the one from the template
-        dst_padding = representation.get_trait(
-            Sequence).frame_padding
-        frames: list[int] = sequence.get_frame_list(
-            representation.get_trait(FileLocations),
-            regex=sequence.frame_regex)
-        template_padding = template_item.anatomy.templates_obj.frame_padding
-        dst_padding = max(template_padding, dst_padding)
-
-        # Go through all frames in the sequence and
-        # find their corresponding file locations, then
-        # format their template and add them to transfers.
-        for frame in frames:
-            file_loc: FileLocation = representation.get_trait(
-                FileLocations).get_file_location_for_frame(
-                frame, sequence)
-
-            template_item.template_data["frame"] = frame
-            template_item.template_data["ext"] = (
-                file_loc.file_path.suffix.lstrip("."))
-            template_filled = path_template_object.format_strict(
-                template_item.template_data
-            )
-
-            # add used values to the template data
-            used_values: dict = template_filled.used_values
-            template_item.template_data.update(used_values)
-
-            transfers.append(
-                TransferItem(
-                    source=file_loc.file_path,
-                    destination=Path(template_filled),
-                    size=file_loc.file_size or TransferItem.get_size(
-                        file_loc.file_path),
-                    checksum=file_loc.file_hash or TransferItem.get_checksum(
-                        file_loc.file_path),
-                    template=template_item.template,
-                    template_data=template_item.template_data,
-                    representation=representation,
-                    related_trait=file_loc
-                )
-            )
-
-        # add template path and the data to resolve it
-        if not representation.contains_trait(TemplatePath):
-            representation.add_trait(TemplatePath(
-                template=template_item.template,
-                data=template_item.template_data
-            ))
-
-    @staticmethod
-    def get_transfers_from_udim(
-            representation: Representation,
-            template_item: TemplateItem,
-            transfers: list[TransferItem]
-    ) -> None:
-        """Get transfers from UDIM trait.
-
-        Args:
-            representation (Representation): Representation to process.
-            template_item (TemplateItem): Template item.
-            transfers (list): List of transfers.
-
-        Mutates:
-            transfers (list): List of transfers.
-            template_item (TemplateItem): Template item.
-
-        """
-        udim: UDIM = representation.get_trait(UDIM)
-        path_template_object: "AnatomyStringTemplate" = (
-            template_item.template_object["path"]
-        )
-        for file_loc in representation.get_trait(
-                FileLocations).file_paths:
-            template_item.template_data["udim"] = (
-                udim.get_udim_from_file_location(file_loc)
-            )
-
-            template_filled = path_template_object.format_strict(
-                template_item.template_data
-            )
-
-            # add used values to the template data
-            used_values: dict = template_filled.used_values
-            template_item.template_data.update(used_values)
-
-            transfers.append(
-                TransferItem(
-                    source=file_loc.file_path,
-                    destination=Path(template_filled),
-                    size=file_loc.file_size or TransferItem.get_size(
-                        file_loc.file_path),
-                    checksum=file_loc.file_hash or TransferItem.get_checksum(
-                        file_loc.file_path),
-                    template=template_item.template,
-                    template_data=template_item.template_data,
-                    representation=representation,
-                    related_trait=file_loc
-                )
-            )
-        # add template path and the data to resolve it
-        representation.add_trait(TemplatePath(
-            template=template_item.template,
-            data=template_item.template_data
-        ))
-
-    @staticmethod
-    def get_transfers_from_file_location(
-            representation: Representation,
-            template_item: TemplateItem,
-            transfers: list[TransferItem]
-    ) -> None:
-        """Get transfers from FileLocation trait.
-
-        Args:
-            representation (Representation): Representation to process.
-            template_item (TemplateItem): Template item.
-            transfers (list): List of transfers.
-
-        Mutates:
-            transfers (list): List of transfers.
-            template_item (TemplateItem): Template item.
-
-        """
-        path_template_object: "AnatomyStringTemplate" = (
-            template_item.template_object["path"]
-        )
-        template_item.template_data["ext"] = (
-            representation.get_trait(FileLocation).file_path.suffix.lstrip(".")
-        )
-        template_item.template_data.pop("frame", None)
-        with contextlib.suppress(MissingTraitError):
-            udim = representation.get_trait(UDIM)
-            template_item.template_data["udim"] = udim.udim[0]
-
-        template_filled = path_template_object.format_strict(
-            template_item.template_data
-        )
-
-        # add used values to the template data
-        used_values: dict = template_filled.used_values
-        template_item.template_data.update(used_values)
-
-        file_loc: FileLocation = representation.get_trait(FileLocation)
-        transfers.append(
-            TransferItem(
-                source=file_loc.file_path,
-                destination=Path(template_filled),
-                size=file_loc.file_size or TransferItem.get_size(
-                    file_loc.file_path),
-                checksum=file_loc.file_hash or TransferItem.get_checksum(
-                    file_loc.file_path),
-                template=template_item.template,
-                template_data=template_item.template_data,
-                representation=representation,
-                related_trait=file_loc
-            )
-        )
-        # add template path and the data to resolve it
-        representation.add_trait(TemplatePath(
-            template=template_item.template,
-            data=template_item.template_data
-        ))
-
-    @staticmethod
-    def get_transfers_from_bundle(
-            representation: Representation,
-            template_item: TemplateItem,
-            transfers: list[TransferItem]
-    ) -> None:
-        """Get transfers from Bundle trait.
-
-        This will be called recursively for each sub-representation in the
-        bundle that is a Bundle itself.
-
-        Args:
-            representation (Representation): Representation to process.
-            template_item (TemplateItem): Template item.
-            transfers (list): List of transfers.
-
-        Mutates:
-            transfers (list): List of transfers.
-            template_item (TemplateItem): Template item.
-
-        """
-        bundle: Bundle = representation.get_trait(Bundle)
-        for idx, sub_representation_traits in enumerate(bundle.items):
-            sub_representation = Representation(
-                name=f"{representation.name}_{idx}",
-                traits=sub_representation_traits)
-            # sub presentation transient:
-            sub_representation.add_trait(Transient())
-            if sub_representation.contains_trait(FileLocations):
-                IntegrateTraits.get_transfers_from_file_locations(
-                    sub_representation, template_item, transfers
-                )
-            elif sub_representation.contains_trait(FileLocation):
-                IntegrateTraits.get_transfers_from_file_location(
-                    sub_representation, template_item, transfers
-                )
-            elif sub_representation.contains_trait(Bundle):
-                IntegrateTraits.get_transfers_from_bundle(
-                    sub_representation, template_item, transfers
-                )
-
-    def _prepare_file_info(
-            self, path: Path, anatomy: "Anatomy") -> dict[str, Any]:
-        """Prepare information for one file (asset or resource).
-
-        Arguments:
-            path (Path): Destination url of published file.
-            anatomy (Anatomy): Project anatomy part from instance.
-
-        Raises:
-            PublishError: If file does not exist.
-
-        Returns:
-            dict[str, Any]: Representation file info dictionary.
-
-        """
-        if not path.exists():
-            msg = f"File '{path}' does not exist."
-            raise PublishError(msg)
-
-        return {
-            "id": create_entity_id(),
-            "name": path.name,
-            "path": self.get_rootless_path(anatomy, path.as_posix()),
-            "size": path.stat().st_size,
-            "hash": source_hash(path.as_posix()),
-            "hash_type": "op3",
-        }
-
-    def _get_legacy_files_for_representation(
-            self,
-            transfer_items: list[TransferItem],
-            representation: Representation,
-            anatomy: "Anatomy",
-        ) -> list[dict[str, str]]:
-        """Get legacy files for a given representation.
-
-        This expects the file to exist - it must run after the transfer
-        is done.
-
-        Returns:
-            list: List of legacy files.
-
-        """
-        selected: list[TransferItem] = []
-        selected.extend(
-            item
-            for item in transfer_items
-            if item.representation == representation
-        )
-        files: list[dict[str, str]] = []
-        files.extend(
-            self._prepare_file_info(item.destination, anatomy)
-            for item in selected
-        )
-        return files
