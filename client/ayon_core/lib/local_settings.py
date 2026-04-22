@@ -529,6 +529,10 @@ class JSONSettingRegistry(ASettingRegistry):
             with open(self._registry_file, mode="w") as stream:
                 json.dump(header, stream, indent=4)
 
+    @property
+    def filepath(self) -> str:
+        return self._registry_file
+
     @lru_cache(maxsize=32)
     def _get_item(
         self, name: str, default: Any = _PLACEHOLDER
