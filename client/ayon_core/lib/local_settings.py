@@ -603,7 +603,7 @@ class AYONSettingsRegistry(JSONSettingRegistry):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        path = get_launcher_storage_dir()
+        path = get_launcher_local_dir()
         super().__init__(name, path)
 
 
