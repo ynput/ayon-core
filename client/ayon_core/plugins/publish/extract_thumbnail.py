@@ -476,7 +476,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         self.log.info(f"Extracting thumbnail {dst_path}")
         resolution_arg = self._get_resolution_args(
-            "oiiotool", src_path, thumbnail_def
+            "oiiotool", src_path, thumbnail_def, review_layers
         )
 
         repre_display = colorspace_data.get("display")
@@ -553,7 +553,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         try:
             resolution_arg = self._get_resolution_args(
-                "oiiotool", src_path, thumbnail_def
+                "oiiotool", src_path, thumbnail_def, review_layers
             )
         except RuntimeError:
             self.log.warning(
