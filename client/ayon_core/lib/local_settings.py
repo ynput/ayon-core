@@ -371,6 +371,10 @@ class IniSettingRegistry(ASettingRegistry):
 
         self._registry_file = filepath
 
+    @property
+    def filepath(self) -> str:
+        return self._registry_file
+
     def set_item_section(self, section: str, name: str, value: str) -> None:
         """Set item to specific section of ini registry.
 
