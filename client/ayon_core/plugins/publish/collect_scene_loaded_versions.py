@@ -1,8 +1,14 @@
+from __future__ import annotations
+from typing import Any
 import ayon_api
 import ayon_api.utils
 
 from ayon_core.host import ILoadHost
 from ayon_core.pipeline import registered_host
+
+from ayon_core.pipeline.publish.input_versions import (
+    version_ids_to_input_versions
+)
 
 import pyblish.api
 
@@ -32,6 +38,8 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             self.log.debug("No loaded containers found in scene.")
             return
 
+        containers = self._filter_invalid_containers(containers)
+
         repre_ids = {
             container["representation"]
             for container in containers
@@ -56,7 +64,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
         # QUESTION should we add same representation id when loaded multiple
         #   times?
-        loaded_versions = []
+        loaded_versions: list[str] = []
         for con in containers:
             repre_id = con["representation"]
             repre_entity = repre_entities_by_id.get(repre_id)
@@ -69,12 +77,38 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
             # NOTE:
             # may have more than one representation that are same version
-            version = {
-                "container_name": con["name"],
-                "representation_id": repre_entity["id"],
-                "version_id": repre_entity["versionId"],
-            }
-            loaded_versions.append(version)
-
+            version_id: str = repre_entity["versionId"]
+            loaded_versions.append(version_id)
         self.log.debug(f"Collected {len(loaded_versions)} loaded versions.")
-        context.data["loadedVersions"] = loaded_versions
+
+        input_versions = version_ids_to_input_versions(
+            project_name=project_name,
+            version_ids=loaded_versions,
+            log=self.log
+        )
+        context.data["loadedVersions"] = input_versions
+
+    def _filter_invalid_containers(
+        self,
+        containers: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Filter out invalid containers lacking required keys.
+
+        Skip any invalid containers that lack 'representation' or 'name'
+        keys to avoid KeyError.
+        """
+        # Only filter by what's required for this plug-in instead of validating
+        # a full container schema.
+        required_keys = {"name", "representation"}
+        valid = []
+        for container in containers:
+            missing = [key for key in required_keys if key not in container]
+            if missing:
+                self.log.warning(
+                    "Skipping invalid container, missing required keys:"
+                    " {}. {}".format(", ".join(missing), container)
+                )
+                continue
+            valid.append(container)
+
+        return valid

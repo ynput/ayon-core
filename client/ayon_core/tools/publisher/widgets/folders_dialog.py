@@ -113,6 +113,7 @@ class FoldersDialog(QtWidgets.QDialog):
             self._soft_reset_enabled = False
 
         self._folders_widget.set_project_name(self._project_name)
+        self._on_my_tasks_change(self._filters_widget.is_my_tasks_checked())
 
     def get_selected_folder_path(self):
         """Get selected folder path."""

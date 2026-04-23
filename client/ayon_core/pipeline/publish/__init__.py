@@ -29,6 +29,7 @@ from .lib import (
     get_publish_template_name,
 
     publish_plugins_discover,
+    filter_crashed_publish_paths,
     load_help_content_from_plugin,
     load_help_content_from_filepath,
 
@@ -51,6 +52,8 @@ from .lib import (
     get_trait_representations,
     has_trait_representations,
     set_trait_representations,
+
+    get_default_reviewable_layers,
 )
 
 from .abstract_expected_files import ExpectedFiles
@@ -87,6 +90,7 @@ __all__ = (
     "get_publish_template_name",
 
     "publish_plugins_discover",
+    "filter_crashed_publish_paths",
     "load_help_content_from_plugin",
     "load_help_content_from_filepath",
 
@@ -114,4 +118,6 @@ __all__ = (
     "get_trait_representations",
     "has_trait_representations",
     "set_trait_representations",
+
+    "get_default_reviewable_layers",
 )

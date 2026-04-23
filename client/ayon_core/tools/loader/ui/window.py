@@ -42,7 +42,7 @@ GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
 class LoadErrorMessageBox(ErrorMessageBox):
     def __init__(self, messages, parent=None):
         self._messages = messages
-        super(LoadErrorMessageBox, self).__init__("Loading failed", parent)
+        super().__init__("Loading failed", parent)
 
     def _create_top_widget(self, parent_widget):
         label_widget = QtWidgets.QLabel(parent_widget)
@@ -135,17 +135,21 @@ class RefreshHandler:
 
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
-        super(LoaderWindow, self).__init__(parent)
-
-        icon = QtGui.QIcon(get_ayon_icon_filepath())
-        self.setWindowIcon(icon)
-        self.setWindowTitle("AYON Loader")
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
+        super().__init__(parent)
 
         if controller is None:
             controller = LoaderController()
+
+        subtitle = controller.get_window_subtitle()
+        title = "AYON Loader"
+        if subtitle:
+            title += f" - {subtitle}"
+        self.setWindowTitle(title)
+        icon = QtGui.QIcon(get_ayon_icon_filepath())
+        self.setWindowIcon(icon)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
 
         overlay_object = MessageOverlayObject(self)
 
@@ -442,13 +446,19 @@ class LoaderWindow(QtWidgets.QWidget):
             return
 
         product_ids = {
-            i["product_id"]
-            for i in self._products_widget.get_selected_version_info()
+            version_info["product_id"]
+            for version_info in (
+                self._products_widget.get_selected_version_info()
+            )
         }
         if not product_ids:
             return
 
-        self._group_dialog.set_product_ids(project_name, product_ids)
+        self._group_dialog.set_product_ids(
+            project_name,
+            self._selected_folder_ids,
+            product_ids,
+        )
         self._group_dialog.show()
 
     def _on_folder_filter_change(self, text: str) -> None:
@@ -527,6 +537,10 @@ class LoaderWindow(QtWidgets.QWidget):
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
         self._update_filters()
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_load_finished(self, event):
         error_info = event["error_info"]

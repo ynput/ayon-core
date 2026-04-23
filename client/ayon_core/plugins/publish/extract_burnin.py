@@ -17,10 +17,13 @@ from ayon_core.lib import (
     run_ayon_launcher_process,
 
     convert_input_paths_for_ffmpeg,
-    should_convert_for_ffmpeg
+    should_convert_for_ffmpeg,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers
+)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -56,6 +59,7 @@ class ExtractBurnin(publish.Extractor):
         "blender",
         "unreal",
         "batchdelivery",
+        "workflow",
     ]
     settings_category = "core"
 
@@ -159,15 +163,17 @@ class ExtractBurnin(publish.Extractor):
 
     def main_process(self, instance):
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
 
         filtering_criteria = {
-            "hosts": host_name,
-            "product_types": product_type,
+            "host_names": host_name,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -178,23 +184,26 @@ class ExtractBurnin(publish.Extractor):
             logger=self.log
         )
         if not profile:
-            self.log.debug((
+            self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\" | Product name \"{}\""
-                " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Product name \"{product_name}\""
+                f" | Task name \"{task_name}\""
+                f" | Task type \"{task_type}\""
+            )
             return
 
         # Pre-filter burnin definitions by instance families
         burnin_defs = self.filter_burnins_defs(profile, instance)
         if not burnin_defs:
-            self.log.debug((
+            self.log.debug(
                 "Skipped instance. Burnin definitions are not set for profile"
-                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
-                " | Profile \"{}\""
-            ).format(host_name, product_type, task_name, profile))
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Task name \"{task_name}\""
+                f" | Profile \"{profile}\""
+            )
             return
 
         burnins_per_repres = self._get_burnins_per_representations(
@@ -214,6 +223,8 @@ class ExtractBurnin(publish.Extractor):
 
         anatomy = instance.context.data["anatomy"]
         scriptpath = self.burnin_script_path()
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
 
         # Args that will execute the script
         executable_args = ["run", scriptpath]
@@ -240,7 +251,9 @@ class ExtractBurnin(publish.Extractor):
 
             first_input_path = os.path.join(src_repre_staging_dir, filename)
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, review_layers=review_layers
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -263,7 +276,8 @@ class ExtractBurnin(publish.Extractor):
                 convert_input_paths_for_ffmpeg(
                     src_filepaths,
                     new_staging_dir,
-                    self.log
+                    review_layers=review_layers,
+                    log=self.log,
                 )
 
             # Add anatomy keys to burnin_data.
@@ -316,22 +330,8 @@ class ExtractBurnin(publish.Extractor):
                 burnin_values = {}
                 for key in self.positions:
                     value = burnin_def.get(key)
-                    if not value:
-                        continue
-                    # TODO remove replacements
-                    burnin_values[key] = (
-                        value
-                        .replace("{task}", "{task[name]}")
-                        .replace("{product[name]}", "{subset}")
-                        .replace("{Product[name]}", "{Subset}")
-                        .replace("{PRODUCT[NAME]}", "{SUBSET}")
-                        .replace("{product[type]}", "{family}")
-                        .replace("{Product[type]}", "{Family}")
-                        .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-                        .replace("{folder[name]}", "{asset}")
-                        .replace("{Folder[name]}", "{Asset}")
-                        .replace("{FOLDER[NAME]}", "{ASSET}")
-                    )
+                    if value:
+                        burnin_values[key] = value
 
                 # Remove "delete" tag from new representation
                 if "delete" in new_repre["tags"]:
@@ -531,10 +531,10 @@ class ExtractBurnin(publish.Extractor):
         if "slate.farm" in instance.data["families"]:
             frame_start_handle += 1
 
-        burnin_data.update({
-            "version": int(version),
-            "comment": instance.data["comment"]
-        })
+        burnin_data["version"] = int(version)
+        comment = instance.data["comment"]
+        if comment:
+            burnin_data["comment"] = comment
 
         intent_label = context.data.get("intent") or ""
         if intent_label and isinstance(intent_label, dict):

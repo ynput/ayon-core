@@ -70,7 +70,7 @@ from dataclasses import dataclass
 import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.lib import StrEnum, Logger
+from ayon_core.lib import StrEnum, Logger, is_func_signature_supported
 from ayon_core.host import AbstractHost
 from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
@@ -556,6 +556,7 @@ class LoaderActionPlugin(ABC):
     """
     _log: Optional[logging.Logger] = None
     enabled: bool = True
+    skip_discovery: bool = True
 
     def __init__(self, context: "LoaderActionsContext") -> None:
         self._context = context
@@ -752,6 +753,7 @@ class LoaderActionsContext:
 
     def _get_plugins(self) -> dict[str, LoaderActionPlugin]:
         if self._plugins is None:
+            host_name = self.get_host_name()
             addons_manager = self.get_addons_manager()
             all_paths = [
                 os.path.join(AYON_CORE_ROOT, "plugins", "loader")
@@ -759,7 +761,24 @@ class LoaderActionsContext:
             for addon in addons_manager.addons:
                 if not isinstance(addon, IPluginPaths):
                     continue
-                paths = addon.get_loader_action_plugin_paths()
+
+                try:
+                    if is_func_signature_supported(
+                        addon.get_loader_action_plugin_paths,
+                        host_name
+                    ):
+                        paths = addon.get_loader_action_plugin_paths(
+                            host_name
+                        )
+                    else:
+                        paths = addon.get_loader_action_plugin_paths()
+                except Exception:
+                    self._log.warning(
+                        "Failed to get plugin paths for addon",
+                        exc_info=True
+                    )
+                    continue
+
                 if paths:
                     all_paths.extend(paths)
 
@@ -808,6 +827,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     order: int = 0
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
+    skip_discovery: bool = True
 
     @abstractmethod
     def is_compatible(self, selection: LoaderActionSelection) -> bool:

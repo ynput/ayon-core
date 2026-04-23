@@ -172,14 +172,10 @@ def _load_font():
     if _Cache.font_ids is None:
         _Cache.font_ids = []
         fonts_dirpath = os.path.join(current_dir, "fonts")
-        font_dirs = []
-        font_dirs.append(os.path.join(fonts_dirpath, "Noto_Sans"))
-        font_dirs.append(os.path.join(
-            fonts_dirpath,
-            "Noto_Sans_Mono",
-            "static",
-            "NotoSansMono"
-        ))
+        font_dirs = [
+            os.path.join(fonts_dirpath, "Noto_Sans"),
+            os.path.join(fonts_dirpath, "Noto_Sans_Mono"),
+        ]
 
         loaded_fonts = []
         for font_dir in font_dirs:

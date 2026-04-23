@@ -24,11 +24,14 @@
 
 import os
 import collections
+import time
 
-import pyblish.api
 import ayon_api
-from ayon_api import RequestTypes
 from ayon_api.operations import OperationsSession
+import pyblish.api
+
+from ayon_core.lib import format_file_size
+from ayon_core.pipeline.publish import PublishXmlValidationError
 
 
 InstanceFilterResult = collections.namedtuple(
@@ -164,28 +167,41 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         return os.path.normpath(filled_path)
 
     def _create_thumbnail(self, project_name: str, src_filepath: str) -> str:
-        """Upload thumbnail to AYON and return its id.
-
-        This is temporary fix of 'create_thumbnail' function in ayon_api to
-            fix jpeg mime type.
-
-        """
-        mime_type = None
-        with open(src_filepath, "rb") as stream:
-            if b"\xff\xd8\xff" == stream.read(3):
-                mime_type = "image/jpeg"
-
-        if mime_type is None:
-            return ayon_api.create_thumbnail(project_name, src_filepath)
-
-        response = ayon_api.upload_file(
-            f"projects/{project_name}/thumbnails",
-            src_filepath,
-            request_type=RequestTypes.post,
-            headers={"Content-Type": mime_type},
+        """Upload thumbnail to AYON and return its id."""
+        size = os.path.getsize(src_filepath)
+        self.log.info(
+            f"Uploading '{src_filepath}' (size: {format_file_size(size)})"
         )
-        response.raise_for_status()
-        return response.json()["id"]
+
+        start = time.time()
+        try:
+            thubmnail_id = ayon_api.create_thumbnail(
+                project_name, src_filepath
+            )
+            self.log.debug(f"Uploaded in {time.time() - start}s.")
+            return thubmnail_id
+
+        except Exception as exc:
+            last_error = exc
+            self.log.warning(
+                f"Review upload failed after {time.time() - start}s.",
+                exc_info=True,
+            )
+
+        # Exhausted retries - raise a user-friendly validation error with help
+        raise PublishXmlValidationError(
+            self,
+            (
+                "Upload of thumbnail timed out or failed after multiple"
+                " attempts. Please try publishing again."
+            ),
+            formatting_data={
+                "upload_type": "Thumbnail",
+                "file": src_filepath,
+                "error": str(last_error),
+            },
+            help_filename="upload_file.xml",
+        )
 
     def _integrate_thumbnails(
         self,

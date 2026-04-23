@@ -1,12 +1,16 @@
+from __future__ import annotations
 import re
 import os
 import json
+import logging
 import contextlib
 import functools
 import platform
 import tempfile
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
+from typing import Any, Optional
 
 import ayon_api
 
@@ -24,6 +28,18 @@ from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 log = Logger.get_logger(__name__)
+
+
+@dataclass
+class ConfigData:
+    """OCIO Config to use in a certain context.
+
+    When enabled and no path/template are set, it will be considered invalid
+    and will error on OCIO path not found. Enabled must be False to explicitly
+    allow OCIO to be disabled."""
+    path: str = ""
+    template: str = ""
+    enabled: bool = True
 
 
 class CachedData:
@@ -710,7 +726,7 @@ def _get_config_path_from_profile_data(
         template_data (dict[str, Any]): Template data.
 
     Returns:
-        dict[str, str]: Config data with path and template.
+        ConfigData: Config data with path and template.
     """
     template = profile[profile_type]
     result = StringTemplate.format_strict_template(
@@ -719,12 +735,12 @@ def _get_config_path_from_profile_data(
     normalized_path = str(result.normalized())
     if not os.path.exists(normalized_path):
         log.warning(f"Path was not found '{normalized_path}'.")
-        return None
+        return ConfigData()  # Return invalid config data
 
-    return {
-        "path": normalized_path,
-        "template": template
-    }
+    return ConfigData(
+        path=normalized_path,
+        template=template
+    )
 
 
 def _get_global_config_data(
@@ -735,7 +751,7 @@ def _get_global_config_data(
     imageio_global,
     folder_id,
     log,
-):
+) -> ConfigData:
     """Get global config data.
 
     Global config from core settings is using profiles that are based on
@@ -759,8 +775,7 @@ def _get_global_config_data(
         log (logging.Logger): Logger object.
 
     Returns:
-        Union[dict[str, str], None]: Config data with path and template
-            or None.
+        ConfigData: Config data with path and template.
 
     """
     task_name = task_type = None
@@ -779,12 +794,14 @@ def _get_global_config_data(
     )
     if profile is None:
         log.info(f"No config profile matched filters {str(filter_values)}")
-        return None
+        return ConfigData(enabled=False)
 
     profile_type = profile["type"]
-    if profile_type in ("builtin_path", "custom_path"):
+    if profile_type in {"builtin_path", "custom_path"}:
         return _get_config_path_from_profile_data(
             profile, profile_type, template_data)
+    elif profile_type == "disabled":
+        return ConfigData(enabled=False)
 
     # TODO decide if this is the right name for representation
     repre_name = "ocioconfig"
@@ -798,7 +815,7 @@ def _get_global_config_data(
             "Colorspace OCIO config path cannot be set. "
             "Profile is set to published product but `Product name` is empty."
         )
-        return None
+        return ConfigData()
 
     folder_info = template_data.get("folder")
     if not folder_info:
@@ -819,7 +836,7 @@ def _get_global_config_data(
         )
         if not folder_entity:
             log.warning(f"Folder entity '{folder_path}' was not found..")
-            return None
+            return ConfigData()
         folder_id = folder_entity["id"]
 
     product_entities_by_name = {
@@ -855,7 +872,7 @@ def _get_global_config_data(
         log.info(
             f"Product '{product_name}' does not have available any versions."
         )
-        return None
+        return ConfigData()
 
     # Find 'ocioconfig' representation entity
     repre_entity = ayon_api.get_representation_by_name(
@@ -868,15 +885,15 @@ def _get_global_config_data(
             f"Representation '{repre_name}'"
             f" not found on product '{product_name}'."
         )
-        return None
+        return ConfigData()
 
     path = get_representation_path_with_anatomy(repre_entity, anatomy)
     template = repre_entity["attrib"]["template"]
 
-    return {
-        "path": path,
-        "template": template,
-    }
+    return ConfigData(
+        path=path,
+        template=template
+    )
 
 
 def get_imageio_config_preset(
@@ -1015,13 +1032,19 @@ def get_imageio_config_preset(
             host_ocio_config["filepath"], template_data
         )
 
-    if not config_data:
+    if not config_data.enabled:
+        return {}  # OCIO management disabled
+
+    if not config_data.path:
         raise FileExistsError(
             "No OCIO config found in settings. It is"
             " either missing or there is typo in path inputs"
         )
 
-    return config_data
+    return {
+        "path": config_data.path,
+        "template": config_data.template,
+    }
 
 
 def _get_host_config_data(templates, template_data):
@@ -1642,3 +1665,67 @@ def get_imageio_config(
         template_data=anatomy_data,
         env=env,
     )
+
+
+def get_representation_ocio_config_path(
+    publish_repre: dict[str, Any],
+    anatomy: Anatomy,
+    logger: Optional[logging.Logger] = None,
+) -> Optional[str]:
+    """Return the OCIO config path from representation's colorspace data.
+
+    If not colorspace data is found, then `None` is returned.
+
+    If the colorspace data  `path` data does not point to an existing file,
+    then the `template` will be filled with root paths by Anatomy to try and
+    find a local equivalent of the filepath. If that's also not found,
+    then `None` is returned.
+
+    """
+    if logger is None:
+        logger = log
+    colorspace_data = publish_repre.get("colorspaceData") or {}
+    config = colorspace_data.get("config")
+    if not config:
+        logger.debug(
+            "No OCIO Config file for representation,"
+            " because it has no colorspace data."
+        )
+        return None
+
+    config_template: str = config.get("template", "")
+    config_path: str = config.get("path", "")
+    if not config_path and not config_template:
+        logger.warning(
+            "OCIO Config file is not set for representation."
+        )
+        return None
+
+    # First we check the lightest route and just see if path is a valid file.
+    # When it is not we'll assume that the path is e.g. from another machine
+    # or another platform and may need to be computed from the template
+    if config_path:
+        if os.path.isfile(config_path):
+            return config_path
+        logger.debug(
+            "OCIO Config file for representation not found at:"
+            f" {config_path}"
+        )
+
+    if not config_template:
+        return None
+
+    # Fill template with environment variables
+    # - use StringTemplate to ignore unfilled values so anatomy can try
+    config_template = str(StringTemplate.format_template(
+        config_template, os.environ.copy()
+    ))
+    config_path = anatomy.fill_root(config_template)
+    if os.path.isfile(config_path):
+        return config_path
+
+    logger.warning(
+        "OCIO Config file for representation not found at:"
+        f" {config_path}"
+    )
+    return None

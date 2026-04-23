@@ -1,7 +1,7 @@
 import inspect
 from abc import ABCMeta
 import typing
-from typing import Optional
+from typing import Optional, Any
 
 import pyblish.api
 import pyblish.logic
@@ -82,22 +82,51 @@ class PublishValidationError(PublishError):
 
 
 class PublishXmlValidationError(PublishValidationError):
+    """Raise an error from a dedicated xml file.
+
+    Can be useful to have one xml file with different possible messages that
+        helps to avoid flood code with dedicated artist messages.
+
+    XML files should live relative to the plugin file location:
+        '{plugin dir}/help/some_plugin.xml'.
+
+    Args:
+        plugin (pyblish.api.Plugin): Plugin that raised an error. Is used
+            to get path to xml file.
+        message (str): Exception message, can be technical, is used for
+            console output.
+        key (Optional[str]): XML file can contain multiple error messages, key
+            is used to get one of them. By default is used 'main'.
+        formatting_data (Optional[dict[str, Any]): Error message can have
+            variables to fill.
+        help_filename (Optional[str]): Name of xml file with messages. By
+            default, is used filename where plugin lives with .xml extension.
+
+    """
     def __init__(
-        self, plugin, message, key=None, formatting_data=None
-    ):
+        self,
+        plugin: pyblish.api.Plugin,
+        message: str,
+        key: Optional[str] = None,
+        formatting_data: Optional[dict[str, Any]] = None,
+        help_filename: Optional[str] = None,
+    ) -> None:
         if key is None:
             key = "main"
 
         if not formatting_data:
             formatting_data = {}
-        result = load_help_content_from_plugin(plugin)
+        result = load_help_content_from_plugin(plugin, help_filename)
         content_obj = result["errors"][key]
         description = content_obj.description.format(**formatting_data)
         detail = content_obj.detail
         if detail:
             detail = detail.format(**formatting_data)
-        super(PublishXmlValidationError, self).__init__(
-            message, content_obj.title, description, detail
+        super().__init__(
+            message,
+            content_obj.title,
+            description,
+            detail
         )
 
 
@@ -205,7 +234,7 @@ class AYONPyblishPluginMixin:
         if not cls.__instanceEnabled__:
             return False
 
-        families = [instance.product_type]
+        families = [instance.product_base_type]
         families.extend(instance.get("families", []))
         for _ in pyblish.logic.plugins_by_families([cls], families):
             return True

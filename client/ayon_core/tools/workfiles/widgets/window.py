@@ -1,4 +1,3 @@
-
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
@@ -20,7 +19,7 @@ from .utils import BaseOverlayFrame
 
 class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
-        super(InvalidHostOverlay, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(
             (
@@ -50,16 +49,17 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Frontend controller.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
-
-    title = "Work Files"
-
     def __init__(self, controller=None, parent=None):
-        super(WorkfilesToolWindow, self).__init__(parent=parent)
-
         if controller is None:
             controller = BaseWorkfileController()
 
-        self.setWindowTitle(self.title)
+        title = "AYON Workfiles"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
+        super().__init__(parent=parent)
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
@@ -205,6 +205,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         self._folders_widget = folder_widget
 
+        self._filters_widget = filters_widget
+
         return col_widget
 
     def _create_col_3_widget(self, controller, parent):
@@ -343,6 +345,10 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         self._project_name = self._controller.get_current_project_name()
         self._folders_widget.set_project_name(self._project_name)
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_save_as_finished(self, event):
         if event["failed"]:

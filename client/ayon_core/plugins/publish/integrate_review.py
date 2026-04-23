@@ -1,11 +1,14 @@
 import os
+import time
 
-import pyblish.api
 import ayon_api
-from ayon_api.server_api import RequestTypes
+import pyblish.api
 
-from ayon_core.lib import get_media_mime_type
-from ayon_core.pipeline.publish import get_publish_repre_path
+from ayon_core.lib import get_media_mime_type, format_file_size
+from ayon_core.pipeline.publish import (
+    PublishXmlValidationError,
+    get_publish_repre_path,
+)
 
 
 class IntegrateAYONReview(pyblish.api.InstancePlugin):
@@ -28,15 +31,6 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             self._upload_reviewable(project_name, version_id, instance)
 
     def _upload_reviewable(self, project_name, version_id, instance):
-        ayon_con = ayon_api.get_server_api_connection()
-        major, minor, _, _, _ = ayon_con.get_server_version_tuple()
-        if (major, minor) < (1, 3):
-            self.log.info(
-                "Skipping reviewable upload, supported from server 1.3.x."
-                f" Current server version {ayon_con.get_server_version()}"
-            )
-            return
-
         uploaded_labels = set()
         for repre in instance.data["representations"]:
             repre_tags = repre.get("tags") or []
@@ -44,7 +38,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             if "webreview" not in repre_tags:
                 continue
 
-            # exclude representations with are going to be published on farm
+            # exclude representations going to be published on farm
             if "publish_on_farm" in repre_tags:
                 continue
 
@@ -67,27 +61,40 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 continue
 
             label = self._get_review_label(repre, uploaded_labels)
-            query = ""
-            if label:
-                query = f"?label={label}"
 
-            endpoint = (
-                f"/projects/{project_name}"
-                f"/versions/{version_id}/reviewables{query}"
+            size = os.path.getsize(repre_path)
+            start = time.time()
+            self.log.info(
+                f"Uploading '{repre_path}' (size: {format_file_size(size)})"
             )
-            filename = os.path.basename(repre_path)
-            # Upload the reviewable
-            self.log.info(f"Uploading reviewable '{label or filename}' ...")
-
-            headers = ayon_con.get_headers(content_type)
-            headers["x-file-name"] = filename
-            self.log.info(f"Uploading reviewable {repre_path}")
-            ayon_con.upload_file(
-                endpoint,
-                repre_path,
-                headers=headers,
-                request_type=RequestTypes.post,
-            )
+            try:
+                ayon_api.upload_reviewable(
+                    project_name,
+                    version_id,
+                    repre_path,
+                    content_type=content_type,
+                    label=label,
+                    # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
+                    headers={},
+                )
+            except Exception as exc:
+                self.log.warning(
+                    f"Review upload failed after {time.time() - start}s.",
+                    exc_info=True,
+                )
+                raise PublishXmlValidationError(
+                    self,
+                    (
+                        "Upload of reviewable timed out or failed after"
+                        " multiple attempts. Please try publishing again."
+                    ),
+                    formatting_data={
+                        "upload_type": "Review",
+                        "file": repre_path,
+                        "error": str(exc),
+                    },
+                    help_filename="upload_file.xml",
+                )
 
     def _get_review_label(self, repre, uploaded_labels):
         # Use output name as label if available

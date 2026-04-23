@@ -96,7 +96,6 @@ def get_folder_template_data(folder_entity, project_name):
 
     Output dictionary contains keys:
     - 'folder'      - dictionary with 'name' key filled with folder name
-    - 'asset'       - folder name
     - 'hierarchy'   - parent folder names joined with '/'
     - 'parent'      - direct parent name, project name used if is under
                       project
@@ -132,7 +131,6 @@ def get_folder_template_data(folder_entity, project_name):
             "path": path,
             "parents": parents,
         },
-        "asset": folder_name,
         "hierarchy": hierarchy,
         "parent": parent_name
     }
