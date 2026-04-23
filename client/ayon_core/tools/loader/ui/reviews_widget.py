@@ -864,8 +864,9 @@ class ReviewTable(AYContainer):
             page_size=250,
         )
         self._model.set_view(self._table)
-        self._controller.set_tree_mode(True)
-        self._model.set_tree_mode(True)
+        initial_tree_mode = self._controller.group_by_key != "none"
+        self._controller.set_tree_mode(initial_tree_mode)
+        self._model.set_tree_mode(initial_tree_mode)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
         self._card_view = AYCardView(
@@ -967,6 +968,9 @@ class ReviewTable(AYContainer):
 
     def _on_group_by_changed(self, group_by_key: str) -> None:
         self._controller.set_group_by(group_by_key)
+        tree_mode = group_by_key != "none"
+        self._controller.set_tree_mode(tree_mode)
+        self._model.set_tree_mode(tree_mode)
         self._auto_expand = False
         self._deferred_expand_queue.clear()
         self._expansion_phase = _ExpansionPhase.IDLE
