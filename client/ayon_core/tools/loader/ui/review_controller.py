@@ -1099,12 +1099,17 @@ class ReviewController(QtCore.QObject):
             Row dict with ``has_children=True`` and an id of the form
             ``"grp:<group_type.value>:<value>"``.
         """
+        display_label = label if label is not None else value
         row = dict(EMPTY_ROW)
         row.update(
             {
                 "id": f"grp:{group_option.key}:{value}",
                 "has_children": True,
-                "product/version": label if label is not None else value,
+                # ``thumb`` is column 0; AYCardView reads DisplayRole on
+                # column 0 to paint the group-header label, so we set it
+                # to the human-readable group value here.
+                "thumb": display_label,
+                "product/version": display_label,
                 "product/version__icon": icon or "label",
                 "entityType": group_option.label,
                 "entityType__icon": group_option.icon,
