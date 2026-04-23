@@ -959,6 +959,26 @@ class ReviewTable(AYContainer):
         else:
             self._views_stack.setCurrentWidget(self._table)
 
+        active = self._views_stack.currentWidget()
+        if not shiboken.isValid(active.viewport()):
+            return
+
+        # 1. Force a repaint so LazyThumbnailWidget.paintEvent fires for
+        #    rows that just became visible in the new view.
+        active.viewport().update()
+
+        # 2. Re-run setEditorData for persistent editors (card view).
+        if active is self._card_view:
+            self._card_view.refresh_visible_editors()
+
+        # 3. Kick the eager thumbnail pre-fetch for the newly visible rows
+        #    so cards/rows that were never painted yet get their images.
+        if active is self._table:
+            self._eagerly_enqueue_visible_thumbnails()
+        else:
+            self._eagerly_enqueue_visible_card_thumbnails()
+
+
     def _on_group_by_options_changed(
         self, options: dict[str, GroupByOption]
     ) -> None:
