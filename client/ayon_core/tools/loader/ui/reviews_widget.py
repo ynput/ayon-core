@@ -1003,7 +1003,6 @@ class ReviewTable(AYContainer):
         if active is self._table:
             self._eagerly_enqueue_visible_thumbnails()
         elif active is self._card_view:
-            print("fetch thumbnails")
             self._eagerly_enqueue_visible_card_thumbnails()
 
     def _table_row_height(self) -> int:
