@@ -1105,21 +1105,17 @@ class ReviewTable(AYContainer):
 
         Already-enqueued or already-cached keys are skipped.
         """
-        print("eagerly_enqueue_visible_card_thumbnails...")
         ic = ImageCache.get_instance()
         request_id = self._model._request_id
         project = self._controller.current_project
         if not project:
-            print("no project")
             return
 
         vp = self._card_view.viewport()
         if vp.rect().isEmpty():
-            print("vp is empty")
             return
 
         for idx in self._card_view.get_visible_indexes():
-            print(f"idx = {idx}")
             row_dict = idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             thumbnail_id = row_dict.get("thumbnailId", "")
             version_id = row_dict.get("_version_id") or row_dict.get("id", "")
