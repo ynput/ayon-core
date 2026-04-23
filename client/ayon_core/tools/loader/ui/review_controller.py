@@ -470,7 +470,6 @@ class ReviewController(QtCore.QObject):
         self._get_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
-        # print(f"PROJECT_INFO: {self.project_info}")
         self.tree_reset_requested.emit()
         UserPreferences().set("loader.review.last_project", project_name)
 
@@ -1897,6 +1896,7 @@ class ReviewController(QtCore.QObject):
         )
         status = n.get("status", "")
         return {
+            "project_name": self._current_project,
             "thumbnail": n.get("thumbnailId") or "",
             "thumbnailId": n.get("thumbnailId") or "",
             "product/version": (

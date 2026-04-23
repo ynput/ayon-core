@@ -22,6 +22,7 @@ from ayon_ui_qt.components.label import AYLabel  # noqa: F401
 from ayon_ui_qt.components.slicer import AYSlicer
 from ayon_ui_qt.components.table_filter import AYTableFilter
 from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
+from ayon_ui_qt.components.card_view import AYCardView
 from ayon_ui_qt.components.table_view import AYTableView
 from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
 from ayon_ui_qt.components.task_queue_monitor import AsyncTaskQueueMonitor
@@ -42,6 +43,32 @@ from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.user_prefs import UserPreferences
 
 log = Logger.get_logger(__name__)
+
+
+def _review_card_mapper(row_data: dict) -> dict:
+    # print(f"row_data: {json.dumps(row_data, indent=4)}")
+    key = (
+        f"{row_data.get('project_name', '')}/"
+        f"{row_data.get('id', '')}/"
+        f"{row_data.get('thumbnailId', '')}"
+    )
+    return {
+        "header": row_data.get("folderName", ""),
+        "title": row_data.get("productName", ""),
+        "title_icon": row_data.get("productType__icon", ""),
+        "title_color": row_data.get("productType__color", ""),
+        "status": (
+            {
+                "name": "",  # row_data["status"],
+                "color": row_data.get("status__color", ""),
+                "icon": row_data.get("status__icon", ""),
+            }
+            if row_data.get("status")
+            else None
+        ),
+        "version": row_data.get("version", ""),
+        "image_src": key,
+    }
 
 
 def _thumbnail_loader(key: str) -> str:
@@ -841,6 +868,13 @@ class ReviewTable(AYContainer):
         self._model.set_tree_mode(True)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
+        self._card_view = AYCardView(
+            parent=self,
+            card_width=200,
+            card_spacing=8,
+            card_data_mapper=_review_card_mapper,
+        )
+        self._card_view.setModel(self._table_filter.filter_model)
         # set the initial sorting column to 1 (version name) ascending
         self._table.header().setSortIndicator(
             1, QtCore.Qt.SortOrder.AscendingOrder
@@ -879,7 +913,13 @@ class ReviewTable(AYContainer):
         toolbar_lyt.addWidget(self._display_type, stretch=0)
         toolbar_lyt.addWidget(self._customize, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
-        self.add_widget(self._table)
+        self._views_stack = QtWidgets.QStackedLayout()
+        self._views_stack.addWidget(self._table)
+        self._views_stack.addWidget(self._card_view)
+        self._views_stack.setCurrentWidget(self._table)
+        views_container = QtWidgets.QWidget(self)
+        views_container.setLayout(self._views_stack)
+        self.add_widget(views_container)
 
         self._auto_expand: bool = False
         self._deferred_expand_queue: list[QtCore.QPersistentModelIndex] = []
@@ -903,13 +943,20 @@ class ReviewTable(AYContainer):
     def table(self) -> AYTableView:
         return self._table
 
+    @property
+    def card_view(self) -> AYCardView:
+        return self._card_view
+
+    @property
+    def active_view(self) -> AYTableView | AYCardView:
+        return self._views_stack.currentWidget()
+
     def _on_display_type_changed(self, display_type: str) -> None:
         log.debug("Display type changed: %s", display_type)
-        # For now we only have one display type, so this is a no-op.
-        # In the future, this could switch between different views (e.g.
-        # table vs grid) or apply different proxy models for alternate
-        # presentations of the same data.
-        pass
+        if display_type == "grid":
+            self._views_stack.setCurrentWidget(self._card_view)
+        else:
+            self._views_stack.setCurrentWidget(self._table)
 
     def _on_group_by_options_changed(
         self, options: dict[str, GroupByOption]
@@ -940,15 +987,20 @@ class ReviewTable(AYContainer):
         After repainting, iterate over all rows visible in the viewport
         and enqueue thumbnail fetch tasks (at priority 2) for those that
         have not yet been requested.  The fetched image is stored in
-        ``ImageCache``; when ``LazyThumbnailWidget.paintEvent`` fires
-        later, it checks the cache first and loads synchronously —
-        eliminating the usual 2-paint-cycle delay for initially visible
-        rows.
+        ``ImageCache``; when ``LazyThumbnailWidget.paintEvent`` (table)
+        or ``AYEntityThumbnail._resolve_src`` (card) accesses the cache,
+        it finds a hit and renders synchronously — eliminating the usual
+        2-paint-cycle delay for initially visible rows.
         """
-        if not shiboken.isValid(self._table.viewport()):
+        active = self._views_stack.currentWidget()
+        if not shiboken.isValid(active.viewport()):
             return
-        self._table.viewport().update()
-        self._eagerly_enqueue_visible_thumbnails()
+        active.viewport().update()
+        if active is self._table:
+            self._eagerly_enqueue_visible_thumbnails()
+        elif active is self._card_view:
+            print("fetch thumbnails")
+            self._eagerly_enqueue_visible_card_thumbnails()
 
     def _table_row_height(self) -> int:
         first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
@@ -1033,6 +1085,64 @@ class ReviewTable(AYContainer):
                     name=f"eager_thumb_{key}",
                     function=lambda k=key: _thumbnail_loader(k),
                     callback=_update_viewport,
+                    priority=2,
+                    context_id=request_id,
+                    cancellable=True,
+                )
+            )
+
+    def _eagerly_enqueue_visible_card_thumbnails(self) -> None:
+        """Enqueue thumbnail tasks for currently visible card-view rows.
+
+        Mirrors :meth:`_eagerly_enqueue_visible_thumbnails` for the card
+        view.  When fetches complete, :meth:`AYCardView.refresh_visible_editors`
+        is called so that ``setEditorData`` re-runs and
+        ``AYEntityThumbnail._resolve_src`` finds the cache hit — causing
+        the thumbnail to be displayed without a manual scroll event.
+
+        Already-enqueued or already-cached keys are skipped.
+        """
+        print("eagerly_enqueue_visible_card_thumbnails...")
+        ic = ImageCache.get_instance()
+        request_id = self._model._request_id
+        project = self._controller.current_project
+        if not project:
+            print("no project")
+            return
+
+        vp = self._card_view.viewport()
+        if vp.rect().isEmpty():
+            print("vp is empty")
+            return
+
+        for idx in self._card_view.get_visible_indexes():
+            print(f"idx = {idx}")
+            row_dict = idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            thumbnail_id = row_dict.get("thumbnailId", "")
+            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
+            if not thumbnail_id or not version_id:
+                continue
+
+            key = f"{project}/{version_id}/{thumbnail_id}"
+            if key in self._enqueued_thumb_keys or ic.has(key):
+                continue
+
+            self._enqueued_thumb_keys.add(key)
+
+            card_view = self._card_view
+
+            def _on_card_thumb_loaded(
+                _fpath: str,
+                _cv: AYCardView = card_view,
+            ) -> None:
+                if shiboken.isValid(_cv):
+                    _cv.refresh_visible_editors()
+
+            get_task_queue().enqueue(
+                AsyncTask(
+                    name=f"eager_card_thumb_{key}",
+                    function=lambda k=key: _thumbnail_loader(k),
+                    callback=_on_card_thumb_loaded,
                     priority=2,
                     context_id=request_id,
                     cancellable=True,
@@ -1469,6 +1579,12 @@ class ReviewsWidget(AYContainer):
         self._table.table.customContextMenuRequested.connect(
             self._on_context_menu
         )
+        self._table.card_view.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._table.card_view.customContextMenuRequested.connect(
+            self._on_context_menu
+        )
         self._selected_folder_id: str = ""
         self._build()
 
@@ -1548,7 +1664,7 @@ class ReviewsWidget(AYContainer):
         or no version rows are selected.
         """
         project_name = self._controller.current_project
-        selection_model = self._table.table.selectionModel()
+        selection_model = self._table.active_view.selectionModel()
 
         version_ids: set[str] = set()
         for proxy_idx in selection_model.selectedIndexes():
@@ -1562,7 +1678,7 @@ class ReviewsWidget(AYContainer):
             if version_id:
                 version_ids.add(version_id)
 
-        global_point = self._table.table.viewport().mapToGlobal(pos)
+        global_point = self._table.active_view.viewport().mapToGlobal(pos)
 
         if not version_ids or not project_name:
             log.warning("No version ids or project name")
