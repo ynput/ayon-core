@@ -550,19 +550,24 @@ class ReviewSlicer(AYContainer):
         deselected: QItemSelection,
     ) -> None:
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        indexes = selected.indexes()
-        if indexes:
-            index = indexes[0]
-            data = index.data(QtCore.Qt.ItemDataRole.UserRole)
+        # Read the canonical full selection rather than the delta
+        # arguments, which are unreliable under ExtendedSelection.
+        all_indexes = [
+            idx
+            for idx in self._tree_view.selectionModel().selectedIndexes()
+            if idx.column() == 0
+        ]
+        ids: list[str] = []
+        names: list[str] = []
+        for idx in all_indexes:
+            data = idx.data(QtCore.Qt.ItemDataRole.UserRole)
             if data:
-                log.debug(json.dumps(data, indent=4))
-                self._controller.on_tree_selection_changed(
-                    data.get("id", ""), data.get("name", "")
-                )
-        elif deselected.indexes():
-            # User clicked an already-selected item to deselect it;
-            # clear the folder filter so all versions are shown.
-            self._controller.on_tree_selection_changed("", "")
+                entity_id = data.get("id", "")
+                if entity_id:
+                    ids.append(entity_id)
+                    names.append(data.get("name", ""))
+        log.debug("Current selection ids: %s", ids)
+        self._controller.on_tree_selection_changed(ids, names)
 
     def current_category(self) -> str:
         """Return the currently selected category name."""
@@ -1644,7 +1649,6 @@ class ReviewsWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
-        self._selected_folder_id: str = ""
         self._build()
 
         # Connect signals
@@ -1689,25 +1693,25 @@ class ReviewsWidget(AYContainer):
         Args:
             project_name: Newly selected project name.
         """
-        self._selected_folder_id = ""
         self._table.set_auto_expand(False)
         self._table._model.reset_data()
 
-    def _on_folder_selected(self, id: str, name: str) -> None:
-        """Refresh the version table when a folder is selected or cleared.
+    def _on_folder_selected(
+        self, ids: list[str], names: list[str]
+    ) -> None:
+        """Refresh the version table when folders are selected or cleared.
 
-        In tree mode, selecting a folder makes that folder the single
-        root row of the table and enables auto-expansion so that the
-        full sub-tree is shown immediately.  Deselecting reverts to the
-        collapsed root-folders view.
+        In tree mode, selecting one or more folders makes those folders
+        the root rows of the table and enables auto-expansion so that
+        the full sub-tree is shown immediately.  Deselecting reverts to
+        the collapsed root-folders view.
 
         Args:
-            id: ID of the selected folder, or empty string when
+            ids: IDs of the selected folders, or empty list when
                 deselected.
-            name: Name of the selected folder.
+            names: Names of the selected folders (parallel to *ids*).
         """
-        self._selected_folder_id = id
-        auto_expand = bool(id) and self._controller.tree_mode
+        auto_expand = bool(ids) and self._controller.tree_mode
         self._table.set_auto_expand(auto_expand)
         self._table._model.reset_data()
         # Re-apply active filter criteria to the freshly loaded data.

@@ -368,7 +368,7 @@ class ReviewController(QtCore.QObject):
     project_info_changed = QtCore.Signal()  # type: ignore
     category_changed = QtCore.Signal(str)  # type: ignore
     tree_reset_requested = QtCore.Signal()  # type: ignore
-    selection_changed = QtCore.Signal(str, str)  # type: ignore
+    selection_changed = QtCore.Signal(list, list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
 
     def __init__(
@@ -387,7 +387,7 @@ class ReviewController(QtCore.QObject):
         self._folder_cursors: dict[str, str] = {}
         self._folder_has_more: dict[str, bool] = {}
         self._tree_mode: bool = True
-        self._selected_folder_id: str | None = None
+        self._selected_folder_ids: list[str] = []
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
         self._group_by_options: dict[str, GroupByOption] = {
@@ -427,9 +427,11 @@ class ReviewController(QtCore.QObject):
         return self._tree_mode
 
     @property
-    def selected_folder_id(self) -> str | None:
-        """Return the folder ID currently selected in the slicer tree."""
-        return self._selected_folder_id
+    def selected_folder_id(self) -> str:
+        """Return the first selected folder ID, or empty string."""
+        if self._selected_folder_ids:
+            return self._selected_folder_ids[0]
+        return ""
 
     @property
     def group_by(self) -> GroupByOption:
@@ -465,7 +467,7 @@ class ReviewController(QtCore.QObject):
         self._current_project = project_name
         self._review_sessions_cache = []
         self._reset_pagination()
-        self._selected_folder_id = None
+        self._selected_folder_ids = []
         self._build_project_info()
         self._get_review_session_list()
         self.project_changed.emit(project_name)
@@ -481,31 +483,36 @@ class ReviewController(QtCore.QObject):
                 ``"Reviews"``.
         """
         self._current_category = category
-        self._selected_folder_id = None
+        self._selected_folder_ids = []
         self._review_session_version_ids = None
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
         UserPreferences().set("loader.review.last_category", category)
 
-    def on_tree_selection_changed(self, id: str, name: str) -> None:
+    def on_tree_selection_changed(
+        self, ids: list[str], names: list[str]
+    ) -> None:
         """Handle a selection change in the tree view.
 
         Args:
-            id: ID of the selected entity, or empty string when
-                deselected.
-            name: Name of the selected entity.
+            ids: IDs of the selected entities, or empty list when
+                the selection is cleared.
+            names: Names of the selected entities (parallel to *ids*).
         """
-        self._selected_folder_id = id if id else None
+        self._selected_folder_ids = list(ids)
         self._review_session_version_ids = None  # always clear first
 
-        if self._current_category == ReviewCategory.REVIEWS.value and id:
+        if self._current_category == ReviewCategory.REVIEWS.value and ids:
+            ids_set: set[str] = set()
+            for sid in ids:
+                ids_set.update(self._get_review_session_version_ids(sid))
             self._review_session_version_ids = (
-                self._get_review_session_version_ids(id)
+                list(ids_set) if ids_set else None
             )
 
         self._reset_pagination()
-        self.selection_changed.emit(id, name)
+        self.selection_changed.emit(ids, names)
 
     def set_tree_mode(self, enabled: bool) -> None:
         """Enable or disable tree mode for the version table.
@@ -643,18 +650,19 @@ class ReviewController(QtCore.QObject):
                 ):
                     return []
 
-                folder_id = self._selected_folder_id
+                folder_ids = self._selected_folder_ids or None
                 version_ids = None
 
                 edges, page_info = self._get_versions_page(
                     self._current_project,
-                    folder_id,
+                    None,
                     page_size,
                     cursor=cursor,
                     sort_by=sort_by,
                     descending=descending,
                     version_ids=version_ids,
                     include_folder_children=True,
+                    folder_ids=folder_ids,
                     product_ids=product_ids,
                     version_filter=version_filter,
                     product_filter=product_filter,
@@ -682,7 +690,7 @@ class ReviewController(QtCore.QObject):
             and self._tree_mode
             and self._current_category == ReviewCategory.HIERARCHY.value
         ):
-            return self._fetch_root_folders(self._selected_folder_id)
+            return self._fetch_root_folders(self._selected_folder_ids)
 
         # Child versions for a specific folder (tree-mode expand).
         if parent_id is not None:
@@ -730,24 +738,25 @@ class ReviewController(QtCore.QObject):
             return folder_rows + version_rows
 
         # Flat mode: existing behaviour.
+        folder_ids: list[str] | None = None
         if self._current_category == ReviewCategory.REVIEWS.value:
-            folder_id = None
             version_ids = self._review_session_version_ids  # None = no filter
             if not version_ids:
                 # No review session selected yet — show nothing
                 return []
         else:
-            folder_id = self._selected_folder_id
+            folder_ids = self._selected_folder_ids or None
             version_ids = None
 
         edges, page_info = self._get_versions_page(
             self._current_project,
-            folder_id,
+            None,
             page_size,
             cursor=self._graphql_cursor,
             sort_by=sort_by,
             descending=descending,
             version_ids=version_ids,
+            folder_ids=folder_ids,
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -974,28 +983,29 @@ class ReviewController(QtCore.QObject):
         self._folder_has_more = {}
 
     def _fetch_root_folders(
-        self, selected_folder_id: str | None = None
+        self, selected_folder_ids: list[str] | None = None
     ) -> list[dict[str, Any]]:
         """Fetch folders to use as tree root rows.
 
-        When *selected_folder_id* is given the selected folder is
-        returned as the sole root row so the table shows that folder
-        expanded.  Otherwise, all top-level folders (depth 1) are
-        returned collapsed.
+        When *selected_folder_ids* is a non-empty list, those folders
+        are returned as the root rows so the table shows them expanded.
+        Otherwise, all top-level folders (depth 1) are returned
+        collapsed.
 
         Args:
-            selected_folder_id: ID of the folder currently selected in
-                the slicer tree, or ``None`` for the default root view.
+            selected_folder_ids: IDs of the folders currently selected
+                in the slicer tree, or ``None``/empty list for the
+                default root view.
 
         Returns:
             List of row dicts with ``has_children=True`` so the table
             model renders them as expandable nodes.
         """
-        if selected_folder_id:
+        if selected_folder_ids:
             folders = list(
                 ayon_api.get_folders(
                     self._current_project,
-                    folder_ids=[selected_folder_id],
+                    folder_ids=selected_folder_ids,
                     fields={
                         "id",
                         "name",
@@ -1347,17 +1357,18 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of expandable group-header rows keyed by product ID.
         """
-        folder_id = self._selected_folder_id
+        folder_ids = self._selected_folder_ids or None
         all_edges: list[dict[str, Any]] = []
         cursor: str | None = None
 
         for _page in range(_MAX_GROUP_PAGES):
             edges, page_info = self._get_products_page(
                 self._current_project,
-                folder_id=folder_id,
+                folder_id=None,
                 page_size=1000,
                 cursor=cursor,
                 sort_by="path",
+                folder_ids=folder_ids,
             )
             all_edges.extend(edges)
 
