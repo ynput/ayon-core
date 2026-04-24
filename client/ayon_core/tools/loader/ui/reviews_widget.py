@@ -6,7 +6,17 @@ from enum import Enum
 from typing import Any, Callable, Iterator
 
 import ayon_api
+from ayon_core.lib import Logger, log_timing
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
+from ayon_core.tools.loader.ui.review_controller import (
+    GroupByOption,
+    ReviewController,
+)
+from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils.user_prefs import UserPreferences
 from ayon_ui_qt.components.buttons import AYButton, AYButtonMenu
+from ayon_ui_qt.components.card_view import AYCardView
 from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
 from ayon_ui_qt.components.container import (
@@ -22,25 +32,15 @@ from ayon_ui_qt.components.label import AYLabel  # noqa: F401
 from ayon_ui_qt.components.slicer import AYSlicer
 from ayon_ui_qt.components.table_filter import AYTableFilter
 from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
-from ayon_ui_qt.components.card_view import AYCardView
 from ayon_ui_qt.components.table_view import AYTableView
 from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
 from ayon_ui_qt.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_ui_qt.components.tree_model import LazyTreeModel
 from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
+from ayon_ui_qt.components.slider import AYSlider
 from ayon_ui_qt.image_cache import ImageCache
 from ayon_ui_qt.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
-
-from ayon_core.lib import Logger, log_timing
-from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import (
-    GroupByOption,
-    ReviewController,
-)
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
-from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.user_prefs import UserPreferences
 
 log = Logger.get_logger(__name__)
 
@@ -576,9 +576,21 @@ class Customize(AYButtonMenu):
     """Customize button for the reviews widget."""
 
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
+    card_size_changed = QtCore.Signal(int)  # type: ignore
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    _CARD_WIDTH_MIN = 150
+    _CARD_WIDTH_MAX = 300
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        initial_card_width: int = 200,
+    ) -> None:
         self._show_empty_groups: bool = False
+        self._initial_card_width: int = max(
+            self._CARD_WIDTH_MIN,
+            min(self._CARD_WIDTH_MAX, initial_card_width),
+        )
         super().__init__(
             "Customize",
             populate_callback=self._populate,
@@ -596,6 +608,8 @@ class Customize(AYButtonMenu):
             )
             return
 
+        layout.setSpacing(10)
+
         self.show_empty_grps_ui = AYCheckBox(
             "Show empty groups",
             checked=self._show_empty_groups,
@@ -609,6 +623,16 @@ class Customize(AYButtonMenu):
         layout.addWidget(self.show_empty_grps_ui, stretch=0)
         self.show_empty_grps_ui.toggled.connect(self.show_empty_groups_changed)
 
+        self.card_size_slider = AYSlider(
+            label="Card size",
+            value=self._initial_card_width,
+            minimum=self._CARD_WIDTH_MIN,
+            maximum=self._CARD_WIDTH_MAX,
+            step=10,
+        )
+        layout.addWidget(self.card_size_slider, stretch=1)
+        self.card_size_slider.value_changed.connect(self.card_size_changed)
+
     def set_show_empty_groups(self, enabled: bool) -> None:
         """Update checkbox state without re-emitting change signal."""
         self._show_empty_groups = enabled
@@ -617,6 +641,17 @@ class Customize(AYButtonMenu):
         self.show_empty_grps_ui.blockSignals(True)
         self.show_empty_grps_ui.setChecked(enabled)
         self.show_empty_grps_ui.blockSignals(False)
+
+    def set_card_width(self, width: int) -> None:
+        """Update slider value without re-emitting change signal."""
+        self._initial_card_width = max(
+            self._CARD_WIDTH_MIN, min(self._CARD_WIDTH_MAX, width)
+        )
+        if not hasattr(self, "card_size_slider"):
+            return
+        self.card_size_slider.blockSignals(True)
+        self.card_size_slider.setValue(self._initial_card_width)
+        self.card_size_slider.blockSignals(False)
 
 
 class DisplayType(AYContainer):
@@ -900,12 +935,15 @@ class ReviewTable(AYContainer):
             self._on_display_type_changed
         )
         # customize
-        self._customize = Customize(parent=self)
+        self._customize = Customize(parent=self, initial_card_width=200)
         self._customize.set_show_empty_groups(
             not self._controller.hide_empty_groups
         )
         self._customize.show_empty_groups_changed.connect(
             self._on_show_empty_groups_changed
+        )
+        self._customize.card_size_changed.connect(
+            self._card_view.set_card_width
         )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
@@ -977,7 +1015,6 @@ class ReviewTable(AYContainer):
             self._eagerly_enqueue_visible_thumbnails()
         else:
             self._eagerly_enqueue_visible_card_thumbnails()
-
 
     def _on_group_by_options_changed(
         self, options: dict[str, GroupByOption]
