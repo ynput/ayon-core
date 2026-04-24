@@ -608,7 +608,8 @@ class Customize(AYButtonMenu):
             )
             return
 
-        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
         self.show_empty_grps_ui = AYCheckBox(
             "Show empty groups",
@@ -625,6 +626,7 @@ class Customize(AYButtonMenu):
 
         self.card_size_slider = AYSlider(
             label="Card size",
+            variant=AYSlider.Variants.Low,
             value=self._initial_card_width,
             minimum=self._CARD_WIDTH_MIN,
             maximum=self._CARD_WIDTH_MAX,
