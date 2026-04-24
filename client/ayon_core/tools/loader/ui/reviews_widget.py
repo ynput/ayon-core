@@ -47,7 +47,7 @@ log = Logger.get_logger(__name__)
 
 def _review_card_mapper(row_data: dict) -> dict:
     # print(f"row_data: {json.dumps(row_data, indent=4)}")
-    key = (
+    key: str = (
         f"{row_data.get('project_name', '')}/"
         f"{row_data.get('id', '')}/"
         f"{row_data.get('thumbnailId', '')}"
@@ -59,14 +59,15 @@ def _review_card_mapper(row_data: dict) -> dict:
         "title_color": row_data.get("productType__color", ""),
         "status": (
             {
-                "name": "",  # row_data["status"],
+                "name": "",
                 "color": row_data.get("status__color", ""),
                 "icon": row_data.get("status__icon", ""),
             }
             if row_data.get("status")
             else None
         ),
-        "version": row_data.get("version", ""),
+        "version": row_data.get("version", "")
+        + ("★" if row_data.get("heroVersionId") else ""),
         "image_src": key,
     }
 

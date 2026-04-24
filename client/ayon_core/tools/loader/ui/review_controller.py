@@ -1958,4 +1958,5 @@ class ReviewController(QtCore.QObject):
             "productId": n.get("product", {}).get("id", ""),
             "folderId": (n.get("product", {}).get("folder", {}).get("id", "")),
             "taskId": (n.get("task", {}) or {}).get("id", ""),
+            "heroVersionId": n.get("heroVersionId", ""),
         }
