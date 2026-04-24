@@ -145,6 +145,13 @@ class PublishedProductModel(BaseSettingsModel):
     )
 
 
+class ReviewLayersModel(BaseSettingsModel):
+    review_layers: list[str] = SettingsField(
+        default_factory=list,
+        title="Review layers"
+    )
+
+
 class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     _layout = "expanded"
     host_names: list[str] = SettingsField(
@@ -305,6 +312,16 @@ class CoreSettings(BaseSettingsModel):
         default_factory=VersionStartCategoryModel,
         title="Version start"
     )
+    reviewable_layers: ReviewLayersModel = SettingsField(
+        default_factory=ReviewLayersModel,
+        title="Default reviewable layers",
+        description=(
+            "Ordered list of layer names used to determine reviewable channel"
+            "The list order defines review layer priority (the first matching "
+            "layer is prioritized first). If the list is empty, review layers "
+            "use the default sorting behavior."
+        )
+    )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
         title="Color Management (ImageIO)"
@@ -407,6 +424,11 @@ DEFAULT_VALUES = {
     "tools": DEFAULT_TOOLS_VALUES,
     "version_start_category": {
         "profiles": []
+    },
+    "reviewable_layers": {
+        "review_layers": [
+            "Beauty"
+        ]
     },
     "publish": DEFAULT_PUBLISH_VALUES,
     "project_folder_structure": json.dumps(
