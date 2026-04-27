@@ -395,6 +395,11 @@ class ReviewController(QtCore.QObject):
         }
         self._group_by_key: str = GROUP_BY_NONE_KEY
         self._hide_empty_groups: bool = True
+        self._featured_version_order: list[str] = [
+            "latestDone",
+            "latest",
+            "hero",
+        ]
         self.log = Logger.get_logger(self.__class__.__name__)
 
     # ------------------------------------------------------------------
@@ -543,6 +548,21 @@ class ReviewController(QtCore.QObject):
         """
         self._hide_empty_groups = hide_empty
         self._reset_pagination()
+
+    def set_featured_version_order(
+        self, order: list[str]
+    ) -> None:
+        """Set the priority order used to pick the featured version.
+
+        Args:
+            order: Ordered list of GraphQL featured-version type keys
+                (e.g. ``["latestDone", "latest", "hero"]``).  When
+                group-by is set to ``"product"`` the pagination state is
+                reset so the next page fetch will use the new order.
+        """
+        self._featured_version_order = list(order)
+        if self._group_by_key == GROUP_BY_PRODUCT_KEY:
+            self._reset_pagination()
 
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for the given parent.
@@ -1296,7 +1316,7 @@ class ReviewController(QtCore.QObject):
             "productFilter": product_filter or "",
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
-            "featuredVersionOrder": ["latestDone", "latest", "hero"],
+            "featuredVersionOrder": self._featured_version_order,
         }
         if descending:
             variables["last"] = page_size

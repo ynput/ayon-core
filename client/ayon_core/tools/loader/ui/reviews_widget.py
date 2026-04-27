@@ -6,16 +6,11 @@ from enum import Enum
 from typing import Any, Callable, Iterator
 
 import ayon_api
-from ayon_core.lib import Logger, log_timing
-from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import (
-    GroupByOption,
-    ReviewController,
+from ayon_ui_qt.components.buttons import (
+    AYButton,
+    AYButtonMenu,
+    ButtonMenuDropdown,
 )
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
-from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.user_prefs import UserPreferences
-from ayon_ui_qt.components.buttons import AYButton, AYButtonMenu
 from ayon_ui_qt.components.card_view import AYCardView
 from ayon_ui_qt.components.check_box import AYCheckBox
 from ayon_ui_qt.components.combo_box import AYComboBox
@@ -29,7 +24,10 @@ from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.filter import AYFilter, FilterItem
 from ayon_ui_qt.components.filterable_list import FilterableList
 from ayon_ui_qt.components.label import AYLabel  # noqa: F401
+from ayon_ui_qt.components.order import AYOrder
+from ayon_ui_qt.components.page_button import AYPageButton
 from ayon_ui_qt.components.slicer import AYSlicer
+from ayon_ui_qt.components.slider import AYSlider
 from ayon_ui_qt.components.table_filter import AYTableFilter
 from ayon_ui_qt.components.table_model import PaginatedTableModel, TableColumn
 from ayon_ui_qt.components.table_view import AYTableView
@@ -37,10 +35,20 @@ from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
 from ayon_ui_qt.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_ui_qt.components.tree_model import LazyTreeModel
 from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
-from ayon_ui_qt.components.slider import AYSlider
 from ayon_ui_qt.image_cache import ImageCache
 from ayon_ui_qt.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
+
+from ayon_core.lib import Logger, log_timing
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
+from ayon_core.tools.loader.ui.review_controller import (
+    GROUP_BY_PRODUCT_KEY,
+    GroupByOption,
+    ReviewController,
+)
+from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils.user_prefs import UserPreferences
 
 log = Logger.get_logger(__name__)
 
@@ -662,6 +670,14 @@ class Customize(AYButtonMenu):
 
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
     card_size_changed = QtCore.Signal(int)  # type: ignore
+    featured_version_order_changed = QtCore.Signal(list)  # type: ignore
+
+    # Maps UI display labels to GraphQL featuredVersion order keys.
+    _FEATURED_VERSION_LABEL_TO_KEY: dict[str, str] = {
+        "Latest Done": "latestDone",
+        "Latest": "latest",
+        "Hero": "hero",
+    }
 
     _CARD_WIDTH_MIN = 150
     _CARD_WIDTH_MAX = 300
@@ -684,8 +700,12 @@ class Customize(AYButtonMenu):
             variant=AYButton.Variants.Surface,
             icon_size=16,
         )
+        self._stack = None
 
-    def _populate(self, container: QtWidgets.QFrame) -> None:
+    def _populate(self, container: ButtonMenuDropdown) -> None:
+        self._container = container
+        container.setMinimumWidth(300)
+        # get the layout of page 1
         layout = container.layout()
         if not isinstance(layout, AYVBoxLayout):
             log.warning(
@@ -693,9 +713,28 @@ class Customize(AYButtonMenu):
             )
             return
 
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(15)
 
+        # featured version button
+        self.featured_version_btn = AYPageButton(
+            label="Featured Version", icon="layers", value="Latest Done"
+        )
+        layout.addWidget(self.featured_version_btn, stretch=1)
+
+        # card size slider
+        self.card_size_slider = AYSlider(
+            label="Card size",
+            variant=AYSlider.Variants.Low,
+            value=self._initial_card_width,
+            minimum=self._CARD_WIDTH_MIN,
+            maximum=self._CARD_WIDTH_MAX,
+            step=10,
+        )
+        layout.addWidget(self.card_size_slider, stretch=1)
+        self.card_size_slider.value_changed.connect(self.card_size_changed)
+
+        # show empty groups checkbox
         self.show_empty_grps_ui = AYCheckBox(
             "Show empty groups",
             checked=self._show_empty_groups,
@@ -709,16 +748,64 @@ class Customize(AYButtonMenu):
         layout.addWidget(self.show_empty_grps_ui, stretch=0)
         self.show_empty_grps_ui.toggled.connect(self.show_empty_groups_changed)
 
-        self.card_size_slider = AYSlider(
-            label="Card size",
-            variant=AYSlider.Variants.Low,
-            value=self._initial_card_width,
-            minimum=self._CARD_WIDTH_MIN,
-            maximum=self._CARD_WIDTH_MAX,
-            step=10,
+        # page 2: featured version settings
+        page_2 = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=10,
+            layout_spacing=15,
         )
-        layout.addWidget(self.card_size_slider, stretch=1)
-        self.card_size_slider.value_changed.connect(self.card_size_changed)
+        container.add_page(page_2)
+        page2_nav_lyt = AYHBoxLayout(margin=0, spacing=10)
+        page2_back_btn = AYButton(
+            icon="arrow_back", variant=AYButton.Variants.Nav
+        )
+        page2_back_btn.clicked.connect(lambda: container.set_current_page(0))
+        page2_nav_lyt.addWidget(page2_back_btn)
+        page2_nav_lyt.addWidget(
+            AYLabel("Featured Version", variant=AYLabel.Variants.Default)
+        )
+        page2_nav_lyt.addStretch(1)
+        page2_exit_btn = AYButton(icon="close", variant=AYButton.Variants.Nav)
+        page2_exit_btn.clicked.connect(self._container.close)
+        page2_nav_lyt.addWidget(page2_exit_btn)
+        page_2.layout().addLayout(page2_nav_lyt)
+
+        # open page 2 when the button is clicked
+        self.featured_version_btn.clicked.connect(
+            lambda: container.set_current_page(1)
+        )
+
+        self_featured_order = AYOrder(
+            ["Latest Done", "Latest", "Hero"],
+            variant=AYOrder.Variants.Low,
+        )
+        self_featured_order.order_changed.connect(
+            self.on_featured_version_changed
+        )
+
+        page_2.layout().addWidget(self_featured_order)
+
+        self._container.popup_closed.connect(self._on_container_closed)
+
+    def _on_container_closed(self) -> None:
+        if self._container:
+            self._container.close() # close() is idempotent
+            self._container.set_current_page(0)
+
+    def on_featured_version_changed(self, order: list) -> None:
+        """Convert UI labels to GraphQL keys and notify listeners.
+
+        Args:
+            order: Ordered list of display labels as returned by the
+                :class:`AYOrder` widget (e.g.
+                ``["Latest Done", "Latest", "Hero"]``).
+        """
+        gql_order = [
+            self._FEATURED_VERSION_LABEL_TO_KEY.get(label, label)
+            for label in order
+        ]
+        self.featured_version_order_changed.emit(gql_order)
 
     def set_show_empty_groups(self, enabled: bool) -> None:
         """Update checkbox state without re-emitting change signal."""
@@ -1042,6 +1129,9 @@ class ReviewTable(AYContainer):
         self._customize.card_size_changed.connect(
             self._card_view.set_card_width
         )
+        self._customize.featured_version_order_changed.connect(
+            self._on_featured_version_order_changed
+        )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
@@ -1138,6 +1228,25 @@ class ReviewTable(AYContainer):
         self._expansion_phase = _ExpansionPhase.IDLE
         self._enqueued_thumb_keys.clear()
         self._model.reset_data()
+
+    def _on_featured_version_order_changed(
+        self, order: list[str]
+    ) -> None:
+        """Propagate a new featured-version priority to the controller.
+
+        When group-by is set to ``"product"`` the table data is
+        immediately re-fetched so the view reflects the new order.
+
+        Args:
+            order: Ordered list of GraphQL featured-version type keys.
+        """
+        self._controller.set_featured_version_order(order)
+        if self._controller.group_by_key == GROUP_BY_PRODUCT_KEY:
+            self._auto_expand = False
+            self._deferred_expand_queue.clear()
+            self._expansion_phase = _ExpansionPhase.IDLE
+            self._enqueued_thumb_keys.clear()
+            self._model.reset_data()
 
     def _on_page_fetched(self, page: int, total_pages: int) -> None:
         """Repaint the viewport and eagerly pre-fetch visible thumbnails.
