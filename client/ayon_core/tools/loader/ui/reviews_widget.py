@@ -790,7 +790,7 @@ class Customize(AYButtonMenu):
 
     def _on_container_closed(self) -> None:
         if self._container:
-            self._container.close() # close() is idempotent
+            self._container.close()  # close() is idempotent
             self._container.set_current_page(0)
 
     def on_featured_version_changed(self, order: list) -> None:
@@ -1229,9 +1229,7 @@ class ReviewTable(AYContainer):
         self._enqueued_thumb_keys.clear()
         self._model.reset_data()
 
-    def _on_featured_version_order_changed(
-        self, order: list[str]
-    ) -> None:
+    def _on_featured_version_order_changed(self, order: list[str]) -> None:
         """Propagate a new featured-version priority to the controller.
 
         When group-by is set to ``"product"`` the table data is
