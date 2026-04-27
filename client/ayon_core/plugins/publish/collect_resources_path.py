@@ -105,6 +105,12 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
         publish_template = anatomy.get_template_item(
             "publish", template_name, "directory")
 
+        if "{originalDirname}" in publish_template:
+            original_directory =  instance.data.get("originalDirname")
+            if not original_directory:
+                original_directory = instance.data["stagingDir"]
+            template_data["originalDirname"] = original_directory
+
         publish_folder = os.path.normpath(
             publish_template.format_strict(template_data)
         )
