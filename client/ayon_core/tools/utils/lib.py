@@ -518,6 +518,7 @@ class _IconsCache:
     def get_icon(
         cls,
         icon_def: IconBase | dict,
+        *,
         default: Any = _PLACEHOLDER,
     ) -> QtGui.QIcon | Any:
         if icon_def is None:
@@ -720,6 +721,7 @@ class _IconsCache:
 
 def get_qt_icon(
     icon_def: IconBase | dict[str, Any],
+    *,
     default: Any = _PLACEHOLDER,
 ) -> QtGui.QIcon | Any:
     """Returns icon from cache or creates new one.
@@ -732,7 +734,7 @@ def get_qt_icon(
         QtGui.QIcon: Icon.
 
     """
-    return _IconsCache.get_icon(icon_def, default)
+    return _IconsCache.get_icon(icon_def, default=default)
 
 
 def get_qta_icon_by_name_and_color(icon_name, icon_color):
