@@ -647,6 +647,9 @@ class ReviewController(QtCore.QObject):
         ):
             # Root level: return group header rows.
             if parent_id is None:
+                # Group headers are computed in one shot; only page 0 is valid.
+                if page_number > 0:
+                    return []
                 return self._fetch_group_headers()
 
             # Expanding a group header: fetch filtered versions.
