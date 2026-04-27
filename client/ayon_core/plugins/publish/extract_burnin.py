@@ -17,10 +17,13 @@ from ayon_core.lib import (
     run_ayon_launcher_process,
 
     convert_input_paths_for_ffmpeg,
-    should_convert_for_ffmpeg
+    should_convert_for_ffmpeg,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers
+)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -220,6 +223,8 @@ class ExtractBurnin(publish.Extractor):
 
         anatomy = instance.context.data["anatomy"]
         scriptpath = self.burnin_script_path()
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
 
         # Args that will execute the script
         executable_args = ["run", scriptpath]
@@ -246,7 +251,9 @@ class ExtractBurnin(publish.Extractor):
 
             first_input_path = os.path.join(src_repre_staging_dir, filename)
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, review_layers=review_layers
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -269,7 +276,8 @@ class ExtractBurnin(publish.Extractor):
                 convert_input_paths_for_ffmpeg(
                     src_filepaths,
                     new_staging_dir,
-                    self.log
+                    review_layers=review_layers,
+                    log=self.log,
                 )
 
             # Add anatomy keys to burnin_data.
