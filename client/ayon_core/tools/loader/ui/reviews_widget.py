@@ -69,6 +69,7 @@ def _review_card_mapper(row_data: dict) -> dict:
         "version": row_data.get("version", "")
         + ("★" if row_data.get("heroVersionId") else ""),
         "image_src": key,
+        "placeholder_icon": row_data.get("productType__icon", "image"),
     }
 
 
