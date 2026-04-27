@@ -45,6 +45,7 @@ from ayon_core.tools.loader.ui.review_controller import (
     GROUP_BY_PRODUCT_KEY,
     GroupByOption,
     ReviewController,
+    get_attribute_icon,
 )
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.utils import get_qt_icon
@@ -1657,6 +1658,9 @@ class ReviewTable(AYContainer):
                 name,
                 data.get("title", name),
                 width=_w(data.get("title", name)),
+                icon=get_attribute_icon(
+                    name, data.get("type"), data.get("enum")
+                ),
             )
             for name, data in self._controller.version_attributes.items()
         ]
