@@ -13,11 +13,13 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractLauncherFrontEnd,
     AbstractLauncherBackend,
+    RecentActionItem,
     WorkfileItem,
 )
 from .models import (
     LauncherSelectionModel,
     ActionsModel,
+    RecentActionsModel,
     WorkfilesModel,
 )
 
@@ -38,6 +40,7 @@ class BaseLauncherController(
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._actions_model = ActionsModel(self)
+        self._recent_actions_model = RecentActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
 
@@ -246,3 +249,75 @@ class BaseLauncherController(
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
+
+    # Recent actions
+    def get_recent_action_items(self) -> list[RecentActionItem]:
+        return self._recent_actions_model.get_recent_action_items()
+
+    def trigger_recent_action(self, record_id: str):
+        """Re-run a recent action against its stored context.
+
+        The launcher's current selection is intentionally NOT changed.
+        """
+        item = self._recent_actions_model.get_recent_action_item(record_id)
+        if item is None:
+            return
+
+        if item.action_type == "local":
+            self._actions_model.trigger_action(
+                item.identifier,
+                item.project_name,
+                item.folder_id,
+                item.task_id,
+                item.workfile_id,
+            )
+        elif item.action_type == "webaction":
+            from .abstract import WebactionContext
+            context = WebactionContext(
+                identifier=item.identifier,
+                project_name=item.project_name,
+                folder_id=item.folder_id,
+                task_id=item.task_id,
+                workfile_id=item.workfile_id,
+                addon_name=item.addon_name,
+                addon_version=item.addon_version,
+            )
+            self._actions_model.trigger_webaction(context, item.label, None)
+
+    def apply_recent_action_context(self, record_id: str):
+        """Apply stored context of a recent action to the current selection.
+
+        This is the "Locate" affordance – it navigates the launcher to the
+        project/folder/task that was active when the action was triggered,
+        without re-running the action itself.
+
+        Emits ``locate.context.requested`` after updating the selection so
+        that UI widgets can visibly navigate to the stored context.
+        """
+        item = self._recent_actions_model.get_recent_action_item(record_id)
+        if item is None:
+            return
+
+        task_name = item.task_name
+        if task_name is None and item.project_name and item.task_id:
+            task_entity = self.get_task_entity(item.project_name, item.task_id)
+            if task_entity:
+                task_name = task_entity.get("name")
+
+        self.set_selected_project(item.project_name)
+        self.set_selected_folder(item.folder_id)
+        self.set_selected_task(item.task_id, task_name)
+        self.set_selected_workfile(item.workfile_id)
+
+        # Signal the UI to visibly navigate – selection events alone do not
+        # drive widget tree to select the specific row.
+        self._emit_event(
+            "locate.context.requested",
+            {
+                "project_name": item.project_name,
+                "folder_id": item.folder_id,
+                "task_id": item.task_id,
+                "task_name": task_name,
+                "workfile_id": item.workfile_id,
+            },
+        )

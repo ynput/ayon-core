@@ -13,6 +13,8 @@ from ayon_core.tools.common_models import (
     TaskTypeItem,
 )
 
+RECENT_ACTIONS_MAX = 10
+
 
 @dataclass
 class WebactionContext:
@@ -65,6 +67,42 @@ class WorkfileItem:
     exists: bool
     icon: Optional[str]
     version: Optional[int]
+
+
+@dataclass
+class RecentActionItem:
+    """Item representing a recently triggered action stored in local history.
+
+    Attributes:
+        record_id (str): Unique identifier for this history record (UUID hex).
+        action_type (str): Type of action – ``"local"`` or ``"webaction"``.
+        identifier (str): Action identifier used to re-trigger the action.
+        label (str): Human-readable full label of the action.
+        icon (Optional[dict]): Icon definition dict (same format as
+            :attr:`ActionItem.icon`).
+        addon_name (Optional[str]): Addon name (webactions only).
+        addon_version (Optional[str]): Addon version (webactions only).
+        project_name (Optional[str]): Project name at trigger time.
+        folder_id (Optional[str]): Folder id at trigger time.
+        task_id (Optional[str]): Task id at trigger time.
+        task_name (Optional[str]): Task name at trigger time.
+        workfile_id (Optional[str]): Workfile id at trigger time.
+        timestamp (float): Unix timestamp of when the action was triggered.
+    """
+
+    record_id: str
+    action_type: str
+    identifier: str
+    label: str
+    icon: Optional[dict]
+    addon_name: Optional[str]
+    addon_version: Optional[str]
+    project_name: Optional[str]
+    folder_id: Optional[str]
+    task_id: Optional[str]
+    task_name: Optional[str]
+    workfile_id: Optional[str]
+    timestamp: float
 
 
 class AbstractLauncherCommon(ABC):
@@ -509,6 +547,50 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             list[WorkfileItem]: List of workfile items.
+
+        """
+        pass
+
+    # Recent actions
+    @abstractmethod
+    def get_recent_action_items(self) -> list[RecentActionItem]:
+        """Get list of recently triggered actions.
+
+        Returns up to :data:`RECENT_ACTIONS_MAX` items ordered from most
+        to least recent.
+
+        Returns:
+            list[RecentActionItem]: Recent action history items.
+
+        """
+        pass
+
+    @abstractmethod
+    def trigger_recent_action(self, record_id: str):
+        """Re-trigger an action from history without changing current context.
+
+        The action is executed against the context that was stored when it was
+        originally triggered, leaving the launcher's current selection
+        unchanged.
+
+        Args:
+            record_id (str): The :attr:`RecentActionItem.record_id` of the
+                history entry to replay.
+
+        """
+        pass
+
+    @abstractmethod
+    def apply_recent_action_context(self, record_id: str):
+        """Apply context stored in a recent action to the current selection.
+
+        Changes the launcher's project/folder/task/workfile selection to match
+        the context that was active when *record_id* was originally triggered.
+        This is the "Locate" affordance – it does **not** re-run the action.
+
+        Args:
+            record_id (str): The :attr:`RecentActionItem.record_id` of the
+                history entry whose context should be restored.
 
         """
         pass
