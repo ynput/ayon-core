@@ -117,6 +117,69 @@ def _thumbnail_loader(key: str) -> str:
             return ""
 
 
+def _make_card_async_fetcher(
+    model: "VisibilityAwarePaginatedTableModel",
+) -> "Callable[[str, Callable[[str], None]], None]":
+    """Return an async thumbnail fetcher for use with ``AYEntityCard``.
+
+    The returned callable matches the ``async_file_cacher`` signature
+    expected by
+    :class:`ayon_ui_qt.components.entity_thumbnail.AYEntityThumbnail`:
+    ``(key: str, on_loaded: Callable[[str], None]) -> None``.
+
+    On each call it enqueues an :class:`AsyncTask` on the shared task
+    queue at priority 2.  If the key is already in ``ImageCache`` it
+    calls ``on_loaded`` synchronously with the cached path so the card
+    updates without waiting for the task queue.
+
+    The ``context_id`` is read from *model*'s ``request_id`` property
+    at enqueue time — not at closure creation — so tasks automatically
+    belong to the right request context even after model resets.
+
+    Args:
+        model: The paginated table model; provides the current request
+            context ID via :attr:`request_id`.
+
+    Returns:
+        A non-blocking fetcher callable suitable for
+        ``AYEntityCard(async_file_cacher=...)``.
+
+    Note:
+        The ``on_loaded`` callback is invoked by
+        :class:`AYEntityThumbnail` which already wraps it with a
+        ``weakref`` guard, so no additional widget-validity check is
+        required here.
+    """
+
+    def _fetcher(key: str, on_loaded: "Callable[[str], None]") -> None:
+        # Validate: key must have the form "project/version_id/thumbnail_id"
+        # with all three parts non-empty.
+        parts = key.split("/", 2) if key else []
+        if len(parts) != 3 or not all(parts):
+            return
+
+        ic = ImageCache.get_instance()
+        if ic.has(key):
+            # Fast path: cache hit — no task needed.
+            cached = ic.get_path(key)
+            if cached:
+                on_loaded(cached)
+            return
+
+        get_task_queue().enqueue(
+            AsyncTask(
+                name=f"card_thumb_{key}",
+                function=lambda k=key: _thumbnail_loader(k),
+                callback=on_loaded,
+                priority=2,
+                context_id=model.request_id,
+                cancellable=True,
+            )
+        )
+
+    return _fetcher
+
+
 class LazyThumbnailWidget(AYEntityThumbnail):
     """Thumbnail widget that defers loading until the first paint event.
 
@@ -308,6 +371,21 @@ class VisibilityAwarePaginatedTableModel(PaginatedTableModel):
                 determine whether a parent row is currently on-screen.
         """
         self._view = view
+
+    @property
+    def request_id(self) -> str:
+        """Return the current request context ID.
+
+        Exposes the base-class ``_request_id`` as a public read-only
+        property so that external thumbnail fetchers can scope their
+        :class:`AsyncTask` entries correctly.  The ID is regenerated on
+        every :meth:`reset_data` call, so stale tasks are automatically
+        cancelled by the task queue.
+
+        Returns:
+            UUID string identifying the current fetch context.
+        """
+        return self._request_id
 
     def _is_parent_visible(self, node: object) -> bool:
         """Return True when *node*'s row is within the viewport.
@@ -913,11 +991,21 @@ class ReviewTable(AYContainer):
         self._model.set_tree_mode(initial_tree_mode)
         self._table_filter = AYTableFilter(model=self._model, parent=self)
         self._table.setModel(self._table_filter.filter_model)
+        # Build a card data mapper that injects an async thumbnail fetcher
+        # into every card so it can self-fetch on a cache miss without
+        # relying on external orchestration.
+        _card_fetcher = _make_card_async_fetcher(self._model)
+
+        def _card_mapper(row_data: dict) -> dict:
+            data = _review_card_mapper(row_data)
+            data["async_file_cacher"] = _card_fetcher
+            return data
+
         self._card_view = AYCardView(
             parent=self,
             card_width=200,
             card_spacing=8,
-            card_data_mapper=_review_card_mapper,
+            card_data_mapper=_card_mapper,
         )
         self._card_view.setModel(self._table_filter.filter_model)
         # set the initial sorting column to 1 (version name) ascending
@@ -1014,16 +1102,16 @@ class ReviewTable(AYContainer):
         #    rows that just became visible in the new view.
         active.viewport().update()
 
-        # 2. Re-run setEditorData for persistent editors (card view).
+        # 2. Re-run setEditorData for persistent editors (card view) so
+        #    AYEntityCard.async_file_cacher gets a chance to fire for any
+        #    cards that were opened while the view was hidden.
         if active is self._card_view:
             self._card_view.refresh_visible_editors()
 
-        # 3. Kick the eager thumbnail pre-fetch for the newly visible rows
-        #    so cards/rows that were never painted yet get their images.
+        # 3. Kick the eager thumbnail pre-fetch for the table view.
+        #    Card-view thumbnails are self-fetching via async_file_cacher.
         if active is self._table:
             self._eagerly_enqueue_visible_thumbnails()
-        else:
-            self._eagerly_enqueue_visible_card_thumbnails()
 
     def _on_group_by_options_changed(
         self, options: dict[str, GroupByOption]
@@ -1054,13 +1142,17 @@ class ReviewTable(AYContainer):
     def _on_page_fetched(self, page: int, total_pages: int) -> None:
         """Repaint the viewport and eagerly pre-fetch visible thumbnails.
 
-        After repainting, iterate over all rows visible in the viewport
-        and enqueue thumbnail fetch tasks (at priority 2) for those that
-        have not yet been requested.  The fetched image is stored in
-        ``ImageCache``; when ``LazyThumbnailWidget.paintEvent`` (table)
-        or ``AYEntityThumbnail._resolve_src`` (card) accesses the cache,
-        it finds a hit and renders synchronously — eliminating the usual
+        After repainting, iterate over all rows visible in the table
+        viewport and enqueue thumbnail fetch tasks (at priority 2) for
+        those that have not yet been requested.  The fetched image is
+        stored in ``ImageCache``; when
+        ``LazyThumbnailWidget.paintEvent`` accesses the cache it finds
+        a hit and renders synchronously — eliminating the usual
         2-paint-cycle delay for initially visible rows.
+
+        Card-view thumbnails are handled by each card's own
+        ``async_file_cacher`` (set via the card data mapper) so no
+        extra orchestration is needed here for the card view.
         """
         active = self._views_stack.currentWidget()
         if not shiboken.isValid(active.viewport()):
@@ -1068,8 +1160,6 @@ class ReviewTable(AYContainer):
         active.viewport().update()
         if active is self._table:
             self._eagerly_enqueue_visible_thumbnails()
-        elif active is self._card_view:
-            self._eagerly_enqueue_visible_card_thumbnails()
 
     def _table_row_height(self) -> int:
         first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
@@ -1121,7 +1211,7 @@ class ReviewTable(AYContainer):
         Already-enqueued or already-cached keys are skipped.
         """
         ic = ImageCache.get_instance()
-        request_id = self._model._request_id
+        request_id = self._model.request_id
         project = self._controller.current_project
         if not project:
             return
@@ -1154,60 +1244,6 @@ class ReviewTable(AYContainer):
                     name=f"eager_thumb_{key}",
                     function=lambda k=key: _thumbnail_loader(k),
                     callback=_update_viewport,
-                    priority=2,
-                    context_id=request_id,
-                    cancellable=True,
-                )
-            )
-
-    def _eagerly_enqueue_visible_card_thumbnails(self) -> None:
-        """Enqueue thumbnail tasks for currently visible card-view rows.
-
-        Mirrors :meth:`_eagerly_enqueue_visible_thumbnails` for the card
-        view.  When fetches complete, :meth:`AYCardView.refresh_visible_editors`
-        is called so that ``setEditorData`` re-runs and
-        ``AYEntityThumbnail._resolve_src`` finds the cache hit — causing
-        the thumbnail to be displayed without a manual scroll event.
-
-        Already-enqueued or already-cached keys are skipped.
-        """
-        ic = ImageCache.get_instance()
-        request_id = self._model._request_id
-        project = self._controller.current_project
-        if not project:
-            return
-
-        vp = self._card_view.viewport()
-        if vp.rect().isEmpty():
-            return
-
-        for idx in self._card_view.get_visible_indexes():
-            row_dict = idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-            thumbnail_id = row_dict.get("thumbnailId", "")
-            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
-            if not thumbnail_id or not version_id:
-                continue
-
-            key = f"{project}/{version_id}/{thumbnail_id}"
-            if key in self._enqueued_thumb_keys or ic.has(key):
-                continue
-
-            self._enqueued_thumb_keys.add(key)
-
-            card_view = self._card_view
-
-            def _on_card_thumb_loaded(
-                _fpath: str,
-                _cv: AYCardView = card_view,
-            ) -> None:
-                if shiboken.isValid(_cv):
-                    _cv.refresh_visible_editors()
-
-            get_task_queue().enqueue(
-                AsyncTask(
-                    name=f"eager_card_thumb_{key}",
-                    function=lambda k=key: _thumbnail_loader(k),
-                    callback=_on_card_thumb_loaded,
                     priority=2,
                     context_id=request_id,
                     cancellable=True,
@@ -1469,7 +1505,7 @@ class ReviewTable(AYContainer):
             thumbnail_id = row_dict.get("thumbnailId", "")
             version_id = row_dict.get("_version_id") or row_dict.get("id", "")
             project = controller.current_project
-            request_id = self._model._request_id
+            request_id = self._model.request_id
 
             def _make_real() -> LazyThumbnailWidget | None:
                 if not thumbnail_id or not version_id or not project:
@@ -1697,9 +1733,7 @@ class ReviewsWidget(AYContainer):
         self._table.set_auto_expand(False)
         self._table._model.reset_data()
 
-    def _on_folder_selected(
-        self, ids: list[str], names: list[str]
-    ) -> None:
+    def _on_folder_selected(self, ids: list[str], names: list[str]) -> None:
         """Refresh the version table when folders are selected or cleared.
 
         In tree mode, selecting one or more folders makes those folders
