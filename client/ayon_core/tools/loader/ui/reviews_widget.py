@@ -1879,7 +1879,9 @@ class ReviewsWidget(AYContainer):
             entity_type = row_dict.get("entityType", "")
             if entity_type == "Folder":
                 continue
-            version_id = row_dict.get("id", "")
+            # headers store the featured version id in the _version_id key
+            # rows store the version id in the id key
+            version_id = row_dict.get("_version_id", row_dict.get("id", ""))
             if version_id:
                 version_ids.add(version_id)
 
