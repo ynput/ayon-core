@@ -1637,6 +1637,7 @@ class ReviewTable(AYContainer):
                 "Thumbnail",
                 width=_w("Thumbnail"),
                 sortable=False,
+                filterable=False,
                 widget_factory=_thumb_widget_factory,
             ),
             TableColumn(
