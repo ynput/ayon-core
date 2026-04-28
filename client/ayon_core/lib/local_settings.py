@@ -371,6 +371,10 @@ class IniSettingRegistry(ASettingRegistry):
 
         self._registry_file = filepath
 
+    @property
+    def filepath(self) -> str:
+        return self._registry_file
+
     def set_item_section(self, section: str, name: str, value: str) -> None:
         """Set item to specific section of ini registry.
 
@@ -529,6 +533,10 @@ class JSONSettingRegistry(ASettingRegistry):
             with open(self._registry_file, mode="w") as stream:
                 json.dump(header, stream, indent=4)
 
+    @property
+    def filepath(self) -> str:
+        return self._registry_file
+
     @lru_cache(maxsize=32)
     def _get_item(
         self, name: str, default: Any = _PLACEHOLDER
@@ -599,7 +607,7 @@ class AYONSettingsRegistry(JSONSettingRegistry):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        path = get_launcher_storage_dir()
+        path = get_launcher_local_dir()
         super().__init__(name, path)
 
 
