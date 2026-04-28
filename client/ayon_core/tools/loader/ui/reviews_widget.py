@@ -1739,11 +1739,24 @@ class ReviewTable(AYContainer):
         return cols
 
     def on_category_changed(self, category: str) -> None:
-        """Reset the table when the slicer category changes."""
+        """Reset the table when the slicer category changes.
+
+        Syncs the model's tree-mode flag with the controller — the
+        controller has already normalized its own ``group_by_key`` and
+        ``tree_mode`` for the new category in
+        :meth:`ReviewController.set_category`, so we just mirror it here.
+        """
         self._auto_expand = False
         self._deferred_expand_queue.clear()
         self._expansion_phase = _ExpansionPhase.IDLE
         self._enqueued_thumb_keys.clear()
+        # Keep model tree-mode in lockstep with the controller.
+        self._model.set_tree_mode(self._controller.tree_mode)
+        # Re-sync the group-by menu UI with the (possibly reset) key.
+        self._group_by_menu.set_options(
+            self._controller.get_group_by_options(),
+            self._controller.group_by_key,
+        )
         self._model.reset_data()
         self._model.set_columns(self._build_columns(category))
         self._group_by_menu.setVisible(

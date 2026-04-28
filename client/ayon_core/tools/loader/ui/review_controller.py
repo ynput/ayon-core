@@ -483,13 +483,29 @@ class ReviewController(QtCore.QObject):
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
 
+        Resets per-category state so switching back and forth between
+        ``Hierarchy`` and ``Reviews`` never leaves stale group-by or
+        tree-mode flags behind.  Reviews are always a flat version list,
+        while Hierarchy restores the group-by / tree-mode combination
+        derived from the current ``group_by_key``.
+
         Args:
-            category: Category name, e.g. ``"Hierarchy"`` or
-                ``"Reviews"``.
+            category: Category name, e.g. ``"Hierarchy"`` or ``"Reviews"``.
         """
         self._current_category = category
         self._selected_folder_ids = []
         self._review_session_version_ids = None
+
+        if category == ReviewCategory.REVIEWS.value:
+            # Reviews are always flat — drop any grouping/tree state that
+            # was active in the Hierarchy view so the table fetch path
+            # takes the plain flat-version branch.
+            self._group_by_key = GROUP_BY_NONE_KEY
+            self._tree_mode = False
+        else:
+            # Restore tree-mode consistent with the active group-by.
+            self._tree_mode = self._group_by_key != GROUP_BY_NONE_KEY
+
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
@@ -549,9 +565,7 @@ class ReviewController(QtCore.QObject):
         self._hide_empty_groups = hide_empty
         self._reset_pagination()
 
-    def set_featured_version_order(
-        self, order: list[str]
-    ) -> None:
+    def set_featured_version_order(self, order: list[str]) -> None:
         """Set the priority order used to pick the featured version.
 
         Args:
@@ -1588,7 +1602,9 @@ class ReviewController(QtCore.QObject):
             )
         elif group_key.startswith("attr:"):
             attribute_name = group_key.split(":", 1)[1]
-            attr_type = self._version_attributes.get(attribute_name, {}).get("type")
+            attr_type = self._version_attributes.get(attribute_name, {}).get(
+                "type"
+            )
             if attr_type == "integer":
                 typed_value = int(group_value)
             elif attr_type == "float":
