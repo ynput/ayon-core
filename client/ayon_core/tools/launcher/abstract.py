@@ -65,6 +65,7 @@ class WorkfileItem:
     exists: bool
     icon: Optional[str]
     version: Optional[int]
+    published: bool = False
 
 
 class AbstractLauncherCommon(ABC):
@@ -360,11 +361,16 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_workfile(self, workfile_id: Optional[str]):
+    def set_selected_workfile(
+        self,
+        workfile_id: Optional[str],
+        published: bool = False,
+    ):
         """Change selected workfile.
 
         Args:
             workfile_id (Optional[str]): Workfile id or None.
+            published (bool): Selected workfile represents published file.
 
         """
         pass
@@ -509,6 +515,42 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             list[WorkfileItem]: List of workfile items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_published_workfile_items(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        """Get published workfile items for a given context.
+
+        Args:
+            project_name (Optional[str]): Project name.
+            folder_id (Optional[str]): Folder id.
+            task_id (Optional[str]): Task id.
+
+        Returns:
+            list[WorkfileItem]: List of published workfile items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_show_local_workfiles_only_default(
+        self,
+        project_name: Optional[str],
+    ) -> bool:
+        """Get default launcher preference for local-only workfile list.
+
+        Args:
+            project_name (Optional[str]): Project name.
+
+        Returns:
+            bool: True if only workfiles present locally should be shown.
 
         """
         pass

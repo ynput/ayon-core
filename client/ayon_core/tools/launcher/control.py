@@ -147,8 +147,10 @@ class BaseLauncherController(
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
-    def set_selected_workfile(self, workfile_id):
-        self._selection_model.set_selected_workfile(workfile_id)
+    def set_selected_workfile(self, workfile_id, published=False):
+        self._selection_model.set_selected_workfile(
+            workfile_id, published
+        )
 
     def get_selected_context(self):
         return {
@@ -167,6 +169,32 @@ class BaseLauncherController(
         return self._workfiles_model.get_workfile_items(
             project_name,
             task_id,
+        )
+
+    def get_published_workfile_items(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        return self._workfiles_model.get_published_workfile_items(
+            project_name,
+            folder_id,
+            task_id,
+        )
+
+    def get_show_local_workfiles_only_default(
+        self,
+        project_name: Optional[str],
+    ) -> bool:
+        """Return project default for the local-only workfile toggle."""
+        settings = self.get_project_settings(project_name)
+        return (
+            settings
+            .get("core", {})
+            .get("tools", {})
+            .get("launcher", {})
+            .get("show_local_workfiles_only", False)
         )
 
     # Actions
