@@ -2,12 +2,37 @@ import concurrent.futures
 import os
 import logging
 import errno
+import platform
+import shutil
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Optional
 
 from ayon_core.lib import create_hard_link
 
-from speedcopy import copyfile
+import speedcopy
+
+_IS_MACOS = platform.system().lower() == "darwin"
+
+
+def copyfile(src, dst):
+    """Copy a file from src to dst.
+
+    Defaults to using `speedcopy` but on certain infrastructure the fstats
+    calls that it does may fail. For those cases, environment variable
+    `AYON_COPY_FILE_DISABLE_SPEEDCOPY=1` could be set to avoid using speedcopy.
+
+    Args:
+        src (str): Source path.
+        dst (str): Destination path.
+    """
+    # NOTE speedcopy has a bug that causes failure on macOs.
+    # TODO find out if speedcopy is still needed and remove if not.
+    if _IS_MACOS:
+        shutil.copyfile(src, dst)
+    elif os.getenv("AYON_COPY_FILE_DISABLE_SPEEDCOPY") != "1":
+        speedcopy.copyfile(src, dst)
+    else:
+        shutil.copyfile(src, dst)
 
 
 class DuplicateDestinationError(ValueError):
@@ -125,7 +150,7 @@ class FileTransaction:
                 executor, transfer_futures, logger=self.log)
 
     def _backup_file(self, dst, src):
-        self.log.debug(f"Checking file ... {src} -> {dst}")
+        self.log.debug(f"Checking file destination ... {src} -> {dst}")
         path_same = self._same_paths(src, dst)
         if path_same or not os.path.exists(dst):
             return

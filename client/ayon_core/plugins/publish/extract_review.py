@@ -10,7 +10,6 @@ from typing import Any, Optional
 import tempfile
 
 import clique
-import speedcopy
 import pyblish.api
 
 from ayon_core.lib import (
@@ -22,6 +21,7 @@ from ayon_core.lib import (
 from ayon_core.pipeline.publish.lib import (
     fill_sequence_gaps_with_previous_version
 )
+from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
@@ -34,7 +34,10 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_instance_label,
 )
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers,
+)
 
 
 class TempData:
@@ -165,6 +168,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "batchdelivery",
         "photoshop",
         "substancepainter",
+        "workflow",
     ]
 
     settings_category = "core"
@@ -207,29 +211,34 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def _get_outputs_for_instance(self, instance):
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         task_type = None
         task_entity = instance.data.get("taskEntity")
         if task_entity:
             task_type = task_entity["taskType"]
 
-        self.log.debug("Host: \"{}\"".format(host_name))
-        self.log.debug("Product type: \"{}\"".format(product_type))
-        self.log.debug("Task type: \"{}\"".format(task_type))
+        self.log.debug(
+            f"Host: \"{host_name}\""
+            f"\nProduct base type: \"{product_base_type}\""
+            f"\nTask type: \"{task_type}\""
+        )
 
         profile = filter_profiles(
             self.profiles,
             {
-                "hosts": host_name,
-                "product_types": product_type,
-                "task_types": task_type
+                "host_names": host_name,
+                "product_base_types": product_base_type,
+                "task_types": task_type,
             },
             logger=self.log)
         if not profile:
-            self.log.info((
+            self.log.info(
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\""
-            ).format(host_name, product_type))
+                f" Host: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+            )
             return
 
         self.log.debug("Matching profile: \"{}\"".format(json.dumps(profile)))
@@ -337,6 +346,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             instance, profile_outputs
         )
 
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for repre, output_defs in outputs_per_repres:
             # Check if input should be preconverted before processing
             # Store original staging dir (it's value may change)
@@ -376,7 +387,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, review_layers=review_layers
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -386,7 +399,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 ))
                 continue
 
-            layer_name = get_review_layer_name(first_input_path)
+            layer_name = get_review_layer_name(
+                first_input_path, review_layers=review_layers
+            )
 
             # Do conversion if needed
             #   - change staging dir of source representation
@@ -401,7 +416,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
                     new_staging_dir,
-                    self.log
+                    review_layers=review_layers,
+                    logger=self.log,
                 )
                 # The OIIO conversion will remap the RGBA channels just to
                 # `R,G,B,A` so we will pass the intermediate file to FFMPEG
@@ -1088,7 +1104,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     staging_dir, extension, resolution_width, resolution_height
                 )
                 temp_data.paths_to_remove.append(blank_frame_path)
-            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            copyfile(blank_frame_path, hole_fpath)
             added_files[frame] = hole_fpath
 
         return added_files
@@ -1169,7 +1185,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 raise KnownPublishError(
                     "Missing previously detected file: {}".format(src_fpath))
 
-            speedcopy.copyfile(src_fpath, hole_fpath)
+            copyfile(src_fpath, hole_fpath)
             added_files[hole_frame] = hole_fpath
 
         return added_files

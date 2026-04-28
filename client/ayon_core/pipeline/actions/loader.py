@@ -556,6 +556,7 @@ class LoaderActionPlugin(ABC):
     """
     _log: Optional[logging.Logger] = None
     enabled: bool = True
+    skip_discovery: bool = True
 
     def __init__(self, context: "LoaderActionsContext") -> None:
         self._context = context
@@ -826,6 +827,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     order: int = 0
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
+    skip_discovery: bool = True
 
     @abstractmethod
     def is_compatible(self, selection: LoaderActionSelection) -> bool:

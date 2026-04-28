@@ -15,7 +15,7 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
@@ -113,7 +113,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         host (Optional[AbstractHost]): Host object. Defaults to None.
     """
 
-    def __init__(self, host=None):
+    def __init__(self, host: Optional[AbstractHost] = None) -> None:
         self._log = None
         self._host = host
 
@@ -143,6 +143,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     # ---------------------------------
     # Implementation of abstract methods
     # ---------------------------------
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
+
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
@@ -481,6 +486,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_remote_site_icon_def(self, project_name):
         return self._sitesync_model.get_remote_site_icon_def(project_name)
 
+    def get_active_site(self, project_name):
+        return self._sitesync_model.get_active_site(project_name)
+
+    def get_remote_site(self, project_name):
+        return self._sitesync_model.get_remote_site(project_name)
+
     def get_version_sync_availability(self, project_name, version_ids):
         return self._sitesync_model.get_version_sync_availability(
             project_name, version_ids
@@ -540,7 +551,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         profile = filter_profiles(
             profiles,
             {
-                "hosts": host_name,
+                "host_names": host_name,
                 "task_types": task_type,
             }
         )

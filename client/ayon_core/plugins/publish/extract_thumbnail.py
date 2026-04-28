@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, fields
 import os
 import subprocess
 import tempfile
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
 
 import pyblish.api
 from ayon_core.lib import (
@@ -24,8 +24,13 @@ from ayon_core.lib.transcoding import (
     get_oiio_input_and_channel_args,
     get_oiio_info_for_input,
 )
+from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
+from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
 
 
 @dataclass
@@ -196,6 +201,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         oiio_supported = is_oiio_supported()
         thumbnail_created = False
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for repre in filtered_repres:
             # Reset for each iteration to handle cases where multiple
             # reviewable thumbnails are needed
@@ -256,11 +263,14 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
+                anatomy = instance.context.data["anatomy"]
                 repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
-                    colorspace_data,
+                    repre,
                     thumbnail_def,
+                    anatomy=anatomy,
+                    review_layers=review_layers,
                 )
 
             # Try to use FFMPEG if OIIO is not supported or for cases when
@@ -268,13 +278,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             #   colorspace data
             if not repre_thumb_created:
                 repre_thumb_created = self._create_thumbnail_ffmpeg(
-                    full_input_path, full_output_path, thumbnail_def
+                    full_input_path,
+                    full_output_path,
+                    thumbnail_def,
+                    review_layers,
                 )
 
             # Skip representation and try next one if wasn't created
             if not repre_thumb_created and oiio_supported:
                 repre_thumb_created = self._create_thumbnail_oiio(
-                    full_input_path, full_output_path, thumbnail_def
+                    full_input_path,
+                    full_output_path,
+                    thumbnail_def,
+                    review_layers,
                 )
 
             if not repre_thumb_created:
@@ -423,28 +439,44 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        colorspace_data: dict,
+        repre: dict,
         thumbnail_def: ThumbnailDef,
-    ):
+        anatomy: "Anatomy",
+        review_layers: list[str],
+    ) -> bool:
         """Create thumbnail using OIIO tool oiiotool
 
         Args:
             src_path (str): path to source file
             dst_path (str): path to destination file
-            colorspace_data (dict): colorspace data from representation
+            repre (dict): colorspace data from representation
                 keys:
                     colorspace (str)
                     config (dict)
                     display (Optional[str])
                     view (Optional[str])
             thumbnail_def (ThumbnailDefinition): Thumbnail definition.
+            anatomy (Anatomy): Current project Anatomy.
+            review_layers (list[str]): List of reviewable layers.
 
         Returns:
-            str: path to created thumbnail
+            bool: Whether a thumbnail has been created.
         """
+
+        ocio_config_path = get_representation_ocio_config_path(
+            repre,
+            anatomy=anatomy,
+            logger=self.log
+        )
+        if not ocio_config_path:
+            self.log.debug("Unable to find representation OCIO file.")
+            return False
+
+        colorspace_data: dict = repre["colorspaceData"]
+
         self.log.info(f"Extracting thumbnail {dst_path}")
         resolution_arg = self._get_resolution_args(
-            "oiiotool", src_path, thumbnail_def
+            "oiiotool", src_path, thumbnail_def, review_layers
         )
 
         repre_display = colorspace_data.get("display")
@@ -478,7 +510,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             oiio_color_convert(
                 src_path,
                 dst_path,
-                colorspace_data["config"]["path"],
+                ocio_config_path,
                 colorspace_data["colorspace"],
                 source_display=colorspace_data.get("display"),
                 source_view=colorspace_data.get("view"),
@@ -486,6 +518,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 target_view=repre_view or oiio_default_view,
                 target_colorspace=oiio_default_colorspace,
                 additional_command_args=resolution_arg,
+                review_layers=review_layers,
                 logger=self.log,
             )
         except Exception:
@@ -497,12 +530,30 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return True
 
-    def _create_thumbnail_oiio(self, src_path, dst_path, thumbnail_def):
+    def _create_thumbnail_oiio(
+        self,
+        src_path: str,
+        dst_path: str,
+        thumbnail_def: ThumbnailDef,
+        review_layers: list[str],
+    ) -> bool:
+        """Create thumbnail using OIIO tool
+
+        Args:
+            src_path (str): source file path
+            dst_path (str): destination file path
+            thumbnail_def (ThumbnailDef): Thumbnail definition.
+            review_layers (list[str]): List of reviewable layers.
+
+        Returns:
+            bool: Whether the thumbnail was successfully created.
+
+        """
         self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
 
         try:
             resolution_arg = self._get_resolution_args(
-                "oiiotool", src_path, thumbnail_def
+                "oiiotool", src_path, thumbnail_def, review_layers
             )
         except RuntimeError:
             self.log.warning(
@@ -517,7 +568,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         )
         try:
             input_arg, channels_arg = get_oiio_input_and_channel_args(
-                input_info
+                input_info, review_layers=review_layers
             )
         except MissingRGBAChannelsError:
             self.log.debug(
@@ -547,10 +598,28 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-    def _create_thumbnail_ffmpeg(self, src_path, dst_path, thumbnail_def):
+    def _create_thumbnail_ffmpeg(
+        self,
+        src_path: str,
+        dst_path: str,
+        thumbnail_def: ThumbnailDef,
+        review_layers: list[str],
+) -> bool:
+        """Create thumbnail using FFmpeg tool
+
+        Args:
+            src_path (str): source file path
+            dst_path (str): destination file path
+            thumbnail_def (ThumbnailDef): Thumbnail definition.
+            review_layers (list[str]): List of reviewable layers.
+
+        Returns:
+            bool: Whether the thumbnail was successfully created.
+
+        """
         try:
             resolution_arg = self._get_resolution_args(
-                "ffmpeg", src_path, thumbnail_def
+                "ffmpeg", src_path, thumbnail_def, review_layers
             )
         except RuntimeError:
             self.log.warning(
@@ -610,7 +679,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         base_name = os.path.basename(video_file_path)
         filename = os.path.splitext(base_name)[0]
         output_thumb_file_path = os.path.join(
-            output_dir, "{}.png".format(filename))
+            output_dir, "{}.exr".format(filename))
 
         # Set video input attributes
         max_int = str(2147483647)
@@ -708,7 +777,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         application: str,
         input_path: str,
         thumbnail_def: ThumbnailDef,
+        review_layers: list[str],
     ) -> list:
+        """Create command arguments for rescaling.
+
+        Args:
+            application (str): Application name.
+            input_path (str): Input file path.
+            thumbnail_def (ThumbnailDef): Thumbnail definition.
+            review_layers (list[str]): List of reviewable layers.
+
+        Returns:
+            list: List of command arguments for rescaling.
+        """
         # get settings
         if thumbnail_def.target_size["type"] == "source":
             return []
@@ -724,7 +805,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             target_width,
             target_height,
             bg_color=thumbnail_def.background_color,
-            log=self.log
+            review_layers=review_layers,
+            log=self.log,
         )
 
     def _get_config_from_profile(
@@ -733,14 +815,16 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     ) -> Optional[ThumbnailDef]:
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
         filtering_criteria = {
             "host_names": host_name,
-            "product_types": product_type,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -754,9 +838,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         if not profile:
             self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
-                f' Host: "{host_name}"'
-                f' | Product types: "{product_type}"'
-                f' | Product names: "{product_name}"'
+                f' Host name: "{host_name}"'
+                f' | Product base type: "{product_base_type}"'
+                f' | Product name: "{product_name}"'
                 f' | Task name "{task_name}"'
                 f' | Task type "{task_type}"'
             )

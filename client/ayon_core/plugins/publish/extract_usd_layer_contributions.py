@@ -1,8 +1,9 @@
-from operator import attrgetter
+import copy
 import dataclasses
 import os
 import platform
 from collections import defaultdict
+from operator import attrgetter
 from typing import Any, Dict, List
 
 import pyblish.api
@@ -448,11 +449,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # contributing to the same layer or asset - so we first check for
         # existence
         context = source_instance.context
+        task_name = source_instance.data.get("task")
 
         # Required matching vars
         data = {
             "folderPath": source_instance.data["folderPath"],
-            "task": source_instance.data.get("task"),
             "productName": product_name,
             "variant": variant,
             "families": families
@@ -462,27 +463,59 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         if existing_instance:
             existing_instance.append(source_instance.id)
             existing_instance.data["source_instances"].append(source_instance)
+
+            # If the instance already exists, we want to ensure the task name
+            # is set if any of the source instances specify it.
+            existing_instance_task_name = existing_instance.data.get("task")
+            if task_name and existing_instance_task_name != task_name:
+                if existing_instance_task_name:
+                    # Log the difference, but do not change task name
+                    # on the existing instance
+                    self.log.debug(
+                        "Instance has different task name"
+                        f" '{existing_instance_task_name}' than source"
+                        f" instance '{task_name}' because it already "
+                        " inherited the task name from another source "
+                        " instance."
+                    )
+                else:
+                    # Set the task name
+                    existing_instance.data["task"] = task_name
+
             return existing_instance
 
         # Otherwise create the instance
+        product_base_type = "usd"
         new_instance = context.create_instance(name=product_name)
         new_instance.data.update(data)
 
         new_instance.data["label"] = (
             "{0} ({1})".format(product_name, new_instance.data["folderPath"])
         )
-        new_instance.data["family"] = "usd"
-        new_instance.data["productType"] = "usd"
+        new_instance.data["family"] = product_base_type
+        new_instance.data["productBaseType"] = product_base_type
+        new_instance.data["productType"] = product_base_type
         new_instance.data["icon"] = "link"
         new_instance.data["comment"] = "Automated bootstrap USD file."
         new_instance.append(source_instance.id)
         new_instance.data["source_instances"] = [source_instance]
+        if task_name:
+            new_instance.data["task"] = task_name
 
         # The contribution target publishes should never match versioning of
         # the workfile but should just always increment from their last version
         # so that there will never be conflicts between contributions from
         # different departments and scenes.
         new_instance.data["followWorkfileVersion"] = False
+
+        # Transfer any creator and publish attributes, to ensure any optional
+        # validators that may also apply to these instances will have the
+        # state inherited from its parent
+        for key in ("creator_attributes", "publish_attributes"):
+            if key in source_instance.data:
+                new_instance.data[key] = copy.deepcopy(
+                    source_instance.data[key]
+                )
 
         return new_instance
 
@@ -494,10 +527,15 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
 
         # Set default target layer based on product type
         current_context_task_type = create_context.get_current_task_type()
-        profile = filter_profiles(cls.profiles, {
-            "product_types": instance.data["productType"],
-            "task_types": current_context_task_type
-        })
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
+        filtering_criteria = {
+            "product_base_types": product_base_type,
+            "task_types": current_context_task_type,
+            "task_names": create_context.get_current_task_name()
+        }
+        profile = filter_profiles(cls.profiles, filtering_criteria)
         if not profile:
             profile = {}
 

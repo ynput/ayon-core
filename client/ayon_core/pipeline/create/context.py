@@ -1219,6 +1219,7 @@ class CreateContext:
         task_entity: Optional[dict[str, Any]] = None,
         pre_create_data: Optional[dict[str, Any]] = None,
         active: Optional[bool] = None,
+        product_type: Optional[str] = None,
     ) -> Any:
         """Trigger create of plugins with standartized arguments.
 
@@ -1238,6 +1239,7 @@ class CreateContext:
             pre_create_data (dict[str, Any]): Pre-create attribute values.
             active (Optional[bool]): Whether the created instance defaults
                 to be active or not.
+            product_type (str): Specific product type to use.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -1255,9 +1257,7 @@ class CreateContext:
                 project_name, folder_path
             )
             if folder_entity is None:
-                raise CreatorError(
-                    "Folder '{}' was not found".format(folder_path)
-                )
+                raise CreatorError(f"Folder '{folder_path}' was not found")
 
         if task_entity is None:
             current_task_name = self.get_current_task_name()
@@ -1265,6 +1265,14 @@ class CreateContext:
                 task_entity = ayon_api.get_task_by_name(
                     project_name, folder_entity["id"], current_task_name
                 )
+
+        # Handle not passed product type
+        if product_type is None:
+            for product_type_item in creator.get_product_type_items():
+                product_type = product_type_item.product_type
+                break
+            else:
+                product_type = creator.product_base_type
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -1288,20 +1296,26 @@ class CreateContext:
             variant,
             self.host_name,
         )
-        kwargs = {"project_entity": project_entity}
-        # Backwards compatibility for 'project_entity' argument
-        # - 'get_product_name' signature changed 24/07/08
-        if not is_func_signature_supported(
-            creator.get_product_name, *args, **kwargs
-        ):
-            kwargs.pop("project_entity")
+        kwargs = {
+            # Backwards compatibility for 'project_entity' argument (24/07/08)
+            "project_entity": project_entity,
+            # Backwards compatibility for 'product_type' argument (26/01/19)
+            "product_type": product_type,
+        }
+        for kwarg in ("product_type", "project_entity"):
+            if not is_func_signature_supported(
+                creator.get_product_name, *args, **kwargs
+            ):
+                kwargs.pop(kwarg)
+
         product_name = creator.get_product_name(*args, **kwargs)
 
         instance_data = {
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
-            "productType": creator.product_type,
-            # Add product base type if supported. Fallback to product type
+            "productType": product_type,
+            # Add product base type if supported. Fallback to
+            #   older attribute 'product_type'
             "productBaseType": (
                 creator.product_base_type or creator.product_type),
             "variant": variant
@@ -1332,8 +1346,8 @@ class CreateContext:
 
         Args:
             identifier (str): Identifier of creator.
-            *args (tuple[Any]): Arguments for create method.
-            **kwargs (dict[Any, Any]): Keyword argument for create method.
+            *args: Arguments for create method.
+            **kwargs: Keyword argument for create method.
 
         Raises:
             CreatorsCreateFailed: When creation fails due to any possible

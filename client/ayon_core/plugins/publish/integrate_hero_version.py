@@ -429,7 +429,7 @@ class IntegrateHeroVersion(
             )
             mode = FileTransaction.MODE_COPY
             if self.use_hardlinks:
-                mode = FileTransaction.MODE_LINK
+                mode = FileTransaction.MODE_HARDLINK
 
             try:
                 for src_path, dst_path in itertools.chain(
@@ -604,14 +604,16 @@ class IntegrateHeroVersion(
         anatomy_data = instance.data["anatomyData"]
         task_info = anatomy_data.get("task") or {}
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
 
         return get_publish_template_name(
             project_name,
             host_name,
-            product_type,
-            task_info.get("name"),
-            task_info.get("type"),
+            product_base_type=product_base_type,
+            task_name=task_info.get("name"),
+            task_type=task_info.get("type"),
             project_settings=instance.context.data["project_settings"],
             hero=True,
             logger=self.log
