@@ -52,6 +52,8 @@ from .lib import (
     get_trait_representations,
     has_trait_representations,
     set_trait_representations,
+
+    get_default_reviewable_layers,
 )
 
 from .abstract_expected_files import ExpectedFiles
@@ -116,4 +118,6 @@ __all__ = (
     "get_trait_representations",
     "has_trait_representations",
     "set_trait_representations",
+
+    "get_default_reviewable_layers",
 )
