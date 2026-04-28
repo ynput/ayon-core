@@ -41,10 +41,10 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, log_timing
 from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import (
+from ayon_core.tools.loader.ui.review_controller import ReviewController
+from ayon_core.tools.loader.ui.review_group_by import (
     GROUP_BY_PRODUCT_KEY,
     GroupByOption,
-    ReviewController,
     get_attribute_icon,
 )
 from ayon_core.tools.loader.ui.review_types import ReviewCategory

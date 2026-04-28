@@ -1,10 +1,12 @@
+"""Controller for the Reviews widget.
+
+Centralises all business logic and data fetching for the reviews UI.
+"""
+
 from __future__ import annotations
 
 import datetime
 import json
-from dataclasses import dataclass
-from enum import Enum
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import ayon_api
@@ -15,6 +17,24 @@ from qtpy import QtCore
 
 from ayon_core.lib import Logger
 from ayon_core.tools.loader.abstract import ActionItem
+from ayon_core.tools.loader.ui.review_group_by import (
+    BUILTIN_GROUPS,
+    GROUP_BY_NONE_KEY,
+    GROUP_BY_PRODUCT_KEY,
+    GROUP_BY_PRODUCT_TYPE_KEY,
+    GROUP_BY_STATUS_KEY,
+    GROUP_BY_TAGS_KEY,
+    GROUP_BY_TASK_TYPE_KEY,
+    GroupByOption,
+    GroupBySource,
+    build_attribute_groups,
+)
+from ayon_core.tools.loader.ui.review_queries import (
+    COLUMN_TO_SORT_BY,
+    EMPTY_ROW,
+    GET_PRODUCTS_QUERY,
+    GET_VERSIONS_QUERY,
+)
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.utils.user_prefs import UserPreferences
 
@@ -23,196 +43,13 @@ if TYPE_CHECKING:
         FrontendLoaderController,
     )
 
-GET_VERSIONS_QUERY = """
-query GetVersions(
-  $projectName: String!,
-  $productIds: [String!],
-  $versionIds: [String!],
-  $versionFilter: String,
-  $productFilter: String,
-  $taskFilter: String,
-  $featuredOnly: [String!],
-  $hasReviewables: Boolean,
-  $folderIds: [String!],
-  $includeFolderChildren: Boolean,
-  $search: String,
-  $after: String,
-  $first: Int,
-  $before: String,
-  $last: Int,
-  $sortBy: String
-) {
-  project(name: $projectName) {
-    versions(
-      ids: $versionIds
-      productIds: $productIds
-      filter: $versionFilter
-      productFilter: $productFilter
-      taskFilter: $taskFilter
-      featuredOnly: $featuredOnly
-      hasReviewables: $hasReviewables
-      folderIds: $folderIds
-      includeFolderChildren: $includeFolderChildren
-      search: $search
-      after: $after
-      first: $first
-      before: $before
-      last: $last
-      sortBy: $sortBy
-    ) {
-      pageInfo {
-        startCursor
-        endCursor
-        hasNextPage
-        hasPreviousPage
-      }
-      edges {
-        cursor
-        node {
-          name
-          id
-          hasReviewables
-          parents
-          path
-          active
-          allAttrib
-          author
-          createdAt
-          status
-          tags
-          updatedAt
-          version
-          featuredVersionType
-          heroVersionId
-          thumbnailId
-          task {
-            id
-            taskType
-            label
-            name
-          }
-          product {
-            id
-            name
-            productType
-            allAttrib
-            folder {
-              id
-              name
-              label
-              allAttrib
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
-
-GET_PRODUCTS_QUERY = """
-query GetProducts(
-  $projectName: String!,
-  $folderIds: [String!],
-  $productFilter: String,
-  $featuredVersionOrder: [String!],
-  $after: String,
-  $first: Int,
-  $before: String,
-  $last: Int,
-  $sortBy: String
-) {
-  project(name: $projectName) {
-    products(
-      folderIds: $folderIds,
-      filter: $productFilter,
-      includeFolderChildren: true,
-      after: $after,
-      first: $first,
-      before: $before,
-      last: $last,
-      sortBy: $sortBy
-    ) {
-      pageInfo {
-        startCursor
-        endCursor
-        hasNextPage
-        hasPreviousPage
-      }
-      edges {
-        node {
-          id
-          name
-          productType
-          featuredVersion(order: $featuredVersionOrder) {
-            name
-            id
-            thumbnailId
-            parents
-            author
-            createdAt
-            status
-            tags
-            updatedAt
-            version
-            featuredVersionType
-          }
-          versions: versionList {
-            id
-            name
-            version
-          }
-        }
-        cursor
-      }
-    }
-  }
-}
-"""
-
-#: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
-#: the AYON versions resolver.  Only direct version fields and version
-#: attrib entries are supported; columns that originate from related
-#: entities (products, folders, tasks) cannot be sorted server-side and
-#: are intentionally absent — clicking them is a no-op.
-COLUMN_TO_SORT_BY: dict[str, str] = {
-    "version": "version",
-    "status": "status",
-    "createdAt": "createdAt",
-    "updatedAt": "updatedAt",
-    "fps": "attrib.fps",
-    "handleStart": "attrib.handleStart",
-    "handleEnd": "attrib.handleEnd",
-    "machine": "attrib.machine",
-    "source": "attrib.source",
-    "comment": "attrib.comment",
-}
-
-# A template for building version and folder rows.
-EMPTY_ROW: MappingProxyType[str, Any] = MappingProxyType(
-    {
-        "id": "",
-        "has_children": False,
-        "product/version": "",
-        "product/version__icon": "",
-        "folderName": "",
-        "entityType": "",
-        "entityType__icon": "",
-        "status": "",
-        "productType": "",
-        "author": "",
-        "version": "",
-        "productName": "",
-        "taskType": "",
-        "task": "",
-        "tags": "",
-        "createdAt": "",
-        "updatedAt": "",
-    }
-)
+# Maximum number of pages to fetch when building product group headers.
+# Each page contains up to 1 000 products, so this caps the total at
+# 50 000 products before a warning is logged.
+_MAX_GROUP_PAGES: int = 50
 
 
-def timestamp_to_date(timestamp: str) -> str:
+def _timestamp_to_date(timestamp: str) -> str:
     """Convert ISO timestamp string to human-readable date.
 
     Args:
@@ -224,137 +61,6 @@ def timestamp_to_date(timestamp: str) -> str:
     return datetime.datetime.fromisoformat(timestamp).strftime(
         "%d-%m-%Y %H:%M:%S"
     )
-
-
-def get_attribute_icon(
-    name: str,
-    attr_type: str | None,
-    has_enum: bool,
-    # entity_types_with_icons: list[str] | set[str],
-    # get_entity_type_icon,
-) -> str:
-    """Based on shared/src/util/getAttributeIcon.ts.
-
-    Args:
-        name: Attribute name.
-        attr_type: Attribute type.
-        has_enum: Whether the attribute has an enum.
-        entity_types_with_icons: List of entity types with icons.
-        get_entity_type_icon: Function to get entity type icon.
-    Returns:
-        Icon name string.
-    """
-
-    icon = "format_list_bulleted"
-
-    # Some attributes have custom icons
-    custom_icons: dict[str, str] = {
-        "status": "arrow_circle_right",
-        "assignees": "person",
-        "author": "person",
-        "tags": "local_offer",
-        "priority": "keyboard_double_arrow_up",
-        "fps": "30fps_select",
-        "resolutionWidth": "settings_overscan",
-        "resolutionHeight": "settings_overscan",
-        "pixelAspect": "stop",
-        "clipIn": "line_start_diamond",
-        "clipOut": "line_end_diamond",
-        "frameStart": "line_start_circle",
-        "frameEnd": "line_end_circle",
-        "handleStart": "line_start_square",
-        "handleEnd": "line_end_square",
-        "fullName": "id_card",
-        "email": "alternate_email",
-        "developerMode": "code",
-        "productGroup": "inventory_2",
-        "machine": "computer",
-        "comment": "comment",
-        "colorSpace": "palette",
-        "description": "description",
-    }
-
-    type_icons: dict[str, str] = {
-        "integer": "pin",
-        "float": "speed_1_2",
-        "boolean": "radio_button_checked",
-        "datetime": "calendar_month",
-        "list_of_strings": "format_list_bulleted",
-        "list_of_integers": "format_list_numbered",
-        "list_of_any": "format_list_bulleted",
-        "list_of_submodels": "format_list_bulleted",
-        "dict": "format_list_bulleted",
-        "string": "title",
-    }
-
-    if name in custom_icons:
-        icon = custom_icons[name]
-    # elif name in entity_types_with_icons:
-    #     icon = get_entity_type_icon(name)
-    elif has_enum:
-        icon = "format_list_bulleted"
-    elif attr_type and attr_type in type_icons:
-        icon = type_icons[attr_type]
-
-    return icon
-
-
-class GroupBySource(Enum):
-    BUILTIN = "builtin"
-    ATTRIBUTE = "attribute"
-
-
-@dataclass(frozen=True)
-class GroupByOption:
-    key: str
-    label: str
-    icon: str = "label"
-    source: GroupBySource = GroupBySource.BUILTIN
-    attribute_name: str | None = None
-
-
-BUILTIN_GROUPS = [
-    GroupByOption("none", "None", "close"),
-    GroupByOption("product", "Product", "inventory_2"),
-    GroupByOption("status", "Status", "arrow_circle_right"),
-    GroupByOption("tags", "Tags", "local_offer"),
-    GroupByOption("task_type", "Task type", "check_circle"),
-    GroupByOption("product_type", "Product type", "category"),
-]
-
-NUM_BUILTIN_GROUPS = len(BUILTIN_GROUPS)
-
-GROUP_BY_NONE_KEY = "none"
-GROUP_BY_PRODUCT_KEY = "product"
-GROUP_BY_STATUS_KEY = "status"
-GROUP_BY_TAGS_KEY = "tags"
-GROUP_BY_TASK_TYPE_KEY = "task_type"
-GROUP_BY_PRODUCT_TYPE_KEY = "product_type"
-
-
-def build_attribute_groups(
-    version_attributes: dict[str, dict[str, Any]],
-) -> list[GroupByOption]:
-    return [
-        GroupByOption(
-            key=f"attr:{attr_name}",
-            label=attr_def.get("title") or attr_name,
-            icon=get_attribute_icon(
-                attr_name,
-                attr_def.get("type"),
-                attr_def.get("enum") is not None,
-            ),
-            source=GroupBySource.ATTRIBUTE,
-            attribute_name=attr_name,
-        )
-        for attr_name, attr_def in version_attributes.items()
-    ]
-
-
-# Maximum number of pages to fetch when building product group
-# headers.  Each page contains up to 1 000 products, so this caps
-# the total at 50 000 products before a warning is logged.
-_MAX_GROUP_PAGES: int = 50
 
 
 class ReviewController(QtCore.QObject):
@@ -583,7 +289,6 @@ class ReviewController(QtCore.QObject):
 
         Dispatches to :meth:`_fetch_products` or
         :meth:`_fetch_reviews` depending on the current category.
-        Ensures project info is populated before fetching.
 
         Args:
             parent_id: Parent entity ID, or ``None`` for root.
@@ -688,7 +393,6 @@ class ReviewController(QtCore.QObject):
                     return []
 
                 folder_ids = self._selected_folder_ids or None
-                version_ids = None
 
                 edges, page_info = self._get_versions_page(
                     self._current_project,
@@ -697,7 +401,7 @@ class ReviewController(QtCore.QObject):
                     cursor=cursor,
                     sort_by=sort_by,
                     descending=descending,
-                    version_ids=version_ids,
+                    version_ids=None,
                     include_folder_children=True,
                     folder_ids=folder_ids,
                     product_ids=product_ids,
@@ -734,10 +438,10 @@ class ReviewController(QtCore.QObject):
             # On the first page, prepend direct sub-folder rows so that
             # the tree can be navigated depth-first all the way down to
             # version leaves.
-            if page_number == 0:
-                folder_rows = self._get_child_folder_rows(parent_id)
-            else:
-                folder_rows = []
+            folder_rows = (
+                self._get_child_folder_rows(parent_id) if page_number == 0
+                else []
+            )
 
             cursor = self._folder_cursors.get(parent_id, "")
             if page_number > 0 and not self._folder_has_more.get(
@@ -774,7 +478,7 @@ class ReviewController(QtCore.QObject):
             )
             return folder_rows + version_rows
 
-        # Flat mode: existing behaviour.
+        # Flat mode.
         folder_ids: list[str] | None = None
         if self._current_category == ReviewCategory.REVIEWS.value:
             version_ids = self._review_session_version_ids  # None = no filter
@@ -853,32 +557,27 @@ class ReviewController(QtCore.QObject):
 
         # -- Individual group-by fetches ---------------------------------
         for req in grp_requests:
-            rows = self.fetch_versions_page(
+            result[req.parent_id] = self.fetch_versions_page(
                 req.page,
                 req.page_size,
                 req.sort_key,
                 req.descending,
                 req.parent_id,
             )
-            result[req.parent_id] = rows
 
         # -- Hierarchy fetches -------------------------------------------
         if not batch_requests:
             return result
 
-        # Keep execution inside one worker task (batch callback path),
-        # but fetch each parent with its own cursor state to preserve
-        # correctness for cursor-based pagination.
         for req in batch_requests:
             if req.parent_id is None:
-                rows = self.fetch_versions_page(
+                result[req.parent_id] = self.fetch_versions_page(
                     req.page,
                     req.page_size,
                     req.sort_key,
                     req.descending,
                     req.parent_id,
                 )
-                result[req.parent_id] = rows
                 continue
 
             parent_id = req.parent_id
@@ -1038,18 +737,13 @@ class ReviewController(QtCore.QObject):
             List of row dicts with ``has_children=True`` so the table
             model renders them as expandable nodes.
         """
+        _fields = {"id", "name", "label", "folderType", "hasChildren"}
         if selected_folder_ids:
             folders = list(
                 ayon_api.get_folders(
                     self._current_project,
                     folder_ids=selected_folder_ids,
-                    fields={
-                        "id",
-                        "name",
-                        "label",
-                        "folderType",
-                        "hasChildren",
-                    },
+                    fields=_fields,
                 )
             )
         else:
@@ -1057,13 +751,7 @@ class ReviewController(QtCore.QObject):
                 ayon_api.get_folders(
                     self._current_project,
                     parent_ids=[None],  # type: ignore[list-item]
-                    fields={
-                        "id",
-                        "name",
-                        "label",
-                        "folderType",
-                        "hasChildren",
-                    },
+                    fields=_fields,
                 )
             )
         return [self._build_folder_row(f) for f in folders]
@@ -1135,13 +823,13 @@ class ReviewController(QtCore.QObject):
             icon: Material icon name for the tree cell.
             color: Optional colour hint for the status/type badge.
             label: Optional display label. When provided, used for the
-                ``"product/version"`` column instead of *value*. This
-                allows callers such as PRODUCT group-by to store a UUID
-                in the group id while showing a human-readable name.
+                ``"product/version"`` column instead of *value*.
             product_type: Optional product type string, required when
                 *featured_version* is provided.
-            featured_version: Optional dict representing the featured version.
+            featured_version: Optional dict representing the featured
+                version.
             num_versions: Optional number of versions in the group.
+
         Returns:
             Row dict with ``has_children=True`` and an id of the form
             ``"grp:<group_type.value>:<value>"``.
@@ -1152,9 +840,6 @@ class ReviewController(QtCore.QObject):
             {
                 "id": f"grp:{group_option.key}:{value}",
                 "has_children": True,
-                # ``thumb`` is column 0; AYCardView reads DisplayRole on
-                # column 0 to paint the group-header label, so we set it
-                # to the human-readable group value here.
                 "thumb": display_label,
                 "product/version": display_label,
                 "product/version__icon": icon or "label",
@@ -1184,11 +869,11 @@ class ReviewController(QtCore.QObject):
             row["folderName"] = featured_version.get("parents", ["", ""])[-2]
             row["author"] = featured_version.get("author", "")
             v_str = (
-                f"{'(' + str(num_versions) + ' versions)'}"
-                if num_versions
-                else ""
+                f"({num_versions} versions)" if num_versions else ""
             )
-            row["version"] = f"{featured_version.get('name', '')} {v_str}"
+            row["version"] = (
+                f"{featured_version.get('name', '')} {v_str}".strip()
+            )
             row["productName"] = featured_version.get("parents", [""])[-1]
             row["createdAt"] = featured_version.get("createdAt", "")
             row["updatedAt"] = featured_version.get("updatedAt", "")
@@ -1212,7 +897,7 @@ class ReviewController(QtCore.QObject):
             return self._fetch_task_type_group_headers()
         if self.group_by.source == GroupBySource.ATTRIBUTE:
             return self._fetch_attribute_group_headers(self.group_by)
-        self.log.warning(f"Unknown group-by key: {self.group_by_key}")
+        self.log.warning("Unknown group-by key: %s", self.group_by_key)
         return []
 
     def _fetch_status_group_headers(self) -> list[dict[str, Any]]:
@@ -1311,9 +996,6 @@ class ReviewController(QtCore.QObject):
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of products via GraphQL.
 
-        Only the fields needed for group-header rows (``id``,
-        ``name``, ``productType``) are requested from the server.
-
         Args:
             project_name: AYON project name.
             folder_id: Filter by a single folder ID, or ``None``.
@@ -1338,9 +1020,8 @@ class ReviewController(QtCore.QObject):
         if not con:
             raise RuntimeError("No server connection")
 
-        resolved_folder_ids: list[str] | None
         if folder_ids is not None:
-            resolved_folder_ids = folder_ids
+            resolved_folder_ids: list[str] | None = folder_ids
         elif folder_id is not None:
             resolved_folder_ids = [folder_id]
         else:
@@ -1447,32 +1128,21 @@ class ReviewController(QtCore.QObject):
         unique_product_data: list[
             tuple[str, str, str, dict[str, Any], int]
         ] = []
-        for (
-            product_id,
-            product_name,
-            product_type,
-            featured_version,
-            num_versions,
-        ) in product_data:
+        for item in product_data:
+            product_id = item[0]
             if product_id in seen_product_ids:
                 continue
             seen_product_ids.add(product_id)
-            unique_product_data.append(
-                (
-                    product_id,
-                    product_name,
-                    product_type,
-                    featured_version,
-                    num_versions,
-                )
-            )
+            unique_product_data.append(item)
 
         return [
             self._build_group_header_row(
                 self._group_by_options[GROUP_BY_PRODUCT_KEY],
                 value=p_id,
                 label=p_name,
-                icon=self._pinfo("productTypes", p_type, "icon", "view_in_ar"),
+                icon=self._pinfo(
+                    "productTypes", p_type, "icon", "view_in_ar"
+                ),
                 color=self._pinfo("productTypes", p_type, "color"),
                 product_type=p_type,
                 featured_version=featured_v,
@@ -1482,125 +1152,121 @@ class ReviewController(QtCore.QObject):
         ]
 
     def get_used_statuses(self) -> set[str]:
-        """Fetch a list of statuses that have versions in the current scope.
+        """Fetch statuses that have versions in the current project.
 
-        NOTE: it returns results for the entire project, not the current scope.
+        Note:
+            Returns results for the entire project, not the current scope.
 
         Returns:
-            Set of statuses that have versions in the current scope.
+            Set of status names.
         """
-        pld = ayon_api.get(
-            f"projects/{self._current_project}/grouping/version/status",
-            empty=True,
+        return self._fetch_grouping_values(
+            f"projects/{self._current_project}/grouping/version/status"
         )
-        data = pld.data or {}
-        used = [
-            s.get("value")
-            for s in data.get("groups", [])
-            if s.get("count", 0) > 0
-        ]
-        return set(used)
 
     def get_used_product_types(self) -> set[str]:
-        """Fetch a list of product types that have versions in the current
-        scope.
+        """Fetch product types that have versions in the current project.
 
-        NOTE: it returns results for the entire project, not the current scope.
+        Note:
+            Returns results for the entire project, not the current scope.
 
         Returns:
-            Set of product types that have versions in the current scope.
+            Set of product type names.
         """
-        pld = ayon_api.get(
-            f"projects/{self._current_project}/grouping/version/productType",
-            empty=True,
+        return self._fetch_grouping_values(
+            f"projects/{self._current_project}/grouping/version/productType"
         )
-        data = pld.data or {}
-        used = [
-            s.get("value")
-            for s in data.get("groups", [])
-            if s.get("count", 0) > 0
-        ]
-        return set(used)
 
     def get_used_tags(self) -> set[str]:
-        """Fetch a list of tags that have versions in the entire project.
+        """Fetch tags that have versions in the entire project.
 
-        NOTE: it returns results for the entire project, not the current scope.
+        Note:
+            Returns results for the entire project, not the current scope.
 
         Returns:
-            Set of tags that have versions in the entire project.
+            Set of tag names.
         """
-        pld = ayon_api.get(
-            f"projects/{self._current_project}/grouping/version/tags",
-            empty=True,
+        return self._fetch_grouping_values(
+            f"projects/{self._current_project}/grouping/version/tags"
         )
-        data = pld.data or {}
-        used = [
-            s.get("value")
-            for s in data.get("groups", [])
-            if s.get("count", 0) > 0 and s.get("value") is not None
-        ]
-        return set(used)
 
     def get_used_task_types(self) -> set[str]:
-        """Fetch a list of task types that have versions in the entire project.
+        """Fetch task types that have versions in the entire project.
 
-        NOTE: it returns results for the entire project, not the current scope.
+        Note:
+            Returns results for the entire project, not the current scope.
 
         Returns:
-            Set of task types that have versions in the entire project.
+            Set of task type names.
         """
-        pld = ayon_api.get(
-            f"projects/{self._current_project}/grouping/task/taskType",
-            empty=True,
+        return self._fetch_grouping_values(
+            f"projects/{self._current_project}/grouping/task/taskType"
         )
-        data = pld.data or {}
-        used = [
-            s.get("value")
-            for s in data.get("groups", [])
-            if s.get("count", 0) > 0 and s.get("value") is not None
-        ]
-        return set(used)
 
     def get_used_attribute_values(self, attribute_name: str) -> set[str]:
-        """Fetch distinct values for a version attribute in scope."""
+        """Fetch distinct values for a version attribute in scope.
+
+        Args:
+            attribute_name: Name of the version attribute.
+
+        Returns:
+            Set of distinct string values.
+        """
         pld = ayon_api.get(
-            f"projects/{self._current_project}/grouping/version/attrib.{attribute_name}",
+            f"projects/{self._current_project}"
+            f"/grouping/version/attrib.{attribute_name}",
             empty=True,
         )
         data = pld.data or {}
-        used = [
+        return {
             str(group.get("value"))
             for group in data.get("groups", [])
             if group.get("count", 0) > 0 and group.get("value") is not None
-        ]
-        return set(used)
+        }
 
-    def _get_distinct_field_values(self, field: str) -> set[str]:
-        """Fetch a  list of distinct values for a field.
+    def _fetch_grouping_values(self, endpoint: str) -> set[str]:
+        """Fetch distinct non-empty values from an AYON grouping endpoint.
 
         Args:
-            field: One of ``"status"`` or ``"productType"``.
+            endpoint: REST endpoint path relative to the server root.
 
         Returns:
-            Set of distinct values for that field among versions in the
-            current scope.
+            Set of non-null values whose count is greater than zero.
         """
+        pld = ayon_api.get(endpoint, empty=True)
+        data = pld.data or {}
+        return {
+            s.get("value")
+            for s in data.get("groups", [])
+            if s.get("count", 0) > 0 and s.get("value") is not None
+        }
 
+    def _get_distinct_field_values(self, field: str) -> set[str]:
+        """Fetch distinct values for a version grouping field.
+
+        Args:
+            field: One of ``"status"``, ``"productType"``, ``"tags"``,
+                or ``"taskType"``.
+
+        Returns:
+            Set of distinct values for that field.
+
+        Raises:
+            ValueError: When *field* is not a known grouping field.
+        """
         if self._current_category == ReviewCategory.REVIEWS.value:
             if not self._review_session_version_ids:
                 return set()
 
-        if field == "status":
-            return self.get_used_statuses()
-        if field == "productType":
-            return self.get_used_product_types()
-        if field == "tags":
-            return self.get_used_tags()
-        if field == "taskType":
-            return self.get_used_task_types()
-
-        raise ValueError(f"Unknown field: {field}")
+        dispatch: dict[str, Any] = {
+            "status": self.get_used_statuses,
+            "productType": self.get_used_product_types,
+            "tags": self.get_used_tags,
+            "taskType": self.get_used_task_types,
+        }
+        if field not in dispatch:
+            raise ValueError(f"Unknown field: {field}")
+        return dispatch[field]()
 
     @staticmethod
     def _parse_group_id(group_id: str) -> tuple[str, str]:
@@ -1686,14 +1352,13 @@ class ReviewController(QtCore.QObject):
                     ]
                 }
             )
-            print(f"Task type filter: {version_filter}")
         elif group_key.startswith("attr:"):
             attribute_name = group_key.split(":", 1)[1]
             attr_type = self._version_attributes.get(attribute_name, {}).get(
                 "type"
             )
             if attr_type == "integer":
-                typed_value = int(group_value)
+                typed_value: Any = int(group_value)
             elif attr_type == "float":
                 typed_value = float(group_value)
             elif attr_type == "boolean":
@@ -1722,7 +1387,7 @@ class ReviewController(QtCore.QObject):
         from the main thread by :meth:`_get_review_session_list`, which is
         called inside :meth:`set_project`.  Pool worker threads that call
         this method therefore only perform read access on an already-complete
-        list, eliminating the previous generator re-entrancy race.
+        list, eliminating any generator re-entrancy race.
 
         Args:
             parent_id: Parent entity ID. Only root (``None``) returns
@@ -1849,36 +1514,36 @@ class ReviewController(QtCore.QObject):
         if not project_entity:
             return
         self._project_info = dict(project_entity)
+        config = project_entity.get("config", {})
+        product_base_types = config.get("productBaseTypes", {})
         self._project_info["by_name"] = {
             "folderTypes": {
-                ft["name"]: ft for ft in project_entity.get("folderTypes", [])
+                ft["name"]: ft
+                for ft in project_entity.get("folderTypes", [])
             },
             "taskTypes": {
-                tt["name"]: tt for tt in project_entity.get("taskTypes", [])
+                tt["name"]: tt
+                for tt in project_entity.get("taskTypes", [])
             },
             "linkTypes": {
-                lt["name"]: lt for lt in project_entity.get("linkTypes", [])
+                lt["name"]: lt
+                for lt in project_entity.get("linkTypes", [])
             },
             "statuses": {
                 s["name"]: s for s in project_entity.get("statuses", [])
             },
-            "tags": {t["name"]: t for t in project_entity.get("tags", [])},
-            "productTypes": {
-                t["name"]: t
-                for t in project_entity.get("config", {})
-                .get("productBaseTypes", {})
-                .get("definitions", [])
-            }
-            | {
-                "default": (
-                    project_entity.get("config", {})
-                    .get("productBaseTypes", {})
-                    .get("default", {})
-                )
+            "tags": {
+                t["name"]: t for t in project_entity.get("tags", [])
             },
+            "productTypes": (
+                {
+                    t["name"]: t
+                    for t in product_base_types.get("definitions", [])
+                }
+                | {"default": product_base_types.get("default", {})}
+            ),
         }
         self._version_attributes = ayon_api.get_attributes_for_type("version")
-        # print(f"_version_attributes = {self._version_attributes}")
         self._rebuild_group_by_options()
 
     def _rebuild_group_by_options(self) -> None:
@@ -1887,7 +1552,6 @@ class ReviewController(QtCore.QObject):
         options = list(BUILTIN_GROUPS)
         if self._version_attributes:
             options.extend(build_attribute_groups(self._version_attributes))
-            # print(f"options; {options}")
         self._group_by_options = {option.key: option for option in options}
         if self._group_by_key not in self._group_by_options:
             self._group_by_key = GROUP_BY_NONE_KEY
@@ -1898,7 +1562,16 @@ class ReviewController(QtCore.QObject):
         self,
         group_by: GroupByOption | str,
     ) -> str:
-        """Normalize option/label input to a registered key."""
+        """Normalize option/label input to a registered key.
+
+        Args:
+            group_by: A :class:`GroupByOption` instance, an option key,
+                or an option label.
+
+        Returns:
+            Registered key string, or :data:`GROUP_BY_NONE_KEY` when the
+            input cannot be matched.
+        """
         if isinstance(group_by, GroupByOption):
             return (
                 group_by.key
@@ -1915,12 +1588,15 @@ class ReviewController(QtCore.QObject):
 
         return GROUP_BY_NONE_KEY
 
-    def _pinfo(self, category: str, name: str, key: str, default=None) -> Any:
+    def _pinfo(
+        self, category: str, name: str, key: str, default: Any = None
+    ) -> Any:
         """Get a project info value by category and key.
 
         Args:
-            category: One of "folderTypes", "taskTypes", "linkTypes",
-                "statuses", or "tags".
+            category: One of ``"folderTypes"``, ``"taskTypes"``,
+                ``"linkTypes"``, ``"statuses"``, ``"tags"``, or
+                ``"productTypes"``.
             name: The name of the entity to look up within the category.
             key: The name of the item to look up.
             default: The value to return if the key is not found.
@@ -1970,13 +1646,16 @@ class ReviewController(QtCore.QObject):
                 the server default (``creation_order``).
             descending: When ``True`` use ``last``/``before`` pagination
                 to obtain results in descending order.
+            version_ids: Optional list of version IDs to restrict
+                results to.
+            include_folder_children: Whether to include versions from
+                child folders.
             folder_ids: When provided, filters by this explicit list of
-                folder IDs instead of the single *folder_id*. Used by
-                :meth:`fetch_versions_page_batch` to query multiple
-                parents in one shot.
+                folder IDs instead of the single *folder_id*.
             product_ids: When provided, filters versions to only those
-                belonging to these product IDs. Used when expanding a
-                product group header.
+                belonging to these product IDs.
+            version_filter: JSON-encoded version filter string.
+            product_filter: JSON-encoded product filter string.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -1989,9 +1668,8 @@ class ReviewController(QtCore.QObject):
         if not con:
             raise RuntimeError("No server connection")
 
-        resolved_folder_ids: list[str] | None
         if folder_ids is not None:
-            resolved_folder_ids = folder_ids
+            resolved_folder_ids: list[str] | None = folder_ids
         elif folder_id is not None:
             resolved_folder_ids = [folder_id]
         else:
@@ -2014,6 +1692,7 @@ class ReviewController(QtCore.QObject):
         else:
             variables["first"] = page_size
             variables["after"] = cursor or None
+
         resp = con.query_graphql(GET_VERSIONS_QUERY, variables)
         if resp.errors:
             raise RuntimeError(resp.errors)
@@ -2037,12 +1716,15 @@ class ReviewController(QtCore.QObject):
             n.get("product", {}).get("folder", {}).get("allAttrib", "{}")
         )
         status = n.get("status", "")
+        product = n.get("product", {})
+        product_type = product.get("productType", "")
+        task = n.get("task", {}) or {}
         return {
             "project_name": self._current_project,
             "thumbnail": n.get("thumbnailId") or "",
             "thumbnailId": n.get("thumbnailId") or "",
             "product/version": (
-                f"{n.get('product', {}).get('name', '')} - {n.get('name', '')}"
+                f"{product.get('name', '')} - {n.get('name', '')}"
                 f"{'  ★' if n.get('heroVersionId') else ''}"
             ),
             "product/version__icon": "layers",
@@ -2051,32 +1733,22 @@ class ReviewController(QtCore.QObject):
             "status__icon": self._pinfo("statuses", status, "icon"),
             "entityType": n.get("entityType", "Version"),
             "entityType__icon": "layers",
-            "productType": n.get("product", {}).get("productType", ""),
-            "productType__icon": (
-                self._pinfo(
-                    "productTypes",
-                    n.get("product", {}).get("productType", ""),
-                    "icon",
-                )
+            "productType": product_type,
+            "productType__icon": self._pinfo(
+                "productTypes", product_type, "icon"
             ),
-            "productType__color": (
-                self._pinfo(
-                    "productTypes",
-                    n.get("product", {}).get("productType", ""),
-                    "color",
-                )
+            "productType__color": self._pinfo(
+                "productTypes", product_type, "color"
             ),
-            "folderName": (
-                n.get("product", {}).get("folder", {}).get("name", "")
-            ),
+            "folderName": product.get("folder", {}).get("name", ""),
             "author": n.get("author", ""),
             "version": n.get("name", ""),
-            "productName": n.get("product", {}).get("name", ""),
-            "taskType": (n.get("task", {}) or {}).get("taskType", ""),
-            "task": (n.get("task", {}) or {}).get("name", ""),
+            "productName": product.get("name", ""),
+            "taskType": task.get("taskType", ""),
+            "task": task.get("name", ""),
             "tags": ", ".join(n.get("tags", [])),
-            "createdAt": timestamp_to_date(n.get("createdAt", "")),
-            "updatedAt": timestamp_to_date(n.get("updatedAt", "")),
+            "createdAt": _timestamp_to_date(n.get("createdAt", "")),
+            "updatedAt": _timestamp_to_date(n.get("updatedAt", "")),
             "fps": all_attrib.get("fps", ""),
             "width": product_folder_attrib.get("resolutionWidth", ""),
             "height": product_folder_attrib.get("resolutionHeight", ""),
@@ -2092,8 +1764,8 @@ class ReviewController(QtCore.QObject):
             "path": n.get("path", ""),
             "comment": all_attrib.get("comment", ""),
             "id": n.get("id", ""),
-            "productId": n.get("product", {}).get("id", ""),
-            "folderId": (n.get("product", {}).get("folder", {}).get("id", "")),
-            "taskId": (n.get("task", {}) or {}).get("id", ""),
+            "productId": product.get("id", ""),
+            "folderId": product.get("folder", {}).get("id", ""),
+            "taskId": task.get("id", ""),
             "heroVersionId": n.get("heroVersionId", ""),
         }
