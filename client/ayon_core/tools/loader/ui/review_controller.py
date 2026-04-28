@@ -1271,8 +1271,17 @@ class ReviewController(QtCore.QObject):
         ]
 
     def _fetch_task_type_group_headers(self) -> list[dict[str, Any]]:
-        self.log.warning("TODO: fetch task type group headers")
-        return []
+        """Return one expandable row per task type with versions."""
+        present = self._get_distinct_field_values("taskType")
+        return [
+            self._build_group_header_row(
+                self._group_by_options[GROUP_BY_TASK_TYPE_KEY],
+                task_type,
+                icon=self._pinfo("taskTypes", task_type, "icon", "category"),
+                color=self._pinfo("taskTypes", task_type, "color"),
+            )
+            for task_type in sorted(present)
+        ]
 
     def _fetch_attribute_group_headers(
         self,
@@ -1533,6 +1542,26 @@ class ReviewController(QtCore.QObject):
         ]
         return set(used)
 
+    def get_used_task_types(self) -> set[str]:
+        """Fetch a list of task types that have versions in the entire project.
+
+        NOTE: it returns results for the entire project, not the current scope.
+
+        Returns:
+            Set of task types that have versions in the entire project.
+        """
+        pld = ayon_api.get(
+            f"projects/{self._current_project}/grouping/task/taskType",
+            empty=True,
+        )
+        data = pld.data or {}
+        used = [
+            s.get("value")
+            for s in data.get("groups", [])
+            if s.get("count", 0) > 0 and s.get("value") is not None
+        ]
+        return set(used)
+
     def get_used_attribute_values(self, attribute_name: str) -> set[str]:
         """Fetch distinct values for a version attribute in scope."""
         pld = ayon_api.get(
@@ -1568,6 +1597,8 @@ class ReviewController(QtCore.QObject):
             return self.get_used_product_types()
         if field == "tags":
             return self.get_used_tags()
+        if field == "taskType":
+            return self.get_used_task_types()
 
         raise ValueError(f"Unknown field: {field}")
 
@@ -1643,6 +1674,19 @@ class ReviewController(QtCore.QObject):
                     ]
                 }
             )
+        elif group_key == GROUP_BY_TASK_TYPE_KEY:
+            version_filter = json.dumps(
+                {
+                    "conditions": [
+                        {
+                            "key": "taskType",
+                            "value": [group_value],
+                            "operator": "in",
+                        },
+                    ]
+                }
+            )
+            print(f"Task type filter: {version_filter}")
         elif group_key.startswith("attr:"):
             attribute_name = group_key.split(":", 1)[1]
             attr_type = self._version_attributes.get(attribute_name, {}).get(
