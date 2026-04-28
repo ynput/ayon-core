@@ -16,6 +16,7 @@ from ayon_core.tools.utils.user_prefs import UserPreferences
 
 from ._review_slicer import ReviewSlicer
 from ._review_table import ReviewTable
+from .review_inspector import ReviewInspector
 
 log = Logger.get_logger(__name__)
 
@@ -68,6 +69,9 @@ class ReviewsWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
+        self._inspector = ReviewInspector()
+        self._table.display_type_changed.connect(self._inspector.set_view)
+        self._inspector.set_view(self._table.active_view)
         self._build()
 
         self._slicer._selector.currentTextChanged.connect(
@@ -94,8 +98,10 @@ class ReviewsWidget(AYContainer):
         main_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         main_splitter.addWidget(self._slicer)
         main_splitter.addWidget(self._table)
+        main_splitter.addWidget(self._inspector)
         main_splitter.setStretchFactor(0, 1)
         main_splitter.setStretchFactor(1, 6)
+        main_splitter.setStretchFactor(2, 2)
         self.add_widget(main_splitter)
 
     def _on_tree_reset(self) -> None:

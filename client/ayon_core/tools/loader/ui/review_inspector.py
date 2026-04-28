@@ -1,0 +1,210 @@
+from __future__ import annotations
+
+from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+from ayon_ui_qt.components.label import AYLabel
+from ayon_ui_qt.components.buttons import AYButton
+from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
+from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
+from ayon_ui_qt.image_cache import ImageCache
+from qtpy import QtCore, QtWidgets, QtGui, shiboken
+
+from ._review_thumbnails import _thumbnail_loader
+
+
+def _str_wrap(text: str) -> str:
+    # Insert a zero-width space after common path separators so long
+    # paths wrap inside a word-wrapping QLabel.
+    for ch in ("/", "\\", "_", "-", "."):
+        text = text.replace(ch, ch + "\u200b")
+    return text
+
+
+class ReviewInspector(AYContainer):
+    """A placeholder widget for the review inspector panel."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=10,
+            layout_spacing=10,
+            **kwargs,
+        )
+        self._layout.setAlignment(QtCore.Qt.AlignTop)
+        self.setFixedWidth(300)
+
+        self._view: QtWidgets.QAbstractItemView | None = None
+        self._current_thumb_key: str = ""
+
+        self._build()
+
+    def _build(self) -> None:
+        """Build the inspector UI. This is a placeholder method."""
+
+        # top bar with path and close button
+        top_bar = AYHBoxLayout(margin=0, spacing=5)
+        self._path_label = AYLabel(
+            "",
+            dim=True,
+            elide_mode=QtCore.Qt.TextElideMode.ElideMiddle,
+            rel_text_size=-1,
+        )
+        self._close_btn = AYButton(
+            variant=AYButton.Variants.Nav_Small, icon="close", icon_size=14
+        )
+        self._close_btn.clicked.connect(self._on_close)
+        top_bar.addWidget(
+            self._path_label, stretch=10, alignment=QtCore.Qt.AlignLeft
+        )
+        top_bar.addStretch()
+        top_bar.addWidget(self._close_btn)
+        self.add_layout(top_bar)
+
+        # thumbnail
+        self._thumbnail = AYEntityThumbnail(
+            variant=AYEntityThumbnail.Variants.Entity_Card,
+            size=(280, 160),
+        )
+        self.add_widget(self._thumbnail, alignment=QtCore.Qt.AlignCenter)
+
+        # Version info
+        self.add_widget(
+            AYLabel(
+                "Version Info",
+                variant=AYLabel.Variants.Default,
+                rel_text_size=1,
+            )
+        )
+        self.info_lyt = AYContainer(
+            layout=AYContainer.Layout.Form,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=10,
+            layout_spacing=(20, 20),
+        )
+        self.info_lyt.set_label_alignment(QtCore.Qt.AlignRight)
+        self.add_widget(self.info_lyt)
+        # product name
+        self._product_value = AYLabel("-")
+        self.info_lyt.add_row(
+            AYLabel("Product:", dim=True), self._product_value
+        )
+        # version name
+        self._version_value = AYLabel("-")
+        self.info_lyt.add_row(
+            AYLabel("Version:", dim=True), self._version_value
+        )
+        # comment
+        self._comment_value = AYLabel("-", copy_text=True)
+        self._comment_value.setWordWrap(True)
+        cmt_wrapper = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
+        cmt_wrapper.add_widget(self._comment_value, stretch=1)
+        self.info_lyt.add_row(
+            AYLabel("Comment:", dim=True), cmt_wrapper
+        )
+        # created
+        self._created_value = AYLabel("-")
+        self.info_lyt.add_row(
+            AYLabel("Created:", dim=True), self._created_value
+        )
+        # source
+        self._source_value = AYLabel("-", copy_text=True)
+        self._source_value.setWordWrap(True)
+        src_wrapper = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
+        src_wrapper.add_widget(self._source_value, stretch=1)
+        self.info_lyt.add_row(AYLabel("Source:", dim=True), src_wrapper)
+
+    def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
+        """Set the view for the inspector."""
+        print(f"Setting inspector view: {view}")
+        self._view = view
+        self._view.activated.connect(self._on_activated)
+        self._view.clicked.connect(self._on_clicked)
+
+    def _on_activated(self, index: QtCore.QModelIndex) -> None:
+        """Update the inspector when the selection changes."""
+        self.show()
+        self._update(index)
+
+    def _on_clicked(self, index: QtCore.QModelIndex) -> None:
+        """Update the inspector when the selection changes."""
+        if self.isVisible():
+            self._update(index)
+
+    def _update(self, index: QtCore.QModelIndex) -> None:
+        """Update the inspector with the data from the given index."""
+        if not index.isValid():
+            return
+
+        data = index.data(QtCore.Qt.UserRole)
+        if not data:
+            return
+        # print(f"Updating inspector with data: {data}")
+        self._path_label.setText(data.get("path", ""))
+        self._product_value.setText(data.get("productName", ""))
+        self._version_value.setText(data.get("version", ""))
+        self._comment_value.setText(data.get("comment", "None"))
+        self._created_value.setText(data.get("createdAt", ""))
+        self._source_value.setText(_str_wrap(data.get("source", "")))
+
+        thumbnail_id = data.get("thumbnailId", "")
+        version_id = data.get("_version_id") or data.get("id", "")
+        project_name = data.get("project_name", "")
+        if thumbnail_id and version_id and project_name:
+            key = f"{project_name}/{version_id}/{thumbnail_id}"
+            self._load_thumbnail(key)
+        else:
+            self._current_thumb_key = ""
+            self._thumbnail.set_thumbnail("")
+
+    def _load_thumbnail(self, key: str) -> None:
+        """Load and display the thumbnail for *key*.
+
+        Serves from :class:`ImageCache` synchronously when the image is
+        already cached, otherwise enqueues an async fetch at priority 1
+        (higher than the table's eager pre-fetch at priority 2).
+
+        Args:
+            key: Cache key in the form
+                ``"<project_name>/<version_id>/<thumbnail_id>"``.
+        """
+        self._current_thumb_key = key
+        ic = ImageCache.get_instance()
+        cached_path = ic.get_path(key) if key else None
+        if cached_path:
+            self._thumbnail.set_thumbnail(cached_path)
+            return
+
+        inspector = self
+
+        def _on_loaded(fpath: str) -> None:
+            if not shiboken.isValid(inspector):
+                return
+            if inspector._current_thumb_key != key:
+                return
+            inspector._thumbnail.set_thumbnail(fpath or "")
+
+        get_task_queue().enqueue(
+            AsyncTask(
+                name=f"inspector_thumb_{key}",
+                function=lambda: _thumbnail_loader(key),
+                callback=_on_loaded,
+                priority=1,
+                cancellable=True,
+            )
+        )
+
+    def _on_close(self) -> None:
+        """Hide the inspector."""
+        self.hide()

@@ -46,6 +46,8 @@ class _ExpansionPhase(Enum):
 class ReviewTable(AYContainer):
     """Right-hand panel that shows a paginated table of versions."""
 
+    display_type_changed = QtCore.Signal(QtWidgets.QAbstractItemView)
+
     def __init__(
         self,
         controller: ReviewController,
@@ -274,6 +276,9 @@ class ReviewTable(AYContainer):
 
         if active is self._table:
             self._eagerly_enqueue_visible_thumbnails()
+
+
+        self.display_type_changed.emit(active)
 
     def _on_group_by_options_changed(
         self, options: dict[str, GroupByOption]
