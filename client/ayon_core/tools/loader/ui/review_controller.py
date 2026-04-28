@@ -1258,8 +1258,17 @@ class ReviewController(QtCore.QObject):
         ]
 
     def _fetch_tags_group_headers(self) -> list[dict[str, Any]]:
-        self.log.warning("TODO: fetch tags group headers")
-        return []
+        """Return one expandable row per tag with versions."""
+        present = self._get_distinct_field_values("tags")
+        return [
+            self._build_group_header_row(
+                self._group_by_options[GROUP_BY_TAGS_KEY],
+                tag,
+                icon=self._pinfo("tags", tag, "icon", "label"),
+                color=self._pinfo("tags", tag, "color"),
+            )
+            for tag in sorted(present)
+        ]
 
     def _fetch_task_type_group_headers(self) -> list[dict[str, Any]]:
         self.log.warning("TODO: fetch task type group headers")
@@ -1504,6 +1513,26 @@ class ReviewController(QtCore.QObject):
         ]
         return set(used)
 
+    def get_used_tags(self) -> set[str]:
+        """Fetch a list of tags that have versions in the entire project.
+
+        NOTE: it returns results for the entire project, not the current scope.
+
+        Returns:
+            Set of tags that have versions in the entire project.
+        """
+        pld = ayon_api.get(
+            f"projects/{self._current_project}/grouping/version/tags",
+            empty=True,
+        )
+        data = pld.data or {}
+        used = [
+            s.get("value")
+            for s in data.get("groups", [])
+            if s.get("count", 0) > 0 and s.get("value") is not None
+        ]
+        return set(used)
+
     def get_used_attribute_values(self, attribute_name: str) -> set[str]:
         """Fetch distinct values for a version attribute in scope."""
         pld = ayon_api.get(
@@ -1537,6 +1566,8 @@ class ReviewController(QtCore.QObject):
             return self.get_used_statuses()
         if field == "productType":
             return self.get_used_product_types()
+        if field == "tags":
+            return self.get_used_tags()
 
         raise ValueError(f"Unknown field: {field}")
 
@@ -1596,6 +1627,18 @@ class ReviewController(QtCore.QObject):
                             "key": "productType",
                             "value": [group_value],
                             "operator": "in",
+                        },
+                    ]
+                }
+            )
+        elif group_key == GROUP_BY_TAGS_KEY:
+            version_filter = json.dumps(
+                {
+                    "conditions": [
+                        {
+                            "key": "tags",
+                            "value": [group_value],
+                            "operator": "includesany",
                         },
                     ]
                 }
