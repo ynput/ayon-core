@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import typing
 from typing import Dict, List, Any
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib.attribute_definitions import AbstractAttrDef, UnknownDef
+from ayon_core.lib.attribute_definitions import (
+    AbstractAttrDef,
+    UnknownDef,
+    ButtonDef,
+)
 from ayon_core.tools.attribute_defs import (
     create_widget_for_attr_def,
     AttributeDefinitionsLabel,
@@ -13,6 +19,8 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+from .utils import ButtonCallback
 
 if typing.TYPE_CHECKING:
     from typing import Union
@@ -141,6 +149,17 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         row = 0
         for attr_def, info_by_id in result:
+            if isinstance(attr_def, ButtonDef):
+                inner_callback = ButtonCallback(
+                    self._controller,
+                    "create",
+                    attr_def.key,
+                    None,
+                    list(info_by_id),
+                )
+                attr_def = attr_def.clone()
+                attr_def.set_callback(inner_callback)
+
             widget = create_widget_for_attr_def(
                 attr_def, content_widget, handle_revert_to_default=False
             )
@@ -363,6 +382,33 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         row = 0
         for plugin_name, attr_defs, plugin_values in result:
             for attr_def in attr_defs:
+                instance_ids = []
+                values = []
+                default_values = []
+                is_overriden = False
+                for (instance_id, value, default_value) in (
+                    plugin_values.get(attr_def.key, [])
+                ):
+                    instance_ids.append(instance_id)
+                    values.append(value)
+                    if not is_overriden and value != default_value:
+                        is_overriden = True
+                    # 'set' cannot be used for default values because they can
+                    #    be unhashable types, e.g. 'list'.
+                    if default_value not in default_values:
+                        default_values.append(default_value)
+
+                if isinstance(attr_def, ButtonDef):
+                    inner_callback = ButtonCallback(
+                        self._controller,
+                        "publish",
+                        attr_def.key,
+                        plugin_name,
+                        list(instance_ids),
+                    )
+                    attr_def = attr_def.clone()
+                    attr_def.set_callback(inner_callback)
+
                 widget = create_widget_for_attr_def(
                     attr_def, content_widget, handle_revert_to_default=False
                 )
@@ -416,22 +462,6 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 widget.revert_to_default_requested.connect(
                     self._on_request_revert_to_default
                 )
-
-                instance_ids = []
-                values = []
-                default_values = []
-                is_overriden = False
-                for (instance_id, value, default_value) in (
-                    plugin_values.get(attr_def.key, [])
-                ):
-                    instance_ids.append(instance_id)
-                    values.append(value)
-                    if not is_overriden and value != default_value:
-                        is_overriden = True
-                    # 'set' cannot be used for default values because they can
-                    #    be unhashable types, e.g. 'list'.
-                    if default_value not in default_values:
-                        default_values.append(default_value)
 
                 multivalue = len(values) > 1
 

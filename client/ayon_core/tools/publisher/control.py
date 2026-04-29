@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import os
 import logging
 import tempfile
 import shutil
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, Literal
 
 import ayon_api
 
@@ -468,6 +470,17 @@ class PublisherController(
     ):
         return self._create_model.revert_instances_publish_attr_values(
             instance_ids, plugin_name, key
+        )
+
+    def trigger_button_attribute_callback(
+        self,
+        source: Literal["precreate", "create", "publish"],
+        plugin_id: str | None,
+        key: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        self._create_model.trigger_button_attribute_callback(
+            source, plugin_id, key, instance_ids
         )
 
     def get_product_name(
