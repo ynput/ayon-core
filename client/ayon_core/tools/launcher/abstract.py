@@ -63,8 +63,10 @@ class WorkfileItem:
     workfile_id: str
     filename: str
     exists: bool
-    icon: Optional[str]
-    version: Optional[int]
+    host_name: str | None
+    icon: str | None
+    version: int | None
+    updated_at_time: float | None
 
 
 class AbstractLauncherCommon(ABC):
@@ -156,6 +158,14 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 
 
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
+    @abstractmethod
+    def get_grouped_host_names(self) -> list[str | None]:
+        """Get list of host names that will group workfiles."""
+
+    @abstractmethod
+    def set_grouped_host_names(self, host_names: list[str | None]):
+        """Set list of host names that will group workfiles."""
+
     # Entity items for UI
     @abstractmethod
     def get_project_items(
