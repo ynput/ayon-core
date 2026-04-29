@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 import copy
 import inspect
@@ -105,41 +107,46 @@ class PublishReportMaker:
 
     def __init__(
         self,
-        creator_discover_result: Optional[DiscoverResult] = None,
-        convertor_discover_result: Optional[DiscoverResult] = None,
-        publish_discover_result: Optional[DiscoverResult] = None,
-        blocking_crashed_paths: Optional[list[str]] = None,
-    ):
-        self._create_discover_result: Union[DiscoverResult, None] = None
-        self._convert_discover_result: Union[DiscoverResult, None] = None
-        self._publish_discover_result: Union[DiscoverResult, None] = None
+        creator_discover_result: DiscoverResult | None = None,
+        convertor_discover_result: DiscoverResult | None = None,
+        publish_discover_result: DiscoverResult | None = None,
+        failed_init_create_plugins: list[tuple] | None = None,
+        blocking_crashed_paths: list[str] | None = None,
+    ) -> None:
+        self._create_discover_result: DiscoverResult | None = None
+        self._convert_discover_result: DiscoverResult | None = None
+        self._publish_discover_result: DiscoverResult | None = None
 
+        self._failed_init_create_plugins: list[tuple] = []
         self._blocking_crashed_paths: list[str] = []
 
-        self._all_instances_by_id: Dict[str, pyblish.api.Instance] = {}
-        self._plugin_data_by_id: Dict[str, Any] = {}
-        self._current_plugin_id: Optional[str] = None
+        self._all_instances_by_id: dict[str, pyblish.api.Instance] = {}
+        self._plugin_data_by_id: dict[str, Any] = {}
+        self._current_plugin_id: str | None = None
 
         self.reset(
             creator_discover_result,
             convertor_discover_result,
             publish_discover_result,
+            failed_init_create_plugins,
             blocking_crashed_paths,
         )
 
     def reset(
         self,
-        creator_discover_result: Union[DiscoverResult, None],
-        convertor_discover_result: Union[DiscoverResult, None],
-        publish_discover_result: Union[DiscoverResult, None],
-        blocking_crashed_paths: list[str],
+        creator_discover_result: DiscoverResult | None = None,
+        convertor_discover_result: DiscoverResult | None = None,
+        publish_discover_result: DiscoverResult | None = None,
+        failed_init_create_plugins: list[tuple] | None = None,
+        blocking_crashed_paths: list[str] | None = None,
     ):
         """Reset report and clear all data."""
 
         self._create_discover_result = creator_discover_result
         self._convert_discover_result = convertor_discover_result
         self._publish_discover_result = publish_discover_result
-        self._blocking_crashed_paths = blocking_crashed_paths
+        self._failed_init_create_plugins = failed_init_create_plugins or []
+        self._blocking_crashed_paths = blocking_crashed_paths or []
 
         self._all_instances_by_id = {}
         self._plugin_data_by_id = {}
@@ -237,6 +244,15 @@ class PublishReportMaker:
             reports.append(self._publish_discover_result)
 
         crashed_file_paths = {}
+
+        for cls, exc_info in self._failed_init_create_plugins:
+            filepath = getattr(
+                cls, "__plugin_discover_path__", cls.__module__
+            )
+            crashed_file_paths[filepath] = "".join(
+                traceback.format_exception(*exc_info)
+            )
+
         for report in reports:
             items = report.crashed_file_paths.items()
             for filepath, exc_info in items:
@@ -977,6 +993,7 @@ class PublishModel:
             create_context.creator_discover_result,
             create_context.convertor_discover_result,
             create_context.publish_discover_result,
+            create_context.failed_init_create_plugins,
             blocking_crashed_paths,
         )
         for plugin in create_context.publish_plugins_mismatch_targets:

@@ -145,6 +145,13 @@ def discover_plugins(
                 skip_discovery = cls.__dict__.get("skip_discovery")
                 if skip_discovery is True:
                     continue
+
+                # Store filepath to classes
+                try:
+                    filepath = inspect.getfile(cls)
+                except TypeError:
+                    pass
+                setattr(cls, "__plugin_discover_path__", filepath)
                 all_plugins.append(cls)
 
     if base_class not in ignored_classes:
