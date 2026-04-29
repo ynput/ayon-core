@@ -36,7 +36,7 @@ class ReviewInspector(AYContainer):
             **kwargs,
         )
         self._layout.setAlignment(QtCore.Qt.AlignTop)
-        self.setFixedWidth(300)
+        self.setMinimumWidth(300)
 
         self._controller = controller
         self._view: QtWidgets.QAbstractItemView | None = None
@@ -71,7 +71,10 @@ class ReviewInspector(AYContainer):
             variant=AYEntityThumbnail.Variants.Entity_Card,
             size=(280, 160),
         )
-        self.add_widget(self._thumbnail, alignment=QtCore.Qt.AlignCenter)
+        thumb_wrapper = AYHBoxLayout(margin=0, spacing=0)
+        thumb_wrapper.setAlignment(QtCore.Qt.AlignCenter)
+        thumb_wrapper.addWidget(self._thumbnail)
+        self.add_layout(thumb_wrapper)
 
         # Version info
         self.add_widget(
