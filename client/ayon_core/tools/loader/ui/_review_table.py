@@ -320,7 +320,10 @@ class ReviewTable(AYContainer):
         After repainting, iterate over all rows visible in the table
         viewport and enqueue thumbnail fetch tasks (priority 2) for
         those not yet requested.  Card-view thumbnails are handled by
-        each card's own ``async_file_cacher``.
+        each card's own ``async_file_cacher``, but the card view still
+        needs an explicit ``refresh_visible_editors`` call so that
+        newly-arrived rows get their card widgets created while the
+        card view is the active display.
         """
         active = self._views_stack.currentWidget()
         if not shiboken.isValid(active.viewport()):
@@ -328,6 +331,8 @@ class ReviewTable(AYContainer):
         active.viewport().update()
         if active is self._table:
             self._eagerly_enqueue_visible_thumbnails()
+        elif active is self._card_view:
+            self._card_view.refresh_visible_editors()
 
     def _table_row_height(self) -> int:
         first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
