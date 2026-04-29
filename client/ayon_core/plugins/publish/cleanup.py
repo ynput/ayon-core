@@ -20,24 +20,6 @@ class CleanUp(pyblish.api.InstancePlugin):
 
     order = pyblish.api.IntegratorOrder + 10
     label = "Clean Up"
-    hosts = [
-        "aftereffects",
-        "blender",
-        "celaction",
-        "flame",
-        "fusion",
-        "harmony",
-        "hiero",
-        "houdini",
-        "maya",
-        "nuke",
-        "photoshop",
-        "resolve",
-        "tvpaint",
-        "unreal",
-        "webpublisher",
-        "shell"
-    ]
     settings_category = "core"
 
     exclude_families = ["clip"]
