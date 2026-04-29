@@ -108,7 +108,14 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
         if "{originalDirname}" in publish_template:
             original_directory = instance.data.get("originalDirname")
             if not original_directory:
-                original_directory = instance.data["stagingDir"]
+                original_directory = instance.data.get("stagingDir")
+                if not original_directory:
+                    self.log.warning(
+                        "Publish template requires 'originalDirname'"
+                        " but 'originalDirname' is not set on instance"
+                        " and 'stagingDir' is not yet filled."
+                    )
+                    return
             template_data["originalDirname"] = original_directory
 
         publish_folder = os.path.normpath(
