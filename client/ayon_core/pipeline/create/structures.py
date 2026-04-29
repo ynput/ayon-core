@@ -6,7 +6,7 @@ from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
-from ayon_core.lib import Logger
+from ayon_core.lib import TrackDictChangesItem, Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
@@ -20,7 +20,6 @@ from ayon_core.pipeline import (
 )
 
 from .exceptions import ImmutableKeyError
-from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
     from .creator_plugins import BaseCreator
@@ -875,7 +874,7 @@ class CreatedInstance:
     def changes(self):
         """Calculate and return changes."""
 
-        return TrackChangesItem(self.origin_data, self.data_to_store())
+        return TrackDictChangesItem(self.origin_data, self.data_to_store())
 
     def mark_as_stored(self):
         """Should be called when instance data are stored.
