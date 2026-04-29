@@ -13,7 +13,7 @@ import copy
 
 import pyblish.api
 
-from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.publish import get_publish_template_name, PublishError
 
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
@@ -109,13 +109,14 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
             original_directory = instance.data.get("originalDirname")
             if not original_directory:
                 original_directory = instance.data.get("stagingDir")
-                if not original_directory:
-                    self.log.warning(
-                        "Publish template requires 'originalDirname'"
-                        " but 'originalDirname' is not set on instance"
-                        " and 'stagingDir' is not yet filled."
-                    )
-                    return
+
+            if not original_directory:
+                raise PublishError(
+                    "Publish template requires 'originalDirname'"
+                    " but 'originalDirname' is not set on instance"
+                    " and 'stagingDir' is not yet filled."
+                )
+
             template_data["originalDirname"] = original_directory
 
         publish_folder = os.path.normpath(
