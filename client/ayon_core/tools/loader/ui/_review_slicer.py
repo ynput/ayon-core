@@ -57,7 +57,7 @@ class ReviewSlicer(AYContainer):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
+            variant=AYContainer.Variants.High,
             layout_margin=8,
             layout_spacing=4,
             **kwargs,
