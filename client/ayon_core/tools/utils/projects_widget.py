@@ -6,6 +6,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import (
     ProjectItem,
     PROJECTS_MODEL_SENDER,
@@ -615,10 +616,7 @@ class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
 
     def _get_pin_icon(self):
         if self._pin_icon is None:
-            self._pin_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "keep",
-            })
+            self._pin_icon = get_qt_icon(MaterialSymbolsIcon("keep"))
         return self._pin_icon
 
 

@@ -5,6 +5,10 @@ import platform
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import Logger
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    TransparentIcon,
+)
 from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
@@ -49,10 +53,9 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
     @classmethod
     def _get_settings_icon(cls):
         if cls._settings_icon is None:
-            cls._settings_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "settings",
-            })
+            cls._settings_icon = get_qt_icon(
+                MaterialSymbolsIcon("settings")
+            )
         return cls._settings_icon
 
     def paintEvent(self, event):
@@ -220,14 +223,14 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             all_action_items_info.append((first_item, len(action_items) > 1))
             groups_by_id[first_item.identifier] = action_items
 
-        transparent_icon = {"type": "transparent", "size": 256}
+        transparent_icon = TransparentIcon(256)
         new_items = []
         items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = transparent_icon.copy()
+                icon_def = transparent_icon
 
             try:
                 icon = get_qt_icon(icon_def)
@@ -236,7 +239,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
                     "Failed to parse icon definition", exc_info=True
                 )
                 # Use empty icon if failed to parse definition
-                icon = get_qt_icon(transparent_icon.copy())
+                icon = get_qt_icon(transparent_icon)
 
             if is_group:
                 has_configs = False
@@ -318,12 +321,12 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-        transparent_icon = {"type": "transparent", "size": 256}
+        transparent_icon = TransparentIcon(256)
         new_items = []
         for action_item in action_items:
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = transparent_icon.copy()
+                icon_def = transparent_icon
 
             try:
                 icon = get_qt_icon(icon_def)
@@ -332,7 +335,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                     "Failed to parse icon definition", exc_info=True
                 )
                 # Use empty icon if failed to parse definition
-                icon = get_qt_icon(transparent_icon.copy())
+                icon = get_qt_icon(transparent_icon)
 
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
@@ -775,10 +778,9 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
     @classmethod
     def _get_extender_pixmap(cls):
         if cls._extender_icon is None:
-            cls._extender_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "more_horiz",
-            })
+            cls._extender_icon = get_qt_icon(
+                MaterialSymbolsIcon("more_horiz")
+            )
         return cls._extender_icon
 
     def paint(self, painter, option, index):

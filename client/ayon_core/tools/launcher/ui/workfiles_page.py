@@ -7,6 +7,11 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
+from ayon_core.lib.icon_definitions import (
+    AYONUrlIcon,
+    UrlIcon,
+    TransparentIcon,
+)
 from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
@@ -194,9 +199,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
     def _get_transparent_icon(self) -> QtGui.QIcon:
         if self._transparent_icon is None:
-            self._transparent_icon = get_qt_icon({
-                "type": "transparent", "size": 256
-            })
+            self._transparent_icon = get_qt_icon(
+                TransparentIcon(256)
+            )
         return self._transparent_icon
 
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
@@ -208,15 +213,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
         base_url = ayon_api.get_base_url()
         if icon_url.startswith(base_url):
-            icon_def = {
-                "type": "ayon_url",
-                "url": icon_url[len(base_url) + 1:],
-            }
+            url = icon_url[len(base_url) + 1:]
+            icon_def = AYONUrlIcon(url)
         else:
-            icon_def = {
-                "type": "url",
-                "url": icon_url,
-            }
+            icon_def = UrlIcon(icon_url)
 
         icon = get_qt_icon(icon_def)
         if icon is None:

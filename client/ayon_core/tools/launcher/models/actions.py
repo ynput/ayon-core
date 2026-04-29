@@ -14,6 +14,13 @@ from ayon_core.lib import (
     CacheItem,
     get_settings_variant,
 )
+from ayon_core.lib.icon_definitions import (
+    get_icon_def_from_data,
+    IconBase,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    PathIcon,
+)
 from ayon_core.lib.execute import (
     run_detached_ayon_launcher_process,
     clean_envs_for_ayon_process,
@@ -57,12 +64,11 @@ def get_action_icon(action):
     """
 
     icon = action.icon
+    if isinstance(icon, IconBase):
+        return icon
+
     if not icon:
-        return {
-            "type": "awesome-font",
-            "name": "fa.cube",
-            "color": "white"
-        }
+        return AwesomeFontIcon("fa.cube", color="white")
 
     if isinstance(icon, dict):
         return icon
@@ -75,10 +81,7 @@ def get_action_icon(action):
             pass
 
     if os.path.exists(icon_path):
-        return {
-            "type": "path",
-            "path": icon_path,
-        }
+        return PathIcon(icon_path)
 
     return {
         "type": "awesome-font",
@@ -444,6 +447,12 @@ class ActionsModel:
                 if not urlparse(icon["url"]).scheme:
                     icon["type"] = "ayon_url"
 
+            if icon:
+                try:
+                    icon = get_icon_def_from_data(icon)
+                except ValueError:
+                    icon = None
+
             config_fields = action.get("configFields") or []
             variant_label = action["label"]
             group_label = action.get("groupLabel")
@@ -514,16 +523,10 @@ class ActionsModel:
             submit_icon = payload["submit_icon"] or None
             cancel_icon = payload["cancel_icon"] or None
             if submit_icon:
-                submit_icon = {
-                    "type": "material-symbols",
-                    "name": submit_icon,
-                }
+                submit_icon = MaterialSymbolsIcon(submit_icon)
 
             if cancel_icon:
-                cancel_icon = {
-                    "type": "material-symbols",
-                    "name": cancel_icon,
-                }
+                cancel_icon = MaterialSymbolsIcon(cancel_icon)
 
             response.form = WebactionForm(
                 fields=payload["fields"],

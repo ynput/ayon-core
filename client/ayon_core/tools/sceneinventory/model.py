@@ -6,6 +6,7 @@ import collections
 from qtpy import QtCore, QtGui
 import qtawesome
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import format_version
@@ -426,11 +427,12 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         icon = None
         if status_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": status_item.icon,
-                "color": status_item.color,
-            })
+            icon = get_qt_icon(
+                MaterialSymbolsIcon(
+                    status_item.icon,
+                    color=status_item.color
+                )
+            )
         if icon is None:
             icon = QtGui.QIcon()
         self._last_status_icons_by_name[project_name][status_name] = icon

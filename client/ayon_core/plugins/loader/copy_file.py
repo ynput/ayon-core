@@ -3,6 +3,7 @@ import collections
 
 from typing import Optional, Any
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
     LoaderActionPlugin,
@@ -51,11 +52,10 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                         "representation_id": repre_id,
                         "action": "copy-path",
                     },
-                    icon={
-                        "type": "material-symbols",
-                        "name": "content_copy",
-                        "color": "#999999",
-                    }
+                    icon=MaterialSymbolsIcon(
+                        "content_copy",
+                        color="#999999",
+                    )
                 )
             )
             output.append(
@@ -67,11 +67,10 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                         "representation_id": repre_id,
                         "action": "copy-file",
                     },
-                    icon={
-                        "type": "material-symbols",
-                        "name": "file_copy",
-                        "color": "#999999",
-                    }
+                    icon=MaterialSymbolsIcon(
+                        "file_copy",
+                        color="#999999",
+                    )
                 )
             )
         return output

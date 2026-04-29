@@ -2,6 +2,7 @@ from typing import Optional
 
 from qtpy import QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon, AwesomeFontIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
@@ -134,11 +135,10 @@ class TasksModel(QtGui.QStandardItemModel):
                 item = self._items_by_name.pop(task_name)
                 root_item.removeRow(item.row())
 
-        default_icon = get_qt_icon({
-            "type": "awesome-font",
-            "name": "fa.male",
-            "color": get_default_entity_icon_color(),
-        })
+        default_icon = get_qt_icon(AwesomeFontIcon(
+            "fa.male",
+            color=get_default_entity_icon_color(),
+        ))
         new_items = []
         task_type_items = {
             task_type_item.name: task_type_item
@@ -179,11 +179,9 @@ class TasksModel(QtGui.QStandardItemModel):
             if icon_name:
                 if not icon_color:
                     icon_color = get_default_entity_icon_color()
-                icon = get_qt_icon({
-                    "type": "material-symbols",
-                    "name": icon_name,
-                    "color": icon_color,
-                })
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(icon_name, color=icon_color)
+                )
             if icon is None:
                 icon = default_icon
             item.setData(icon, QtCore.Qt.DecorationRole)
