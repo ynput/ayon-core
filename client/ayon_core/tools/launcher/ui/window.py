@@ -185,6 +185,15 @@ class LauncherWindow(QtWidgets.QWidget):
         hierarchy_page.setVisible(not self._is_on_projects_page)
         self.resize(920, 740)
 
+        try:
+            from ayon_core.tools.tray.tool_window_identity_apply import (
+                apply_launcher_window_identity,
+            )
+
+            apply_launcher_window_identity(self)
+        except ImportError:
+            pass
+
     def showEvent(self, event):
         super().showEvent(event)
         self._window_is_active = True

@@ -564,6 +564,15 @@ class LoaderWindow(QtWidgets.QWidget):
         self._products_grid_widget.set_grid_columns(cols)
         self._save_view_settings()
 
+        try:
+            from ayon_core.tools.tray.tool_window_identity_apply import (
+                apply_loader_window_identity,
+            )
+
+            apply_loader_window_identity(self)
+        except ImportError:
+            pass
+
     def refresh(self):
         self._reset_on_show = False
         self._controller.reset()

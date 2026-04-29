@@ -245,6 +245,18 @@ class HostToolsHelper:
 
         This is helper for
         """
+        dock_shim = None
+        try:
+            from ayon_core.tools.tray import tool_shim as _dock_shim_mod
+
+            dock_shim = _dock_shim_mod
+        except ImportError:
+            pass
+
+        if dock_shim is not None and dock_shim.darwin_tray_shim_delegation_from_host(
+            tool_name
+        ):
+            return
         if tool_name == "workfiles":
             self.show_workfiles(parent, *args, **kwargs)
 
@@ -270,6 +282,17 @@ class HostToolsHelper:
             self.log.warning(
                 "Can't show unknown tool name: \"{}\"".format(tool_name)
             )
+            return
+
+        if dock_shim is not None:
+            dock_shim.host_tools_after_show(self, tool_name, parent)
+        else:
+            try:
+                from ayon_core.tools.tool_icon_wrapper import taskbar_identity
+
+                taskbar_identity.host_tools_after_show(self, tool_name, parent)
+            except ImportError:
+                pass
 
 
 class _SingletonPoint:
