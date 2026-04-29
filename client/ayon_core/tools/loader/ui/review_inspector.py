@@ -54,6 +54,7 @@ class ReviewInspector(AYContainer):
             dim=True,
             elide_mode=QtCore.Qt.TextElideMode.ElideMiddle,
             rel_text_size=-1,
+            copy_text=True,
         )
         self._close_btn = AYButton(
             variant=AYButton.Variants.Nav_Small, icon="close", icon_size=14
