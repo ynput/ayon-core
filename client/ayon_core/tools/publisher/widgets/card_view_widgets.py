@@ -816,8 +816,10 @@ class InstanceCardView(AbstractInstanceView):
 
             widget_idx += 1
 
-            instances = instances_by_group[group_name]
-            for instance in instances:
+            for instance in sorted(
+               instances_by_group[group_name],
+               key=lambda i: (i.get_folder_path() or "", i.product_name))
+            ):
                 group_by_instance_id[instance.id] = group_name
                 instance_ids_by_group_name[group_name].append(instance.id)
 
@@ -891,37 +893,34 @@ class InstanceCardView(AbstractInstanceView):
         ) - set(instances_by_id)
         group_widget.take_widgets(to_remove_ids)
 
-        # Sort instances by product name
-        sorted_product_names = list(sorted(instances_by_product_name.keys()))
-
         # Add new instances to widget
         ordered_ids = []
         widgets_by_id = {}
-        for product_names in sorted_product_names:
-            for instance in instances_by_product_name[product_names]:
-                context_info = context_info_by_id[instance.id]
-                is_parent_active = parent_active_by_id[instance.id]
-                if instance.id in self._widgets_by_id:
-                    widget = self._widgets_by_id[instance.id]
-                    widget.update_instance(
-                        instance, context_info, is_parent_active
-                    )
-                else:
-                    group_icon = group_icons[instance.creator_identifier]
-                    widget = InstanceCardWidget(
-                        instance,
-                        context_info,
-                        is_parent_active,
-                        group_icon,
-                        group_widget,
-                    )
-                    widget.selected.connect(self._on_widget_selection)
-                    widget.active_changed.connect(self._on_active_changed)
-                    widget.double_clicked.connect(self.double_clicked)
-                    self._widgets_by_id[instance.id] = widget
 
-                ordered_ids.append(instance.id)
-                widgets_by_id[instance.id] = widget
+        for instance in instances:
+            context_info = context_info_by_id[instance.id]
+            is_parent_active = parent_active_by_id[instance.id]
+            if instance.id in self._widgets_by_id:
+                widget = self._widgets_by_id[instance.id]
+                widget.update_instance(
+                    instance, context_info, is_parent_active
+                )
+            else:
+                group_icon = group_icons[instance.creator_identifier]
+                widget = InstanceCardWidget(
+                    instance,
+                    context_info,
+                    is_parent_active,
+                    group_icon,
+                    group_widget,
+                )
+                widget.selected.connect(self._on_widget_selection)
+                widget.active_changed.connect(self._on_active_changed)
+                widget.double_clicked.connect(self.double_clicked)
+                self._widgets_by_id[instance.id] = widget
+
+            ordered_ids.append(instance.id)
+            widgets_by_id[instance.id] = widget
 
         group_widget.set_widgets(widgets_by_id, ordered_ids)
 
