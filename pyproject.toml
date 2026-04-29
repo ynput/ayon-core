@@ -20,7 +20,7 @@ dependencies = [
     "pytest-print >=1.0.0",
     "ayon-python-api >=1.0.0",
     "arrow ==0.17.0",
-    "ruff >=0.11.7",
+    "ruff >=0.15.4",
     "pre-commit >=4.0.0",
     "codespell >=2.2.6",
     "semver >=3.0.2",
@@ -34,7 +34,8 @@ dependencies = [
     "speedcopy >=2.1.0",
     "qtpy >=2.4.3",
     "pyside6 >=6.5.2",
-    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
+    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git",
+    "loguru (>=0.7.3,<0.8.0)"
 ]
 
 [tool.codespell]

@@ -1,3 +1,4 @@
+import contextlib
 import os
 import sys
 import getpass
@@ -7,9 +8,19 @@ import socket
 import time
 import threading
 import copy
+from loguru import logger
+from dataclasses import dataclass
 
 from . import Terminal
 
+
+@dataclass
+class ProcessData:
+    hostname: str
+    hostip: str
+    username: str
+    system_name: str
+    process_name: str
 
 class LogStreamHandler(logging.StreamHandler):
     """StreamHandler class.
@@ -91,7 +102,88 @@ class LogFormatter(logging.Formatter):
         return out
 
 
-class Logger:
+class Logger():
+    """Logger class.
+
+    This is a wrapper for loguru logger. It is used to provide a unified
+    interface for logging in AYON. It also provides a way to disable logging
+    in some cases, for example when running in a headless environment.
+
+    """
+
+    # Data same for all record documents
+    process_data: ProcessData = None
+
+    @classmethod
+    def get_process_data(cls):
+        """Data about current process which should be same for all records.
+
+        Process data are used for each record sent to mongo database.
+        """
+        if cls.process_data is not None:
+            return copy.deepcopy(cls.process_data)
+
+        if not cls.initialized:
+            cls.initialize()
+
+        host_name = socket.gethostname()
+        try:
+            host_ip = socket.gethostbyname(host_name)
+        except socket.gaierror:
+            host_ip = "127.0.0.1"
+
+        process_name = cls.get_process_name()
+
+        cls.process_data = ProcessData(
+            hostname=host_name,
+            hostip=host_ip,
+            username=getpass.getuser(),
+            system_name=platform.system(),
+            process_name=process_name
+        )
+
+        return copy.deepcopy(cls.process_data)
+
+    @classmethod
+    def get_logger(cls, name=None):
+        return logger.bind(name=name or "__main__")
+
+    @classmethod
+    def get_process_name(cls) -> str:
+        """Process name that is like "label" of a process.
+
+        AYON logging can be used from OpenPyppe itself of from hosts.
+        Even in AYON process it's good to know if logs are from tray or
+        from other cli commands. This should help to identify that information.
+        """
+        if cls._process_name is not None:
+            return cls._process_name
+
+        # Get process name
+        process_name = os.environ.get("AYON_APP_NAME")
+        if not process_name:
+            with contextlib.suppress(ImportError):
+                import psutil
+                process = psutil.Process(os.getpid())
+                process_name = process.name()
+
+        if not process_name:
+            process_name = os.path.basename(sys.executable)
+
+        cls._process_name = process_name
+        return cls._process_name
+
+    @classmethod
+    def set_process_name(cls, process_name: str) -> None:
+        """Set process name for mongo logs."""
+        # Just change the attribute
+        cls._process_name = process_name
+        # Update process data if are already set
+        if cls.process_data is not None:
+            cls.process_data.process_name = process_name
+
+
+class Legacy_Logger:
     DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
     DBG = "  - { %(name)s }: [ %(message)s ] "
     INF = ">>> [ %(message)s ] "
