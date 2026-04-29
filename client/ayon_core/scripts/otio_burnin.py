@@ -374,6 +374,10 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         :param int frame_start: starting frame for burnins current frame
         :param dict options: recommended to use TextOptions
         """
+        if not text:
+            # do not add empty text, eg.: if it was using an optional part
+            return
+
         if not options:
             options = ffmpeg_burnins.TextOptions(**self.options_init)
 
