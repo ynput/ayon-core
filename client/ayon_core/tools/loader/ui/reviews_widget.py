@@ -69,7 +69,7 @@ class ReviewsWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
-        self._inspector = ReviewInspector()
+        self._inspector = ReviewInspector(controller=self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._inspector.set_view(self._table.active_view)
         self._build()

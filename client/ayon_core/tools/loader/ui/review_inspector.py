@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+from ayon_ui_qt.components.layouts import AYHBoxLayout
 from ayon_ui_qt.components.label import AYLabel
 from ayon_ui_qt.components.buttons import AYButton
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
 from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
+from ayon_ui_qt.components.table_view import AYTableView
 from ayon_ui_qt.image_cache import ImageCache
 from qtpy import QtCore, QtWidgets, QtGui, shiboken
+
+from ayon_core.tools.utils import get_qt_icon
 
 from ._review_thumbnails import _thumbnail_loader
 
@@ -23,7 +26,7 @@ def _str_wrap(text: str) -> str:
 class ReviewInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, controller=None, **kwargs):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
@@ -35,6 +38,7 @@ class ReviewInspector(AYContainer):
         self._layout.setAlignment(QtCore.Qt.AlignTop)
         self.setFixedWidth(300)
 
+        self._controller = controller
         self._view: QtWidgets.QAbstractItemView | None = None
         self._current_thumb_key: str = ""
 
@@ -105,9 +109,7 @@ class ReviewInspector(AYContainer):
             layout_spacing=0,
         )
         cmt_wrapper.add_widget(self._comment_value, stretch=1)
-        self.info_lyt.add_row(
-            AYLabel("Comment:", dim=True), cmt_wrapper
-        )
+        self.info_lyt.add_row(AYLabel("Comment:", dim=True), cmt_wrapper)
         # created
         self._created_value = AYLabel("-")
         self.info_lyt.add_row(
@@ -124,6 +126,17 @@ class ReviewInspector(AYContainer):
         )
         src_wrapper.add_widget(self._source_value, stretch=1)
         self.info_lyt.add_row(AYLabel("Source:", dim=True), src_wrapper)
+
+        # representations
+        self.add_widget(
+            AYLabel(
+                "Representations",
+                variant=AYLabel.Variants.Default,
+                rel_text_size=1,
+            )
+        )
+        self._representations = Representations()
+        self.add_widget(self._representations)
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
@@ -150,6 +163,12 @@ class ReviewInspector(AYContainer):
         data = index.data(QtCore.Qt.UserRole)
         if not data:
             return
+
+        # Folder rows have no version data — clear and bail out.
+        if data.get("entityType", "") == "Folder":
+            self._representations.set_items([])
+            return
+
         # print(f"Updating inspector with data: {data}")
         self._path_label.setText(data.get("path", ""))
         self._product_value.setText(data.get("productName", ""))
@@ -167,6 +186,15 @@ class ReviewInspector(AYContainer):
         else:
             self._current_thumb_key = ""
             self._thumbnail.set_thumbnail("")
+
+        # Fetch and display representations for this version.
+        if self._controller and project_name and version_id:
+            repre_items = self._controller.get_representation_items(
+                project_name, [version_id]
+            )
+            self._representations.set_items(repre_items)
+        else:
+            self._representations.set_items([])
 
     def _load_thumbnail(self, key: str) -> None:
         """Load and display the thumbnail for *key*.
@@ -208,3 +236,51 @@ class ReviewInspector(AYContainer):
     def _on_close(self) -> None:
         """Hide the inspector."""
         self.hide()
+
+
+class Representations(AYContainer):
+    """Widget displaying the representations for an inspected version."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=2,
+            **kwargs,
+        )
+        self._layout.setAlignment(QtCore.Qt.AlignTop)
+        self._table: AYTableView = AYTableView(
+            variant=AYTableView.Variants.Low,
+        )
+        self._model = QtGui.QStandardItemModel()
+        self._model.setHorizontalHeaderLabels(["Name", "Folder", "Product"])
+        self._table.setModel(self._model)
+
+        self.add_widget(self._table)
+
+    def set_items(self, repre_items: list) -> None:
+        """Populate the table from a list of RepreItem.
+
+        Args:
+            repre_items: List of
+                :class:`~ayon_core.tools.loader.abstract.RepreItem`
+                objects to display.
+        """
+        self._model.removeRows(0, self._model.rowCount())
+        for repre in repre_items:
+            # print(repre.to_data())
+
+            name_item = QtGui.QStandardItem(repre.representation_name)
+            name_item.setEditable(False)
+            icon = get_qt_icon(repre.representation_icon)
+            if icon is not None:
+                name_item.setIcon(icon)
+
+            folder_item = QtGui.QStandardItem(repre.folder_label)
+            folder_item.setEditable(False)
+
+            product_item = QtGui.QStandardItem(repre.product_name)
+            product_item.setEditable(False)
+
+            self._model.appendRow([name_item, folder_item, product_item])

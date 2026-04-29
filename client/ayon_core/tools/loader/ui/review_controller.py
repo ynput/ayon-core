@@ -669,6 +669,31 @@ class ReviewController(QtCore.QObject):
             project_name, entity_ids, entity_type
         )
 
+    def get_representation_items(
+        self,
+        project_name: str,
+        version_ids: list[str],
+    ) -> list[Any]:
+        """Return representation items for the given version ids.
+
+        Delegates to the main loader controller when one was provided at
+        construction time.  Returns an empty list when no loader
+        controller is available.
+
+        Args:
+            project_name: AYON project name.
+            version_ids: List of version IDs to query.
+
+        Returns:
+            List of :class:`~ayon_core.tools.loader.abstract.RepreItem`
+            objects.
+        """
+        if self._loader_controller is None:
+            return []
+        return self._loader_controller.get_representation_items(
+            project_name, version_ids
+        )
+
     def trigger_action_item(
         self,
         identifier: str,
