@@ -146,10 +146,15 @@ class ReviewInspector(AYContainer):
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
-        print(f"Setting inspector view: {view}")
         self._view = view
         self._view.activated.connect(self._on_activated)
         self._view.selection_changed.connect(self._on_selection_changed)
+        self._view.model().modelReset.connect(self._on_model_reset)
+
+    def _on_model_reset(self) -> None:
+        """Clear the selection when the model is reset."""
+        self._current_selection.clear()
+        self._update()
 
     def _on_activated(self, index: QtCore.QModelIndex) -> None:
         """Activation is typically when the user double-clicks on an item.
@@ -183,11 +188,12 @@ class ReviewInspector(AYContainer):
         if not self.isVisible():
             return
 
-        index = next(iter(self._current_selection), QtCore.QModelIndex())
-        data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
         n_sel = len(self._current_selection)
         single = n_sel <= 1
         default = "-" if single else f"{n_sel} items selected"
+
+        index = next(iter(self._current_selection), QtCore.QModelIndex())
+        data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
 
         # Folder rows have no version data — clear and bail out.
         if data.get("entityType", "") == "Folder":
@@ -214,12 +220,19 @@ class ReviewInspector(AYContainer):
             _str_wrap(data.get("source", default) if single else default)
         )
 
-        thumbnail_id = data.get("thumbnailId", "")
+        thumb_keys: list[str] = []
         version_id = data.get("_version_id") or data.get("id", "")
         project_name = data.get("project_name", "")
-        if thumbnail_id and version_id and project_name:
-            key = f"{project_name}/{version_id}/{thumbnail_id}"
-            self._load_thumbnail(key)
+        for idx in self._current_selection:
+            d = idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            tid = d.get("thumbnailId", "")
+            vid = d.get("_version_id") or d.get("id", "")
+            pname = d.get("project_name", "")
+            if tid and vid and pname:
+                thumb_keys.append(f"{pname}/{vid}/{tid}")
+
+        if thumb_keys:
+            self._load_thumbnail(thumb_keys)
         else:
             self._current_thumb_key = ""
             self._thumbnail.set_thumbnail("")
@@ -233,42 +246,65 @@ class ReviewInspector(AYContainer):
         else:
             self._representations.set_items([])
 
-    def _load_thumbnail(self, key: str) -> None:
-        """Load and display the thumbnail for *key*.
+    def _load_thumbnail(self, keys: list[str]) -> None:
+        """Load and display thumbnails for *keys* as a composite image.
 
-        Serves from :class:`ImageCache` synchronously when the image is
-        already cached, otherwise enqueues an async fetch at priority 1
-        (higher than the table's eager pre-fetch at priority 2).
+        Resolves each key from :class:`ImageCache` synchronously where
+        possible, and enqueues async fetches at priority 1 for any
+        cache misses.  Once all slots are resolved the widget is updated
+        with a comma-separated path string so that
+        :meth:`AYEntityThumbnail.set_thumbnail` can build a composite.
 
         Args:
-            key: Cache key in the form
+            keys: One or more cache keys, each in the form
                 ``"<project_name>/<version_id>/<thumbnail_id>"``.
         """
-        self._current_thumb_key = key
+        combined_key = ",".join(keys)
+        self._current_thumb_key = combined_key
+
         ic = ImageCache.get_instance()
-        cached_path = ic.get_path(key) if key else None
-        if cached_path:
-            self._thumbnail.set_thumbnail(cached_path)
+        resolved: dict[str, str] = {}
+        missing: list[str] = []
+        for key in keys:
+            cached_path = ic.get_path(key) if key else None
+            if cached_path:
+                resolved[key] = cached_path
+            else:
+                missing.append(key)
+
+        if not missing:
+            paths = ",".join(resolved[k] for k in keys)
+            self._thumbnail.set_thumbnail(paths)
             return
 
         inspector = self
+        pending: dict[str, int] = {"count": len(missing)}
 
-        def _on_loaded(fpath: str) -> None:
-            if not shiboken.isValid(inspector):
-                return
-            if inspector._current_thumb_key != key:
-                return
-            inspector._thumbnail.set_thumbnail(fpath or "")
+        def _make_callback(k: str):
+            def _on_loaded(fpath: str) -> None:
+                if not shiboken.isValid(inspector):
+                    return
+                resolved[k] = fpath or ""
+                pending["count"] -= 1
+                if pending["count"] > 0:
+                    return
+                if inspector._current_thumb_key != combined_key:
+                    return
+                paths = ",".join(resolved.get(key, "") for key in keys)
+                inspector._thumbnail.set_thumbnail(paths)
 
-        get_task_queue().enqueue(
-            AsyncTask(
-                name=f"inspector_thumb_{key}",
-                function=lambda: _thumbnail_loader(key),
-                callback=_on_loaded,
-                priority=1,
-                cancellable=True,
+            return _on_loaded
+
+        for key in missing:
+            get_task_queue().enqueue(
+                AsyncTask(
+                    name=f"inspector_thumb_{key}",
+                    function=lambda k=key: _thumbnail_loader(k),
+                    callback=_make_callback(key),
+                    priority=1,
+                    cancellable=True,
+                )
             )
-        )
 
     def _on_close(self) -> None:
         """Hide the inspector."""
