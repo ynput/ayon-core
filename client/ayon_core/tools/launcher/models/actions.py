@@ -111,6 +111,8 @@ class ActionsModel:
     @staticmethod
     def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
         """Calculate full label from label and variant_label."""
+        if label == variant_label:
+            return label
         if variant_label:
             return " ".join([label, variant_label])
         return label
