@@ -41,6 +41,8 @@ class ReviewInspector(AYContainer):
         self._controller = controller
         self._view: QtWidgets.QAbstractItemView | None = None
         self._current_thumb_key: str = ""
+        # Use a dict as an ordered set to track the currently selected indices
+        self._current_selection: dict[QtCore.QModelIndex, None] = {}
 
         self._build()
 
@@ -147,26 +149,45 @@ class ReviewInspector(AYContainer):
         print(f"Setting inspector view: {view}")
         self._view = view
         self._view.activated.connect(self._on_activated)
-        self._view.clicked.connect(self._on_clicked)
+        self._view.selection_changed.connect(self._on_selection_changed)
 
     def _on_activated(self, index: QtCore.QModelIndex) -> None:
-        """Update the inspector when the selection changes."""
+        """Activation is typically when the user double-clicks on an item.
+        We want to show the inspector in this case if it's not visible.
+        """
         self.show()
-        self._update(index)
+        self._update()
 
-    def _on_clicked(self, index: QtCore.QModelIndex) -> None:
-        """Update the inspector when the selection changes."""
-        if self.isVisible():
-            self._update(index)
+    def _on_selection_changed(
+        self,
+        selected: QtCore.QItemSelection,
+        deselected: QtCore.QItemSelection,
+    ) -> None:
+        """Record the selection changes and update the inspector.
 
-    def _update(self, index: QtCore.QModelIndex) -> None:
-        """Update the inspector with the data from the given index."""
-        if not index.isValid():
+        Args:
+            selected (QtCore.QItemSelection): The selected items.
+            deselected (QtCore.QItemSelection): The deselected items.
+        """
+        # NOTE: only consider column 0 as we select entire rows in all views
+        for idx in selected.indexes():
+            if idx.column() == 0:
+                self._current_selection[idx] = None
+        for idx in deselected.indexes():
+            if idx.column() == 0:
+                self._current_selection.pop(idx, None)
+        self._update()
+
+    def _update(self) -> None:
+        """Update the inspector with the current selection, if it is visible."""
+        if not self.isVisible():
             return
 
-        data = index.data(QtCore.Qt.UserRole)
-        if not data:
-            return
+        index = next(iter(self._current_selection), QtCore.QModelIndex())
+        data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+        n_sel = len(self._current_selection)
+        single = n_sel <= 1
+        default = "-" if single else f"{n_sel} items selected"
 
         # Folder rows have no version data — clear and bail out.
         if data.get("entityType", "") == "Folder":
@@ -174,12 +195,24 @@ class ReviewInspector(AYContainer):
             return
 
         # print(f"Updating inspector with data: {data}")
-        self._path_label.setText(data.get("path", ""))
-        self._product_value.setText(data.get("productName", ""))
-        self._version_value.setText(data.get("version", ""))
-        self._comment_value.setText(data.get("comment", "None"))
-        self._created_value.setText(data.get("createdAt", ""))
-        self._source_value.setText(_str_wrap(data.get("source", "")))
+        self._path_label.setText(
+            data.get("path", default) if single else default
+        )
+        self._product_value.setText(
+            data.get("productName", default) if single else default
+        )
+        self._version_value.setText(
+            data.get("version", default) if single else default
+        )
+        self._comment_value.setText(
+            data.get("comment", default) or default if single else default
+        )
+        self._created_value.setText(
+            data.get("createdAt", default) if single else default
+        )
+        self._source_value.setText(
+            _str_wrap(data.get("source", default) if single else default)
+        )
 
         thumbnail_id = data.get("thumbnailId", "")
         version_id = data.get("_version_id") or data.get("id", "")
