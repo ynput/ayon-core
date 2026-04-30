@@ -56,28 +56,39 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
                 ).format(instance.name))
                 continue
 
-            instance_per_folder_product[(folder_path, product_name)].append(
-                instance
+            # Note: version may be optionally set, but when set that will be
+            #  the resulting target version. If two instances target the same
+            #  product but a different version we will allow it.
+            # TODO: This may have the caveat where one instance *may* target
+            #  None (next version) and that next version matching exactly an
+            #  explicitly set version but that would really be an edge case.
+            version = instance.data.get("version")
+            key = (
+                folder_path,
+                product_name,
+                version
             )
+            instance_per_folder_product[key].append(instance)
 
         non_unique = []
-        for (folder_path, product_name), instances in (
+        for (folder_path, product_name, version), instances in (
             instance_per_folder_product.items()
         ):
             # A single instance per folder, product is fine
             if len(instances) < 2:
                 continue
 
-            non_unique.append(
-                "{} > {}".format(folder_path, product_name)
-            )
+            label = f"{folder_path} > {product_name}"
+            if version is not None:
+                label += f" (version {version})"
+            non_unique.append(label)
 
         if not non_unique:
             # All is ok
             return
 
         msg = (
-            f"Instance product names {non_unique} are not unique."
+            f"Instance products {non_unique} are not unique."
             " Please remove or rename duplicates."
         )
         formatting_data = {
