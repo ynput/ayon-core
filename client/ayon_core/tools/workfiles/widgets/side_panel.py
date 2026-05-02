@@ -3,6 +3,9 @@ from typing import Optional
 
 from qtpy import QtCore, QtWidgets
 
+from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.layouts import AYVBoxLayout
+
 
 def file_size_to_string(file_size):
     if not file_size:
@@ -22,7 +25,7 @@ def file_size_to_string(file_size):
     return "{:.2f} {}".format(size, ending)
 
 
-class SidePanelWidget(QtWidgets.QWidget):
+class SidePanelWidget(AYContainer):
     """Details about selected workfile.
 
     Todos:
@@ -40,7 +43,13 @@ class SidePanelWidget(QtWidgets.QWidget):
     )
 
     def __init__(self, controller, parent):
-        super(SidePanelWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         details_label = QtWidgets.QLabel("Details", self)
         details_input = QtWidgets.QPlainTextEdit(self)
@@ -53,19 +62,16 @@ class SidePanelWidget(QtWidgets.QWidget):
             "Save note", description_widget
         )
 
-        description_layout = QtWidgets.QVBoxLayout(description_widget)
-        description_layout.setContentsMargins(0, 0, 0, 0)
+        description_layout = AYVBoxLayout(description_widget, margin=0, spacing=4)
         description_layout.addWidget(description_label, 0)
         description_layout.addWidget(description_input, 1)
         description_layout.addWidget(
             btn_description_save, 0, alignment=QtCore.Qt.AlignRight
         )
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(details_label, 0)
-        main_layout.addWidget(details_input, 1)
-        main_layout.addWidget(description_widget, 1)
+        self.add_widget(details_label, stretch=0)
+        self.add_widget(details_input, stretch=1)
+        self.add_widget(description_widget, stretch=1)
 
         description_input.textChanged.connect(self._on_description_change)
         btn_description_save.clicked.connect(self._on_save_click)

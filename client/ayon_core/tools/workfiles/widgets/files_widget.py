@@ -3,12 +3,15 @@ import os
 import qtpy
 from qtpy import QtWidgets, QtCore
 
+from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
 
 
-class FilesWidget(QtWidgets.QWidget):
+class FilesWidget(AYContainer):
     """A widget displaying files that allows to save and open files.
 
     Args:
@@ -17,7 +20,13 @@ class FilesWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, controller, parent):
-        super(FilesWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         files_widget = QtWidgets.QStackedWidget(self)
         workarea_widget = WorkAreaFilesWidget(controller, files_widget)
@@ -35,8 +44,7 @@ class FilesWidget(QtWidgets.QWidget):
         workarea_btn_save = QtWidgets.QPushButton(
             "Save As", workarea_btns_widget)
 
-        workarea_btns_layout = QtWidgets.QHBoxLayout(workarea_btns_widget)
-        workarea_btns_layout.setContentsMargins(0, 0, 0, 0)
+        workarea_btns_layout = AYHBoxLayout(workarea_btns_widget, margin=0, spacing=4)
         workarea_btns_layout.addWidget(workarea_btn_open, 1)
         workarea_btns_layout.addWidget(workarea_btn_browse, 1)
         workarea_btns_layout.addWidget(workarea_btn_save, 1)
@@ -52,21 +60,17 @@ class FilesWidget(QtWidgets.QWidget):
             "Cancel", published_btns_widget
         )
 
-        published_btns_layout = QtWidgets.QHBoxLayout(published_btns_widget)
-        published_btns_layout.setContentsMargins(0, 0, 0, 0)
+        published_btns_layout = AYHBoxLayout(published_btns_widget, margin=0, spacing=4)
         published_btns_layout.addWidget(published_btn_copy_n_open, 1)
         published_btns_layout.addWidget(published_btn_change_context, 1)
         published_btns_layout.addWidget(published_btn_cancel, 1)
 
-        btns_layout = QtWidgets.QVBoxLayout(btns_widget)
-        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout = AYVBoxLayout(btns_widget, margin=0, spacing=4)
         btns_layout.addWidget(workarea_btns_widget, 1)
         btns_layout.addWidget(published_btns_widget, 1)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(files_widget, 1)
-        main_layout.addWidget(btns_widget, 0)
+        self.add_widget(files_widget, stretch=1)
+        self.add_widget(btns_widget, stretch=0)
 
         controller.register_event_callback(
             "selection.workarea.changed",

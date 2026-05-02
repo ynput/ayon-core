@@ -1,4 +1,6 @@
 import qtawesome
+from ayon_ui_qt.components.buttons import AYButton
+from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
@@ -58,8 +60,7 @@ class HierarchyPage(QtWidgets.QWidget):
 
         refresh_btn = RefreshButton(header_widget)
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(btn_back, 0)
         header_layout.addWidget(projects_combobox, 1)
         header_layout.addWidget(refresh_btn, 0)
@@ -94,8 +95,7 @@ class HierarchyPage(QtWidgets.QWidget):
         content_body.setStretchFactor(1, 85)
         content_body.setStretchFactor(2, 220)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout = AYVBoxLayout(self, margin=0, spacing=4)
         main_layout.addWidget(header_widget, 0)
         main_layout.addWidget(filters_widget, 0)
         main_layout.addWidget(content_body, 1)
