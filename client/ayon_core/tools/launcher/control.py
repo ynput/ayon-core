@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Optional
 
+from ayon_api import get_workfiles_info
+
 from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager

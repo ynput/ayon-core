@@ -163,17 +163,6 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             index = self.index(index.row(), 0, index.parent())
         return super().flags(index)
 
-    def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.column() == 1:
-            if role == QtCore.Qt.DisplayRole:
-                role = UPDATED_AT_ROLE
-
-            elif role not in (HOST_NAME_ROLE, ITEM_TYPE_ROLE):
-                return None
-
-            index = self.index(index.row(), 0, index.parent())
-        return super().data(index, role)
-
     def _on_selection_project_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
@@ -226,7 +215,12 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.ToolTipRole:
-            item = self.itemFromIndex(index)
+            tip_index = index
+            if index.column() == 1:
+                tip_index = self.index(
+                    index.row(), 0, index.parent()
+                )
+            item = self.itemFromIndex(tip_index)
             if item is None:
                 return None
             workfile_id = item.data(WORKFILE_ID_ROLE)
@@ -246,7 +240,15 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             exists = (item.flags() & QtCore.Qt.ItemIsEnabled) != 0
             status = "On disk" if exists else "Missing"
             return f"{filename}\n{host_str}Version: {version_str}\n{status}"
+
+        if index.column() == 1:
+            if role == QtCore.Qt.DisplayRole:
+                role = UPDATED_AT_ROLE
+            elif role not in (HOST_NAME_ROLE, ITEM_TYPE_ROLE):
+                return None
+            index = self.index(index.row(), 0, index.parent())
         return super().data(index, role)
+
 
 class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
     def lessThan(self, source_left, source_right):
