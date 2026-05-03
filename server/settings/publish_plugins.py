@@ -136,6 +136,10 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " creating from within that task type."
         ),
     )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
     contribution_enabled: bool = SettingsField(
         True,
         title="Contribution Enabled (default)",
@@ -1605,6 +1609,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_base_types": ["model"],
                 "task_types": [],
+                "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "model",
                 "contribution_apply_as_variant": True,
@@ -1613,6 +1618,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_base_types": ["look"],
                 "task_types": [],
+                "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "look",
                 "contribution_apply_as_variant": True,
@@ -1621,6 +1627,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_base_types": ["groom"],
                 "task_types": [],
+                "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "groom",
                 "contribution_apply_as_variant": True,
@@ -1629,6 +1636,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_base_types": ["rig"],
                 "task_types": [],
+                "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "rig",
                 "contribution_apply_as_variant": True,
@@ -1637,6 +1645,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_base_types": ["usd"],
                 "task_types": [],
+                "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "assembly",
                 "contribution_apply_as_variant": False,
@@ -1969,8 +1978,8 @@ DEFAULT_PUBLISH_VALUES = {
             "font_size": 42,
             "font_color": [255, 255, 255, 1.0],
             "bg_color": [0, 0, 0, 0.5],
-            "x_offset": 5,
-            "y_offset": 5,
+            "x_offset": 0,
+            "y_offset": 0,
             "bg_padding": 5,
             "font_filepath": {
                 "windows": "",

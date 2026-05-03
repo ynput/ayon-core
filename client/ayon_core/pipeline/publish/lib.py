@@ -41,7 +41,7 @@ from .constants import (
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.traits import Representation
-
+    from ayon_core.pipeline.anatomy import AnatomyStringTemplate
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
@@ -1111,10 +1111,35 @@ def get_instance_expected_output_path(
         project_settings=instance.context.data["project_settings"],
     )
 
-    path_template_obj = anatomy.get_template_item(
+    path_template_obj: AnatomyStringTemplate = anatomy.get_template_item(
         "publish",
         template_name
     )["path"]
+
+    # Define {originalBasename} template key which can be used in publish
+    # template to use to original filename.
+    if "originalbasename" in path_template_obj.template.lower():
+        repre = next(
+            (
+                repre for repre in instance.data.get("representations", [])
+                if repre["name"] == representation_name
+            ),
+            None
+        )
+        if not repre:
+            raise ValueError(
+                "Unable to format 'originalBasename' for representation "
+                f"{representation_name} because representation is not found"
+                " on instance."
+            )
+
+        first_file = repre["files"]
+        if isinstance(first_file, list):
+            first_file = first_file[0]
+
+        basename = os.path.splitext(first_file)[0]
+        template_data["originalBasename"] = basename
+
     template_filled = path_template_obj.format_strict(template_data)
     return os.path.normpath(template_filled)
 
@@ -1388,3 +1413,15 @@ def _get_last_version_files(
     ]
 
     return (version_entity, repre_file_paths)
+
+
+def get_default_reviewable_layers(project_settings: dict) -> list[str]:
+    """Get default reviewable layers from project settings.
+
+    Args:
+        project_settings (dict): Project settings.
+
+    Returns:
+        list[str]: List of default reviewable layers.
+    """
+    return project_settings["core"]["reviewable_layers"]["review_layers"]
