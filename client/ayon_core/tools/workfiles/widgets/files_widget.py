@@ -5,6 +5,7 @@ from qtpy import QtWidgets, QtCore
 
 from ayon_ui_qt.components.container import AYContainer
 from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+from ayon_ui_qt.components.buttons import AYButton
 
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
@@ -37,12 +38,18 @@ class FilesWidget(AYContainer):
         btns_widget = QtWidgets.QWidget(self)
 
         workarea_btns_widget = QtWidgets.QWidget(btns_widget)
-        workarea_btn_open = QtWidgets.QPushButton(
-            "Open", workarea_btns_widget)
-        workarea_btn_browse = QtWidgets.QPushButton(
-            "Browse", workarea_btns_widget)
-        workarea_btn_save = QtWidgets.QPushButton(
-            "Save As", workarea_btns_widget)
+        workarea_btn_open = AYButton(
+            "Open", variant=AYButton.Variants.Filled,
+            fixed_width=False, parent=workarea_btns_widget,
+        )
+        workarea_btn_browse = AYButton(
+            "Browse", variant=AYButton.Variants.Surface,
+            fixed_width=False, parent=workarea_btns_widget,
+        )
+        workarea_btn_save = AYButton(
+            "Save As", variant=AYButton.Variants.Tonal,
+            fixed_width=False, parent=workarea_btns_widget,
+        )
 
         workarea_btns_layout = AYHBoxLayout(workarea_btns_widget, margin=0, spacing=4)
         workarea_btns_layout.addWidget(workarea_btn_open, 1)
@@ -50,14 +57,17 @@ class FilesWidget(AYContainer):
         workarea_btns_layout.addWidget(workarea_btn_save, 1)
 
         published_btns_widget = QtWidgets.QWidget(btns_widget)
-        published_btn_copy_n_open = QtWidgets.QPushButton(
-            "Copy && Open", published_btns_widget
+        published_btn_copy_n_open = AYButton(
+            "Copy && Open", variant=AYButton.Variants.Filled,
+            fixed_width=False, parent=published_btns_widget,
         )
-        published_btn_change_context = QtWidgets.QPushButton(
-            "Choose different context", published_btns_widget
+        published_btn_change_context = AYButton(
+            "Choose different context", variant=AYButton.Variants.Surface,
+            fixed_width=False, parent=published_btns_widget,
         )
-        published_btn_cancel = QtWidgets.QPushButton(
-            "Cancel", published_btns_widget
+        published_btn_cancel = AYButton(
+            "Cancel", variant=AYButton.Variants.Tertiary,
+            fixed_width=False, parent=published_btns_widget,
         )
 
         published_btns_layout = AYHBoxLayout(published_btns_widget, margin=0, spacing=4)

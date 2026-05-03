@@ -4,6 +4,8 @@ from ayon_ui_qt.components.container import AYContainer
 from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
 from ayon_ui_qt.components.line_edit import AYLineEdit
 from ayon_ui_qt.components.buttons import AYButton
+from ayon_ui_qt.components.check_box import AYCheckBox
+from ayon_ui_qt.components.label import AYLabel
 
 from ayon_core import resources, style
 from ayon_core.tools.utils import (
@@ -24,18 +26,18 @@ class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        label_widget = QtWidgets.QLabel(
+        label_widget = AYLabel(
             (
                 "Workfiles tool is not supported in this host/DCCs."
                 "<br/><br/>This may be caused by a bug."
                 " Please contact your TD for more information."
             ),
-            self
+            parent=self,
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
         label_widget.setObjectName("OverlayFrameLabel")
 
-        layout = QtWidgets.QVBoxLayout(self)
+        layout = AYVBoxLayout(self)
         layout.addStretch(2)
         layout.addWidget(label_widget, 0, QtCore.Qt.AlignCenter)
         layout.addStretch(3)
@@ -230,7 +232,7 @@ class WorkfilesToolWindow(AYContainer):
             parent=header_widget,
         )
 
-        published_checkbox = QtWidgets.QCheckBox("Published", header_widget)
+        published_checkbox = AYCheckBox("Published", parent=header_widget)
         published_checkbox.setToolTip("Show published workfiles")
 
         header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)

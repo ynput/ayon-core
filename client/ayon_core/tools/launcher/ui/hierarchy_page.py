@@ -1,11 +1,8 @@
-import qtawesome
 from ayon_ui_qt.components.buttons import AYButton
 from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
-    SquareButton,
-    RefreshButton,
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
@@ -52,13 +49,19 @@ class HierarchyPage(QtWidgets.QWidget):
         # Header
         header_widget = QtWidgets.QWidget(self)
 
-        btn_back_icon = qtawesome.icon("fa.angle-left", color="white")
-        btn_back = SquareButton(header_widget)
-        btn_back.setIcon(btn_back_icon)
+        btn_back = AYButton(
+            icon="arrow_back",
+            variant=AYButton.Variants.Nav,
+            parent=header_widget,
+        )
 
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
-        refresh_btn = RefreshButton(header_widget)
+        refresh_btn = AYButton(
+            icon="refresh",
+            variant=AYButton.Variants.Surface,
+            parent=header_widget,
+        )
 
         header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(btn_back, 0)

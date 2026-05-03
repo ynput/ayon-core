@@ -5,6 +5,9 @@ from qtpy import QtCore, QtWidgets
 
 from ayon_ui_qt.components.container import AYContainer
 from ayon_ui_qt.components.layouts import AYVBoxLayout
+from ayon_ui_qt.components.buttons import AYButton
+from ayon_ui_qt.components.label import AYLabel
+from ayon_ui_qt.components.text_edit import AYTextEdit
 
 
 def file_size_to_string(file_size):
@@ -51,15 +54,16 @@ class SidePanelWidget(AYContainer):
             layout_spacing=0,
         )
 
-        details_label = QtWidgets.QLabel("Details", self)
-        details_input = QtWidgets.QPlainTextEdit(self)
+        details_label = AYLabel("Details", parent=self)
+        details_input = AYTextEdit(self)
         details_input.setReadOnly(True)
 
         description_widget = QtWidgets.QWidget(self)
-        description_label = QtWidgets.QLabel("Artist note", description_widget)
-        description_input = QtWidgets.QPlainTextEdit(description_widget)
-        btn_description_save = QtWidgets.QPushButton(
-            "Save note", description_widget
+        description_label = AYLabel("Artist note", parent=description_widget)
+        description_input = AYTextEdit(description_widget)
+        btn_description_save = AYButton(
+            "Save note", variant=AYButton.Variants.Tonal,
+            fixed_width=False, parent=description_widget,
         )
 
         description_layout = AYVBoxLayout(description_widget, margin=0, spacing=4)
