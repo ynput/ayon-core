@@ -379,6 +379,14 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """
         pass
 
+    @abstractmethod
+    def open_workfile_with_app(
+        self, workfile_id: str, host_name: Optional[str]
+    ) -> None:
+        """Launch the preferred application action for a workfile."""
+
+        pass
+
     # Actions
     @abstractmethod
     def get_action_items(
