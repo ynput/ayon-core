@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import copy
 import os
+from pathlib import Path
+import platform
 import re
-import warnings
-from copy import deepcopy
+import typing
 from typing import Any, Union, Optional
+import warnings
 
 import attr
 import ayon_api
 import clique
+
 from ayon_core.lib import Logger
 from ayon_core.lib.file_transaction import copyfile
 from ayon_core.settings import get_project_settings
@@ -21,6 +24,9 @@ from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.publish.input_versions import serialize_input_versions
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
 
 log = Logger.get_logger(__name__)
 
@@ -55,11 +61,47 @@ def remap_source(path, anatomy):
         anatomy.find_root_template_from_path(path)
     )
     if success:
-        source = rootless_path
-    else:
-        raise ValueError(
-            "Root from template path cannot be found: {}".format(path))
-    return source
+        return rootless_path
+    raise ValueError(
+        f"Root from template path cannot be found: {path}"
+    )
+
+
+def find_colorspace_template(
+    colorspace_path: str,
+    anatomy: Anatomy,
+) -> str | None:
+    """Find template for colorspace path.
+
+    Try to use builtin OCIO if path is relative to it. If not, try to
+        remap path using anatomy. If that fails, return None.
+
+    Args:
+        colorspace_path (str): Path to colorspace.
+        anatomy (Anatomy): Project anatomy object.
+
+    Returns:
+        str | None: Template to use for colorspace path.
+
+    """
+    builtin_path = os.getenv("BUILTIN_OCIO_ROOT")
+    if builtin_path:
+        builtin_path = Path(builtin_path).resolve().absolute()
+        path = Path(colorspace_path).resolve().absolute()
+        if path.is_relative_to(builtin_path):
+            relative = str(path.relative_to(builtin_path))
+            if platform.system().lower() == "windows":
+                relative = relative.replace("\\", "/")
+            return f"{{BUILTIN_OCIO_ROOT}}/{relative}"
+
+    output = None
+    try:
+        output = remap_source(colorspace_path, anatomy)
+        if platform.system().lower() == "windows":
+            output = output.replace("\\", "/")
+    except ValueError:
+        pass
+    return output
 
 
 def extend_frames(folder_path, product_name, start, end):
@@ -663,12 +705,8 @@ def create_instances_for_aov(
 
         # Get templated path from absolute config path.
         anatomy = instance.context.data["anatomy"]
-        try:
-            additional_data["colorspaceTemplate"] = remap_source(
-                colorspace_config, anatomy)
-        except ValueError as e:
-            log.warning(e)
-            additional_data["colorspaceTemplate"] = colorspace_config
+        template = find_colorspace_template(colorspace_config, anatomy)
+        additional_data["colorspaceTemplate"] = template or colorspace_config
 
     # create instances for every AOV we found in expected files.
     # NOTE: this is done for every AOV and every render camera (if
@@ -826,7 +864,7 @@ def get_product_name_and_group_from_template(
     # for possible solution.
     if dynamic_data is None:
         dynamic_data = {}
-    _dynamic_data = deepcopy(dynamic_data)
+    _dynamic_data = copy.deepcopy(dynamic_data)
     _dynamic_data.pop("aov", None)
 
     resulting_group_name = get_product_name(
@@ -992,7 +1030,7 @@ def _create_instances_for_aov(
             host_name, aov_patterns, render_file_name
         )
 
-        new_instance = deepcopy(skeleton)
+        new_instance = copy.deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
         new_instance["aov"] = aov
@@ -1383,7 +1421,7 @@ def create_instances_for_cache(instance, skeleton):
         except ValueError as e:
             log.warning(e)
 
-        new_instance = deepcopy(skeleton)
+        new_instance = copy.deepcopy(skeleton)
 
         log.info("Creating data for: {}".format(product_name))
         new_instance["productName"] = product_name
