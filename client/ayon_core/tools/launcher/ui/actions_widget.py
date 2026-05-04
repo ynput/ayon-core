@@ -4,7 +4,7 @@ import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components import AYContainer
 
 from ayon_core.lib import Logger
 from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs

@@ -7,7 +7,7 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components import AYContainer
 
 from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate

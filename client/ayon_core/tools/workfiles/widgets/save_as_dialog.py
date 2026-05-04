@@ -1,12 +1,9 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_ui_qt.components.buttons import AYButton
-from ayon_ui_qt.components.check_box import AYCheckBox
-from ayon_ui_qt.components.combo_box import AYComboBox
-from ayon_ui_qt.components.label import AYLabel
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout, AYGridLayout
-from ayon_ui_qt.components.line_edit import AYLineEdit
-
+from ayon_ui_qt.components import (
+    AYButton, AYCheckBox, AYComboBox, AYLabel,
+    AYHBoxLayout, AYVBoxLayout, AYGridLayout, AYLineEdit,
+)
 from ayon_core.tools.utils import PlaceholderPlainTextEdit
 
 
@@ -127,11 +124,11 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         btn_ok = AYButton(
             "Ok", variant=AYButton.Variants.Filled,
-            fixed_width=False, parent=btns_widget,
+            parent=btns_widget,
         )
         btn_cancel = AYButton(
-            "Cancel", variant=AYButton.Variants.Tertiary,
-            fixed_width=False, parent=btns_widget,
+            "Cancel", variant=AYButton.Variants.Surface,
+            parent=btns_widget,
         )
 
         btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=4)
@@ -176,8 +173,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input = SubversionLineEdit(inputs_widget)
         subversion_input.set_placeholder("Will be part of filename.")
 
-        # Extensions combobox
-        extension_combobox = AYComboBox(parent=inputs_widget)
+        # Extensions combobox — plain=True renders native Qt dropdown with
+        # standard arrow indicator instead of AYON status/pill style.
+        extension_combobox = AYComboBox(parent=inputs_widget, plain=True)
         # Add styled delegate to use stylesheets
         extension_delegate = QtWidgets.QStyledItemDelegate()
         extension_combobox.setItemDelegate(extension_delegate)
@@ -253,6 +251,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         # Force default focus to comment, some hosts didn't automatically
         # apply focus to this line edit (e.g. Houdini)
         subversion_input.setFocus()
+
+        # Put description_input into edit mode immediately so the blinking
+        # cursor makes it visually obvious it is an editable field.
+        description_input.setFocus()
+        description_input.ensureCursorVisible()
 
     def get_result(self):
         return self._result

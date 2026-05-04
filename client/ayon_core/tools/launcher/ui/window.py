@@ -1,7 +1,6 @@
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
-from ayon_ui_qt.components.line_edit import AYLineEdit
-from ayon_ui_qt.components.buttons import AYButton
+from ayon_ui_qt.components import (
+    AYContainer, AYHBoxLayout, AYVBoxLayout, AYLineEdit, AYButton,
+)
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style, resources

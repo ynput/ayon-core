@@ -1,11 +1,11 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
-from ayon_ui_qt.components.line_edit import AYLineEdit
-from ayon_ui_qt.components.buttons import AYButton
-from ayon_ui_qt.components.check_box import AYCheckBox
-from ayon_ui_qt.components.label import AYLabel
+from ayon_ui_qt.components import (
+    AYButton, AYCheckBox, AYLabel, AYContainer,
+    AYHBoxLayout, AYVBoxLayout, AYLineEdit
+)
+
+
 
 from ayon_core import resources, style
 from ayon_core.tools.utils import (
@@ -234,6 +234,7 @@ class WorkfilesToolWindow(AYContainer):
 
         published_checkbox = AYCheckBox("Published", parent=header_widget)
         published_checkbox.setToolTip("Show published workfiles")
+        published_checkbox.setMinimumWidth(100)
 
         header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(files_filter_input, 1)

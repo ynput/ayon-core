@@ -1,8 +1,6 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_ui_qt.components.buttons import AYButton
-from ayon_ui_qt.components.label import AYLabel
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+from ayon_ui_qt.components import AYButton, AYLabel, AYHBoxLayout, AYVBoxLayout
 
 from ayon_core.style import load_stylesheet, get_app_icon_path
 from ayon_core.pipeline.workfile.lock_workfile import get_workfile_lock_data
@@ -28,11 +26,11 @@ class WorkfileLockDialog(QtWidgets.QDialog):
 
         cancel_btn = AYButton(
             "Cancel", variant=AYButton.Variants.Tertiary,
-            fixed_width=False, parent=btns_widget,
+            parent=btns_widget,
         )
         ignore_btn = AYButton(
             "Ignore lock", variant=AYButton.Variants.Danger,
-            fixed_width=False, parent=btns_widget,
+            parent=btns_widget,
         )
 
         btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)

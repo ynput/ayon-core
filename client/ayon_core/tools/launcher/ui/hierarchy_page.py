@@ -1,5 +1,4 @@
-from ayon_ui_qt.components.buttons import AYButton
-from ayon_ui_qt.components.layouts import AYHBoxLayout, AYVBoxLayout
+from ayon_ui_qt.components import AYButton, AYHBoxLayout, AYVBoxLayout
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (

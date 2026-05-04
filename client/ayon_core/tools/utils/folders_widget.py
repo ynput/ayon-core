@@ -4,6 +4,8 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
+from ayon_ui_qt.components import AYCheckBox
+
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
@@ -16,7 +18,6 @@ from .models import RecursiveSortFilterProxyModel
 from .views import TreeView
 from .lib import RefreshThread, get_qt_icon
 from .widgets import PlaceholderLineEdit
-from .nice_checkbox import NiceCheckbox
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -814,18 +815,15 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         my_tasks_tooltip = (
             "Filter folders and task to only those you are assigned to."
         )
-        my_tasks_label = QtWidgets.QLabel("My tasks", self)
-        my_tasks_label.setToolTip(my_tasks_tooltip)
-
-        my_tasks_checkbox = NiceCheckbox(self)
+        my_tasks_checkbox = AYCheckBox("My tasks", parent=self)
         my_tasks_checkbox.setChecked(False)
         my_tasks_checkbox.setToolTip(my_tasks_tooltip)
+        my_tasks_checkbox.setMinimumWidth(100)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
         layout.addWidget(folders_filter_input, 1)
-        layout.addWidget(my_tasks_label, 0)
         layout.addWidget(my_tasks_checkbox, 0)
 
         folders_filter_input.textChanged.connect(self.text_changed)
