@@ -67,6 +67,8 @@ class WorkfileItem:
     icon: str | None
     version: int | None
     updated_at_time: float | None
+    representation_id: str | None = None
+    representation_path: str | None = None
 
 
 class AbstractLauncherCommon(ABC):
@@ -165,6 +167,14 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     @abstractmethod
     def set_grouped_host_names(self, host_names: list[str | None]):
         """Set list of host names that will group workfiles."""
+
+    def get_show_published_workfiles(self) -> bool:
+        """Whether published workfile representations are listed (launcher UI)."""
+        return False
+
+    def set_show_published_workfiles(self, enabled: bool) -> None:
+        """Persist preference for published-mode listing (launcher UI)."""
+        return
 
     # Entity items for UI
     @abstractmethod

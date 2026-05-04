@@ -74,7 +74,10 @@ class HierarchyPage(QtWidgets.QWidget):
         content_body.setOrientation(QtCore.Qt.Horizontal)
 
         # - filters
-        filters_widget = FoldersFiltersWidget(self)
+        filters_widget = FoldersFiltersWidget(
+            self,
+            show_published_workfiles_filter=True,
+        )
 
         # - Folders widget
         folders_widget = LauncherFoldersWidget(controller, content_body)
@@ -106,6 +109,9 @@ class HierarchyPage(QtWidgets.QWidget):
         filters_widget.my_tasks_changed.connect(
             self._on_my_tasks_checkbox_state_changed
         )
+        filters_widget.published_mode_changed.connect(
+            self._on_published_mode_changed
+        )
         folders_widget.focused_in.connect(self._on_folders_focus)
         tasks_widget.focused_in.connect(self._on_tasks_focus)
 
@@ -120,6 +126,10 @@ class HierarchyPage(QtWidgets.QWidget):
         self._workfiles_page = workfiles_page
 
         self._project_name = None
+
+        filters_widget.set_published_mode_checked(
+            controller.get_show_published_workfiles()
+        )
 
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
@@ -163,6 +173,10 @@ class HierarchyPage(QtWidgets.QWidget):
 
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
+
+    def _on_published_mode_changed(self, enabled: bool) -> None:
+        self._controller.set_show_published_workfiles(enabled)
+        self._workfiles_page.refresh()
 
     def _on_folders_focus(self):
         self._workfiles_page.deselect()

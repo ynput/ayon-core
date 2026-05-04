@@ -25,6 +25,10 @@ from .models import (
     ActionsModel,
     WorkfilesModel,
 )
+from .launcher_open_publish import (
+    host_name_for_path_from_ext_map,
+    run_open_published_representation_local,
+)
 
 NOT_SET = object()
 
@@ -87,11 +91,11 @@ class BaseLauncherController(
         self.event_system.add_callback(topic, callback)
 
     def set_run_on_main_thread(self, executor):
-        """Set executor(fn) to run ``fn`` on the main UI thread."""
+        """Set executor(fn) to run `fn` on the main UI thread."""
         self._run_on_main_thread = executor
 
     def run_on_main_thread(self, fn):
-        """Run ``fn`` on the main thread (defer if executor set)."""
+        """Run `fn` on the main thread (defer if executor set)."""
         if getattr(self, "_run_on_main_thread", None):
             self._run_on_main_thread(fn)
         else:
@@ -101,6 +105,23 @@ class BaseLauncherController(
         if self._addons_manager is None:
             self._addons_manager = AddonsManager()
         return self._addons_manager
+
+    def get_extension_to_host_map(self) -> dict[str, str]:
+        """Normalized extension -> host_name (from cached applications index)."""
+        return self._workfiles_model.get_extension_to_host_map()
+
+    def get_tray_workfile_extensions(self) -> list[str]:
+        """Extensions from installed host addons (tray `IWorkfileHost` / workfile UI)."""
+        return self._workfiles_model.get_all_workfile_extensions()
+
+    def _warn_launcher_open(self, message: str) -> None:
+        """Show a modal warning on the UI thread (Launcher window may be hidden)."""
+        from qtpy import QtWidgets
+
+        def show() -> None:
+            QtWidgets.QMessageBox.warning(None, "Launcher", message)
+
+        self.run_on_main_thread(show)
 
     def get_grouped_host_names(self) -> list[str | None]:
         try:
@@ -116,6 +137,24 @@ class BaseLauncherController(
     def set_grouped_host_names(self, host_names: list[str | None]):
         value = json.dumps(host_names)
         self._launcher_registry.set_item("grouped_hosts", value)
+
+    def get_show_published_workfiles(self) -> bool:
+        try:
+            raw = self._launcher_registry.get_item(
+                "show_published_workfiles", default="false"
+            )
+            return raw in ("true", "1", "True")
+        except Exception:
+            self.log.warning(
+                "Failed to read registry key show_published_workfiles",
+                exc_info=True,
+            )
+            return False
+
+    def set_show_published_workfiles(self, enabled: bool) -> None:
+        self._launcher_registry.set_item(
+            "show_published_workfiles", "true" if enabled else "false"
+        )
 
     # Entity items for UI
     def get_project_items(self, sender=None):
@@ -232,6 +271,21 @@ class BaseLauncherController(
             workfile_id,
         )
 
+    def get_published_workfile_tooltip_data(
+        self,
+        representation_id: Optional[str],
+        representation_filepath: Optional[str],
+    ) -> str:
+        """On-demand tooltip for a published representation row."""
+        if not representation_id:
+            return ""
+        return self._workfiles_model.get_published_representation_tooltip_data(
+            self.get_selected_project_name(),
+            self.get_selected_task_id(),
+            representation_id,
+            representation_filepath,
+        )
+
     # Actions
     def get_action_items(
         self, project_name, folder_id, task_id, workfile_id
@@ -266,28 +320,82 @@ class BaseLauncherController(
             workfile_id,
         )
 
+    def open_published_representation_local(
+        self,
+        _representation_id: str,
+        representation_filepath: str,
+    ) -> None:
+        """Copy published file to a temporary folder and launch DCC.
+
+        Delegates to ``launcher_open_publish.run_open_published_representation_local``.
+        Does not register a workfile on the server; the artist saves/version
+        from the host application when ready.
+        """
+        run_open_published_representation_local(
+            self.get_selected_project_name(),
+            self.get_selected_folder_id(),
+            self.get_selected_task_id(),
+            representation_filepath,
+            get_project_entity=self.get_project_entity,
+            get_extension_to_host_map=self.get_extension_to_host_map,
+            warn_user=self._warn_launcher_open,
+            log=self.log,
+            launch=lambda host_name, project_name, folder_id, task_id, path: (
+                self._actions_model.trigger_launch_by_host_with_workfile_path(
+                    host_name,
+                    project_name,
+                    folder_id,
+                    task_id,
+                    path,
+                )
+            ),
+        )
+
     def open_workfile_with_app(
         self, workfile_id: str, host_name: Optional[str]
     ) -> None:
         """Launch preferred app for host with this workfile selected."""
         from ayon_api import get_server_api_connection
+
         project_name = self.get_selected_project_name()
         if not project_name:
             return
-        if not host_name:
-            conn = get_server_api_connection()
-            entity = conn.get_workfile_entity_by_id(
-                project_name, workfile_id, fields=("data",)
-            )
-            if not entity:
-                return
-            host_name = (entity.get("data") or {}).get("host_name")
-        if not host_name:
-            return
-        effective_id = (
-            self.get_preferred_launch_action_id_for_host(host_name)
-            or host_name
+
+        ext_map = self.get_extension_to_host_map()
+        conn = get_server_api_connection()
+        entity = conn.get_workfile_entity_by_id(
+            project_name, workfile_id, fields=("data", "path")
         )
+        if not entity:
+            self._warn_launcher_open("Workfile not found; cannot open.")
+            return
+
+        data = entity.get("data") or {}
+        path = entity.get("path")
+        path_host = (
+            host_name_for_path_from_ext_map(path, ext_map) if path else None
+        )
+
+        # Prefer host inferred from filename extension when known; published or
+        # legacy workfile records can have a wrong data.host_name (e.g. default
+        # to a DCC that does not match the file on disk).
+        if path_host:
+            host_name = path_host
+        else:
+            if not host_name or host_name == "launcher":
+                host_name = data.get("host_name")
+            if (not host_name) or host_name == "launcher":
+                host_name = None
+
+        if not host_name:
+            self._warn_launcher_open(
+                "Could not determine which application to use for this "
+                "workfile."
+            )
+            return
+
+        preferred = self.get_preferred_launch_action_id_for_host(host_name)
+        effective_id = preferred or host_name
         self.trigger_action(
             effective_id,
             project_name,

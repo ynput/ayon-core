@@ -1122,6 +1122,12 @@ class IWorkfileHost(AbstractHost):
         if not extensions:
             return []
 
+        # Host addons may return extensions with or without a leading dot.
+        # Compare dotless suffixes so this matches the launcher applications index.
+        allowed_ext_suffixes = {
+            str(e).lower().lstrip(".") for e in extensions if e
+        }
+
         list_workfiles_context = get_list_workfiles_context(
             project_name,
             folder_entity,
@@ -1180,8 +1186,8 @@ class IWorkfileHost(AbstractHost):
         items = []
         for filename in filenames:
             # TODO add 'default' support for folders
-            ext = os.path.splitext(filename)[1].lower()
-            if ext not in extensions:
+            ext_suffix = os.path.splitext(filename)[1].lower().lstrip(".")
+            if ext_suffix not in allowed_ext_suffixes:
                 continue
 
             filepath = os.path.join(workdir, filename)
@@ -1220,8 +1226,10 @@ class IWorkfileHost(AbstractHost):
             # Workfile entity is not in the filesystem
             #   but it is in the database
             rootless_path = workfile_entity["path"]
-            ext = os.path.splitext(rootless_path)[1].lower()
-            if ext not in extensions:
+            ext_suffix = os.path.splitext(rootless_path)[1].lower().lstrip(
+                "."
+            )
+            if ext_suffix not in allowed_ext_suffixes:
                 continue
 
             _data = workfile_entity.get("data") or {}

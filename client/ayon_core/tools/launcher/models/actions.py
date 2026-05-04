@@ -266,8 +266,36 @@ class ActionsModel:
             if host_name:
                 self._last_triggered_action_by_host[host_name] = identifier
 
+    def trigger_launch_by_host_with_workfile_path(
+        self,
+        host_name: str,
+        project_name: str,
+        folder_id: str,
+        task_id: str,
+        workfile_path: str,
+    ) -> None:
+        """Launch host app with a filesystem path (no workfile entity).
+
+        Used when opening a published file locally without registering a new
+        workfile version on the server. User-facing orchestration for that flow
+        lives in ``launcher_open_publish.run_open_published_representation_local``
+        and ``BaseLauncherController.open_published_representation_local``.
+        """
+        selection = self._prepare_selection(
+            project_name, folder_id, task_id, None
+        )
+        self._trigger_launch_by_host(
+            host_name,
+            selection,
+            explicit_workfile_path=workfile_path,
+        )
+
     def _trigger_launch_by_host(
-        self, host_name: str, selection: LauncherActionSelection
+        self,
+        host_name: str,
+        selection: LauncherActionSelection,
+        *,
+        explicit_workfile_path: Optional[str] = None,
     ) -> None:
         """Launch bare host name via applications addon."""
         applications_addon = (
@@ -314,7 +342,7 @@ class ActionsModel:
             )
             return
 
-        if app.full_name in self._actions:
+        if app.full_name in self._actions and not explicit_workfile_path:
             self.trigger_action(
                 app.full_name,
                 selection.project_name,
@@ -353,7 +381,9 @@ class ActionsModel:
                     folder_path = folder_entity.get("path") or ""
                     task_name = task_entity.get("name") or ""
             workfile_path = None
-            if workfile_id:
+            if explicit_workfile_path:
+                workfile_path = explicit_workfile_path
+            elif workfile_id:
                 cache = self._workfile_path_cache[project_name][workfile_id]
                 if cache.is_valid:
                     workfile_path = cache.get_data()

@@ -16,6 +16,8 @@ WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 5
+REPRESENTATION_ID_ROLE = QtCore.Qt.UserRole + 6
+REPRESENTATION_PATH_ROLE = QtCore.Qt.UserRole + 7
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -65,6 +67,8 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         workfile_items = self._controller.get_workfile_items(
             self._selected_project_name, self._selected_task_id
         )
+        published_mode = self._controller.get_show_published_workfiles()
+
         items_by_host_name = collections.defaultdict(list)
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
@@ -73,10 +77,21 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
-            item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
+            item.setData(
+                None
+                if workfile_item.representation_id
+                else workfile_item.workfile_id,
+                WORKFILE_ID_ROLE,
+            )
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
+            rid = workfile_item.representation_id
+            item.setData(rid, REPRESENTATION_ID_ROLE)
+            item.setData(
+                workfile_item.representation_path,
+                REPRESENTATION_PATH_ROLE,
+            )
             item.setColumnCount(2)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
@@ -85,27 +100,35 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
             items_by_host_name[host_name].append(item)
 
-        new_items = []
+        new_items: list = []
         host_items_by_name = {}
-        for host_name, items in items_by_host_name.items():
-            icon = next(
-                (item.data(QtCore.Qt.DecorationRole) for item in items),
-                None
-            )
+        if published_mode:
+            for host_name in sorted(
+                items_by_host_name.keys(),
+                key=lambda x: (x is None, x or ""),
+            ):
+                new_items.extend(items_by_host_name[host_name])
+            host_items_by_name = {}
+        else:
+            for host_name, items in items_by_host_name.items():
+                icon = next(
+                    (it.data(QtCore.Qt.DecorationRole) for it in items),
+                    None
+                )
 
-            host_item = QtGui.QStandardItem(
-                host_name or "<Unknown Host>"
-            )
-            host_item.setData(icon, QtCore.Qt.DecorationRole)
-            host_item.setData(host_name, HOST_NAME_ROLE)
-            host_item.setData(1, ITEM_TYPE_ROLE)
-            host_item.setFlags(QtCore.Qt.ItemIsEnabled)
-            host_item.setColumnCount(2)
-            host_items_by_name[host_name] = host_item
-            if host_name in self._group_host_names:
-                new_items.append(host_item)
-            else:
-                new_items.extend(items)
+                host_item = QtGui.QStandardItem(
+                    host_name or "<Unknown Host>"
+                )
+                host_item.setData(icon, QtCore.Qt.DecorationRole)
+                host_item.setData(host_name, HOST_NAME_ROLE)
+                host_item.setData(1, ITEM_TYPE_ROLE)
+                host_item.setFlags(QtCore.Qt.ItemIsEnabled)
+                host_item.setColumnCount(2)
+                host_items_by_name[host_name] = host_item
+                if host_name in self._group_host_names:
+                    new_items.append(host_item)
+                else:
+                    new_items.extend(items)
 
         if not new_items:
             title = "< No workfiles >"
@@ -223,15 +246,23 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item = self.itemFromIndex(tip_index)
             if item is None:
                 return None
+            rep_id = item.data(REPRESENTATION_ID_ROLE)
+            if rep_id:
+                path = item.data(REPRESENTATION_PATH_ROLE) or ""
+                tip = self._controller.get_published_workfile_tooltip_data(
+                    str(rep_id), path
+                )
+                if tip:
+                    return tip
+                return path or item.data(QtCore.Qt.DisplayRole)
             workfile_id = item.data(WORKFILE_ID_ROLE)
             if workfile_id is None:
                 return None
-            if hasattr(self._controller, "get_workfile_tooltip_data"):
-                tooltip = self._controller.get_workfile_tooltip_data(
-                    workfile_id
-                )
-                if tooltip:
-                    return tooltip
+            tooltip = self._controller.get_workfile_tooltip_data(
+                workfile_id
+            )
+            if tooltip:
+                return tooltip
             filename = item.data(QtCore.Qt.DisplayRole) or ""
             version = item.data(VERSION_ROLE)
             version_str = str(version) if version is not None else "—"
@@ -413,7 +444,13 @@ class WorkfilesPage(QtWidgets.QWidget):
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
         for index in selected.indexes():
-            workfile_id = index.data(WORKFILE_ID_ROLE)
+            idx = index
+            if idx.column() != 0:
+                idx = idx.sibling(idx.row(), 0)
+            if idx.data(REPRESENTATION_ID_ROLE):
+                workfile_id = None
+                break
+            workfile_id = idx.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
 
     def _on_view_clicked(self, proxy_index: QtCore.QModelIndex) -> None:
@@ -436,6 +473,18 @@ class WorkfilesPage(QtWidgets.QWidget):
             return
 
         if item_type != 0:
+            return
+
+        rep_id = source_index.data(REPRESENTATION_ID_ROLE)
+        if rep_id:
+            path = source_index.data(REPRESENTATION_PATH_ROLE)
+            if not path or not (
+                source_index.flags() & QtCore.Qt.ItemIsEnabled
+            ):
+                return
+            self._controller.open_published_representation_local(
+                str(rep_id), str(path)
+            )
             return
 
         workfile_id = source_index.data(WORKFILE_ID_ROLE)

@@ -804,8 +804,18 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
     """Helper widget for most commonly used filters in context selection."""
     text_changed = QtCore.Signal(str)
     my_tasks_changed = QtCore.Signal(bool)
+    published_mode_changed = QtCore.Signal(bool)
 
-    def __init__(self, parent: QtWidgets.QWidget) -> None:
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget,
+        *,
+        show_published_workfiles_filter: bool = False,
+    ) -> None:
+        """Args:
+            show_published_workfiles_filter: When True, show the Published
+                checkbox (e.g. tray Launcher hierarchy next to workfiles).
+        """
         super().__init__(parent)
 
         folders_filter_input = PlaceholderLineEdit(self)
@@ -825,6 +835,24 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
         layout.addWidget(folders_filter_input, 1)
+
+        self._published_checkbox = None
+        if show_published_workfiles_filter:
+            pub_tooltip = (
+                "List published workfile representations for this task "
+                "(double-click opens a temporary local publish copy; no new "
+                "workfile version on the server)."
+            )
+            pub_label = QtWidgets.QLabel("Published", self)
+            pub_label.setToolTip(pub_tooltip)
+            pub_checkbox = NiceCheckbox(self)
+            pub_checkbox.setChecked(False)
+            pub_checkbox.setToolTip(pub_tooltip)
+            layout.addWidget(pub_label, 0)
+            layout.addWidget(pub_checkbox, 0)
+            pub_checkbox.stateChanged.connect(self._on_published_change)
+            self._published_checkbox = pub_checkbox
+
         layout.addWidget(my_tasks_label, 0)
         layout.addWidget(my_tasks_checkbox, 0)
 
@@ -846,5 +874,20 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
     def set_my_tasks_checked(self, checked: bool) -> None:
         self._my_tasks_checkbox.setChecked(checked)
 
+    def is_published_mode_checked(self) -> bool:
+        if self._published_checkbox is None:
+            return False
+        return self._published_checkbox.isChecked()
+
+    def set_published_mode_checked(self, checked: bool) -> None:
+        if self._published_checkbox is None:
+            return
+        self._published_checkbox.setChecked(checked)
+
     def _on_my_tasks_change(self, _state: int) -> None:
         self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())
+
+    def _on_published_change(self, _state: int) -> None:
+        if self._published_checkbox is None:
+            return
+        self.published_mode_changed.emit(self._published_checkbox.isChecked())
