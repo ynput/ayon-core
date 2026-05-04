@@ -416,11 +416,37 @@ class WorkfilesPage(QtWidgets.QWidget):
             workfile_id = index.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
 
-    def _on_view_clicked(self, index) -> None:
-        if not index.isValid() or index.data(ITEM_TYPE_ROLE) != 1:
+    def _on_view_clicked(self, proxy_index: QtCore.QModelIndex) -> None:
+        """Double-click: launch app for a workfile, or ungroup a host row."""
+        if not proxy_index.isValid():
             return
-        host_name = index.data(HOST_NAME_ROLE)
-        self._workfiles_model.set_group_by_host_name(host_name)
+
+        idx = proxy_index
+        if idx.column() != 0:
+            idx = idx.sibling(idx.row(), 0)
+
+        source_index = self._workfiles_proxy.mapToSource(idx)
+        if not source_index.isValid():
+            return
+
+        item_type = source_index.data(ITEM_TYPE_ROLE)
+        if item_type == 1:
+            host_name = source_index.data(HOST_NAME_ROLE)
+            self._workfiles_model.set_group_by_host_name(host_name)
+            return
+
+        if item_type != 0:
+            return
+
+        workfile_id = source_index.data(WORKFILE_ID_ROLE)
+        host_name = source_index.data(HOST_NAME_ROLE)
+        if workfile_id is None:
+            return
+        if not (source_index.flags() & QtCore.Qt.ItemIsEnabled):
+            return
+        self._controller.open_workfile_with_app(
+            str(workfile_id), host_name
+        )
 
     def _on_custom_menu_request(self, point):
         index = self._workfiles_view.indexAt(point)
