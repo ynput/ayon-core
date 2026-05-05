@@ -358,3 +358,77 @@ class OpenFileAction(LoaderActionPlugin):
             "File was opened...",
             success=True,
         )
+
+
+class OpenFolderAction(LoaderActionPlugin):
+    """Open representation containing folder with system default"""
+    identifier = "core.open-folder"
+
+    def get_action_items(
+        self, selection: LoaderActionSelection
+    ) -> list[LoaderActionItem]:
+        if selection.selected_type != "representation":
+            return []
+
+        repres = selection.entities.get_representations(
+            selection.selected_ids
+        )
+        if not repres:
+            return []
+
+        repre_ids_by_name = collections.defaultdict(set)
+        for repre in repres:
+            repre_ids_by_name[repre["name"]].add(repre["id"])
+
+        return [
+            LoaderActionItem(
+                label=repre_name,
+                group_label="Open folder",
+                order=31,
+                data={"representation_ids": list(repre_ids)},
+                icon={
+                    "type": "material-symbols",
+                    "name": "folder_open",
+                    "color": "#ffffff",
+                }
+            )
+            for repre_name, repre_ids in repre_ids_by_name.items()
+        ]
+
+    def execute_action(
+        self,
+        selection: LoaderActionSelection,
+        data: dict[str, Any],
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        folder_path = None
+        repre_path = None
+        repre_ids = data["representation_ids"]
+        for repre in selection.entities.get_representations(repre_ids):
+            repre_path = get_representation_path_with_anatomy(
+                repre, selection.get_project_anatomy()
+            )
+            folder_path = os.path.dirname(repre_path)
+            if os.path.isdir(folder_path):
+                break
+            folder_path = None
+
+        if folder_path is None:
+            if repre_path is None:
+                return LoaderActionResult(
+                    "Failed to fill representation path...",
+                    success=False,
+                )
+            return LoaderActionResult(
+                "Folder to open was not found...",
+                success=False,
+            )
+
+        self.log.info(f"Opening folder: {folder_path}")
+
+        open_file(folder_path)
+
+        return LoaderActionResult(
+            "Folder was opened...",
+            success=True,
+        )

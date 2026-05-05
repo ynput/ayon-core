@@ -4,7 +4,7 @@ import logging
 import os
 import tempfile
 import uuid
-from typing import Optional
+from typing import Optional, Any
 
 import ayon_api
 
@@ -159,19 +159,15 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         entity_ids: set[str],
         entity_type: str,
     ) -> list[ActionItem]:
-        if entity_type == "version":
-            action_items = self._loader_actions_model.get_versions_action_items(
-                project_name, entity_ids
-            )
-            action_items.extend(
-                self._sitesync_model.get_sitesync_action_items(
-                    project_name, entity_ids, entity_type
-                )
-            )
-            return action_items
-        return self.get_representations_action_items(
-            project_name, entity_ids
+        action_items = self._loader_actions_model.get_action_items(
+            project_name, entity_ids, entity_type
         )
+
+        site_sync_items = self._sitesync_model.get_sitesync_action_items(
+            project_name, entity_ids, entity_type
+        )
+        action_items.extend(site_sync_items)
+        return action_items
 
     # ---------------------------------
     # Implementation of abstract methods
@@ -335,43 +331,40 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         )
 
     def get_versions_action_items(self, project_name, version_ids):
-        return self._loader_actions_model.get_versions_action_items(
-            project_name, version_ids
-        )
+        return self.get_action_items(project_name, version_ids, "version")
 
     def get_representations_action_items(
         self, project_name, representation_ids
     ):
-        action_items = (
-            self._loader_actions_model.get_representations_action_items(
-                project_name, representation_ids
-            )
+        return self.get_action_items(
+            project_name, representation_ids, "representation"
         )
-
-        action_items.extend(
-            self._sitesync_model.get_sitesync_action_items(
-                project_name, representation_ids
-            )
-        )
-
-        return action_items
 
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids,
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(
-                identifier, project_name, representation_ids
+                project_name,
+                data,
             )
             return
 
         self._loader_actions_model.trigger_action_item(
-            identifier, options, project_name, version_ids, representation_ids
+            identifier=identifier,
+            project_name=project_name,
+            selected_ids=selected_ids,
+            selected_entity_type=selected_entity_type,
+            data=data,
+            options=options,
+            form_values=form_values,
         )
 
     # Selection model wrappers

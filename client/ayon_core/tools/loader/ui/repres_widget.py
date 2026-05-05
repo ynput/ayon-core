@@ -283,6 +283,9 @@ class RepresentationsWidget(QtWidgets.QWidget):
         repre_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
+        repre_view.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectRows
+        )
         repre_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         repre_view.setSortingEnabled(True)
         repre_view.setAlternatingRowColors(True)
@@ -403,12 +406,13 @@ class RepresentationsWidget(QtWidgets.QWidget):
         action_items = self._controller.get_action_items(
             self._selected_project_name, repre_ids, "representation"
         )
-        global_point = self._repre_view.mapToGlobal(point)
+        global_point = self._repre_view.viewport().mapToGlobal(point)
         result = show_actions_menu(
             action_items,
             global_point,
             len(repre_ids) == 1,
-            self
+            self,
+            use_representation_submenus=len(repre_ids) > 1,
         )
         action_item, options = result
         if action_item is None or options is None:
