@@ -17,8 +17,6 @@ from .products_model import (
     REPRESENTATIONS_COUNT_ROLE,
     SYNC_ACTIVE_SITE_AVAILABILITY,
     SYNC_REMOTE_SITE_AVAILABILITY,
-    ACTIVE_SITE_NAME_ROLE,
-    REMOTE_SITE_NAME_ROLE,
 )
 
 COMBO_VERSION_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -228,15 +226,24 @@ class VersionComboBox(QtWidgets.QComboBox):
             version_items, task_tags_by_version_id
         )
 
-        index = version_ids.index(current_version_id)
-        if self.currentIndex() != index:
+        if not version_ids:
+            self.blockSignals(False)
+            return
+
+        try:
+            index = version_ids.index(current_version_id)
+        except ValueError:
+            index = 0
+        if 0 <= index < self.count() and self.currentIndex() != index:
             self.setCurrentIndex(index)
         self.blockSignals(False)
 
     def _on_index_change(self):
         idx = self.currentIndex()
+        if idx < 0:
+            return
         value = self.itemData(idx)
-        if value == self._current_id:
+        if value is None or value == self._current_id:
             return
         self._current_id = value
         self.value_changed.emit(self._product_id, value)
@@ -247,9 +254,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
     version_changed = QtCore.Signal(str, str)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, products_widget=None, parent=None):
+        super().__init__(parent)
 
+        self._products_widget = products_widget
         self._editor_by_id: dict[str, VersionComboBox] = {}
         self._task_ids_filter = None
         self._statuses_filter = None
@@ -349,6 +357,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         editor = VersionComboBox(product_id, parent)
         editor.setProperty("itemId", item_id)
         editor.setFocusPolicy(QtCore.Qt.NoFocus)
+        editor.installEventFilter(self)
 
         editor.value_changed.connect(self._on_editor_change)
         editor.destroyed.connect(self._on_destroy)
@@ -356,6 +365,32 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         self._editor_by_id[item_id] = editor
 
         return editor
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if (
+            event.type() == QtCore.QEvent.Type.ContextMenu
+            and isinstance(obj, VersionComboBox)
+        ):
+            products_widget = self._products_widget
+            if products_widget is None:
+                return False
+            ctx_event = event
+            if not isinstance(ctx_event, QtGui.QContextMenuEvent):
+                return False
+            pidx = getattr(obj, "_loader_context_proxy_index", None)
+            if pidx is None or not pidx.isValid():
+                return False
+            model = products_widget._products_view.model()
+            proxy_idx = model.index(
+                pidx.row(), pidx.column(), pidx.parent()
+            )
+            if not proxy_idx.isValid():
+                return False
+            products_widget.open_loader_context_from_version_editor(
+                ctx_event.globalPos(), proxy_idx
+            )
+            return True
+        return super().eventFilter(obj, event)
 
     def setEditorData(self, editor, index):
         editor.clear()
@@ -378,6 +413,9 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         editor.set_tasks_filter(self._task_ids_filter)
         editor.set_task_tags_filter(self._task_tags_filter)
         editor.set_statuses_filter(self._statuses_filter)
+        editor._loader_context_proxy_index = (
+            QtCore.QPersistentModelIndex(index)
+        )
 
     def setModelData(self, editor, model, index):
         """Apply the integer version back in the model"""
@@ -427,20 +465,13 @@ class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
 class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
     """Paints icons and downloaded representation ration for both sites."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._items_rects = []
-
     def paint(self, painter, option, index):
-        super().paint(painter, option, index)
-        self._items_rects = []
+        super(SiteSyncDelegate, self).paint(painter, option, index)
         option = QtWidgets.QStyleOptionViewItem(option)
         option.showDecorationSelected = True
 
         active_icon = index.data(ACTIVE_SITE_ICON_ROLE)
         remote_icon = index.data(REMOTE_SITE_ICON_ROLE)
-        active_site_name = index.data(ACTIVE_SITE_NAME_ROLE)
-        remote_site_name = index.data(REMOTE_SITE_NAME_ROLE)
 
         availability_active = "{}/{}".format(
             index.data(SYNC_ACTIVE_SITE_AVAILABILITY),
@@ -455,10 +486,10 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
             return
 
         items_to_draw = [
-            (value, icon, site_name)
-            for value, icon, site_name in (
-                (availability_active, active_icon, active_site_name),
-                (availability_remote, remote_icon, remote_site_name),
+            (value, icon)
+            for value, icon in (
+                (availability_active, active_icon),
+                (availability_remote, remote_icon),
             )
             if icon
         ]
@@ -473,14 +504,13 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
         if item_width < 1:
             item_width = 0
 
-        for value, icon, site_name in items_to_draw:
+        for value, icon in items_to_draw:
             item_rect = QtCore.QRect(
                 pos_x,
                 option.rect.y(),
                 item_width,
                 option.rect.height()
             )
-            self._items_rects.append((item_rect, site_name))
             # Prepare pos_x for next item
             pos_x = item_rect.x() + item_rect.width()
 
@@ -502,25 +532,6 @@ class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
                 option.displayAlignment,
                 value
             )
-
-    def editorEvent(self, event, model, option, index):
-        result = super().editorEvent(
-            event, model, option, index
-        )
-        if event.type() == QtCore.QEvent.MouseMove:
-            mouse_pos = event.pos()
-            tooltip = ""
-            for item_rect, site_name in self._items_rects:
-                if item_rect.contains(mouse_pos):
-                    tooltip = site_name
-                    break
-            if tooltip:
-                QtWidgets.QToolTip.showText(event.globalPos(), tooltip)
-            else:
-                QtWidgets.QToolTip.hideText()
-        elif event.type() == QtCore.QEvent.Leave:
-            QtWidgets.QToolTip.hideText()
-        return result
 
     def displayText(self, value, locale):
         pass

@@ -1018,6 +1018,120 @@ SearchItemDisplayWidget #ValueWidget {
     border: 0px;
 }
 
+/* Loader – list/grid view mode (icon-only menu, no menu-arrow chrome) */
+#ViewModeSelector,
+#ViewModeSelectorMenuButton {
+    padding: 1px;
+}
+#ViewModeSelector::menu-indicator {
+    image: none;
+    width: 0px;
+    height: 0px;
+}
+#ViewModeSelectorMenu {
+    background: transparent;
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
+}
+#ViewModeSelector QMenu::item {
+    background: transparent;
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
+}
+#ViewModeSelector QMenu::icon {
+    padding-left: 0px;
+}
+
+/* Loader – Product grid view (ProductsGridView)
+   Selection ring on index widgets: drawn by ProductsGridCardWidget at the actual widget geometry. */
+#ProductsGridView {
+    outline: none;
+    background-color: #1c2026;
+}
+
+/* Loader grid stack page — fills behind QListView margins */
+#LoaderProductsStack {
+    background-color: #1c2026;
+}
+
+/* Avoid default list item panel under indexWidget cards (delegate draws hover/selection ring).
+   Global QListView::item sets height: 1.0em + padding — that breaks IconMode vs setGridSize
+   (wrong hit-testing, squashed tiles). Reset height/padding here (higher specificity than QListView::item). */
+#ProductsGridView::item {
+    background: transparent;
+    border: none;
+    padding: 0px;
+    height: auto;
+    min-height: 0px;
+}
+
+/* Loader grid cards — AYON web-style tile chrome (fixed hex, not theme bg-view) */
+#ProductsGridCard {
+    background-color: #353b46;
+    border: 1px solid #353b46;
+    border-radius: 11px;
+}
+#ProductsGridCard[gridSelected="true"] {
+    background-color: #204a60;
+    border-color: #204a60;
+}
+#ProductsGridCardHeaderStrip {
+    background-color: #353b46;
+    border-radius: 6px;
+}
+#ProductsGridCard[gridSelected="true"] #ProductsGridCardHeaderStrip {
+    background-color: #204a60;
+}
+#ProductsGridCardTitle {
+    color: {color:font};
+    font-size: 9pt;
+    background: transparent;
+}
+#ProductsGridCardIcon {
+    background: transparent;
+}
+#ProductsGridCardThumb {
+    background: transparent;
+}
+#ProductsGridVersionCombo {
+    padding: 1px 5px;
+    min-height: 1.0em;
+    min-width: 0px;
+    background-color: #4d5560;
+    border: 1px solid #4d5560;
+    border-radius: 8px;
+    color: {color:font};
+}
+#ProductsGridVersionCombo::drop-down {
+    width: 0px;
+    border: 0px;
+}
+#ProductsGridVersionCombo::down-arrow {
+    image: none;
+    width: 0px;
+    height: 0px;
+}
+#ProductsGridVersionCombo:hover {
+    background-color: #4d5560;
+    border-color: #4d5560;
+}
+#ProductsGridReviewButton {
+    background-color: #4d5560;
+    border: 1px solid #4d5560;
+    border-radius: 8px;
+    padding: 1px;
+}
+#ProductsGridReviewButton:hover {
+    background-color: #4d5560;
+    border-color: #4d5560;
+}
+#ProductsGridReviewButton:disabled {
+    background-color: rgba(77, 85, 96, 0.45);
+    border-color: rgba(77, 85, 96, 0.45);
+}
+
 #OptionalActionBody, #OptionalActionOption {
     background: transparent;
 }

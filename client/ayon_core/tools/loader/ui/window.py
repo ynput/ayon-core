@@ -30,10 +30,24 @@ from ayon_core.tools.utils.lib import center_window
 from .folders_widget import LoaderFoldersWidget
 from .info_widget import InfoWidget
 from .product_group_dialog import ProductGroupDialog
+from .products_flatten_proxy import ProductsFlattenProxyModel
+from .products_grid_widget import (
+    DEFAULT_GRID_COLUMNS,
+    GRID_COLUMNS_MAX,
+    GRID_COLUMNS_MIN,
+    ProductsGridWidget,
+    columns_from_density_scale,
+)
 from .products_widget import ProductsWidget
 from .repres_widget import RepresentationsWidget
+from .scale_slider_overlay import ScaleSliderOverlay
 from .search_bar import FilterDefinition, FiltersBar
 from .tasks_widget import LoaderTasksWidget
+from .view_mode_selector import (
+    VIEW_MODE_GRID,
+    VIEW_MODE_LIST,
+    ViewModeSelector,
+)
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -41,6 +55,12 @@ FIND_KEY_SEQUENCE = QtGui.QKeySequence(
 GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
 )
+
+LOADER_SETTINGS_GROUP = "loader"
+LOADER_VIEW_MODE_KEY = "view_mode"
+LOADER_VIEW_GRID_COLUMNS = "view_grid_columns"
+# Legacy float 0.5..2.0; migrated once when LOADER_VIEW_GRID_COLUMNS is absent.
+LOADER_VIEW_SCALE_KEY = "view_scale_factor"
 
 
 class LoadErrorMessageBox(ErrorMessageBox):
@@ -213,6 +233,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         products_inputs_widget = QtWidgets.QWidget(products_wrap_widget)
         search_bar = FiltersBar(products_inputs_widget)
+        view_mode_selector = ViewModeSelector(products_inputs_widget)
 
         product_group_checkbox = QtWidgets.QCheckBox(
             "Enable grouping", products_inputs_widget
@@ -222,14 +243,38 @@ class LoaderWindow(QtWidgets.QWidget):
         products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
         products_inputs_layout.addWidget(search_bar, 1)
+        products_inputs_layout.addWidget(view_mode_selector, 0)
         products_inputs_layout.addWidget(product_group_checkbox, 0)
 
-        products_widget = ProductsWidget(controller, products_wrap_widget)
+        products_stack = QtWidgets.QStackedWidget(products_wrap_widget)
+        products_stack.setObjectName("LoaderProductsStack")
+        products_widget = ProductsWidget(controller, products_stack)
+        flatten_proxy = ProductsFlattenProxyModel(products_stack)
+        flatten_proxy.setSourceModel(products_widget.get_proxy_model())
+        products_grid_widget = ProductsGridWidget(
+            controller, flatten_proxy, products_stack
+        )
+        products_stack.addWidget(products_widget)
+        products_stack.addWidget(products_grid_widget)
+
+        products_container = QtWidgets.QWidget(products_wrap_widget)
+        products_container_layout = QtWidgets.QGridLayout(products_container)
+        products_container_layout.setContentsMargins(0, 0, 0, 0)
+        products_container_layout.addWidget(products_stack, 0, 0)
+        scale_slider_overlay = ScaleSliderOverlay(products_container)
+        products_container_layout.addWidget(
+            scale_slider_overlay,
+            0,
+            0,
+            QtCore.Qt.AlignmentFlag.AlignRight
+            | QtCore.Qt.AlignmentFlag.AlignBottom,
+        )
+        scale_slider_overlay.hide()
 
         products_wrap_layout = QtWidgets.QVBoxLayout(products_wrap_widget)
         products_wrap_layout.setContentsMargins(0, 0, 0, 0)
         products_wrap_layout.addWidget(products_inputs_widget, 0)
-        products_wrap_layout.addWidget(products_widget, 1)
+        products_wrap_layout.addWidget(products_container, 1)
 
         right_panel_splitter = QtWidgets.QSplitter(main_splitter)
         right_panel_splitter.setOrientation(QtCore.Qt.Vertical)
@@ -277,10 +322,31 @@ class LoaderWindow(QtWidgets.QWidget):
         product_group_checkbox.stateChanged.connect(
             self._on_product_group_change
         )
+        view_mode_selector.view_mode_changed.connect(
+            self._on_view_mode_changed
+        )
+        scale_slider_overlay.grid_columns_changed.connect(
+            self._on_grid_columns_changed
+        )
+        products_grid_widget.column_bounds_changed.connect(
+            self._on_grid_column_bounds_changed
+        )
+        products_grid_widget.grid_columns_clamped.connect(
+            self._on_grid_columns_clamped
+        )
+        products_grid_widget.scale_change_requested.connect(
+            self._on_scale_change_requested
+        )
         products_widget.merged_products_selection_changed.connect(
             self._on_merged_products_selection_change
         )
         products_widget.selection_changed.connect(
+            self._on_products_selection_change
+        )
+        products_grid_widget.merged_products_selection_changed.connect(
+            self._on_merged_products_selection_change
+        )
+        products_grid_widget.selection_changed.connect(
             self._on_products_selection_change
         )
         go_to_current_btn.clicked.connect(self._on_go_to_current_context_click)
@@ -341,7 +407,19 @@ class LoaderWindow(QtWidgets.QWidget):
 
         self._search_bar = search_bar
         self._product_group_checkbox = product_group_checkbox
+        self._view_mode_selector = view_mode_selector
+        self._products_stack = products_stack
         self._products_widget = products_widget
+        self._products_grid_widget = products_grid_widget
+        self._flatten_proxy = flatten_proxy
+        self._scale_slider_overlay = scale_slider_overlay
+        self._view_grid_columns = DEFAULT_GRID_COLUMNS
+
+        self._grid_activate_timer = QtCore.QTimer(self)
+        self._grid_activate_timer.setSingleShot(True)
+        self._grid_activate_timer.timeout.connect(
+            self._apply_grid_view_after_show
+        )
 
         self._right_panel_splitter = right_panel_splitter
         self._thumbnails_widget = thumbnails_widget
@@ -364,6 +442,117 @@ class LoaderWindow(QtWidgets.QWidget):
         self._products_widget.set_enable_grouping(
             self._product_group_checkbox.isChecked()
         )
+        self._load_view_settings()
+        self._products_grid_widget.set_grid_columns(self._view_grid_columns)
+
+    def _load_view_settings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup(LOADER_SETTINGS_GROUP)
+        mode = settings.value(LOADER_VIEW_MODE_KEY, VIEW_MODE_LIST, type=str)
+        if settings.contains(LOADER_VIEW_GRID_COLUMNS):
+            try:
+                cols = int(settings.value(LOADER_VIEW_GRID_COLUMNS))
+            except (TypeError, ValueError):
+                cols = DEFAULT_GRID_COLUMNS
+        elif settings.contains(LOADER_VIEW_SCALE_KEY):
+            try:
+                cols = columns_from_density_scale(
+                    float(settings.value(LOADER_VIEW_SCALE_KEY))
+                )
+            except (TypeError, ValueError):
+                cols = DEFAULT_GRID_COLUMNS
+        else:
+            cols = DEFAULT_GRID_COLUMNS
+        cols = max(GRID_COLUMNS_MIN, min(GRID_COLUMNS_MAX, int(cols)))
+        settings.endGroup()
+        self._view_grid_columns = cols
+        self._scale_slider_overlay.set_grid_columns(cols)
+        if mode in (VIEW_MODE_LIST, VIEW_MODE_GRID):
+            self._view_mode_selector.sync_from_stack_index(
+                1 if mode == VIEW_MODE_GRID else 0
+            )
+            self._on_view_mode_changed(mode)
+        else:
+            self._view_mode_selector.sync_from_stack_index(0)
+            self._on_view_mode_changed(VIEW_MODE_LIST)
+
+    def _save_view_settings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup(LOADER_SETTINGS_GROUP)
+        settings.setValue(
+            LOADER_VIEW_MODE_KEY,
+            self._view_mode_selector.get_view_mode(),
+        )
+        settings.setValue(
+            LOADER_VIEW_GRID_COLUMNS,
+            self._products_grid_widget.get_grid_columns(),
+        )
+        settings.endGroup()
+
+    def _get_current_products_view(self):
+        return self._products_stack.currentWidget()
+
+    def _on_view_mode_changed(self, mode_id: str):
+        if mode_id == VIEW_MODE_LIST:
+            self._grid_activate_timer.stop()
+            self._products_stack.setCurrentIndex(0)
+            self._scale_slider_overlay.hide()
+            self._products_grid_widget.set_overlay_bottom_height(0)
+        elif mode_id == VIEW_MODE_GRID:
+            self._products_stack.setCurrentIndex(1)
+            self._scale_slider_overlay.show()
+            overlay_h = self._scale_slider_overlay.sizeHint().height()
+            self._products_grid_widget.set_overlay_bottom_height(overlay_h)
+            self._grid_activate_timer.stop()
+            self._grid_activate_timer.start(10)
+        self._view_mode_selector.sync_from_stack_index(
+            self._products_stack.currentIndex()
+        )
+        self._save_view_settings()
+
+    def _on_grid_column_bounds_changed(self, lo: int, hi: int) -> None:
+        self._scale_slider_overlay.set_column_bounds(lo, hi)
+
+    def _on_grid_columns_clamped(self, n: int) -> None:
+        n = int(n)
+        prev = int(self._view_grid_columns)
+        self._view_grid_columns = n
+        self._scale_slider_overlay.set_grid_columns(n)
+        if n != prev:
+            self._save_view_settings()
+
+    def _apply_grid_view_after_show(self):
+        mode = self._view_mode_selector.get_view_mode()
+        if mode != VIEW_MODE_GRID:
+            return
+        lo, hi = self._products_grid_widget.compute_column_bounds()
+        self._scale_slider_overlay.set_column_bounds(lo, hi)
+        self._view_grid_columns = max(
+            lo, min(hi, int(self._view_grid_columns))
+        )
+        self._products_grid_widget.set_grid_columns(self._view_grid_columns)
+        self._scale_slider_overlay.set_grid_columns(self._view_grid_columns)
+        version_ids = self._controller.get_selected_version_ids()
+        if version_ids:
+            self._products_grid_widget.set_selection_from_version_ids(
+                set(version_ids)
+            )
+
+    def _on_grid_columns_changed(self, cols: int):
+        lo, hi = self._products_grid_widget.get_column_bounds()
+        cols = max(lo, min(hi, int(cols)))
+        self._view_grid_columns = cols
+        self._products_grid_widget.set_grid_columns(cols)
+        self._save_view_settings()
+
+    def _on_scale_change_requested(self, delta: int):
+        cols = self._products_grid_widget.get_grid_columns()
+        lo, hi = self._products_grid_widget.get_column_bounds()
+        cols = max(lo, min(hi, cols - delta))
+        self._view_grid_columns = cols
+        self._scale_slider_overlay.set_grid_columns(cols)
+        self._products_grid_widget.set_grid_columns(cols)
+        self._save_view_settings()
 
     def refresh(self):
         self._reset_on_show = False
@@ -450,8 +639,10 @@ class LoaderWindow(QtWidgets.QWidget):
             return
 
         product_ids = {
-            i["product_id"]
-            for i in self._products_widget.get_selected_version_info()
+            version_info["product_id"]
+            for version_info in (
+                self._get_current_products_view().get_selected_version_info()
+            )
         }
         if not product_ids:
             return
@@ -479,24 +670,30 @@ class LoaderWindow(QtWidgets.QWidget):
         elif filter_name == "statuses":
             status_names = self._search_bar.get_filter_value("statuses")
             self._products_widget.set_statuses_filter(status_names)
+            self._products_grid_widget.set_statuses_filter(status_names)
 
         elif filter_name == "version_tags":
             version_tags = self._search_bar.get_filter_value("version_tags")
             self._products_widget.set_version_tags_filter(version_tags)
+            self._products_grid_widget.set_version_tags_filter(version_tags)
 
         elif filter_name == "task_tags":
             task_tags = self._search_bar.get_filter_value("task_tags")
             self._products_widget.set_task_tags_filter(task_tags)
+            self._products_grid_widget.set_task_tags_filter(task_tags)
 
     def _on_tasks_selection_change(self, event):
         self._products_widget.set_tasks_filter(event["task_ids"])
+        self._products_grid_widget.set_tasks_filter(event["task_ids"])
 
     def _on_merged_products_selection_change(self):
-        items = self._products_widget.get_selected_merged_products()
+        items = (
+            self._get_current_products_view().get_selected_merged_products()
+        )
         self._folders_widget.set_merged_products_selection(items)
 
     def _on_products_selection_change(self):
-        items = self._products_widget.get_selected_version_info()
+        items = self._get_current_products_view().get_selected_version_info()
         self._info_widget.set_selected_version_info(
             self._projects_combobox.get_selected_project_name(), items
         )
