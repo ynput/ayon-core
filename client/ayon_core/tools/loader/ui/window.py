@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import os
+from typing import Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.pipeline import get_current_host_name
+from ayon_core.pipeline.actions import LoaderActionResult
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
@@ -18,6 +21,7 @@ from ayon_core.tools.utils import (
     ProjectsCombobox,
     RefreshButton,
     ThumbnailPainterWidget,
+    get_qt_icon,
     restore_tool_window_state,
     save_tool_window_state,
 )
@@ -294,6 +298,10 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_load_finished,
         )
         controller.register_event_callback(
+            "loader.action.finished",
+            self._on_loader_action_finished,
+        )
+        controller.register_event_callback(
             "selection.project.changed",
             self._on_project_selection_changed,
         )
@@ -568,6 +576,79 @@ class LoaderWindow(QtWidgets.QWidget):
 
         box = LoadErrorMessageBox(error_info, self)
         box.show()
+
+    def _on_loader_action_finished(self, event):
+        message_id = event["id"]
+        crashed = event["crashed"]
+        if crashed:
+            self._overlay_object.add_message(
+                "Action failed",
+                message_id=message_id,
+                message_type="error",
+            )
+            return
+
+        result: Optional[LoaderActionResult] = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            message_type = "success" if result.success else "error"
+            self._overlay_object.add_message(
+                result.message,
+                message_id=message_id,
+                message_type=message_type,
+            )
+
+        if result.form is None:
+            return
+
+        form = result.form
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if result.form_values:
+            dialog.set_values(result.form_values)
+        submit_label = form.submit_label
+        submit_icon = form.submit_icon
+        cancel_label = form.cancel_label
+        cancel_icon = form.cancel_icon
+
+        if submit_icon:
+            submit_icon = get_qt_icon(submit_icon)
+        if cancel_icon:
+            cancel_icon = get_qt_icon(cancel_icon)
+
+        if submit_label:
+            dialog.set_submit_label(submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if submit_icon:
+            dialog.set_submit_icon(submit_icon)
+
+        if cancel_label:
+            dialog.set_cancel_label(cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if cancel_icon:
+            dialog.set_cancel_icon(cancel_icon)
+
+        if not dialog.exec_():
+            return
+
+        self._controller.trigger_action_item(
+            identifier=event["identifier"],
+            project_name=event["project_name"],
+            selected_ids=set(event["selected_ids"]),
+            selected_entity_type=event["selected_entity_type"],
+            data=event["data"],
+            options={},
+            form_values=dialog.get_values(),
+        )
 
     def _on_project_selection_changed(self, event):
         self._selected_project_name = event["project_name"]

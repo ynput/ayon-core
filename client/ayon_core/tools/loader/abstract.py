@@ -323,6 +323,7 @@ class ActionItem:
         data (Optional[dict[str, Any]]): Additional action data.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
+        representation_ids (Optional[set[str]]): Representation ids context.
 
     """
     def __init__(
@@ -335,6 +336,8 @@ class ActionItem:
         order: int,
         data: Optional[dict[str, Any]],
         options: Optional[list],
+        *,
+        representation_ids: Optional[Any] = None,
     ):
         self.identifier = identifier
         self.label = label
@@ -344,6 +347,7 @@ class ActionItem:
         self.data = data
         self.order = order
         self.options = options
+        self.representation_ids = representation_ids
 
     def _options_to_data(self):
         options = self.options
@@ -371,15 +375,33 @@ class ActionItem:
             "order": self.order,
             "data": self.data,
             "options": options,
+            "representation_ids": (
+                list(self.representation_ids)
+                if self.representation_ids is not None
+                else None
+            ),
         }
 
     @classmethod
     def from_data(cls, data) -> "ActionItem":
-        options = data["options"]
+        options = data.get("options")
         if options:
             options = deserialize_attr_defs(options)
-        data["options"] = options
-        return cls(**data)
+        return cls(
+            identifier=data["identifier"],
+            label=data["label"],
+            icon=data.get("icon"),
+            tooltip=data.get("tooltip"),
+            order=data.get("order", 0),
+            options=options,
+            group_label=data.get("group_label"),
+            data=data.get("data"),
+            representation_ids=(
+                set(data["representation_ids"])
+                if data.get("representation_ids") is not None
+                else None
+            ),
+        )
 
 
 class ProductTypesFilter:
