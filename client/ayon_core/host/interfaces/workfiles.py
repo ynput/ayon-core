@@ -929,6 +929,19 @@ class IWorkfileHost(AbstractHost):
         """
         return None
 
+    def supports_new_workfile_from_template(self) -> bool:
+        """Whether Workfiles should show New-from-template UI for this host.
+
+        Hosts with a bundled template or explicit custom-template-only support
+        override this to ``True``. Default hides the control when nothing is
+        implemented.
+
+        Returns:
+            bool: ``True`` to show the plus button and offer the action.
+
+        """
+        return False
+
     def get_workfile_extensions(self) -> list[str]:
         """Extensions that can be used to save the workfile to.
 
