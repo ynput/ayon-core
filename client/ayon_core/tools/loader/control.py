@@ -340,6 +340,40 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, representation_ids, "representation"
         )
 
+    def get_drag_drop_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        drop_context_id: Optional[str] = None,
+    ) -> list[ActionItem]:
+        """Action items eligible for drag-and-drop, optionally filtered by drop context."""
+        items = self.get_action_items(project_name, entity_ids, entity_type)
+        out = []
+        for item in items:
+            if not getattr(item, "drag_drop_enabled", True):
+                continue
+            if drop_context_id is not None:
+                contexts = getattr(item, "drag_drop_contexts", None)
+                if contexts is not None and drop_context_id not in contexts:
+                    continue
+            out.append(item)
+        return out
+
+    def get_drag_drop_file_paths(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[str]:
+        """Resolve local file paths for drag-drop; used for OS file copy when dropping on Explorer/desktop."""
+        anatomy = self._get_project_anatomy(project_name)
+        if not anatomy:
+            return []
+        return self._loader_actions_model.get_representation_file_paths(
+            project_name, entity_ids, entity_type, anatomy
+        )
+
     def trigger_action_item(
         self,
         identifier: str,

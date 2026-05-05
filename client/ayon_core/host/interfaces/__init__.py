@@ -29,6 +29,7 @@ from .interfaces import (
     IPublishHost,
     INewPublisher,
     ILoadHost,
+    ILoaderDropHost,
 )
 
 
@@ -63,4 +64,5 @@ __all__ = (
     "IPublishHost",
     "INewPublisher",
     "ILoadHost",
+    "ILoaderDropHost",
 )

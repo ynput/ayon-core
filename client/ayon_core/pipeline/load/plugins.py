@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 import os
-from typing import Any, Optional, Type
+from typing import Any, Optional, Set, Type
 
 from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
@@ -39,6 +39,12 @@ class LoaderPlugin(list):
     show_in_versions_menu = True
 
     options = []
+
+    # Drag-and-drop and context menu visibility
+    drag_drop_enabled: bool = True
+    show_in_context_menu: bool = True
+    default_for_drag_drop: bool = False
+    drag_drop_contexts: Optional[Set[str]] = None  # None = all contexts
 
     log = Logger.get_logger("ProductLoader")
 

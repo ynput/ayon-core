@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import collections
 import inspect
+import os
 import sys
 import traceback
 import uuid
-from typing import Optional, Any
+from typing import Any, Callable, Optional
 
 import ayon_api
 
@@ -22,6 +23,7 @@ from ayon_core.pipeline.load import (
     discover_loader_plugins,
     filter_repre_contexts_by_loader,
     get_loader_identifier,
+    get_representation_path_with_anatomy,
     load_with_product_context,
     load_with_product_contexts,
     load_with_repre_context,
@@ -394,6 +396,10 @@ class LoaderActionsModel:
             },
             options=loader.get_options(contexts),
             representation_ids=representation_ids,
+            show_in_context_menu=getattr(loader, "show_in_context_menu", True),
+            drag_drop_enabled=getattr(loader, "drag_drop_enabled", True),
+            default_for_drag_drop=getattr(loader, "default_for_drag_drop", False),
+            drag_drop_contexts=getattr(loader, "drag_drop_contexts", None),
         )
 
     def _get_loaders(self, project_name):
@@ -617,6 +623,155 @@ class LoaderActionsModel:
             }
         return version_context_by_id, repre_context_by_id
 
+    def _get_project(self, project_name: str) -> dict[str, Any]:
+        cache = self._projects_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(ayon_api.get_project(project_name))
+        return cache.get_data()
+
+    def _get_folders(
+        self, project_name: str, folder_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get folders by ids."""
+        return self._get_entities(
+            project_name,
+            folder_ids,
+            self._folders_cache,
+            ayon_api.get_folders,
+            "folder_ids",
+        )
+
+    def _get_products(
+        self, project_name: str, product_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get products by ids."""
+        return self._get_entities(
+            project_name,
+            product_ids,
+            self._products_cache,
+            ayon_api.get_products,
+            "product_ids",
+        )
+
+    def _get_versions(
+        self, project_name: str, version_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get versions by ids."""
+        return self._get_entities(
+            project_name,
+            version_ids,
+            self._versions_cache,
+            ayon_api.get_versions,
+            "version_ids",
+        )
+
+    def _get_representations(
+        self, project_name: str, representation_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get representations by ids."""
+        return self._get_entities(
+            project_name,
+            representation_ids,
+            self._representations_cache,
+            ayon_api.get_representations,
+            "representation_ids",
+        )
+
+    def _get_repre_ids_by_version_ids(
+        self, project_name: str, version_ids: set[str]
+    ) -> dict[str, set[str]]:
+        output = {}
+        if not version_ids:
+            return output
+
+        project_cache = self._repre_parents_cache[project_name]
+        missing_ids = set()
+        for version_id in version_ids:
+            cache = project_cache[version_id]
+            if cache.is_valid:
+                output[version_id] = cache.get_data()
+            else:
+                missing_ids.add(version_id)
+
+        if missing_ids:
+            repre_cache = self._representations_cache[project_name]
+            repres_by_parent_id = collections.defaultdict(list)
+            for repre in ayon_api.get_representations(
+                project_name, version_ids=missing_ids
+            ):
+                version_id = repre["versionId"]
+                repre_cache[repre["id"]].update_data(repre)
+                repres_by_parent_id[version_id].append(repre)
+
+            for version_id, repres in repres_by_parent_id.items():
+                repre_ids = {
+                    repre["id"]
+                    for repre in repres
+                }
+                output[version_id] = set(repre_ids)
+                project_cache[version_id].update_data(repre_ids)
+
+        return output
+
+    def _get_entities(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        cache: NestedCacheItem,
+        getter: Callable,
+        filter_arg: str,
+    ) -> list[dict[str, Any]]:
+        entities = []
+        if not entity_ids:
+            return entities
+
+        missing_ids = set()
+        project_cache = cache[project_name]
+        for entity_id in entity_ids:
+            entity_cache = project_cache[entity_id]
+            if entity_cache.is_valid:
+                entities.append(entity_cache.get_data())
+            else:
+                missing_ids.add(entity_id)
+
+        if missing_ids:
+            for entity in getter(project_name, **{filter_arg: missing_ids}):
+                entities.append(entity)
+                entity_id = entity["id"]
+                project_cache[entity_id].update_data(entity)
+        return entities
+
+    def get_representation_file_paths(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        anatomy: Any,
+    ) -> list[str]:
+        """Resolve local file paths for the given version or representation ids."""
+        if not anatomy or not entity_ids:
+            return []
+        if entity_type == "representation":
+            repre_ids = entity_ids
+        else:
+            version_to_repres = self._get_repre_ids_by_version_ids(
+                project_name, entity_ids
+            )
+            repre_ids = set()
+            for ids in version_to_repres.values():
+                repre_ids |= ids
+        repres = self._get_representations(project_name, repre_ids)
+        paths = []
+        for repre in repres:
+            try:
+                path_result = get_representation_path_with_anatomy(repre, anatomy)
+                path = os.path.normpath(str(path_result))
+                if path:
+                    paths.append(path)
+            except Exception:
+                pass
+        return paths
+
     def _get_action_items_for_contexts(
         self,
         project_name,
@@ -729,6 +884,11 @@ class LoaderActionsModel:
                 order=action.order,
                 data=action.data,
                 options=None,
+                representation_ids=getattr(action, "representation_ids", None),
+                show_in_context_menu=getattr(action, "show_in_context_menu", True),
+                drag_drop_enabled=getattr(action, "drag_drop_enabled", True),
+                default_for_drag_drop=getattr(action, "default_for_drag_drop", False),
+                drag_drop_contexts=getattr(action, "drag_drop_contexts", None),
             ))
         return items
 

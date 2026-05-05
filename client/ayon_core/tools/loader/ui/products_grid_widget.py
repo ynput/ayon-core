@@ -24,7 +24,7 @@ from .products_model import (
     VERSION_THUMBNAIL_ID_ROLE,
 )
 from .products_delegates import VersionComboBox
-from .actions_utils import show_actions_menu
+from .actions_utils import LoaderDragListView, show_actions_menu
 
 # Legacy float scale range (migration from LOADER_VIEW_SCALE_KEY only).
 MIN_SCALE = 0.5
@@ -120,7 +120,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._grid_content_offset_x = 0
         self._grid_content_offset_y = 0
 
-        self._list_view = QtWidgets.QListView(self)
+        self._list_view = LoaderDragListView(self)
         self._list_view.setObjectName("ProductsGridView")
         self._list_view.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
         self._list_view.setMovement(QtWidgets.QListView.Movement.Static)
@@ -166,6 +166,30 @@ class ProductsGridWidget(QtWidgets.QWidget):
         )
 
         self._apply_grid_chrome_background()
+        self._list_view.set_drag_data_callback(self._get_grid_drag_data)
+
+    def _get_grid_drag_data(self):
+        """Return (project_name, version_ids, entity_type) for loader DnD (grid view)."""
+        project_name = self._controller.get_selected_project_name()
+        if not project_name:
+            return None
+        selection_model = self._list_view.selectionModel()
+        model = self._list_view.model()
+        if selection_model is None or model is None:
+            return None
+        version_ids = set()
+        indexes_queue = collections.deque(selection_model.selectedIndexes())
+        while indexes_queue:
+            index = indexes_queue.popleft()
+            for row in range(model.rowCount(index)):
+                child_index = model.index(row, 0, index)
+                indexes_queue.append(child_index)
+            version_id = model.data(index, VERSION_ID_ROLE)
+            if version_id is not None:
+                version_ids.add(version_id)
+        if not version_ids:
+            return None
+        return (project_name, version_ids, "version")
 
     def _apply_grid_chrome_background(self) -> None:
         """#1c2026 behind list + viewport (stylesheet may not paint QAbstractScrollArea viewport)."""

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import collections
+import logging
 from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.pipeline.compatibility import is_product_base_type_supported
+from ayon_core.tools.loader.drag_drop import (
+    LOADER_PAYLOAD_MIME_TYPE,
+    encode_loader_drag_payload,
+    loader_payload_to_bytes,
+)
 from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
@@ -36,7 +42,9 @@ from .products_delegates import (
     LoadedInSceneDelegate,
     SiteSyncDelegate,
 )
-from .actions_utils import show_actions_menu
+from .actions_utils import show_actions_menu, LoaderDragTreeView
+
+_log = logging.getLogger(__name__)
 
 
 class ProductsProxyModel(RecursiveSortFilterProxyModel):
@@ -84,6 +92,60 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             return
         self._task_tags_filter = tags
         self.invalidateFilter()
+
+    def supportedDragActions(self):
+        """Return CopyAction so the view initiates drag (loader DnD)."""
+        return QtCore.Qt.CopyAction
+
+    def mimeTypes(self):
+        """MIME type for loader drag payload (required for view to start drag)."""
+        return [LOADER_PAYLOAD_MIME_TYPE]
+
+    def mimeData(self, indexes):
+        """Build loader payload from selected indexes so the view starts drag."""
+        if _log:
+            _log.debug("mimeData: indexes count=%s", len(indexes) if indexes else 0)
+        if not indexes:
+            if _log:
+                _log.debug("mimeData: returning None (no indexes)")
+            return None
+        source = self.sourceModel()
+        project_name = getattr(source, "get_last_project_name", lambda: None)()
+        if _log:
+            _log.debug("mimeData: project_name=%s", project_name)
+        if not project_name:
+            if _log:
+                _log.debug("mimeData: returning None (no project_name)")
+            return None
+        version_ids = []
+        seen = set()
+        for idx in indexes:
+            if idx.column() != 0:
+                idx = idx.sibling(idx.row(), 0)
+            src_idx = self.mapToSource(idx)
+            if not src_idx.isValid() or src_idx in seen:
+                continue
+            seen.add(src_idx)
+            vid = source.data(src_idx, VERSION_ID_ROLE)
+            if vid:
+                version_ids.append(vid)
+        if _log:
+            _log.debug("mimeData: version_ids=%s", version_ids)
+        if not version_ids:
+            if _log:
+                _log.debug("mimeData: returning None (no version_ids)")
+            return None
+        payload = encode_loader_drag_payload(
+            project_name, "version", version_ids, []
+        )
+        mime = QtCore.QMimeData()
+        mime.setData(
+            LOADER_PAYLOAD_MIME_TYPE,
+            QtCore.QByteArray(loader_payload_to_bytes(payload)),
+        )
+        if _log:
+            _log.debug("mimeData: returning QMimeData")
+        return mime
 
     def filterAcceptsRow(self, source_row, source_parent):
         source_model = self.sourceModel()
@@ -190,7 +252,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
         self._controller = controller
 
-        products_view = DeselectableTreeView(self)
+        products_view = LoaderDragTreeView(self)
         # TODO - define custom object name in style
         products_view.setObjectName("ProductView")
         products_view.setSelectionMode(
@@ -280,6 +342,8 @@ class ProductsWidget(QtWidgets.QWidget):
         controller.register_event_callback(
             "products.group.changed", self._on_group_changed
         )
+
+        products_view.set_drag_data_callback(self._get_products_drag_data)
 
         self._products_view = products_view
         self._products_model = products_model
@@ -497,11 +561,13 @@ class ProductsWidget(QtWidgets.QWidget):
             form_values={},
         )
 
-    def _on_context_menu(self, point):
+    def _get_products_drag_data(self):
+        """Return (project_name, version_ids, 'version') for current selection, or None."""
         selection_model = self._products_view.selectionModel()
         model = self._products_view.model()
         project_name = self._products_model.get_last_project_name()
-
+        if not project_name:
+            return None
         version_ids = set()
         processed_rows = set()
         indexes_queue = collections.deque()
@@ -514,7 +580,7 @@ class ProductsWidget(QtWidgets.QWidget):
         ]
 
         if not selected_indexes:
-            return
+            return None
 
         indexes_queue.extend(selected_indexes)
 
@@ -553,7 +619,14 @@ class ProductsWidget(QtWidgets.QWidget):
                     version_ids.add(version_id)
 
         if not version_ids:
+            return None
+        return (project_name, version_ids, "version")
+
+    def _on_context_menu(self, point):
+        result = self._get_products_drag_data()
+        if not result:
             return
+        project_name, version_ids, _ = result
 
         action_items = self._controller.get_action_items(
             project_name, version_ids, "version"

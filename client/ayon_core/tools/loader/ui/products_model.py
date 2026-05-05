@@ -193,8 +193,9 @@ class ProductsModel(QtGui.QStandardItemModel):
         return version_items
 
     def flags(self, index):
+        col = index.column()
         # Make the version column editable
-        if index.column() == self.version_col and index.data(PRODUCT_ID_ROLE):
+        if col == self.version_col and index.data(PRODUCT_ID_ROLE):
             return (
                 QtCore.Qt.ItemIsEnabled
                 | QtCore.Qt.ItemIsSelectable
@@ -202,7 +203,16 @@ class ProductsModel(QtGui.QStandardItemModel):
             )
         if index.column() != 0:
             index = self.index(index.row(), 0, index.parent())
-        return super().flags(index)
+        base = super().flags(index)
+        version_id = index.data(VERSION_ID_ROLE)
+        product_id = index.data(PRODUCT_ID_ROLE)
+        if version_id or product_id:
+            base |= QtCore.Qt.ItemIsDragEnabled
+        return base
+
+    def supportedDragActions(self):
+        """Return CopyAction so the view initiates drag (loader DnD)."""
+        return QtCore.Qt.CopyAction
 
     def data(self, index, role=None):
         if role is None:

@@ -10,6 +10,7 @@ from .interfaces import (
     WorkfileInfo,
     PublishedWorkfileInfo,
     ILoadHost,
+    ILoaderDropHost,
     IPublishHost,
     INewPublisher,
 )
@@ -30,6 +31,7 @@ __all__ = (
     "WorkfileInfo",
     "PublishedWorkfileInfo",
     "ILoadHost",
+    "ILoaderDropHost",
     "IPublishHost",
     "INewPublisher",
 
