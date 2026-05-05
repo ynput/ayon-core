@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Any, Optional, Union
+from typing import Iterable, Any, Optional, Set, Union
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -323,6 +323,10 @@ class ActionItem:
         data (Optional[dict[str, Any]]): Additional action data.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
+        show_in_context_menu (bool): If False, hidden from context menu (DnD only).
+        drag_drop_enabled (bool): If True, include in drag-and-drop payload.
+        default_for_drag_drop (bool): If True, use as single action when only one default.
+        drag_drop_contexts (Optional[Set[str]]): If set, only for these drop context ids.
 
     """
     def __init__(
@@ -335,6 +339,10 @@ class ActionItem:
         order: int,
         data: Optional[dict[str, Any]],
         options: Optional[list],
+        show_in_context_menu: bool = True,
+        drag_drop_enabled: bool = True,
+        default_for_drag_drop: bool = False,
+        drag_drop_contexts: Optional[Set[str]] = None,
     ):
         self.identifier = identifier
         self.label = label
@@ -344,6 +352,10 @@ class ActionItem:
         self.data = data
         self.order = order
         self.options = options
+        self.show_in_context_menu = show_in_context_menu
+        self.drag_drop_enabled = drag_drop_enabled
+        self.default_for_drag_drop = default_for_drag_drop
+        self.drag_drop_contexts = drag_drop_contexts
 
     def _options_to_data(self):
         options = self.options
@@ -362,6 +374,9 @@ class ActionItem:
 
     def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
+        drag_drop_contexts = self.drag_drop_contexts
+        if drag_drop_contexts is not None:
+            drag_drop_contexts = list(drag_drop_contexts)
         return {
             "identifier": self.identifier,
             "label": self.label,
@@ -371,15 +386,34 @@ class ActionItem:
             "order": self.order,
             "data": self.data,
             "options": options,
+            "show_in_context_menu": getattr(self, "show_in_context_menu", True),
+            "drag_drop_enabled": getattr(self, "drag_drop_enabled", True),
+            "default_for_drag_drop": getattr(self, "default_for_drag_drop", False),
+            "drag_drop_contexts": drag_drop_contexts,
         }
 
     @classmethod
     def from_data(cls, data) -> "ActionItem":
-        options = data["options"]
+        options = data.get("options")
         if options:
             options = deserialize_attr_defs(options)
-        data["options"] = options
-        return cls(**data)
+        drag_drop_contexts = data.get("drag_drop_contexts")
+        if drag_drop_contexts is not None:
+            drag_drop_contexts = set(drag_drop_contexts)
+        return cls(
+            identifier=data["identifier"],
+            label=data["label"],
+            group_label=data.get("group_label"),
+            icon=data.get("icon"),
+            tooltip=data.get("tooltip"),
+            order=data["order"],
+            data=data.get("data"),
+            options=options,
+            show_in_context_menu=data.get("show_in_context_menu", True),
+            drag_drop_enabled=data.get("drag_drop_enabled", True),
+            default_for_drag_drop=data.get("default_for_drag_drop", False),
+            drag_drop_contexts=drag_drop_contexts,
+        )
 
 
 class ProductTypesFilter:
@@ -1017,6 +1051,27 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             list[ActionItem]: List of action items.
 
+        """
+        pass
+
+    @abstractmethod
+    def get_drag_drop_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        drop_context_id: Optional[str] = None,
+    ) -> list[ActionItem]:
+        """Action items eligible for drag-and-drop, optionally filtered by drop context.
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (set[str]): Entity ids.
+            entity_type (str): Entity type.
+            drop_context_id (Optional[str]): If set, only return items that allow this context.
+
+        Returns:
+            list[ActionItem]: List of action items with drag_drop_enabled that match context.
         """
         pass
 

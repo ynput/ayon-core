@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 import inspect
@@ -20,6 +21,7 @@ from ayon_core.pipeline.load import (
     ProductLoaderPlugin,
     filter_repre_contexts_by_loader,
     get_loader_identifier,
+    get_representation_path_with_anatomy,
     load_with_repre_context,
     load_with_product_context,
     load_with_product_contexts,
@@ -349,6 +351,10 @@ class LoaderActionsModel:
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
             options=loader.get_options(contexts),
+            show_in_context_menu=getattr(loader, "show_in_context_menu", True),
+            drag_drop_enabled=getattr(loader, "drag_drop_enabled", True),
+            default_for_drag_drop=getattr(loader, "default_for_drag_drop", False),
+            drag_drop_contexts=getattr(loader, "drag_drop_contexts", None),
         )
 
     def _get_loaders(self, project_name):
@@ -693,6 +699,37 @@ class LoaderActionsModel:
                 project_cache[entity_id].update_data(entity)
         return entities
 
+    def get_representation_file_paths(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        anatomy: Any,
+    ) -> list[str]:
+        """Resolve local file paths for the given version or representation ids."""
+        if not anatomy or not entity_ids:
+            return []
+        if entity_type == "representation":
+            repre_ids = entity_ids
+        else:
+            version_to_repres = self._get_repre_ids_by_version_ids(
+                project_name, entity_ids
+            )
+            repre_ids = set()
+            for ids in version_to_repres.values():
+                repre_ids |= ids
+        repres = self._get_representations(project_name, repre_ids)
+        paths = []
+        for repre in repres:
+            try:
+                path_result = get_representation_path_with_anatomy(repre, anatomy)
+                path = os.path.normpath(str(path_result))
+                if path:
+                    paths.append(path)
+            except Exception:
+                pass
+        return paths
+
     def _get_action_items_for_contexts(
         self,
         project_name,
@@ -808,6 +845,10 @@ class LoaderActionsModel:
                 order=action.order,
                 data=action.data,
                 options=None,  # action.options,
+                show_in_context_menu=getattr(action, "show_in_context_menu", True),
+                drag_drop_enabled=getattr(action, "drag_drop_enabled", True),
+                default_for_drag_drop=getattr(action, "default_for_drag_drop", False),
+                drag_drop_contexts=getattr(action, "drag_drop_contexts", None),
             ))
         return items
 

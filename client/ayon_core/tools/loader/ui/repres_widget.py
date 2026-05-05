@@ -7,7 +7,7 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils import DeselectableTreeView
 
-from .actions_utils import show_actions_menu
+from .actions_utils import show_actions_menu, LoaderDragTreeView
 
 REPRESENTAION_NAME_ROLE = QtCore.Qt.UserRole + 1
 REPRESENTATION_ID_ROLE = QtCore.Qt.UserRole + 2
@@ -107,6 +107,18 @@ class RepresentationsModel(QtGui.QStandardItemModel):
         if role is None:
             role = QtCore.Qt.EditRole
         return super(RepresentationsModel, self).setData(index, value, role)
+
+    def flags(self, index):
+        base = super(RepresentationsModel, self).flags(index)
+        if index.column() != 0:
+            index = self.index(index.row(), 0, index.parent())
+        if index.data(REPRESENTATION_ID_ROLE):
+            base |= QtCore.Qt.ItemIsDragEnabled
+        return base
+
+    def supportedDragActions(self):
+        """Return CopyAction so the view initiates drag (loader DnD)."""
+        return QtCore.Qt.CopyAction
 
     def _clear_items(self):
         self._items_by_id = {}
@@ -279,7 +291,7 @@ class RepresentationsWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent):
         super(RepresentationsWidget, self).__init__(parent)
 
-        repre_view = DeselectableTreeView(self)
+        repre_view = LoaderDragTreeView(self)
         repre_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
@@ -314,6 +326,8 @@ class RepresentationsWidget(QtWidgets.QWidget):
             "selection.folders.changed",
             self._on_folder_change
         )
+
+        repre_view.set_drag_data_callback(self._get_repres_drag_data)
 
         self._controller = controller
         self._selected_project_name = None
@@ -393,6 +407,15 @@ class RepresentationsWidget(QtWidgets.QWidget):
         }
         repre_ids.discard(None)
         return repre_ids
+
+    def _get_repres_drag_data(self):
+        """Return (project_name, repre_ids, 'representation') for current selection, or None."""
+        if not self._selected_project_name:
+            return None
+        repre_ids = self._get_selected_repre_ids()
+        if not repre_ids:
+            return None
+        return (self._selected_project_name, repre_ids, "representation")
 
     def _on_selection_change(self):
         selected_repre_ids = self._get_selected_repre_ids()

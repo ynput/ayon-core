@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Optional, Any, Callable, Tuple
 
 from ayon_core.host.abstract import AbstractHost
 
@@ -83,6 +84,62 @@ class ILoadHost(AbstractHost):
         """
 
         return self.get_containers()
+
+
+class ILoaderDropHost(AbstractHost):
+    """Optional host interface for receiving loader drag-and-drop.
+
+    When the Loader tool drags a product/version/representation, the host can
+    accept the drop and run the same action as the context menu. MIME type is
+    ``application/x-ayon-loader-payload``; payload is JSON with project_name,
+    entity_type, entity_ids, and actions (list of {identifier, data, label,
+    default_for_drag_drop, drag_drop_contexts}).
+
+    Hosts define drop context IDs (e.g. "viewport", "project"). Plugins can
+    restrict to certain contexts via drag_drop_contexts. The host should filter
+    actions by drop_context_id and then either run the single/default action or
+    show a small picker and call trigger_callback(identifier, data, options,
+    form_values) to run the chosen action.
+
+    For Qt-based hosts: import the picker from
+    ``ayon_core.tools.loader.ui.actions_utils`` (show_loader_drop_action_picker);
+    for payload decode and filtering use ``ayon_core.tools.loader.drag_drop``
+    (decode_loader_drag_payload_from_mime, filter_actions_by_drop_context,
+    LOADER_PAYLOAD_MIME_TYPE). Non-Qt hosts (e.g. Unity C#) can use the same
+    MIME type and JSON schema and implement their own picker.
+    """
+
+    def get_drop_context_at(self, screen_position: Tuple[float, float]) -> Optional[str]:
+        """Return drop context id at the given screen position, or None.
+
+        Args:
+            screen_position: (x, y) in screen coordinates.
+
+        Returns:
+            Context id (e.g. "viewport", "project") or None if not a drop target.
+        """
+        return None
+
+    def on_loader_drop(
+        self,
+        mime_data: Any,
+        drop_context_id: Optional[str],
+        trigger_callback: Callable[
+            [str, Optional[dict], dict, dict], None
+        ],
+    ) -> None:
+        """Handle a loader payload drop.
+
+        Parse payload, filter actions by drop_context_id, then run the single
+       /default action or show a picker and call trigger_callback with the
+        chosen action's identifier and data.
+
+        Args:
+            mime_data: QMimeData (or equivalent) from the drop event.
+            drop_context_id: Context from get_drop_context_at at drop position.
+            trigger_callback: Callable(identifier, data, options, form_values).
+        """
+        pass
 
 
 class IPublishHost(AbstractHost):

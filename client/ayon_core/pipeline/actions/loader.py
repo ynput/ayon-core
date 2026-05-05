@@ -64,7 +64,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 import typing
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable, Set
 from dataclasses import dataclass
 
 import ayon_api
@@ -508,6 +508,11 @@ class LoaderActionItem:
     data: Optional[DataType] = None
     # Is filled automatically
     identifier: str = None
+    # Drag-and-drop and context menu visibility
+    drag_drop_enabled: bool = True
+    show_in_context_menu: bool = True
+    default_for_drag_drop: bool = False
+    drag_drop_contexts: Optional[Set[str]] = None
 
 
 @dataclass
@@ -557,6 +562,11 @@ class LoaderActionPlugin(ABC):
     _log: Optional[logging.Logger] = None
     enabled: bool = True
     skip_discovery: bool = True
+    # Drag-and-drop and context menu visibility (class defaults for action items)
+    drag_drop_enabled: bool = True
+    show_in_context_menu: bool = True
+    default_for_drag_drop: bool = False
+    drag_drop_contexts: Optional[Set[str]] = None
 
     def __init__(self, context: "LoaderActionsContext") -> None:
         self._context = context
@@ -871,6 +881,10 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
                     order=self.order,
                     group_label=self.group_label,
                     icon=self.icon,
+                    drag_drop_enabled=self.drag_drop_enabled,
+                    show_in_context_menu=self.show_in_context_menu,
+                    default_for_drag_drop=self.default_for_drag_drop,
+                    drag_drop_contexts=self.drag_drop_contexts,
                 )
             ]
         return []

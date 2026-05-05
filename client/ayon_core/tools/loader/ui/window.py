@@ -30,6 +30,12 @@ from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
 from .search_bar import FiltersBar, FilterDefinition
+from .actions_utils import show_loader_drop_action_picker
+from ayon_core.tools.loader.drag_drop import (
+    decode_loader_drag_payload_from_mime,
+    filter_actions_by_drop_context,
+    LOADER_PAYLOAD_MIME_TYPE,
+)
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -339,6 +345,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         self._controller = controller
         self._refresh_handler = RefreshHandler()
+        self.setAcceptDrops(True)
         self._first_show = True
         self._reset_on_show = True
         self._show_counter = 0
@@ -369,6 +376,47 @@ class LoaderWindow(QtWidgets.QWidget):
         super().closeEvent(event)
 
         self._reset_on_show = True
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat(LOADER_PAYLOAD_MIME_TYPE):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        mime_data = event.mimeData()
+        if not mime_data.hasFormat(LOADER_PAYLOAD_MIME_TYPE):
+            return
+        payload = decode_loader_drag_payload_from_mime(mime_data)
+        if not payload:
+            return
+        event.acceptProposedAction()
+        actions = filter_actions_by_drop_context(payload, None)
+        if not actions:
+            return
+        project_name = payload["project_name"]
+        entity_type = payload["entity_type"]
+        entity_ids = set(payload.get("entity_ids") or [])
+
+        def trigger(identifier, data, options, form_values):
+            self._controller.trigger_action_item(
+                identifier=identifier,
+                project_name=project_name,
+                selected_ids=entity_ids,
+                selected_entity_type=entity_type,
+                data=data,
+                options=options or {},
+                form_values=form_values or {},
+            )
+
+        defaults = [a for a in actions if a.get("default_for_drag_drop")]
+        if len(actions) == 1:
+            a = actions[0]
+            trigger(a.get("identifier", ""), a.get("data"), {}, {})
+            return
+        if len(defaults) == 1:
+            a = defaults[0]
+            trigger(a.get("identifier", ""), a.get("data"), {}, {})
+            return
+        show_loader_drop_action_picker(actions, trigger, self)
 
     def keyPressEvent(self, event):
         if hasattr(event, "keyCombination"):
