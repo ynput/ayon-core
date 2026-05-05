@@ -311,9 +311,17 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             )
             os.close(temp_fd)
 
-            # Extract first frame with ffmpeg
+            # Extract first frame with ffmpeg (image2: -update 1 = single file, not sequence)
             cmd = get_ffmpeg_tool_args(
-                "ffmpeg", "-i", video_path, "-vframes", "1", "-y", frame_path
+                "ffmpeg",
+                "-i",
+                video_path,
+                "-frames:v",
+                "1",
+                "-update",
+                "1",
+                "-y",
+                frame_path,
             )
 
             run_subprocess(cmd)

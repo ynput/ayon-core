@@ -313,6 +313,13 @@ class ProductsWidget(QtWidgets.QWidget):
                 products_model.product_base_type_col, True
             )
 
+    def get_proxy_model(self):
+        """Filtered/sorted products proxy model.
+
+        Used by alternate views (e.g. grid) to share the same filter chain.
+        """
+        return self._products_proxy_model
+
     def set_name_filter(self, name):
         """Set filter of product name.
 
@@ -415,6 +422,79 @@ class ProductsWidget(QtWidgets.QWidget):
     def _refresh_model(self):
         self._products_model.refresh(
             self._selected_project_name, self._selected_folder_ids
+        )
+
+    def open_loader_context_from_version_editor(
+        self,
+        global_pos,
+        version_column_index,
+    ):
+        """Show loader actions menu when right-clicking a version combo.
+
+        Triggered by `VersionDelegate.eventFilter`; mirrors the canonical
+        `_on_context_menu` flow but seeded by a single proxy index that
+        identifies the row under the persistent version editor instead of
+        relying on the current selection.
+        """
+        if not version_column_index.isValid():
+            return
+        model = self._products_view.model()
+        idx0 = model.index(
+            version_column_index.row(),
+            0,
+            version_column_index.parent(),
+        )
+        if not idx0.isValid():
+            return
+
+        selection_model = self._products_view.selectionModel()
+        selection_model.clearSelection()
+        selection_model.select(
+            idx0, QtCore.QItemSelectionModel.SelectionFlag.Select
+        )
+        self._products_view.setCurrentIndex(idx0)
+
+        project_name = self._products_model.get_last_project_name()
+        version_ids = set()
+        group_type = model.data(idx0, GROUP_TYPE_ROLE)
+        if group_type == 1:
+            for row in range(model.rowCount(idx0)):
+                child_index = model.index(row, 0, idx0)
+                child_version_id = model.data(child_index, VERSION_ID_ROLE)
+                if child_version_id is not None:
+                    version_ids.add(child_version_id)
+        elif group_type == 0:
+            for row in range(model.rowCount(idx0)):
+                child_index = model.index(row, 0, idx0)
+                child_version_id = model.data(child_index, VERSION_ID_ROLE)
+                if child_version_id is not None:
+                    version_ids.add(child_version_id)
+        else:
+            version_id = model.data(idx0, VERSION_ID_ROLE)
+            if version_id is not None:
+                version_ids.add(version_id)
+
+        if not version_ids:
+            return
+
+        action_items = self._controller.get_action_items(
+            project_name, version_ids, "version"
+        )
+        result = show_actions_menu(
+            action_items, global_pos, len(version_ids) == 1, self
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=project_name,
+            selected_ids=version_ids,
+            selected_entity_type="version",
+            data=action_item.data,
+            options=options,
+            form_values={},
         )
 
     def _on_context_menu(self, point):
