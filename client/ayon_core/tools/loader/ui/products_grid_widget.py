@@ -1,6 +1,7 @@
 """Grid view of products: web-style cards with thumbnail, version combo, review link."""
 from __future__ import annotations
 
+import collections
 from typing import Any, Dict, List, Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -23,7 +24,7 @@ from .products_model import (
     VERSION_THUMBNAIL_ID_ROLE,
 )
 from .products_delegates import VersionComboBox
-from .actions_utils import show_product_version_loader_menu_and_trigger
+from .actions_utils import show_actions_menu
 
 # Legacy float scale range (migration from LOADER_VIEW_SCALE_KEY only).
 MIN_SCALE = 0.5
@@ -613,8 +614,8 @@ class ProductsGridWidget(QtWidgets.QWidget):
     ) -> None:
         """Card chrome RMB (combo/header/review): select row then open loader menu.
 
-        Uses `show_product_version_loader_menu_and_trigger` in actions_utils, which
-        is the shared `show_actions_menu` + `LoaderController.trigger_action_item` path.
+        Same pipeline as `ProductsWidget._on_context_menu`: `get_action_items`,
+        `show_actions_menu`, then `trigger_action_item`.
         """
         idx = self._flatten_proxy.index(flat_row, 0)
         if not idx.isValid():
@@ -638,23 +639,43 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._run_context_menu_at_global(vp.mapToGlobal(point))
 
     def _run_context_menu_at_global(self, global_point: QtCore.QPoint) -> None:
-        # Same pipeline as list products: `show_product_version_loader_menu_and_trigger`.
-        indexes = self._list_view.selectedIndexes()
-        version_ids = set()
-        for idx in indexes:
-            if idx.column() != 0:
-                continue
-            vid = idx.data(VERSION_ID_ROLE)
-            if vid:
-                version_ids.add(vid)
+        selection_model = self._list_view.selectionModel()
+        model = self._list_view.model()
         project_name = self._controller.get_selected_project_name()
-        show_product_version_loader_menu_and_trigger(
-            self._controller,
-            project_name,
-            version_ids,
+
+        version_ids = set()
+        indexes_queue = collections.deque()
+        indexes_queue.extend(selection_model.selectedIndexes())
+        while indexes_queue:
+            index = indexes_queue.popleft()
+            for row in range(model.rowCount(index)):
+                child_index = model.index(row, 0, index)
+                indexes_queue.append(child_index)
+            version_id = model.data(index, VERSION_ID_ROLE)
+            if version_id is not None:
+                version_ids.add(version_id)
+
+        action_items = self._controller.get_action_items(
+            project_name, version_ids, "version"
+        )
+        result = show_actions_menu(
+            action_items,
             global_point,
+            len(version_ids) == 1,
             self,
-            include_sitesync_actions=True,
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=project_name,
+            selected_ids=version_ids,
+            selected_entity_type="version",
+            data=action_item.data,
+            options=options,
+            form_values={},
         )
 
     def _sync_card_selection_chrome(self) -> None:
