@@ -589,6 +589,11 @@ class BaseWorkfileController(
     def open_workfile(self, folder_id, task_id, filepath):
         self._workfiles_model.open_workfile(folder_id, task_id, filepath)
 
+    def create_new_workfile_from_template(self, folder_id, task_id):
+        self._workfiles_model.create_new_workfile_from_template(
+            folder_id, task_id
+        )
+
     def save_current_workfile(self):
         self._workfiles_model.save_current_workfile()
 

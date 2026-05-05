@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import copy
+import shutil
 import platform
 import time
 import typing
@@ -36,6 +37,7 @@ from ayon_core.pipeline.template_data import (
     get_folder_template_data,
 )
 from ayon_core.pipeline.workfile import (
+    get_custom_workfile_template,
     get_workdir_with_workdir_data,
     get_workfile_template_key,
     save_workfile_info,
@@ -229,6 +231,103 @@ class WorkfilesModel:
                 app.processEvents()
         except Exception:
             pass
+
+    def create_new_workfile_from_template(self, folder_id, task_id):
+        """Copy template file to next-version path and open it."""
+        self._emit_event("new_from_template.started")
+        failed = False
+        try:
+            save_as_data = self.get_workarea_save_as_data(folder_id, task_id)
+            if (
+                save_as_data["workdir"] is None
+                or save_as_data["ext"] is None
+                or save_as_data["last_version"] is None
+            ):
+                self._log.warning(
+                    "Cannot create new workfile from template: invalid context"
+                )
+                failed = True
+                return
+
+            comment = save_as_data["comment"] or ""
+            fp_result = self.fill_workarea_filepath(
+                folder_id,
+                task_id,
+                save_as_data["ext"],
+                False,
+                save_as_data["last_version"],
+                comment,
+            )
+            if fp_result.filename is None:
+                self._log.warning(
+                    "Cannot resolve filename for new workfile from template"
+                )
+                failed = True
+                return
+
+            if fp_result.exists:
+                self._log.warning(
+                    "Target workfile already exists: %s",
+                    fp_result.filepath,
+                )
+                failed = True
+                return
+
+            dst_filepath = fp_result.filepath
+            if not dst_filepath:
+                dst_filepath = os.path.join(
+                    str(fp_result.root),
+                    str(fp_result.filename),
+                )
+            dst_filepath = os.path.normpath(dst_filepath)
+
+            project_name = self._project_name
+            project_entity = self._controller.get_project_entity(project_name)
+            folder_entity = self._controller.get_folder_entity(
+                project_name, folder_id
+            )
+            task_entity = self._controller.get_task_entity(
+                project_name, task_id
+            )
+
+            template_src = get_custom_workfile_template(
+                project_entity,
+                folder_entity,
+                task_entity,
+                self._host.name,
+                anatomy=self._controller.project_anatomy,
+                project_settings=self._controller.project_settings,
+            )
+            if not template_src:
+                template_src = self._host.get_fallback_workfile_template_path()
+
+            if not template_src or not os.path.isfile(template_src):
+                self._log.warning(
+                    "No workfile template available for host %s",
+                    self._host.name,
+                )
+                failed = True
+                return
+
+            dst_dir = os.path.dirname(dst_filepath)
+            if dst_dir:
+                os.makedirs(dst_dir, exist_ok=True)
+
+            shutil.copy2(os.path.normpath(template_src), dst_filepath)
+
+            self.open_workfile(folder_id, task_id, dst_filepath)
+
+        except Exception:
+            failed = True
+            self._log.warning(
+                "Creating new workfile from template failed",
+                exc_info=True,
+            )
+        finally:
+            self._emit_event(
+                "new_from_template.finished",
+                {"failed": failed},
+            )
 
     def save_current_workfile(self):
         current_file = self.get_current_workfile()

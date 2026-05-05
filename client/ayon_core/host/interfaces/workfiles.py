@@ -915,6 +915,20 @@ class IWorkfileHost(AbstractHost):
         """
         return None
 
+    def get_fallback_workfile_template_path(self) -> Optional[str]:
+        """Packaged default template used when custom profiles do not match.
+
+        Used by the Workfiles tool when creating a new workfile from a
+        template copy (after :func:`get_custom_workfile_template` returns
+        ``None``).
+
+        Returns:
+            Optional[str]: Absolute path to a template file on disk, or
+                ``None`` if this host has no bundled default.
+
+        """
+        return None
+
     def get_workfile_extensions(self) -> list[str]:
         """Extensions that can be used to save the workfile to.
 
