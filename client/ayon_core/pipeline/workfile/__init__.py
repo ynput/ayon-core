@@ -22,10 +22,8 @@ from .utils import (
     should_use_last_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
     MissingWorkdirError,
-
-    LastPublishedWorkfileInfo,
+    WorkfileOnLaunchProfile,
     get_last_published_workfile_representation,
-    copy_last_published_workfile,
 
     save_workfile_info,
     save_current_workfile_to,
@@ -70,10 +68,8 @@ __all__ = (
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",
     "MissingWorkdirError",
-
-    "LastPublishedWorkfileInfo",
+    "WorkfileOnLaunchProfile",
     "get_last_published_workfile_representation",
-    "copy_last_published_workfile",
 
     "save_workfile_info",
     "save_current_workfile_to",

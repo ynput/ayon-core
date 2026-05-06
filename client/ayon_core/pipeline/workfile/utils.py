@@ -1,8 +1,6 @@
 from __future__ import annotations
-import copy
 import os
 import platform
-import shutil
 import uuid
 import typing
 from dataclasses import dataclass
@@ -13,7 +11,7 @@ import ayon_api
 from ayon_api.operations import OperationsSession
 
 from ayon_core.host.interfaces.workfiles import deprecated
-from ayon_core.lib import filter_profiles, get_ayon_username, StringTemplate
+from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_core.host.interfaces import (
@@ -27,7 +25,6 @@ from ayon_core.pipeline.template_data import get_template_data
 from .path_resolving import (
     get_workdir,
     get_workfile_template_key,
-    get_last_workfile_with_version,
 )
 
 if typing.TYPE_CHECKING:
@@ -40,13 +37,12 @@ class MissingWorkdirError(Exception):
 
 
 @dataclass
-class LastPublishedWorkfileInfo:
-    """Resolved info about the last published workfile."""
+class WorkfileOnLaunchProfile:
+    """Resolved launch behavior from last_workfile_on_startup profile."""
 
-    source_path: str
-    representation_entity: dict[str, Any]
-    version_entity: dict[str, Any]
-    extension: str  # e.g. "blend", no dot prefix
+    enabled: bool
+    use_last_published_workfile: bool
+    profile: Optional[dict[str, Any]] = None
 
 
 def get_workfiles_info(
@@ -102,11 +98,11 @@ def get_workfile_on_launch_profile(
     task_name: str,
     task_type: str,
     project_settings: Optional[dict[str, Any]] = None,
-) -> Optional[dict[str, Any]]:
+) -> Optional[WorkfileOnLaunchProfile]:
     """Get matched last_workfile_on_startup profile for the context.
 
-    Returns the profile dict with keys 'enabled' and
-    'use_last_published_workfile', or None if no profile matches.
+    Returns object with 'enabled' and 'use_last_published_workfile',
+    or None if no profile matches.
 
     Args:
         project_name (str): Name of project.
@@ -116,7 +112,7 @@ def get_workfile_on_launch_profile(
         project_settings (Optional[dict[str, Any]]): Project settings.
 
     Returns:
-        Optional[dict[str, Any]]: Matched profile dict or None.
+        Optional[WorkfileOnLaunchProfile]: Matched profile object or None.
     """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
@@ -134,7 +130,16 @@ def get_workfile_on_launch_profile(
         "task_types": task_type,
         "hosts": host_name,
     }
-    return filter_profiles(profiles, filter_data)
+    profile = filter_profiles(profiles, filter_data)
+    if profile is None:
+        return None
+    return WorkfileOnLaunchProfile(
+        enabled=bool(profile.get("enabled", False)),
+        use_last_published_workfile=bool(
+            profile.get("use_last_published_workfile", False)
+        ),
+        profile=profile,
+    )
 
 
 @deprecated("Use get_workfile_on_launch_profile() instead.")
@@ -170,7 +175,7 @@ def should_use_last_workfile_on_launch(
     if profile is None:
 
         return False
-    return profile.get("enabled", False)
+    return profile.enabled
 
 
 def get_last_published_workfile_representation(
@@ -180,10 +185,8 @@ def get_last_published_workfile_representation(
     extensions: Optional[typing.Iterable[str]] = None,
     anatomy: Optional["Anatomy"] = None,
     project_settings: Optional[dict[str, Any]] = None,
-) -> Optional[LastPublishedWorkfileInfo]:
-    """Resolve info about the latest published workfile for the context.
-
-    Returns data needed to copy the file, or None if none found or accessible.
+) -> Optional[dict[str, Any]]:
+    """Resolve latest published workfile representation for the context.
 
     Args:
         project_name (str): Project name.
@@ -197,7 +200,7 @@ def get_last_published_workfile_representation(
             Resolved from project_name if not provided.
 
     Returns:
-        Optional[LastPublishedWorkfileInfo]: Resolved info, or None.
+        Optional[dict[str, Any]]: Representation entity, or None.
     """
     if not extensions:
         return None
@@ -251,163 +254,9 @@ def get_last_published_workfile_representation(
 
         ext = representation_path.suffix.lower().lstrip(".")
         if ext in extensions:
-            return LastPublishedWorkfileInfo(
-                source_path=representation_path.as_posix(),
-                representation_entity=repre,
-                version_entity=latest_version,
-                extension=ext,
-            )
+            return repre
 
     return None
-
-
-def copy_last_published_workfile(
-    project_name: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
-    host_name: str,
-    published_info: LastPublishedWorkfileInfo,
-    workdir: Optional[str] = None,
-    file_template: Optional[str] = None,
-    workdir_data: Optional[dict[str, Any]] = None,
-    anatomy: Optional["Anatomy"] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    log: Optional[Any] = None,
-) -> Optional[str]:
-    """Copy the published workfile to the work directory.
-
-    Compares with latest local workfile; copies only if none exist or published
-    is newer.
-
-    Args:
-        project_name (str): Project name.
-        folder_entity (dict[str, Any]): Folder entity.
-        task_entity (dict[str, Any]): Task entity.
-        host_name (str): Host name.
-        published_info (LastPublishedWorkfileInfo): From
-            get_last_published_workfile_representation().
-        workdir (Optional[str]): Work directory.
-            Resolved from context if None.
-        file_template (Optional[str]): Workfile filename template.
-            Resolved if None.
-        workdir_data (Optional[dict[str, Any]]): Template data.
-            Resolved if None.
-            Not mutated.
-        anatomy (Optional[Anatomy]): Project anatomy. Resolved if None.
-        project_settings (Optional[dict[str, Any]]): Project settings.
-            Resolved from project_name if None.
-        log (Optional[Any]): Logger with debug/info/warning. No-op if None.
-
-    Returns:
-        Optional[str]: Path to the copied workfile, or None if copy skipped.
-    """
-    if anatomy is None:
-        from ayon_core.pipeline import Anatomy
-        anatomy = Anatomy(project_name)
-    if project_settings is None:
-        project_settings = get_project_settings(project_name)
-
-    if workdir is None or file_template is None or workdir_data is None:
-        project_entity = ayon_api.get_project(project_name)
-        if workdir_data is None:
-            workdir_data = get_template_data(
-                project_entity,
-                folder_entity,
-                task_entity,
-                host_name,
-                project_settings,
-            )
-        template_key = get_workfile_template_key(
-            project_name,
-            task_entity["taskType"],
-            host_name,
-            project_settings=project_settings,
-        )
-        if file_template is None:
-            file_template = anatomy.get_template_item(
-                "work", template_key, "file"
-            ).template
-        if workdir is None:
-            workdir_result = get_workdir(
-                project_entity,
-                folder_entity,
-                task_entity,
-                host_name,
-                anatomy=anatomy,
-                template_key=template_key,
-                project_settings=project_settings,
-            )
-            workdir = str(workdir_result)
-
-    # Use a copy for template filling
-    template_data = copy.deepcopy(workdir_data)
-    template_data["ext"] = published_info.extension
-    ext_set = {published_info.extension}
-
-    local_path, local_version = get_last_workfile_with_version(
-        workdir,
-        file_template,
-        template_data,
-        ext_set,
-    )
-
-    published_version = published_info.version_entity.get("version", 0)
-
-    if local_version is None:
-        # No local workfiles: use latest published version + 1
-        next_version = published_version + 1
-    else:
-        published_mtime = os.path.getmtime(published_info.source_path)
-        local_mtime = (
-            os.path.getmtime(local_path) if os.path.exists(local_path) else 0
-        )
-        if published_mtime <= local_mtime:
-            if log:
-                log.debug(
-                    "Latest local workfile is newer than last published; "
-                    "skipping copy."
-                )
-            return None
-
-        # Use the greater of local or published version, then + 1
-        next_version = max(local_version, published_version) + 1
-
-    data = copy.deepcopy(template_data)
-    data["version"] = next_version
-    data.pop("comment", None)
-    data["ext"] = published_info.extension
-    filename = StringTemplate.format_strict_template(file_template, data)
-    dst_path = Path(workdir) / str(filename)
-    dst_path = dst_path.resolve()
-
-    dst_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(published_info.source_path, dst_path)
-
-    rootless_path = find_workfile_rootless_path(
-        str(dst_path),
-        project_name,
-        folder_entity,
-        task_entity,
-        host_name,
-        project_settings=project_settings,
-        anatomy=anatomy,
-    )
-    save_workfile_info(
-        project_name,
-        task_entity["id"],
-        rootless_path,
-        host_name,
-        version=next_version,
-        comment=None,
-        description=None,
-    )
-
-    if log:
-        log.info(
-            f"Copied last published workfile to {dst_path} "
-            f"(version {next_version})",
-        )
-    return dst_path.as_posix()
 
 
 def should_open_workfiles_tool_on_launch(
