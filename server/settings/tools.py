@@ -318,9 +318,67 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
     )
 
 
+class LoaderDragDropProfile(BaseSettingsModel):
+    """Profile for default representation selection when dragging from Loader."""
+
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum,
+    )
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        enum_resolver=_product_types_enum,
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
+    extensions: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation file extensions",
+        description=(
+            "If non-empty, profile applies only when at least one "
+            "non-thumbnail representation uses one of these extensions."
+        ),
+    )
+    loader_class_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Loader class names",
+        description=(
+            "If non-empty, only representations compatible with these "
+            "loader plugin class names are considered (empty = all loaders)."
+        ),
+    )
+    default_repre_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Preferred representation names (priority order)",
+    )
+
+
 class LoaderToolModel(BaseSettingsModel):
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
+    )
+    drag_drop_default_repre_profiles: list[LoaderDragDropProfile] = (
+        SettingsField(
+            default_factory=list,
+            title="Drag and drop default representations",
+        )
+    )
+    drag_drop_emit_file_uris: bool = SettingsField(
+        True,
+        title="Emit file URLs in drag MIME data",
+        description=(
+            "When enabled, resolved file paths are attached for OS drops "
+            "(Explorer, desktop). Disable to reduce drag-start latency."
+        ),
     )
 
 
@@ -682,7 +740,46 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
-        "product_type_filter_profiles": []
+        "product_type_filter_profiles": [],
+        "drag_drop_emit_file_uris": True,
+        "drag_drop_default_repre_profiles": [
+            {
+                "host_names": [],
+                "task_types": [],
+                "product_types": ["image"],
+                "product_base_types": [],
+                "extensions": [],
+                "loader_class_names": [],
+                "default_repre_names": ["png", "jpg", "jpeg", "exr"],
+            },
+            {
+                "host_names": [],
+                "task_types": [],
+                "product_types": ["review", "reviewable"],
+                "product_base_types": [],
+                "extensions": [],
+                "loader_class_names": [],
+                "default_repre_names": ["mov", "mp4"],
+            },
+            {
+                "host_names": [],
+                "task_types": [],
+                "product_types": ["render"],
+                "product_base_types": [],
+                "extensions": [],
+                "loader_class_names": [],
+                "default_repre_names": ["exr", "png"],
+            },
+            {
+                "host_names": [],
+                "task_types": [],
+                "product_types": ["model"],
+                "product_base_types": [],
+                "extensions": [],
+                "loader_class_names": [],
+                "default_repre_names": ["abc", "fbx", "obj"],
+            },
+        ],
     },
     "publish": {
         "template_name_profiles": [

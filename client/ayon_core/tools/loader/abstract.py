@@ -514,6 +514,19 @@ class _BaseLoaderController(ABC):
 
         pass
 
+    def get_drag_drop_file_paths(
+        self,
+        project_name: str,
+        entity_ids: "set[str]",
+        entity_type: str,
+    ) -> "list[str]":
+        """Resolve local file paths for drag-drop payloads.
+
+        Returns an empty list by default. Concrete controllers that can resolve
+        representation paths override this.
+        """
+        return []
+
 
 class BackendLoaderController(_BaseLoaderController):
     """Backend loader controller abstraction.

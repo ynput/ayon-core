@@ -42,7 +42,11 @@ class ProductsFlattenProxyModel(QtCore.QAbstractProxyModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._controller = None
         self._source_indexes: List[QtCore.QModelIndex] = []
+
+    def set_controller(self, controller) -> None:
+        self._controller = controller
 
     def setSourceModel(self, source_model: QtCore.QAbstractItemModel) -> None:
         old = self.sourceModel()
@@ -101,7 +105,21 @@ class ProductsFlattenProxyModel(QtCore.QAbstractProxyModel):
     def _build_tooltip(self, model: QtCore.QAbstractItemModel, source_index: QtCore.QModelIndex) -> str:
         product_name = model.data(source_index, PRODUCT_NAME_ROLE) or "—"
         version = model.data(source_index, VERSION_NAME_ROLE)
-        version_label = format_version(version) if version is not None else "—"
+        pn = (
+            model.get_last_project_name()
+            if hasattr(model, "get_last_project_name")
+            else None
+        )
+        vp = (
+            self._controller.get_version_padding(pn)
+            if self._controller is not None
+            else 3
+        )
+        version_label = (
+            format_version(version, version_padding=vp)
+            if version is not None
+            else "—"
+        )
         status = model.data(source_index, VERSION_STATUS_NAME_ROLE) or "—"
         published = model.data(source_index, VERSION_PUBLISH_TIME_ROLE)
         if published:

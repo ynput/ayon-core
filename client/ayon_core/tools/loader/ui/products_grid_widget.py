@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import collections
+import numbers
 from typing import Any, Dict, List, Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import Logger
+from ayon_core.tools.utils.lib import format_version
 
 from .products_flatten_proxy import ProductsFlattenProxyModel
 from .products_grid_card_widget import (
@@ -20,11 +22,13 @@ from .products_grid_card_widget import (
 from .products_model import (
     FOLDER_ID_ROLE,
     PRODUCT_ID_ROLE,
+    PRODUCT_NAME_ROLE,
     VERSION_ID_ROLE,
+    VERSION_NAME_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
 )
 from .products_delegates import VersionComboBox
-from .actions_utils import LoaderDragListView, show_actions_menu
+from .actions_utils import DragPayloadPrecache, LoaderDragListView, show_actions_menu
 
 # Legacy float scale range (migration from LOADER_VIEW_SCALE_KEY only).
 MIN_SCALE = 0.5
@@ -135,6 +139,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._list_view.setModel(flatten_proxy)
         self._list_view.setItemDelegate(GridCellDelegate(self, self._list_view))
         self._list_view.setSpacing(0)
+        self._list_view.setSelectionRectVisible(True)
 
         self._grid_bottom_spacer = QtWidgets.QWidget(self)
         self._grid_bottom_spacer.setFixedHeight(0)
@@ -167,6 +172,48 @@ class ProductsGridWidget(QtWidgets.QWidget):
 
         self._apply_grid_chrome_background()
         self._list_view.set_drag_data_callback(self._get_grid_drag_data)
+        self._list_view.set_drag_pixmap_context_callback(
+            self._grid_drag_pixmap_context
+        )
+        self._drag_precache = DragPayloadPrecache()
+        self._list_view.set_drag_precache(self._drag_precache)
+
+    @property
+    def list_view(self) -> LoaderDragListView:
+        """QListView hosting grid cards (rubber-band / drag targets)."""
+        return self._list_view
+
+    def _grid_drag_pixmap_context(self):
+        """Labels + cached thumbnail path for composite drag pixmap."""
+        data = self._get_grid_drag_data()
+        if not data:
+            return None
+        project_name, version_ids, _ = data
+        first_vid = next(iter(version_ids))
+        thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
+        indexes = self._list_view.selectionModel().selectedIndexes()
+        ix = indexes[0] if indexes else None
+        model = self._list_view.model()
+        product_label = ""
+        version_label = ""
+        if ix is not None and ix.isValid() and model is not None:
+            product_label = str(model.data(ix, PRODUCT_NAME_ROLE) or "")
+            raw_ver = model.data(ix, VERSION_NAME_ROLE)
+            if isinstance(raw_ver, numbers.Integral):
+                version_label = format_version(
+                    raw_ver,
+                    version_padding=self._controller.get_version_padding(
+                        project_name
+                    ),
+                )
+            else:
+                version_label = str(raw_ver or "")
+        return {
+            "thumbnail_path": thumb_path,
+            "product_label": product_label,
+            "version_label": version_label,
+            "count": len(version_ids),
+        }
 
     def _get_grid_drag_data(self):
         """Return (project_name, version_ids, entity_type) for loader DnD (grid view)."""
@@ -736,6 +783,14 @@ class ProductsGridWidget(QtWidgets.QWidget):
                 )
         self._selected_versions_info = selected_versions_info
         self._selected_merged_products = []
+        project_name = self._controller.get_selected_project_name()
+        if project_name and selected_version_ids:
+            self._drag_precache.pre_build(
+                self._controller,
+                project_name,
+                selected_version_ids,
+                "version",
+            )
         self._controller.set_selected_versions(selected_version_ids)
         self._sync_card_selection_chrome()
         self.selection_changed.emit()

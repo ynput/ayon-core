@@ -21,11 +21,32 @@ LOADER_PAYLOAD_TEMP_PREFIX = "ayon_loader_"
 _log = Logger.get_logger(__name__)
 
 
+def _serialize_action_item(item: ActionItem) -> dict[str, Any]:
+    return {
+        "identifier": item.identifier,
+        "data": item.data,
+        "label": item.label,
+        "default_for_drag_drop": getattr(
+            item, "default_for_drag_drop", False
+        ),
+        "drag_drop_contexts": (
+            list(item.drag_drop_contexts)
+            if getattr(item, "drag_drop_contexts", None)
+            else None
+        ),
+    }
+
+
 def encode_loader_drag_payload(
     project_name: str,
     entity_type: str,
     entity_ids: list[str],
     action_items: list[ActionItem],
+    *,
+    default_repre_ids_by_version_id: Optional[dict[str, list[str]]] = None,
+    needs_rep_choice: bool = False,
+    actions_by_repre_id: Optional[dict[str, list[ActionItem]]] = None,
+    repre_names_by_id: Optional[dict[str, str]] = None,
 ) -> dict[str, Any]:
     """Build JSON-serializable payload for loader drag.
 
@@ -34,30 +55,36 @@ def encode_loader_drag_payload(
         entity_type: "version" or "representation".
         entity_ids: List of version or representation ids.
         action_items: Action items with drag_drop_enabled (caller must filter).
+        default_repre_ids_by_version_id: Optional per-version ordered candidate
+            representation ids when drag defaults are ambiguous.
+        needs_rep_choice: True when user must pick representation + action (Loader UI).
+        actions_by_repre_id: Per-representation drag-drop actions when needs_rep_choice.
+        repre_names_by_id: Display names for representation ids (needs_rep_choice).
 
     Returns:
         Dict suitable for json.dumps and decode_loader_drag_payload.
     """
-    actions = []
-    for item in action_items:
-        actions.append({
-            "identifier": item.identifier,
-            "data": item.data,
-            "label": item.label,
-            "default_for_drag_drop": getattr(
-                item, "default_for_drag_drop", False
-            ),
-            "drag_drop_contexts": (
-                list(item.drag_drop_contexts)
-                if getattr(item, "drag_drop_contexts", None) else None
-            ),
-        })
-    return {
+    actions = [_serialize_action_item(item) for item in action_items]
+    out: dict[str, Any] = {
         "project_name": project_name,
         "entity_type": entity_type,
         "entity_ids": list(entity_ids),
         "actions": actions,
     }
+    if default_repre_ids_by_version_id:
+        out["default_repre_ids_by_version_id"] = {
+            k: list(v) for k, v in default_repre_ids_by_version_id.items()
+        }
+    if needs_rep_choice:
+        out["needs_rep_choice"] = True
+        if repre_names_by_id:
+            out["repre_names_by_id"] = dict(repre_names_by_id)
+        if actions_by_repre_id:
+            out["actions_by_repre_id"] = {
+                rid: [_serialize_action_item(a) for a in items]
+                for rid, items in actions_by_repre_id.items()
+            }
+    return out
 
 
 def _json_serializable_default(obj: Any) -> Any:

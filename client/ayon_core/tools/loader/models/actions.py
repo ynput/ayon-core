@@ -11,6 +11,8 @@ from typing import Any, Callable, Optional
 import ayon_api
 
 from ayon_core.lib import Logger, NestedCacheItem
+from ayon_core.pipeline import get_current_host_name
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,
@@ -771,6 +773,191 @@ class LoaderActionsModel:
             except Exception:
                 pass
         return paths
+
+    def _get_drag_drop_profiles(self, project_name: str) -> list[dict[str, Any]]:
+        settings = get_project_settings(project_name)
+        return (
+            settings.get("core", {})
+            .get("tools", {})
+            .get("loader", {})
+            .get("drag_drop_default_repre_profiles")
+            or []
+        )
+
+    @staticmethod
+    def _repre_extension_lower(repre_entity: dict[str, Any]) -> Optional[str]:
+        ctx = repre_entity.get("context") or {}
+        ext = ctx.get("ext")
+        if ext:
+            return str(ext).lower().lstrip(".")
+        path = (repre_entity.get("attrib") or {}).get("path")
+        if path:
+            return os.path.splitext(path)[1].lower().lstrip(".")
+        return None
+
+    def _task_type_for_version(
+        self, project_name: str, version_entity: dict[str, Any]
+    ) -> Optional[str]:
+        tid = version_entity.get("taskId")
+        if not tid:
+            return None
+        tasks = list(ayon_api.get_tasks(project_name, task_ids={tid}))
+        if not tasks:
+            return None
+        return tasks[0].get("taskType")
+
+    def _profile_matches_drag_drop(
+        self,
+        profile: dict[str, Any],
+        host_name: Optional[str],
+        task_type: Optional[str],
+        product_type: Optional[str],
+        product_base_type: Optional[str],
+        non_thumb_repres: dict[str, dict[str, Any]],
+    ) -> bool:
+        hosts = profile.get("host_names") or []
+        if hosts and (not host_name or host_name not in hosts):
+            return False
+        tasks = profile.get("task_types") or []
+        if tasks and (not task_type or task_type not in tasks):
+            return False
+        pts = profile.get("product_types") or []
+        if pts and (not product_type or product_type not in pts):
+            return False
+        pbts = profile.get("product_base_types") or []
+        if pbts:
+            ok = False
+            if product_base_type and product_base_type in pbts:
+                ok = True
+            elif product_type and product_type in pbts:
+                ok = True
+            if not ok:
+                return False
+        exts = profile.get("extensions") or []
+        if exts:
+            want = {str(e).lower().lstrip(".") for e in exts}
+            found = False
+            for repre in non_thumb_repres.values():
+                rxt = self._repre_extension_lower(repre)
+                if rxt and rxt in want:
+                    found = True
+                    break
+            if not found:
+                return False
+        return True
+
+    def resolve_drag_drop_representation_selection(
+        self,
+        project_name: str,
+        version_ids: set[str],
+    ) -> tuple[dict[str, str], dict[str, list[str]]]:
+        """Pick primary representation id per version for Loader drag-and-drop."""
+        primary_by_vid: dict[str, str] = {}
+        candidates_by_vid: dict[str, list[str]] = {}
+
+        if not project_name or not version_ids:
+            return primary_by_vid, candidates_by_vid
+
+        host_name = get_current_host_name()
+
+        (
+            version_context_by_id,
+            repre_context_by_id,
+        ) = self._contexts_for_versions(project_name, version_ids)
+
+        profiles = self._get_drag_drop_profiles(project_name)
+
+        for vid in version_ids:
+            vc = version_context_by_id.get(vid)
+            if not vc:
+                continue
+            product = vc["product"]
+            version_ent = vc["version"]
+            pt = product.get("productType")
+            pbt = product.get("productBaseType")
+            task_type = self._task_type_for_version(project_name, version_ent)
+
+            repre_ids_for_version = [
+                rid
+                for rid, ctx in repre_context_by_id.items()
+                if ctx["version"]["id"] == vid
+            ]
+            repre_by_id = {
+                rid: repre_context_by_id[rid]["representation"]
+                for rid in repre_ids_for_version
+            }
+
+            def is_thumb(repre: dict[str, Any]) -> bool:
+                return (repre.get("name") or "").lower() == "thumbnail"
+
+            non_thumb = {
+                rid: r for rid, r in repre_by_id.items() if not is_thumb(r)
+            }
+            if not non_thumb:
+                non_thumb = dict(repre_by_id)
+
+            chosen_rid: Optional[str] = None
+            ordered: list[str] = []
+
+            for profile in profiles:
+                if not self._profile_matches_drag_drop(
+                    profile,
+                    host_name,
+                    task_type,
+                    pt,
+                    pbt,
+                    non_thumb,
+                ):
+                    continue
+                priority_names = profile.get("default_repre_names") or []
+                if not priority_names:
+                    continue
+                for rep_name in priority_names:
+                    for rid, r in non_thumb.items():
+                        if r.get("name") == rep_name:
+                            chosen_rid = rid
+                            ordered = [rid]
+                            break
+                    if chosen_rid:
+                        break
+                if chosen_rid:
+                    break
+
+            if not chosen_rid:
+                if len(non_thumb) == 1:
+                    rid = next(iter(non_thumb.keys()))
+                    chosen_rid = rid
+                    ordered = [rid]
+                elif len(non_thumb) > 1:
+                    sorted_ids = sorted(
+                        non_thumb.keys(),
+                        key=lambda x: (non_thumb[x].get("name") or ""),
+                    )
+                    ordered = sorted_ids
+                    chosen_rid = sorted_ids[0]
+                elif repre_by_id:
+                    fallback_ids = sorted(
+                        repre_by_id.keys(),
+                        key=lambda x: (repre_by_id[x].get("name") or ""),
+                    )
+                    ordered = fallback_ids
+                    chosen_rid = fallback_ids[0]
+
+            if chosen_rid:
+                primary_by_vid[vid] = chosen_rid
+            if not ordered:
+                ordered = sorted(
+                    non_thumb.keys(),
+                    key=lambda x: (non_thumb[x].get("name") or ""),
+                )
+                if not ordered and repre_by_id:
+                    ordered = sorted(
+                        repre_by_id.keys(),
+                        key=lambda x: (repre_by_id[x].get("name") or ""),
+                    )
+            candidates_by_vid[vid] = ordered
+
+        return primary_by_vid, candidates_by_vid
 
     def _get_action_items_for_contexts(
         self,

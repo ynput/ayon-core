@@ -5,8 +5,6 @@ import qtawesome
 
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils import DeselectableTreeView
-
 from .actions_utils import show_actions_menu, LoaderDragTreeView
 
 REPRESENTAION_NAME_ROLE = QtCore.Qt.UserRole + 1
@@ -331,6 +329,9 @@ class RepresentationsWidget(QtWidgets.QWidget):
         )
 
         repre_view.set_drag_data_callback(self._get_repres_drag_data)
+        repre_view.set_drag_pixmap_context_callback(
+            self._repres_drag_pixmap_context
+        )
 
         self._controller = controller
         self._selected_project_name = None
@@ -404,12 +405,42 @@ class RepresentationsWidget(QtWidgets.QWidget):
         return selected_indexes
 
     def _get_selected_repre_ids(self):
-        repre_ids = {
-            index.data(REPRESENTATION_ID_ROLE)
-            for index in self._get_selected_repre_indexes()
-        }
-        repre_ids.discard(None)
+        model = self._repre_view.model()
+        repre_ids = set()
+        for index in self._get_selected_repre_indexes():
+            repre_id = index.data(REPRESENTATION_ID_ROLE)
+            if not repre_id:
+                continue
+            name = (model.data(index, REPRESENTAION_NAME_ROLE) or "").lower()
+            if name == "thumbnail":
+                continue
+            repre_ids.add(repre_id)
         return repre_ids
+
+    def _repres_drag_pixmap_context(self):
+        result = self._get_repres_drag_data()
+        if not result:
+            return None
+        _, repre_ids, _ = result
+        indexes = self._get_selected_repre_indexes()
+        ix = indexes[0] if indexes else None
+        repre_name = ""
+        product_name = ""
+        if ix is not None and ix.isValid():
+            repre_name = str(
+                ix.data(REPRESENTAION_NAME_ROLE)
+                or ix.data(QtCore.Qt.DisplayRole)
+                or ""
+            )
+            product_name = str(ix.data(PRODUCT_NAME_ROLE) or "")
+        label_primary = product_name or repre_name
+        label_secondary = repre_name if product_name else ""
+        return {
+            "thumbnail_path": None,
+            "product_label": label_primary,
+            "version_label": label_secondary,
+            "count": len(repre_ids),
+        }
 
     def _get_repres_drag_data(self):
         """Return (project_name, repre_ids, 'representation') for current selection, or None."""

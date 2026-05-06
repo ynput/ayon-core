@@ -4,7 +4,7 @@ import logging
 import os
 import tempfile
 import uuid
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 import ayon_api
 
@@ -374,6 +374,128 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, entity_ids, entity_type, anatomy
         )
 
+    def get_drag_drop_emit_file_uris(self) -> bool:
+        """Whether to attach file URLs to drag MIME data (disable for lower latency)."""
+        project_name = self.get_selected_project_name()
+        if not project_name:
+            return True
+        settings = get_project_settings(project_name)
+        return (
+            settings.get("core", {})
+            .get("tools", {})
+            .get("loader", {})
+            .get("drag_drop_emit_file_uris", True)
+        )
+
+    def resolve_drag_drop_representation_selection(
+        self,
+        project_name: str,
+        version_ids: set[str],
+    ) -> tuple[dict[str, str], dict[str, list[str]]]:
+        """Map version ids to primary representation ids for Loader drag."""
+        return self._loader_actions_model.resolve_drag_drop_representation_selection(
+            project_name, version_ids
+        )
+
+    def collect_drag_drop_actions_for_version_resolution(
+        self,
+        project_name: str,
+        version_ids: set[str],
+        primary_by_vid: dict[str, str],
+        candidates_by_vid: dict[str, list[str]],
+    ) -> tuple[list[ActionItem], str, list[str], Dict[str, Any]]:
+        """Merge loader ActionItems after per-version default representation resolution.
+
+        Returns:
+            action_items, effective_entity_type, flat_entity_ids, extras.
+            extras may include needs_rep_choice, actions_by_repre_id, repre_names_by_id
+            when one version has multiple representations (picker instead of fan-out).
+        """
+        extras: Dict[str, Any] = {}
+
+        if len(version_ids) == 1:
+            vid = next(iter(version_ids))
+            cands = candidates_by_vid.get(vid) or []
+            if len(cands) > 1:
+                want = frozenset(str(x) for x in cands)
+                repre_names_by_id: dict[str, str] = {}
+                for r in ayon_api.get_representations(
+                    project_name, version_ids={vid}
+                ):
+                    rid = str(r["id"])
+                    if rid not in want:
+                        continue
+                    repre_names_by_id[rid] = str(r.get("name") or "")
+                for rid in cands:
+                    rs = str(rid)
+                    repre_names_by_id.setdefault(rs, rs[:8])
+
+                actions_by_repre_id: dict[str, list[ActionItem]] = {}
+                for rid in cands:
+                    rs = str(rid)
+                    actions_by_repre_id[rs] = (
+                        self.get_drag_drop_action_items(
+                            project_name, {rs}, "representation"
+                        )
+                        or []
+                    )
+                extras["needs_rep_choice"] = True
+                extras["actions_by_repre_id"] = actions_by_repre_id
+                extras["repre_names_by_id"] = repre_names_by_id
+                extras["ambiguous_version_id"] = vid
+                return [], "version", [vid], extras
+
+        merged: list[ActionItem] = []
+        flat_entity_ids: list[str] = []
+
+        for vid in version_ids:
+            cands = candidates_by_vid.get(vid) or []
+            prim = primary_by_vid.get(vid)
+            if len(cands) <= 1:
+                rid = prim or (cands[0] if cands else None)
+                if not rid:
+                    continue
+                flat_entity_ids.append(rid)
+                merged.extend(
+                    self.get_drag_drop_action_items(
+                        project_name, {rid}, "representation"
+                    )
+                    or []
+                )
+            else:
+                seen_keys: set[tuple[str, str, str]] = set()
+                for rid in cands:
+                    flat_entity_ids.append(rid)
+                    for it in (
+                        self.get_drag_drop_action_items(
+                            project_name, {rid}, "representation"
+                        )
+                        or []
+                    ):
+                        key = (it.identifier, it.label, str(it.data))
+                        if key in seen_keys:
+                            continue
+                        seen_keys.add(key)
+                        merged.append(it)
+
+        deduped: list[ActionItem] = []
+        seen_final: set[tuple[str, str, str]] = set()
+        for it in merged:
+            key = (it.identifier, it.label, str(it.data))
+            if key in seen_final:
+                continue
+            seen_final.add(key)
+            deduped.append(it)
+
+        uniq_entity: list[str] = []
+        seen_e: set[str] = set()
+        for e in flat_entity_ids:
+            if e not in seen_e:
+                seen_e.add(e)
+                uniq_entity.append(e)
+
+        return deduped, "representation", uniq_entity, extras
+
     def trigger_action_item(
         self,
         identifier: str,
@@ -668,6 +790,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         if not cache.is_valid:
             cache.update_data(Anatomy(project_name))
         return cache.get_data()
+
+    def get_version_padding(self, project_name: Optional[str]) -> int:
+        """Anatomy ``version_padding`` for ``project_name``, or 3 if missing."""
+        if not project_name:
+            return 3
+        try:
+            anatomy = self._get_project_anatomy(project_name)
+            if anatomy is None:
+                return 3
+            return max(1, int(anatomy.templates_obj.version_padding))
+        except Exception:
+            return 3
 
     def _create_event_system(self):
         return QueuedEventSystem()

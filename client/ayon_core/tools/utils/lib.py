@@ -6,7 +6,7 @@ import collections
 import traceback
 import urllib.request
 from functools import partial
-from typing import Union, Any
+from typing import Union, Any, Optional
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
@@ -123,10 +123,16 @@ def paint_image_with_color(image, color):
     return pixmap
 
 
-def format_version(value):
-    """Formats integer to displayable version name"""
+def format_version(value, *, version_padding: int = 3):
+    """Formats integer to displayable version name.
+
+    Args:
+        value: Version number (e.g. Hero versions use negative ints).
+        version_padding: Minimum digit width from project anatomy; default 3.
+    """
     value = int(value)  # convert e.g. HeroVersionType to its version value
-    label = "v{0:03d}".format(abs(value))
+    width = max(1, int(version_padding))
+    label = "v{num:0{width}d}".format(num=abs(value), width=width)
     if value < 0:
         return "[{}]".format(label)
     return label

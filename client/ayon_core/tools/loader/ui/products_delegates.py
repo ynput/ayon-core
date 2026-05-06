@@ -31,7 +31,12 @@ class ComboVersionsModel(QtGui.QStandardItemModel):
         super().__init__()
         self._items_by_id = {}
 
-    def update_versions(self, version_items, task_tags_by_version_id):
+    def update_versions(
+        self,
+        version_items,
+        task_tags_by_version_id,
+        version_padding: int = 3,
+    ):
         version_ids = {
             version_item.version_id
             for version_item in version_items
@@ -47,12 +52,17 @@ class ComboVersionsModel(QtGui.QStandardItemModel):
         for idx, version_item in enumerate(version_items):
             version_id = version_item.version_id
 
+            label = format_version(
+                version_item.version,
+                version_padding=version_padding,
+            )
             item = self._items_by_id.get(version_id)
             if item is None:
-                label = format_version(version_item.version)
                 item = QtGui.QStandardItem(label)
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
+            else:
+                item.setText(label)
             version_tags = set(version_item.tags)
             task_tags = task_tags_by_version_id[version_id]
             item.setData(version_id, COMBO_VERSION_ID_ROLE)
@@ -211,6 +221,7 @@ class VersionComboBox(QtWidgets.QComboBox):
         version_items,
         current_version_id,
         task_tags_by_version_id,
+        version_padding: int = 3,
     ):
         self.blockSignals(True)
         version_items = list(version_items)
@@ -223,7 +234,9 @@ class VersionComboBox(QtWidgets.QComboBox):
         self._current_id = current_version_id
 
         self._versions_model.update_versions(
-            version_items, task_tags_by_version_id
+            version_items,
+            task_tags_by_version_id,
+            version_padding,
         )
 
         if not version_ids:
@@ -267,7 +280,12 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
     def displayText(self, value, locale):
         if not isinstance(value, numbers.Integral):
             return "N/A"
-        return format_version(value)
+        vp = 3
+        pw = self._products_widget
+        if pw is not None:
+            pn = pw._products_model.get_last_project_name()
+            vp = pw._controller.get_version_padding(pn)
+        return format_version(value, version_padding=vp)
 
     def set_tasks_filter(self, task_ids):
         self._task_ids_filter = set(task_ids)
@@ -409,7 +427,19 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             for version_item in versions
         }
 
-        editor.update_versions(versions, version_id, task_tags_by_version_id)
+        vp = 3
+        if self._products_widget is not None:
+            pn = None
+            if hasattr(model, "get_last_project_name"):
+                pn = model.get_last_project_name()
+            vp = self._products_widget._controller.get_version_padding(pn)
+
+        editor.update_versions(
+            versions,
+            version_id,
+            task_tags_by_version_id,
+            version_padding=vp,
+        )
         editor.set_tasks_filter(self._task_ids_filter)
         editor.set_task_tags_filter(self._task_tags_filter)
         editor.set_statuses_filter(self._statuses_filter)

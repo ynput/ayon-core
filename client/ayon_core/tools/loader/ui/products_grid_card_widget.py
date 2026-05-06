@@ -408,6 +408,8 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self._product_id = product_id
 
         pm = self._grid.products_model()
+        project = self._grid.controller.get_selected_project_name()
+        vp_combo = self._grid.controller.get_version_padding(project)
         if product_id and pm:
             if self._version_combo is not None:
                 if self._version_combo.get_product_id() != product_id:
@@ -435,10 +437,10 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
                 version_items,
                 self.version_id,
                 task_tags_by_vid,
+                version_padding=vp_combo,
             )
             self._version_combo.blockSignals(False)
 
-        project = self._grid.controller.get_selected_project_name()
         self._review_btn.setEnabled(bool(project and self.version_id))
 
         icon_color = get_default_entity_icon_color()
@@ -499,6 +501,21 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             pos = event.pos()
+            if self.rect().contains(pos) and self.childAt(pos) is None:
+                lv = self._grid.list_view
+                vp = lv.viewport()
+                gp = self.mapToGlobal(pos)
+                lp = vp.mapFromGlobal(gp)
+                press = QtGui.QMouseEvent(
+                    QtCore.QEvent.Type.MouseButtonPress,
+                    lp,
+                    gp,
+                    QtCore.Qt.MouseButton.LeftButton,
+                    QtCore.Qt.MouseButton.LeftButton,
+                    event.modifiers(),
+                )
+                QtWidgets.QApplication.sendEvent(vp, press)
+                return
             w = None
             if self._thumb.geometry().contains(pos):
                 tpos = self._thumb.mapFrom(self, pos)

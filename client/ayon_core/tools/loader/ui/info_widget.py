@@ -40,7 +40,12 @@ class VersionTextEdit(QtWidgets.QTextEdit):
             self.setText("")
             return
 
-        version_label = format_version(abs(version_item.version))
+        project_name = self._controller.get_selected_project_name()
+        vp = self._controller.get_version_padding(project_name)
+        version_label = format_version(
+            abs(version_item.version),
+            version_padding=vp,
+        )
         if version_item.version < 0:
             version_label = "Hero version {}".format(version_label)
 

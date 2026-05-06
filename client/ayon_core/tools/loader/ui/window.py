@@ -48,7 +48,10 @@ from .view_mode_selector import (
     VIEW_MODE_LIST,
     ViewModeSelector,
 )
-from .actions_utils import show_loader_drop_action_picker
+from .actions_utils import (
+    show_loader_drop_action_picker,
+    show_loader_drop_rep_action_picker,
+)
 from ayon_core.tools.loader.drag_drop import (
     decode_loader_drag_payload_from_mime,
     filter_actions_by_drop_context,
@@ -256,6 +259,7 @@ class LoaderWindow(QtWidgets.QWidget):
         products_stack.setObjectName("LoaderProductsStack")
         products_widget = ProductsWidget(controller, products_stack)
         flatten_proxy = ProductsFlattenProxyModel(products_stack)
+        flatten_proxy.set_controller(controller)
         flatten_proxy.setSourceModel(products_widget.get_proxy_model())
         products_grid_widget = ProductsGridWidget(
             controller, flatten_proxy, products_stack
@@ -598,23 +602,62 @@ class LoaderWindow(QtWidgets.QWidget):
         if not payload:
             return
         event.acceptProposedAction()
-        actions = filter_actions_by_drop_context(payload, None)
-        if not actions:
-            return
         project_name = payload["project_name"]
         entity_type = payload["entity_type"]
         entity_ids = set(payload.get("entity_ids") or [])
 
         def trigger(identifier, data, options, form_values):
+            d = dict(data or {})
+            ids_from_data = d.get("entity_ids")
+            if ids_from_data:
+                sel_ids = set(ids_from_data)
+                etype = "representation"
+            else:
+                sel_ids = entity_ids
+                etype = entity_type
             self._controller.trigger_action_item(
                 identifier=identifier,
                 project_name=project_name,
-                selected_ids=entity_ids,
-                selected_entity_type=entity_type,
-                data=data,
+                selected_ids=sel_ids,
+                selected_entity_type=etype,
+                data=d,
                 options=options or {},
                 form_values=form_values or {},
             )
+
+        if payload.get("needs_rep_choice"):
+            show_loader_drop_rep_action_picker(
+                payload.get("repre_names_by_id") or {},
+                payload.get("actions_by_repre_id") or {},
+                trigger,
+                self,
+            )
+            return
+
+        actions = filter_actions_by_drop_context(payload, None)
+        if not actions:
+            items = self._controller.get_drag_drop_action_items(
+                project_name, entity_ids, entity_type
+            )
+            actions = [
+                {
+                    "identifier": i.identifier,
+                    "data": i.data,
+                    "label": i.label,
+                    "default_for_drag_drop": getattr(
+                        i, "default_for_drag_drop", False
+                    ),
+                    "drag_drop_contexts": (
+                        list(i.drag_drop_contexts)
+                        if getattr(i, "drag_drop_contexts", None)
+                        else None
+                    ),
+                }
+                for i in (items or [])
+            ]
+
+        if not actions:
+            return
 
         defaults = [a for a in actions if a.get("default_for_drag_drop")]
         if len(actions) == 1:

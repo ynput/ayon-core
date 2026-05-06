@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections
 import logging
+import numbers
 from typing import Optional
 
 from qtpy import QtWidgets, QtCore
@@ -17,11 +18,14 @@ from ayon_core.tools.utils import (
     DeselectableTreeView,
 )
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate, StatusDelegate
+from ayon_core.tools.utils.lib import format_version
 
 from .products_model import (
     ProductsModel,
     PRODUCTS_MODEL_SENDER_NAME,
     PRODUCT_TYPE_ROLE,
+    PRODUCT_NAME_ROLE,
+    VERSION_NAME_ROLE,
     GROUP_TYPE_ROLE,
     MERGED_COLOR_ROLE,
     FOLDER_ID_ROLE,
@@ -42,7 +46,11 @@ from .products_delegates import (
     LoadedInSceneDelegate,
     SiteSyncDelegate,
 )
-from .actions_utils import show_actions_menu, LoaderDragTreeView
+from .actions_utils import (
+    DragPayloadPrecache,
+    LoaderDragTreeView,
+    show_actions_menu,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -344,6 +352,11 @@ class ProductsWidget(QtWidgets.QWidget):
         )
 
         products_view.set_drag_data_callback(self._get_products_drag_data)
+        products_view.set_drag_pixmap_context_callback(
+            self._products_drag_pixmap_context
+        )
+        self._drag_precache = DragPayloadPrecache()
+        products_view.set_drag_precache(self._drag_precache)
 
         self._products_view = products_view
         self._products_model = products_model
@@ -561,6 +574,45 @@ class ProductsWidget(QtWidgets.QWidget):
             form_values={},
         )
 
+    def _products_drag_pixmap_context(self):
+        """Context for composite drag pixmap (thumb path + labels)."""
+        result = self._get_products_drag_data()
+        if not result:
+            return None
+        project_name, version_ids, _ = result
+        selection_model = self._products_view.selectionModel()
+        model = self._products_proxy_model
+        col0 = [
+            i
+            for i in selection_model.selectedIndexes()
+            if i.column() == 0
+        ]
+        ix = col0[0] if col0 else None
+        product_label = ""
+        version_label = ""
+        if ix is not None and ix.isValid():
+            product_label = str(
+                model.data(ix, PRODUCT_NAME_ROLE)
+                or model.data(ix, QtCore.Qt.DisplayRole)
+                or ""
+            )
+            raw_ver = model.data(ix, VERSION_NAME_ROLE)
+            if isinstance(raw_ver, numbers.Integral):
+                version_label = format_version(
+                    raw_ver,
+                    version_padding=self._controller.get_version_padding(
+                        project_name
+                    ),
+                )
+            else:
+                version_label = str(raw_ver or "")
+        return {
+            "thumbnail_path": None,
+            "product_label": product_label,
+            "version_label": version_label,
+            "count": len(version_ids),
+        }
+
     def _get_products_drag_data(self):
         """Return (project_name, version_ids, 'version') for current selection, or None."""
         selection_model = self._products_view.selectionModel()
@@ -720,6 +772,15 @@ class ProductsWidget(QtWidgets.QWidget):
         prev_selected_merged_products = self._selected_merged_products
         self._selected_merged_products = selected_merged_products
         self._selected_versions_info = selected_versions_info
+
+        project_name = self._products_model.get_last_project_name()
+        if project_name and selected_version_ids:
+            self._drag_precache.pre_build(
+                self._controller,
+                project_name,
+                selected_version_ids,
+                "version",
+            )
 
         if selected_merged_products != prev_selected_merged_products:
             self.merged_products_selection_changed.emit()

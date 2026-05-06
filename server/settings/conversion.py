@@ -94,6 +94,7 @@ def _convert_unify_profile_keys_1_8_0(overrides):
 
     for key in (
         "product_type_filter_profiles",
+        "drag_drop_default_repre_profiles",
     ):
         value = load_settings.get(key)
         if value:
