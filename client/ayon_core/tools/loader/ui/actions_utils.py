@@ -94,43 +94,26 @@ def _primary_screen_device_pixel_ratio() -> float:
     return float(screen.devicePixelRatio()) or 1.0
 
 
-def _generic_file_thumbnail_pixmap(logical_size: QtCore.QSize) -> QtGui.QPixmap:
-    provider = QtWidgets.QFileIconProvider()
-    try:
-        file_kind = QtWidgets.QFileIconProvider.IconType.File
-    except AttributeError:
-        file_kind = QtWidgets.QFileIconProvider.File
-    icon = provider.icon(file_kind)
-    return icon.pixmap(logical_size)
-
-
-def _load_thumbnail_pixmap(
-    path: Optional[str], logical_size: QtCore.QSize
-) -> QtGui.QPixmap:
-    if path and os.path.isfile(path):
-        pm = QtGui.QPixmap(path)
-        if not pm.isNull():
-            return pm.scaled(
-                logical_size,
-                QtCore.Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                QtCore.Qt.TransformationMode.SmoothTransformation,
-            )
-    return _generic_file_thumbnail_pixmap(logical_size)
-
-
 def _make_composite_drag_pixmap(
-    thumbnail: QtGui.QPixmap,
+    thumbnail: Optional[QtGui.QPixmap],
     product_label: str,
     version_label: str,
     count: int,
     dpr: float,
 ) -> QtGui.QPixmap:
-    """Composite drag pixmap: thumbnail on top, wrapped labels below, height from content."""
+    """Composite drag pixmap: optional thumbnail on top, wrapped labels below.
+
+    When ``thumbnail`` is None or null, only title and version text are drawn
+    (no placeholder image region).
+    """
     lw = 110
     margin = 4
     inner_w = lw - 2 * margin
-    thumb_h = max(24, int(round(inner_w * 9.0 / 16.0)))
-    gap_below_thumb = 3
+    show_thumb = thumbnail is not None and not thumbnail.isNull()
+    thumb_h = (
+        max(24, int(round(inner_w * 9.0 / 16.0))) if show_thumb else 0
+    )
+    gap_below_thumb = 3 if show_thumb else 0
     gap_title_version = 2
 
     base_font = QtGui.QFont()
@@ -172,15 +155,13 @@ def _make_composite_drag_pixmap(
     )
     ver_h = max(fm_s.height() if v_txt else 0, min(br_v.height(), ver_max_h))
 
-    lh = (
-        margin
-        + thumb_h
-        + gap_below_thumb
-        + title_h
-        + (gap_title_version + ver_h if v_txt else 0)
-        + margin
-    )
-    lh = max(lh, margin + thumb_h + margin + fm_t.height())
+    text_block_h = title_h + (gap_title_version + ver_h if v_txt else 0)
+    if show_thumb:
+        lh = margin + thumb_h + gap_below_thumb + text_block_h + margin
+        lh = max(lh, margin + thumb_h + margin + fm_t.height())
+    else:
+        lh = margin + text_block_h + margin
+        lh = max(lh, margin + fm_t.height() + margin)
 
     dpr = max(1.0, float(dpr))
     pix_w = int(round(lw * dpr))
@@ -198,22 +179,23 @@ def _make_composite_drag_pixmap(
     painter.setPen(QtGui.QPen(QtGui.QColor(72, 78, 88)))
     painter.drawRoundedRect(card_rect, 3.0, 3.0)
 
-    thumb_rect = QtCore.QRect(margin, margin, inner_w, thumb_h)
-    thumb_round = QtGui.QPainterPath()
-    thumb_round.addRoundedRect(QtCore.QRectF(thumb_rect), 2.0, 2.0)
-    painter.setClipPath(thumb_round)
+    if show_thumb:
+        thumb_rect = QtCore.QRect(margin, margin, inner_w, thumb_h)
+        thumb_round = QtGui.QPainterPath()
+        thumb_round.addRoundedRect(QtCore.QRectF(thumb_rect), 2.0, 2.0)
+        painter.setClipPath(thumb_round)
 
-    scaled = thumbnail.scaled(
-        thumb_rect.size(),
-        QtCore.Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-        QtCore.Qt.TransformationMode.SmoothTransformation,
-    )
-    dx = thumb_rect.x() + (thumb_rect.width() - scaled.width()) // 2
-    dy = thumb_rect.y() + (thumb_rect.height() - scaled.height()) // 2
-    painter.drawPixmap(dx, dy, scaled)
-    painter.setClipping(False)
+        scaled = thumbnail.scaled(
+            thumb_rect.size(),
+            QtCore.Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            QtCore.Qt.TransformationMode.SmoothTransformation,
+        )
+        dx = thumb_rect.x() + (thumb_rect.width() - scaled.width()) // 2
+        dy = thumb_rect.y() + (thumb_rect.height() - scaled.height()) // 2
+        painter.drawPixmap(dx, dy, scaled)
+        painter.setClipping(False)
 
-    y_text = margin + thumb_h + gap_below_thumb
+    y_text = margin + (thumb_h + gap_below_thumb if show_thumb else 0)
     title_draw = QtCore.QRect(margin, y_text, inner_w, title_h)
     painter.setFont(title_font)
     painter.setPen(QtGui.QColor(235, 238, 245))
@@ -391,23 +373,6 @@ def _build_drag_payload_data(
         return None
 
 
-def _thin_drag_mime_data(
-    project_name: str,
-    entity_ids: set[str],
-    entity_type: str,
-) -> tuple[QtCore.QMimeData, Optional[str], list[ActionItem], list[str], str]:
-    """Minimal MIME when precache misses: entities only; actions resolved on drop."""
-    thin_payload = encode_loader_drag_payload(
-        project_name, entity_type, list(entity_ids), []
-    )
-    mime_data = QtCore.QMimeData()
-    mime_data.setData(
-        LOADER_PAYLOAD_MIME_TYPE,
-        QtCore.QByteArray(loader_payload_to_bytes(thin_payload)),
-    )
-    return mime_data, None, [], list(entity_ids), entity_type
-
-
 def _mime_qt_from_drag_payload_data(
     data: Dict[str, Any],
 ) -> tuple[Optional[QtCore.QMimeData], Optional[str]]:
@@ -485,7 +450,15 @@ def _drag_pixmap_for_view(view: QtWidgets.QWidget, raw_result: RawDragResult) ->
     # Match full-width 16:9 slot inside _make_composite_drag_pixmap (lw=110, margin=4).
     thumb_logical = QtCore.QSize(102, 58)
 
-    thumb_pix = _load_thumbnail_pixmap(thumb_path, thumb_logical)
+    thumb_pix: Optional[QtGui.QPixmap] = None
+    if thumb_path and os.path.isfile(thumb_path):
+        pm = QtGui.QPixmap(thumb_path)
+        if not pm.isNull():
+            thumb_pix = pm.scaled(
+                thumb_logical,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
+            )
     dpr = _primary_screen_device_pixel_ratio()
     return _make_composite_drag_pixmap(
         thumb_pix, product_label, version_label, count, dpr
@@ -506,9 +479,8 @@ def _mime_payload_from_selection(
 
     built: Optional[Dict[str, Any]] = pre_cached
     if built is None:
-        precache_obj = getattr(view, "_drag_precache", None)
-        if precache_obj is not None:
-            return _thin_drag_mime_data(project_name, entity_ids, entity_type)
+        # Precache miss: build synchronously so Explorer/desktop get file URLs
+        # on the first drag (thin MIME omitted paths until precache finished).
         built = _build_drag_payload_data(
             controller, project_name, entity_ids, entity_type
         )
@@ -677,9 +649,9 @@ class LoaderDragTreeView(DeselectableTreeView):
         index = self.indexAt(event.pos())
         model = self.model()
         if index.isValid() and model:
-            col0 = model.index(index.row(), 0, index.parent())
-            drag_arm = index.column() == 0 and bool(
-                model.flags(col0) & QtCore.Qt.ItemIsDragEnabled
+            # Match ProductsModel.flags: draggable on row except version column.
+            drag_arm = bool(
+                model.flags(index) & QtCore.Qt.ItemIsDragEnabled
             )
             if drag_arm:
                 self._drag_start_pos = event.pos()
