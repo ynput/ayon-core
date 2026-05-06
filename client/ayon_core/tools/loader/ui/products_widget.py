@@ -590,6 +590,7 @@ class ProductsWidget(QtWidgets.QWidget):
         ix = col0[0] if col0 else None
         product_label = ""
         version_label = ""
+        first_vid = None
         if ix is not None and ix.isValid():
             product_label = str(
                 model.data(ix, PRODUCT_NAME_ROLE)
@@ -606,8 +607,21 @@ class ProductsWidget(QtWidgets.QWidget):
                 )
             else:
                 version_label = str(raw_ver or "")
+            first_vid = model.data(ix, VERSION_ID_ROLE)
+        thumb_path = None
+        if version_ids:
+            paths = self._controller.get_thumbnail_paths(
+                project_name, "version", set(version_ids)
+            )
+            if paths:
+                vid_for_thumb = (
+                    first_vid if first_vid and first_vid in paths else None
+                )
+                if vid_for_thumb is None:
+                    vid_for_thumb = sorted(version_ids)[0]
+                thumb_path = paths.get(vid_for_thumb)
         return {
-            "thumbnail_path": None,
+            "thumbnail_path": thumb_path,
             "product_label": product_label,
             "version_label": version_label,
             "count": len(version_ids),

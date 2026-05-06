@@ -6,7 +6,7 @@ import collections
 import traceback
 import urllib.request
 from functools import partial
-from typing import Union, Any, Optional
+from typing import Union, Any
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
@@ -157,16 +157,11 @@ def get_qt_app():
 
     The function initializes new Qt application if it is not already
     initialized. It also sets some attributes to the application to
-    ensure that it will work properly on high DPI displays and that
-    QAction icons are allowed in menus on macOS (Qt 6.7.3+ defaults off).
+    ensure that it will work properly on high DPI displays.
 
     Returns:
         QtWidgets.QApplication: Current Qt application.
     """
-
-    dont_hide_menu_icons = getattr(
-        QtCore.Qt, "AA_DontShowIconsInMenus", None
-    )
 
     app = QtWidgets.QApplication.instance()
     if app is None:
@@ -177,11 +172,6 @@ def get_qt_app():
             attr = getattr(QtCore.Qt, attr_name, None)
             if attr is not None:
                 QtWidgets.QApplication.setAttribute(attr)
-
-        if dont_hide_menu_icons is not None:
-            QtWidgets.QApplication.setAttribute(
-                dont_hide_menu_icons, False
-            )
 
         policy = os.getenv("QT_SCALE_FACTOR_ROUNDING_POLICY")
         if (
@@ -195,9 +185,6 @@ def get_qt_app():
             )
 
         app = QtWidgets.QApplication(sys.argv)
-    elif dont_hide_menu_icons is not None:
-        # Launcher or other code may have created QApplication first.
-        QtWidgets.QApplication.setAttribute(dont_hide_menu_icons, False)
 
     return app
 

@@ -100,6 +100,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._controller = controller
         self._flatten_proxy = flatten_proxy
+        flatten_proxy.set_controller(controller)
         self._thumbnail_path_by_version_id: Dict[str, Optional[str]] = {}
         self._grid_columns = DEFAULT_GRID_COLUMNS
         self._cached_tile = QtCore.QSize(CARD_BASE_WIDTH, CARD_BASE_HEIGHT)

@@ -259,7 +259,6 @@ class LoaderWindow(QtWidgets.QWidget):
         products_stack.setObjectName("LoaderProductsStack")
         products_widget = ProductsWidget(controller, products_stack)
         flatten_proxy = ProductsFlattenProxyModel(products_stack)
-        flatten_proxy.set_controller(controller)
         flatten_proxy.setSourceModel(products_widget.get_proxy_model())
         products_grid_widget = ProductsGridWidget(
             controller, flatten_proxy, products_stack
