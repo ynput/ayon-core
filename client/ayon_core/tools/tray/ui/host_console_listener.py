@@ -7,6 +7,10 @@ from aiohttp import web
 from qtpy import QtWidgets
 
 from ayon_core.addon import ITrayService
+from ayon_core.tools.tray.ui.tray_menu_icons import (
+    apply_tray_menu_icon,
+    create_tray_icon_action,
+)
 from ayon_core.tools.stdout_broker.window import ConsoleDialog
 
 from ayon_core.tools.tray import HostMsgAction
@@ -35,7 +39,7 @@ class HostListener:
         """ Initialize dialog, adds to submenu."""
         ITrayService.services_submenu(self._tray_manager)
         services_submenu = self._tray_manager.get_services_submenu()
-        action = QtWidgets.QAction(label, services_submenu)
+        action = create_tray_icon_action(services_submenu, label)
         action.triggered.connect(lambda: self.show_widget(host_name))
 
         services_submenu.addAction(action)
@@ -67,7 +71,7 @@ class HostListener:
         else:
             log.info("Unknown icon type {} for {}".format(icon_type,
                                                           host_name))
-        action.setIcon(icon)
+        apply_tray_menu_icon(action, icon)
 
     def show_widget(self, host_name):
         """Shows prepared widget for 'host_name'.

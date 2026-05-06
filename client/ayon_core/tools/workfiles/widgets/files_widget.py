@@ -1,7 +1,10 @@
 import os
 
+import qtawesome
 import qtpy
 from qtpy import QtWidgets, QtCore
+
+from ayon_core.style import get_default_entity_icon_color
 
 from .save_as_dialog import SaveAsDialog
 from .delete_workfile_dialog import DeleteWorkfileDialog
@@ -29,6 +32,13 @@ class FilesWidget(QtWidgets.QWidget):
         btns_widget = QtWidgets.QWidget(self)
 
         workarea_btns_widget = QtWidgets.QWidget(btns_widget)
+        workarea_btn_new = QtWidgets.QPushButton(workarea_btns_widget)
+        workarea_btn_new.setIcon(
+            qtawesome.icon("fa.plus", color=get_default_entity_icon_color())
+        )
+        workarea_btn_new.setToolTip("New File in current Context")
+        workarea_btn_new.setFixedSize(26, 26)
+        workarea_btn_new.setIconSize(QtCore.QSize(18, 18))
         workarea_btn_open = QtWidgets.QPushButton(
             "Open", workarea_btns_widget)
         workarea_btn_browse = QtWidgets.QPushButton(
@@ -38,6 +48,7 @@ class FilesWidget(QtWidgets.QWidget):
 
         workarea_btns_layout = QtWidgets.QHBoxLayout(workarea_btns_widget)
         workarea_btns_layout.setContentsMargins(0, 0, 0, 0)
+        workarea_btns_layout.addWidget(workarea_btn_new, 0)
         workarea_btns_layout.addWidget(workarea_btn_open, 1)
         workarea_btns_layout.addWidget(workarea_btn_browse, 1)
         workarea_btns_layout.addWidget(workarea_btn_save, 1)
@@ -100,6 +111,7 @@ class FilesWidget(QtWidgets.QWidget):
             self._on_duplicate_request)
         workarea_widget.delete_requested.connect(
             self._on_delete_request)
+        workarea_btn_new.clicked.connect(self._on_workarea_new_clicked)
         workarea_btn_open.clicked.connect(self._on_workarea_open_clicked)
         workarea_btn_browse.clicked.connect(self._on_workarea_browse_clicked)
         workarea_btn_save.clicked.connect(self._on_workarea_save_clicked)
@@ -132,6 +144,7 @@ class FilesWidget(QtWidgets.QWidget):
         self._workarea_btns_widget = workarea_btns_widget
         self._published_btns_widget = published_btns_widget
 
+        self._workarea_btn_new = workarea_btn_new
         self._workarea_btn_open = workarea_btn_open
         self._workarea_btn_browse = workarea_btn_browse
         self._workarea_btn_save = workarea_btn_save
@@ -141,7 +154,14 @@ class FilesWidget(QtWidgets.QWidget):
         self._published_btn_change_context = published_btn_change_context
         self._published_btn_cancel = published_btn_cancel
 
+        self._show_new_from_template = (
+            controller.supports_new_workfile_from_template_button()
+        )
+        if not self._show_new_from_template:
+            workarea_btn_new.setVisible(False)
+
         # Initial setup
+        workarea_btn_new.setEnabled(False)
         workarea_btn_open.setEnabled(False)
         workarea_btn_browse.setEnabled(False)
         workarea_btn_save.setEnabled(False)
@@ -196,6 +216,18 @@ class FilesWidget(QtWidgets.QWidget):
             if result:
                 self._controller.save_current_workfile()
         self._controller.open_workfile(folder_id, task_name, filepath)
+
+    def _on_workarea_new_clicked(self):
+        if self._controller.has_unsaved_changes():
+            result = self._save_changes_prompt()
+            if result is None:
+                return
+
+            if result:
+                self._controller.save_current_workfile()
+        folder_id = self._selected_folder_id
+        task_id = self._selected_task_id
+        self._controller.create_new_workfile_from_template(folder_id, task_id)
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -324,6 +356,8 @@ class FilesWidget(QtWidgets.QWidget):
     def _update_workarea_btns_state(self):
         enabled = self._is_save_enabled and self._valid_selected_context
         self._workarea_btn_save.setEnabled(enabled)
+        if self._show_new_from_template:
+            self._workarea_btn_new.setEnabled(self._valid_selected_context)
         self._workarea_btn_browse.setEnabled(self._valid_selected_context)
 
     def _on_published_repre_changed(self, event):

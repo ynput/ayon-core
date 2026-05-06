@@ -175,6 +175,13 @@ class BaseWorkfileController(
     def is_host_valid(self):
         return self._host_is_valid
 
+    def supports_new_workfile_from_template_button(self) -> bool:
+        """True when Workfiles may offer New File from template for this host."""
+
+        if not self._host_is_valid or self._host is None:
+            return False
+        return self._host.supports_new_workfile_from_template()
+
     def _create_users_model(self):
         return UsersModel(self)
 
@@ -588,6 +595,11 @@ class BaseWorkfileController(
     # Controller actions
     def open_workfile(self, folder_id, task_id, filepath):
         self._workfiles_model.open_workfile(folder_id, task_id, filepath)
+
+    def create_new_workfile_from_template(self, folder_id, task_id):
+        self._workfiles_model.create_new_workfile_from_template(
+            folder_id, task_id
+        )
 
     def save_current_workfile(self):
         self._workfiles_model.save_current_workfile()

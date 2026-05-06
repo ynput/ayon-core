@@ -421,7 +421,7 @@ class ITrayService(ITrayAddon):
         """Load service icons."""
         from qtpy import QtGui
 
-        ITrayService._failed_icon = QtGui.QIcon(
+        ITrayService._icon_failed = QtGui.QIcon(
             resources.get_resource("icons", "circle_red.png")
         )
         ITrayService._icon_running = QtGui.QIcon(
@@ -469,12 +469,12 @@ class ITrayService(ITrayAddon):
 
     def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add service to tray menu."""
-        from qtpy import QtWidgets
-
-        action = QtWidgets.QAction(
-            self.label,
-            self.services_submenu(tray_menu)
+        from ayon_core.tools.tray.ui.tray_menu_icons import (
+            create_tray_icon_action,
         )
+
+        submenu = self.services_submenu(tray_menu)
+        action = create_tray_icon_action(submenu, self.label)
         self.menu_action = action
 
         self.add_service_action(action)
@@ -484,17 +484,33 @@ class ITrayService(ITrayAddon):
     def set_service_running_icon(self) -> None:
         """Change icon of an QAction to green circle."""
         if self.menu_action:
-            self.menu_action.setIcon(self.get_icon_running())
+            from ayon_core.tools.tray.ui.tray_menu_icons import (
+                apply_tray_menu_icon,
+            )
+
+            apply_tray_menu_icon(
+                self.menu_action, self.get_icon_running()
+            )
 
     def set_service_failed_icon(self) -> None:
         """Change icon of an QAction to red circle."""
         if self.menu_action:
-            self.menu_action.setIcon(self.get_icon_failed())
+            from ayon_core.tools.tray.ui.tray_menu_icons import (
+                apply_tray_menu_icon,
+            )
+
+            apply_tray_menu_icon(
+                self.menu_action, self.get_icon_failed()
+            )
 
     def set_service_idle_icon(self) -> None:
         """Change icon of an QAction to orange circle."""
         if self.menu_action:
-            self.menu_action.setIcon(self.get_icon_idle())
+            from ayon_core.tools.tray.ui.tray_menu_icons import (
+                apply_tray_menu_icon,
+            )
+
+            apply_tray_menu_icon(self.menu_action, self.get_icon_idle())
 
 
 class IHostAddon(AYONInterface):

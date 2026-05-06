@@ -914,6 +914,17 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
+    def create_new_workfile_from_template(self, folder_id, task_id):
+        """Copy host template to next workfile path and open it.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+
+        """
+        pass
+
+    @abstractmethod
     def save_current_workfile(self):
         """Save state of current workfile."""
 
