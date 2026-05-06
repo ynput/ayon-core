@@ -55,6 +55,24 @@ _shutdown_scheduled = False
 _macos_pending_terminate_reply = False
 
 
+def _request_application_quit():
+    """Queue QCoreApplication.quit on the GUI thread.
+
+    Required when shutdown code runs on a worker thread (macOS tray exit path).
+    QTimer.singleShot from a non-GUI thread does not reliably post quit() to
+    the main thread and can leave timers firing during teardown (crash in
+    QTimerInfoList / notifyInternal2 on macOS).
+    """
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        return
+    QtCore.QMetaObject.invokeMethod(
+        app,
+        "quit",
+        QtCore.Qt.ConnectionType.QueuedConnection,
+    )
+
+
 class TrayManager:
     """Cares about context of application.
 
@@ -744,12 +762,18 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         if platform.system() != "Darwin":
             self.hide()
 
+        starter = getattr(self, "_tray_starter", None)
+        if starter is not None:
+            start_timer = getattr(starter, "_start_timer", None)
+            if start_timer is not None and start_timer.isActive():
+                start_timer.stop()
+
         self._tray_manager.stop_timers()
         remove_tray_server_url()
 
         def cleanup_then_quit():
             self._tray_manager._addons_manager.on_exit()
-            QtCore.QTimer.singleShot(0, QtCore.QCoreApplication.exit)
+            _request_application_quit()
 
         worker = threading.Thread(target=cleanup_then_quit, daemon=True)
         worker.start()
@@ -826,6 +850,7 @@ class TrayStarter(QtCore.QObject):
 
         main_window = QtWidgets.QMainWindow()
         tray_widget = SystemTrayIcon(main_window)
+        tray_widget._tray_starter = self
 
         app.aboutToQuit.connect(tray_widget.exit)
         self._quit_event_filter = _AppQuitEventFilter(
