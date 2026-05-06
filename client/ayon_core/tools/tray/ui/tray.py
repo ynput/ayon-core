@@ -917,7 +917,16 @@ class TrayStarter(QtCore.QObject):
 
 
 def main():
+    # Qt 6.7.3+ macOS: menu icons default off; launcher may have created
+    # QApplication already — clear before and after we obtain the app.
+    _no_hide_icons = getattr(QtCore.Qt, "AA_DontShowIconsInMenus", None)
+    if _no_hide_icons is not None:
+        QtCore.QCoreApplication.setAttribute(_no_hide_icons, False)
+
     app = get_ayon_qt_app()
+
+    if _no_hide_icons is not None:
+        QtCore.QCoreApplication.setAttribute(_no_hide_icons, False)
 
     starter = TrayStarter(app)  # noqa F841
 

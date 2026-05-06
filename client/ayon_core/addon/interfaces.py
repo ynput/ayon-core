@@ -469,7 +469,7 @@ class ITrayService(ITrayAddon):
 
     def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add service to tray menu."""
-        from ayon_core.tools.tray.menu_icons import (
+        from ayon_core.tools.tray.ui.tray_menu_icons import (
             create_tray_icon_action,
         )
 
@@ -484,7 +484,7 @@ class ITrayService(ITrayAddon):
     def set_service_running_icon(self) -> None:
         """Change icon of an QAction to green circle."""
         if self.menu_action:
-            from ayon_core.tools.tray.menu_icons import (
+            from ayon_core.tools.tray.ui.tray_menu_icons import (
                 apply_tray_menu_icon,
             )
 
@@ -495,7 +495,7 @@ class ITrayService(ITrayAddon):
     def set_service_failed_icon(self) -> None:
         """Change icon of an QAction to red circle."""
         if self.menu_action:
-            from ayon_core.tools.tray.menu_icons import (
+            from ayon_core.tools.tray.ui.tray_menu_icons import (
                 apply_tray_menu_icon,
             )
 
@@ -506,7 +506,7 @@ class ITrayService(ITrayAddon):
     def set_service_idle_icon(self) -> None:
         """Change icon of an QAction to orange circle."""
         if self.menu_action:
-            from ayon_core.tools.tray.menu_icons import (
+            from ayon_core.tools.tray.ui.tray_menu_icons import (
                 apply_tray_menu_icon,
             )
 

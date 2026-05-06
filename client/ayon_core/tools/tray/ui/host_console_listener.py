@@ -7,7 +7,7 @@ from aiohttp import web
 from qtpy import QtWidgets
 
 from ayon_core.addon import ITrayService
-from ayon_core.tools.tray.menu_icons import (
+from ayon_core.tools.tray.ui.tray_menu_icons import (
     apply_tray_menu_icon,
     create_tray_icon_action,
 )

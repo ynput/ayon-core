@@ -5,8 +5,8 @@ Qt 6.7.3+ defaults to hiding QAction icons in menus on Darwin, and icons on
 not paint `QAction` icons reliably. Use a `QWidgetAction` row (pixmap + label)
 when running on macOS so status dots and similar glyphs remain visible.
 
-Kept under ``tools.tray`` (not ``tools.tray.ui``) so importing from addon code
-does not execute ``tray.ui`` (which pulls aiohttp via ``tray.py``).
+Also exposed as :mod:`ayon_core.tools.tray.ui.tray_menu_icons`; the ``ui``
+package lazily loads ``tray.py`` so importing that shim does not pull aiohttp.
 """
 
 from __future__ import annotations
@@ -18,6 +18,21 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 _MACOS = platform.system() == "Darwin"
 _ICON_PX = 16
+
+
+def _pixmap_for_menu_icon(icon: QtGui.QIcon) -> QtGui.QPixmap:
+    """Logical *_ICON_PX tray pixmap with correct device pixel ratio (Retina)."""
+
+    screen = QtGui.QGuiApplication.primaryScreen()
+    dpr = float(screen.devicePixelRatio()) if screen else 1.0
+    physical = QtCore.QSize(
+        int(round(_ICON_PX * dpr)),
+        int(round(_ICON_PX * dpr)),
+    )
+    pm = icon.pixmap(physical)
+    if not pm.isNull():
+        pm.setDevicePixelRatio(dpr)
+    return pm
 
 
 class _TrayIconRow(QtWidgets.QWidget):
@@ -39,6 +54,11 @@ class _TrayIconRow(QtWidgets.QWidget):
         self._text_label = QtWidgets.QLabel(text)
         layout.addWidget(self._icon_label)
         layout.addWidget(self._text_label, 1)
+        # Without this, clicks hit the child QLabel and never reach this
+        # widget — QAction never triggers (macOS tray regression).
+        _transparent = QtCore.Qt.WA_TransparentForMouseEvents
+        self._icon_label.setAttribute(_transparent, True)
+        self._text_label.setAttribute(_transparent, True)
 
     def mouseReleaseEvent(self, event):  # noqa: N802
         self._widget_action.trigger()
@@ -68,6 +88,11 @@ def create_tray_icon_action(
 
     wa = QtWidgets.QWidgetAction(parent_menu)
     wa.setText(text)
+    menu_role_enum = getattr(QtWidgets.QAction, "MenuRole", None)
+    no_role = getattr(menu_role_enum, "NoRole", None) if menu_role_enum else None
+    if no_role is not None:
+        wa.setMenuRole(no_role)
+
     row = _TrayIconRow(wa, text)
     wa.setDefaultWidget(row)
     wa._ayon_mac_menu_icon_label = row._icon_label  # noqa: SLF001
@@ -86,7 +111,7 @@ def apply_tray_menu_icon(
             label.clear()
             label.hide()
         else:
-            label.setPixmap(icon.pixmap(_ICON_PX, _ICON_PX))
+            label.setPixmap(_pixmap_for_menu_icon(icon))
             label.show()
         return
 
