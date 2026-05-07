@@ -506,6 +506,7 @@ class LoaderActionItem:
             belongs.
         icon (Optional[dict[str, Any]): Icon definition.
         data (Optional[DataType]): Action item data.
+        tooltip (Optional[str]): Menu tooltip when supported by the UI.
         identifier (Optional[str]): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
@@ -516,6 +517,7 @@ class LoaderActionItem:
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
     data: Optional[DataType] = None
+    tooltip: Optional[str] = None
     # Is filled automatically
     identifier: str = None
     # Drag-and-drop and context menu visibility
