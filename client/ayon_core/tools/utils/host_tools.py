@@ -245,6 +245,14 @@ class HostToolsHelper:
 
         This is helper for
         """
+        try:
+            from ayon_core.tools.tool_icon_wrapper import taskbar_identity
+
+            if taskbar_identity.host_tools_before_show_delegate(tool_name):
+                return
+        except ImportError:
+            pass
+
         if tool_name == "workfiles":
             self.show_workfiles(parent, *args, **kwargs)
 
@@ -270,6 +278,14 @@ class HostToolsHelper:
             self.log.warning(
                 "Can't show unknown tool name: \"{}\"".format(tool_name)
             )
+            return
+
+        try:
+            from ayon_core.tools.tool_icon_wrapper import taskbar_identity
+
+            taskbar_identity.host_tools_after_show(self, tool_name, parent)
+        except ImportError:
+            pass
 
 
 class _SingletonPoint:

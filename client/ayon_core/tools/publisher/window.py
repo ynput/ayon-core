@@ -74,6 +74,13 @@ class PublisherWindow(QtWidgets.QDialog):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
+        try:
+            from ayon_core.tools.tool_icon_wrapper import taskbar_identity
+
+            taskbar_identity.set_taskbar_identity(self, "publisher")
+        except ImportError:
+            pass
+
         if reset_on_show is None:
             reset_on_show = True
 
