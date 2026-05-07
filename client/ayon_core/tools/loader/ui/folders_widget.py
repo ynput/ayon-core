@@ -12,6 +12,8 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
 
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
+
 UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 50
 
 
@@ -260,6 +262,9 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         folders_view.setModel(folders_proxy_model)
         folders_view.setItemDelegate(folders_label_delegate)
 
+        folders_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        folders_view.customContextMenuRequested.connect(self._on_context_menu)
+
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(folders_view, 1)
@@ -358,6 +363,41 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
             if item_id is not None:
                 item_ids.append(item_id)
         return item_ids
+
+    def _on_context_menu(self, point):
+        project_name = self._controller.get_selected_project_name()
+        if not project_name:
+            return
+
+        folder_ids = self._get_selected_item_ids()
+        if not folder_ids:
+            return
+
+        action_items = self._controller.get_action_items(
+            project_name,
+            set(folder_ids),
+            "folder",
+        )
+        global_point = self._folders_view.viewport().mapToGlobal(point)
+        result = show_actions_menu(
+            action_items,
+            global_point,
+            len(folder_ids) == 1,
+            self,
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=project_name,
+            selected_ids=set(folder_ids),
+            selected_entity_type="folder",
+            data=action_item.data,
+            options=options,
+            form_values={},
+        )
 
     def _on_selection_change(self):
         item_ids = self._get_selected_item_ids()

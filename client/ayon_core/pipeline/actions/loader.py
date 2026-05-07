@@ -30,10 +30,11 @@ It is also recommended that the plugin does override the 'identifier'
     attribute. The identifier has to be unique across all plugins.
     Class name is used by default.
 
-The selection wrapper currently supports the following types of entity types:
+The selection wrapper supports:
     - version
     - representation
-It is planned to add 'folder' and 'task' selection in the future.
+    - folder
+Task selection may be added in the future.
 
 NOTE: It is possible to trigger 'execute_action' without ever calling
     'get_action_items', that can be handy in automations.
@@ -64,7 +65,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 import typing
-from typing import Optional, Any, Callable, Set
+from typing import ClassVar, Optional, Any, Callable, Set
 from dataclasses import dataclass
 
 import ayon_api
@@ -90,8 +91,7 @@ _PLACEHOLDER = object()
 
 class LoaderSelectedType(StrEnum):
     """Selected entity type."""
-    # folder = "folder"
-    # task = "task"
+    folder = "folder"
     version = "version"
     representation = "representation"
 
@@ -381,7 +381,7 @@ class LoaderActionSelection:
         self,
         project_name: str,
         selected_ids: set[str],
-        selected_type: LoaderSelectedType,
+        selected_type: str | LoaderSelectedType,
         *,
         project_anatomy: Optional[Anatomy] = None,
         project_settings: Optional[dict[str, Any]] = None,
@@ -389,7 +389,7 @@ class LoaderActionSelection:
     ):
         self._project_name = project_name
         self._selected_ids = selected_ids
-        self._selected_type = selected_type
+        self._selected_type = LoaderSelectedType(selected_type)
 
         self._project_anatomy = project_anatomy
         self._project_settings = project_settings
@@ -448,6 +448,16 @@ class LoaderActionSelection:
 
         """
         return self._selected_type == LoaderSelectedType.representation
+
+    def folders_selected(self) -> bool:
+        """Selected entity type is folder."""
+        return self._selected_type == LoaderSelectedType.folder
+
+    def get_selected_folder_entities(self) -> list[dict[str, Any]]:
+        """Selected folder entities, or empty list if type is not folder."""
+        if self.folders_selected():
+            return self.entities.get_folders(self.selected_ids)
+        return []
 
     def get_selected_version_entities(self) -> list[dict[str, Any]]:
         """Retrieve selected version entities.
@@ -567,6 +577,8 @@ class LoaderActionPlugin(ABC):
     show_in_context_menu: bool = True
     default_for_drag_drop: bool = False
     drag_drop_contexts: Optional[Set[str]] = None
+    # None => version + representation only. Use frozenset({"folder"}) etc.
+    selection_entity_types: ClassVar[Optional[Set[str]]] = None
 
     def __init__(self, context: "LoaderActionsContext") -> None:
         self._context = context
@@ -719,7 +731,13 @@ class LoaderActionsContext:
 
         """
         output = []
+        sel_type = selection.get_selected_type()
         for plugin_id, plugin in self._get_plugins().items():
+            supported = type(plugin).selection_entity_types
+            if supported is None:
+                supported = {"version", "representation"}
+            if sel_type not in supported:
+                continue
             try:
                 for action_item in plugin.get_action_items(selection):
                     if action_item.identifier is None:

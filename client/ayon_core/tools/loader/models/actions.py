@@ -16,6 +16,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,
+    LoaderSelectedType,
     SelectionEntitiesCache,
 )
 from ayon_core.pipeline.load import (
@@ -114,6 +115,15 @@ class LoaderActionsModel:
         entity_ids: set[str],
         entity_type: str,
     ) -> list[ActionItem]:
+        if entity_type == "folder":
+            return self._get_loader_action_items(
+                project_name,
+                entity_ids,
+                entity_type,
+                {},
+                {},
+            )
+
         version_context_by_id = {}
         repre_context_by_id = {}
         if entity_type == "representation":
@@ -192,12 +202,25 @@ class LoaderActionsModel:
             result = None
             crashed = False
             try:
+                entities_cache = None
+                if selected_entity_type == "folder":
+                    entities_cache = self._prepare_entities_cache(
+                        project_name,
+                        selected_entity_type,
+                        {},
+                        {},
+                        folder_ids=selected_ids,
+                    )
+                selection_kwargs = {}
+                if entities_cache is not None:
+                    selection_kwargs["entities_cache"] = entities_cache
                 result = self._loader_actions.execute_action(
                     identifier=identifier,
                     selection=LoaderActionSelection(
                         project_name,
                         selected_ids,
-                        selected_entity_type,
+                        LoaderSelectedType(selected_entity_type),
+                        **selection_kwargs,
                     ),
                     data=data,
                     form_values=form_values,
@@ -1046,11 +1069,12 @@ class LoaderActionsModel:
             entity_type,
             version_context_by_id,
             repre_context_by_id,
+            folder_ids=entity_ids if entity_type == "folder" else None,
         )
         selection = LoaderActionSelection(
             project_name,
             entity_ids,
-            entity_type,
+            LoaderSelectedType(entity_type),
             entities_cache=entities_cache,
         )
 
@@ -1101,7 +1125,20 @@ class LoaderActionsModel:
         entity_type: str,
         version_context_by_id: dict[str, dict[str, Any]],
         repre_context_by_id: dict[str, dict[str, Any]],
+        folder_ids: Optional[set[str]] = None,
     ):
+        if entity_type == "folder" and folder_ids:
+            folder_entities = list(
+                ayon_api.get_folders(project_name, folder_ids=folder_ids)
+            )
+            folders_by_id = {fe["id"]: fe for fe in folder_entities}
+            project_entity = ayon_api.get_project(project_name)
+            return SelectionEntitiesCache(
+                project_name,
+                project_entity=project_entity,
+                folders_by_id=folders_by_id,
+            )
+
         project_entity = None
         folders_by_id = {}
         products_by_id = {}
