@@ -5,7 +5,6 @@ import threading
 import time
 import collections
 import platform
-import threading
 from typing import Any, Optional
 
 import ayon_api
