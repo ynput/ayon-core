@@ -6,6 +6,14 @@ Uses vendored ``tools/tray/ui/dock_shim.swift``, PNGs under
 
 Env: ``AYON_DOCK_SHIM_AUTO_INSTALL``, ``AYON_TRAY_HTTP_PORT``
 (see ``tool_shim``).
+
+Dock proxy acceptance: each shim ``Info.plist`` must stay a normal foreground
+application (never ``LSUIElement`` / ``LSBackgroundOnly``). Only the main
+``AYON.app`` hides from the Dock via launcher ``post_build_process`` so the
+Dock can show tool icons without a duplicate generic AYON tile. Studios without
+a rebuilt launcher can still enforce the main bundle flag at tray start via
+``ensure_main_bundle_lsuielement.try_patch_main_bundle_lsuielement`` (optional,
+best-effort; mutates the installed ``.app``).
 """
 
 from __future__ import annotations
@@ -216,6 +224,7 @@ def _one_app_bundle(
             lse["AYON_TRAY_METADATA_FILE"] = _get_tray_info_filepath()
         except Exception:
             pass
+    # Do not add LSUIElement here — shims must remain regular Dock apps.
     pl: dict[str, Any] = {
         "CFBundleDevelopmentRegion": "en",
         "CFBundleDisplayName": display,

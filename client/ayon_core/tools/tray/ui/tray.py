@@ -276,6 +276,19 @@ class TrayManager:
             self.exit()
 
         if platform.system() == "Darwin":
+            # Run on the tray thread so plist / codesign finish before UI settles;
+            # Dock shim build stays in a background thread (can be slow).
+            try:
+                from ayon_core.tools.tray.ensure_main_bundle_lsuielement import (
+                    try_patch_main_bundle_lsuielement,
+                )
+
+                try_patch_main_bundle_lsuielement()
+            except Exception:  # noqa: BLE001
+                self.log.warning(
+                    "ensure_main_bundle_lsuielement failed.",
+                    exc_info=True,
+                )
 
             def _dock_shim_autoinstall_worker() -> None:
                 try:
