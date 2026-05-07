@@ -5,6 +5,7 @@ import traceback
 from typing import Callable
 
 from ayon_core.addon import AddonsManager, ITrayAddon, ITrayService
+from ayon_core.tools.tray.tool_shim import TRAY_HTTP_PORT_ENV, tray_port
 from ayon_core.tools.tray.webserver import (
     find_free_port,
     WebServerManager,
@@ -12,6 +13,14 @@ from ayon_core.tools.tray.webserver import (
 
 # Timeout for addon tray_exit to finish
 _TRAY_EXIT_TIMEOUT = 8.0
+
+
+def _tray_http_listen_port() -> int:
+    """Return fixed port if ``AYON_TRAY_HTTP_PORT`` is set, else a free one."""
+    p = tray_port()
+    if p is not None:
+        return p
+    return find_free_port()
 
 
 class TrayAddonsManager(AddonsManager):
@@ -31,7 +40,14 @@ class TrayAddonsManager(AddonsManager):
 
         self._tray_manager = tray_manager
 
-        self._webserver_manager = WebServerManager(find_free_port(), None)
+        listen = _tray_http_listen_port()
+        self._webserver_manager = WebServerManager(listen, None)
+        if tray_port() is not None:
+            self.log.info(
+                "Tray webserver: fixed port from %s=%s",
+                TRAY_HTTP_PORT_ENV,
+                listen,
+            )
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None

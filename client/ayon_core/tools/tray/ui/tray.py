@@ -5,6 +5,8 @@ import threading
 import time
 import collections
 import platform
+import threading
+from typing import Any, Optional
 
 import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets
@@ -73,6 +75,15 @@ def _request_application_quit():
     )
 
 
+def _dock_dcc_active(dcc_companion: bool, dcc_host_pid: int) -> bool:
+    """True when DCC companion requests Darwin PID-targeted tray commands."""
+    return (
+        bool(dcc_companion)
+        and int(dcc_host_pid) > 0
+        and platform.system() == "Darwin"
+    )
+
+
 class TrayManager:
     """Cares about context of application.
 
@@ -117,6 +128,13 @@ class TrayManager:
 
         self._launcher_window = None
         self._browser_window = None
+        self._publisher_window = None
+        self._workfiles_window = None
+        self._scene_inventory_window = None
+        self._dock_shim_quit_urls: dict[str, str] = {}
+        self._dock_suppress_shim_quit: set[str] = set()
+        self._dock_close_filter = None
+
         self._console_window = None
         self._publish_report_viewer_window = None
 
@@ -212,6 +230,10 @@ class TrayManager:
             "POST", "/tray/message", self._web_show_tray_message
         )
 
+        from ayon_core.tools.tool_icon_wrapper import register_tray_routes
+
+        register_tray_routes(self._addons_manager, self)
+
         admin_submenu = ITrayAddon.admin_submenu(tray_menu)
         tray_menu.addMenu(admin_submenu)
 
@@ -252,6 +274,25 @@ class TrayManager:
         except TrayIsRunningError:
             self.log.warning("Other tray started meanwhile. Exiting.")
             self.exit()
+
+        if platform.system() == "Darwin":
+
+            def _dock_shim_autoinstall_worker() -> None:
+                try:
+                    from ayon_core.tools.tray import dock_shim_installer
+
+                    dock_shim_installer.try_auto_install_dock_shim_bundles()
+                except Exception:  # noqa: BLE001
+                    self.log.debug(
+                        "Dock shim auto-installer failed.",
+                        exc_info=True,
+                    )
+
+            threading.Thread(
+                target=_dock_shim_autoinstall_worker,
+                name="AyonDockShimAutoinstall",
+                daemon=True,
+            ).start()
 
         project_bundle = os.getenv("AYON_BUNDLE_NAME")
         studio_bundle = os.getenv("AYON_STUDIO_BUNDLE_NAME")
@@ -383,6 +424,7 @@ class TrayManager:
                 },
                 "installer_version": os.getenv("AYON_VERSION"),
                 "running_time": time.time() - self._start_time,
+                "tray_base_url": self._addons_manager.webserver_url,
             }
         )
 
@@ -415,6 +457,337 @@ class TrayManager:
             self.show_tray_message, title, message, icon, msecs
         )
         return json_response({"success": True})
+
+    async def _web_dock_open_or_focus(
+        self, request: Request
+    ) -> Response:
+        from ayon_core.tools.tray import tool_shim
+
+        if not tool_shim.request_authorized(request):
+            return tool_shim.unauthorized_json()
+        data = await request.json()
+        tool_name = data.get("tool")
+        if tool_name not in tool_shim.DOCK_TOOL_KEYS:
+            return json_response(
+                {"success": False, "error": "unknown tool"},
+                status=400,
+            )
+        shim_quit_url = data.get("shim_quit_url")
+        dcc_companion = bool(data.get(tool_shim.DCC_COMPANION_JSON))
+        dcc_host_pid = int(data.get(tool_shim.DCC_HOST_PID_JSON) or 0)
+        if dcc_companion and dcc_host_pid <= 0:
+            return json_response(
+                {
+                    "success": False,
+                    "error": "invalid dcc_host_pid for dcc_companion",
+                },
+                status=400,
+            )
+        self.log.debug(
+            "Dock HTTP: open_or_focus tool=%s shim_quit=%s dcc=%s dcc_pid=%s",
+            tool_name,
+            bool(shim_quit_url),
+            dcc_companion,
+            dcc_host_pid if dcc_companion else 0,
+        )
+        self.execute_in_main_thread(
+            self._dock_open_or_focus_sync,
+            tool_name,
+            shim_quit_url,
+            dcc_companion,
+            dcc_host_pid,
+        )
+        return json_response({"success": True})
+
+    async def _web_dock_focus(self, request: Request) -> Response:
+        from ayon_core.tools.tray import tool_shim
+
+        if not tool_shim.request_authorized(request):
+            return tool_shim.unauthorized_json()
+        data = await request.json()
+        tool_name = data.get("tool")
+        if tool_name not in tool_shim.DOCK_TOOL_KEYS:
+            return json_response(
+                {"success": False, "error": "unknown tool"},
+                status=400,
+            )
+        dcc_companion = bool(data.get(tool_shim.DCC_COMPANION_JSON))
+        dcc_host_pid = int(data.get(tool_shim.DCC_HOST_PID_JSON) or 0)
+        if dcc_companion and dcc_host_pid <= 0:
+            return json_response(
+                {
+                    "success": False,
+                    "error": "invalid dcc_host_pid for dcc_companion",
+                },
+                status=400,
+            )
+        self.log.debug(
+            "Dock HTTP: focus tool=%s dcc=%s dcc_pid=%s",
+            tool_name,
+            dcc_companion,
+            dcc_host_pid if dcc_companion else 0,
+        )
+        self.execute_in_main_thread(
+            self._dock_focus_sync, tool_name, dcc_companion, dcc_host_pid
+        )
+        return json_response({"success": True})
+
+    async def _web_dock_close_from_shim(self, request: Request) -> Response:
+        from ayon_core.tools.tray import tool_shim
+
+        if not tool_shim.request_authorized(request):
+            return tool_shim.unauthorized_json()
+        data = await request.json()
+        tool_name = data.get("tool")
+        if tool_name not in tool_shim.DOCK_TOOL_KEYS:
+            return json_response(
+                {"success": False, "error": "unknown tool"},
+                status=400,
+            )
+        dcc_companion = bool(data.get(tool_shim.DCC_COMPANION_JSON))
+        dcc_host_pid = int(data.get(tool_shim.DCC_HOST_PID_JSON) or 0)
+        if dcc_companion and dcc_host_pid <= 0:
+            return json_response(
+                {
+                    "success": False,
+                    "error": "invalid dcc_host_pid for dcc_companion",
+                },
+                status=400,
+            )
+        self.log.debug(
+            "Dock HTTP: close_from_shim tool=%s dcc=%s dcc_pid=%s",
+            tool_name,
+            dcc_companion,
+            dcc_host_pid if dcc_companion else 0,
+        )
+        done = threading.Event()
+        exc_holder: list[BaseException] = []
+
+        def _cb() -> None:
+            try:
+                self._dock_close_from_shim_sync(
+                    tool_name, dcc_companion, dcc_host_pid
+                )
+            except BaseException as e:
+                exc_holder.append(e)
+            finally:
+                done.set()
+
+        self.execute_in_main_thread(_cb)
+        if not done.wait(timeout=5.0):
+            return json_response(
+                {"success": False, "error": "timeout waiting for main thread"},
+                status=500,
+            )
+        if exc_holder:
+            return json_response(
+                {"success": False, "error": str(exc_holder[0])},
+                status=500,
+            )
+        return json_response({"success": True})
+
+    def _tool_window(self, tool_name: str) -> Optional[QtWidgets.QWidget]:
+        return {
+            "launcher": self._launcher_window,
+            "loader": self._browser_window,
+            "publisher": self._publisher_window,
+            "workfiles": self._workfiles_window,
+            "scene_inventory": self._scene_inventory_window,
+        }.get(tool_name)
+
+    def _dock_close_from_shim_sync(
+        self,
+        tool_name: str,
+        dcc_companion: bool = False,
+        dcc_host_pid: int = 0,
+    ) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if _dock_dcc_active(dcc_companion, dcc_host_pid):
+            tool_shim.write_close_request(dcc_host_pid, tool_name)
+            return
+        self._dock_suppress_shim_quit.add(tool_name)
+        try:
+            win = self._tool_window(tool_name)
+            if win is not None:
+                win.close()
+                app = get_ayon_qt_app()
+                if app is not None:
+                    app.processEvents()
+            else:
+                self._dock_suppress_shim_quit.discard(tool_name)
+        except BaseException:
+            self._dock_suppress_shim_quit.discard(tool_name)
+            raise
+
+    def _register_dock_tool_window(
+        self, widget: QtWidgets.QWidget, tool_name: str
+    ) -> None:
+        from ayon_core.tools.tray import tool_shim
+        from ayon_core.tools.tool_icon_wrapper import taskbar_identity
+
+        if self._dock_close_filter is None:
+            self._dock_close_filter = tool_shim.ShimCloseFilter(
+                self._on_dock_tool_closed
+            )
+            self._dock_close_filter.setParent(self.main_window)
+        self._dock_close_filter.register_widget(widget, tool_name)
+        widget.installEventFilter(self._dock_close_filter)
+        taskbar_identity.set_taskbar_identity(widget, tool_name)
+
+    def _on_dock_tool_closed(self, tool_name: str) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if tool_name in self._dock_suppress_shim_quit:
+            self._dock_suppress_shim_quit.discard(tool_name)
+            self._dock_shim_quit_urls.pop(tool_name, None)
+            self.log.debug(
+                "Dock: tool closed (shim) tool=%s — skip quit post",
+                tool_name,
+            )
+            return
+        url = self._dock_shim_quit_urls.pop(tool_name, None)
+        self.log.debug(
+            "Dock: tool window closed tool=%s shim_quit=%s",
+            tool_name,
+            bool(url),
+        )
+        if not url:
+            self.log.debug(
+                "Dock: tool closed with no paired shim (no quit URL).",
+            )
+        tool_shim.post_shim_quit_async(url)
+
+    def _dock_open_or_focus_sync(
+        self,
+        tool_name: str,
+        shim_quit_url: Optional[str],
+        dcc_companion: bool = False,
+        dcc_host_pid: int = 0,
+    ) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        self.log.debug("Dock: open_or_focus_sync tool=%s", tool_name)
+        if _dock_dcc_active(dcc_companion, dcc_host_pid):
+            tool_shim.activate_pid(dcc_host_pid)
+            return
+        if shim_quit_url:
+            self._dock_shim_quit_urls[tool_name] = shim_quit_url
+        if tool_name == "launcher":
+            self._present_launcher(allow_shim=False)
+        elif tool_name == "loader":
+            self._present_loader(allow_shim=False)
+        elif tool_name == "publisher":
+            self._present_publisher(allow_shim=False)
+        elif tool_name == "workfiles":
+            w = self._get_or_create_workfiles_window()
+            w.ensure_visible(
+                use_context=False,
+                save=True,
+                on_top=False,
+            )
+        elif tool_name == "scene_inventory":
+            w = self._get_or_create_scene_inventory_window()
+            w.show()
+            w.refresh()
+            w.raise_()
+            w.activateWindow()
+            w.showNormal()
+        self._dock_focus_top_window_for_tool(tool_name, False, 0)
+
+    def _dock_focus_sync(
+        self,
+        tool_name: str,
+        dcc_companion: bool = False,
+        dcc_host_pid: int = 0,
+    ) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if _dock_dcc_active(dcc_companion, dcc_host_pid):
+            tool_shim.activate_pid(dcc_host_pid)
+            return
+        if platform.system() == "Darwin":
+            tool_shim.activate_pid(os.getpid())
+        self._dock_focus_top_window_for_tool(tool_name, False, 0)
+
+    def _dock_focus_top_window_for_tool(
+        self,
+        tool_name: str,
+        dcc_companion: bool = False,
+        dcc_host_pid: int = 0,
+    ) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if _dock_dcc_active(dcc_companion, dcc_host_pid):
+            tool_shim.activate_pid(dcc_host_pid)
+            return
+        win = self._tool_window(tool_name)
+        if win is None:
+            self._dock_open_or_focus_sync(tool_name, None, False, 0)
+            return
+        if tool_name == "publisher" and hasattr(win, "make_sure_is_visible"):
+            win.make_sure_is_visible()
+        elif tool_name == "workfiles" and hasattr(win, "ensure_visible"):
+            win.ensure_visible(
+                use_context=False,
+                save=True,
+                on_top=False,
+            )
+        elif tool_name == "scene_inventory" and hasattr(win, "refresh"):
+            win.refresh()
+        win.show()
+        win.raise_()
+        win.activateWindow()
+        win.showNormal()
+
+    def _get_or_create_publisher_window(self):
+        from ayon_core.tools.publisher.window import PublisherWindow
+
+        try:
+            from ayon_traypublisher.api import tray_dock
+        except ImportError:
+            tray_dock = None
+        if tray_dock is not None and tray_dock.is_traypublisher_tray_enabled(
+            self
+        ):
+            return tray_dock.get_or_create_publisher_in_tray(self)
+        if self._publisher_window is None:
+            install_ayon_plugins()
+            pub_parent = None if sys.platform == "win32" else self.main_window
+            self._publisher_window = PublisherWindow(parent=pub_parent)
+            self._register_dock_tool_window(
+                self._publisher_window, "publisher"
+            )
+        return self._publisher_window
+
+    def _get_or_create_workfiles_window(self):
+        from ayon_core.tools.workfiles.widgets.window import (
+            WorkfilesToolWindow,
+        )
+
+        if self._workfiles_window is None:
+            self._workfiles_window = WorkfilesToolWindow(
+                parent=self.main_window
+            )
+            self._register_dock_tool_window(
+                self._workfiles_window, "workfiles"
+            )
+        return self._workfiles_window
+
+    def _get_or_create_scene_inventory_window(self) -> Any:
+        if self._scene_inventory_window is None:
+            from ayon_core.tools.sceneinventory.window import (
+                SceneInventoryWindow,
+            )
+
+            install_ayon_plugins()
+            self._scene_inventory_window = SceneInventoryWindow(
+                parent=self.main_window
+            )
+            self._register_dock_tool_window(
+                self._scene_inventory_window, "scene_inventory"
+            )
+        return self._scene_inventory_window
 
     def _on_update_check_timer(self):
         try:
@@ -500,7 +873,7 @@ class TrayManager:
                     try:
                         item.execute()
                     except BaseException:
-                        self.log.erorr(
+                        self.log.error(
                             "Main thread execution failed", exc_info=True
                         )
 
@@ -622,22 +995,56 @@ class TrayManager:
         self._info_widget.activateWindow()
 
     def _show_launcher_window(self):
+        self._present_launcher(allow_shim=True)
+
+    def _present_launcher(self, *, allow_shim: bool) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if allow_shim and tool_shim.open_shim_for_tool("launcher"):
+            return
         if self._launcher_window is None:
             self._launcher_window = LauncherWindow()
+            self._register_dock_tool_window(self._launcher_window, "launcher")
 
         self._launcher_window.show()
         self._launcher_window.raise_()
         self._launcher_window.activateWindow()
 
     def _show_browser_window(self):
+        self._present_loader(allow_shim=True)
+
+    def _present_loader(self, *, allow_shim: bool) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if allow_shim and tool_shim.open_shim_for_tool("loader"):
+            return
         if self._browser_window is None:
             self._browser_window = LoaderWindow()
             self._browser_window.setWindowTitle("AYON Browser")
             install_ayon_plugins()
+            self._register_dock_tool_window(self._browser_window, "loader")
 
         self._browser_window.show()
         self._browser_window.raise_()
         self._browser_window.activateWindow()
+
+    def open_publisher_tool(self) -> None:
+        """Open Publisher from a tray menu action (``ITrayAction``)."""
+        self._present_publisher(allow_shim=True)
+
+    def _present_publisher(self, *, allow_shim: bool) -> None:
+        from ayon_core.tools.tray import tool_shim
+
+        if allow_shim and tool_shim.open_shim_for_tool("publisher"):
+            return
+        pub = self._get_or_create_publisher_window()
+        if hasattr(pub, "make_sure_is_visible"):
+            pub.make_sure_is_visible()
+        else:
+            pub.show()
+            pub.raise_()
+            pub.activateWindow()
+            pub.showNormal()
 
     def _show_console_window(self):
         if self._console_window is None:
