@@ -573,6 +573,15 @@ class LoaderWindow(QtWidgets.QWidget):
         except ImportError:
             pass
 
+        try:
+            from ayon_core.tools.tray.tool_window_identity_apply import (
+                apply_loader_window_identity,
+            )
+
+            apply_loader_window_identity(self)
+        except ImportError:
+            pass
+
     def refresh(self):
         self._reset_on_show = False
         self._controller.reset()

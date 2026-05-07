@@ -86,6 +86,51 @@ def set_taskbar_identity_impl(widget: object, tool_name: str) -> None:
         QtCore.QTimer.singleShot(150, _run_native)
 
 
+def _resolve_publish_front_window():
+    """Best-effort QWidget for Pyblish / Tray Publisher after ``show()``."""
+    from qtpy import QtWidgets
+
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return None
+
+    active = app.activeWindow()
+    if isinstance(active, QtWidgets.QWidget) and active.isVisible():
+        return active
+
+    title_hints = ("tray", "publish", "pyblish")
+    for tl in app.topLevelWidgets():
+        if not isinstance(tl, QtWidgets.QWidget):
+            continue
+        if not tl.isVisible() or not tl.isWindow():
+            continue
+        title = (tl.windowTitle() or "").lower()
+        if any(h in title for h in title_hints):
+            return tl
+    return None
+
+
+def _defer_publish_taskbar_identity(identity_key: str) -> None:
+    """Tray Publisher via Pyblish may have no ``get_tool_by_name`` widget yet."""
+    if sys.platform != "win32":
+        return
+
+    from qtpy import QtCore
+
+    def _apply() -> None:
+        widget = _resolve_publish_front_window()
+        if widget is None:
+            _LOG.debug(
+                "Tray Publisher taskbar identity: no window matched yet.",
+            )
+            return
+        set_taskbar_identity_impl(widget, identity_key)
+
+    QtCore.QTimer.singleShot(0, _apply)
+    QtCore.QTimer.singleShot(50, _apply)
+    QtCore.QTimer.singleShot(150, _apply)
+
+
 def host_tools_after_show_impl(
     helper: object, tool_name: str, parent: object
 ) -> None:
@@ -95,3 +140,7 @@ def host_tools_after_show_impl(
     widget = helper.get_tool_by_name(tool_name, parent)  # type: ignore[union-attr]
     if widget is not None:
         set_taskbar_identity_impl(widget, identity_key)
+        return
+
+    if tool_name == "publish":
+        _defer_publish_taskbar_identity(identity_key)

@@ -471,6 +471,14 @@ class PublisherWindow(QtWidgets.QDialog):
     def showEvent(self, event):
         self._window_is_visible = True
         super().showEvent(event)
+        host = self._controller.get_host()
+        if getattr(host, "name", None) == "traypublisher":
+            try:
+                from ayon_core.tools.tool_icon_wrapper import taskbar_identity
+
+                taskbar_identity.set_taskbar_identity(self, "traypublisher")
+            except ImportError:
+                pass
         if self._first_show:
             self._first_show = False
             self._on_first_show()

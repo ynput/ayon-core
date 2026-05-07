@@ -34,6 +34,11 @@ TOOL_IDENTITIES: dict[str, dict[str, str]] = {
         "app_id": "io.ynput.ayon.launcher",
         "icon": "launch.png",
     },
+    "traypublisher": {
+        "display_name": "AYON Tray Publisher",
+        "app_id": "io.ynput.ayon.traypublisher",
+        "icon": "publish.png",
+    },
 }
 
 HOST_TOOL_NAME_TO_IDENTITY: dict[str, Optional[str]] = {
@@ -43,7 +48,7 @@ HOST_TOOL_NAME_TO_IDENTITY: dict[str, Optional[str]] = {
     "workfiles": "workfiles",
     "publisher": "publisher",
     "sceneinventory": "scene_inventory",
-    "publish": None,
+    "publish": "traypublisher",
     "experimental_tools": None,
 }
 
