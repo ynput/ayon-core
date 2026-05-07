@@ -120,10 +120,16 @@ def _folder_workdir_on_disk(
     return None, attempted
 
 
-class OpenFolderAction(LoaderActionPlugin):
-    """Open the resolved work folder on disk (demonstrates folder loader actions)."""
+class OpenHierarchyFolderAction(LoaderActionPlugin):
+    """Open work-directory folder on disk for Loader hierarchy folder selection.
 
-    identifier = "core.open-folder"
+    Identifier must differ from ``core.open-folder`` in ``open_file.py`` (opens
+    the containing folder for a *representation* path); duplicate ids break
+    discovery, and ``REPRESENTATION_PANEL_ONLY_ACTION_IDENTIFIERS`` filters the
+    representation plugin id from non-representation menus.
+    """
+
+    identifier = "core.open-hierarchy-folder"
     selection_entity_types: ClassVar = frozenset({"folder"})
 
     _TOOLTIP = (
@@ -180,7 +186,7 @@ class OpenFolderAction(LoaderActionPlugin):
         if not disk_path:
             for path in attempted:
                 self.log.debug(
-                    "OpenFolderAction: no directory on disk at or above %s",
+                    "OpenHierarchyFolderAction: no directory on disk at or above %s",
                     path,
                 )
             return LoaderActionResult(
