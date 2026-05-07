@@ -1081,7 +1081,7 @@ class LoaderActionsModel:
         items = []
         for action in self._loader_actions.get_action_items(selection):
             if (
-                entity_type != "representation"
+                entity_type not in ("representation", "folder")
                 and self._is_representation_panel_only_action(action)
             ):
                 continue
