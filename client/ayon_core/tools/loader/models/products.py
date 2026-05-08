@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import contextlib
+import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
 import arrow
@@ -11,6 +12,11 @@ import ayon_api
 from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
+from ayon_core.pipeline.load.reviewables import (
+    list_version_reviewables,
+    make_reviewable_repre_id,
+    representation_name_from_label,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import ProductTypeIconMapping
 from ayon_core.tools.loader.abstract import (
@@ -30,6 +36,8 @@ if TYPE_CHECKING:
 
 PRODUCTS_MODEL_SENDER = "products.model"
 
+_log = logging.getLogger(__name__)
+
 # Explicit GraphQL fields for loader product rows (defaults may omit `attrib`).
 LOADER_PRODUCT_LIST_FIELDS: frozenset[str] = frozenset(
     {
@@ -44,7 +52,7 @@ LOADER_PRODUCT_LIST_FIELDS: frozenset[str] = frozenset(
 
 
 def _loader_version_query_fields() -> set[str]:
-    """Fields for loader version rows; ensures `attrib` and `status` are present."""
+    """Loader version row fields including ``attrib`` and ``status``."""
     fields = set(ayon_api.get_default_fields_for_type("version"))
     fields.update({"status", "attrib"})
     return fields
@@ -906,7 +914,39 @@ class ProductsModel:
             )
             repre_items_by_version_id[version_id][repre_id] = repre_item
 
+        # No representation rows: may still have server-side reviewables.
+        for version_id in version_ids:
+            if repre_items_by_version_id[version_id]:
+                continue
+            try:
+                pairs = list_version_reviewables(project_name, version_id)
+            except Exception as exc:
+                _log.debug(
+                    "list_version_reviewables failed for %s: %s",
+                    version_id,
+                    exc,
+                    exc_info=True,
+                )
+                pairs = []
+            version_item = version_items_by_id.get(version_id)
+            if version_item is None:
+                continue
+            product_item = product_items_by_id.get(version_item.product_id)
+            if product_item is None:
+                continue
+            for file_id, label in pairs:
+                rid = make_reviewable_repre_id(version_id, file_id)
+                repre_item = RepreItem(
+                    rid,
+                    representation_name_from_label(label),
+                    repre_icon,
+                    product_item.product_name,
+                    product_item.folder_label,
+                )
+                repre_items_by_version_id[version_id][rid] = repre_item
+
         project_cache = self._repre_items_cache[project_name]
-        for version_id, repre_items in repre_items_by_version_id.items():
+        for version_id in version_ids:
+            repre_items = dict(repre_items_by_version_id.get(version_id, {}))
             version_cache = project_cache[version_id]
             version_cache.update_data(repre_items)

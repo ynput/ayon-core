@@ -31,6 +31,13 @@ from ayon_core.pipeline.load import (
     load_with_product_contexts,
     load_with_repre_context,
 )
+from ayon_core.pipeline.load.reviewables import (
+    build_synthetic_repre_entity,
+    is_reviewable_repre_id,
+    list_version_reviewables,
+    make_reviewable_repre_id,
+    parse_reviewable_repre_id,
+)
 from ayon_core.tools.loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"
@@ -423,7 +430,9 @@ class LoaderActionsModel:
             representation_ids=representation_ids,
             show_in_context_menu=getattr(loader, "show_in_context_menu", True),
             drag_drop_enabled=getattr(loader, "drag_drop_enabled", True),
-            default_for_drag_drop=getattr(loader, "default_for_drag_drop", False),
+            default_for_drag_drop=getattr(
+                loader, "default_for_drag_drop", False
+            ),
             drag_drop_contexts=getattr(loader, "drag_drop_contexts", None),
         )
 
@@ -486,6 +495,78 @@ class LoaderActionsModel:
         """
 
         return action_item.order, action_item.label
+
+    def _synthetic_repre_contexts(
+        self, project_name: str, synthetic_ids: set[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Loader contexts for synthetic reviewable representation ids."""
+        if not synthetic_ids:
+            return {}
+        parsed: list[tuple[str, str, str]] = []
+        for rid in synthetic_ids:
+            p = parse_reviewable_repre_id(rid)
+            if p:
+                vid, fid = p
+                parsed.append((rid, vid, fid))
+        if not parsed:
+            return {}
+
+        version_ids_u = {x[1] for x in parsed}
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids_u
+        )
+        version_entities_by_id = {v["id"]: v for v in version_entities}
+
+        product_ids = {v["productId"] for v in version_entities_by_id.values()}
+        product_entities = ayon_api.get_products(
+            project_name, product_ids=product_ids
+        )
+        product_entities_by_id = {p["id"]: p for p in product_entities}
+
+        folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {f["id"]: f for f in folder_entities}
+
+        project_entity = ayon_api.get_project(project_name)
+
+        labels: dict[tuple[str, str], str] = {}
+        for vid in version_ids_u:
+            try:
+                pairs = list_version_reviewables(project_name, vid)
+            except Exception:
+                pairs = []
+            for fid, lab in pairs:
+                labels[(vid, fid)] = lab
+
+        out: dict[str, dict[str, Any]] = {}
+        for rid, vid, fid in parsed:
+            version_entity = version_entities_by_id.get(vid)
+            if version_entity is None:
+                continue
+            product_entity = product_entities_by_id.get(
+                version_entity["productId"]
+            )
+            if product_entity is None:
+                continue
+            folder_entity = folder_entities_by_id.get(
+                product_entity["folderId"]
+            )
+            if folder_entity is None:
+                continue
+            label = labels.get((vid, fid), "")
+            repre_entity = build_synthetic_repre_entity(
+                project_name, vid, fid, label
+            )
+            out[rid] = {
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
+                "version": version_entity,
+                "representation": repre_entity,
+            }
+        return out
 
     def _contexts_for_versions(self, project_name, version_ids):
         """Get contexts for given version ids.
@@ -552,8 +633,10 @@ class LoaderActionsModel:
         repre_entities = ayon_api.get_representations(
             project_name, version_ids=version_ids
         )
+        real_by_version = collections.defaultdict(list)
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
+            real_by_version[version_id].append(repre_entity)
             version_entity = version_entities_by_id[version_id]
             product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
@@ -567,6 +650,21 @@ class LoaderActionsModel:
                 "version": version_entity,
                 "representation": repre_entity,
             }
+
+        synthetic_ids: set[str] = set()
+        for version_id in version_ids:
+            if real_by_version[version_id]:
+                continue
+            try:
+                pairs = list_version_reviewables(project_name, version_id)
+            except Exception:
+                pairs = []
+            for file_id, _label in pairs:
+                synthetic_ids.add(
+                    make_reviewable_repre_id(version_id, file_id)
+                )
+        syn_ctx = self._synthetic_repre_contexts(project_name, synthetic_ids)
+        repre_context_by_id.update(syn_ctx)
 
         return version_context_by_id, repre_context_by_id
 
@@ -594,12 +692,22 @@ class LoaderActionsModel:
         if not project_name and not repre_ids:
             return version_context_by_id, repre_context_by_id
 
+        repre_ids = set(repre_ids)
+        real_ids = {
+            rid for rid in repre_ids if not is_reviewable_repre_id(rid)
+        }
+        syn_ids = {rid for rid in repre_ids if is_reviewable_repre_id(rid)}
+
         repre_entities = list(
             ayon_api.get_representations(
-                project_name, representation_ids=repre_ids
+                project_name, representation_ids=real_ids
             )
         )
         version_ids = {r["versionId"] for r in repre_entities}
+        for rid in syn_ids:
+            parsed = parse_reviewable_repre_id(rid)
+            if parsed:
+                version_ids.add(parsed[0])
         version_entities = ayon_api.get_versions(
             project_name, version_ids=version_ids
         )
@@ -646,6 +754,19 @@ class LoaderActionsModel:
                 "version": version_entity,
                 "representation": repre_entity,
             }
+
+        syn_ctx = self._synthetic_repre_contexts(project_name, syn_ids)
+        for rid, ctx in syn_ctx.items():
+            repre_context_by_id[rid] = ctx
+            vid = ctx["version"]["id"]
+            if vid not in version_context_by_id:
+                version_context_by_id[vid] = {
+                    "project": ctx["project"],
+                    "folder": ctx["folder"],
+                    "product": ctx["product"],
+                    "version": ctx["version"],
+                }
+
         return version_context_by_id, repre_context_by_id
 
     def _get_project(self, project_name: str) -> dict[str, Any]:
@@ -693,14 +814,57 @@ class LoaderActionsModel:
     def _get_representations(
         self, project_name: str, representation_ids: set[str]
     ) -> list[dict[str, Any]]:
-        """Get representations by ids."""
-        return self._get_entities(
-            project_name,
-            representation_ids,
-            self._representations_cache,
-            ayon_api.get_representations,
-            "representation_ids",
-        )
+        """Get representations by id (real + synthetic reviewable)."""
+        entities: list[dict[str, Any]] = []
+        if not representation_ids:
+            return entities
+
+        real_ids = {
+            i for i in representation_ids if not is_reviewable_repre_id(i)
+        }
+        syn_ids = {i for i in representation_ids if is_reviewable_repre_id(i)}
+        project_cache = self._representations_cache[project_name]
+
+        missing_real = set()
+        for rid in real_ids:
+            entity_cache = project_cache[rid]
+            if entity_cache.is_valid:
+                entities.append(entity_cache.get_data())
+            else:
+                missing_real.add(rid)
+
+        if missing_real:
+            for entity in ayon_api.get_representations(
+                project_name, representation_ids=missing_real
+            ):
+                entities.append(entity)
+                entity_id = entity["id"]
+                project_cache[entity_id].update_data(entity)
+
+        for sid in syn_ids:
+            cache = project_cache[sid]
+            if cache.is_valid:
+                entities.append(cache.get_data())
+                continue
+            parsed = parse_reviewable_repre_id(sid)
+            if not parsed:
+                continue
+            vid, fid = parsed
+            label = ""
+            try:
+                for f, lab in list_version_reviewables(project_name, vid):
+                    if f == fid:
+                        label = lab
+                        break
+            except Exception:
+                pass
+            entity = build_synthetic_repre_entity(
+                project_name, vid, fid, label
+            )
+            project_cache[sid].update_data(entity)
+            entities.append(entity)
+
+        return entities
 
     def _get_repre_ids_by_version_ids(
         self, project_name: str, version_ids: set[str]
@@ -728,11 +892,20 @@ class LoaderActionsModel:
                 repre_cache[repre["id"]].update_data(repre)
                 repres_by_parent_id[version_id].append(repre)
 
-            for version_id, repres in repres_by_parent_id.items():
-                repre_ids = {
-                    repre["id"]
-                    for repre in repres
-                }
+            for version_id in missing_ids:
+                repres = repres_by_parent_id.get(version_id, [])
+                repre_ids = {repre["id"] for repre in repres}
+                if not repre_ids:
+                    try:
+                        pairs = list_version_reviewables(
+                            project_name, version_id
+                        )
+                    except Exception:
+                        pairs = []
+                    repre_ids = {
+                        make_reviewable_repre_id(version_id, fid)
+                        for fid, _ in pairs
+                    }
                 output[version_id] = set(repre_ids)
                 project_cache[version_id].update_data(repre_ids)
 
@@ -773,7 +946,7 @@ class LoaderActionsModel:
         entity_type: str,
         anatomy: Any,
     ) -> list[str]:
-        """Resolve local file paths for the given version or representation ids."""
+        """Resolve local paths for version or representation entity ids."""
         if not anatomy or not entity_ids:
             return []
         if entity_type == "representation":
@@ -789,7 +962,9 @@ class LoaderActionsModel:
         paths = []
         for repre in repres:
             try:
-                path_result = get_representation_path_with_anatomy(repre, anatomy)
+                path_result = get_representation_path_with_anatomy(
+                    repre, anatomy
+                )
                 path = os.path.normpath(str(path_result))
                 if path:
                     paths.append(path)
@@ -797,7 +972,9 @@ class LoaderActionsModel:
                 pass
         return paths
 
-    def _get_drag_drop_profiles(self, project_name: str) -> list[dict[str, Any]]:
+    def _get_drag_drop_profiles(
+        self, project_name: str
+    ) -> list[dict[str, Any]]:
         settings = get_project_settings(project_name)
         return (
             settings.get("core", {})
@@ -874,7 +1051,7 @@ class LoaderActionsModel:
         project_name: str,
         version_ids: set[str],
     ) -> tuple[dict[str, str], dict[str, list[str]]]:
-        """Pick primary representation id per version for Loader drag-and-drop."""
+        """Primary representation id per version for Loader drag-and-drop."""
         primary_by_vid: dict[str, str] = {}
         candidates_by_vid: dict[str, list[str]] = {}
 
@@ -1096,9 +1273,13 @@ class LoaderActionsModel:
                 data=action.data,
                 options=None,
                 representation_ids=getattr(action, "representation_ids", None),
-                show_in_context_menu=getattr(action, "show_in_context_menu", True),
+                show_in_context_menu=getattr(
+                    action, "show_in_context_menu", True
+                ),
                 drag_drop_enabled=getattr(action, "drag_drop_enabled", True),
-                default_for_drag_drop=getattr(action, "default_for_drag_drop", False),
+                default_for_drag_drop=getattr(
+                    action, "default_for_drag_drop", False
+                ),
                 drag_drop_contexts=getattr(action, "drag_drop_contexts", None),
             ))
         return items
@@ -1268,10 +1449,8 @@ class LoaderActionsModel:
         """
 
         project_entity = ayon_api.get_project(project_name)
-        repre_entities = list(
-            ayon_api.get_representations(
-                project_name, representation_ids=representation_ids
-            )
+        repre_entities = self._get_representations(
+            project_name, set(representation_ids)
         )
         version_ids = {r["versionId"] for r in repre_entities}
         version_entities = ayon_api.get_versions(

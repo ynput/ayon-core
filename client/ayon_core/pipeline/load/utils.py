@@ -885,6 +885,26 @@ def get_representation_path(
     if anatomy is None:
         anatomy = Anatomy(project_name, project_entity=project_entity)
 
+    marker = (repre_entity.get("data") or {}).get("__reviewable__")
+    if marker:
+        from ayon_core.lib.path_templates import TemplateResult
+        from ayon_core.pipeline.load.reviewables import materialize_reviewable
+
+        path_str = materialize_reviewable(
+            marker["project_name"],
+            marker["version_id"],
+            marker["file_id"],
+            marker.get("label") or "",
+        )
+        return TemplateResult(
+            path_str,
+            path_str,
+            True,
+            {},
+            [],
+            {},
+        )
+
     try:
         template = repre_entity["attrib"]["template"]
 
