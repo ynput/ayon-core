@@ -67,7 +67,7 @@ class WorkfilesToolWindow(AYContainer):
             parent,
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.High,
-            layout_margin=8,
+            layout_margin=16,
             layout_spacing=4,
         )
         self.setWindowTitle(title)

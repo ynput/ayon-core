@@ -388,13 +388,15 @@ QHeaderView {
 
 QHeaderView::section  {
     background: {color:bg-view-header};
-    padding: 4px;
+    padding: 4px 8px;
     border-top: 0px; /* Substance Painter fix */
     border-right: 1px solid {color:bg-view};
     border-radius: 0px;
     text-align: center;
     color: {color:font};
     font-weight: bold;
+    font-size: 12px;
+    min-height: 28px;
 }
 QHeaderView::section:first {
     border-left: none;

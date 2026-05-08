@@ -1,9 +1,9 @@
 import datetime
 from typing import Optional
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore
 
-from ayon_ui_qt.components import AYContainer, AYVBoxLayout, AYButton, AYLabel
+from ayon_ui_qt.components import AYContainer, AYButton, AYLabel, AYTextEdit
 
 
 def file_size_to_string(file_size):
@@ -46,33 +46,63 @@ class SidePanelWidget(AYContainer):
             parent,
             layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.Low,
-            layout_margin=8,
-            layout_spacing=4,
+            layout_margin=10,
+            layout_spacing=10,
         )
 
-        details_label = QtWidgets.QLabel("Details", self)
-        details_input = QtWidgets.QPlainTextEdit(self)
-        details_input.setReadOnly(True)
+        # ── Details section ─────────────────────────────────────────
+        self.add_widget(AYLabel("Details", rel_text_size=1, parent=self))
 
-        description_widget = QtWidgets.QWidget(self)
-        description_label = QtWidgets.QLabel("Artist note", description_widget)
-        description_input = QtWidgets.QPlainTextEdit(description_widget)
+        details_form = AYContainer(
+            layout=AYContainer.Layout.Form,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=10,
+            layout_spacing=(20, 20),
+            parent=self,
+        )
+        details_form.set_label_alignment(QtCore.Qt.AlignRight)
 
+        size_val = AYLabel("-")
+        details_form.add_row(AYLabel("Size:", dim=True), size_val)
+
+        comment_key = AYLabel("Comment:", dim=True)
+        comment_val = AYLabel("-")
+        comment_val.setWordWrap(True)
+        details_form.add_row(comment_key, comment_val)
+
+        created_val = AYLabel("-")
+        created_val.setWordWrap(True)
+        details_form.add_row(AYLabel("Created:", dim=True), created_val)
+
+        modified_key = AYLabel("Modified:", dim=True)
+        modified_val = AYLabel("-")
+        modified_val.setWordWrap(True)
+        details_form.add_row(modified_key, modified_val)
+
+        self.add_widget(details_form, stretch=1)
+
+        # ── Artist Note section ──────────────────────────────────────
+        self.add_widget(AYLabel("Artist Note", rel_text_size=1, parent=self))
+
+        note_frame = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=10,
+            layout_spacing=4,
+            parent=self,
+        )
+        description_input = AYTextEdit(note_frame)
         btn_description_save = AYButton(
             "Save note", variant=AYButton.Variants.Tonal,
-            parent=description_widget,
+            parent=note_frame,
+        )
+        note_frame.add_widget(description_input, stretch=1)
+        note_frame.add_widget(btn_description_save)
+        note_frame._layout.setAlignment(
+            btn_description_save, QtCore.Qt.AlignRight
         )
 
-        description_layout = AYVBoxLayout(description_widget, margin=2, spacing=0)
-        description_layout.addWidget(description_label, 0)
-        description_layout.addWidget(description_input, 1)
-        description_layout.addWidget(
-            btn_description_save, 0, alignment=QtCore.Qt.AlignRight
-        )
-
-        self.add_widget(details_label, stretch=0)
-        self.add_widget(details_input, stretch=1)
-        self.add_widget(description_widget, stretch=1)
+        self.add_widget(note_frame, stretch=1)
 
         description_input.textChanged.connect(self._on_description_change)
         btn_description_save.clicked.connect(self._on_save_click)
@@ -86,9 +116,13 @@ class SidePanelWidget(AYContainer):
             self._on_representation_selection_change,
         )
 
-        self._details_input = details_input
-        self._description_widget = description_widget
-        self._description_input = description_input
+        self._details_form         = details_form
+        self._size_val             = size_val
+        self._created_val          = created_val
+        self._modified_val         = modified_val
+        self._comment_val          = comment_val
+        self._note_frame           = note_frame
+        self._description_input    = description_input
         self._btn_description_save = btn_description_save
 
         self._folder_id = None
@@ -108,7 +142,7 @@ class SidePanelWidget(AYContainer):
             published_mode (bool): Published mode enabled.
         """
 
-        self._description_widget.setVisible(not published_mode)
+        self._note_frame.setVisible(not published_mode)
         # Clear the context when switching modes to avoid showing stale data
         if published_mode:
             self._set_publish_context(
@@ -237,22 +271,18 @@ class SidePanelWidget(AYContainer):
         self._folder_id = folder_id
         self._task_id = task_id
 
-        self._details_input.setEnabled(is_valid)
+        self._details_form.setEnabled(is_valid)
         self._description_input.setEnabled(is_valid)
         self._btn_description_save.setEnabled(is_valid)
+
         if not is_valid:
-            self._details_input.setPlainText("")
+            self._size_val.setText("-")
+            self._created_val.setText("-")
+            self._modified_val.setText("-")
+            self._comment_val.setText("-")
             return
 
         datetime_format = "%b %d %Y %H:%M:%S"
-        if file_created:
-            file_created = datetime.datetime.fromtimestamp(file_created)
-
-        if file_modified:
-            file_modified = datetime.datetime.fromtimestamp(
-                file_modified
-            )
-
         user_items_by_name = self._controller.get_user_items_by_name()
 
         def convert_username(username_v):
@@ -261,29 +291,32 @@ class SidePanelWidget(AYContainer):
                 return user_item.full_name
             return username_v
 
-        lines = []
-        if size_value is not None:
-            size_value = file_size_to_string(size_value)
-            lines.append(f"<b>Size:</b><br/>{size_value}")
+        self._size_val.setText(
+            file_size_to_string(size_value) if size_value is not None else "-"
+        )
 
-        # Add version comment for published workfiles
-        if comment:
-            lines.append(f"<b>Comment:</b><br/>{comment}")
+        created_parts = []
+        if created_by:
+            created_parts.append(convert_username(created_by))
+        if file_created:
+            created_parts.append(
+                datetime.datetime.fromtimestamp(file_created).strftime(datetime_format)
+            )
+        self._created_val.setText("\n".join(created_parts) if created_parts else "-")
 
-        if created_by or file_created:
-            lines.append("<b>Created:</b>")
-            if created_by:
-                lines.append(convert_username(created_by))
-            if file_created:
-                lines.append(file_created.strftime(datetime_format))
-
-        if updated_by or file_modified:
-            lines.append("<b>Modified:</b>")
+        show_modified = bool(updated_by or file_modified)
+        if show_modified:
+            modified_parts = []
             if updated_by:
-                lines.append(convert_username(updated_by))
+                modified_parts.append(convert_username(updated_by))
             if file_modified:
-                lines.append(file_modified.strftime(datetime_format))
+                modified_parts.append(
+                    datetime.datetime.fromtimestamp(file_modified).strftime(datetime_format)
+                )
+            self._modified_val.setText(
+                "\n".join(modified_parts) if modified_parts else "-"
+            )
+        else:
+            self._modified_val.setText("-")
 
-        # Set as empty string
-        self._details_input.setPlainText("")
-        self._details_input.appendHtml("<br/>".join(lines))
+        self._comment_val.setText(comment if comment else "-")
