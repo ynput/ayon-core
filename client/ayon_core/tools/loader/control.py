@@ -3,12 +3,13 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 import ayon_api
 from qtpy import QtCore
 
 from ayon_core.pipeline import thumbnails_grid as thumbnails_grid_mod
+from ayon_core.pipeline.load.reviewables import materialize_reviewable
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
@@ -60,6 +61,9 @@ class _GridThumbRunnable(QtCore.QRunnable):
         src_path: str,
         cache_key: str,
         project_name: str,
+        *,
+        reviewable_file_id: Optional[str] = None,
+        reviewable_label: Optional[str] = None,
     ) -> None:
         super().__init__()
         self._controller = controller
@@ -69,6 +73,8 @@ class _GridThumbRunnable(QtCore.QRunnable):
         self._src_path = src_path
         self._cache_key = cache_key
         self._project_name = project_name
+        self._reviewable_file_id = reviewable_file_id
+        self._reviewable_label = reviewable_label or ""
 
     def run(self) -> None:
         ctrl = self._controller
@@ -78,7 +84,41 @@ class _GridThumbRunnable(QtCore.QRunnable):
 
         out_path = None
         try:
-            if self._kind == "image":
+            if self._kind == "reviewable":
+                fid = self._reviewable_file_id
+                if fid:
+                    mat = materialize_reviewable(
+                        self._project_name,
+                        self._version_id,
+                        fid,
+                        self._reviewable_label,
+                    )
+                    if mat and os.path.isfile(mat):
+                        if thumbnails_grid_mod.is_image_file_path(mat):
+                            key = thumbnails_grid_mod.cache_key_for_source(
+                                self._version_id,
+                                mat,
+                            )
+                            out_path = (
+                                thumbnails_grid_mod.optimize_image_to_grid_cache(
+                                    mat,
+                                    self._project_name,
+                                    key,
+                                )
+                            )
+                        elif thumbnails_grid_mod.is_video_file_path(mat):
+                            key = thumbnails_grid_mod.cache_key_for_source(
+                                self._version_id,
+                                mat,
+                            )
+                            out_path = (
+                                thumbnails_grid_mod.extract_video_first_frame_to_cache(
+                                    mat,
+                                    self._project_name,
+                                    key,
+                                )
+                            )
+            elif self._kind == "image":
                 out_path = thumbnails_grid_mod.optimize_image_to_grid_cache(
                     self._src_path,
                     self._project_name,
@@ -462,10 +502,30 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             output[vid] = None
             if not jobs:
                 continue
-            kind, src_path, cache_key = jobs[0]
+            job = jobs[0]
+            kind = job[0]
             if vid in self._grid_thumb_inflight:
                 continue
             self._grid_thumb_inflight.add(vid)
+            if kind == "reviewable":
+                _, fid, lab = job
+                pool = self._grid_video_pool
+                pool.start(
+                    _GridThumbRunnable(
+                        self,
+                        gen_snapshot,
+                        vid,
+                        kind,
+                        "",
+                        "",
+                        project_name,
+                        reviewable_file_id=fid,
+                        reviewable_label=lab,
+                    )
+                )
+                continue
+
+            _, src_path, cache_key = job
             pool = (
                 self._grid_video_pool
                 if kind == "video"

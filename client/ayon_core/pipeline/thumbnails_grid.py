@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import ayon_api
@@ -12,6 +14,11 @@ from ayon_core.lib.local_settings import get_launcher_local_dir
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
+from ayon_core.pipeline.load.reviewables import (
+    is_reviewable_repre_id,
+    parse_reviewable_repre_id,
+    reviewable_cache_dir,
+)
 
 if TYPE_CHECKING:
     from ayon_core.tools.loader.abstract import RepreItem
@@ -58,11 +65,49 @@ def is_video_file_path(path: str) -> bool:
     return ext in VIDEO_EXTENSIONS
 
 
+def _reviewable_label_segment(label: str) -> str:
+    """Same basename segment rules as reviewables.materialize_reviewable."""
+    s = re.sub(r"[^0-9A-Za-z._-]", "_", label.strip())[:120]
+    return s or "reviewable"
+
+
+def reviewable_materialized_path_if_cached(
+    project_name: str,
+    version_id: str,
+    file_id: str,
+    label: str,
+) -> Optional[str]:
+    """Return path if server reviewable already downloaded; else None."""
+    cache_root = reviewable_cache_dir(project_name, version_id)
+    fname = f"{file_id}__{_reviewable_label_segment(label)}"
+    dest = Path(cache_root) / fname
+    try:
+        if dest.is_file() and dest.stat().st_size > 0:
+            return str(dest.resolve())
+    except OSError:
+        pass
+    return None
+
+
 def resolve_representation_file_path(
     project_name: str,
     representation_id: str,
+    label_hint: str = "",
 ) -> Optional[str]:
-    """Return an on-disk path for a representation, or None."""
+    """Return an on-disk path for a representation, or None.
+
+    Synthetic ``reviewable:`` ids resolve only when already materialized
+    under the reviewable cache (cold downloads run in background jobs).
+    """
+    if is_reviewable_repre_id(representation_id):
+        parsed = parse_reviewable_repre_id(representation_id)
+        if not parsed:
+            return None
+        vid, fid = parsed
+        return reviewable_materialized_path_if_cached(
+            project_name, vid, fid, label_hint
+        )
+
     try:
         repre_entity = ayon_api.get_representation_by_id(
             project_name, representation_id
@@ -205,34 +250,55 @@ def pick_grid_thumbnail_sync_and_jobs(
     version_id: str,
     repre_items: List["RepreItem"],
     canonical_path: Optional[str],
-) -> Tuple[Optional[str], List[Tuple[str, str, str]]]:
+) -> Tuple[Optional[str], List[Tuple[str, ...]]]:
     """Pick sync grid pixmap path and optional async derivative jobs.
 
     Priority: representation thumbnail/image files, then canonical
-    ``thumbnailId`` path. Jobs: ``image`` (downscale) or ``video`` (ffmpeg).
+    ``thumbnailId`` path. Jobs: ``image`` (downscale), ``video`` (ffmpeg),
+    or ``reviewable`` (materialize then image/ffmpeg).
 
     Returns:
-        (immediate image path or None, [(kind, src_path, cache_key), ...]).
+        (immediate image path or None, job tuples).
+        Each job is ``("image"|"video", src_path, cache_key)`` or
+        ``("reviewable", file_id, label)`` for cold server reviewables.
     """
 
+    pending_reviewable: Optional[Tuple[str, str]] = None
+
     for item in iter_repre_probe_order(repre_items):
+        label = item.representation_name or ""
         path = resolve_representation_file_path(
-            project_name, item.representation_id
+            project_name,
+            item.representation_id,
+            label,
         )
-        if not path:
+        if path:
+            if is_image_file_path(path):
+                try:
+                    sz = os.path.getsize(path)
+                except OSError:
+                    continue
+                if sz <= SMALL_IMAGE_BYTES:
+                    return path, []
+                key = cache_key_for_source(version_id, path)
+                return None, [("image", path, key)]
+            if is_video_file_path(path):
+                key = cache_key_for_source(version_id, path)
+                return None, [("video", path, key)]
             continue
-        if is_image_file_path(path):
-            try:
-                sz = os.path.getsize(path)
-            except OSError:
-                continue
-            if sz <= SMALL_IMAGE_BYTES:
-                return path, []
-            key = cache_key_for_source(version_id, path)
-            return None, [("image", path, key)]
-        if is_video_file_path(path):
-            key = cache_key_for_source(version_id, path)
-            return None, [("video", path, key)]
+
+        if (
+            is_reviewable_repre_id(item.representation_id)
+            and pending_reviewable is None
+        ):
+            parsed = parse_reviewable_repre_id(item.representation_id)
+            if parsed:
+                _vid, fid = parsed
+                pending_reviewable = (fid, label)
+
+    if pending_reviewable:
+        fid, lab = pending_reviewable
+        return None, [("reviewable", fid, lab)]
 
     if canonical_path and os.path.isfile(canonical_path):
         if is_image_file_path(canonical_path):
