@@ -252,11 +252,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         # apply focus to this line edit (e.g. Houdini)
         subversion_input.setFocus()
 
-        # Put description_input into edit mode immediately so the blinking
-        # cursor makes it visually obvious it is an editable field.
-        description_input.setFocus()
-        description_input.ensureCursorVisible()
-
     def get_result(self):
         return self._result
 
