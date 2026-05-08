@@ -214,6 +214,8 @@ class ProductsGridWidget(QtWidgets.QWidget):
             QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
+        self._drag_precache = DragPayloadPrecache()
+
         self._grid_host = QtWidgets.QWidget(self._scroll_area)
         self._grid_host.setObjectName("ProductsGridHost")
         grid_host_layout = QtWidgets.QVBoxLayout(self._grid_host)
@@ -256,7 +258,6 @@ class ProductsGridWidget(QtWidgets.QWidget):
             self._proxy_model.dataChanged.connect(self._on_proxy_data_changed)
 
         self._apply_grid_chrome_background()
-        self._drag_precache = DragPayloadPrecache()
 
         self._rebuild_grid_sections()
 
