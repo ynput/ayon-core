@@ -799,7 +799,9 @@ class ProductsWidget(QtWidgets.QWidget):
         if selected_merged_products != prev_selected_merged_products:
             self.merged_products_selection_changed.emit()
         self.selection_changed.emit()
-        self._controller.set_selected_versions(selected_version_ids)
+        self._controller.set_selected_versions(
+            selected_version_ids, selected_versions_info
+        )
 
     def _on_version_change(self):
         self._on_selection_change()

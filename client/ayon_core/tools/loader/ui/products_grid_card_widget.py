@@ -12,6 +12,7 @@ import ayon_api
 from ayon_core.style import get_default_entity_icon_color, get_objected_colors
 
 from .products_delegates import VersionComboBox
+from .products_flatten_proxy import GRID_ROW_IS_HEADER_ROLE
 from .products_model import (
     PRODUCT_ID_ROLE,
     PRODUCT_NAME_ROLE,
@@ -92,6 +93,9 @@ PLACEHOLDER_ICON_SIZE_RATIO = 0.30
 # Empty thumbnail plate (AYON web grid); not theme bg-view.
 THUMB_EMPTY_PLATE_HEX = "#272d35"
 
+# Full-width section band height (single QListView with header + product rows).
+GRID_SECTION_HEADER_ROW_HEIGHT = 30
+
 
 def _open_external_icon(icon_color: str) -> QtGui.QIcon:
     """Icon for 'open in browser'; Material Symbols names are not in all qtawesome builds."""
@@ -139,8 +143,11 @@ class _ThumbPaintWidget(QtWidgets.QWidget):
         painter.fillPath(path, QtGui.QColor(THUMB_EMPTY_PLATE_HEX))
 
         version_id = self._card.version_id
+        pid = self._card._product_id
         thumb_path = (
-            self._card._grid.get_thumbnail_path(version_id) if version_id else None
+            self._card._grid.get_thumbnail_path(pid, version_id)
+            if pid and version_id
+            else None
         )
         icon = self._card.product_icon
         pixmap: Optional[QtGui.QPixmap] = None
@@ -191,7 +198,12 @@ class _ThumbPaintWidget(QtWidgets.QWidget):
 class ProductsGridCardWidget(QtWidgets.QWidget):
     """Title/header strip + thumbnail plate (THUMB_REF aspect) + overlays; tile height from layout_dims."""
 
-    def __init__(self, grid: Any, flat_row: int, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(
+        self,
+        grid: Any,
+        flat_row: int,
+        parent: Optional[QtWidgets.QWidget] = None,
+    ):
         super().__init__(parent)
         self.setObjectName("ProductsGridCard")
         self.setAutoFillBackground(True)
@@ -558,10 +570,19 @@ class GridCellDelegate(QtWidgets.QStyledItemDelegate):
         return parent if isinstance(parent, QtWidgets.QAbstractItemView) else None
 
     def sizeHint(self, option, index):  # noqa: ARG002
+        model = index.model()
+        if model is not None and model.data(index, GRID_ROW_IS_HEADER_ROLE):
+            lv = self._item_view_for_paint(option)
+            vw = lv.viewport() if lv is not None else None
+            w = vw.width() if vw is not None and vw.width() > 2 else 640
+            return QtCore.QSize(max(120, w), GRID_SECTION_HEADER_ROW_HEIGHT)
         return self._grid.get_grid_stride_size()
 
     def paint(self, painter, option, index):
         if not index.isValid():
+            return
+        model = index.model()
+        if model is not None and model.data(index, GRID_ROW_IS_HEADER_ROLE):
             return
         option.state &= ~QtWidgets.QStyle.State_HasFocus
         opt = QtWidgets.QStyleOptionViewItem(option)

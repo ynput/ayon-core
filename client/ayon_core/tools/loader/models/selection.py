@@ -19,6 +19,7 @@ class SelectionModel(object):
         self._folder_ids = set()
         self._task_ids = set()
         self._version_ids = set()
+        self._version_selection_rows: list = []
         self._representation_ids = set()
 
     def get_selected_project_name(self):
@@ -72,20 +73,26 @@ class SelectionModel(object):
     def get_selected_version_ids(self):
         return self._version_ids
 
-    def set_selected_versions(self, version_ids):
+    def set_selected_versions(self, version_ids, selection_rows=None):
         # Always emit event even if version_ids are the same
         # Products can share a version id but need distinct thumbnails
         # Cache invalidation in window.py ensures fresh data
         self._version_ids = version_ids
+        self._version_selection_rows = list(selection_rows or ())
         self._controller.emit_event(
             "selection.versions.changed",
             {
                 "project_name": self._project_name,
                 "folder_ids": self._folder_ids,
                 "version_ids": self._version_ids,
+                "version_selection_rows": self._version_selection_rows,
             },
             self.event_source,
         )
+
+    def get_selected_version_selection_rows(self):
+        """Per-row selection detail including ``product_id`` for rep cache scope."""
+        return list(self._version_selection_rows)
 
     def get_selected_representation_ids(self):
         return self._representation_ids

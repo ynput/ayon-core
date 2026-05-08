@@ -46,7 +46,7 @@ GRID_THUMB_SENDER = "loader.grid_thumbnail"
 class GridThumbnailEmitter(QtCore.QObject):
     """Qt signal holder; ``LoaderController`` is not a ``QObject``."""
 
-    ready = QtCore.Signal(str, str)
+    ready = QtCore.Signal(str, str, str)
 
 
 class _GridThumbRunnable(QtCore.QRunnable):
@@ -56,6 +56,7 @@ class _GridThumbRunnable(QtCore.QRunnable):
         self,
         controller: "LoaderController",
         generation_snapshot: int,
+        product_id: str,
         version_id: str,
         kind: str,
         src_path: str,
@@ -68,6 +69,7 @@ class _GridThumbRunnable(QtCore.QRunnable):
         super().__init__()
         self._controller = controller
         self._generation_snapshot = generation_snapshot
+        self._product_id = product_id
         self._version_id = version_id
         self._kind = kind
         self._src_path = src_path
@@ -78,8 +80,9 @@ class _GridThumbRunnable(QtCore.QRunnable):
 
     def run(self) -> None:
         ctrl = self._controller
+        inflight_key = (self._product_id, self._version_id)
         if ctrl._grid_thumb_generation != self._generation_snapshot:
-            ctrl._grid_thumb_inflight.discard(self._version_id)
+            ctrl._grid_thumb_inflight.discard(inflight_key)
             return
 
         out_path = None
@@ -139,9 +142,11 @@ class _GridThumbRunnable(QtCore.QRunnable):
             out_path
             and ctrl._grid_thumb_generation == self._generation_snapshot
         ):
-            ctrl._grid_thumb_emitter.ready.emit(self._version_id, out_path)
+            ctrl._grid_thumb_emitter.ready.emit(
+                self._product_id, self._version_id, out_path
+            )
 
-        ctrl._grid_thumb_inflight.discard(self._version_id)
+        ctrl._grid_thumb_inflight.discard(inflight_key)
 
 
 class ExpectedSelection:
@@ -408,16 +413,52 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_product_type_items(self, project_name):
         return self._products_model.get_product_type_items(project_name)
 
-    def get_representation_items(self, project_name, version_ids, sender=None):
+    def get_representation_items(
+        self,
+        project_name,
+        version_ids,
+        sender=None,
+        *,
+        product_version_pairs=None,
+    ):
+        pairs = product_version_pairs
+        if pairs is None:
+            rows = self.get_selected_version_selection_rows()
+            if rows:
+                pairs = [
+                    (r["product_id"], r["version_id"])
+                    for r in rows
+                    if r.get("product_id") and r.get("version_id")
+                ]
         return self._products_model.get_repre_items(
-            project_name, version_ids, sender
+            project_name,
+            version_ids,
+            sender,
+            product_version_pairs=pairs,
         )
 
     def get_versions_representation_count(
-        self, project_name, version_ids, sender=None
+        self,
+        project_name,
+        version_ids,
+        sender=None,
+        *,
+        product_version_pairs=None,
     ):
+        pairs = product_version_pairs
+        if pairs is None:
+            rows = self.get_selected_version_selection_rows()
+            if rows:
+                pairs = [
+                    (r["product_id"], r["version_id"])
+                    for r in rows
+                    if r.get("product_id") and r.get("version_id")
+                ]
         return self._products_model.get_versions_repre_count(
-            project_name, version_ids, sender
+            project_name,
+            version_ids,
+            sender,
+            product_version_pairs=pairs,
         )
 
     def get_folder_thumbnail_ids(self, project_name, folder_ids):
@@ -442,7 +483,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     @property
     def grid_thumbnail_ready(self):
-        """``Signal(str, str)``: ``version_id``, derivative ``jpeg`` path."""
+        """``Signal(product_id, version_id, path)`` for grid pixmap updates."""
         return self._grid_thumb_emitter.ready
 
     def cancel_grid_thumbnail_resolve(self) -> None:
@@ -455,9 +496,23 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name: str,
         version_ids: set[str],
         sender: Optional[str] = None,
-    ) -> dict[str, list]:
+        *,
+        product_version_pairs: Optional[list[tuple[str, str]]] = None,
+    ) -> dict[tuple[str, str], list]:
+        pairs = product_version_pairs
+        if pairs is None:
+            rows = self.get_selected_version_selection_rows()
+            if rows:
+                pairs = [
+                    (r["product_id"], r["version_id"])
+                    for r in rows
+                    if r.get("product_id") and r.get("version_id")
+                ]
         return self._products_model.get_repre_items_grouped(
-            project_name, version_ids, sender
+            project_name,
+            version_ids,
+            sender,
+            product_version_pairs=pairs,
         )
 
     def resolve_grid_thumbnail_paths(
@@ -465,48 +520,61 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name: str,
         version_ids: set[str],
         sender: Optional[str] = None,
-    ) -> dict[str, Optional[str]]:
+        *,
+        product_version_pairs: Optional[list[tuple[str, str]]] = None,
+    ) -> dict[tuple[str, str], Optional[str]]:
         """Resolve pixmap-ready paths; queues derivatives when needed.
 
         Synchronous hits are returned in the dict; ``None`` means async
         processing may still deliver via :attr:`grid_thumbnail_ready`.
+        Keys are ``(product_id, version_id)`` rows.
         """
         if not version_ids:
             return {}
         if not project_name:
-            return {vid: None for vid in version_ids}
+            return {}
+
+        pairs = product_version_pairs
+        if not pairs:
+            pairs = self._products_model._infer_product_version_pairs(
+                project_name, version_ids
+            )
+        pairs = [(pid, vid) for pid, vid in pairs if vid in version_ids]
+        if not pairs:
+            return {}
 
         snd = sender if sender is not None else GRID_THUMB_SENDER
         grouped = self.get_representation_items_grouped(
-            project_name, version_ids, snd
+            project_name, version_ids, snd, product_version_pairs=pairs
         )
         canonical = self._thumbnails_model.get_thumbnail_paths(
             project_name, "version", version_ids
         )
         gen_snapshot = self._grid_thumb_generation
 
-        output: dict[str, Optional[str]] = {}
-        for vid in version_ids:
+        output: dict[tuple[str, str], Optional[str]] = {}
+        for product_id, version_id in pairs:
             sync_path, jobs = (
                 thumbnails_grid_mod.pick_grid_thumbnail_sync_and_jobs(
                     project_name,
-                    vid,
-                    grouped.get(vid, []),
-                    canonical.get(vid),
+                    version_id,
+                    grouped.get((product_id, version_id), []),
+                    canonical.get(version_id),
                 )
             )
+            key = (product_id, version_id)
             if sync_path:
-                output[vid] = sync_path
+                output[key] = sync_path
                 continue
 
-            output[vid] = None
+            output[key] = None
             if not jobs:
                 continue
             job = jobs[0]
             kind = job[0]
-            if vid in self._grid_thumb_inflight:
+            if key in self._grid_thumb_inflight:
                 continue
-            self._grid_thumb_inflight.add(vid)
+            self._grid_thumb_inflight.add(key)
             if kind == "reviewable":
                 _, fid, lab = job
                 pool = self._grid_video_pool
@@ -514,7 +582,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                     _GridThumbRunnable(
                         self,
                         gen_snapshot,
-                        vid,
+                        product_id,
+                        version_id,
                         kind,
                         "",
                         "",
@@ -535,7 +604,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 _GridThumbRunnable(
                     self,
                     gen_snapshot,
-                    vid,
+                    product_id,
+                    version_id,
                     kind,
                     src_path,
                     cache_key,
@@ -766,8 +836,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_selected_version_ids(self):
         return self._selection_model.get_selected_version_ids()
 
-    def set_selected_versions(self, version_ids):
-        self._selection_model.set_selected_versions(version_ids)
+    def set_selected_versions(self, version_ids, selection_rows=None):
+        self._selection_model.set_selected_versions(version_ids, selection_rows)
+
+    def get_selected_version_selection_rows(self):
+        return self._selection_model.get_selected_version_selection_rows()
 
     def get_selected_representation_ids(self):
         return self._selection_model.get_selected_representation_ids()

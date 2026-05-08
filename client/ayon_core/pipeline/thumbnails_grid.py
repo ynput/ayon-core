@@ -266,7 +266,8 @@ def pick_grid_thumbnail_sync_and_jobs(
     pending_reviewable: Optional[Tuple[str, str]] = None
 
     for item in iter_repre_probe_order(repre_items):
-        label = item.representation_name or ""
+        rest = getattr(item, "reviewable_rest_label", None)
+        label = rest if rest else (item.representation_name or "")
         path = resolve_representation_file_path(
             project_name,
             item.representation_id,

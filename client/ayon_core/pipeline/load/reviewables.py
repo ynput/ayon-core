@@ -48,6 +48,45 @@ def parse_reviewable_repre_id(repre_id: str) -> tuple[str, str] | None:
     return version_id, file_id
 
 
+# Synthetic Loader product rows (REST reviewables as exclusive products).
+REVIEWABLE_PRODUCT_ID_PREFIX = "reviewable-product:"
+_REVIEWABLE_PRODUCT_SEP = "\x1f"
+
+
+def is_reviewable_product_id(product_id: str | None) -> bool:
+    """True if *product_id* is a synthetic reviewable product row."""
+    if not product_id or not isinstance(product_id, str):
+        return False
+    return product_id.startswith(REVIEWABLE_PRODUCT_ID_PREFIX)
+
+
+def make_reviewable_product_id(
+    parent_product_id: str, version_id: str, file_id: str
+) -> str:
+    """Stable synthetic ``product`` id for one REST reviewable file."""
+    return (
+        f"{REVIEWABLE_PRODUCT_ID_PREFIX}{parent_product_id}"
+        f"{_REVIEWABLE_PRODUCT_SEP}{version_id}"
+        f"{_REVIEWABLE_PRODUCT_SEP}{file_id}"
+    )
+
+
+def parse_reviewable_product_id(
+    product_id: str,
+) -> tuple[str, str, str] | None:
+    """Parse ``(parent_product_id, version_id, file_id)`` or None."""
+    if not is_reviewable_product_id(product_id):
+        return None
+    rest = product_id[len(REVIEWABLE_PRODUCT_ID_PREFIX) :]
+    parts = rest.split(_REVIEWABLE_PRODUCT_SEP)
+    if len(parts) != 3:
+        return None
+    parent_pid, vid, fid = parts
+    if not parent_pid or not vid or not fid:
+        return None
+    return parent_pid, vid, fid
+
+
 def _norm_project_file_id(raw: Any) -> str | None:
     """Hex-only id for project files (strips hyphens from UUID)."""
     if raw is None:
@@ -174,6 +213,29 @@ def _fetch_reviewable_tuples_from_rest(
     if debug is not None:
         debug["path_status"] = path_status
     return []
+
+
+def loader_synthetic_representation_name(rest_label: str, file_id: str) -> str:
+    """Unique Loader row label for one server reviewable under a version.
+
+    Multiple reviewables can share the same type (e.g. two PNGs); include a
+    short file id tail so representation rows stay distinguishable.
+    """
+    hx = _norm_project_file_id(file_id)
+    tail = hx[:8] if hx else ""
+    if not tail:
+        hx2 = re.sub(
+            r"[^a-fA-F0-9]", "", str(file_id), flags=re.IGNORECASE
+        ).lower()
+        tail = hx2[:8] if len(hx2) >= 8 else hx2
+    base = os.path.basename(rest_label.strip()) or "reviewable"
+    stem, ext = os.path.splitext(base)
+    stem_clean = re.sub(r"[^0-9A-Za-z._-]", "_", stem.strip("_"))[:48]
+    if not stem_clean:
+        stem_clean = "reviewable"
+    ext_clean = ext.lower().lstrip(".")[:16]
+    short = f"{stem_clean}.{ext_clean}" if ext_clean else stem_clean
+    return f"{short}__{tail}" if tail else short
 
 
 def representation_name_from_label(label: str) -> str:

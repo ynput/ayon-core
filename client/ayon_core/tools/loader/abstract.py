@@ -277,6 +277,8 @@ class RepreItem:
         representation_icon (dict[str, Any]): Representation icon definition.
         product_name (str): Product name.
         folder_label (str): Folder label.
+        reviewable_rest_label (Optional[str]): Original REST label for server
+            reviewables (materialize cache key); optional.
     """
 
     def __init__(
@@ -285,26 +287,38 @@ class RepreItem:
         representation_name,
         representation_icon,
         product_name,
-        folder_label
+        folder_label,
+        reviewable_rest_label=None,
     ):
         self.representation_id = representation_id
         self.representation_name = representation_name
         self.representation_icon = representation_icon
         self.product_name = product_name
         self.folder_label = folder_label
+        self.reviewable_rest_label = reviewable_rest_label
 
     def to_data(self):
-        return {
+        out = {
             "representation_id": self.representation_id,
             "representation_name": self.representation_name,
             "representation_icon": self.representation_icon,
             "product_name": self.product_name,
             "folder_label": self.folder_label,
         }
+        if self.reviewable_rest_label is not None:
+            out["reviewable_rest_label"] = self.reviewable_rest_label
+        return out
 
     @classmethod
     def from_data(cls, data):
-        return cls(**data)
+        return cls(
+            data["representation_id"],
+            data["representation_name"],
+            data["representation_icon"],
+            data["product_name"],
+            data["folder_label"],
+            data.get("reviewable_rest_label"),
+        )
 
 
 class ActionItem:
@@ -828,7 +842,12 @@ class FrontendLoaderController(_BaseLoaderController):
 
     @abstractmethod
     def get_representation_items(
-        self, project_name, version_ids, sender=None
+        self,
+        project_name,
+        version_ids,
+        sender=None,
+        *,
+        product_version_pairs=None,
     ):
         """Representation items for version ids.
 
@@ -844,6 +863,7 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
             sender (Optional[str]): Sender who requested the items.
+            product_version_pairs: Optional ``(product_id, version_id)`` rows.
 
         Returns:
             list[RepreItem]: List of representation items.
@@ -1024,7 +1044,7 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def set_selected_versions(self, version_ids):
+    def set_selected_versions(self, version_ids, selection_rows=None):
         """Set selected versions.
 
         Version selection changed in UI. Method triggers event with topic
@@ -1032,13 +1052,20 @@ class FrontendLoaderController(_BaseLoaderController):
             {
                 "project_name": project_name,
                 "folder_ids": folder_ids,
-                "version_ids": version_ids
+                "version_ids": version_ids,
+                "version_selection_rows": selection_rows,
             }
 
         Args:
             version_ids (Iterable[str]): Selected version ids.
+            selection_rows (Optional[list]): Per-row ``product_id`` / ``version_id``.
         """
 
+        pass
+
+    @abstractmethod
+    def get_selected_version_selection_rows(self):
+        """Detail rows for current version selection (includes ``product_id``)."""
         pass
 
     @abstractmethod

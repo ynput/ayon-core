@@ -535,6 +535,7 @@ class LoaderWindow(QtWidgets.QWidget):
         mode = self._view_mode_selector.get_view_mode()
         if mode != VIEW_MODE_GRID:
             return
+        self._products_grid_widget.schedule_rebuild_grid_sections()
         lo, hi = self._products_grid_widget.compute_column_bounds()
         self._scale_slider_overlay.set_column_bounds(lo, hi)
         self._view_grid_columns = max(

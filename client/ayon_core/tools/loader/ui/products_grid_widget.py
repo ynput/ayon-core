@@ -7,15 +7,24 @@ import collections
 import numbers
 from typing import Any, Dict, List, Optional, Set
 
+LOADER_QSETTINGS_GROUP = "loader"
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import Logger
 from ayon_core.tools.utils.lib import format_version
 
-from .products_flatten_proxy import ProductsFlattenProxyModel
+from .products_flatten_proxy import (
+    GRID_ROW_IS_HEADER_ROLE,
+    GRID_SECTION_GROUP_KEY_ROLE,
+    ProductsFlattenProxyModel,
+    build_unified_grid_flat_rows,
+    enumerate_grid_section_source_indexes,
+)
 from .products_grid_card_widget import (
     CARD_BASE_HEIGHT,
     CARD_BASE_WIDTH,
+    GRID_SECTION_HEADER_ROW_HEIGHT,
     GridCellDelegate,
     ProductsGridCardWidget,
     layout_dims_for_cell_width,
@@ -59,18 +68,22 @@ GRID_CELL_SPACING = 6
 # last column on the row without taking over QListView's scrollbar internals.
 GRID_ROW_WRAP_SAFETY_PX = 6
 
-# Product rows can arrive before the loader window has completed its first
-# layout pass. Building index widgets into that tiny transient viewport can
-# crash Qt, so defer non-empty rebuilds until the view has a real size.
-GRID_READY_MIN_VIEWPORT_W = 200
-GRID_READY_MIN_VIEWPORT_H = 100
+# Defer IconMode index-widget creation until the scroll viewport has a stable
+# size (Qt can glitch on a zero-sized transient layout). Thresholds stay low
+# so a narrow splitter column still qualifies.
+GRID_READY_MIN_VIEWPORT_W = 80
+GRID_READY_MIN_VIEWPORT_H = 60
 GRID_DEFER_REBUILD_MS = 50
+_DEFER_REBUILD_MAX_POLLS = 40
 GRID_VIEW_MARGIN_MIN_PX = 8
 GRID_CONTENT_TOP_OFFSET_PX = 10
 GRID_CONTENT_RIGHT_NUDGE_PX = 4
 
 # Sender token for ``ProductsModel`` representation refresh (must match control).
 _GRID_THUMB_SENDER = "loader.grid_thumbnail"
+
+# QSettings: collapsed section keys (comma-separated under LOADER_SETTINGS_GROUP).
+_GRID_SECTION_COLLAPSED_KEY = "GridSectionCollapsedKeys"
 
 
 def columns_from_density_scale(scale: float) -> int:
@@ -84,6 +97,50 @@ def columns_from_density_scale(scale: float) -> int:
 DEFAULT_GRID_COLUMNS = 5
 
 _log = Logger.get_logger("loader.ProductsGridWidget")
+
+
+class GridSectionHeaderWidget(QtWidgets.QWidget):
+    """One titled band for a product group (same grouping as list tree)."""
+
+    def __init__(
+        self,
+        grid: "ProductsGridWidget",
+        title: str,
+        group_key: str,
+        product_count: int,
+        parent=None,
+    ) -> None:
+        super().__init__(parent)
+        self._grid = grid
+        self._group_key = group_key
+        outer = QtWidgets.QHBoxLayout(self)
+        outer.setContentsMargins(8, 6, 8, 4)
+        outer.setSpacing(8)
+        self._btn = QtWidgets.QToolButton(self)
+        self._btn.setAutoRaise(True)
+        self._btn.setStyleSheet("QToolButton { border: none; }")
+        self._btn.clicked.connect(self._on_disclosure_clicked)
+        self._title = QtWidgets.QLabel(title, self)
+        self._title.setStyleSheet("font-weight: 600; color: #dbe0e6;")
+        self._count = QtWidgets.QLabel(f"({product_count})", self)
+        self._count.setStyleSheet("color: #9aa1aa;")
+        outer.addWidget(self._btn, 0)
+        outer.addWidget(self._title, 1)
+        outer.addWidget(self._count, 0)
+        self._sync_arrow()
+
+    def _sync_arrow(self) -> None:
+        expanded = self._grid.is_section_expanded(self._group_key)
+        self._btn.setArrowType(
+            QtCore.Qt.ArrowType.DownArrow
+            if expanded
+            else QtCore.Qt.ArrowType.RightArrow
+        )
+
+    def _on_disclosure_clicked(self) -> None:
+        expanded = self._grid.is_section_expanded(self._group_key)
+        self._grid.set_section_expanded(self._group_key, not expanded)
+        self._grid.schedule_rebuild_grid_sections()
 
 
 class ProductsGridWidget(QtWidgets.QWidget):
@@ -106,7 +163,12 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._controller = controller
         self._flatten_proxy = flatten_proxy
         flatten_proxy.set_controller(controller)
-        self._thumbnail_path_by_version_id: Dict[str, Optional[str]] = {}
+        flatten_proxy.set_auto_rebuild_from_source(False)
+        self._proxy_model = flatten_proxy.sourceModel()
+        self._collapsed_section_keys: Set[str] = set()
+        self._section_product_counts: Dict[str, int] = {}
+        self._load_collapsed_section_keys_from_settings()
+        self._thumbnail_path_by_card_key: Dict[tuple[str, str], Optional[str]] = {}
         self._grid_columns = DEFAULT_GRID_COLUMNS
         self._cached_tile = QtCore.QSize(CARD_BASE_WIDTH, CARD_BASE_HEIGHT)
         self._grid_stride = QtCore.QSize(
@@ -125,6 +187,8 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._version_changed_connected = False
         self._rebuilding_index_widgets = False
         self._rebuild_index_widgets_deferred = False
+        self._defer_rebuild_poll_count = 0
+        self._grid_sections_rebuild_pending = False
         self._syncing_index_widget_geometries = False
         self._index_widget_geometry_sync_queued = False
         self._grid_content_offset_x = 0
@@ -142,22 +206,33 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._thumb_drip_timer.setInterval(120)
         self._thumb_drip_timer.timeout.connect(self._run_thumbnail_drip)
 
-        self._list_view = LoaderDragListView(self)
-        self._list_view.setObjectName("ProductsGridView")
-        self._list_view.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
-        self._list_view.setMovement(QtWidgets.QListView.Movement.Static)
-        self._list_view.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
-        self._list_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        self._scroll_area = QtWidgets.QScrollArea(self)
+        self._scroll_area.setObjectName("ProductsGridScrollArea")
+        self._scroll_area.setWidgetResizable(True)
+        self._scroll_area.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self._scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        self._list_view.setContextMenuPolicy(
-            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
-        )
-        self._list_view.setUniformItemSizes(True)
-        self._list_view.setModel(flatten_proxy)
+
+        self._grid_host = QtWidgets.QWidget(self._scroll_area)
+        self._grid_host.setObjectName("ProductsGridHost")
+        grid_host_layout = QtWidgets.QVBoxLayout(self._grid_host)
+        grid_host_layout.setContentsMargins(0, 0, 0, 0)
+        grid_host_layout.setSpacing(0)
+        self._list_view = self._create_grid_list_view(self._grid_host)
+        grid_host_layout.addWidget(self._list_view, 1)
+        self._scroll_area.setWidget(self._grid_host)
+
+        self._list_view.setModel(self._flatten_proxy)
         self._list_view.setItemDelegate(GridCellDelegate(self, self._list_view))
-        self._list_view.setSpacing(0)
-        self._list_view.setSelectionRectVisible(True)
+        sel_model = self._list_view.selectionModel()
+        if sel_model is not None:
+            sel_model.selectionChanged.connect(self._on_selection_changed)
+        self._list_view.customContextMenuRequested.connect(
+            self._on_grid_context_menu
+        )
+        self._list_view.viewport().installEventFilter(self)
+        self._scroll_area.viewport().installEventFilter(self)
 
         self._grid_bottom_spacer = QtWidgets.QWidget(self)
         self._grid_bottom_spacer.setFixedHeight(0)
@@ -165,48 +240,191 @@ class ProductsGridWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self._list_view, 1)
+        layout.addWidget(self._scroll_area, 1)
         layout.addWidget(self._grid_bottom_spacer, 0)
-
-        self._apply_grid_geometry()
-        self._rebuild_index_widgets()
 
         self._controller.grid_thumbnail_ready.connect(
             self._on_grid_thumbnail_ready,
             QtCore.Qt.ConnectionType.QueuedConnection,
         )
 
-        self._flatten_proxy.modelReset.connect(self._on_flatten_model_reset)
-        self._flatten_proxy.layoutChanged.connect(self._on_flatten_layout_changed)
-        self._flatten_proxy.rowsInserted.connect(self._on_rows_changed)
-        self._flatten_proxy.rowsRemoved.connect(self._on_rows_changed)
-        self._flatten_proxy.dataChanged.connect(self._on_flat_data_changed)
-        self._list_view.selectionModel().selectionChanged.connect(
-            self._on_selection_changed
-        )
-        self._list_view.customContextMenuRequested.connect(self._on_context_menu)
-        self._list_view.viewport().installEventFilter(self)
-        self._list_view.verticalScrollBar().valueChanged.connect(
-            self._schedule_index_widget_geometry_sync
-        )
-        self._list_view.verticalScrollBar().valueChanged.connect(
-            self._schedule_viewport_thumbnail_refresh
-        )
-        self._list_view.horizontalScrollBar().valueChanged.connect(
-            self._schedule_index_widget_geometry_sync
-        )
+        if self._proxy_model is not None:
+            self._proxy_model.modelReset.connect(self.schedule_rebuild_grid_sections)
+            self._proxy_model.layoutChanged.connect(self.schedule_rebuild_grid_sections)
+            self._proxy_model.rowsInserted.connect(self.schedule_rebuild_grid_sections)
+            self._proxy_model.rowsRemoved.connect(self.schedule_rebuild_grid_sections)
+            self._proxy_model.dataChanged.connect(self._on_proxy_data_changed)
 
         self._apply_grid_chrome_background()
-        self._list_view.set_drag_data_callback(self._get_grid_drag_data)
-        self._list_view.set_drag_pixmap_context_callback(
-            self._grid_drag_pixmap_context
-        )
         self._drag_precache = DragPayloadPrecache()
-        self._list_view.set_drag_precache(self._drag_precache)
+
+        self._rebuild_grid_sections()
+
+    def products_proxy_model(self):
+        """Products proxy (filters/sort) shared with list view."""
+        return self._flatten_proxy.sourceModel()
+
+    def schedule_rebuild_grid_sections(self, *_args) -> None:
+        """Rebuild sections once after structural proxy updates.
+
+        ``QStandardItemModel`` loads typically emit ``rowsInserted`` /
+        ``rowsRemoved`` without ``layoutChanged``. Without listening for those,
+        the grid stayed empty after the initial empty ``_rebuild_grid_sections``
+        in ``__init__``.
+        """
+        if self._grid_sections_rebuild_pending:
+            return
+        self._grid_sections_rebuild_pending = True
+        QtCore.QTimer.singleShot(0, self._flush_scheduled_rebuild_grid_sections)
+
+    def _flush_scheduled_rebuild_grid_sections(self) -> None:
+        self._grid_sections_rebuild_pending = False
+        self._rebuild_grid_sections()
+
+    @staticmethod
+    def _card_thumb_key(product_id: str, version_id: str) -> tuple[str, str]:
+        return (product_id, version_id)
+
+    def _collect_product_version_pairs(self) -> List[tuple[str, str]]:
+        pairs: List[tuple[str, str]] = []
+        fp = self._flatten_proxy
+        for row in range(fp.rowCount()):
+            idx = fp.index(row, 0)
+            if idx.data(GRID_ROW_IS_HEADER_ROLE):
+                continue
+            vid = idx.data(VERSION_ID_ROLE)
+            pid = idx.data(PRODUCT_ID_ROLE)
+            if vid and pid:
+                pairs.append((str(pid), str(vid)))
+        return pairs
+
+    def _section_storage_key(self, title: Optional[str]) -> str:
+        if title is None:
+            return "__ungrouped__"
+        return str(title)
+
+    def _load_collapsed_section_keys_from_settings(self) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup(LOADER_QSETTINGS_GROUP)
+        raw = settings.value(_GRID_SECTION_COLLAPSED_KEY, "", type=str)
+        settings.endGroup()
+        if not raw or not isinstance(raw, str):
+            self._collapsed_section_keys = set()
+            return
+        self._collapsed_section_keys = {
+            k.strip() for k in raw.split(",") if k.strip()
+        }
+
+    def _persist_collapsed_section_keys(self) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup(LOADER_QSETTINGS_GROUP)
+        settings.setValue(
+            _GRID_SECTION_COLLAPSED_KEY,
+            ",".join(sorted(self._collapsed_section_keys)),
+        )
+        settings.endGroup()
+
+    def is_section_expanded(self, group_key: str) -> bool:
+        return group_key not in self._collapsed_section_keys
+
+    def set_section_expanded(self, group_key: str, expanded: bool) -> None:
+        if expanded:
+            self._collapsed_section_keys.discard(group_key)
+        else:
+            self._collapsed_section_keys.add(group_key)
+        self._persist_collapsed_section_keys()
+
+    def _create_grid_list_view(self, parent) -> LoaderDragListView:
+        """Single IconMode list: section headers + product tiles (variable row heights)."""
+        lv = LoaderDragListView(parent)
+        lv.setObjectName("ProductsGridView")
+        lv.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
+        lv.setMovement(QtWidgets.QListView.Movement.Static)
+        lv.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
+        lv.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        lv.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        lv.setUniformItemSizes(False)
+        lv.setSpacing(0)
+        lv.setSelectionRectVisible(True)
+        lv.set_drag_data_callback(self._get_grid_drag_data)
+        lv.set_drag_pixmap_context_callback(self._grid_drag_pixmap_context)
+        lv.set_drag_precache(self._drag_precache)
+        lv.verticalScrollBar().valueChanged.connect(
+            self._schedule_index_widget_geometry_sync
+        )
+        lv.verticalScrollBar().valueChanged.connect(
+            self._schedule_viewport_thumbnail_refresh
+        )
+        lv.horizontalScrollBar().valueChanged.connect(
+            self._schedule_index_widget_geometry_sync
+        )
+        return lv
+
+    def _rebuild_grid_sections(self) -> None:
+        """Rebuild unified flat model (section headers + products) from proxy tree."""
+        self._controller.cancel_grid_thumbnail_resolve()
+        self._thumbnail_path_by_card_key.clear()
+        self._last_thumb_project = None
+
+        proxy = self.products_proxy_model()
+        if proxy is None:
+            self._flatten_proxy.set_explicit_flat_rows([])
+            self._schedule_index_widget_geometry_sync()
+            return
+
+        specs = enumerate_grid_section_source_indexes(proxy)
+        self._section_product_counts = {
+            self._section_storage_key(title): len(indexes)
+            for title, indexes in specs
+            if title is not None and indexes
+        }
+        rows = build_unified_grid_flat_rows(
+            proxy,
+            collapsed_group_keys=self._collapsed_section_keys,
+        )
+        self._flatten_proxy.set_explicit_flat_rows(rows)
+
+        self._ensure_products_model_signals()
+        self._apply_grid_geometry()
+        self._rebuild_index_widgets()
+        if self._total_product_row_count() > 0:
+            QtCore.QTimer.singleShot(0, self._scroll_grid_to_top_deferred)
+
+    def _total_flat_row_count(self) -> int:
+        """All proxy rows (headers + products)."""
+        return int(self._flatten_proxy.rowCount())
+
+    def _total_product_row_count(self) -> int:
+        n = 0
+        fp = self._flatten_proxy
+        for row in range(fp.rowCount()):
+            ix = fp.index(row, 0)
+            if ix.data(PRODUCT_ID_ROLE) is not None:
+                n += 1
+        return n
+
+    def _on_proxy_data_changed(
+        self,
+        top_left: QtCore.QModelIndex,
+        bottom_right: QtCore.QModelIndex,
+        roles=None,
+    ) -> None:
+        _ = (top_left, bottom_right, roles)
+        lv = self._list_view
+        fp = self._flatten_proxy
+        for row in range(fp.rowCount()):
+            idx = fp.index(row, 0)
+            if idx.data(GRID_ROW_IS_HEADER_ROLE):
+                continue
+            w = lv.indexWidget(idx)
+            if isinstance(w, ProductsGridCardWidget):
+                w.refresh_from_model()
 
     @property
     def list_view(self) -> LoaderDragListView:
-        """QListView hosting grid cards (rubber-band / drag targets)."""
+        """Unified IconMode list (section bands + product tiles)."""
         return self._list_view
 
     def _grid_drag_pixmap_context(self):
@@ -215,11 +433,20 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if not data:
             return None
         project_name, version_ids, _ = data
-        first_vid = next(iter(version_ids))
-        thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
-        indexes = self._list_view.selectionModel().selectedIndexes()
-        ix = indexes[0] if indexes else None
-        model = self._list_view.model()
+        ix = None
+        model = None
+        sm = self._list_view.selectionModel()
+        if sm is not None:
+            sel = sm.selectedIndexes()
+            if sel:
+                ix = sel[0]
+                model = self._list_view.model()
+        thumb_path = None
+        if ix is not None and ix.isValid() and model is not None:
+            pid = model.data(ix, PRODUCT_ID_ROLE)
+            vid = model.data(ix, VERSION_ID_ROLE)
+            if pid and vid:
+                thumb_path = self.get_thumbnail_path(str(pid), str(vid))
         product_label = ""
         version_label = ""
         if ix is not None and ix.isValid() and model is not None:
@@ -246,11 +473,11 @@ class ProductsGridWidget(QtWidgets.QWidget):
         project_name = self._controller.get_selected_project_name()
         if not project_name:
             return None
+        version_ids = set()
         selection_model = self._list_view.selectionModel()
         model = self._list_view.model()
         if selection_model is None or model is None:
             return None
-        version_ids = set()
         indexes_queue = collections.deque(selection_model.selectedIndexes())
         while indexes_queue:
             index = indexes_queue.popleft()
@@ -265,13 +492,17 @@ class ProductsGridWidget(QtWidgets.QWidget):
         return (project_name, version_ids, "version")
 
     def _apply_grid_chrome_background(self) -> None:
-        """#1c2026 behind list + viewport (stylesheet may not paint QAbstractScrollArea viewport)."""
+        """#1c2026 behind scroll area + viewport."""
         fill = QtGui.QColor("#1c2026")
         self.setAutoFillBackground(True)
         pal = self.palette()
         pal.setColor(QtGui.QPalette.Window, fill)
         self.setPalette(pal)
-        vp = self._list_view.viewport()
+        self._scroll_area.setAutoFillBackground(True)
+        sap = self._scroll_area.palette()
+        sap.setColor(QtGui.QPalette.Window, fill)
+        self._scroll_area.setPalette(sap)
+        vp = self._scroll_area.viewport()
         vp.setAutoFillBackground(True)
         vpal = vp.palette()
         vpal.setColor(QtGui.QPalette.Window, fill)
@@ -292,18 +523,15 @@ class ProductsGridWidget(QtWidgets.QWidget):
         return self._compute_column_bounds_for_inner(inner)
 
     def _viewport_inner_width_for_columns(self) -> int:
-        """Usable drawable width for column math, with optional scrollbar reserve."""
-        lv = self._list_view
-        inner_raw = max(1, lv.viewport().width())
-        vsb = lv.verticalScrollBar()
-        if (
-            vsb is not None
-            and not vsb.isVisible()
-            and lv.verticalScrollBarPolicy()
-            != QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        ):
-            sb_ext = lv.style().pixelMetric(
-                QtWidgets.QStyle.PixelMetric.PM_ScrollBarExtent, None, lv
+        """Usable drawable width for column math (grid list viewport)."""
+        vp = self._list_view.viewport()
+        inner_raw = max(1, vp.width())
+        vsb = self._list_view.verticalScrollBar()
+        if vsb is not None and not vsb.isVisible():
+            sb_ext = self._list_view.style().pixelMetric(
+                QtWidgets.QStyle.PixelMetric.PM_ScrollBarExtent,
+                None,
+                self._list_view,
             )
             return max(1, inner_raw - sb_ext)
         return inner_raw
@@ -324,8 +552,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         return (int(self._last_col_bounds[0]), int(self._last_col_bounds[1]))
 
     def _apply_grid_geometry(self) -> None:
-        """Grid tile size from thumb-only aspect; row fits the drawable viewport."""
-        lv = self._list_view
+        """Grid tile size from thumb-only aspect; apply to the unified list view."""
         base_sp = GRID_CELL_SPACING
         top_m = 0
         inner = self._viewport_inner_width_for_columns()
@@ -338,8 +565,6 @@ class ProductsGridWidget(QtWidgets.QWidget):
         start_cols = int(self._grid_columns)
         n = max(lo, min(hi, start_cols))
         sp = base_sp
-        # Qt IconMode wraps when the final cell lands exactly on the viewport edge.
-        # Leave a pixel of row slack so the requested column count is stable.
         stride_w = max(1, (inner // n) - GRID_ROW_WRAP_SAFETY_PX)
         tw = stride_w - sp
         while n > lo and tw < MIN_CELL_WIDTH:
@@ -353,8 +578,6 @@ class ProductsGridWidget(QtWidgets.QWidget):
         tw_final = tw
         sp_layout = sp
 
-        # IconMode + setGridSize: Qt ignores spacing(); bake gaps into stride (see get_grid_stride_size).
-        lv.setSpacing(0)
         self._cached_tile = tile_size_for_cell_width(tw_final)
         tile_h = self._cached_tile.height()
         self._grid_stride = QtCore.QSize(stride_w, tile_h + sp_layout)
@@ -364,6 +587,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
             (inner - row_w) // 2,
         ) + GRID_CONTENT_RIGHT_NUDGE_PX
         self._grid_content_offset_y = GRID_CONTENT_TOP_OFFSET_PX
+
+        lv = self._list_view
+        lv.setSpacing(0)
         lv.setViewportMargins(0, top_m, 0, 0)
         lv.setIconSize(self._cached_tile)
         lv.setGridSize(self._grid_stride)
@@ -380,17 +606,18 @@ class ProductsGridWidget(QtWidgets.QWidget):
             and self._is_grid_viewport_ready_for_cards()
         ):
             self._rebuild_index_widgets_deferred = False
+            self._defer_rebuild_poll_count = 0
             self._rebuild_index_widgets()
-            if self._flatten_proxy.rowCount() > 0:
+            if self._total_product_row_count() > 0:
                 QtCore.QTimer.singleShot(0, self._scroll_grid_to_top_deferred)
             return
         if prev != self._cached_tile:
             self._rebuild_index_widgets()
-            if self._flatten_proxy.rowCount() > 0:
+            if self._total_product_row_count() > 0:
                 QtCore.QTimer.singleShot(0, self._scroll_grid_to_top_deferred)
         else:
             self._sync_index_widget_geometries()
-            self._list_view.viewport().update()
+            self._scroll_area.viewport().update()
 
     @property
     def controller(self) -> Any:
@@ -434,53 +661,62 @@ class ProductsGridWidget(QtWidgets.QWidget):
             self._rebuild_index_widgets()
         else:
             self._sync_index_widget_geometries()
-            self._list_view.viewport().update()
+            self._scroll_area.viewport().update()
         self._schedule_viewport_thumbnail_refresh()
 
     def set_scale_factor(self, value: float) -> None:
         """Legacy adapter: maps old 0.5–2.0 density scale to column count once."""
         self.set_grid_columns(columns_from_density_scale(value))
 
-    def get_thumbnail_path(self, version_id: Optional[str]) -> Optional[str]:
-        if not version_id:
+    def get_thumbnail_path(
+        self,
+        product_id: Optional[str],
+        version_id: Optional[str],
+    ) -> Optional[str]:
+        if not product_id or not version_id:
             return None
-        return self._thumbnail_path_by_version_id.get(version_id)
+        return self._thumbnail_path_by_card_key.get(
+            self._card_thumb_key(str(product_id), str(version_id))
+        )
 
     def _sync_project_thumb_cache(self, project_name: Optional[str]) -> None:
         if project_name == self._last_thumb_project:
             return
         self._controller.cancel_grid_thumbnail_resolve()
-        self._thumbnail_path_by_version_id.clear()
+        self._thumbnail_path_by_card_key.clear()
         self._last_thumb_project = project_name
 
     def _all_version_ids(self) -> Set[str]:
         out: Set[str] = set()
-        for row in range(self._flatten_proxy.rowCount()):
-            idx = self._flatten_proxy.index(row, 0)
-            vid = idx.data(VERSION_ID_ROLE)
+        fp = self._flatten_proxy
+        for row in range(fp.rowCount()):
+            vid = fp.index(row, 0).data(VERSION_ID_ROLE)
             if vid:
                 out.add(vid)
         return out
 
     def _visible_version_ids(self) -> Set[str]:
-        vp = self._list_view.viewport()
-        top_idx = self._list_view.indexAt(QtCore.QPoint(0, 0))
-        bottom_idx = self._list_view.indexAt(
+        out: Set[str] = set()
+        lv = self._list_view
+        vp = lv.viewport()
+        fp = self._flatten_proxy
+        rc = fp.rowCount()
+        if rc == 0:
+            return out
+        top_idx = lv.indexAt(QtCore.QPoint(0, 0))
+        bottom_idx = lv.indexAt(
             QtCore.QPoint(max(0, vp.width() - 1), max(0, vp.height() - 1))
         )
         if not top_idx.isValid():
-            return set()
-        r0 = top_idx.row()
+            return out
+        r0 = max(0, top_idx.row() - 1)
         if bottom_idx.isValid():
             r1 = bottom_idx.row()
         else:
-            r1 = self._flatten_proxy.rowCount() - 1
-        r0 = max(0, r0 - 1)
-        r1 = min(self._flatten_proxy.rowCount() - 1, r1 + 1)
-        out: Set[str] = set()
+            r1 = rc - 1
+        r1 = min(rc - 1, r1 + 1)
         for row in range(r0, r1 + 1):
-            idx = self._flatten_proxy.index(row, 0)
-            vid = idx.data(VERSION_ID_ROLE)
+            vid = fp.index(row, 0).data(VERSION_ID_ROLE)
             if vid:
                 out.add(vid)
         return out
@@ -491,27 +727,39 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if not project_name:
             return
 
-        if self._flatten_proxy.rowCount() == 0:
+        if self._total_product_row_count() == 0:
             return
 
+        all_pairs = self._collect_product_version_pairs()
+        all_vids = self._all_version_ids()
+        visible_vids = self._visible_version_ids()
         if drip:
-            rest = self._all_version_ids() - self._visible_version_ids()
-            if not rest:
+            rest_vids = all_vids - visible_vids
+            if not rest_vids:
                 return
-            target = rest
+            pairs = [p for p in all_pairs if p[1] in rest_vids]
+            target_vids = rest_vids
         else:
-            target = self._visible_version_ids()
-            if not target:
-                target = self._all_version_ids()
+            vpairs = [p for p in all_pairs if p[1] in visible_vids]
+            if vpairs:
+                pairs = vpairs
+                target_vids = {p[1] for p in pairs}
+            else:
+                pairs = all_pairs
+                target_vids = all_vids
+
+        if not pairs or not target_vids:
+            return
 
         sync_map = self._controller.resolve_grid_thumbnail_paths(
             project_name,
-            target,
+            target_vids,
             sender=_GRID_THUMB_SENDER,
+            product_version_pairs=pairs,
         )
-        for vid, path in sync_map.items():
+        for key, path in sync_map.items():
             if path:
-                self._thumbnail_path_by_version_id[vid] = path
+                self._thumbnail_path_by_card_key[key] = path
 
         if not drip:
             self._thumb_drip_timer.start()
@@ -525,18 +773,24 @@ class ProductsGridWidget(QtWidgets.QWidget):
     def _run_thumbnail_drip(self) -> None:
         self._merge_resolve_paths(drip=True)
 
-    def _on_grid_thumbnail_ready(self, version_id: str, path: str) -> None:
+    def _on_grid_thumbnail_ready(
+        self, product_id: str, version_id: str, path: str
+    ) -> None:
         if not self._is_grid_viewport_ready_for_cards():
             return
-        self._thumbnail_path_by_version_id[version_id] = path
-        for row in range(self._flatten_proxy.rowCount()):
-            idx = self._flatten_proxy.index(row, 0)
+        key = self._card_thumb_key(product_id, version_id)
+        self._thumbnail_path_by_card_key[key] = path
+        fp = self._flatten_proxy
+        lv = self._list_view
+        for row in range(fp.rowCount()):
+            idx = fp.index(row, 0)
             if idx.data(VERSION_ID_ROLE) != version_id:
                 continue
-            w = self._list_view.indexWidget(idx)
+            if idx.data(PRODUCT_ID_ROLE) != product_id:
+                continue
+            w = lv.indexWidget(idx)
             if isinstance(w, ProductsGridCardWidget):
                 w._thumb.update()
-            break
 
     def _ensure_products_model_signals(self) -> None:
         pm = self.products_model()
@@ -549,55 +803,23 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._update_thumbnail_cache()
         self._refresh_all_cards()
 
-    def _on_flat_data_changed(
-        self,
-        top_left: QtCore.QModelIndex,
-        bottom_right: QtCore.QModelIndex,
-        roles=None,
-    ) -> None:
-        _ = roles
-        for row in range(top_left.row(), bottom_right.row() + 1):
-            w = self._list_view.indexWidget(self._flatten_proxy.index(row, 0))
-            if isinstance(w, ProductsGridCardWidget):
-                w.refresh_from_model()
-
     def _update_thumbnail_cache(self) -> None:
         self._thumb_viewport_timer.stop()
         self._thumb_drip_timer.stop()
         self._merge_resolve_paths(drip=False)
 
-    def _refresh_grid_from_proxy(self) -> None:
-        self._ensure_products_model_signals()
-        self._update_thumbnail_cache()
-        self._rebuild_index_widgets()
-
     def _scroll_grid_to_top_deferred(self) -> None:
-        idx = self._flatten_proxy.index(0, 0)
+        vsb = self._scroll_area.verticalScrollBar()
+        if vsb is not None:
+            vsb.setValue(0)
+        lv = self._list_view
+        idx = lv.model().index(0, 0)
         if idx.isValid():
-            self._list_view.scrollTo(
+            lv.scrollTo(
                 idx,
                 QtWidgets.QAbstractItemView.ScrollHint.PositionAtTop,
             )
-        vsb = self._list_view.verticalScrollBar()
-        if vsb is not None:
-            vsb.setValue(0)
         self._sync_index_widget_geometries()
-
-    def _on_flatten_model_reset(self) -> None:
-        self._controller.cancel_grid_thumbnail_resolve()
-        self._thumbnail_path_by_version_id.clear()
-        self._last_thumb_project = None
-        self._refresh_grid_from_proxy()
-        if self._flatten_proxy.rowCount() > 0:
-            QtCore.QTimer.singleShot(0, self._scroll_grid_to_top_deferred)
-
-    def _on_flatten_layout_changed(self) -> None:
-        self._refresh_grid_from_proxy()
-
-    def _on_rows_changed(self, *_args) -> None:
-        self._ensure_products_model_signals()
-        self._update_thumbnail_cache()
-        self._rebuild_index_widgets()
 
     def _is_grid_viewport_ready_for_cards(self) -> bool:
         viewport = self._list_view.viewport()
@@ -610,6 +832,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if self._rebuild_index_widgets_deferred:
             return
         self._rebuild_index_widgets_deferred = True
+        self._defer_rebuild_poll_count = 0
         QtCore.QTimer.singleShot(
             GRID_DEFER_REBUILD_MS,
             self._run_deferred_rebuild_index_widgets,
@@ -618,64 +841,102 @@ class ProductsGridWidget(QtWidgets.QWidget):
     def _run_deferred_rebuild_index_widgets(self) -> None:
         if not self._rebuild_index_widgets_deferred:
             return
-        if (
-            self._flatten_proxy.rowCount() > 0
-            and not self._is_grid_viewport_ready_for_cards()
-        ):
+        row_count = self._flatten_proxy.rowCount()
+        ready = self._is_grid_viewport_ready_for_cards()
+        if row_count > 0 and not ready:
+            self._defer_rebuild_poll_count += 1
+            if self._defer_rebuild_poll_count < _DEFER_REBUILD_MAX_POLLS:
+                QtCore.QTimer.singleShot(
+                    GRID_DEFER_REBUILD_MS,
+                    self._run_deferred_rebuild_index_widgets,
+                )
+                return
+        self._rebuild_index_widgets_deferred = False
+        self._defer_rebuild_poll_count = 0
+        relax = row_count > 0 and not ready
+        self._rebuild_index_widgets(relax_viewport_ready=relax)
+
+    def _try_flush_deferred_index_widgets(self) -> None:
+        """Run deferred card build once the scroll viewport has a real geometry."""
+        if not self._rebuild_index_widgets_deferred:
+            return
+        if self._flatten_proxy.rowCount() == 0:
+            self._rebuild_index_widgets_deferred = False
+            self._defer_rebuild_poll_count = 0
+            return
+        if not self._is_grid_viewport_ready_for_cards():
             return
         self._rebuild_index_widgets_deferred = False
+        self._defer_rebuild_poll_count = 0
         self._rebuild_index_widgets()
 
-    def _rebuild_index_widgets(self) -> None:
+    def _rebuild_index_widgets(self, relax_viewport_ready: bool = False) -> None:
         if self._rebuilding_index_widgets:
             return
         row_count = self._flatten_proxy.rowCount()
-        if row_count > 0 and not self._is_grid_viewport_ready_for_cards():
+        if (
+            row_count > 0
+            and not relax_viewport_ready
+            and not self._is_grid_viewport_ready_for_cards()
+        ):
             self._apply_grid_geometry()
             self._schedule_deferred_rebuild_index_widgets()
             return
         self._apply_grid_geometry()
         tile = self._tile_size()
         w, h = tile.width(), tile.height()
+        fp = self._flatten_proxy
+        lv = self._list_view
+        vp = lv.viewport()
+        vpw = max(1, vp.width())
         self._rebuilding_index_widgets = True
         try:
-            for row in range(row_count):
-                try:
-                    idx = self._flatten_proxy.index(row, 0)
-                    if not idx.isValid():
-                        continue
-                    existing = self._list_view.indexWidget(idx)
-                    if isinstance(existing, ProductsGridCardWidget):
-                        # Update in-place — never replace a live index widget.
-                        # Replacing via setIndexWidget causes Qt to delete the old
-                        # widget while PySide2/PyQt5 Python Signal state is still
-                        # live, producing a C++ use-after-free crash.
-                        existing._flat_row = row
-                        existing.setFixedSize(w, h)
-                        existing.refresh_from_model()
-                    else:
-                        card = ProductsGridCardWidget(
-                            self, row, self._list_view.viewport()
-                        )
-                        card.setFixedSize(w, h)
-                        self._list_view.setIndexWidget(idx, card)
-                        card.refresh_from_model()
-                        card.raise_()
-                except BaseException:
-                    _log.exception("row %s: exception during rebuild", row)
-                    raise
+            for row in range(fp.rowCount()):
+                idx = fp.index(row, 0)
+                if not idx.isValid():
+                    continue
+                existing = lv.indexWidget(idx)
+                if idx.data(GRID_ROW_IS_HEADER_ROLE):
+                    title = str(idx.data(QtCore.Qt.DisplayRole) or "")
+                    gkey = str(idx.data(GRID_SECTION_GROUP_KEY_ROLE) or "")
+                    count = int(self._section_product_counts.get(gkey, 0))
+                    hdr = GridSectionHeaderWidget(
+                        self, title, gkey, count, vp
+                    )
+                    hdr.setFixedSize(vpw, GRID_SECTION_HEADER_ROW_HEIGHT)
+                    lv.setIndexWidget(idx, hdr)
+                    hdr.raise_()
+                    continue
+                if isinstance(existing, ProductsGridCardWidget):
+                    existing._flat_row = row
+                    existing.setFixedSize(w, h)
+                    existing.refresh_from_model()
+                else:
+                    card = ProductsGridCardWidget(self, row, vp)
+                    card.setFixedSize(w, h)
+                    lv.setIndexWidget(idx, card)
+                    card.refresh_from_model()
+                    card.raise_()
+        except BaseException:
+            _log.exception("grid index-widget rebuild")
+            raise
         finally:
             self._rebuilding_index_widgets = False
             if row_count > 0:
-                self._list_view.updateGeometries()
+                lv.updateGeometries()
                 self._sync_index_widget_geometries()
             self._sync_card_selection_chrome()
             if row_count > 0:
                 QtCore.QTimer.singleShot(0, self._scroll_grid_to_top_deferred)
 
     def _refresh_all_cards(self) -> None:
-        for row in range(self._flatten_proxy.rowCount()):
-            w = self._list_view.indexWidget(self._flatten_proxy.index(row, 0))
+        lv = self._list_view
+        fp = self._flatten_proxy
+        for row in range(fp.rowCount()):
+            idx = fp.index(row, 0)
+            if idx.data(GRID_ROW_IS_HEADER_ROLE):
+                continue
+            w = lv.indexWidget(idx)
             if isinstance(w, ProductsGridCardWidget):
                 w.refresh_from_model()
         self._sync_index_widget_geometries()
@@ -705,26 +966,37 @@ class ProductsGridWidget(QtWidgets.QWidget):
 
         self._syncing_index_widget_geometries = True
         try:
-            for row in range(self._flatten_proxy.rowCount()):
-                idx = self._flatten_proxy.index(row, 0)
+            lv = self._list_view
+            fp = self._flatten_proxy
+            for row in range(fp.rowCount()):
+                idx = fp.index(row, 0)
                 if not idx.isValid():
                     continue
-                w = self._list_view.indexWidget(idx)
-                if not isinstance(w, ProductsGridCardWidget):
-                    continue
-                rect = self._list_view.visualRect(idx)
+                wgt = lv.indexWidget(idx)
+                rect = lv.visualRect(idx)
                 if not rect.isValid():
                     continue
                 top_left = rect.topLeft() + QtCore.QPoint(
                     self._grid_content_offset_x,
                     self._grid_content_offset_y,
                 )
-                geom = QtCore.QRect(top_left, tile)
-                if w.geometry() != geom:
-                    w.setGeometry(geom)
-                if not w.isVisible():
-                    w.show()
-                w.raise_()
+                if isinstance(wgt, GridSectionHeaderWidget):
+                    geom = QtCore.QRect(
+                        top_left,
+                        QtCore.QSize(
+                            max(rect.width(), 1),
+                            max(rect.height(), GRID_SECTION_HEADER_ROW_HEIGHT),
+                        ),
+                    )
+                elif isinstance(wgt, ProductsGridCardWidget):
+                    geom = QtCore.QRect(top_left, tile)
+                else:
+                    continue
+                if wgt.geometry() != geom:
+                    wgt.setGeometry(geom)
+                if not wgt.isVisible():
+                    wgt.show()
+                wgt.raise_()
         finally:
             self._syncing_index_widget_geometries = False
 
@@ -762,8 +1034,13 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._apply_all_card_combos()
 
     def _apply_all_card_combos(self) -> None:
-        for row in range(self._flatten_proxy.rowCount()):
-            w = self._list_view.indexWidget(self._flatten_proxy.index(row, 0))
+        lv = self._list_view
+        fp = self._flatten_proxy
+        for row in range(fp.rowCount()):
+            idx = fp.index(row, 0)
+            if idx.data(GRID_ROW_IS_HEADER_ROLE):
+                continue
+            w = lv.indexWidget(idx)
             if isinstance(w, ProductsGridCardWidget) and w.version_combo:
                 self._apply_filters_to_combo(w.version_combo)
 
@@ -775,58 +1052,56 @@ class ProductsGridWidget(QtWidgets.QWidget):
         idx = self._flatten_proxy.index(flat_row, 0)
         if not idx.isValid():
             return
-        sm = self._list_view.selectionModel()
+        lv = self._list_view
+        sm = lv.selectionModel()
+        if sm is None:
+            return
         if modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
-            sm.select(
-                idx,
-                QtCore.QItemSelectionModel.SelectionFlag.Toggle,
-            )
+            sm.select(idx, QtCore.QItemSelectionModel.SelectionFlag.Toggle)
         else:
             sm.clearSelection()
             sm.select(idx, QtCore.QItemSelectionModel.SelectionFlag.Select)
-        self._list_view.setCurrentIndex(idx)
+        lv.setCurrentIndex(idx)
 
     def open_context_menu_from_card(
         self,
         global_pos: QtCore.QPoint,
         flat_row: int,
     ) -> None:
-        """Card chrome RMB (combo/header/review): select row then open loader menu.
-
-        Same pipeline as `ProductsWidget._on_context_menu`: `get_action_items`,
-        `show_actions_menu`, then `trigger_action_item`.
-        """
+        """Card chrome RMB: select row then open loader menu."""
         idx = self._flatten_proxy.index(flat_row, 0)
         if not idx.isValid():
             return
-        sm = self._list_view.selectionModel()
+        lv = self._list_view
+        sm = lv.selectionModel()
+        if sm is None:
+            return
         if not sm.isSelected(idx):
             sm.clearSelection()
             sm.select(idx, QtCore.QItemSelectionModel.SelectionFlag.Select)
-            self._list_view.setCurrentIndex(idx)
+            lv.setCurrentIndex(idx)
         self._run_context_menu_at_global(global_pos)
 
-    def _on_context_menu(self, point: QtCore.QPoint) -> None:
-        sm = self._list_view.selectionModel()
-        if sm is not None and not self._list_view.selectedIndexes():
-            idx = self._list_view.indexAt(point)
-            if idx.isValid():
-                sm.clearSelection()
+    def _on_grid_context_menu(self, point: QtCore.QPoint) -> None:
+        lv = self._list_view
+        sm = lv.selectionModel()
+        if sm is not None and not lv.selectedIndexes():
+            idx = lv.indexAt(point)
+            if idx.isValid() and not idx.data(GRID_ROW_IS_HEADER_ROLE):
                 sm.select(idx, QtCore.QItemSelectionModel.SelectionFlag.Select)
-                self._list_view.setCurrentIndex(idx)
-        vp = self._list_view.viewport()
-        self._run_context_menu_at_global(vp.mapToGlobal(point))
+                lv.setCurrentIndex(idx)
+        self._run_context_menu_at_global(lv.viewport().mapToGlobal(point))
 
     def _run_context_menu_at_global(self, global_point: QtCore.QPoint) -> None:
-        selection_model = self._list_view.selectionModel()
-        model = self._list_view.model()
         project_name = self._controller.get_selected_project_name()
-
         version_ids = set()
         indexes_queue = collections.deque()
-        indexes_queue.extend(selection_model.selectedIndexes())
+        sm = self._list_view.selectionModel()
+        if sm is not None:
+            indexes_queue.extend(sm.selectedIndexes())
         while indexes_queue:
             index = indexes_queue.popleft()
+            model = index.model()
             for row in range(model.rowCount(index)):
                 child_index = model.index(row, 0, index)
                 indexes_queue.append(child_index)
@@ -858,19 +1133,24 @@ class ProductsGridWidget(QtWidgets.QWidget):
         )
 
     def _sync_card_selection_chrome(self) -> None:
-        sm = self._list_view.selectionModel()
+        lv = self._list_view
+        fp = self._flatten_proxy
+        sm = lv.selectionModel()
         if sm is None:
             return
-        for row in range(self._flatten_proxy.rowCount()):
-            idx = self._flatten_proxy.index(row, 0)
-            w = self._list_view.indexWidget(idx)
+        for row in range(fp.rowCount()):
+            idx = fp.index(row, 0)
+            w = lv.indexWidget(idx)
             if isinstance(w, ProductsGridCardWidget):
                 w.set_grid_row_selected(idx.isValid() and sm.isSelected(idx))
 
     def _on_selection_changed(self) -> None:
         selected_version_ids = set()
         selected_versions_info = []
-        for idx in self._list_view.selectionModel().selectedIndexes():
+        sm = self._list_view.selectionModel()
+        if sm is None:
+            return
+        for idx in sm.selectedIndexes():
             if idx.column() != 0:
                 continue
             if not idx.isValid():
@@ -899,7 +1179,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
                 selected_version_ids,
                 "version",
             )
-        self._controller.set_selected_versions(selected_version_ids)
+        self._controller.set_selected_versions(
+            selected_version_ids, selected_versions_info
+        )
         self._sync_card_selection_chrome()
         self.selection_changed.emit()
         self.merged_products_selection_changed.emit()
@@ -911,12 +1193,17 @@ class ProductsGridWidget(QtWidgets.QWidget):
         return list(self._selected_merged_products)
 
     def eventFilter(self, obj, event):
-        if obj is self._list_view.viewport() and event.type() in (
+        if event.type() in (
             QtCore.QEvent.Type.Resize,
             QtCore.QEvent.Type.Show,
         ):
-            self._schedule_index_widget_geometry_sync()
-        if obj is self._list_view.viewport() and event.type() == QtCore.QEvent.Type.Wheel:
+            if obj is self._scroll_area.viewport() or obj is self._list_view.viewport():
+                self._schedule_index_widget_geometry_sync()
+                self._try_flush_deferred_index_widgets()
+        if (
+            obj is self._scroll_area.viewport()
+            and event.type() == QtCore.QEvent.Type.Wheel
+        ):
             if event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
                 delta = event.angleDelta().y()
                 if delta != 0:
@@ -928,11 +1215,16 @@ class ProductsGridWidget(QtWidgets.QWidget):
     def set_selection_from_version_ids(self, version_ids: set) -> None:
         """Sync grid selection from external (e.g. list) selection."""
         sm = self._list_view.selectionModel()
+        if sm is None:
+            return
         sm.blockSignals(True)
         try:
             sm.clearSelection()
-            for row in range(self._flatten_proxy.rowCount()):
-                idx = self._flatten_proxy.index(row, 0)
+            fp = self._flatten_proxy
+            for row in range(fp.rowCount()):
+                idx = fp.index(row, 0)
+                if idx.data(GRID_ROW_IS_HEADER_ROLE):
+                    continue
                 if idx.data(VERSION_ID_ROLE) in version_ids:
                     sm.select(
                         idx,

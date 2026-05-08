@@ -5,6 +5,7 @@ from __future__ import annotations
 import collections
 import contextlib
 import logging
+import os
 from typing import TYPE_CHECKING, Iterable, Optional
 
 import arrow
@@ -13,9 +14,11 @@ from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
 from ayon_core.pipeline.load.reviewables import (
+    is_reviewable_product_id,
     list_version_reviewables,
+    make_reviewable_product_id,
     make_reviewable_repre_id,
-    representation_name_from_label,
+    parse_reviewable_product_id,
 )
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import ProductTypeIconMapping
@@ -38,6 +41,11 @@ PRODUCTS_MODEL_SENDER = "products.model"
 
 _log = logging.getLogger(__name__)
 
+_REPRE_CACHE_SEP = "\x1f"
+# Default group folder for REST reviewable synthetic products (studio may
+# override via project settings hook in `_reviewable_bundle_group_name`).
+REVIEWABLE_PRODUCT_GROUP_DEFAULT = "Reviewables"
+
 # Explicit GraphQL fields for loader product rows (defaults may omit `attrib`).
 LOADER_PRODUCT_LIST_FIELDS: frozenset[str] = frozenset(
     {
@@ -49,6 +57,17 @@ LOADER_PRODUCT_LIST_FIELDS: frozenset[str] = frozenset(
         "attrib",
     }
 )
+
+
+def _repre_cache_key(product_id: str, version_id: str) -> str:
+    """NestedCacheItem leaf key for representation buckets."""
+    return f"{product_id}{_REPRE_CACHE_SEP}{version_id}"
+
+
+def _reviewable_bundle_group_name(controller) -> str:
+    """Display/productGroup folder name for synthetic reviewable products."""
+    _ = controller
+    return REVIEWABLE_PRODUCT_GROUP_DEFAULT
 
 
 def _loader_version_query_fields() -> set[str]:
@@ -446,102 +465,164 @@ class ProductsModel:
         )
         return {v["productId"] for v in versions}
 
-    def get_repre_items(self, project_name, version_ids, sender):
+    def get_repre_items(
+        self,
+        project_name,
+        version_ids,
+        sender,
+        *,
+        product_version_pairs: Optional[list[tuple[str, str]]] = None,
+    ):
         """Get representation items for passed version ids.
 
         Args:
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
             sender (Union[str, None]): Who triggered the method.
+            product_version_pairs: Optional explicit ``(product_id, version_id)``
+                rows; inferred from the in-memory version map when omitted.
 
         Returns:
             list[RepreItem]: Representation items.
         """
 
-        output = []
+        output: list[RepreItem] = []
         if not any((project_name, version_ids)):
             return output
 
-        invalid_version_ids = set()
-        project_cache = self._repre_items_cache[project_name]
-        for version_id in version_ids:
-            version_cache = project_cache[version_id]
-            if version_cache.is_valid:
-                output.extend(version_cache.get_data().values())
-            else:
-                invalid_version_ids.add(version_id)
+        pairs = product_version_pairs or self._infer_product_version_pairs(
+            project_name, version_ids
+        )
+        if not pairs:
+            return output
 
-        if invalid_version_ids:
+        invalid_pairs: list[tuple[str, str]] = []
+        project_cache = self._repre_items_cache[project_name]
+        for product_id, version_id in pairs:
+            ck = _repre_cache_key(product_id, version_id)
+            slot = project_cache[ck]
+            if slot.is_valid:
+                output.extend(slot.get_data().values())
+            else:
+                invalid_pairs.append((product_id, version_id))
+
+        if invalid_pairs:
             self.refresh_representation_items(
-                project_name, invalid_version_ids, sender
+                project_name,
+                {vid for _pid, vid in invalid_pairs},
+                sender,
+                product_version_pairs=pairs,
             )
 
-        for version_id in invalid_version_ids:
-            version_cache = project_cache[version_id]
-            output.extend(version_cache.get_data().values())
+        for product_id, version_id in invalid_pairs:
+            ck = _repre_cache_key(product_id, version_id)
+            output.extend(project_cache[ck].get_data().values())
 
         return output
 
     def get_repre_items_grouped(
-        self, project_name, version_ids, sender
+        self,
+        project_name,
+        version_ids,
+        sender,
+        *,
+        product_version_pairs: Optional[list[tuple[str, str]]] = None,
     ):
-        """Warm representation cache and return items keyed by version id.
+        """Warm representation cache; group reps per ``(product_id, version_id)``.
 
         Args:
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
             sender (Union[str, None]): Who triggered the method.
+            product_version_pairs: Optional explicit selection rows.
 
         Returns:
-            dict[str, list[RepreItem]]: Representation items per version id.
+            dict[tuple[str, str], list[RepreItem]]: Keys are
+            ``(product_id, version_id)``.
         """
 
         version_ids = set(version_ids)
         if not project_name or not version_ids:
             return {}
 
-        self.get_repre_items(project_name, version_ids, sender)
+        pairs = product_version_pairs or self._infer_product_version_pairs(
+            project_name, version_ids
+        )
+        if not pairs:
+            return {}
+
+        self.get_repre_items(
+            project_name,
+            version_ids,
+            sender,
+            product_version_pairs=pairs,
+        )
 
         project_cache = self._repre_items_cache[project_name]
-        output = {}
-        for version_id in version_ids:
-            version_cache = project_cache[version_id]
-            output[version_id] = list(version_cache.get_data().values())
+        output: dict[tuple[str, str], list[RepreItem]] = {}
+        for product_id, version_id in pairs:
+            ck = _repre_cache_key(product_id, version_id)
+            output[(product_id, version_id)] = list(
+                project_cache[ck].get_data().values()
+            )
         return output
 
-    def get_versions_repre_count(self, project_name, version_ids, sender):
+    def get_versions_repre_count(
+        self,
+        project_name,
+        version_ids,
+        sender,
+        *,
+        product_version_pairs: Optional[list[tuple[str, str]]] = None,
+    ):
         """Get representation count for passed version ids.
 
         Args:
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
             sender (Union[str, None]): Who triggered the method.
+            product_version_pairs: Optional explicit rows.
 
         Returns:
-            dict[str, int]: Number of representations by version id.
+            dict[str, int]: Number of representations by version id (sum across
+            product rows that share a version).
         """
 
-        output = {}
+        output: dict[str, int] = {}
         if not any((project_name, version_ids)):
             return output
 
-        invalid_version_ids = set()
-        project_cache = self._repre_items_cache[project_name]
-        for version_id in version_ids:
-            version_cache = project_cache[version_id]
-            if version_cache.is_valid:
-                output[version_id] = len(version_cache.get_data())
-            else:
-                invalid_version_ids.add(version_id)
+        pairs = product_version_pairs or self._infer_product_version_pairs(
+            project_name, version_ids
+        )
+        if not pairs:
+            return output
 
-        if invalid_version_ids:
+        invalid_pairs: list[tuple[str, str]] = []
+        project_cache = self._repre_items_cache[project_name]
+        for product_id, version_id in pairs:
+            ck = _repre_cache_key(product_id, version_id)
+            slot = project_cache[ck]
+            if slot.is_valid:
+                output[version_id] = output.get(version_id, 0) + len(
+                    slot.get_data()
+                )
+            else:
+                invalid_pairs.append((product_id, version_id))
+
+        if invalid_pairs:
             self.refresh_representation_items(
-                project_name, invalid_version_ids, sender
+                project_name,
+                {vid for _pid, vid in invalid_pairs},
+                sender,
+                product_version_pairs=pairs,
             )
 
-        for version_id in invalid_version_ids:
-            version_cache = project_cache[version_id]
-            output[version_id] = len(version_cache.get_data())
+        for product_id, version_id in invalid_pairs:
+            ck = _repre_cache_key(product_id, version_id)
+            output[version_id] = output.get(version_id, 0) + len(
+                project_cache[ck].get_data()
+            )
 
         return output
 
@@ -565,6 +646,9 @@ class ProductsModel:
             group_name (str): Group name to set.
         """
 
+        product_ids = [
+            pid for pid in product_ids if not is_reviewable_product_id(pid)
+        ]
         if not product_ids:
             return
 
@@ -621,21 +705,88 @@ class ProductsModel:
         )
         return output
 
-    def _get_version_items_by_id(self, project_name, version_ids):
-        version_item_by_id = self._version_item_by_id[project_name]
-        missing_version_ids = set()
-        output = {}
-        for version_id in version_ids:
-            version_item = version_item_by_id.get(version_id)
-            if version_item is not None:
-                output[version_id] = version_item
-            else:
-                missing_version_ids.add(version_id)
+    def _infer_product_version_pairs(
+        self, project_name: str, version_ids: Iterable[str]
+    ) -> list[tuple[str, str]]:
+        """All (product_id, version_id) rows matching *version_ids*."""
+        wanted = set(version_ids)
+        m = self._version_item_by_id[project_name]
+        pairs: list[tuple[str, str]] = []
+        for (vid, pid), _vi in m.items():
+            if vid in wanted:
+                pairs.append((pid, vid))
+        return pairs
 
-        output.update(
-            self._query_version_items_by_ids(project_name, missing_version_ids)
-        )
-        return output
+    def _get_version_items_for_pairs(
+        self,
+        project_name: str,
+        product_version_pairs: list[tuple[str, str]],
+    ) -> dict[tuple[str, str], VersionItem]:
+        """Map (product_id, version_id) -> VersionItem."""
+        m = self._version_item_by_id[project_name]
+        out: dict[tuple[str, str], VersionItem] = {}
+        missing_vids: set[str] = set()
+        pair_set = set(product_version_pairs)
+        for product_id, version_id in product_version_pairs:
+            vi = m.get((version_id, product_id))
+            if vi is not None:
+                out[(product_id, version_id)] = vi
+            else:
+                missing_vids.add(version_id)
+        if not missing_vids:
+            return out
+        fetched = self._query_version_items_by_ids(project_name, missing_vids)
+        for (vid, pid), vi in fetched.items():
+            if (pid, vid) in pair_set:
+                out[(pid, vid)] = vi
+        return out
+
+    def _build_reviewable_synthetic_products(
+        self,
+        project_name: str,
+        parent_item: ProductItem,
+        icons_mapping: ProductTypeIconMapping,
+        bundle_group: str,
+    ) -> list[ProductItem]:
+        """Synthetic ProductItem rows for REST reviewables (exclusive vs DB reps)."""
+        out: list[ProductItem] = []
+        for version_id, base_vi in parent_item.version_items.items():
+            try:
+                pairs = list_version_reviewables(project_name, version_id)
+            except Exception as exc:
+                _log.debug(
+                    "list_version_reviewables failed for %s: %s",
+                    version_id,
+                    exc,
+                    exc_info=True,
+                )
+                pairs = []
+            if not pairs:
+                continue
+            for file_id, label in pairs:
+                synth_pid = make_reviewable_product_id(
+                    parent_item.product_id, version_id, file_id
+                )
+                pdata = base_vi.to_data()
+                pdata["product_id"] = synth_pid
+                cloned_vi = VersionItem.from_data(pdata)
+                stem = os.path.basename((label or "").strip()) or "reviewable"
+                pt_name = "review"
+                product_icon = icons_mapping.get_icon(product_type=pt_name)
+                synth = ProductItem(
+                    synth_pid,
+                    pt_name,
+                    parent_item.product_base_type,
+                    stem,
+                    product_icon,
+                    bundle_group,
+                    parent_item.folder_id,
+                    parent_item.folder_label,
+                    {version_id: cloned_vi},
+                    False,
+                )
+                out.append(synth)
+        return out
 
     def _create_product_items(
         self,
@@ -760,10 +911,11 @@ class ProductsModel:
         product_items = self._create_product_items(
             project_name, products, versions
         )
-        version_items = {}
+        version_items_by_vp: dict[tuple[str, str], VersionItem] = {}
         for product_item in product_items.values():
-            version_items.update(product_item.version_items)
-        return version_items
+            for vid, vi in product_item.version_items.items():
+                version_items_by_vp[(vid, product_item.product_id)] = vi
+        return version_items_by_vp
 
     def _clear_product_version_items(self, project_name, folder_ids):
         """Clear product and version items from memory.
@@ -794,7 +946,9 @@ class ProductsModel:
                 if product_item is None:
                     continue
                 for version_item in product_item.version_items.values():
-                    version_item_by_id.pop(version_item.version_id, None)
+                    version_item_by_id.pop(
+                        (version_item.version_id, product_id), None
+                    )
 
     def _refresh_product_items(self, project_name, folder_ids, sender):
         """Refresh product items and store them in cache.
@@ -837,7 +991,31 @@ class ProductsModel:
                     version_id,
                     version_item,
                 ) in product_item.version_items.items():
-                    version_item_by_id[version_id] = version_item
+                    version_item_by_id[
+                        (version_id, product_item.product_id)
+                    ] = version_item
+
+            bundle_group = _reviewable_bundle_group_name(self._controller)
+            icons_mapping = self._get_product_type_icons(project_name)
+            synth_added: dict[str, ProductItem] = {}
+            for _pid, parent_item in list(product_items_by_id.items()):
+                if is_reviewable_product_id(_pid):
+                    continue
+                for synth in self._build_reviewable_synthetic_products(
+                    project_name,
+                    parent_item,
+                    icons_mapping,
+                    bundle_group,
+                ):
+                    synth_added[synth.product_id] = synth
+            for synth in synth_added.values():
+                folder_id = synth.folder_id
+                sid = synth.product_id
+                items_by_folder_id[folder_id][sid] = synth
+                project_mapping[folder_id].add(sid)
+                product_item_by_id[sid] = synth
+                for vid, vi in synth.version_items.items():
+                    version_item_by_id[(vid, sid)] = vi
 
             project_cache = self._product_items_cache[project_name]
             for folder_id, product_items in items_by_folder_id.items():
@@ -868,9 +1046,19 @@ class ProductsModel:
                 PRODUCTS_MODEL_SENDER,
             )
 
-    def refresh_representation_items(self, project_name, version_ids, sender):
+    def refresh_representation_items(
+        self,
+        project_name,
+        version_ids,
+        sender,
+        *,
+        product_version_pairs: Optional[list[tuple[str, str]]] = None,
+    ):
         if not any((project_name, version_ids)):
             return
+        pairs = product_version_pairs or self._infer_product_version_pairs(
+            project_name, version_ids
+        )
         self._controller.emit_event(
             "model.representations.refresh.started",
             {
@@ -882,7 +1070,7 @@ class ProductsModel:
         )
         failed = False
         try:
-            self._refresh_representation_items(project_name, version_ids)
+            self._refresh_representation_items(project_name, pairs)
         except Exception:
             # TODO add more information about failed refresh
             failed = True
@@ -898,37 +1086,59 @@ class ProductsModel:
             PRODUCTS_MODEL_SENDER,
         )
 
-    def _refresh_representation_items(self, project_name, version_ids):
+    def _refresh_representation_items(
+        self,
+        project_name: str,
+        product_version_pairs: list[tuple[str, str]],
+    ) -> None:
+        if not product_version_pairs:
+            return
+
+        unique_versions = {vid for _pid, vid in product_version_pairs}
         representations = list(
             ayon_api.get_representations(
                 project_name,
-                version_ids=version_ids,
+                version_ids=list(unique_versions),
                 fields=["id", "name", "versionId"],
             )
         )
 
-        version_items_by_id = self._get_version_items_by_id(
-            project_name, version_ids
+        versions_api = list(
+            ayon_api.get_versions(
+                project_name,
+                version_ids=list(unique_versions),
+                fields=["id", "productId"],
+            )
         )
-        product_ids = {
-            version_item.product_id
-            for version_item in version_items_by_id.values()
-        }
+        version_canonical_product = {v["id"]: v["productId"] for v in versions_api}
+
+        version_items_map = self._get_version_items_for_pairs(
+            project_name, product_version_pairs
+        )
+        product_ids_needed = {pid for pid, _vid in product_version_pairs}
         product_items_by_id = self._get_product_items_by_id(
-            project_name, product_ids
+            project_name, product_ids_needed
         )
+
         repre_icon = {
             "type": "awesome-font",
             "name": "fa.file-o",
             "color": get_default_entity_icon_color(),
         }
-        repre_items_by_version_id = collections.defaultdict(dict)
+
+        repre_by_bucket: dict[str, dict[str, RepreItem]] = collections.defaultdict(
+            dict
+        )
+
         for representation in representations:
             version_id = representation["versionId"]
-            version_item = version_items_by_id.get(version_id)
-            if version_item is None:
+            canonical_pid = version_canonical_product.get(version_id)
+            if canonical_pid is None:
                 continue
-            product_item = product_items_by_id.get(version_item.product_id)
+            vi = version_items_map.get((canonical_pid, version_id))
+            if vi is None:
+                continue
+            product_item = product_items_by_id.get(canonical_pid)
             if product_item is None:
                 continue
             repre_id = representation["id"]
@@ -939,41 +1149,44 @@ class ProductsModel:
                 product_item.product_name,
                 product_item.folder_label,
             )
-            repre_items_by_version_id[version_id][repre_id] = repre_item
+            ck = _repre_cache_key(canonical_pid, version_id)
+            repre_by_bucket[ck][repre_id] = repre_item
 
-        # No representation rows: may still have server-side reviewables.
-        for version_id in version_ids:
-            if repre_items_by_version_id[version_id]:
+        for product_id, version_id in product_version_pairs:
+            if not is_reviewable_product_id(product_id):
                 continue
+            parsed = parse_reviewable_product_id(product_id)
+            if parsed is None:
+                continue
+            parent_pid, exp_vid, file_id = parsed
+            if exp_vid != version_id:
+                continue
+            parent_item = product_items_by_id.get(parent_pid)
+            if parent_item is None:
+                continue
+            label = ""
             try:
-                pairs = list_version_reviewables(project_name, version_id)
-            except Exception as exc:
-                _log.debug(
-                    "list_version_reviewables failed for %s: %s",
-                    version_id,
-                    exc,
-                    exc_info=True,
-                )
-                pairs = []
-            version_item = version_items_by_id.get(version_id)
-            if version_item is None:
-                continue
-            product_item = product_items_by_id.get(version_item.product_id)
-            if product_item is None:
-                continue
-            for file_id, label in pairs:
-                rid = make_reviewable_repre_id(version_id, file_id)
-                repre_item = RepreItem(
-                    rid,
-                    representation_name_from_label(label),
-                    repre_icon,
-                    product_item.product_name,
-                    product_item.folder_label,
-                )
-                repre_items_by_version_id[version_id][rid] = repre_item
+                for fid, lab in list_version_reviewables(project_name, version_id):
+                    if fid == file_id:
+                        label = lab
+                        break
+            except Exception:
+                pass
+            rid = make_reviewable_repre_id(version_id, file_id)
+            display_name = os.path.basename((label or "").strip()) or rid
+            repre_item = RepreItem(
+                rid,
+                display_name,
+                repre_icon,
+                parent_item.product_name,
+                parent_item.folder_label,
+                reviewable_rest_label=label or None,
+            )
+            ck = _repre_cache_key(product_id, version_id)
+            repre_by_bucket[ck][rid] = repre_item
 
         project_cache = self._repre_items_cache[project_name]
-        for version_id in version_ids:
-            repre_items = dict(repre_items_by_version_id.get(version_id, {}))
-            version_cache = project_cache[version_id]
-            version_cache.update_data(repre_items)
+        for product_id, version_id in product_version_pairs:
+            ck = _repre_cache_key(product_id, version_id)
+            repre_items = dict(repre_by_bucket.get(ck, {}))
+            project_cache[ck].update_data(repre_items)
