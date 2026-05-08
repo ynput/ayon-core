@@ -1,9 +1,11 @@
 """Grid view of products: web-style cards with thumbnail, version combo, review link."""
+
+# ruff: noqa: E501
 from __future__ import annotations
 
 import collections
 import numbers
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -67,6 +69,9 @@ GRID_VIEW_MARGIN_MIN_PX = 8
 GRID_CONTENT_TOP_OFFSET_PX = 10
 GRID_CONTENT_RIGHT_NUDGE_PX = 4
 
+# Sender token for ``ProductsModel`` representation refresh (must match control).
+_GRID_THUMB_SENDER = "loader.grid_thumbnail"
+
 
 def columns_from_density_scale(scale: float) -> int:
     """Map legacy 0.5–2.0 view scale to a column count (fewer columns when scale is high)."""
@@ -125,6 +130,18 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._grid_content_offset_x = 0
         self._grid_content_offset_y = 0
 
+        self._last_thumb_project: Optional[str] = None
+        self._thumb_viewport_timer = QtCore.QTimer(self)
+        self._thumb_viewport_timer.setSingleShot(True)
+        self._thumb_viewport_timer.setInterval(120)
+        self._thumb_viewport_timer.timeout.connect(
+            self._run_viewport_thumbnail_refresh
+        )
+        self._thumb_drip_timer = QtCore.QTimer(self)
+        self._thumb_drip_timer.setSingleShot(True)
+        self._thumb_drip_timer.setInterval(120)
+        self._thumb_drip_timer.timeout.connect(self._run_thumbnail_drip)
+
         self._list_view = LoaderDragListView(self)
         self._list_view.setObjectName("ProductsGridView")
         self._list_view.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
@@ -154,6 +171,11 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._apply_grid_geometry()
         self._rebuild_index_widgets()
 
+        self._controller.grid_thumbnail_ready.connect(
+            self._on_grid_thumbnail_ready,
+            QtCore.Qt.ConnectionType.QueuedConnection,
+        )
+
         self._flatten_proxy.modelReset.connect(self._on_flatten_model_reset)
         self._flatten_proxy.layoutChanged.connect(self._on_flatten_layout_changed)
         self._flatten_proxy.rowsInserted.connect(self._on_rows_changed)
@@ -166,6 +188,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._list_view.viewport().installEventFilter(self)
         self._list_view.verticalScrollBar().valueChanged.connect(
             self._schedule_index_widget_geometry_sync
+        )
+        self._list_view.verticalScrollBar().valueChanged.connect(
+            self._schedule_viewport_thumbnail_refresh
         )
         self._list_view.horizontalScrollBar().valueChanged.connect(
             self._schedule_index_widget_geometry_sync
@@ -410,6 +435,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         else:
             self._sync_index_widget_geometries()
             self._list_view.viewport().update()
+        self._schedule_viewport_thumbnail_refresh()
 
     def set_scale_factor(self, value: float) -> None:
         """Legacy adapter: maps old 0.5–2.0 density scale to column count once."""
@@ -419,6 +445,98 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if not version_id:
             return None
         return self._thumbnail_path_by_version_id.get(version_id)
+
+    def _sync_project_thumb_cache(self, project_name: Optional[str]) -> None:
+        if project_name == self._last_thumb_project:
+            return
+        self._controller.cancel_grid_thumbnail_resolve()
+        self._thumbnail_path_by_version_id.clear()
+        self._last_thumb_project = project_name
+
+    def _all_version_ids(self) -> Set[str]:
+        out: Set[str] = set()
+        for row in range(self._flatten_proxy.rowCount()):
+            idx = self._flatten_proxy.index(row, 0)
+            vid = idx.data(VERSION_ID_ROLE)
+            if vid:
+                out.add(vid)
+        return out
+
+    def _visible_version_ids(self) -> Set[str]:
+        vp = self._list_view.viewport()
+        top_idx = self._list_view.indexAt(QtCore.QPoint(0, 0))
+        bottom_idx = self._list_view.indexAt(
+            QtCore.QPoint(max(0, vp.width() - 1), max(0, vp.height() - 1))
+        )
+        if not top_idx.isValid():
+            return set()
+        r0 = top_idx.row()
+        if bottom_idx.isValid():
+            r1 = bottom_idx.row()
+        else:
+            r1 = self._flatten_proxy.rowCount() - 1
+        r0 = max(0, r0 - 1)
+        r1 = min(self._flatten_proxy.rowCount() - 1, r1 + 1)
+        out: Set[str] = set()
+        for row in range(r0, r1 + 1):
+            idx = self._flatten_proxy.index(row, 0)
+            vid = idx.data(VERSION_ID_ROLE)
+            if vid:
+                out.add(vid)
+        return out
+
+    def _merge_resolve_paths(self, drip: bool) -> None:
+        project_name = self._controller.get_selected_project_name()
+        self._sync_project_thumb_cache(project_name)
+        if not project_name:
+            return
+
+        if self._flatten_proxy.rowCount() == 0:
+            return
+
+        if drip:
+            rest = self._all_version_ids() - self._visible_version_ids()
+            if not rest:
+                return
+            target = rest
+        else:
+            target = self._visible_version_ids()
+            if not target:
+                target = self._all_version_ids()
+
+        sync_map = self._controller.resolve_grid_thumbnail_paths(
+            project_name,
+            target,
+            sender=_GRID_THUMB_SENDER,
+        )
+        for vid, path in sync_map.items():
+            if path:
+                self._thumbnail_path_by_version_id[vid] = path
+
+        if not drip:
+            self._thumb_drip_timer.start()
+
+    def _schedule_viewport_thumbnail_refresh(self, *_args) -> None:
+        self._thumb_viewport_timer.start()
+
+    def _run_viewport_thumbnail_refresh(self) -> None:
+        self._merge_resolve_paths(drip=False)
+
+    def _run_thumbnail_drip(self) -> None:
+        self._merge_resolve_paths(drip=True)
+
+    def _on_grid_thumbnail_ready(self, version_id: str, path: str) -> None:
+        if not self._is_grid_viewport_ready_for_cards():
+            return
+        self._thumbnail_path_by_version_id[version_id] = path
+        for row in range(self._flatten_proxy.rowCount()):
+            idx = self._flatten_proxy.index(row, 0)
+            if idx.data(VERSION_ID_ROLE) != version_id:
+                continue
+            w = self._list_view.indexWidget(idx)
+            if isinstance(w, ProductsGridCardWidget):
+                w._thumb.update()
+            break
 
     def _ensure_products_model_signals(self) -> None:
         pm = self.products_model()
@@ -444,23 +562,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
                 w.refresh_from_model()
 
     def _update_thumbnail_cache(self) -> None:
-        project_name = self._controller.get_selected_project_name()
-        if not project_name:
-            self._thumbnail_path_by_version_id.clear()
-            return
-        version_ids = set()
-        for row in range(self._flatten_proxy.rowCount()):
-            idx = self._flatten_proxy.index(row, 0)
-            vid = idx.data(VERSION_ID_ROLE)
-            if vid:
-                version_ids.add(vid)
-        if not version_ids:
-            self._thumbnail_path_by_version_id.clear()
-            return
-        path_by_id = self._controller.get_thumbnail_paths(
-            project_name, "version", version_ids
-        )
-        self._thumbnail_path_by_version_id = dict(path_by_id)
+        self._thumb_viewport_timer.stop()
+        self._thumb_drip_timer.stop()
+        self._merge_resolve_paths(drip=False)
 
     def _refresh_grid_from_proxy(self) -> None:
         self._ensure_products_model_signals()
@@ -480,6 +584,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._sync_index_widget_geometries()
 
     def _on_flatten_model_reset(self) -> None:
+        self._controller.cancel_grid_thumbnail_resolve()
+        self._thumbnail_path_by_version_id.clear()
+        self._last_thumb_project = None
         self._refresh_grid_from_proxy()
         if self._flatten_proxy.rowCount() > 0:
             QtCore.QTimer.singleShot(0, self._scroll_grid_to_top_deferred)

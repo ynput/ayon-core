@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 import os
-import tempfile
 import uuid
 from typing import Optional, Any, Dict
 
 import ayon_api
+from qtpy import QtCore
+
+from ayon_core.pipeline import thumbnails_grid as thumbnails_grid_mod
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
@@ -36,6 +38,70 @@ from .models import (
     LoaderActionsModel,
     SiteSyncModel,
 )
+
+GRID_THUMB_SENDER = "loader.grid_thumbnail"
+
+
+class GridThumbnailEmitter(QtCore.QObject):
+    """Qt signal holder; ``LoaderController`` is not a ``QObject``."""
+
+    ready = QtCore.Signal(str, str)
+
+
+class _GridThumbRunnable(QtCore.QRunnable):
+    """Background downscale or ffmpeg frame for a grid tile."""
+
+    def __init__(
+        self,
+        controller: "LoaderController",
+        generation_snapshot: int,
+        version_id: str,
+        kind: str,
+        src_path: str,
+        cache_key: str,
+        project_name: str,
+    ) -> None:
+        super().__init__()
+        self._controller = controller
+        self._generation_snapshot = generation_snapshot
+        self._version_id = version_id
+        self._kind = kind
+        self._src_path = src_path
+        self._cache_key = cache_key
+        self._project_name = project_name
+
+    def run(self) -> None:
+        ctrl = self._controller
+        if ctrl._grid_thumb_generation != self._generation_snapshot:
+            ctrl._grid_thumb_inflight.discard(self._version_id)
+            return
+
+        out_path = None
+        try:
+            if self._kind == "image":
+                out_path = thumbnails_grid_mod.optimize_image_to_grid_cache(
+                    self._src_path,
+                    self._project_name,
+                    self._cache_key,
+                )
+            else:
+                out_path = (
+                    thumbnails_grid_mod.extract_video_first_frame_to_cache(
+                        self._src_path,
+                        self._project_name,
+                        self._cache_key,
+                    )
+                )
+        except Exception:
+            ctrl.log.debug("Grid thumbnail job failed", exc_info=True)
+
+        if (
+            out_path
+            and ctrl._grid_thumb_generation == self._generation_snapshot
+        ):
+            ctrl._grid_thumb_emitter.ready.emit(self._version_id, out_path)
+
+        ctrl._grid_thumb_inflight.discard(self._version_id)
 
 
 class ExpectedSelection:
@@ -131,6 +197,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._sitesync_model = SiteSyncModel(self)
         self._users_model = UsersModel(self)
 
+        self._grid_thumb_emitter = GridThumbnailEmitter()
+        self._grid_thumb_generation = 0
+        self._grid_thumb_inflight: set[str] = set()
+        self._grid_image_pool = QtCore.QThreadPool()
+        self._grid_image_pool.setMaxThreadCount(4)
+        self._grid_video_pool = QtCore.QThreadPool()
+        self._grid_video_pool.setMaxThreadCount(2)
+
     @property
     def log(self):
         if self._log is None:
@@ -184,6 +258,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._event_system.add_callback(topic, callback)
 
     def reset(self):
+        self.cancel_grid_thumbnail_resolve()
         self._emit_event("controller.reset.started")
 
         project_name = self.get_selected_project_name()
@@ -324,6 +399,91 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         return self._thumbnails_model.get_thumbnail_paths(
             project_name, entity_type, entity_ids
         )
+
+    @property
+    def grid_thumbnail_ready(self):
+        """``Signal(str, str)``: ``version_id``, derivative ``jpeg`` path."""
+        return self._grid_thumb_emitter.ready
+
+    def cancel_grid_thumbnail_resolve(self) -> None:
+        """Invalidate queued grid thumbnail jobs (model/project reset)."""
+        self._grid_thumb_generation += 1
+        self._grid_thumb_inflight.clear()
+
+    def get_representation_items_grouped(
+        self,
+        project_name: str,
+        version_ids: set[str],
+        sender: Optional[str] = None,
+    ) -> dict[str, list]:
+        return self._products_model.get_repre_items_grouped(
+            project_name, version_ids, sender
+        )
+
+    def resolve_grid_thumbnail_paths(
+        self,
+        project_name: str,
+        version_ids: set[str],
+        sender: Optional[str] = None,
+    ) -> dict[str, Optional[str]]:
+        """Resolve pixmap-ready paths; queues derivatives when needed.
+
+        Synchronous hits are returned in the dict; ``None`` means async
+        processing may still deliver via :attr:`grid_thumbnail_ready`.
+        """
+        if not version_ids:
+            return {}
+        if not project_name:
+            return {vid: None for vid in version_ids}
+
+        snd = sender if sender is not None else GRID_THUMB_SENDER
+        grouped = self.get_representation_items_grouped(
+            project_name, version_ids, snd
+        )
+        canonical = self._thumbnails_model.get_thumbnail_paths(
+            project_name, "version", version_ids
+        )
+        gen_snapshot = self._grid_thumb_generation
+
+        output: dict[str, Optional[str]] = {}
+        for vid in version_ids:
+            sync_path, jobs = (
+                thumbnails_grid_mod.pick_grid_thumbnail_sync_and_jobs(
+                    project_name,
+                    vid,
+                    grouped.get(vid, []),
+                    canonical.get(vid),
+                )
+            )
+            if sync_path:
+                output[vid] = sync_path
+                continue
+
+            output[vid] = None
+            if not jobs:
+                continue
+            kind, src_path, cache_key = jobs[0]
+            if vid in self._grid_thumb_inflight:
+                continue
+            self._grid_thumb_inflight.add(vid)
+            pool = (
+                self._grid_video_pool
+                if kind == "video"
+                else self._grid_image_pool
+            )
+            pool.start(
+                _GridThumbRunnable(
+                    self,
+                    gen_snapshot,
+                    vid,
+                    kind,
+                    src_path,
+                    cache_key,
+                    project_name,
+                )
+            )
+
+        return output
 
     def change_products_group(self, project_name, product_ids, group_name):
         self._products_model.change_products_group(
@@ -746,6 +906,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def extract_video_first_frame(self, video_path):
         """Extract first frame from video for preview.
 
+        Uses persistent cache under thumbnails/grid_derivatives (Loader grid).
+
         Args:
             video_path (str): Path to video file.
 
@@ -753,31 +915,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             Optional[QtGui.QPixmap]: First frame as pixmap or None if failed.
         """
         try:
-            from qtpy import QtGui
-            from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
-
-            # Create temp file for frame
-            temp_fd, frame_path = tempfile.mkstemp(
-                suffix=".jpg", prefix="video_preview_"
+            project_name = self.get_selected_project_name() or "_"
+            key = thumbnails_grid_mod.cache_key_for_source(
+                "sidebar_preview", video_path
             )
-            os.close(temp_fd)
-
-            # Extract first frame with ffmpeg
-            cmd = get_ffmpeg_tool_args(
-                "ffmpeg", "-i", video_path, "-vframes", "1", "-y", frame_path
+            return thumbnails_grid_mod.pixmap_from_cached_video_preview(
+                video_path, project_name, key
             )
-
-            run_subprocess(cmd)
-
-            if os.path.exists(frame_path) and os.path.getsize(frame_path) > 0:
-                pix = QtGui.QPixmap(frame_path)
-                # Cleanup temp file
-                try:
-                    os.remove(frame_path)
-                except Exception:
-                    pass
-                return pix
-
         except Exception as e:
             self.log.warning(f"Failed to extract first frame: {e}")
 
