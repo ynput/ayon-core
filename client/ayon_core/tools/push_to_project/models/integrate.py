@@ -6,6 +6,7 @@ import sys
 import tempfile
 import traceback
 import uuid
+from pathlib import Path
 from typing import Optional, Any
 
 import ayon_api
@@ -225,6 +226,10 @@ class ProjectPushItemStatus:
         return cls(**data)
 
 
+# Lazy-resolution sentinel for ProjectPushRepreItem.frame (not yet computed).
+UNKNOWN = object()
+
+
 class ProjectPushRepreItem:
     """Representation item.
 
@@ -272,16 +277,16 @@ class ProjectPushRepreItem:
 
     @staticmethod
     def _get_relative_path(path, src_dirpath):
-        dirpath, basename = os.path.split(path)
-        if not dirpath.lower().startswith(src_dirpath.lower()):
+        """Path under ``src_dirpath`` as posix-style relative path, or None."""
+        if not path or not src_dirpath:
             return None
-
-        relative_dir = dirpath[len(src_dirpath):].lstrip("/")
-        if relative_dir:
-            relative_path = "/".join([relative_dir, basename])
-        else:
-            relative_path = basename
-        return relative_path
+        path = ProjectPushRepreItem._clean_path(path)
+        src_dirpath = ProjectPushRepreItem._clean_path(src_dirpath)
+        try:
+            rel = Path(path).relative_to(Path(src_dirpath))
+        except ValueError:
+            return None
+        return str(rel).replace("\\", "/")
 
     @property
     def frame(self):
@@ -374,6 +379,12 @@ class ProjectPushRepreItem:
             .replace(udim_placeholder, "(?P<udim>[0-9]+)")
         )
         src_basename_regex = re.compile("^{}$".format(src_basename))
+        try:
+            resolved_publish_dir = self._clean_path(
+                os.path.dirname(repre_path.format(root=self._roots))
+            )
+        except (KeyError, ValueError, IndexError):
+            resolved_publish_dir = self._clean_path(os.path.dirname(repre_path))
         for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
@@ -384,7 +395,9 @@ class ProjectPushRepreItem:
                 dirpath.lower() != src_dirpath.lower()
                 or not src_basename_regex.match(basename)
             ):
-                relative_path = self._get_relative_path(filepath, src_dirpath)
+                relative_path = self._get_relative_path(
+                    filepath, resolved_publish_dir
+                )
                 resource_files.append(ResourceFile(filepath, relative_path))
                 continue
 
@@ -414,19 +427,35 @@ class ProjectPushRepreItem:
         repre_path = StringTemplate.format_template(template,
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
-        src_dirpath = os.path.dirname(repre_path)
+        try:
+            resolved_repre_path = self._clean_path(
+                repre_path.format(root=self._roots)
+            )
+        except (KeyError, ValueError, IndexError):
+            resolved_repre_path = ""
+        publish_dir = (
+            os.path.dirname(resolved_repre_path) if resolved_repre_path else ""
+        )
         for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots))
 
-            if filepath_template.lower() == repre_path.lower():
-                src_files.append(
-                    SourceFile(repre_path.format(root=self._roots))
-                )
+            if (
+                resolved_repre_path
+                and filepath.lower() == resolved_repre_path.lower()
+            ):
+                src_files.append(SourceFile(filepath))
+            elif (
+                not resolved_repre_path
+                and filepath_template.lower() == repre_path.lower()
+            ):
+                src_files.append(SourceFile(filepath))
             else:
-                relative_path = self._get_relative_path(
-                    filepath_template, src_dirpath
+                relative_path = (
+                    self._get_relative_path(filepath, publish_dir)
+                    if publish_dir
+                    else None
                 )
                 resource_files.append(
                     ResourceFile(filepath, relative_path)
@@ -511,7 +540,10 @@ class ProjectPushItemProcess:
 
         except Exception as exc:
             _exc, _value, _tb = sys.exc_info()
-            product_name = self._src_product_entity["name"]
+            if self._src_product_entity:
+                product_name = self._src_product_entity["name"]
+            else:
+                product_name = "unknown"
             self._status.set_failed(
                 "Unhandled error happened for `{}`: {}".format(
                     product_name, str(exc)
@@ -822,18 +854,12 @@ class ProjectPushItemProcess:
                 raise PushToProjectError(self._status.fail_reason)
 
         if self._item.mirror_source_path_under_dest:
-            if not parent_folder_entity:
-                self._status.set_failed(
-                    "Mirroring the source folder path requires a "
-                    "destination folder to attach under."
-                )
-                raise PushToProjectError(self._status.fail_reason)
             try:
                 leaf_dst = mirror_source_path_under_parent(
                     self._item.src_project_name,
                     self._src_folder_entity["id"],
                     dst_project_name,
-                    parent_folder_entity["id"],
+                    dst_folder_id,
                     include_tasks=True,
                     log_debug=self._log_debug,
                     log_info=self._log_info,
@@ -844,12 +870,17 @@ class ProjectPushItemProcess:
 
             folder_entity = leaf_dst
             if new_folder_name:
-                folder_entity = self._create_folder(
-                    self._src_folder_entity,
-                    self._project_entity,
-                    folder_entity,
-                    new_folder_name
+                slug_new = ayon_api.slugify_string(new_folder_name)
+                slug_src_leaf = ayon_api.slugify_string(
+                    self._src_folder_entity["name"]
                 )
+                if slug_new != slug_src_leaf:
+                    folder_entity = self._create_folder(
+                        self._src_folder_entity,
+                        self._project_entity,
+                        folder_entity,
+                        new_folder_name
+                    )
             self._folder_entity = folder_entity
             return
 
@@ -1499,8 +1530,9 @@ class IntegrateModel:
             version_up (bool): Should destination product be versioned up
             use_original_name (bool): If original product names should be used
             mirror_source_path_under_dest (bool): When True, recreate the
-                source folder path under the selected destination folder before
-                integrating.
+                source folder hierarchy (parent chain) under the destination
+                project root, or under the selected destination folder when
+                ``dst_folder_id`` is set, before integrating.
 
         Returns:
             str: Item id. The id can be used to trigger integration or get

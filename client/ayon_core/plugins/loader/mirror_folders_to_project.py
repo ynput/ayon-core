@@ -83,6 +83,7 @@ class MirrorFoldersToProject(LoaderActionPlugin):
             dest_folder_id,
             include_tasks,
             recursive,
+            mirror_upstream,
         ) = dialog.get_values()
 
         if not dest_project:
@@ -99,6 +100,7 @@ class MirrorFoldersToProject(LoaderActionPlugin):
                 dest_folder_id,
                 include_tasks=include_tasks,
                 include_descendants=recursive,
+                mirror_upstream_hierarchy=mirror_upstream,
             )
         except MirrorFoldersError as exc:
             self.log.warning("Mirror folders failed: %s", exc)

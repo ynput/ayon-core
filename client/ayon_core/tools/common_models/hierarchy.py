@@ -621,12 +621,34 @@ class HierarchyModel(object):
         hierarchy = ayon_api.get_folders_hierarchy(project_name)
 
         folder_items = {}
-        hierachy_queue = collections.deque(hierarchy["hierarchy"])
+        hierarchy_roots = []
+        if hierarchy:
+            hierarchy_roots = hierarchy.get("hierarchy") or []
+
+        hierachy_queue = collections.deque(hierarchy_roots)
         while hierachy_queue:
             item = hierachy_queue.popleft()
             folder_item = _get_folder_item_from_hierarchy_item(item)
             folder_items[folder_item.entity_id] = folder_item
-            hierachy_queue.extend(item["children"] or [])
+            hierachy_queue.extend(item.get("children") or [])
+
+        if folder_items:
+            return folder_items
+
+        folders = ayon_api.get_folders(
+            project_name,
+            fields=[
+                "id",
+                "name",
+                "label",
+                "parentId",
+                "path",
+                "folderType",
+            ],
+        )
+        for folder in folders:
+            folder_item = _get_folder_item_from_entity(folder)
+            folder_items[folder_item.entity_id] = folder_item
         return folder_items
 
     def _query_folder_entities(self, project_name, folder_ids):

@@ -21,9 +21,6 @@ class PushToProjectSelectionModel(object):
         return self._project_name
 
     def set_selected_project(self, project_name):
-        if project_name == self._project_name:
-            return
-
         self._project_name = project_name
         self._controller.emit_event(
             "selection.project.changed",

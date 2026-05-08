@@ -90,7 +90,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             header_widget
         )
         library_only_checkbox = NiceCheckbox(
-            True, parent=header_widget)
+            False, parent=header_widget)
 
         header_label = QtWidgets.QLabel(
             controller.get_source_label(),
@@ -109,37 +109,69 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         context_widget = QtWidgets.QWidget(main_splitter)
 
+        dest_project_label = QtWidgets.QLabel(
+            "Destination project",
+            context_widget,
+        )
+
         projects_combobox = ProjectsCombobox(controller, context_widget)
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_standard_filter_enabled(True)
+        projects_combobox.set_standard_filter_enabled(
+            library_only_checkbox.isChecked()
+        )
+
+        dest_folders_label = QtWidgets.QLabel(
+            "Folders in destination project",
+            context_widget,
+        )
 
         context_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Vertical, context_widget
         )
 
         folders_widget = FoldersWidget(controller, context_splitter)
+        folders_widget.setMinimumHeight(160)
         folders_widget.set_deselectable(True)
         tasks_widget = TasksWidget(controller, context_splitter)
 
         context_splitter.addWidget(folders_widget)
         context_splitter.addWidget(tasks_widget)
+        context_splitter.setStretchFactor(0, 3)
+        context_splitter.setStretchFactor(1, 1)
+
+        mirror_upstream_row = QtWidgets.QWidget(context_widget)
+        mirror_upstream_layout = QtWidgets.QHBoxLayout(mirror_upstream_row)
+        mirror_upstream_layout.setContentsMargins(0, 0, 0, 0)
+        mirror_upstream_checkbox = NiceCheckbox(True, parent=mirror_upstream_row)
+        mirror_upstream_label = QtWidgets.QLabel(
+            "Recreate upstream folder hierarchy under destination",
+            mirror_upstream_row,
+        )
+        mirror_upstream_label.setWordWrap(True)
+        mirror_upstream_layout.addWidget(mirror_upstream_checkbox, 0)
+        mirror_upstream_layout.addWidget(mirror_upstream_label, 1)
+
+        mirror_upstream_hint = QtWidgets.QLabel(
+            "When unchecked, only the folder you select in the tree above "
+            "is the publish parent—source parents are not created under "
+            "that destination.",
+            context_widget,
+        )
+        mirror_upstream_hint.setWordWrap(True)
 
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
+        context_layout.addWidget(dest_project_label, 0)
         context_layout.addWidget(projects_combobox, 0)
+        context_layout.addWidget(dest_folders_label, 0)
         context_layout.addWidget(context_splitter, 1)
+        context_layout.addWidget(mirror_upstream_row, 0)
+        context_layout.addWidget(mirror_upstream_hint, 0)
 
-        mirror_path_checkbox = NiceCheckbox(False, parent=context_widget)
-        mirror_path_label = QtWidgets.QLabel(
-            "Mirror source folder path under selected destination",
-            context_widget,
+        mirror_upstream_checkbox.setToolTip(
+            "Creates each missing folder from the source path under the "
+            "destination project root or under the folder you selected."
         )
-        mirror_path_label.setWordWrap(True)
-        mirror_path_row = QtWidgets.QHBoxLayout()
-        mirror_path_row.setContentsMargins(0, 0, 0, 0)
-        mirror_path_row.addWidget(mirror_path_checkbox, 0)
-        mirror_path_row.addWidget(mirror_path_label, 1)
-        context_layout.addLayout(mirror_path_row, 0)
 
         # --- Inputs widget ---
         inputs_widget = QtWidgets.QWidget(main_splitter)
@@ -282,8 +314,13 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             self._on_original_names_change)
         version_up_checkbox.stateChanged.connect(
             self._on_version_up_checkbox_change)
-        mirror_path_checkbox.stateChanged.connect(
-            self._on_mirror_path_checkbox_change)
+        mirror_upstream_checkbox.stateChanged.connect(
+            self._on_mirror_upstream_changed
+        )
+        projects_combobox.refreshed.connect(self._sync_destination_folder_tree)
+        projects_combobox.selection_changed.connect(
+            self._sync_destination_folder_tree
+        )
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
@@ -317,6 +354,10 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             "push.message.added", self._on_push_message
         )
 
+        controller.set_mirror_source_path_under_dest(
+            mirror_upstream_checkbox.isChecked()
+        )
+
         self._main_layout = main_layout
 
         self._main_context_widget = main_context_widget
@@ -334,7 +375,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._comment_input = comment_input
         self._use_original_names_checkbox = original_names_checkbox
         self._library_only_checkbox = library_only_checkbox
-        self._mirror_path_checkbox = mirror_path_checkbox
+        self._mirror_upstream_checkbox = mirror_upstream_checkbox
+        self._context_splitter = context_splitter
 
         self._publish_btn = publish_btn
 
@@ -407,6 +449,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         )
         self._projects_combobox.refresh()
 
+    def _sync_destination_folder_tree(self) -> None:
+        """Keep folder tree in sync with the combobox project selection."""
+        project_name = self._projects_combobox.get_selected_project_name()
+        self._controller.set_selected_project(project_name)
+
     def _on_first_show(self):
         width = 740
         height = 640
@@ -414,6 +461,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self.setStyleSheet(load_stylesheet())
         self.resize(width, height)
         self._main_splitter.setSizes([width - inputs_width, inputs_width])
+        self._context_splitter.setSizes([360, 140])
         self._show_timer.start()
 
     def _on_show_timer(self):
@@ -456,9 +504,9 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         is_checked = self._version_up_checkbox.isChecked()
         self._controller.set_version_up(is_checked)
 
-    def _on_mirror_path_checkbox_change(self) -> None:
+    def _on_mirror_upstream_changed(self) -> None:
         self._controller.set_mirror_source_path_under_dest(
-            self._mirror_path_checkbox.isChecked()
+            self._mirror_upstream_checkbox.isChecked()
         )
 
     def _on_user_input_timer(self):

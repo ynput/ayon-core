@@ -187,6 +187,8 @@ class PushToContextController:
         self._invalidate()
 
     def set_selected_project(self, project_name):
+        if project_name:
+            self._hierarchy_model.refresh_project(project_name)
         self._selection_model.set_selected_project(project_name)
         self._invalidate()
 
@@ -407,11 +409,12 @@ class PushToContextController:
 
     def _submit_callback(self):
         process_item_ids = self._process_item_ids
-        for process_item_id in process_item_ids:
-            self._integrate_model.integrate_item(process_item_id)
-
+        try:
+            for process_item_id in process_item_ids:
+                self._integrate_model.integrate_item(process_item_id)
+        except Exception:
+            pass
         self._emit_event("submit.finished", {})
-
         if process_item_ids is self._process_item_ids:
             self._process_item_ids = []
 
