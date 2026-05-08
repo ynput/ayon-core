@@ -173,9 +173,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input = SubversionLineEdit(inputs_widget)
         subversion_input.set_placeholder("Will be part of filename.")
 
-        # Extensions combobox — plain=True renders native Qt dropdown with
-        # standard arrow indicator instead of AYON status/pill style.
-        extension_combobox = AYComboBox(parent=inputs_widget, plain=True)
+        # Extensions combobox — uses AYON style which now draws a dropdown
+        # arrow via the Material Symbol icon
+        extension_combobox = AYComboBox(parent=inputs_widget)
         # Add styled delegate to use stylesheets
         extension_delegate = QtWidgets.QStyledItemDelegate()
         extension_combobox.setItemDelegate(extension_delegate)
