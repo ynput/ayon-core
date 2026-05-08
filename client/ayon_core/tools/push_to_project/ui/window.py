@@ -129,6 +129,18 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         context_layout.addWidget(projects_combobox, 0)
         context_layout.addWidget(context_splitter, 1)
 
+        mirror_path_checkbox = NiceCheckbox(False, parent=context_widget)
+        mirror_path_label = QtWidgets.QLabel(
+            "Mirror source folder path under selected destination",
+            context_widget,
+        )
+        mirror_path_label.setWordWrap(True)
+        mirror_path_row = QtWidgets.QHBoxLayout()
+        mirror_path_row.setContentsMargins(0, 0, 0, 0)
+        mirror_path_row.addWidget(mirror_path_checkbox, 0)
+        mirror_path_row.addWidget(mirror_path_label, 1)
+        context_layout.addLayout(mirror_path_row, 0)
+
         # --- Inputs widget ---
         inputs_widget = QtWidgets.QWidget(main_splitter)
 
@@ -270,6 +282,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             self._on_original_names_change)
         version_up_checkbox.stateChanged.connect(
             self._on_version_up_checkbox_change)
+        mirror_path_checkbox.stateChanged.connect(
+            self._on_mirror_path_checkbox_change)
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
@@ -320,6 +334,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._comment_input = comment_input
         self._use_original_names_checkbox = original_names_checkbox
         self._library_only_checkbox = library_only_checkbox
+        self._mirror_path_checkbox = mirror_path_checkbox
 
         self._publish_btn = publish_btn
 
@@ -440,6 +455,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
     def _on_version_up_checkbox_change(self) -> None:
         is_checked = self._version_up_checkbox.isChecked()
         self._controller.set_version_up(is_checked)
+
+    def _on_mirror_path_checkbox_change(self) -> None:
+        self._controller.set_mirror_source_path_under_dest(
+            self._mirror_path_checkbox.isChecked()
+        )
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled

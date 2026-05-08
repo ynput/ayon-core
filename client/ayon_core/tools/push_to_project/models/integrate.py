@@ -30,9 +30,10 @@ from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.publish import get_publish_template_name
-from ayon_core.pipeline.create import get_product_name, TaskNotSetError
-
-UNKNOWN = object()
+from .mirror_folders import (
+    MirrorFoldersError,
+    mirror_source_path_under_parent,
+)
 
 
 class PushToProjectError(Exception):
@@ -92,7 +93,8 @@ class ProjectPushItem:
         new_folder_name,
         version_up,
         item_id=None,
-        use_original_name=False
+        use_original_name=False,
+        mirror_source_path_under_dest=False,
     ):
         if not item_id:
             item_id = uuid.uuid4().hex
@@ -108,6 +110,7 @@ class ProjectPushItem:
         self.item_id = item_id
         self._repr_value = None
         self.use_original_name = use_original_name
+        self.mirror_source_path_under_dest = mirror_source_path_under_dest
 
     @property
     def _repr(self):
@@ -120,7 +123,8 @@ class ProjectPushItem:
                 str(self.new_folder_name),
                 str(self.dst_task_name),
                 str(self.version_up),
-                self.use_original_name
+                self.use_original_name,
+                str(self.mirror_source_path_under_dest),
             ])
         return self._repr_value
 
@@ -139,12 +143,17 @@ class ProjectPushItem:
             "comment": self.comment,
             "new_folder_name": self.new_folder_name,
             "item_id": self.item_id,
-            "use_original_name": self.use_original_name
+            "use_original_name": self.use_original_name,
+            "mirror_source_path_under_dest": (
+                self.mirror_source_path_under_dest
+            ),
         }
 
     @classmethod
     def from_data(cls, data):
-        return cls(**data)
+        payload = dict(data)
+        payload.setdefault("mirror_source_path_under_dest", False)
+        return cls(**payload)
 
 
 class StatusMessage:
@@ -812,6 +821,38 @@ class ProjectPushItemProcess:
                 )
                 raise PushToProjectError(self._status.fail_reason)
 
+        if self._item.mirror_source_path_under_dest:
+            if not parent_folder_entity:
+                self._status.set_failed(
+                    "Mirroring the source folder path requires a "
+                    "destination folder to attach under."
+                )
+                raise PushToProjectError(self._status.fail_reason)
+            try:
+                leaf_dst = mirror_source_path_under_parent(
+                    self._item.src_project_name,
+                    self._src_folder_entity["id"],
+                    dst_project_name,
+                    parent_folder_entity["id"],
+                    include_tasks=True,
+                    log_debug=self._log_debug,
+                    log_info=self._log_info,
+                )
+            except MirrorFoldersError as exc:
+                self._status.set_failed(str(exc))
+                raise PushToProjectError(self._status.fail_reason)
+
+            folder_entity = leaf_dst
+            if new_folder_name:
+                folder_entity = self._create_folder(
+                    self._src_folder_entity,
+                    self._project_entity,
+                    folder_entity,
+                    new_folder_name
+                )
+            self._folder_entity = folder_entity
+            return
+
         if not new_folder_name:
             folder_entity = parent_folder_entity
         else:
@@ -1441,7 +1482,8 @@ class IntegrateModel:
         comment,
         new_folder_name,
         version_up,
-        use_original_name
+        use_original_name,
+        mirror_source_path_under_dest=False,
     ):
         """Create new item for integration.
 
@@ -1456,6 +1498,9 @@ class IntegrateModel:
             new_folder_name (Union[str, None]): New folder name.
             version_up (bool): Should destination product be versioned up
             use_original_name (bool): If original product names should be used
+            mirror_source_path_under_dest (bool): When True, recreate the
+                source folder path under the selected destination folder before
+                integrating.
 
         Returns:
             str: Item id. The id can be used to trigger integration or get
@@ -1472,7 +1517,8 @@ class IntegrateModel:
             comment=comment,
             new_folder_name=new_folder_name,
             version_up=version_up,
-            use_original_name=use_original_name
+            use_original_name=use_original_name,
+            mirror_source_path_under_dest=mirror_source_path_under_dest,
         )
         process_item = ProjectPushItemProcess(self, item)
         self._process_items[item.item_id] = process_item

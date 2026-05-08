@@ -42,6 +42,7 @@ class PushToContextController:
 
         self._use_original_name = False
         self._version_up = False
+        self._mirror_source_path_under_dest = False
 
         self.set_source(project_name, version_ids)
 
@@ -156,6 +157,12 @@ class PushToContextController:
             project_name, folder_id, sender
         )
 
+    def get_selected_project_name(self):
+        return self._selection_model.get_selected_project_name()
+
+    def get_selected_folder_id(self):
+        return self._selection_model.get_selected_folder_id()
+
     def get_user_values(self):
         return self._user_values.get_data()
 
@@ -207,14 +214,17 @@ class PushToContextController:
             item_id = self._integrate_model.create_process_item(
                 self._src_project_name,
                 src_version_entity["id"],
-                self._selection_model.get_selected_project_name(),
-                self._selection_model.get_selected_folder_id(),
+                self.get_selected_project_name(),
+                self.get_selected_folder_id(),
                 self._selection_model.get_selected_task_name(),
                 self._user_values.variant,
                 comment=self._user_values.comment,
                 new_folder_name=self._user_values.new_folder_name,
                 version_up=self._version_up,
                 use_original_name=self._use_original_name,
+                mirror_source_path_under_dest=(
+                    self._mirror_source_path_under_dest
+                ),
             )
             item_ids.append(item_id)
 
@@ -232,6 +242,12 @@ class PushToContextController:
 
     def set_version_up(self, state):
         self._version_up = state
+
+    def set_mirror_source_path_under_dest(self, state):
+        if state == self._mirror_source_path_under_dest:
+            return
+        self._mirror_source_path_under_dest = bool(state)
+        self._invalidate()
 
     def wait_for_process_thread(self):
         if self._process_thread is None:
@@ -362,12 +378,12 @@ class PushToContextController:
         return product_name
 
     def _check_submit_validations(self):
-        if not self._selection_model.get_selected_project_name():
+        if not self.get_selected_project_name():
             return False
 
         if (
             self._user_values.new_folder_name is None
-            and not self._selection_model.get_selected_folder_id()
+            and not self.get_selected_folder_id()
         ):
             return False
 
