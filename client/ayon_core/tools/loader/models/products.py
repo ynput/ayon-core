@@ -44,7 +44,7 @@ LOADER_PRODUCT_LIST_FIELDS: frozenset[str] = frozenset(
 
 
 def _loader_version_query_fields() -> set[str]:
-    """Fields for loader version rows; ensures `attrib` and `status` are present."""
+    """Loader version row GraphQL fields including attrib and status."""
     fields = set(ayon_api.get_default_fields_for_type("version"))
     fields.update({"status", "attrib"})
     return fields
@@ -472,6 +472,33 @@ class ProductsModel:
             version_cache = project_cache[version_id]
             output.extend(version_cache.get_data().values())
 
+        return output
+
+    def get_repre_items_grouped(
+        self, project_name, version_ids, sender
+    ):
+        """Warm representation cache and return items keyed by version id.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (Iterable[str]): Version ids.
+            sender (Union[str, None]): Who triggered the method.
+
+        Returns:
+            dict[str, list[RepreItem]]: Representation items per version id.
+        """
+
+        version_ids = set(version_ids)
+        if not project_name or not version_ids:
+            return {}
+
+        self.get_repre_items(project_name, version_ids, sender)
+
+        project_cache = self._repre_items_cache[project_name]
+        output = {}
+        for version_id in version_ids:
+            version_cache = project_cache[version_id]
+            output[version_id] = list(version_cache.get_data().values())
         return output
 
     def get_versions_repre_count(self, project_name, version_ids, sender):

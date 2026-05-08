@@ -302,39 +302,12 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
     def _extract_first_frame(self, video_path):
         """Extract first frame from video for preview."""
         try:
-            import tempfile
-            from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
+            from ayon_core.pipeline import thumbnails_grid as tg
 
-            # Create temp file for frame
-            temp_fd, frame_path = tempfile.mkstemp(
-                suffix=".jpg", prefix="video_preview_"
+            key = tg.cache_key_for_source("thumbnail_paint_widget", video_path)
+            return tg.pixmap_from_cached_video_preview(
+                video_path, "_", key
             )
-            os.close(temp_fd)
-
-            # Extract first frame with ffmpeg (image2: -update 1 = single file, not sequence)
-            cmd = get_ffmpeg_tool_args(
-                "ffmpeg",
-                "-i",
-                video_path,
-                "-frames:v",
-                "1",
-                "-update",
-                "1",
-                "-y",
-                frame_path,
-            )
-
-            run_subprocess(cmd)
-
-            if os.path.exists(frame_path) and os.path.getsize(frame_path) > 0:
-                pix = QtGui.QPixmap(frame_path)
-                # Cleanup temp file
-                try:
-                    os.remove(frame_path)
-                except Exception:
-                    pass
-                return pix
-
         except Exception as e:
             print(f"Failed to extract first frame: {e}")
 
