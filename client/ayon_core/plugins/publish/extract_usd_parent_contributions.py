@@ -16,6 +16,7 @@ from ayon_core.pipeline.load.utils import get_representation_path_by_names
 import ayon_api
 
 try:
+    # USD libraries may not be available in all DCCs
     from ayon_core.pipeline.usdlib import (
         BaseContribution,
         SublayerContribution,
@@ -78,14 +79,14 @@ def find_nearest_parent_folder_of_type(
         parent = "/".join(parents[: i + 1])
         parent_folder_paths.add(parent)
 
-    # Get all parents,      sorted by depth
+    # Get all parents, sorted by depth
     parent_folders = sorted(
         ayon_api.get_folders(
             project_name=project_name,
             folder_paths=parent_folder_paths,
             folder_types=folder_types,
         ),
-        key=lambda x: len(x["path"])
+        key=lambda x: len(x["path"].split("/"))
     )
     # Then populate a dict by folder type, lowest in hierarchy is added last
     # and hence is the only remaining entry of that type
@@ -118,10 +119,15 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         if not self.profiles:
             return
 
+        task_entity = instance.context.data.get("taskEntity")
+        task_type = None
+        if task_entity:
+            task_type = task_entity["taskType"]
+
         profile = filter_profiles(
             self.profiles,
             {
-                "task_types": instance.context.data["taskType"],
+                "task_types": task_type,
                 "product_names": instance.data["productName"],
             }
         )
@@ -205,8 +211,8 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
                 variant_name=variant_settings["variant_name"],
                 variant_is_default=variant_is_default,
             )
-        else:
-            raise ValueError(f"Unknown layer type: {layer_type}")
+
+        raise ValueError(f"Unknown layer type: {layer_type}")
 
     def _get_source(
         self,
@@ -217,12 +223,13 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         if source_type == "source_path":
             source: str = contribution_settings["source_path"]
             return source.format_map(instance.data["anatomyData"])
-        elif source_type == "search_product":
+
+        if source_type == "search_product":
             return self._search_product(contribution_settings, instance)
-        else:
-            raise ValueError(
-                f"Unknown contribution source type: {source_type}"
-            )
+        
+        raise ValueError(
+            f"Unknown contribution source type: {source_type}"
+        )
 
     def _format_prim_path(
         self,

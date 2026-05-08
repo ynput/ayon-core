@@ -211,16 +211,12 @@ class SearchParentProductModel(BaseSettingsModel):
     product_name: str = SettingsField(
         "",
         title="Product name",
-        description=(
-            "Product name to load from"
-        )
+        description="Product name to load from",
     )
     version: str = SettingsField(
         "latest",
         title="Version",
-        description=(
-            "Version to load. A digit, 'hero' or 'latest'."
-        )
+        description="Version to load. A digit, 'hero' or 'latest'.",
     )
     representation_name: str = SettingsField(
         "usd",
@@ -228,7 +224,7 @@ class SearchParentProductModel(BaseSettingsModel):
     )
     as_ayon_entity_uri: bool = SettingsField(
         True,
-        title="Load as Ayon Entity URI",
+        title="Load as AYON Entity URI",
         description=(
             "Load the version as AYON Entity URI when enabled. If disabled, it"
             " must point to an existing product otherwise no path will be"

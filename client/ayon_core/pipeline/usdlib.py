@@ -717,7 +717,7 @@ class BaseContribution:
     # We contribute either the resulting usd representation of an instance
     # or an explicit `source` string which represent an asset path or layer
     # identifier like an AYON entity URI
-    source: Union[pyblish.api.Instance, str]
+    source: pyblish.api.Instance | str
 
     # usually the department or task name, something that uniquely identifies
     # this contribution so that we can swap out an older contribution with a
