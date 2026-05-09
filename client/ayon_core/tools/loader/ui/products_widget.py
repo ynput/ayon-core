@@ -15,7 +15,6 @@ from ayon_core.tools.loader.drag_drop import (
 )
 from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
-    DeselectableTreeView,
 )
 from ayon_core.tools.utils.lib import format_version
 
@@ -35,11 +34,6 @@ from .products_model import (
     STATUS_NAME_FILTER_ROLE,
     VERSION_TAGS_FILTER_ROLE,
     TASK_TAGS_FILTER_ROLE,
-)
-from .products_delegates import (
-    VersionDelegate,
-    LoadedInSceneDelegate,
-    SiteSyncDelegate,
 )
 from .products_proxy_selection import collect_version_ids_from_column0_indexes
 from .products_tree_view_setup import configure_loader_products_tree_view
@@ -235,6 +229,7 @@ class ProductsWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
     merged_products_selection_changed = QtCore.Signal()
     selection_changed = QtCore.Signal()
+
     def __init__(self, controller, parent):
         super(ProductsWidget, self).__init__(parent)
 
