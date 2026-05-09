@@ -17,7 +17,6 @@ from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
 )
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate, StatusDelegate
 from ayon_core.tools.utils.lib import format_version
 
 from .products_model import (
@@ -32,10 +31,6 @@ from .products_model import (
     TASK_ID_ROLE,
     PRODUCT_ID_ROLE,
     VERSION_ID_ROLE,
-    VERSION_STATUS_NAME_ROLE,
-    VERSION_STATUS_SHORT_ROLE,
-    VERSION_STATUS_COLOR_ROLE,
-    VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
     STATUS_NAME_FILTER_ROLE,
     VERSION_TAGS_FILTER_ROLE,
@@ -46,6 +41,8 @@ from .products_delegates import (
     LoadedInSceneDelegate,
     SiteSyncDelegate,
 )
+from .products_proxy_selection import collect_version_ids_from_column0_indexes
+from .products_tree_view_setup import configure_loader_products_tree_view
 from .actions_utils import (
     DragPayloadPrecache,
     LoaderDragTreeView,
@@ -238,23 +235,6 @@ class ProductsWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
     merged_products_selection_changed = QtCore.Signal()
     selection_changed = QtCore.Signal()
-    default_widths = (
-        200,  # Product name
-        90,  # Product type
-        90,  # Product base type
-        130,  # Folder label
-        60,  # Version
-        100,  # Status
-        125,  # Time
-        75,  # Author
-        75,  # Frames
-        60,  # Duration
-        55,  # Handles
-        10,  # Step
-        25,  # Loaded in scene
-        65,  # Site sync info
-    )
-
     def __init__(self, controller, parent):
         super(ProductsWidget, self).__init__(parent)
 
@@ -283,45 +263,14 @@ class ProductsWidget(QtWidgets.QWidget):
 
         products_view.setModel(products_proxy_model)
 
-        # Auto-size columns for Product name and Product type to their contents
-        header = products_view.header()
-        header.setSectionResizeMode(
-            ProductsModel.product_name_col,
-            QtWidgets.QHeaderView.ResizeToContents,
+        delegates = configure_loader_products_tree_view(
+            products_view, products_model, controller, hide_folders_column=False
         )
-        header.setSectionResizeMode(
-            ProductsModel.product_type_col,
-            QtWidgets.QHeaderView.ResizeToContents,
-        )
-
-        # Set fixed widths for the remaining columns
-        for idx, width in enumerate(self.default_widths):
-            if idx in (
-                ProductsModel.product_name_col,
-                ProductsModel.product_type_col,
-            ):
-                continue
-            products_view.setColumnWidth(idx, width)
-
-        version_delegate = VersionDelegate()
-        time_delegate = PrettyTimeDelegate()
-        status_delegate = StatusDelegate(
-            VERSION_STATUS_NAME_ROLE,
-            VERSION_STATUS_SHORT_ROLE,
-            VERSION_STATUS_COLOR_ROLE,
-            VERSION_STATUS_ICON_ROLE,
-        )
-        in_scene_delegate = LoadedInSceneDelegate()
-        sitesync_delegate = SiteSyncDelegate()
-
-        for col, delegate in (
-            (products_model.version_col, version_delegate),
-            (products_model.published_time_col, time_delegate),
-            (products_model.status_col, status_delegate),
-            (products_model.in_scene_col, in_scene_delegate),
-            (products_model.sitesync_avail_col, sitesync_delegate),
-        ):
-            products_view.setItemDelegateForColumn(col, delegate)
+        self._version_delegate = delegates["version_delegate"]
+        self._time_delegate = delegates["time_delegate"]
+        self._status_delegate = delegates["status_delegate"]
+        self._in_scene_delegate = delegates["in_scene_delegate"]
+        self._sitesync_delegate = delegates["sitesync_delegate"]
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -336,7 +285,7 @@ class ProductsWidget(QtWidgets.QWidget):
         products_view_sel_model.selectionChanged.connect(
             self._on_selection_change
         )
-        version_delegate.version_changed.connect(
+        self._version_delegate.version_changed.connect(
             self._on_version_delegate_change
         )
 
@@ -361,12 +310,6 @@ class ProductsWidget(QtWidgets.QWidget):
         self._products_view = products_view
         self._products_model = products_model
         self._products_proxy_model = products_proxy_model
-
-        self._version_delegate = version_delegate
-        self._time_delegate = time_delegate
-        self._status_delegate = status_delegate
-        self._in_scene_delegate = in_scene_delegate
-        self._sitesync_delegate = sitesync_delegate
 
         self._selected_project_name = None
         self._selected_folder_ids = set()
@@ -634,56 +577,16 @@ class ProductsWidget(QtWidgets.QWidget):
         project_name = self._products_model.get_last_project_name()
         if not project_name:
             return None
-        version_ids = set()
-        processed_rows = set()
-        indexes_queue = collections.deque()
-
-        # Only process column 0 indexes to avoid duplicates
         selected_indexes = [
             idx
             for idx in selection_model.selectedIndexes()
             if idx.column() == 0
         ]
-
         if not selected_indexes:
             return None
-
-        indexes_queue.extend(selected_indexes)
-
-        while indexes_queue:
-            index = indexes_queue.popleft()
-
-            # Create unique identifier using row, column, and parent
-            parent_id = (
-                index.parent().internalId() if index.parent().isValid() else -1
-            )
-            index_key = (index.row(), index.column(), parent_id)
-            if index_key in processed_rows:
-                continue
-            processed_rows.add(index_key)
-
-            group_type = model.data(index, GROUP_TYPE_ROLE)
-
-            # Product groups: collect child version_ids without recursion
-            if group_type == 1:
-                # Product group - directly collect all children's version_ids
-                row_count = model.rowCount(index)
-                for row in range(row_count):
-                    child_index = model.index(row, 0, index)
-                    child_version_id = model.data(child_index, VERSION_ID_ROLE)
-                    if child_version_id is not None:
-                        version_ids.add(child_version_id)
-            elif group_type == 0:
-                # Regular group - add children to queue for processing
-                for row in range(model.rowCount(index)):
-                    child_index = model.index(row, 0, index)
-                    indexes_queue.append(child_index)
-            else:
-                # Regular item - just get its version_id directly
-                version_id = model.data(index, VERSION_ID_ROLE)
-                if version_id is not None:
-                    version_ids.add(version_id)
-
+        version_ids = collect_version_ids_from_column0_indexes(
+            model, selected_indexes
+        )
         if not version_ids:
             return None
         return (project_name, version_ids, "version")

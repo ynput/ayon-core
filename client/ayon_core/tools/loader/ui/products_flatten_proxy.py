@@ -3,13 +3,15 @@ from __future__ import annotations
 
 import collections
 import datetime
-from typing import List
+from typing import List, Optional
 
 from qtpy import QtCore
 
 from ayon_core.tools.utils.lib import format_version
 
 from .products_model import (
+    GROUP_NAME_ROLE,
+    GROUP_TYPE_ROLE,
     PRODUCT_ID_ROLE,
     PRODUCT_NAME_ROLE,
     VERSION_NAME_ROLE,
@@ -17,6 +19,26 @@ from .products_model import (
     VERSION_PUBLISH_TIME_ROLE,
     VERSION_AUTHOR_ROLE,
 )
+
+
+def regular_group_name_for_product_leaf(
+    model: QtCore.QAbstractItemModel,
+    source_index: QtCore.QModelIndex,
+) -> Optional[str]:
+    """Name of the enclosing regular group row (GROUP_TYPE 0), else None (ungrouped)."""
+    parent = source_index.parent()
+    if not parent.isValid():
+        return None
+    gt = model.data(parent, GROUP_TYPE_ROLE)
+    if gt == 0:
+        text = model.data(parent, QtCore.Qt.DisplayRole)
+        return str(text) if text else None
+    if gt == 1:
+        gp = parent.parent()
+        if gp.isValid() and model.data(gp, GROUP_TYPE_ROLE) == 0:
+            text = model.data(gp, QtCore.Qt.DisplayRole)
+            return str(text) if text else None
+    return None
 
 
 def _collect_product_indexes(model: QtCore.QAbstractItemModel) -> List[QtCore.QModelIndex]:
@@ -100,6 +122,8 @@ class ProductsFlattenProxyModel(QtCore.QAbstractProxyModel):
         model = self.sourceModel()
         if role == QtCore.Qt.ToolTipRole:
             return self._build_tooltip(model, source_index)
+        if role == GROUP_NAME_ROLE:
+            return regular_group_name_for_product_leaf(model, source_index)
         return model.data(source_index, role)
 
     def _build_tooltip(self, model: QtCore.QAbstractItemModel, source_index: QtCore.QModelIndex) -> str:
@@ -157,3 +181,32 @@ class ProductsFlattenProxyModel(QtCore.QAbstractProxyModel):
             if idx == source_index:
                 return self.createIndex(row, source_index.column(), row)
         return QtCore.QModelIndex()
+
+
+class ProductsGridGroupFilterProxyModel(QtCore.QSortFilterProxyModel):
+    """Slice of ProductsFlattenProxyModel: one regular group or ungrouped (group_key None)."""
+
+    def __init__(self, group_key: Optional[str], parent=None):
+        super().__init__(parent)
+        self._group_key = group_key
+
+    def group_key(self) -> Optional[str]:
+        return self._group_key
+
+    def filterAcceptsRow(
+        self,
+        source_row: int,
+        source_parent: QtCore.QModelIndex,
+    ) -> bool:
+        if source_parent.isValid():
+            return False
+        src = self.sourceModel()
+        if src is None:
+            return False
+        idx = src.index(source_row, 0, source_parent)
+        if not idx.isValid():
+            return False
+        name = idx.data(GROUP_NAME_ROLE)
+        if self._group_key is None:
+            return name is None
+        return name == self._group_key

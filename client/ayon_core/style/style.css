@@ -1018,6 +1018,31 @@ SearchItemDisplayWidget #ValueWidget {
     border: 0px;
 }
 
+/* Loader grid — grouped sections share `#1c2026` with `#ProductsGridView` / scroll body. */
+#ProductsGridSection {
+    background-color: #1c2026;
+}
+#ProductsGridSectionHeader {
+    background-color: #1c2026;
+    border: none;
+}
+
+/* Mini ProductView must not show persistent selection / alternate-row tint like the main list. */
+#ProductsGridSectionHeader #ProductView,
+#ProductsGridSectionHeader #ProductView viewport {
+    background-color: #1c2026;
+}
+#ProductsGridSectionHeader #ProductView::item,
+#ProductsGridSectionHeader #ProductView::item:selected,
+#ProductsGridSectionHeader #ProductView::item:hover {
+    background: transparent;
+}
+#ProductsGridGroupChevron {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+}
+
 /* Loader – list/grid view mode (icon-only menu, no menu-arrow chrome) */
 #ViewModeSelector,
 #ViewModeSelectorMenuButton {
@@ -1066,6 +1091,10 @@ SearchItemDisplayWidget #ValueWidget {
     height: auto;
     min-height: 0px;
 }
+#ProductsGridView::item:selected,
+#ProductsGridView::item:selected:active {
+    background-color: #395b70;
+}
 
 /* Loader grid cards — AYON web-style tile chrome (fixed hex, not theme bg-view) */
 #ProductsGridCard {
@@ -1074,15 +1103,15 @@ SearchItemDisplayWidget #ValueWidget {
     border-radius: 11px;
 }
 #ProductsGridCard[gridSelected="true"] {
-    background-color: #204a60;
-    border-color: #204a60;
+    background-color: #395b70;
+    border-color: #395b70;
 }
 #ProductsGridCardHeaderStrip {
     background-color: #353b46;
     border-radius: 6px;
 }
 #ProductsGridCard[gridSelected="true"] #ProductsGridCardHeaderStrip {
-    background-color: #204a60;
+    background-color: #395b70;
 }
 #ProductsGridCardTitle {
     color: {color:font};

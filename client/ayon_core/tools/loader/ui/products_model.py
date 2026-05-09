@@ -48,6 +48,8 @@ REMOTE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 34
 STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
 TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
 VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 35
+# Leaf-only: regular product-group name for grid sections (None = ungrouped).
+GROUP_NAME_ROLE = QtCore.Qt.UserRole + 36
 
 
 class ProductsModel(QtGui.QStandardItemModel):

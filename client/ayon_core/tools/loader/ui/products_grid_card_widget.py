@@ -367,7 +367,7 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self._review_btn.raise_()
 
     def _flat_index(self) -> QtCore.QModelIndex:
-        return self._grid.flatten_proxy.index(self._flat_row, 0)
+        return self._grid.card_model().index(self._flat_row, 0)
 
     def _apply_name_label_text(self) -> None:
         name = self._full_product_name
@@ -423,9 +423,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
                 )
                 self._version_combo.installEventFilter(self)
                 self._version_combo.value_changed.connect(
-                    self._grid._on_card_version_value_changed
+                    self._grid.on_card_version_changed
                 )
-                self._grid._apply_filters_to_combo(self._version_combo)
+                self._grid.apply_filters_to_combo(self._version_combo)
             version_items = pm.get_version_items_by_product_id(product_id) or []
             task_tags_by_vid = {}
             for vi in version_items:
