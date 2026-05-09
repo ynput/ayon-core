@@ -682,6 +682,9 @@ class CreateContext:
 
         Reloads creators from preregistered paths and can load publish plugins
         if it's enabled on context.
+
+        Plugin path discovery is cached (see ``plugin_discovery_cache``); set
+        ``AYON_DISABLE_PLUGIN_DISCOVERY_CACHE=1`` to bypass when authoring plugins.
         """
 
         self._reset_publish_plugins(discover_publish_plugins)

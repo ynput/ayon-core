@@ -362,6 +362,26 @@ def publish_plugins_discover(
             If no paths are provided, all paths are searched.
     """
 
+    # Lazy import: pipeline package __init__ imports publish before submodules
+    # like plugin_discovery_cache are safe at top level.
+    from ayon_core.pipeline import plugin_discovery_cache
+
+    # Include plug-ins from registered paths
+    if not paths:
+        paths = pyblish.plugin.plugin_paths()
+
+    cache_key = None
+    if not plugin_discovery_cache.cache_disabled():
+        cache_key = (
+            "publish_plugins_discover",
+            frozenset(os.path.normpath(p) for p in paths),
+            plugin_discovery_cache.fingerprint_paths(paths),
+            tuple(id(p) for p in pyblish.plugin.registered_plugins()),
+        )
+        cached = plugin_discovery_cache.lookup("publish", cache_key)
+        if cached is not None:
+            return cached
+
     # The only difference with `pyblish.api.discover`
     result = DiscoverResult(pyblish.api.Plugin)
 
@@ -370,10 +390,6 @@ def publish_plugins_discover(
 
     allow_duplicates = pyblish.plugin.ALLOW_DUPLICATES
     log = pyblish.plugin.log
-
-    # Include plug-ins from registered paths
-    if not paths:
-        paths = pyblish.plugin.plugin_paths()
 
     for path in paths:
         path = os.path.normpath(path)
@@ -450,6 +466,9 @@ def publish_plugins_discover(
         filter_(plugins)
 
     result.plugins = plugins
+
+    if cache_key is not None:
+        plugin_discovery_cache.store("publish", cache_key, result)
 
     return result
 

@@ -13,6 +13,7 @@ from ayon_core.lib import (
     is_func_signature_supported,
 )
 from ayon_core.pipeline.plugin_discover import (
+    _GlobalDiscover,
     deregister_plugin,
     deregister_plugin_path,
     discover,
@@ -1055,7 +1056,29 @@ class AutoCreator(BaseCreator):
 
 
 def discover_creator_plugins(*args, **kwargs):
-    return discover(BaseCreator, *args, **kwargs)
+    from ayon_core.pipeline import plugin_discovery_cache
+
+    if plugin_discovery_cache.cache_disabled() or args or kwargs:
+        return discover(BaseCreator, *args, **kwargs)
+
+    ctx = _GlobalDiscover.get_context()
+    paths_dict = ctx.registered_plugin_paths()
+    paths = paths_dict.get(BaseCreator) or []
+    classes = ctx._registered_plugins.get(BaseCreator) or []
+
+    cache_key = (
+        "discover_creator_plugins",
+        frozenset(os.path.normpath(p) for p in paths),
+        plugin_discovery_cache.fingerprint_paths(paths),
+        tuple(id(c) for c in classes),
+    )
+    cached = plugin_discovery_cache.lookup("creator", cache_key)
+    if cached is not None:
+        return cached
+
+    result = discover(BaseCreator)
+    plugin_discovery_cache.store("creator", cache_key, result)
+    return result
 
 
 def discover_convertor_plugins(*args, **kwargs):
