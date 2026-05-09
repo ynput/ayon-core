@@ -1344,6 +1344,8 @@ def main():
 
     app = get_ayon_qt_app()
 
+    os.environ["AYON_TRAY_PID"] = str(os.getpid())
+
     if _no_hide_icons is not None:
         QtCore.QCoreApplication.setAttribute(_no_hide_icons, False)
 

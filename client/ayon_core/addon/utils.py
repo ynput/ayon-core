@@ -62,6 +62,53 @@ def _handle_error(
         os.remove(tmp_path)
 
 
+def _pid_is_running(pid: int) -> bool:
+    """Return True if ``pid`` refers to a running OS process.
+
+    Used with ``AYON_TRAY_PID`` to skip redundant ``make_sure_tray_is_running``
+    when the tray already spawned this child process.
+    """
+    if pid <= 0:
+        return False
+    try:
+        import psutil
+
+        return psutil.pid_exists(pid)
+    except ImportError:
+        pass
+    if sys.platform == "win32":
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return False
+        kernel32.CloseHandle(handle)
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # Exists but not ours — still treat as a live tray for skip logic.
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _should_skip_redundant_tray_start() -> bool:
+    raw = os.environ.get("AYON_TRAY_PID")
+    if not raw:
+        return False
+    try:
+        pid = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return False
+    return _pid_is_running(pid)
+
+
 def _start_tray():
     from ayon_core.tools.tray import make_sure_tray_is_running
 
@@ -139,7 +186,8 @@ def ensure_addons_are_process_context_ready(
     print(output_str)
     if not failed:
         if not process_context.headless:
-            _start_tray()
+            if not _should_skip_redundant_tray_start():
+                _start_tray()
         return True
 
     detail = None
