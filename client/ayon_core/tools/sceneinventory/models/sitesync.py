@@ -1,6 +1,6 @@
 import ayon_api
 
-from ayon_core.addon import AddonsManager
+from ayon_core.pipeline.context_tools import _get_addons_manager
 
 NOT_SET = object()
 
@@ -132,7 +132,7 @@ class SiteSyncModel:
     def _cache_sitesync_addon(self):
         if self._sitesync_addon is not NOT_SET:
             return self._sitesync_addon
-        manager = AddonsManager()
+        manager = _get_addons_manager()
         sitesync_addon = manager.get("sitesync")
         sync_enabled = sitesync_addon is not None and sitesync_addon.enabled
         self._sitesync_addon = sitesync_addon

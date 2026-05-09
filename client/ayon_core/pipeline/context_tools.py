@@ -52,19 +52,24 @@ LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 
-def _get_addons_manager():
+def _get_addons_manager(force: bool = False):
     """Get or create modules manager for host installation.
 
     This is not meant for public usage. Reason is to keep modules
     in memory of process to be able trigger their event callbacks if they
     need any.
 
+    Args:
+        force: When True, discard the cached instance and rebuild.
+            Use when a caller needs a fresh studio-settings snapshot
+            (rare; today no caller needs it).
+
     Returns:
         AddonsManager: Manager wrapping discovered modules.
     """
 
     global _addons_manager
-    if _addons_manager is None:
+    if force or _addons_manager is None:
         _addons_manager = AddonsManager()
     return _addons_manager
 

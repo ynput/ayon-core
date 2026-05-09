@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 from clique import assemble
 
 from ayon_core.addon import AddonsManager, ITraits
+from ayon_core.pipeline.context_tools import _get_addons_manager
 from ayon_core.pipeline.traits.temporal import FrameRanged
 
 if TYPE_CHECKING:
@@ -69,8 +70,7 @@ def get_available_traits(
 
     """
     if addons_manager is None:
-        # Create a new instance of AddonsManager
-        addons_manager = AddonsManager()
+        addons_manager = _get_addons_manager()
 
     # Get active addons
     enabled_addons = addons_manager.get_enabled_addons()

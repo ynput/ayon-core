@@ -9,7 +9,7 @@ from ayon_api import (
 )
 
 from ayon_core.lib import Logger, NestedCacheItem
-from ayon_core.addon import AddonsManager
+from ayon_core.pipeline.context_tools import _get_addons_manager
 from ayon_core.tools.loader.abstract import ActionItem
 
 DOWNLOAD_IDENTIFIER = "sitesync.download"
@@ -61,7 +61,7 @@ class SiteSyncModel:
             lifetime=self.status_lifetime
         )
 
-        manager = AddonsManager()
+        manager = _get_addons_manager()
         self._sitesync_addon = manager.get("sitesync")
 
     def reset(self):
