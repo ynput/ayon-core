@@ -1128,8 +1128,8 @@ SearchItemDisplayWidget #ValueWidget {
     padding: 1px 5px;
     min-height: 1.0em;
     min-width: 0px;
-    background-color: #4d5560;
-    border: 1px solid #4d5560;
+    background-color: #353b46;
+    border: 1px solid #353b46;
     border-radius: 8px;
     color: {color:font};
 }
@@ -1143,8 +1143,8 @@ SearchItemDisplayWidget #ValueWidget {
     height: 0px;
 }
 #ProductsGridVersionCombo:hover {
-    background-color: #4d5560;
-    border-color: #4d5560;
+    background-color: #353b46;
+    border-color: #353b46;
 }
 #ProductsGridReviewButton {
     background-color: #4d5560;
