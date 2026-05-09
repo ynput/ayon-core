@@ -7,9 +7,9 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_ui_qt.components import AYContainer
+from ayon_ui_qt.components import AYContainer, AYTreeView
 
-from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
@@ -242,8 +242,15 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
         return super().lessThan(source_left, source_right)
 
 
-class WorkfilesView(DeselectableTreeView):
+class WorkfilesView(AYTreeView):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Show both "Workfiles" and "Modified" column headers
+        self.setHeaderHidden(False)
+        self.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
+
     def drawBranches(self, painter, rect, index):
+        # Suppress branch indicators — workfiles are always flat
         return
 
 
@@ -359,7 +366,9 @@ class WorkfilesPage(AYContainer):
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
         for index in selected.indexes():
-            workfile_id = index.data(WORKFILE_ID_ROLE)
+            if index.column() == 0:
+                workfile_id = index.data(WORKFILE_ID_ROLE)
+                break
         self._controller.set_selected_workfile(workfile_id)
 
     def _on_view_clicked(self, index) -> None:

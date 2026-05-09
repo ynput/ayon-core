@@ -26,8 +26,8 @@ class LauncherWindow(AYContainer):
             parent,
             layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.High,
-            layout_margin=8,
-            layout_spacing=4,
+            layout_margin=16,
+            layout_spacing=16,
         )
 
         if controller is None:

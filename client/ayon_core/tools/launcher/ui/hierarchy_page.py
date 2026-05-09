@@ -82,7 +82,6 @@ class HierarchyPage(QtWidgets.QWidget):
         # - Folders widget
         folders_widget = LauncherFoldersWidget(controller, content_body)
         folders_widget.set_header_visible(True)
-        folders_widget.set_deselectable(True)
 
         # - Tasks widget
         tasks_widget = LauncherTasksWidget(controller, content_body)

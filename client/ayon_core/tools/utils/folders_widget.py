@@ -4,7 +4,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-from ayon_ui_qt.components import AYCheckBox
+from ayon_ui_qt.components import AYCheckBox, AYLineEdit, AYTreeView
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.style import get_default_entity_icon_color
@@ -15,9 +15,7 @@ from ayon_core.tools.common_models import (
 )
 
 from .models import RecursiveSortFilterProxyModel
-from .views import TreeView
 from .lib import RefreshThread, get_qt_icon
-from .widgets import PlaceholderLineEdit
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -397,15 +395,22 @@ class FoldersWidget(QtWidgets.QWidget):
             the expected selection. Defaults to False.
     """
 
-    double_clicked = QtCore.Signal(QtGui.QMouseEvent)
+    double_clicked = QtCore.Signal()
     selection_changed = QtCore.Signal()
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, parent, handle_expected_selection=False):
+    def __init__(
+        self,
+        controller,
+        parent,
+        handle_expected_selection=False,
+        view_variant=AYTreeView.Variants.Default,
+    ):
         super().__init__(parent)
 
-        folders_view = TreeView(self)
+        folders_view = AYTreeView(self, variant=view_variant)
         folders_view.setHeaderHidden(True)
+        folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         folders_model = FoldersQtModel(controller)
         folders_proxy_model = FoldersProxyModel()
@@ -437,7 +442,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         selection_model = folders_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
-        folders_view.double_clicked.connect(self.double_clicked)
+        folders_view.doubleClicked.connect(lambda _index: self.double_clicked.emit())
         folders_model.refreshed.connect(self._on_model_refresh)
 
         self._controller = controller
@@ -607,17 +612,6 @@ class FoldersWidget(QtWidgets.QWidget):
         if folder_id is None:
             return False
         return self.set_selected_folder(folder_id)
-
-    def set_deselectable(self, enabled):
-        """Set deselectable mode.
-
-        Items in view can be deselected.
-
-        Args:
-            enabled (bool): Enable deselectable mode.
-        """
-
-        self._folders_view.set_deselectable(enabled)
 
     def _get_selected_index(self):
         return self._folders_model.get_index_by_id(
@@ -809,8 +803,11 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
-        folders_filter_input = PlaceholderLineEdit(self)
-        folders_filter_input.setPlaceholderText("Folder name filter...")
+        folders_filter_input = AYLineEdit(
+            placeholder="Folder name filter...",
+            variant=AYLineEdit.Variants.Search_Field,
+            parent=self,
+        )
 
         my_tasks_tooltip = (
             "Filter folders and task to only those you are assigned to."

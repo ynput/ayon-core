@@ -68,7 +68,7 @@ class WorkfilesToolWindow(AYContainer):
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.High,
             layout_margin=16,
-            layout_spacing=4,
+            layout_spacing=16,
         )
         self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
