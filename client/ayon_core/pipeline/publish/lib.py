@@ -370,15 +370,16 @@ def publish_plugins_discover(
     if not paths:
         paths = pyblish.plugin.plugin_paths()
 
-    cache_key = None
-    if not plugin_discovery_cache.cache_disabled():
-        cache_key = (
-            "publish_plugins_discover",
+    use_cache = not plugin_discovery_cache.cache_disabled()
+    cheap_key = None
+    if use_cache:
+        cheap_key = (
             frozenset(os.path.normpath(p) for p in paths),
-            plugin_discovery_cache.fingerprint_paths(paths),
             tuple(id(p) for p in pyblish.plugin.registered_plugins()),
         )
-        cached = plugin_discovery_cache.lookup("publish", cache_key)
+        cached = plugin_discovery_cache.lookup_validate(
+            "publish", cheap_key, paths
+        )
         if cached is not None:
             return cached
 
@@ -467,8 +468,10 @@ def publish_plugins_discover(
 
     result.plugins = plugins
 
-    if cache_key is not None:
-        plugin_discovery_cache.store("publish", cache_key, result)
+    if use_cache and cheap_key is not None:
+        plugin_discovery_cache.store_after_discovery(
+            "publish", cheap_key, paths, result
+        )
 
     return result
 

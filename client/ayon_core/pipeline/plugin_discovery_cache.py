@@ -3,18 +3,32 @@
 This module supports C1 (publisher plugin discovery performance). Cache entries
 are **per Python process** only: separate DCC host launches do not share state.
 
+**Cheap key vs fingerprint**
+
+Lookups use a **cheap key** (no I/O): ``(frozenset(normalized_paths),
+tuple(id(...) for registered plugins/classes))``. Each stored entry also keeps the
+full **fingerprint** from :func:`fingerprint_paths` (``os.scandir`` per plugin
+root). On a cheap-key hit, we recompute the fingerprint once and compare to
+the stored tuple — same correctness as embedding the fingerprint in the lookup
+key, but **cold misses** no longer run :func:`fingerprint_paths` before
+discovery (avoids double directory work).
+
 **Scope of cache validity**
 
 - **Per-process only:** each launched DCC is a new interpreter; there is no
   cross-app sharing. The win is *open Publisher twice in the same session*.
-- **Same process, different paths or registrations** (e.g. project switch):
+- **Same process, different paths/registrations** (e.g. project switch):
   keys differ; entries coexist. An LRU cap per namespace bounds memory.
 - **Plugin authors:** set ``AYON_DISABLE_PLUGIN_DISCOVERY_CACHE=1`` for
   unconditional miss. In-place ``.py`` edits invalidate via directory mtime /
   file count; in-process ``register_plugin`` / ``register_creator_plugin``
-  changes invalidate via ``id(...)`` in the cache key.
+  changes invalidate via ``id(...)`` in the cheap key.
 - **Symlink farms:** ``os.scandir`` may follow links; mtime semantics follow
   the resolved target. Prefer the opt-out if your layout is exotic.
+
+Optional future **Phase 2** (not implemented): env-gated ``stat``-only quick
+validation to skip full ``scandir`` on some hits — platform caveats; see
+roadmap / perf notes.
 
 Env:
 
@@ -27,11 +41,21 @@ from __future__ import annotations
 
 import os
 from collections import OrderedDict
+from dataclasses import dataclass
 from typing import Any, Iterable, Optional
 
 _DEFAULT_MAX_ENTRIES = 16
 
-_stores: dict[str, OrderedDict[tuple, Any]] = {}
+# Per-namespace LRU: cheap_key -> CacheEntry
+_stores: dict[str, OrderedDict[tuple, "CacheEntry"]] = {}
+
+
+@dataclass
+class CacheEntry:
+    """Stored discovery result and the fingerprint taken after discovery."""
+
+    fingerprint: tuple[tuple[str, int, int], ...]
+    value: Any
 
 
 def cache_disabled() -> bool:
@@ -104,25 +128,45 @@ def fingerprint_paths(paths: Iterable[str]) -> tuple[tuple[str, int, int], ...]:
     return tuple(rows)
 
 
-def lookup(namespace: str, key: tuple) -> Any:
-    """Return cached value or None."""
+def lookup_validate(
+    namespace: str,
+    cheap_key: tuple,
+    paths: Iterable[str],
+) -> Any | None:
+    """Return cached value if cheap key hits and fingerprint still matches.
+
+    If the cheap key exists but the filesystem fingerprint changed, the stale
+    entry is removed and ``None`` is returned.
+    """
     if cache_disabled():
         return None
     store = _stores.setdefault(namespace, OrderedDict())
-    if key not in store:
+    entry = store.get(cheap_key)
+    if entry is None:
         return None
-    store.move_to_end(key)
-    return store[key]
+    fp_new = fingerprint_paths(paths)
+    if fp_new == entry.fingerprint:
+        store.move_to_end(cheap_key)
+        return entry.value
+    del store[cheap_key]
+    return None
 
 
-def store(namespace: str, key: tuple, value: Any) -> None:
-    """Insert or update; evict oldest when over cap (LRU on access)."""
+def store_after_discovery(
+    namespace: str,
+    cheap_key: tuple,
+    paths: Iterable[str],
+    value: Any,
+) -> None:
+    """Store value with fingerprint computed once after discovery."""
     if cache_disabled():
         return
+    fp = fingerprint_paths(paths)
+    entry = CacheEntry(fingerprint=fp, value=value)
     cap = max_entries()
     store = _stores.setdefault(namespace, OrderedDict())
-    store[key] = value
-    store.move_to_end(key)
+    store[cheap_key] = entry
+    store.move_to_end(cheap_key)
     while len(store) > cap:
         store.popitem(last=False)
 

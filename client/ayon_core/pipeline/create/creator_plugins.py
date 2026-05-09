@@ -1066,18 +1066,20 @@ def discover_creator_plugins(*args, **kwargs):
     paths = paths_dict.get(BaseCreator) or []
     classes = ctx._registered_plugins.get(BaseCreator) or []
 
-    cache_key = (
-        "discover_creator_plugins",
+    cheap_key = (
         frozenset(os.path.normpath(p) for p in paths),
-        plugin_discovery_cache.fingerprint_paths(paths),
         tuple(id(c) for c in classes),
     )
-    cached = plugin_discovery_cache.lookup("creator", cache_key)
+    cached = plugin_discovery_cache.lookup_validate(
+        "creator", cheap_key, paths
+    )
     if cached is not None:
         return cached
 
     result = discover(BaseCreator)
-    plugin_discovery_cache.store("creator", cache_key, result)
+    plugin_discovery_cache.store_after_discovery(
+        "creator", cheap_key, paths, result
+    )
     return result
 
 
