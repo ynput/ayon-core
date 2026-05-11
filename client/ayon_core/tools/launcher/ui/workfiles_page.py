@@ -366,9 +366,7 @@ class WorkfilesPage(AYContainer):
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
         for index in selected.indexes():
-            if index.column() == 0:
-                workfile_id = index.data(WORKFILE_ID_ROLE)
-                break
+            workfile_id = index.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
 
     def _on_view_clicked(self, index) -> None:
