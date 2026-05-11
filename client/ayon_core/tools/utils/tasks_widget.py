@@ -16,6 +16,7 @@ ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 PARENT_ID_ROLE = QtCore.Qt.UserRole + 2
 ITEM_NAME_ROLE = QtCore.Qt.UserRole + 3
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
+TASK_SORT_ROLE = QtCore.Qt.UserRole + 5
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
@@ -285,6 +286,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
             item.setData(task_item.parent_id, PARENT_ID_ROLE)
+            item.setData(task_item.task_type_order, TASK_SORT_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
         root_item = self.invisibleRootItem()
@@ -358,6 +360,13 @@ class TasksProxyModel(QtCore.QSortFilterProxyModel):
             return
         self._task_ids_filter = task_ids
         self.invalidateFilter()
+
+    def lessThan(self, source_left, source_right):
+        left_sort = source_left.data(TASK_SORT_ROLE)
+        right_sort = source_right.data(TASK_SORT_ROLE)
+        if left_sort is not None and right_sort is not None:
+            return left_sort < right_sort
+        return super().lessThan(source_left, source_right)
 
     def filterAcceptsRow(self, row, parent_index):
         if self._task_ids_filter is not None:
