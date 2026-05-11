@@ -379,7 +379,6 @@ def _mime_qt_from_drag_payload_data(
     """Build QMimeData + optional temp json path from _build_drag_payload_data result."""
     payload = data["payload"]
     file_paths = data.get("file_paths") or []
-    in_host = bool(data.get("in_host"))
 
     mime_data = QtCore.QMimeData()
     mime_data.setData(
@@ -398,32 +397,39 @@ def _mime_qt_from_drag_payload_data(
                     exc_info=True,
                 )
 
+    # Always write temp JSON and add it as a file URL: cross-process drops
+    # (CEP, tray Loader with host=None, etc.) do not receive custom MIME types;
+    # targets read ayon_loader_*.json from the URI list (see drag_drop module).
     temp_path: Optional[str] = None
-    if in_host:
-        try:
-            fd, temp_path = tempfile.mkstemp(
-                suffix=".json",
-                prefix=LOADER_PAYLOAD_TEMP_PREFIX,
-                dir=tempfile.gettempdir(),
+    try:
+        fd, temp_path = tempfile.mkstemp(
+            suffix=".json",
+            prefix=LOADER_PAYLOAD_TEMP_PREFIX,
+            dir=tempfile.gettempdir(),
+        )
+        with os.fdopen(fd, "wb") as f:
+            f.write(loader_payload_to_bytes(payload))
+        existing = list(mime_data.urls())
+        existing.append(QtCore.QUrl.fromLocalFile(temp_path))
+        mime_data.setUrls(existing)
+        if _log:
+            _log.debug(
+                "_mime_qt_from_drag_payload_data: loader drop temp json %s",
+                temp_path,
             )
-            with os.fdopen(fd, "wb") as f:
-                f.write(loader_payload_to_bytes(payload))
-            existing = list(mime_data.urls())
-            existing.append(QtCore.QUrl.fromLocalFile(temp_path))
-            mime_data.setUrls(existing)
-        except Exception as e:
-            if _log:
-                _log.debug(
-                    "_mime_qt_from_drag_payload_data: temp json failed %s",
-                    e,
-                    exc_info=True,
-                )
-            if temp_path and os.path.isfile(temp_path):
-                try:
-                    os.remove(temp_path)
-                except OSError:
-                    pass
-            temp_path = None
+    except Exception as e:
+        if _log:
+            _log.debug(
+                "_mime_qt_from_drag_payload_data: temp json failed %s",
+                e,
+                exc_info=True,
+            )
+        if temp_path and os.path.isfile(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+        temp_path = None
 
     return mime_data, temp_path
 
