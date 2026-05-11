@@ -20,12 +20,10 @@ from ayon_core.tools.utils import (
 from ayon_core.tools.utils.lib import center_window
 
 from .constants import ResetKeySequence
-from .publish_report_viewer import PublishReportViewerWidget
 from .abstract import CardMessageTypes, AbstractPublisherFrontend
 from .control_qt import QtPublisherController
 from .widgets import (
     OverviewWidget,
-    ReportPageWidget,
     PublishFrame,
     PublisherTabsWidget,
     SaveBtn,
@@ -192,15 +190,10 @@ class PublisherWindow(QtWidgets.QDialog):
         content_layout.setContentsMargins(marings)
         content_layout.addWidget(content_stacked_widget, 1)
 
-        # Overview - create and attributes part
+        # Overview — eager (Create/Publish cold path). Report + Details are
+        # built on first tab visit — see _ensure_report_widget /
+        # _ensure_publish_details_widget.
         overview_widget = OverviewWidget(controller, content_stacked_widget)
-
-        report_widget = ReportPageWidget(controller, content_stacked_widget)
-
-        # Details - Publish details
-        publish_details_widget = PublishReportViewerWidget(
-            content_stacked_widget
-        )
 
         content_stacked_layout = QtWidgets.QStackedLayout(
             content_stacked_widget
@@ -210,8 +203,6 @@ class PublisherWindow(QtWidgets.QDialog):
             QtWidgets.QStackedLayout.StackAll
         )
         content_stacked_layout.addWidget(overview_widget)
-        content_stacked_layout.addWidget(report_widget)
-        content_stacked_layout.addWidget(publish_details_widget)
         content_stacked_layout.setCurrentWidget(overview_widget)
 
         under_publish_layout = QtWidgets.QVBoxLayout(under_publish_widget)
@@ -371,11 +362,12 @@ class PublisherWindow(QtWidgets.QDialog):
         self._publish_frame = publish_frame
 
         self._content_widget = content_widget
+        self._content_stacked_widget = content_stacked_widget
         self._content_stacked_layout = content_stacked_layout
 
         self._overview_widget = overview_widget
-        self._report_widget = report_widget
-        self._publish_details_widget = publish_details_widget
+        self._report_widget = None
+        self._publish_details_widget = None
 
         self._context_label = context_label
 
@@ -681,9 +673,41 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._tab_on_reset = tab
 
+    def _ensure_report_widget(self):
+        """Instantiate Report tab on first use (defers Report UI setup)."""
+        if self._report_widget is not None:
+            return self._report_widget
+
+        from .widgets import ReportPageWidget
+
+        widget = ReportPageWidget(self._controller, self._content_stacked_widget)
+        self._content_stacked_layout.addWidget(widget)
+        self._report_widget = widget
+        self._report_widget._update_state()
+        return self._report_widget
+
+    def _ensure_publish_details_widget(self):
+        """Instantiate Details tab on first use (defers PublishReportViewerWidget)."""
+        if self._publish_details_widget is not None:
+            return self._publish_details_widget
+
+        from .publish_report_viewer import PublishReportViewerWidget
+
+        widget = PublishReportViewerWidget(self._content_stacked_widget)
+        self._content_stacked_layout.addWidget(widget)
+        self._publish_details_widget = widget
+        report_data = self._controller.get_publish_report()
+        widget.set_report_data(report_data)
+        return self._publish_details_widget
+
     def _update_publish_details_widget(self, force=False):
         if not force and not self._is_on_details_tab():
             return
+
+        if self._publish_details_widget is None:
+            if not self._is_on_details_tab():
+                return
+            self._ensure_publish_details_widget()
 
         report_data = self._controller.get_publish_report()
         self._publish_details_widget.set_report_data(report_data)
@@ -722,10 +746,11 @@ class PublisherWindow(QtWidgets.QDialog):
         self._go_to_publish_tab()
 
     def _on_tab_change(self, old_tab, new_tab):
-        if old_tab == "details":
+        if old_tab == "details" and self._publish_details_widget is not None:
             self._publish_details_widget.set_active(False)
 
         if new_tab == "details":
+            self._ensure_publish_details_widget()
             self._content_stacked_layout.setCurrentWidget(
                 self._publish_details_widget
             )
@@ -733,6 +758,7 @@ class PublisherWindow(QtWidgets.QDialog):
             self._publish_details_widget.set_active(True)
 
         elif new_tab == "report":
+            self._ensure_report_widget()
             self._content_stacked_layout.setCurrentWidget(self._report_widget)
 
         old_on_overview = old_tab in ("create", "publish")
@@ -937,7 +963,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_visibility(True)
         self._set_publish_overlay_visibility(True)
 
-        self._publish_details_widget.close_details_popup()
+        if self._publish_details_widget is not None:
+            self._publish_details_widget.close_details_popup()
 
         if self._is_on_create_tab():
             self._go_to_publish_tab()
