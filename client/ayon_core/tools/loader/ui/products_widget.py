@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import collections
-import logging
 import numbers
 from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.lib import Logger
 from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.tools.loader.drag_drop import (
     LOADER_PAYLOAD_MIME_TYPE,
@@ -43,7 +43,7 @@ from .actions_utils import (
     show_actions_menu,
 )
 
-_log = logging.getLogger(__name__)
+_log = Logger.get_logger(__name__)
 
 
 class ProductsProxyModel(RecursiveSortFilterProxyModel):

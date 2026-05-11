@@ -62,7 +62,6 @@ from __future__ import annotations
 import os
 import collections
 import copy
-import logging
 from abc import ABC, abstractmethod
 import typing
 from typing import ClassVar, Optional, Any, Callable, Set
@@ -81,6 +80,7 @@ from ayon_core.pipeline.plugin_discover import discover_plugins
 from .structures import ActionForm
 
 if typing.TYPE_CHECKING:
+    import logging
     from typing import Union
 
     DataBaseType = Union[str, int, float, bool]
