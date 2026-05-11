@@ -1,11 +1,9 @@
+from ayon_core.lib import Logger
 from ayon_core.tools.flickcharm import FlickCharm
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-try:
-    from ayon_core.tools.loader.logger import log as _loader_dnd_log
-except Exception:
-    _loader_dnd_log = None
+_loader_dnd_log = Logger.get_logger(__name__)
 
 
 class DeselectableTreeView(QtWidgets.QTreeView):
@@ -17,8 +15,7 @@ class DeselectableTreeView(QtWidgets.QTreeView):
 
     def mousePressEvent(self, event):
         index = self.indexAt(event.pos())
-        if _loader_dnd_log:
-            _loader_dnd_log.debug("mousePressEvent: index valid=%s", index.isValid())
+        _loader_dnd_log.debug("mousePressEvent: index valid=%s", index.isValid())
         if not index.isValid():
             # clear the selection
             self.clearSelection()
@@ -33,13 +30,12 @@ class DeselectableTreeView(QtWidgets.QTreeView):
             model = self.model()
             flags_val = model.flags(index) if model else 0
             has_drag = bool(flags_val & QtCore.Qt.ItemIsDragEnabled)
-            if _loader_dnd_log:
-                _loader_dnd_log.debug(
-                    "mousePressEvent: selected+single+noModifier, "
-                    "ItemIsDragEnabled=%s, inject Ctrl=%s",
-                    has_drag,
-                    not has_drag,
-                )
+            _loader_dnd_log.debug(
+                "mousePressEvent: selected+single+noModifier, "
+                "ItemIsDragEnabled=%s, inject Ctrl=%s",
+                has_drag,
+                not has_drag,
+            )
             if model is None or not has_drag:
                 event.setModifiers(QtCore.Qt.ControlModifier)
 

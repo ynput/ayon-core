@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 import sys
@@ -10,6 +9,7 @@ from typing import Any, Callable, Dict, Optional, Union
 from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.tools.utils import DeselectableTreeView
 
@@ -29,7 +29,7 @@ from ayon_core.tools.utils.widgets import (
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.loader.abstract import ActionItem
 
-_log = logging.getLogger(__name__)
+_log = Logger.get_logger(__name__)
 
 
 def _format_payload_summary(project_name, entity_type, entity_ids, action_items):

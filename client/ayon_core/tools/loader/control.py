@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import tempfile
 import uuid
@@ -10,7 +9,7 @@ import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
+from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles, Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
 from ayon_core.pipeline import Anatomy, get_current_context
@@ -134,7 +133,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_window_subtitle(self) -> Optional[str]:
