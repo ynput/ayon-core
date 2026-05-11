@@ -15,18 +15,20 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
 
     def process(self, instance: pyblish.api.Instance) -> None:
         attr_values = self.get_attr_values_from_data(instance.data)
-        if not self._is_custom_frames_used(
-            attr_values.get("use_custom_frames")
-        ):
+        use_custom_frames = attr_values.get("use_custom_frames")
+        if not self._is_custom_frames_used(use_custom_frames):
             self.log.debug(
                 "Custom frames are not used, "
                 "skipping collection of frame range."
             )
             return
-        if not attr_values["frames"]:
+
+        frames = attr_values.get("frames")
+        if not frames:
             raise KnownPublishError("Please fill `Custom Frames` value")
-        instance.data["custom_frames"] = attr_values["frames"]
-        if attr_values["use_custom_frames"] == "reuse_last_version":
+
+        instance.data["custom_frames"] = frames
+        if use_custom_frames == "reuse_last_version":
             instance.data["reuse_last_version"] = True
 
     @classmethod
