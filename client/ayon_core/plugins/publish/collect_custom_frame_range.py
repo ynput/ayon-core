@@ -13,7 +13,7 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
     order = pyblish.api.CollectorOrder + 0.018
     label = "Collect Custom Frame Range"
     families = [
-            "render", "render.farm", "render.frames_farm",
+            "render", "render.local", "render.farm", "render.frames_farm",
             "prerender", "prerender.farm", "prerender.frames_farm",
             "renderlayer", "imagesequence", "image",
             "vrayscene", "maxrender",
