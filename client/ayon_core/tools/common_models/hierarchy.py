@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import collections
 import contextlib
-import typing
 import time
 from typing import Any
 
