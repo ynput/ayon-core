@@ -104,17 +104,59 @@ def _open_external_icon(icon_color: str) -> QtGui.QIcon:
 
 
 class _ThumbPaintWidget(QtWidgets.QWidget):
-    """Rounded thumbnail area (image or placeholder); clicks select the row."""
+    """Rounded thumbnail area (image or placeholder); gestures forward to list for drag."""
 
     def __init__(self, card: "ProductsGridCardWidget"):
         super().__init__(card)
         self._card = card
         self.setMouseTracking(False)
+        self._forward_list_viewport_drag = False
+
+    def _interactive_thumb_child_at(
+        self, pos: QtCore.QPoint
+    ) -> Optional[QtWidgets.QWidget]:
+        w = self.childAt(pos)
+        if w is None:
+            return None
+        if w is self._card._review_btn:
+            return w
+        vc = self._card._version_combo
+        if vc is not None and (w is vc or vc.isAncestorOf(w)):
+            return w
+        return None
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self._card._request_row_selection(event.modifiers())
+            if self._interactive_thumb_child_at(event.pos()) is not None:
+                self._forward_list_viewport_drag = False
+                super().mousePressEvent(event)
+                return
+            self._forward_list_viewport_drag = True
+            self._card._send_mouse_event_to_list_viewport(event)
+            event.accept()
+            return
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        if (
+            self._forward_list_viewport_drag
+            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
+        ):
+            self._card._send_mouse_event_to_list_viewport(event)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and self._forward_list_viewport_drag
+        ):
+            self._forward_list_viewport_drag = False
+            self._card._send_mouse_event_to_list_viewport(event)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         self._card._grid.open_context_menu_from_card(
@@ -497,6 +539,24 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
 
     def _request_row_selection(self, modifiers: QtCore.Qt.KeyboardModifiers) -> None:
         self._grid.select_flat_row(self._flat_row, modifiers)
+
+    def _send_mouse_event_to_list_viewport(self, event: QtGui.QMouseEvent) -> None:
+        """Route mouse to LoaderDragListView viewport so drag arms match gap forwarding."""
+        lv = self._grid.list_view
+        if lv is None:
+            return
+        vp = lv.viewport()
+        gp = event.globalPos()
+        lp = vp.mapFromGlobal(gp)
+        routed = QtGui.QMouseEvent(
+            event.type(),
+            lp,
+            gp,
+            event.button(),
+            event.buttons(),
+            event.modifiers(),
+        )
+        QtWidgets.QApplication.sendEvent(vp, routed)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
