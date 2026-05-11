@@ -176,14 +176,14 @@ def _get_task_items_from_tasks(
         TaskItem: Task item.
 
     """
-    task_types = [
-        task_type.name
-        for task_type in task_type_items
-    ]
+    task_types = {
+        task_type.name: index
+        for index, task_type in enumerate(task_type_items)
+    }
     output = []
     for task in tasks:
         folder_id = task["folderId"]
-        task_type_order = task_types.index(task["type"])
+        task_type_order = task_types[task["type"]]
         output.append(TaskItem(
             task["id"],
             task["name"],
