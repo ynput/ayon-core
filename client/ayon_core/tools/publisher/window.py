@@ -399,7 +399,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_visibility(False)
 
         self._create_overlay_button = create_overlay_button
-        self._app_event_listener_installed = False
+        self._overlay_mouse_tracking_installed = False
+        self._overlay_tracked_widgets = []
 
         self._show_timer = show_timer
         self._comment_invalid_timer = comment_invalid_timer
@@ -484,7 +485,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         self._window_is_visible = False
-        self._uninstall_app_event_listener()
+        self._uninstall_overlay_mouse_tracking()
         # TODO capture changes and ask user if wants to save changes on close
         if not self._controller.host_context_has_changed():
             self._save_changes(False)
@@ -506,19 +507,25 @@ class PublisherWindow(QtWidgets.QDialog):
             self._update_create_overlay_visibility(event.globalPos())
         return super().eventFilter(obj, event)
 
-    def _install_app_event_listener(self):
-        if self._app_event_listener_installed:
+    def _install_overlay_mouse_tracking(self):
+        if self._overlay_mouse_tracking_installed:
             return
-        self._app_event_listener_installed = True
-        app = QtWidgets.QApplication.instance()
-        app.installEventFilter(self)
+        self._overlay_mouse_tracking_installed = True
+        self._overlay_tracked_widgets = [
+            self._overview_widget,
+            *self._overview_widget.findChildren(QtWidgets.QWidget),
+        ]
+        for widget in self._overlay_tracked_widgets:
+            widget.setMouseTracking(True)
+            widget.installEventFilter(self)
 
-    def _uninstall_app_event_listener(self):
-        if not self._app_event_listener_installed:
+    def _uninstall_overlay_mouse_tracking(self):
+        if not self._overlay_mouse_tracking_installed:
             return
-        self._app_event_listener_installed = False
-        app = QtWidgets.QApplication.instance()
-        app.removeEventFilter(self)
+        self._overlay_mouse_tracking_installed = False
+        for widget in self._overlay_tracked_widgets:
+            widget.removeEventFilter(self)
+        self._overlay_tracked_widgets = []
 
     def keyPressEvent(self, event):
         if event.key() in {
@@ -587,7 +594,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._update_create_overlay_size()
         self._update_create_overlay_visibility()
         if self._is_on_create_tab():
-            self._install_app_event_listener()
+            self._install_overlay_mouse_tracking()
 
         # Reset if requested
         if self._reset_on_show:
@@ -778,9 +785,9 @@ class PublisherWindow(QtWidgets.QDialog):
 
         is_create = new_tab == "create"
         if is_create:
-            self._install_app_event_listener()
+            self._install_overlay_mouse_tracking()
         else:
-            self._uninstall_app_event_listener()
+            self._uninstall_overlay_mouse_tracking()
         self._create_overlay_button.set_visible(is_create)
 
     def _on_context_or_active_change(self):
