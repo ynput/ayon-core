@@ -1560,66 +1560,6 @@ def get_current_context_imageio_config_preset(
 
 
 # --- Deprecated functions ---
-@deprecated("has_compatible_ocio_package")
-def compatibility_check():
-    """Making sure PyOpenColorIO is importable
-
-    Deprecated:
-        Deprecated since '0.3.2'. Use `has_compatible_ocio_package` instead.
-    """
-
-    return has_compatible_ocio_package()
-
-
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_imageio_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_colorspace_data_subprocess(config_path):
-    """[Deprecated] Get colorspace data via subprocess
-
-    Deprecated:
-        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: colorspace and family in couple
-    """
-    return _get_wrapped_with_subprocess(
-        "get_ocio_config_colorspaces",
-        config_path=config_path
-    )
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_views_data_subprocess(config_path):
-    """[Deprecated] Get viewers data via subprocess
-
-    Deprecated:
-        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: `display/viewer` and viewer data
-
-    """
-    return _get_wrapped_with_subprocess(
-        "get_ocio_config_views",
-        config_path=config_path
-    )
-
-
 @deprecated("get_imageio_config_preset")
 def get_imageio_config(
     project_name,
