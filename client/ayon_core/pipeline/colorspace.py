@@ -580,11 +580,11 @@ def convert_colorspace_enumerator_item(
 
 
 def get_colorspaces_enumerator_items(
-    config_items,
-    include_aliases=False,
-    include_looks=False,
-    include_roles=False,
-    include_display_views=False
+    config_items: dict[str, Any],
+    include_aliases: bool = False,
+    include_looks: bool = False,
+    include_roles: bool = False,
+    include_display_views: bool = False
 ):
     """Get all colorspace data with labels
 
@@ -594,10 +594,10 @@ def get_colorspaces_enumerator_items(
     Args:
         config_items (dict[str,dict]): Colorspace data coming from
             `get_ocio_config_colorspaces` function.
-        include_aliases (Optional[bool]): Include aliases in result.
-        include_looks (Optional[bool]): Include looks in result.
-        include_roles (Optional[bool]): Include roles in result.
-        include_display_views (Optional[bool]): Include display views
+        include_aliases (bool): Include aliases in result.
+        include_looks (bool): Include looks in result.
+        include_roles (bool): Include roles in result.
+        include_display_views (bool): Include display views
             in result.
 
     Returns:
@@ -1088,7 +1088,8 @@ def get_imageio_file_rules(project_name, host_name, project_settings=None):
         list[dict[str, Any]]: file rules data
 
     """
-    project_settings = project_settings or get_project_settings(project_name)
+    if not project_settings:
+        project_settings = get_project_settings(project_name)
 
     imageio_global, imageio_host = _get_imageio_settings(
         project_settings, host_name)
