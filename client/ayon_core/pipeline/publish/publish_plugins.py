@@ -117,7 +117,26 @@ class PublishXmlValidationError(PublishValidationError):
         if not formatting_data:
             formatting_data = {}
         result = load_help_content_from_plugin(plugin, help_filename)
-        content_obj = result["errors"][key]
+        errors_map = result["errors"]
+        if key not in errors_map:
+            if "main" in errors_map:
+                key = "main"
+            elif errors_map:
+                key = next(iter(errors_map))
+        if key not in errors_map:
+            description = message
+            err_text = formatting_data.get("error")
+            if err_text:
+                description = f"{message}\n\nDetails:\n{err_text}"
+            super().__init__(
+                message,
+                title="Publish error",
+                description=description,
+                detail=err_text,
+            )
+            return
+
+        content_obj = errors_map[key]
         description = content_obj.description.format(**formatting_data)
         detail = content_obj.detail
         if detail:
