@@ -984,7 +984,7 @@ def get_imageio_config_preset(
         if not project_entity:
             project_entity = ayon_api.get_project(project_name)
 
-        folder_entity = task_entity = folder_id = None
+        folder_entity = task_entity = None
         if folder_path:
             folder_entity = ayon_api.get_folder_by_path(
                 project_name, folder_path
