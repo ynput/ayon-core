@@ -13,11 +13,10 @@ from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
-VERSION_ROLE = QtCore.Qt.UserRole + 1
+ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
-ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 5
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -74,7 +73,6 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
-            item.setData(workfile_item.version, VERSION_ROLE)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
@@ -170,7 +168,11 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             if role == QtCore.Qt.DisplayRole:
                 role = UPDATED_AT_ROLE
 
-            elif role not in (HOST_NAME_ROLE, ITEM_TYPE_ROLE):
+            elif role not in (
+                WORKFILE_ID_ROLE,
+                HOST_NAME_ROLE,
+                ITEM_TYPE_ROLE,
+            ):
                 return None
 
             index = self.index(index.row(), 0, index.parent())

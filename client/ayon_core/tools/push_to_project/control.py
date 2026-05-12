@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 from typing import Dict
 
@@ -7,7 +9,11 @@ from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline.create import get_product_name_template
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    TaskTypeItem,
+)
 
 from .models import (
     PushToProjectSelectionModel,
@@ -147,6 +153,13 @@ class PushToContextController:
 
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
+
+    def get_task_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
+        return self._projects_model.get_task_type_items(
+            project_name, sender=sender
+        )
 
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
