@@ -1229,6 +1229,8 @@ def main_cli_publish(
     install_ayon_plugins()
 
     if addons_manager is None:
+        # Project-scoped settings for farm publish; not the process singleton
+        # (which uses studio settings when constructed with default args).
         addons_manager = AddonsManager(project_settings)
 
     applications_addon = addons_manager.get_enabled_addon("applications")
