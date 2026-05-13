@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import json
 
@@ -6,7 +8,9 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
 )
@@ -158,6 +162,7 @@ class ContextDialogController:
     def __init__(self):
         self._event_system = None
 
+        self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._selection_model = SelectionModel(self)
@@ -187,6 +192,7 @@ class ContextDialogController:
         self._initial_folder_found = True
         self._initial_tasks_found = True
 
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
 
@@ -195,6 +201,7 @@ class ContextDialogController:
     def refresh(self):
         self._emit_event("controller.refresh.started")
 
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
 
@@ -224,6 +231,9 @@ class ContextDialogController:
         self._emit_event("strict.changed", {"strict": enabled})
 
     # Data model functions
+    def get_project_settings(self, project_name: str | None) -> dict:
+        return self._settings_model.get_settings(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
