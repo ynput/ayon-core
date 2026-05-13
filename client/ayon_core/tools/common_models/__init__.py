@@ -28,6 +28,8 @@ __all__ = (
     "CacheItem",
     "NestedCacheItem",
 
+    "SettingsModel",
+
     "TagItem",
     "StatusItem",
     "StatusStates",

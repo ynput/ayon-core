@@ -8,7 +8,6 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
