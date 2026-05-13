@@ -624,7 +624,13 @@ def _run_loader_drag(
     drag.setPixmap(_drag_pixmap_for_view(view, raw_result))
     drag.setHotSpot(QtCore.QPoint(10, 10))
     drag.exec_(QtCore.Qt.DropAction.CopyAction)
-    _delete_payload_temp_file(temp_path)
+    # Cross-process drops (e.g. Photoshop Place) finish Qt's drag before the
+    # host reads the temp JSON; delete after a bounded delay so embedded scans
+    # can find ayon_loader_*.json. Host success paths may delete earlier.
+    if temp_path:
+        QtCore.QTimer.singleShot(
+            5000, lambda p=temp_path: _delete_payload_temp_file(p)
+        )
 
 
 def _remime_from_decoded_payload(
