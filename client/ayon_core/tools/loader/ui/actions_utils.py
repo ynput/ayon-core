@@ -379,6 +379,7 @@ def _mime_qt_from_drag_payload_data(
     """Build QMimeData + optional temp json path from _build_drag_payload_data result."""
     payload = data["payload"]
     file_paths = data.get("file_paths") or []
+    in_host = bool(data.get("in_host"))
 
     mime_data = QtCore.QMimeData()
     mime_data.setData(
