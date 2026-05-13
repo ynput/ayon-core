@@ -68,6 +68,17 @@ def _delete_payload_temp_file(path: Optional[str]) -> None:
         pass
 
 
+def _delete_payload_temp_file_after_drag(path: Optional[str]) -> None:
+    """Deferred cleanup after cross-process drag; log for timing regressions."""
+    if _log:
+        _log.debug(
+            "loader drag marker deferred delete firing: path=%s exists=%s",
+            path,
+            os.path.isfile(path) if path else False,
+        )
+    _delete_payload_temp_file(path)
+
+
 def _set_file_urls_on_mime_data(mime_data: QtCore.QMimeData, paths: list) -> None:
     """Set file URLs on mime data for cross-platform drag (text/uri-list).
     On Windows, sets Preferred DropEffect to 5 (copy) so Explorer copies instead of moves.
@@ -627,9 +638,10 @@ def _run_loader_drag(
     # Cross-process drops (e.g. Photoshop Place) finish Qt's drag before the
     # host reads the temp JSON; delete after a bounded delay so embedded scans
     # can find ayon_loader_*.json. Host success paths may delete earlier.
+    # 60s: Plc + smart-object retries + JSX marker scan can exceed 5s easily.
     if temp_path:
         QtCore.QTimer.singleShot(
-            5000, lambda p=temp_path: _delete_payload_temp_file(p)
+            60000, lambda p=temp_path: _delete_payload_temp_file_after_drag(p)
         )
 
 
