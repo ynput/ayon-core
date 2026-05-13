@@ -400,6 +400,7 @@ class TasksWidget(QtWidgets.QWidget):
         parent (QtWidgets.QWidget): Parent widget.
         handle_expected_selection (Optional[bool]): Handle expected selection.
     """
+    log = Logger.get_logger("TasksWidget")
 
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal()
@@ -645,8 +646,8 @@ class TasksWidget(QtWidgets.QWidget):
                 settings["tools"]["general"]["use_task_type_sorting"]
             )
         else:
-            log.warning(
-                "Controller '{self._controller}' doesn't have"
+            self.log.warning(
+                f"Controller '{self._controller}' doesn't have"
                 " 'get_project_settings' method, task type"
                 " sorting will be disabled."
             )
