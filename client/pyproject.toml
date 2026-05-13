@@ -17,7 +17,7 @@ aiohttp-middlewares = "^2.0.0"
 Click = "^8"
 OpenTimelineIO = "0.16.0"
 opencolorio = "^2.5.1,<2.6.0"
-Pillow = "9.5.0"
+Pillow = "^12.2.0"
 websocket-client = ">=0.40.0,<2"
 fontTools = "*"
 
