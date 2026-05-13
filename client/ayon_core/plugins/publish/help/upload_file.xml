@@ -1,21 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<root>
+<help>
 <error id="main">
-<title>{upload_type} upload timed out</title>
-<description>
-## {upload_type} upload failed after retries
+    <title>File upload failed</title>
+    <description>## {upload_type} upload failed
 
-The connection to the AYON server timed out while uploading a file.
+The file could not be uploaded to the AYON server after repeated attempts.
 
 ### How to resolve?
 
-1. Try publishing again. Intermittent network hiccups often resolve on retry.
-2. Ensure your network/VPN is stable and large uploads are allowed.
-3. If it keeps failing, try again later or contact your admin.
+1. Try publishing again once your network or VPN is stable.
+2. If it still fails after a few tries, use the icon in lower left corner of the Publisher to export the publish report, and send it to **Pipeline Engineering** for investigation.
 
-<pre>File: {file}
-Error: {error}</pre>
+**File:** `{file}`
 
-</description>
-</error>
-</root>
+**Error:** `{error}`
+    </description>
+  </error>
+  <error id="upload_timeout">
+    <title>File upload failed</title>
+    <description>## {upload_type} upload failed
+
+The connection was lost or timed out while uploading to the AYON server.
+
+### How to resolve?
+
+1. Try publishing again. If the problem is intermittent, a retry often works.
+2. If it keeps failing, open the **Report** tab in the Publisher, copy or export the publish report, and send it to **Pipeline Engineering** along with the file path and error below.
+
+**File:** `{file}`
+
+**Error:** `{error}`
+    </description>
+  </error>
+</help>
