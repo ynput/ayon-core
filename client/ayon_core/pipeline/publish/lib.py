@@ -1207,7 +1207,9 @@ def main_cli_publish(
     install_ayon_plugins()
 
     if addons_manager is None:
-        addons_manager = AddonsManager(project_settings)
+        from ayon_core.pipeline.context_tools import _get_addons_manager
+
+        addons_manager = _get_addons_manager()
 
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:

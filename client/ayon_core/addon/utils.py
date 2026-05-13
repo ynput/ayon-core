@@ -96,7 +96,9 @@ def ensure_addons_are_process_context_ready(
 
     """
     if addons_manager is None:
-        addons_manager = AddonsManager()
+        from ayon_core.pipeline.context_tools import _get_addons_manager
+
+        addons_manager = _get_addons_manager()
 
     message = None
     failed = False

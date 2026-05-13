@@ -691,11 +691,11 @@ class LoaderActionsContext:
         self._plugins = None
 
     def get_addons_manager(self) -> AddonsManager:
-        if self._addons_manager is None:
-            self._addons_manager = AddonsManager(
-                settings=self.get_studio_settings()
-            )
-        return self._addons_manager
+        if self._addons_manager is not None:
+            return self._addons_manager
+        from ayon_core.pipeline.context_tools import _get_addons_manager
+
+        return _get_addons_manager()
 
     def get_host(self) -> Optional[AbstractHost]:
         """Get current host integration.

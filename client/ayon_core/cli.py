@@ -10,7 +10,6 @@ from pathlib import Path
 import click
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
 from ayon_core.lib import (
     initialize_ayon_connection,
@@ -336,7 +335,9 @@ def main(*args, **kwargs):
     print("  - global AYON ...")
     _set_global_environments()
     print("  - for addons ...")
-    addons_manager = AddonsManager()
+    from ayon_core.pipeline.context_tools import _get_addons_manager
+
+    addons_manager = _get_addons_manager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
 
