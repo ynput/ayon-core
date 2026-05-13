@@ -409,21 +409,12 @@ def _mime_qt_from_drag_payload_data(
                     exc_info=True,
                 )
 
-    # Always write temp JSON and add it as a file URL: cross-process drops
-    # (CEP, tray Loader with host=None, etc.) do not receive custom MIME types;
-    # targets read ayon_loader_*.json from the URI list (see drag_drop module).
+    # Cross-process hosts resolve the marker from custom MIME, legacy URL list,
+    # or temp-dir scan (Harmony, Unity, Photoshop CEP). Always write temp JSON
+    # under the OS temp dir. Do **not** append the marker to ``setUrls``:
+    # native Photoshop treats every file URL as Place input and errors on
+    # ``.json``.
     temp_path: Optional[str] = None
-    # Tray / standalone Loader has in_host False but Photoshop canvas Place
-    # still needs a fresh ayon_loader_*.json under the OS temp dir for CEP/JSX.
-    # TEMP DEBUG: always write marker + log path probes (delete once canvas
-    # Place / file_paths is fixed — do not ship long-term).
-    if _log and not (in_host or bool(file_paths)):
-        _log.info(
-            "loader drag marker: temp write (debug) tray-only in_host=%s "
-            "file_paths_n=%s",
-            in_host,
-            len(file_paths),
-        )
     try:
         fd, temp_path = tempfile.mkstemp(
             suffix=".json",
@@ -434,33 +425,14 @@ def _mime_qt_from_drag_payload_data(
             marker_disk: Dict[str, Any] = dict(payload)
             marker_disk["file_paths"] = list(file_paths)
             f.write(loader_payload_to_bytes(marker_disk))
-        existing = list(mime_data.urls())
-        existing.append(QtCore.QUrl.fromLocalFile(temp_path))
-        mime_data.setUrls(existing)
         if _log:
-            _log.info(
-                "loader drag marker written: path=%s file_paths_n=%d in_host=%s",
+            _log.debug(
+                "loader drag marker written: path=%s "
+                "file_paths_n=%d in_host=%s",
                 temp_path,
                 len(file_paths),
                 in_host,
             )
-        if _log:
-            if not file_paths:
-                _log.info(
-                    "loader drag marker path probe: file_paths empty "
-                    "(nothing to check on disk)"
-                )
-            for idx, fp in enumerate(file_paths):
-                fp_s = str(fp) if fp is not None else ""
-                _log.info(
-                    "loader drag marker path probe [%s]: %r exists=%s "
-                    "isfile=%s isabs=%s",
-                    idx,
-                    fp_s,
-                    os.path.exists(fp_s) if fp_s else False,
-                    os.path.isfile(fp_s) if fp_s else False,
-                    os.path.isabs(fp_s) if fp_s else False,
-                )
     except Exception as e:
         if _log:
             _log.debug(
