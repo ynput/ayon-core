@@ -580,11 +580,11 @@ def convert_colorspace_enumerator_item(
 
 
 def get_colorspaces_enumerator_items(
-    config_items,
-    include_aliases=False,
-    include_looks=False,
-    include_roles=False,
-    include_display_views=False
+    config_items: dict[str, Any],
+    include_aliases: bool = False,
+    include_looks: bool = False,
+    include_roles: bool = False,
+    include_display_views: bool = False
 ):
     """Get all colorspace data with labels
 
@@ -594,10 +594,10 @@ def get_colorspaces_enumerator_items(
     Args:
         config_items (dict[str,dict]): Colorspace data coming from
             `get_ocio_config_colorspaces` function.
-        include_aliases (Optional[bool]): Include aliases in result.
-        include_looks (Optional[bool]): Include looks in result.
-        include_roles (Optional[bool]): Include roles in result.
-        include_display_views (Optional[bool]): Include display views
+        include_aliases (bool): Include aliases in result.
+        include_looks (bool): Include looks in result.
+        include_roles (bool): Include roles in result.
+        include_display_views (bool): Include display views
             in result.
 
     Returns:
@@ -1088,7 +1088,8 @@ def get_imageio_file_rules(project_name, host_name, project_settings=None):
         list[dict[str, Any]]: file rules data
 
     """
-    project_settings = project_settings or get_project_settings(project_name)
+    if not project_settings:
+        project_settings = get_project_settings(project_name)
 
     imageio_global, imageio_host = _get_imageio_settings(
         project_settings, host_name)
@@ -1560,66 +1561,6 @@ def get_current_context_imageio_config_preset(
 
 
 # --- Deprecated functions ---
-@deprecated("has_compatible_ocio_package")
-def compatibility_check():
-    """Making sure PyOpenColorIO is importable
-
-    Deprecated:
-        Deprecated since '0.3.2'. Use `has_compatible_ocio_package` instead.
-    """
-
-    return has_compatible_ocio_package()
-
-
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_imageio_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_colorspace_data_subprocess(config_path):
-    """[Deprecated] Get colorspace data via subprocess
-
-    Deprecated:
-        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: colorspace and family in couple
-    """
-    return _get_wrapped_with_subprocess(
-        "get_ocio_config_colorspaces",
-        config_path=config_path
-    )
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_views_data_subprocess(config_path):
-    """[Deprecated] Get viewers data via subprocess
-
-    Deprecated:
-        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: `display/viewer` and viewer data
-
-    """
-    return _get_wrapped_with_subprocess(
-        "get_ocio_config_views",
-        config_path=config_path
-    )
-
-
 @deprecated("get_imageio_config_preset")
 def get_imageio_config(
     project_name,
