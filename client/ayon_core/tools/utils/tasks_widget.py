@@ -643,7 +643,7 @@ class TasksWidget(QtWidgets.QWidget):
         if hasattr(self._controller, "get_project_settings"):
             settings = self._controller.get_project_settings(project_name)
             use_task_type_sorting = (
-                settings["tools"]["general"]["use_task_type_sorting"]
+                settings["core"]["tools"]["general"]["use_task_type_sorting"]
             )
         else:
             self.log.warning(
