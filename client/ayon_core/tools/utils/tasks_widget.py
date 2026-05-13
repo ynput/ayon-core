@@ -459,6 +459,7 @@ class TasksWidget(QtWidgets.QWidget):
         trigger query from server, that's based on controller's cache.
         """
         self._use_task_type_sorting = None
+        self._update_task_type_sorting()
         self._tasks_model.refresh()
 
     def get_selected_task_info(self):
