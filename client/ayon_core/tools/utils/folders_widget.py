@@ -442,7 +442,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         selection_model = folders_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
-        folders_view.double_clicked.connect(self.double_clicked)
+        folders_view.doubleClicked.connect(lambda _index: self.double_clicked.emit())
         folders_model.refreshed.connect(self._on_model_refresh)
 
         self._controller = controller
