@@ -120,27 +120,20 @@ def decode_loader_drag_payload_from_mime(mime_data: Any) -> Optional[dict[str, A
         or None if not a valid loader payload.
     """
     if mime_data is None:
-        _log.debug("Loader drag payload decode skipped: mime_data is None")
         return None
     if not mime_data.hasFormat(LOADER_PAYLOAD_MIME_TYPE):
-        _log.debug("Loader drag payload decode skipped: wrong MIME type")
         return None
     raw = mime_data.data(LOADER_PAYLOAD_MIME_TYPE)
     if not raw:
-        _log.debug("Loader drag payload decode skipped: empty MIME data")
         return None
     try:
         data = json.loads(bytes(raw).decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        _log.debug("Loader drag payload decode failed: %s", e)
+        _log.debug("Loader drag payload decode failed: %s", e, exc_info=True)
         return None
     if not isinstance(data, dict):
-        _log.debug("Loader drag payload decode skipped: root is not dict")
         return None
     if "project_name" not in data or "entity_type" not in data or "actions" not in data:
-        _log.debug(
-            "Loader drag payload decode skipped: missing required keys"
-        )
         return None
     return data
 
@@ -155,17 +148,10 @@ def decode_loader_drag_payload(data: dict[str, Any]) -> Optional[dict[str, Any]]
         The same dict if valid, or None.
     """
     if not data or not isinstance(data, dict):
-        _log.debug("Loader drag payload decode skipped: invalid data type")
         return None
     if "project_name" not in data or "entity_type" not in data or "actions" not in data:
-        _log.debug(
-            "Loader drag payload decode skipped: missing required keys"
-        )
         return None
     if data.get("entity_type") not in ("version", "representation"):
-        _log.debug(
-            "Loader drag payload decode skipped: invalid entity_type"
-        )
         return None
     return data
 

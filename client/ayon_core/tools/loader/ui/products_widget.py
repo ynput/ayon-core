@@ -6,7 +6,6 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib import Logger
 from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.tools.loader.drag_drop import (
     LOADER_PAYLOAD_MIME_TYPE,
@@ -42,8 +41,6 @@ from .actions_utils import (
     LoaderDragTreeView,
     show_actions_menu,
 )
-
-_log = Logger.get_logger(__name__)
 
 
 class ProductsProxyModel(RecursiveSortFilterProxyModel):
@@ -102,19 +99,11 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
 
     def mimeData(self, indexes):
         """Build loader payload from selected indexes so the view starts drag."""
-        if _log:
-            _log.debug("mimeData: indexes count=%s", len(indexes) if indexes else 0)
         if not indexes:
-            if _log:
-                _log.debug("mimeData: returning None (no indexes)")
             return None
         source = self.sourceModel()
         project_name = getattr(source, "get_last_project_name", lambda: None)()
-        if _log:
-            _log.debug("mimeData: project_name=%s", project_name)
         if not project_name:
-            if _log:
-                _log.debug("mimeData: returning None (no project_name)")
             return None
         version_ids = []
         seen = set()
@@ -128,11 +117,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             vid = source.data(src_idx, VERSION_ID_ROLE)
             if vid:
                 version_ids.append(vid)
-        if _log:
-            _log.debug("mimeData: version_ids=%s", version_ids)
         if not version_ids:
-            if _log:
-                _log.debug("mimeData: returning None (no version_ids)")
             return None
         payload = encode_loader_drag_payload(
             project_name, "version", version_ids, []
@@ -142,8 +127,6 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             LOADER_PAYLOAD_MIME_TYPE,
             QtCore.QByteArray(loader_payload_to_bytes(payload)),
         )
-        if _log:
-            _log.debug("mimeData: returning QMimeData")
         return mime
 
     def filterAcceptsRow(self, source_row, source_parent):

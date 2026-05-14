@@ -30,9 +30,40 @@ from ayon_core.tools.utils.widgets import (
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.loader.abstract import ActionItem
 
-from .loader_native_diag import qt_cpp_object_alive
-
 _log = Logger.get_logger(__name__)
+
+
+def qt_cpp_object_alive(obj: object) -> bool:
+    """True if ``obj`` still wraps a live Qt C++ object (for post-drag cleanup)."""
+    if obj is None:
+        return False
+    for mod_name in ("shiboken6", "shiboken2"):
+        try:
+            mod = __import__(mod_name, fromlist=["isValid"])
+            is_valid = getattr(mod, "isValid", None)
+            if callable(is_valid):
+                return bool(is_valid(obj))
+        except Exception:
+            continue
+    try:
+        from qtpy import QT_BINDING
+    except Exception:
+        return True
+    if QT_BINDING == "pyqt6":
+        try:
+            from PyQt6 import sip as _sip  # type: ignore[attr-defined]
+
+            return not _sip.isdeleted(obj)
+        except Exception:
+            pass
+    if QT_BINDING in ("pyqt5", "pyqt6"):
+        try:
+            import sip as _sip  # type: ignore
+
+            return not _sip.isdeleted(obj)
+        except Exception:
+            pass
+    return True
 
 
 def _format_payload_summary(project_name, entity_type, entity_ids, action_items):
@@ -72,13 +103,7 @@ def _delete_payload_temp_file(path: Optional[str]) -> None:
 
 
 def _delete_payload_temp_file_after_drag(path: Optional[str]) -> None:
-    """Deferred cleanup after cross-process drag; log for timing regressions."""
-    if _log:
-        _log.debug(
-            "loader drag marker deferred delete firing: path=%s exists=%s",
-            path,
-            os.path.isfile(path) if path else False,
-        )
+    """Deferred cleanup after cross-process drag."""
     _delete_payload_temp_file(path)
 
 
@@ -321,12 +346,6 @@ def _write_loader_drag_marker_file(
             marker_disk: Dict[str, Any] = dict(payload)
             marker_disk["file_paths"] = list(file_paths)
             f.write(loader_payload_to_bytes(marker_disk))
-        if _log:
-            _log.debug(
-                "loader drag marker written: path=%s file_paths_n=%d",
-                temp_path,
-                len(file_paths),
-            )
     except Exception as e:
         if _log:
             _log.debug(
@@ -540,7 +559,6 @@ def _mime_qt_from_drag_payload_data(
     """Build QMimeData + optional temp json path from _build_drag_payload_data result."""
     payload = data["payload"]
     file_paths = data.get("file_paths") or []
-    in_host = bool(data.get("in_host"))
 
     mime_data = QtCore.QMimeData()
     mime_data.setData(
@@ -566,16 +584,7 @@ def _mime_qt_from_drag_payload_data(
     # native Photoshop treats every file URL as Place input and errors on
     # ``.json``.
     temp_path: Optional[str] = data.get("marker_temp_path")
-    if temp_path and os.path.isfile(temp_path):
-        if _log:
-            _log.debug(
-                "loader drag marker from precache: path=%s file_paths_n=%d "
-                "in_host=%s",
-                temp_path,
-                len(file_paths),
-                in_host,
-            )
-    else:
+    if not (temp_path and os.path.isfile(temp_path)):
         temp_path = None
         try:
             fd, temp_path = tempfile.mkstemp(
@@ -587,14 +596,6 @@ def _mime_qt_from_drag_payload_data(
                 marker_disk: Dict[str, Any] = dict(payload)
                 marker_disk["file_paths"] = list(file_paths)
                 f.write(loader_payload_to_bytes(marker_disk))
-            if _log:
-                _log.debug(
-                    "loader drag marker written: path=%s "
-                    "file_paths_n=%d in_host=%s",
-                    temp_path,
-                    len(file_paths),
-                    in_host,
-                )
         except Exception as e:
             if _log:
                 _log.debug(
@@ -662,14 +663,6 @@ def _mime_payload_from_selection(
     """Build MIME data for loader drag; returns mime, temp_path, actions, flat_ids, eff_type."""
     controller = _loader_drag_controller_for_mime_view(view)
     if not controller:
-        if _log:
-            _log.debug(
-                "_mime_payload_from_selection: no controller (view=%s parent=%s)",
-                type(view).__name__,
-                type(view.parentWidget()).__name__
-                if view.parentWidget()
-                else None,
-            )
         return None, None, [], [], entity_type
 
     built: Optional[Dict[str, Any]] = pre_cached
@@ -700,8 +693,6 @@ def _build_drag_mime_data_core(
     view._last_drag_summary = None  # noqa: SLF001
     cb = getattr(view, "_drag_data_callback", None)
     if not cb:
-        if _log:
-            _log.debug("_build_drag_mime_data: reason=no_callback")
         return None, (), None, None
     try:
         result = cb()
@@ -710,18 +701,14 @@ def _build_drag_mime_data_core(
             _log.debug("_build_drag_mime_data: callback raised %s", e, exc_info=True)
         return None, (), None, None
     if not result:
-        if _log:
-            _log.debug("_build_drag_mime_data: reason=callback_returned_none")
         return None, (), None, None
     try:
         project_name, entity_ids, entity_type = result
     except (ValueError, TypeError) as e:
         if _log:
-            _log.debug("_build_drag_mime_data: unpack failed %s", e)
+            _log.debug("_build_drag_mime_data: unpack failed %s", e, exc_info=True)
         return None, (), None, None
     if not entity_ids:
-        if _log:
-            _log.debug("_build_drag_mime_data: reason=no_entity_ids")
         return None, (), None, None
 
     ids_set = set(entity_ids)
@@ -761,8 +748,6 @@ def _build_drag_mime_data_core(
     summary = _format_payload_summary(
         project_name, eff_type, flat_ids, action_items
     )
-    if _log:
-        _log.debug("_build_drag_mime_data: %s", summary)
     view._last_drag_summary = summary  # noqa: SLF001
     return mime_data, (), temp_path, raw_tuple
 
@@ -798,6 +783,10 @@ def _run_loader_drag(
     begin_guard = getattr(view, "begin_source_drag_guard", None)
     if callable(begin_guard):
         begin_guard()
+    if _log:
+        summ = getattr(view, "_last_drag_summary", None)
+        if summ:
+            _log.debug("loader drag start: %s", summ)
     try:
         pixmap = _drag_pixmap_for_view(view, raw_result)
         drag = QtGui.QDrag(view)
@@ -834,19 +823,7 @@ def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
     except Exception:
         mime_data, temp_path, raw_result = None, None, None
     if mime_data is None or raw_result is None:
-        if _log:
-            _log.debug(
-                "run_loader_drag_for_card: abort mime=%s raw=%s (see "
-                "_mime_payload_from_selection / _build_drag_mime_data logs)",
-                mime_data is not None,
-                raw_result is not None,
-            )
         return
-    if _log and getattr(lv, "_last_drag_summary", None):
-        _log.debug(
-            "card drag: executing via list view source %s",
-            lv._last_drag_summary,  # noqa: SLF001
-        )
     _run_loader_drag(lv, mime_data, temp_path, raw_result)
 
 
@@ -954,11 +931,6 @@ class LoaderDragTreeView(DeselectableTreeView):
                     self
                 )
                 if mime_data is not None and raw_result is not None:
-                    if _log and getattr(self, "_last_drag_summary", None):
-                        _log.debug(
-                            "mouseMoveEvent: fallback drag %s",
-                            self._last_drag_summary,
-                        )
                     _run_loader_drag(self, mime_data, temp_path, raw_result)
                     return
 
@@ -1020,11 +992,7 @@ class LoaderDragTreeView(DeselectableTreeView):
         return mime_data, (), temp_path
 
     def startDrag(self, supportedActions):
-        if _log:
-            _log.debug(
-                "startDrag: entry supportedActions=%s",
-                supportedActions,
-            )
+        _ = supportedActions
         try:
             mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(self)
         except Exception as e:
@@ -1035,21 +1003,8 @@ class LoaderDragTreeView(DeselectableTreeView):
                     exc_info=True,
                 )
             mime_data, temp_path, raw_result = None, None, None
-        if _log:
-            _log.debug(
-                "startDrag: mime_data built=%s, fallback to super=%s",
-                mime_data is not None,
-                mime_data is None,
-            )
         if mime_data is not None and raw_result is not None:
-            if _log and getattr(self, "_last_drag_summary", None):
-                _log.debug(
-                    "startDrag: executing drag with custom mime_data %s",
-                    self._last_drag_summary,
-                )
             _run_loader_drag(self, mime_data, temp_path, raw_result)
-            if _log:
-                _log.debug("startDrag: drag finished")
             return
         model = self.model()
         sel = self.selectionModel()
@@ -1061,21 +1016,15 @@ class LoaderDragTreeView(DeselectableTreeView):
             ):
                 payload = decode_loader_drag_payload_from_mime(model_mime)
                 if payload:
-                    if _log:
-                        _log.debug(
-                            "startDrag: model mimeData %s",
-                            _format_payload_summary_from_dict(payload),
-                        )
                     mime_b, temp_b, raw_b = _remime_from_decoded_payload(
                         self, payload
                     )
                     if mime_b is not None and raw_b is not None:
+                        self._last_drag_summary = (
+                            _format_payload_summary_from_dict(payload)
+                        )
                         _run_loader_drag(self, mime_b, temp_b, raw_b)
                         return
-        if _log:
-            _log.debug(
-                "startDrag: no payload (product row only?); fallback to super"
-            )
         super().startDrag(supportedActions)
 
 
@@ -1183,12 +1132,6 @@ class LoaderDragListView(QtWidgets.QListView):
                     else None
                 )
                 if not idx_armed.isValid() or w_at is None:
-                    if _log:
-                        _log.debug(
-                            "LoaderDragListView.mousePressEvent: "
-                            "swallow_empty_while_armed pos=%s",
-                            event.pos(),
-                        )
                     event.accept()
                     return
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -1207,12 +1150,6 @@ class LoaderDragListView(QtWidgets.QListView):
         if gw is not None and gw.armed_card_drag_list_view() is self:
             ac = gw.armed_card_drag_card()
             if ac is not None and isinstance(event, QtGui.QMouseEvent):
-                if _log:
-                    _log.debug(
-                        "LoaderDragListView.mouseMoveEvent: forward armed_card "
-                        "flat_row=%s",
-                        getattr(ac, "_flat_row", None),
-                    )
                 ac.handle_armed_drag_move(
                     _loader_mouse_event_global_point(event),
                     event.buttons(),
@@ -1263,11 +1200,7 @@ class LoaderDragListView(QtWidgets.QListView):
     def startDrag(self, supportedActions):
         if self.source_drag_guard_active():
             return
-        if _log:
-            _log.debug(
-                "startDrag: entry supportedActions=%s",
-                supportedActions,
-            )
+        _ = supportedActions
         try:
             mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(self)
         except Exception as e:
@@ -1278,18 +1211,7 @@ class LoaderDragListView(QtWidgets.QListView):
                     exc_info=True,
                 )
             mime_data, temp_path, raw_result = None, None, None
-        if _log:
-            _log.debug(
-                "startDrag: mime_data built=%s, fallback to super=%s",
-                mime_data is not None,
-                mime_data is None,
-            )
         if mime_data is not None and raw_result is not None:
-            if _log and getattr(self, "_last_drag_summary", None):
-                _log.debug(
-                    "startDrag: executing drag with custom mime_data %s",
-                    self._last_drag_summary,
-                )
             _run_loader_drag(self, mime_data, temp_path, raw_result)
             return
         model = self.model()
@@ -1302,21 +1224,15 @@ class LoaderDragListView(QtWidgets.QListView):
             ):
                 payload = decode_loader_drag_payload_from_mime(model_mime)
                 if payload:
-                    if _log:
-                        _log.debug(
-                            "startDrag: model mimeData %s",
-                            _format_payload_summary_from_dict(payload),
-                        )
                     mime_b, temp_b, raw_b = _remime_from_decoded_payload(
                         self, payload
                     )
                     if mime_b is not None and raw_b is not None:
+                        self._last_drag_summary = (
+                            _format_payload_summary_from_dict(payload)
+                        )
                         _run_loader_drag(self, mime_b, temp_b, raw_b)
                         return
-        if _log:
-            _log.debug(
-                "startDrag: no payload (product row only?); fallback to super"
-            )
         super().startDrag(supportedActions)
 
 

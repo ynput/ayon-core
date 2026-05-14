@@ -636,11 +636,6 @@ class ProductsGridSection(QtWidgets.QWidget):
                 QtCore.QEvent.Type.MouseButtonRelease,
             ):
                 if et == QtCore.QEvent.Type.MouseMove:
-                    if _log:
-                        _log.debug(
-                            "grid section eventFilter: armed MouseMove -> card "
-                            "handle_armed_drag_move"
-                        )
                     armed.handle_armed_drag_move(
                         self._mouse_event_global_point(event),
                         event.buttons(),
@@ -651,11 +646,6 @@ class ProductsGridSection(QtWidgets.QWidget):
                     et == QtCore.QEvent.Type.MouseButtonRelease
                     and event.button() == QtCore.Qt.MouseButton.LeftButton
                 ):
-                    if _log:
-                        _log.debug(
-                            "grid section eventFilter: armed MouseButtonRelease -> "
-                            "cancel_armed_drag"
-                        )
                     armed.cancel_armed_drag(reason="viewport_left_release")
                     event.accept()
                     return True
@@ -670,17 +660,7 @@ class ProductsGridSection(QtWidgets.QWidget):
                         else None
                     )
                     if not idx.isValid() or w is None:
-                        if _log:
-                            _log.debug(
-                                "grid section eventFilter: armed press on empty -> "
-                                "cancel_armed_drag"
-                            )
                         armed.cancel_armed_drag(reason="viewport_press_empty")
-                    elif _log:
-                        _log.debug(
-                            "grid section eventFilter: armed press on indexWidget "
-                            "-> fallthrough"
-                        )
                     return False
 
         guard_lv = getattr(self._owner, "_active_source_drag_list_view", None)

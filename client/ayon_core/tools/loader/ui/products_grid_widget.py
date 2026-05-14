@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.lib import Logger
 from ayon_core.tools.utils.lib import format_version
 
 from .products_flatten_proxy import ProductsFlattenProxyModel
@@ -55,8 +54,6 @@ __all__ = [
     "GRID_COLUMNS_MAX",
     "columns_from_density_scale",
 ]
-
-_log = Logger.get_logger("loader.ProductsGridWidget")
 
 
 class ProductsGridWidget(QtWidgets.QWidget):
@@ -175,12 +172,6 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._armed_card_drag_list_view = list_view
         self._armed_card_drag_card = card
         self._suppress_marquee_if_needed()
-        if _log:
-            _log.debug(
-                "grid begin_armed_card_drag: list_view=%s card_flat_row=%s",
-                id(list_view),
-                getattr(card, "_flat_row", None),
-            )
 
     def clear_armed_card_drag(
         self,
@@ -198,11 +189,6 @@ class ProductsGridWidget(QtWidgets.QWidget):
             and self._marquee_backup_before_source_drag
         ):
             self._restore_marquee_after_source_drag()
-        if _log:
-            _log.debug(
-                "grid clear_armed_card_drag: restore_marquee=%s",
-                restore_marquee,
-            )
 
     def armed_card_drag_card(self) -> Optional[Any]:
         return self._armed_card_drag_card
@@ -920,13 +906,6 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._selected_merged_products = []
         project_name = self._controller.get_selected_project_name()
         if project_name and selected_version_ids:
-            if _log:
-                _log.debug(
-                    "loader drag precache: selection-changed pn=%s n=%d "
-                    "et=version",
-                    project_name,
-                    len(selected_version_ids),
-                )
             self._drag_precache.pre_build(
                 self._controller,
                 project_name,

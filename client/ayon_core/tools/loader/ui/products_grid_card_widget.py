@@ -9,7 +9,6 @@ import qtawesome
 from qtpy import QtCore, QtGui, QtWidgets
 
 import ayon_api
-from ayon_core.lib import Logger
 from ayon_core.style import get_default_entity_icon_color, get_objected_colors
 
 from .products_delegates import VersionComboBox
@@ -23,8 +22,6 @@ from .actions_utils import (
     loader_drag_start_distance,
     run_loader_drag_for_card,
 )
-
-_log = Logger.get_logger("loader.ProductsGridCardWidget")
 
 # Thumbnail plate canvas aspect only; title/chrome sit above and add to tile height.
 THUMB_REF_WIDTH = 16
@@ -202,9 +199,6 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self._drag_start_pos: Optional[QtCore.QPoint] = None
         self._drag_start_global_pos: Optional[QtCore.QPoint] = None
         self._card_grid_interaction = False
-        self._diag_armed_move_half_logged = False
-        self._diag_card_mousemove_logged = False
-        self._diag_guard_block_logged = False
 
         self._icon_label = QtWidgets.QLabel(self)
         self._icon_label.setObjectName("ProductsGridCardIcon")
@@ -433,28 +427,13 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             other_armed.cancel_armed_drag(reason="superseded_by_other_card")
         lv = self._grid.list_view
         if lv.source_drag_guard_active():
-            if _log:
-                _log.debug(
-                    "card mousePress: flat_row=%s branch=source_drag_guard_active",
-                    self._flat_row,
-                )
             event.accept()
             return
         if gw is not None and gw._active_source_drag_list_view is not None:
-            if _log:
-                _log.debug(
-                    "card mousePress: flat_row=%s branch=active_source_drag_list_view",
-                    self._flat_row,
-                )
             event.accept()
             return
         idx = self._flat_index()
         if not idx.isValid():
-            if _log:
-                _log.debug(
-                    "card mousePress: flat_row=%s branch=invalid_flat_index",
-                    self._flat_row,
-                )
             super().mousePressEvent(event)
             return
         model = idx.model()
@@ -466,9 +445,6 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         if drag_arm:
             self._drag_start_pos = QtCore.QPoint(event.pos())
             self._drag_start_global_pos = self._mouse_global_point(event)
-            self._diag_armed_move_half_logged = False
-            self._diag_card_mousemove_logged = False
-            self._diag_guard_block_logged = False
             lv.viewport().setCursor(
                 QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             )
@@ -476,20 +452,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             self._section.begin_user_interaction()
             gw.begin_armed_card_drag(lv, self)
             self.grabMouse()
-            if _log:
-                _log.debug(
-                    "card mousePress: flat_row=%s drag_arm=True grabMouse=%s",
-                    self._flat_row,
-                    self.mouseGrabber() is self,
-                )
         else:
             self._drag_start_pos = None
             self._drag_start_global_pos = None
-            if _log:
-                _log.debug(
-                    "card mousePress: flat_row=%s drag_arm=False",
-                    self._flat_row,
-                )
         event.accept()
 
     def _clear_armed_drag_local(self, lv: QtWidgets.QListView) -> None:
@@ -497,19 +462,11 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             self.releaseMouse()
         self._drag_start_pos = None
         self._drag_start_global_pos = None
-        self._diag_armed_move_half_logged = False
-        self._diag_card_mousemove_logged = False
-        self._diag_guard_block_logged = False
         setattr(lv, "_drag_precache_armed", False)
         lv.viewport().unsetCursor()
 
     def cancel_armed_drag(self, reason: str = "") -> None:
-        if _log:
-            _log.debug(
-                "card cancel_armed_drag: flat_row=%s reason=%s",
-                self._flat_row,
-                reason or "unspecified",
-            )
+        _ = reason
         gw = self._grid._owner
         lv = self._grid.list_view
         if gw is not None and gw.armed_card_drag_card() is self:
@@ -523,8 +480,6 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             self._section.end_user_interaction()
 
     def _start_card_drag(self, lv: QtWidgets.QListView) -> None:
-        if _log:
-            _log.debug("card _start_card_drag: flat_row=%s entry", self._flat_row)
         gw = self._grid._owner
         gw.clear_armed_card_drag(self, restore_marquee=False)
         self._clear_armed_drag_local(lv)
@@ -547,55 +502,22 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         buttons: QtCore.Qt.MouseButtons,
     ) -> bool:
         if self._drag_start_global_pos is None:
-            if _log:
-                _log.debug(
-                    "card _handle_armed_drag_move: flat_row=%s branch=no_start_global",
-                    self._flat_row,
-                )
             return False
         lv = self._grid.list_view
         if not (buttons & QtCore.Qt.MouseButton.LeftButton):
             self.cancel_armed_drag(reason="no_left_button")
             return True
         if lv.source_drag_guard_active():
-            if _log and not self._diag_guard_block_logged:
-                self._diag_guard_block_logged = True
-                _log.debug(
-                    "card _handle_armed_drag_move: flat_row=%s branch=source_drag_guard",
-                    self._flat_row,
-                )
             return True
         if getattr(self._grid._owner, "_active_source_drag_list_view", None):
-            if _log and not self._diag_guard_block_logged:
-                self._diag_guard_block_logged = True
-                _log.debug(
-                    "card _handle_armed_drag_move: flat_row=%s branch=active_source_drag",
-                    self._flat_row,
-                )
             return True
 
         delta = global_pos - self._drag_start_global_pos
         dist = delta.manhattanLength()
         half_d = max(2, loader_drag_start_distance() // 2)
-        if dist >= half_d and not self._diag_armed_move_half_logged:
-            self._diag_armed_move_half_logged = True
-            if _log:
-                _log.debug(
-                    "card _handle_armed_drag_move: flat_row=%s dist=%s half_d=%s "
-                    "precache_arm",
-                    self._flat_row,
-                    dist,
-                    half_d,
-                )
         if dist >= half_d:
             _maybe_arm_drag_precache(lv)
         if dist >= loader_drag_start_distance():
-            if _log:
-                _log.debug(
-                    "card _handle_armed_drag_move: flat_row=%s dist=%s start_drag",
-                    self._flat_row,
-                    dist,
-                )
             self._start_card_drag(lv)
         return True
 
@@ -605,17 +527,6 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             and event.buttons() & QtCore.Qt.MouseButton.LeftButton
         ):
             gpos = self._mouse_global_point(event)
-            if self._drag_start_global_pos is not None and not self._diag_card_mousemove_logged:
-                d0 = gpos - self._drag_start_global_pos
-                half_d = max(2, loader_drag_start_distance() // 2)
-                if d0.manhattanLength() >= half_d:
-                    self._diag_card_mousemove_logged = True
-                    if _log:
-                        _log.debug(
-                            "card mouseMoveEvent: flat_row=%s dist>=%s (half threshold)",
-                            self._flat_row,
-                            half_d,
-                        )
             self._handle_armed_drag_move(gpos, event.buttons())
             event.accept()
             return
