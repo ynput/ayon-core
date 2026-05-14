@@ -395,7 +395,7 @@ class FoldersWidget(QtWidgets.QWidget):
             the expected selection. Defaults to False.
     """
 
-    double_clicked = QtCore.Signal()
+    double_clicked = QtCore.Signal(QtGui.QMouseEvent)
     selection_changed = QtCore.Signal()
     refreshed = QtCore.Signal()
 
@@ -442,7 +442,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         selection_model = folders_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
-        folders_view.doubleClicked.connect(lambda _index: self.double_clicked.emit())
+        folders_view.double_clicked.connect(self.double_clicked)
         folders_model.refreshed.connect(self._on_model_refresh)
 
         self._controller = controller
@@ -612,6 +612,17 @@ class FoldersWidget(QtWidgets.QWidget):
         if folder_id is None:
             return False
         return self.set_selected_folder(folder_id)
+
+    def set_deselectable(self, enabled):
+        """Set deselectable mode.
+
+        Items in view can be deselected.
+
+        Args:
+            enabled (bool): Enable deselectable mode.
+        """
+
+        self._folders_view.set_deselectable(enabled)
 
     def _get_selected_index(self):
         return self._folders_model.get_index_by_id(
@@ -815,7 +826,6 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         my_tasks_checkbox = AYCheckBox("My tasks", parent=self)
         my_tasks_checkbox.setChecked(False)
         my_tasks_checkbox.setToolTip(my_tasks_tooltip)
-        my_tasks_checkbox.setMinimumWidth(100)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

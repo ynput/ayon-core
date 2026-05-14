@@ -11,9 +11,9 @@ def file_size_to_string(file_size):
         return "N/A"
     size = 0
     size_ending_mapping = {
-        "KB": 1024**1,
-        "MB": 1024**2,
-        "GB": 1024**3,
+        "KB": 1024 ** 1,
+        "MB": 1024 ** 2,
+        "GB": 1024 ** 3,
     }
     ending = "B"
     for _ending, _size in size_ending_mapping.items():
@@ -82,7 +82,8 @@ class SidePanelWidget(AYContainer):
         self.add_widget(details_form, stretch=1)
 
         # ── Artist Note section ──────────────────────────────────────
-        self.add_widget(AYLabel("Artist Note", rel_text_size=1, parent=self))
+        self.artist_note = AYLabel("Artist Note", rel_text_size=1, parent=self)
+        self.add_widget(self.artist_note)
 
         note_frame = AYContainer(
             layout=AYContainer.Layout.VBox,
@@ -116,13 +117,13 @@ class SidePanelWidget(AYContainer):
             self._on_representation_selection_change,
         )
 
-        self._details_form         = details_form
-        self._size_val             = size_val
-        self._created_val          = created_val
-        self._modified_val         = modified_val
-        self._comment_val          = comment_val
-        self._note_frame           = note_frame
-        self._description_input    = description_input
+        self._details_form = details_form
+        self._size_val = size_val
+        self._created_val = created_val
+        self._modified_val = modified_val
+        self._comment_val = comment_val
+        self._note_frame = note_frame
+        self._description_input = description_input
         self._btn_description_save = btn_description_save
 
         self._folder_id = None
@@ -141,7 +142,7 @@ class SidePanelWidget(AYContainer):
         Args:
             published_mode (bool): Published mode enabled.
         """
-
+        self.artist_note.setVisible(not published_mode)
         self._note_frame.setVisible(not published_mode)
         # Clear the context when switching modes to avoid showing stale data
         if published_mode:

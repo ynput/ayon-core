@@ -50,13 +50,14 @@ class FilesWidget(AYContainer):
         )
 
         workarea_btns_layout = AYHBoxLayout(workarea_btns_widget, margin=0, spacing=4)
+        workarea_btns_layout.setContentsMargins(0, 8, 0, 0)
         workarea_btns_layout.addWidget(workarea_btn_open, 1)
         workarea_btns_layout.addWidget(workarea_btn_browse, 1)
         workarea_btns_layout.addWidget(workarea_btn_save, 1)
 
         published_btns_widget = QtWidgets.QWidget(btns_widget)
         published_btn_copy_n_open = AYButton(
-            "Copy && Open", variant=AYButton.Variants.Filled,
+            "Copy & Open", variant=AYButton.Variants.Filled,
             parent=published_btns_widget,
         )
         published_btn_change_context = AYButton(

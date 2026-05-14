@@ -1,8 +1,14 @@
 from qtpy import QtWidgets, QtCore
 
 from ayon_ui_qt.components import (
-    AYButton, AYCheckBox, AYComboBox, AYLabel,
-    AYHBoxLayout, AYVBoxLayout, AYGridLayout, AYLineEdit,
+    AYButton,
+    AYCheckBox,
+    AYComboBox,
+    AYLabel,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYGridLayout,
+    AYLineEdit,
 )
 from ayon_core.tools.utils import PlaceholderPlainTextEdit
 

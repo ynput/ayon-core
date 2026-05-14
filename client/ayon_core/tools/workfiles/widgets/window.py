@@ -10,7 +10,6 @@ from ayon_ui_qt.components import (
 from ayon_core import resources, style
 from ayon_core.tools.utils import (
     FoldersWidget,
-    GoToCurrentButton,
     MessageOverlayObject,
     TasksWidget,
     FoldersFiltersWidget,
@@ -187,7 +186,12 @@ class WorkfilesToolWindow(AYContainer):
 
         filters_widget = FoldersFiltersWidget(header_widget)
 
-        go_to_current_btn = GoToCurrentButton(header_widget)
+        go_to_current_btn = AYButton(
+            icon="arrow_downward",
+            variant=AYButton.Variants.Surface,
+            tooltip="Go to current",
+            parent=header_widget,
+        )
         refresh_btn = AYButton(
             icon="refresh",
             variant=AYButton.Variants.Surface,
@@ -234,7 +238,6 @@ class WorkfilesToolWindow(AYContainer):
 
         published_checkbox = AYCheckBox("Published", parent=header_widget)
         published_checkbox.setToolTip("Show published workfiles")
-        published_checkbox.setMinimumWidth(100)
 
         header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(files_filter_input, 1)
