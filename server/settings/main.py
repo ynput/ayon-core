@@ -170,6 +170,7 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     app_names: list[str] = SettingsField(
         default_factory=list,
         title="Application names",
+        placeholder="{group}/{variant} (maya/2026, nuke/13.2, ...)",
         description=(
             "Application full name (group/variant) from applications addon."
         ),
