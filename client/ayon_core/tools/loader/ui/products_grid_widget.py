@@ -106,6 +106,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._collapsed_groups: set[str] = set()
         self._suppress_selection_broadcast = False
         self._active_source_drag_list_view: Optional[QtWidgets.QListView] = None
+        self._marquee_backup_before_source_drag: Dict[int, bool] = {}
 
         self._scroll = QtWidgets.QScrollArea(self)
         self._scroll.setWidgetResizable(True)
@@ -152,13 +153,40 @@ class ProductsGridWidget(QtWidgets.QWidget):
     def register_active_source_drag_list_view(
         self, list_view: QtWidgets.QListView
     ) -> None:
+        if self._active_source_drag_list_view is not None:
+            return
         self._active_source_drag_list_view = list_view
+        self._suppress_marquee_for_source_drag()
+
+    def _suppress_marquee_for_source_drag(self) -> None:
+        """Hide rubber-band on every section list for the whole drag gesture."""
+        self._marquee_backup_before_source_drag.clear()
+        for sec in self._sections_in_display_order():
+            lv = sec.list_view
+            key = id(lv)
+            self._marquee_backup_before_source_drag[key] = bool(
+                lv.isSelectionRectVisible()
+            )
+            lv.setSelectionRectVisible(False)
+
+    def _restore_marquee_after_source_drag(self) -> None:
+        for sec in self._sections_in_display_order():
+            lv = sec.list_view
+            key = id(lv)
+            prev = self._marquee_backup_before_source_drag.pop(key, True)
+            try:
+                lv.setSelectionRectVisible(prev)
+            except RuntimeError:
+                pass
+        self._marquee_backup_before_source_drag.clear()
 
     def clear_active_source_drag_list_view(
         self, list_view: QtWidgets.QListView
     ) -> None:
-        if self._active_source_drag_list_view is list_view:
-            self._active_source_drag_list_view = None
+        if self._active_source_drag_list_view is not list_view:
+            return
+        self._active_source_drag_list_view = None
+        self._restore_marquee_after_source_drag()
 
     @property
     def list_view(self) -> Optional[QtWidgets.QAbstractItemView]:

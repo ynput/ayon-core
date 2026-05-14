@@ -1073,7 +1073,6 @@ class LoaderDragListView(QtWidgets.QListView):
         self._last_drag_summary = None
         self._drag_precache_armed = False
         self._source_drag_active_until_release = False
-        self._source_drag_selection_rect_was_visible: Optional[bool] = None
         self._source_drag_left_up_confirmations = 0
 
     def source_drag_guard_active(self) -> bool:
@@ -1084,10 +1083,6 @@ class LoaderDragListView(QtWidgets.QListView):
             return
         self._source_drag_active_until_release = True
         self._source_drag_left_up_confirmations = 0
-        self._source_drag_selection_rect_was_visible = bool(
-            self.isSelectionRectVisible()
-        )
-        self.setSelectionRectVisible(False)
         gw = getattr(self, "_products_grid_owner", None)
         if gw is not None:
             gw.register_active_source_drag_list_view(self)
@@ -1097,13 +1092,9 @@ class LoaderDragListView(QtWidgets.QListView):
             return
         self._source_drag_active_until_release = False
         self._source_drag_left_up_confirmations = 0
-        prev = self._source_drag_selection_rect_was_visible
-        self._source_drag_selection_rect_was_visible = None
         gw = getattr(self, "_products_grid_owner", None)
         if gw is not None:
             gw.clear_active_source_drag_list_view(self)
-        if prev is not None and qt_cpp_object_alive(self):
-            self.setSelectionRectVisible(prev)
 
     def end_source_drag_guard_when_left_released(self) -> None:
         if not self._source_drag_active_until_release:
