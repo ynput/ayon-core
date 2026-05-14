@@ -132,7 +132,7 @@ class _ThumbPaintWidget(QtWidgets.QWidget):
                 super().mousePressEvent(event)
                 return
             self._forward_list_viewport_drag = True
-            self._card._send_mouse_event_to_list_viewport(event)
+            self._card._route_mouse_event_to_list_view(event)
             event.accept()
             return
         super().mousePressEvent(event)
@@ -142,7 +142,7 @@ class _ThumbPaintWidget(QtWidgets.QWidget):
             self._forward_list_viewport_drag
             and event.buttons() & QtCore.Qt.MouseButton.LeftButton
         ):
-            self._card._send_mouse_event_to_list_viewport(event)
+            self._card._route_mouse_event_to_list_view(event)
             event.accept()
             return
         super().mouseMoveEvent(event)
@@ -153,7 +153,7 @@ class _ThumbPaintWidget(QtWidgets.QWidget):
             and self._forward_list_viewport_drag
         ):
             self._forward_list_viewport_drag = False
-            self._card._send_mouse_event_to_list_viewport(event)
+            self._card._route_mouse_event_to_list_view(event)
             event.accept()
             return
         super().mouseReleaseEvent(event)
@@ -540,8 +540,14 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
     def _request_row_selection(self, modifiers: QtCore.Qt.KeyboardModifiers) -> None:
         self._grid.select_flat_row(self._flat_row, modifiers)
 
-    def _send_mouse_event_to_list_viewport(self, event: QtGui.QMouseEvent) -> None:
-        """Route mouse to LoaderDragListView viewport so drag arms match gap forwarding."""
+    def _route_mouse_event_to_list_view(self, event: QtGui.QMouseEvent) -> None:
+        """Deliver card/thumb coords to ``LoaderDragListView`` as viewport-local events.
+
+        ``QApplication.sendEvent(viewport, ...)`` does not run ``QAbstractItemView``'s
+        ``viewportEvent`` → ``mousePressEvent`` chain, so drags never armed and Qt's
+        rubber band still ran. Call the view's handlers directly with viewport coords
+        (same convention as Qt's forwarded events).
+        """
         lv = self._grid.list_view
         if lv is None:
             return
@@ -556,7 +562,13 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             event.buttons(),
             event.modifiers(),
         )
-        QtWidgets.QApplication.sendEvent(vp, routed)
+        et = event.type()
+        if et == QtCore.QEvent.Type.MouseButtonPress:
+            lv.mousePressEvent(routed)
+        elif et == QtCore.QEvent.Type.MouseMove:
+            lv.mouseMoveEvent(routed)
+        elif et == QtCore.QEvent.Type.MouseButtonRelease:
+            lv.mouseReleaseEvent(routed)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -574,7 +586,7 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
                     QtCore.Qt.MouseButton.LeftButton,
                     event.modifiers(),
                 )
-                QtWidgets.QApplication.sendEvent(vp, press)
+                lv.mousePressEvent(press)
                 return
             w = None
             if self._thumb.geometry().contains(pos):

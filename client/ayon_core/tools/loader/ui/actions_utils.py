@@ -1046,8 +1046,11 @@ class LoaderDragListView(QtWidgets.QListView):
                         sm.clearSelection()
                         sm.select(index, flags.Select | rows)
                 else:
-                    sm.clearSelection()
-                    sm.select(index, flags.Select | rows)
+                    # Plain click: keep existing multi-selection when pressing an
+                    # already-selected cell (standard view + drag behavior).
+                    if not sm.isSelected(index):
+                        sm.clearSelection()
+                        sm.select(index, flags.Select | rows)
                 sm.setCurrentIndex(
                     index,
                     flags.Current,
