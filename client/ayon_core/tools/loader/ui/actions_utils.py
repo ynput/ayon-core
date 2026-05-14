@@ -101,6 +101,9 @@ def _loader_drag_start_distance() -> int:
     return max(3, QtWidgets.QApplication.startDragDistance() // 2)
 
 
+loader_drag_start_distance = _loader_drag_start_distance
+
+
 def _controller_for_drag_precache(view: QtWidgets.QWidget) -> Any:
     """Resolve LoaderController for precache (list parent chain vs tree header)."""
     p = view.parentWidget()
@@ -791,6 +794,35 @@ def _run_loader_drag(
         )
 
 
+def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
+    """Start loader ``QDrag`` from a grid card; MIME uses ``list_view`` selection."""
+    grid = getattr(card, "_grid", None)
+    lv = getattr(grid, "list_view", None) if grid is not None else None
+    if lv is None:
+        return
+    try:
+        mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(lv)
+    except Exception:
+        mime_data, temp_path, raw_result = None, None, None
+    if mime_data is None or raw_result is None:
+        return
+    try:
+        drag = QtGui.QDrag(card)
+        drag.setMimeData(mime_data)
+        drag.setPixmap(_drag_pixmap_for_view(lv, raw_result))
+        drag.setHotSpot(QtCore.QPoint(10, 10))
+        drag.exec_(QtCore.Qt.DropAction.CopyAction)
+    finally:
+        if qt_cpp_object_alive(lv) and hasattr(
+            lv, "_loader_drag_placeholder_pixmap"
+        ):
+            delattr(lv, "_loader_drag_placeholder_pixmap")
+    if temp_path:
+        QtCore.QTimer.singleShot(
+            60000, lambda p=temp_path: _delete_payload_temp_file_after_drag(p)
+        )
+
+
 def _remime_from_decoded_payload(
     view: QtWidgets.QWidget, payload: dict[str, Any]
 ) -> tuple[Optional[QtCore.QMimeData], Optional[str], Optional[RawDragResult]]:
@@ -1021,7 +1053,7 @@ class LoaderDragTreeView(DeselectableTreeView):
 
 
 class LoaderDragListView(QtWidgets.QListView):
-    """List view that supports dragging loader action payload (grid mode)."""
+    """IconMode list: marquee on empty viewport; grid drags originate from cards."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1030,10 +1062,7 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_data_callback = None
         self._drag_pixmap_context_callback = None
         self._drag_precache: Optional[DragPayloadPrecache] = None
-        self._drag_start_pos = None
         self._last_drag_summary = None
-        self._grid_interaction_section = None
-        self._grid_drag_interaction_active = False
         self._drag_precache_armed = False
 
     def set_drag_data_callback(
@@ -1049,110 +1078,17 @@ class LoaderDragListView(QtWidgets.QListView):
     def set_drag_precache(self, cache: Optional[DragPayloadPrecache]) -> None:
         self._drag_precache = cache
 
-    def set_grid_interaction_section(self, section: Any) -> None:
-        """``ProductsGridSection`` for deferred card rebuild while dragging."""
-        self._grid_interaction_section = section
-
     def mousePressEvent(self, event):
-        if event.button() != QtCore.Qt.MouseButton.LeftButton:
-            super().mousePressEvent(event)
-            return
-        self._drag_precache_armed = False
-        index = self.indexAt(event.pos())
-        if not index.isValid():
-            if getattr(self, "_grid_drag_interaction_active", False):
-                self._grid_drag_interaction_active = False
-                sec = getattr(self, "_grid_interaction_section", None)
-                if sec is not None:
-                    sec.end_user_interaction()
-            self.clearSelection()
-            self.setCurrentIndex(QtCore.QModelIndex())
-            self._drag_start_pos = None
-            QtWidgets.QListView.mousePressEvent(self, event)
-            return
-        model = self.model()
-        if model and (model.flags(index) & QtCore.Qt.ItemIsDragEnabled):
-            sm = self.selectionModel()
-            if sm is not None:
-                flags = QtCore.QItemSelectionModel.SelectionFlag
-                rows = flags.Rows
-                mods = event.modifiers()
-                if mods & QtCore.Qt.KeyboardModifier.ControlModifier:
-                    sm.select(index, flags.Toggle | rows)
-                elif mods & QtCore.Qt.KeyboardModifier.ShiftModifier:
-                    cur = sm.currentIndex()
-                    if cur.isValid() and cur.parent() == index.parent():
-                        sm.select(
-                            QtCore.QItemSelection(cur, index),
-                            flags.Select | rows,
-                        )
-                    else:
-                        sm.clearSelection()
-                        sm.select(index, flags.Select | rows)
-                else:
-                    # Plain click: keep existing multi-selection when pressing an
-                    # already-selected cell (standard view + drag behavior).
-                    if not sm.isSelected(index):
-                        sm.clearSelection()
-                        sm.select(index, flags.Select | rows)
-                sm.setCurrentIndex(
-                    index,
-                    flags.Current,
-                )
-            self._drag_start_pos = event.pos()
-            self.viewport().setCursor(
-                QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
-            )
-            self._grid_drag_interaction_active = True
-            sec = getattr(self, "_grid_interaction_section", None)
-            if sec is not None:
-                sec.begin_user_interaction()
-            QtWidgets.QListView.mousePressEvent(self, event)
-            event.accept()
-            return
-        if getattr(self, "_grid_drag_interaction_active", False):
-            self._grid_drag_interaction_active = False
-            sec = getattr(self, "_grid_interaction_section", None)
-            if sec is not None:
-                sec.end_user_interaction()
-        self._drag_start_pos = None
-        QtWidgets.QListView.mousePressEvent(self, event)
-
-    def mouseMoveEvent(self, event):
-        if (
-            self._drag_start_pos is not None
-            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
-            and self._drag_data_callback
-        ):
-            dist = (event.pos() - self._drag_start_pos).manhattanLength()
-            half_d = max(2, _loader_drag_start_distance() // 2)
-            if dist >= half_d:
-                _maybe_arm_drag_precache(self)
-            if dist >= _loader_drag_start_distance():
-                self._drag_start_pos = None
-                self.viewport().unsetCursor()
-                mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(
-                    self
-                )
-                if mime_data is not None and raw_result is not None:
-                    if _log and getattr(self, "_last_drag_summary", None):
-                        _log.debug(
-                            "mouseMoveEvent: fallback drag %s",
-                            self._last_drag_summary,
-                        )
-                    _run_loader_drag(self, mime_data, temp_path, raw_result)
-                    return
-        super().mouseMoveEvent(event)
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._drag_precache_armed = False
+            index = self.indexAt(event.pos())
+            if not index.isValid():
+                self.clearSelection()
+                self.setCurrentIndex(QtCore.QModelIndex())
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if getattr(self, "_grid_drag_interaction_active", False):
-            self._grid_drag_interaction_active = False
-            sec = getattr(self, "_grid_interaction_section", None)
-            if sec is not None:
-                sec.end_user_interaction()
-        self._drag_start_pos = None
         self._drag_precache_armed = False
-        self.viewport().unsetCursor()
         super().mouseReleaseEvent(event)
 
     def _build_drag_mime_data(self):

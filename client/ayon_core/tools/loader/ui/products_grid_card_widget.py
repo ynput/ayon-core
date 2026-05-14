@@ -17,6 +17,11 @@ from .products_model import (
     PRODUCT_NAME_ROLE,
     VERSION_ID_ROLE,
 )
+from .actions_utils import (
+    _maybe_arm_drag_precache,
+    loader_drag_start_distance,
+    run_loader_drag_for_card,
+)
 
 # Thumbnail plate canvas aspect only; title/chrome sit above and add to tile height.
 THUMB_REF_WIDTH = 16
@@ -188,11 +193,11 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self.setObjectName("ProductsGridCard")
         self.setAutoFillBackground(True)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setAttribute(
-            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
-        )
         self._grid = grid
+        self._section: Any = grid
         self._flat_row = flat_row
+        self._drag_start_pos: Optional[QtCore.QPoint] = None
+        self._card_grid_interaction = False
 
         self._icon_label = QtWidgets.QLabel(self)
         self._icon_label.setObjectName("ProductsGridCardIcon")
@@ -364,6 +369,112 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         isz = max(10, btn_side - 7)
         self._review_btn.setIconSize(QtCore.QSize(isz, isz))
         self._review_btn.raise_()
+
+    def set_section(self, section: Any) -> None:
+        """Owning ``ProductsGridSection`` (deferred rebuild scope during drag)."""
+        self._section = section
+
+    @staticmethod
+    def _mouse_global_point(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+        if hasattr(event, "globalPosition"):
+            return event.globalPosition().toPoint()
+        return event.globalPos()
+
+    def _apply_list_selection(
+        self,
+        lv: QtWidgets.QListView,
+        index: QtCore.QModelIndex,
+        modifiers: QtCore.Qt.KeyboardModifiers,
+    ) -> None:
+        sm = lv.selectionModel()
+        if sm is None:
+            return
+        flags = QtCore.QItemSelectionModel.SelectionFlag
+        rows = flags.Rows
+        if modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
+            sm.select(index, flags.Toggle | rows)
+        elif modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
+            cur = sm.currentIndex()
+            if cur.isValid() and cur.parent() == index.parent():
+                sm.select(
+                    QtCore.QItemSelection(cur, index),
+                    flags.Select | rows,
+                )
+            else:
+                sm.clearSelection()
+                sm.select(index, flags.Select | rows)
+        else:
+            if not sm.isSelected(index):
+                sm.clearSelection()
+                sm.select(index, flags.Select | rows)
+        sm.setCurrentIndex(index, flags.Current)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.RightButton:
+            self._grid.open_context_menu_from_card(
+                self._mouse_global_point(event),
+                self._flat_row,
+            )
+            event.accept()
+            return
+        if event.button() != QtCore.Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
+        idx = self._flat_index()
+        if not idx.isValid():
+            super().mousePressEvent(event)
+            return
+        lv = self._grid.list_view
+        model = idx.model()
+        drag_arm = bool(
+            model is not None
+            and (model.flags(idx) & QtCore.Qt.ItemIsDragEnabled)
+        )
+        self._apply_list_selection(lv, idx, event.modifiers())
+        if drag_arm:
+            self._drag_start_pos = QtCore.QPoint(event.pos())
+            lv.viewport().setCursor(
+                QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
+            )
+            self._card_grid_interaction = True
+            self._section.begin_user_interaction()
+        else:
+            self._drag_start_pos = None
+        event.accept()
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        lv = self._grid.list_view
+        cb = getattr(lv, "_drag_data_callback", None)
+        if (
+            self._drag_start_pos is not None
+            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
+            and callable(cb)
+        ):
+            dist = (event.pos() - self._drag_start_pos).manhattanLength()
+            half_d = max(2, loader_drag_start_distance() // 2)
+            if dist >= half_d:
+                _maybe_arm_drag_precache(lv)
+            if dist >= loader_drag_start_distance():
+                setattr(lv, "_drag_precache_armed", False)
+                if self._card_grid_interaction:
+                    self._card_grid_interaction = False
+                    self._section.end_user_interaction()
+                self._drag_start_pos = None
+                lv.viewport().unsetCursor()
+                run_loader_drag_for_card(self)
+                event.accept()
+                return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        lv = self._grid.list_view
+        if self._card_grid_interaction:
+            self._card_grid_interaction = False
+            self._section.end_user_interaction()
+        self._drag_start_pos = None
+        setattr(lv, "_drag_precache_armed", False)
+        lv.viewport().unsetCursor()
+        super().mouseReleaseEvent(event)
 
     def _flat_index(self) -> QtCore.QModelIndex:
         return self._grid.card_model().index(self._flat_row, 0)

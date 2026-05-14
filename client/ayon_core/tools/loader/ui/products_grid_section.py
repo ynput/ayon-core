@@ -335,7 +335,6 @@ class ProductsGridSection(QtWidgets.QWidget):
             owner.get_section_drag_pixmap_builder(self)
         )
         self._list_view.set_drag_precache(owner.drag_precache)
-        self._list_view.set_grid_interaction_section(self)
 
         for w in (self, self._list_holder, self._list_view, self._list_view.viewport()):
             apply_grid_view_surface_palette(w)
@@ -497,10 +496,12 @@ class ProductsGridSection(QtWidgets.QWidget):
                     if isinstance(existing, ProductsGridCardWidget):
                         existing._flat_row = row
                         existing.setFixedSize(w, h)
+                        existing.set_section(self)
                         existing.refresh_from_model()
                     else:
                         card = ProductsGridCardWidget(self, row, self._list_view.viewport())
                         card.setFixedSize(w, h)
+                        card.set_section(self)
                         self._list_view.setIndexWidget(idx, card)
                         card.refresh_from_model()
                         card.raise_()
