@@ -609,11 +609,26 @@ class LoaderWindow(QtWidgets.QWidget):
 
         self._reset_on_show = True
 
+    def _is_internal_loader_drag_source(self, event: QtCore.QEvent) -> bool:
+        source_fn = getattr(event, "source", None)
+        if not callable(source_fn):
+            return False
+        source = source_fn()
+        if not isinstance(source, QtWidgets.QWidget):
+            return False
+        return source is self or self.isAncestorOf(source)
+
     def dragEnterEvent(self, event):
+        if self._is_internal_loader_drag_source(event):
+            event.ignore()
+            return
         if event.mimeData().hasFormat(LOADER_PAYLOAD_MIME_TYPE):
             event.acceptProposedAction()
 
     def dropEvent(self, event):
+        if self._is_internal_loader_drag_source(event):
+            event.ignore()
+            return
         mime_data = event.mimeData()
         if not mime_data.hasFormat(LOADER_PAYLOAD_MIME_TYPE):
             return

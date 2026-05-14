@@ -420,11 +420,14 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         if event.button() != QtCore.Qt.MouseButton.LeftButton:
             super().mousePressEvent(event)
             return
+        lv = self._grid.list_view
+        if lv.source_drag_guard_active():
+            event.accept()
+            return
         idx = self._flat_index()
         if not idx.isValid():
             super().mousePressEvent(event)
             return
-        lv = self._grid.list_view
         model = idx.model()
         drag_arm = bool(
             model is not None
@@ -448,6 +451,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             and event.buttons() & QtCore.Qt.MouseButton.LeftButton
         ):
             lv = self._grid.list_view
+            if lv.source_drag_guard_active():
+                event.accept()
+                return
             cb = getattr(lv, "_drag_data_callback", None)
             if callable(cb):
                 dist = (event.pos() - self._drag_start_pos).manhattanLength()

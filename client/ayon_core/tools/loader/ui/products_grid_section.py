@@ -618,6 +618,27 @@ class ProductsGridSection(QtWidgets.QWidget):
         self._owner.on_card_version_changed(product_id, version_id)
 
     def eventFilter(self, obj, event):
+        if (
+            obj is self._list_view.viewport()
+            and self._list_view.source_drag_guard_active()
+        ):
+            if event.type() in (
+                QtCore.QEvent.Type.MouseButtonPress,
+                QtCore.QEvent.Type.MouseMove,
+                QtCore.QEvent.Type.MouseButtonRelease,
+            ):
+                if (
+                    event.type() == QtCore.QEvent.Type.MouseButtonRelease
+                    and isinstance(event, QtGui.QMouseEvent)
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
+                ):
+                    end_fn = getattr(
+                        self._list_view, "end_source_drag_guard", None
+                    )
+                    if callable(end_fn):
+                        end_fn()
+                event.accept()
+                return True
         if obj is self._list_view.viewport() and event.type() in (
             QtCore.QEvent.Type.Resize,
             QtCore.QEvent.Type.Show,

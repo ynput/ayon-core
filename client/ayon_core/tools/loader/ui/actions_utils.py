@@ -773,14 +773,9 @@ def _run_loader_drag(
     temp_path: Optional[str],
     raw_result: RawDragResult,
 ) -> None:
-    toggle_target = (
-        view if hasattr(view, "setSelectionRectVisible") else None
-    )
-    prev_rect_visible = bool(
-        toggle_target.isSelectionRectVisible()
-    ) if toggle_target is not None else False
-    if toggle_target is not None and prev_rect_visible:
-        toggle_target.setSelectionRectVisible(False)
+    begin_guard = getattr(view, "begin_source_drag_guard", None)
+    if callable(begin_guard):
+        begin_guard()
     try:
         drag = QtGui.QDrag(view)
         drag.setMimeData(mime_data)
@@ -788,12 +783,9 @@ def _run_loader_drag(
         drag.setHotSpot(QtCore.QPoint(10, 10))
         drag.exec_(QtCore.Qt.DropAction.CopyAction)
     finally:
-        if (
-            toggle_target is not None
-            and qt_cpp_object_alive(toggle_target)
-            and prev_rect_visible
-        ):
-            toggle_target.setSelectionRectVisible(True)
+        end_when = getattr(view, "end_source_drag_guard_when_left_released", None)
+        if callable(end_when):
+            end_when()
         if qt_cpp_object_alive(view) and hasattr(
             view, "_loader_drag_placeholder_pixmap"
         ):
@@ -820,9 +812,7 @@ def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
         mime_data, temp_path, raw_result = None, None, None
     if mime_data is None or raw_result is None:
         return
-    prev_rect_visible = bool(lv.isSelectionRectVisible())
-    if prev_rect_visible:
-        lv.setSelectionRectVisible(False)
+    lv.begin_source_drag_guard()
     try:
         drag = QtGui.QDrag(card)
         drag.setMimeData(mime_data)
@@ -830,8 +820,7 @@ def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
         drag.setHotSpot(QtCore.QPoint(10, 10))
         drag.exec_(QtCore.Qt.DropAction.CopyAction)
     finally:
-        if qt_cpp_object_alive(lv) and prev_rect_visible:
-            lv.setSelectionRectVisible(True)
+        lv.end_source_drag_guard_when_left_released()
         if qt_cpp_object_alive(lv) and hasattr(
             lv, "_loader_drag_placeholder_pixmap"
         ):
@@ -1083,6 +1072,42 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_precache: Optional[DragPayloadPrecache] = None
         self._last_drag_summary = None
         self._drag_precache_armed = False
+        self._source_drag_active_until_release = False
+        self._source_drag_selection_rect_was_visible: Optional[bool] = None
+
+    def source_drag_guard_active(self) -> bool:
+        return bool(self._source_drag_active_until_release)
+
+    def begin_source_drag_guard(self) -> None:
+        if self._source_drag_active_until_release:
+            return
+        self._source_drag_active_until_release = True
+        self._source_drag_selection_rect_was_visible = bool(
+            self.isSelectionRectVisible()
+        )
+        self.setSelectionRectVisible(False)
+
+    def end_source_drag_guard(self) -> None:
+        if not self._source_drag_active_until_release:
+            return
+        self._source_drag_active_until_release = False
+        prev = self._source_drag_selection_rect_was_visible
+        self._source_drag_selection_rect_was_visible = None
+        if prev is not None and qt_cpp_object_alive(self):
+            self.setSelectionRectVisible(prev)
+
+    def end_source_drag_guard_when_left_released(self) -> None:
+        if not self._source_drag_active_until_release:
+            return
+        app = QtWidgets.QApplication.instance()
+        if app is not None and (
+            app.mouseButtons() & QtCore.Qt.MouseButton.LeftButton
+        ):
+            QtCore.QTimer.singleShot(
+                16, self.end_source_drag_guard_when_left_released
+            )
+            return
+        self.end_source_drag_guard()
 
     def set_drag_data_callback(
         self, callback: Optional[Callable[[], Optional[tuple]]]
@@ -1098,6 +1123,9 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_precache = cache
 
     def mousePressEvent(self, event):
+        if self.source_drag_guard_active():
+            event.accept()
+            return
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self._drag_precache_armed = False
             index = self.indexAt(event.pos())
@@ -1115,6 +1143,8 @@ class LoaderDragListView(QtWidgets.QListView):
         return mime_data, (), temp_path
 
     def startDrag(self, supportedActions):
+        if self.source_drag_guard_active():
+            return
         if _log:
             _log.debug(
                 "startDrag: entry supportedActions=%s",
