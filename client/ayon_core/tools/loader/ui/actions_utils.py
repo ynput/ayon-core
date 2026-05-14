@@ -3,6 +3,7 @@ import re
 import sys
 import tempfile
 import threading
+import time
 import uuid
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -96,6 +97,10 @@ def _set_file_urls_on_mime_data(mime_data: QtCore.QMimeData, paths: list) -> Non
 
 def _loader_drag_start_distance() -> int:
     return max(3, QtWidgets.QApplication.startDragDistance() // 2)
+
+
+# Bounded wait for DragPayloadPrecache before synchronous MIME rebuild (ms).
+_DRAG_PRECACHE_WAIT_MS = 250
 
 
 def _primary_screen_device_pixel_ratio() -> float:
@@ -247,11 +252,50 @@ def _make_composite_drag_pixmap(
 RawDragResult = tuple[str, Union[set[str], Any], str]
 
 
+def _write_loader_drag_marker_file(
+    payload: Dict[str, Any],
+    file_paths: list[str],
+) -> Optional[str]:
+    """Write ``ayon_loader_*.json`` under the OS temp dir; return path or None."""
+    temp_path: Optional[str] = None
+    try:
+        fd, temp_path = tempfile.mkstemp(
+            suffix=".json",
+            prefix=LOADER_PAYLOAD_TEMP_PREFIX,
+            dir=tempfile.gettempdir(),
+        )
+        with os.fdopen(fd, "wb") as f:
+            marker_disk: Dict[str, Any] = dict(payload)
+            marker_disk["file_paths"] = list(file_paths)
+            f.write(loader_payload_to_bytes(marker_disk))
+        if _log:
+            _log.debug(
+                "loader drag marker written: path=%s file_paths_n=%d",
+                temp_path,
+                len(file_paths),
+            )
+    except Exception as e:
+        if _log:
+            _log.debug(
+                "_write_loader_drag_marker_file: temp json failed %s",
+                e,
+                exc_info=True,
+            )
+        if temp_path and os.path.isfile(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+        return None
+    return temp_path
+
+
 class DragPayloadPrecache:
     """Pre-build drag MIME payload data in a background thread on selection."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._cv = threading.Condition(self._lock)
         self._key: Optional[tuple[str, frozenset[str], str]] = None
         self._data: Optional[Dict[str, Any]] = None
 
@@ -265,7 +309,7 @@ class DragPayloadPrecache:
         if not project_name or not entity_ids:
             return
         key = (project_name, frozenset(entity_ids), entity_type)
-        with self._lock:
+        with self._cv:
             if self._key == key and self._data is not None:
                 return
             self._key = key
@@ -288,6 +332,36 @@ class DragPayloadPrecache:
                 return self._data
         return None
 
+    def wait(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        timeout_ms: int,
+    ) -> None:
+        """Block until precache fills for ``key`` or timeout (pumps Qt events)."""
+        key = (project_name, frozenset(entity_ids), entity_type)
+        deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
+        app = QtWidgets.QApplication.instance()
+        while time.monotonic() < deadline:
+            with self._cv:
+                if self._key != key:
+                    return
+                if self._data is not None:
+                    return
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self._cv.wait(timeout=min(0.05, remaining))
+            if app:
+                try:
+                    _pe = (
+                        QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+                    )
+                except AttributeError:
+                    _pe = QtCore.QEventLoop.ExcludeUserInputEvents  # type: ignore[attr-defined]
+                app.processEvents(_pe)
+
     def _run(
         self,
         controller: Any,
@@ -299,9 +373,32 @@ class DragPayloadPrecache:
         data = _build_drag_payload_data(
             controller, project_name, entity_ids, entity_type
         )
-        with self._lock:
+        if data is not None:
+            thumb_by_vid: Dict[str, Optional[str]] = {}
+            if entity_type == "version":
+                try:
+                    paths = controller.get_thumbnail_paths(
+                        project_name, "version", set(entity_ids)
+                    )
+                    thumb_by_vid = {
+                        str(k): v for k, v in (paths or {}).items()
+                    }
+                except Exception as exc:
+                    if _log:
+                        _log.debug(
+                            "DragPayloadPrecache: thumbnail paths %s",
+                            exc,
+                            exc_info=True,
+                        )
+            data["thumbnail_paths_by_version_id"] = thumb_by_vid
+            payload = data.get("payload") or {}
+            file_paths = list(data.get("file_paths") or [])
+            marker_path = _write_loader_drag_marker_file(payload, file_paths)
+            data["marker_temp_path"] = marker_path
+        with self._cv:
             if self._key == key:
                 self._data = data
+            self._cv.notify_all()
 
 
 def _build_drag_payload_data(
@@ -410,42 +507,54 @@ def _mime_qt_from_drag_payload_data(
                 )
 
     # Cross-process hosts resolve the marker from custom MIME, legacy URL list,
-    # or temp-dir scan (Harmony, Unity, Photoshop CEP). Always write temp JSON
+    # or temp-dir scan (Harmony, Unity, Photoshop CEP). Prefer a path written
+    # by DragPayloadPrecache on a worker thread; otherwise write temp JSON
     # under the OS temp dir. Do **not** append the marker to ``setUrls``:
     # native Photoshop treats every file URL as Place input and errors on
     # ``.json``.
-    temp_path: Optional[str] = None
-    try:
-        fd, temp_path = tempfile.mkstemp(
-            suffix=".json",
-            prefix=LOADER_PAYLOAD_TEMP_PREFIX,
-            dir=tempfile.gettempdir(),
-        )
-        with os.fdopen(fd, "wb") as f:
-            marker_disk: Dict[str, Any] = dict(payload)
-            marker_disk["file_paths"] = list(file_paths)
-            f.write(loader_payload_to_bytes(marker_disk))
+    temp_path: Optional[str] = data.get("marker_temp_path")
+    if temp_path and os.path.isfile(temp_path):
         if _log:
             _log.debug(
-                "loader drag marker written: path=%s "
-                "file_paths_n=%d in_host=%s",
+                "loader drag marker from precache: path=%s file_paths_n=%d "
+                "in_host=%s",
                 temp_path,
                 len(file_paths),
                 in_host,
             )
-    except Exception as e:
-        if _log:
-            _log.debug(
-                "_mime_qt_from_drag_payload_data: temp json failed %s",
-                e,
-                exc_info=True,
-            )
-        if temp_path and os.path.isfile(temp_path):
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
+    else:
         temp_path = None
+        try:
+            fd, temp_path = tempfile.mkstemp(
+                suffix=".json",
+                prefix=LOADER_PAYLOAD_TEMP_PREFIX,
+                dir=tempfile.gettempdir(),
+            )
+            with os.fdopen(fd, "wb") as f:
+                marker_disk: Dict[str, Any] = dict(payload)
+                marker_disk["file_paths"] = list(file_paths)
+                f.write(loader_payload_to_bytes(marker_disk))
+            if _log:
+                _log.debug(
+                    "loader drag marker written: path=%s "
+                    "file_paths_n=%d in_host=%s",
+                    temp_path,
+                    len(file_paths),
+                    in_host,
+                )
+        except Exception as e:
+            if _log:
+                _log.debug(
+                    "_mime_qt_from_drag_payload_data: temp json failed %s",
+                    e,
+                    exc_info=True,
+                )
+            if temp_path and os.path.isfile(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+            temp_path = None
 
     return mime_data, temp_path
 
@@ -468,6 +577,9 @@ def _drag_pixmap_for_view(view: QtWidgets.QWidget, raw_result: RawDragResult) ->
             product_label = str(ctx.get("product_label") or "")
             version_label = str(ctx.get("version_label") or "")
             count = int(ctx.get("count", count))
+
+    if getattr(view, "_loader_drag_placeholder_pixmap", False):
+        thumb_path = None
 
     # Match full-width 16:9 slot inside _make_composite_drag_pixmap (lw=110, margin=4).
     thumb_logical = QtCore.QSize(102, 58)
@@ -555,14 +667,34 @@ def _build_drag_mime_data_core(
     raw_tuple: RawDragResult = (project_name, ids_set, entity_type)
     precache = getattr(view, "_drag_precache", None)
     pre_cached = None
+    precache_miss = False
     if precache is not None:
         pre_cached = precache.get(project_name, ids_set, entity_type)
-    mime_data, temp_path, action_items, flat_ids, eff_type = (
-        _mime_payload_from_selection(
-            view, project_name, ids_set, entity_type, pre_cached=pre_cached
+        if pre_cached is None:
+            precache_miss = True
+            precache.wait(
+                project_name, ids_set, entity_type, _DRAG_PRECACHE_WAIT_MS
+            )
+            pre_cached = precache.get(project_name, ids_set, entity_type)
+
+    if precache_miss:
+        view.viewport().setCursor(
+            QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor)
         )
-    )
+    try:
+        setattr(view, "_loader_drag_placeholder_pixmap", precache_miss)
+        mime_data, temp_path, action_items, flat_ids, eff_type = (
+            _mime_payload_from_selection(
+                view, project_name, ids_set, entity_type, pre_cached=pre_cached
+            )
+        )
+    finally:
+        if precache_miss:
+            view.viewport().unsetCursor()
+
     if mime_data is None:
+        if hasattr(view, "_loader_drag_placeholder_pixmap"):
+            delattr(view, "_loader_drag_placeholder_pixmap")
         return None, (), None, None
 
     summary = _format_payload_summary(
@@ -602,11 +734,15 @@ def _run_loader_drag(
     temp_path: Optional[str],
     raw_result: RawDragResult,
 ) -> None:
-    drag = QtGui.QDrag(view)
-    drag.setMimeData(mime_data)
-    drag.setPixmap(_drag_pixmap_for_view(view, raw_result))
-    drag.setHotSpot(QtCore.QPoint(10, 10))
-    drag.exec_(QtCore.Qt.DropAction.CopyAction)
+    try:
+        drag = QtGui.QDrag(view)
+        drag.setMimeData(mime_data)
+        drag.setPixmap(_drag_pixmap_for_view(view, raw_result))
+        drag.setHotSpot(QtCore.QPoint(10, 10))
+        drag.exec_(QtCore.Qt.DropAction.CopyAction)
+    finally:
+        if hasattr(view, "_loader_drag_placeholder_pixmap"):
+            delattr(view, "_loader_drag_placeholder_pixmap")
     # Cross-process drops (e.g. Photoshop Place) finish Qt's drag before the
     # host reads the temp JSON; delete after a bounded delay so embedded scans
     # can find ayon_loader_*.json. Host success paths may delete earlier.
@@ -880,33 +1016,62 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_precache = cache
 
     def mousePressEvent(self, event):
+        if event.button() != QtCore.Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
         index = self.indexAt(event.pos())
         if not index.isValid():
             self.clearSelection()
             self.setCurrentIndex(QtCore.QModelIndex())
             self._drag_start_pos = None
-        else:
-            model = self.model()
-            if model and (model.flags(index) & QtCore.Qt.ItemIsDragEnabled):
-                self._drag_start_pos = event.pos()
-                self.viewport().setCursor(
-                    QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
+            QtWidgets.QListView.mousePressEvent(self, event)
+            return
+        model = self.model()
+        if model and (model.flags(index) & QtCore.Qt.ItemIsDragEnabled):
+            sm = self.selectionModel()
+            if sm is not None:
+                flags = QtCore.QItemSelectionModel.SelectionFlag
+                rows = flags.Rows
+                mods = event.modifiers()
+                if mods & QtCore.Qt.KeyboardModifier.ControlModifier:
+                    sm.select(index, flags.Toggle | rows)
+                elif mods & QtCore.Qt.KeyboardModifier.ShiftModifier:
+                    cur = sm.currentIndex()
+                    if cur.isValid() and cur.parent() == index.parent():
+                        sm.select(
+                            QtCore.QItemSelection(cur, index),
+                            flags.Select | rows,
+                        )
+                    else:
+                        sm.clearSelection()
+                        sm.select(index, flags.Select | rows)
+                else:
+                    sm.clearSelection()
+                    sm.select(index, flags.Select | rows)
+                sm.setCurrentIndex(
+                    index,
+                    flags.Current,
                 )
-                precache = getattr(self, "_drag_precache", None)
-                cb = getattr(self, "_drag_data_callback", None)
-                if precache is not None and callable(cb):
-                    try:
-                        result = cb()
-                        if result:
-                            pn, eids, et = result
-                            if pn and eids:
-                                ctrl = getattr(self.parent(), "_controller", None)
-                                if ctrl is not None:
-                                    precache.pre_build(ctrl, pn, set(eids), et)
-                    except Exception:
-                        pass
-            else:
-                self._drag_start_pos = None
+            self._drag_start_pos = event.pos()
+            self.viewport().setCursor(
+                QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
+            )
+            precache = getattr(self, "_drag_precache", None)
+            cb = getattr(self, "_drag_data_callback", None)
+            if precache is not None and callable(cb):
+                try:
+                    result = cb()
+                    if result:
+                        pn, eids, et = result
+                        if pn and eids:
+                            ctrl = getattr(self.parent(), "_controller", None)
+                            if ctrl is not None:
+                                precache.pre_build(ctrl, pn, set(eids), et)
+                except Exception:
+                    pass
+            event.accept()
+            return
+        self._drag_start_pos = None
         QtWidgets.QListView.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):

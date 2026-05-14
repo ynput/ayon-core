@@ -370,8 +370,16 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if not data:
             return None
         project_name, version_ids, _ = data
+        vset = set(version_ids)
         first_vid = next(iter(version_ids))
-        thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
+        thumb_path = None
+        pc = self.drag_precache.get(project_name, vset, "version")
+        if pc:
+            tbmap = pc.get("thumbnail_paths_by_version_id") or {}
+            fk = str(first_vid)
+            thumb_path = tbmap.get(fk) or tbmap.get(first_vid)
+        if thumb_path is None:
+            thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
         indexes = list_view.selectionModel().selectedIndexes()
         ix = indexes[0] if indexes else None
         product_label = ""
@@ -503,8 +511,16 @@ class ProductsGridWidget(QtWidgets.QWidget):
         version_ids = collect_version_ids_from_column0_indexes(pm, column0_indexes)
         if not version_ids:
             return None
+        vset = set(version_ids)
         first_vid = next(iter(version_ids))
-        thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
+        thumb_path = None
+        pc = self.drag_precache.get(project_name, vset, "version")
+        if pc:
+            tbmap = pc.get("thumbnail_paths_by_version_id") or {}
+            fk = str(first_vid)
+            thumb_path = tbmap.get(fk) or tbmap.get(first_vid)
+        if thumb_path is None:
+            thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
         ix = column0_indexes[0]
         product_label = ""
         version_label = ""

@@ -509,12 +509,11 @@ class LoaderActionsModel:
         # TODO fix hero version
         version_context_by_id = {}
         repre_context_by_id = {}
-        if not project_name and not version_ids:
+        vids = set(version_ids)
+        if not project_name or not vids:
             return version_context_by_id, repre_context_by_id
 
-        version_entities = ayon_api.get_versions(
-            project_name, version_ids=version_ids
-        )
+        version_entities = self._get_versions(project_name, vids)
         version_entities_by_id = {}
         version_entities_by_product_id = collections.defaultdict(list)
         for version_entity in version_entities:
@@ -524,18 +523,14 @@ class LoaderActionsModel:
             version_entities_by_product_id[product_id].append(version_entity)
 
         _product_ids = set(version_entities_by_product_id.keys())
-        _product_entities = ayon_api.get_products(
-            project_name, product_ids=_product_ids
-        )
+        _product_entities = self._get_products(project_name, _product_ids)
         product_entities_by_id = {p["id"]: p for p in _product_entities}
 
         _folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
-        _folder_entities = ayon_api.get_folders(
-            project_name, folder_ids=_folder_ids
-        )
+        _folder_entities = self._get_folders(project_name, _folder_ids)
         folder_entities_by_id = {f["id"]: f for f in _folder_entities}
 
-        project_entity = ayon_api.get_project(project_name)
+        project_entity = self._get_project(project_name)
 
         for version_id, version_entity in version_entities_by_id.items():
             product_id = version_entity["productId"]
@@ -549,12 +544,18 @@ class LoaderActionsModel:
                 "version": version_entity,
             }
 
-        repre_entities = ayon_api.get_representations(
-            project_name, version_ids=version_ids
+        repre_ids_by_vid = self._get_repre_ids_by_version_ids(
+            project_name, vids
         )
+        all_repre_ids: set[str] = set()
+        for ids in repre_ids_by_vid.values():
+            all_repre_ids |= set(ids)
+        repre_entities = self._get_representations(project_name, all_repre_ids)
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
-            version_entity = version_entities_by_id[version_id]
+            version_entity = version_entities_by_id.get(version_id)
+            if not version_entity:
+                continue
             product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
@@ -818,17 +819,6 @@ class LoaderActionsModel:
             return os.path.splitext(path)[1].lower().lstrip(".")
         return None
 
-    def _task_type_for_version(
-        self, project_name: str, version_entity: dict[str, Any]
-    ) -> Optional[str]:
-        tid = version_entity.get("taskId")
-        if not tid:
-            return None
-        tasks = list(ayon_api.get_tasks(project_name, task_ids={tid}))
-        if not tasks:
-            return None
-        return tasks[0].get("taskType")
-
     def _profile_matches_drag_drop(
         self,
         profile: dict[str, Any],
@@ -890,6 +880,16 @@ class LoaderActionsModel:
 
         profiles = self._get_drag_drop_profiles(project_name)
 
+        task_ids: set[str] = set()
+        for vc in version_context_by_id.values():
+            tid = (vc.get("version") or {}).get("taskId")
+            if tid:
+                task_ids.add(str(tid))
+        task_type_by_tid: dict[str, Optional[str]] = {}
+        if task_ids:
+            for t in ayon_api.get_tasks(project_name, task_ids=task_ids):
+                task_type_by_tid[str(t["id"])] = t.get("taskType")
+
         for vid in version_ids:
             vc = version_context_by_id.get(vid)
             if not vc:
@@ -898,7 +898,10 @@ class LoaderActionsModel:
             version_ent = vc["version"]
             pt = product.get("productType")
             pbt = product.get("productBaseType")
-            task_type = self._task_type_for_version(project_name, version_ent)
+            tid = version_ent.get("taskId")
+            task_type = (
+                task_type_by_tid.get(str(tid)) if tid else None
+            )
 
             repre_ids_for_version = [
                 rid
@@ -1022,8 +1025,15 @@ class LoaderActionsModel:
             ):
                 continue
             for repre_name, repre_contexts in repre_contexts_by_name.items():
+                ext_ok = [
+                    ctx
+                    for ctx in repre_contexts
+                    if loader.has_valid_extension(ctx["representation"])
+                ]
+                if not ext_ok:
+                    continue
                 filtered_repre_contexts = filter_repre_contexts_by_loader(
-                    repre_contexts, loader
+                    ext_ok, loader
                 )
                 if not filtered_repre_contexts:
                     continue
