@@ -443,37 +443,40 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         event.accept()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        lv = self._grid.list_view
-        cb = getattr(lv, "_drag_data_callback", None)
         if (
             self._drag_start_pos is not None
             and event.buttons() & QtCore.Qt.MouseButton.LeftButton
-            and callable(cb)
         ):
-            dist = (event.pos() - self._drag_start_pos).manhattanLength()
-            half_d = max(2, loader_drag_start_distance() // 2)
-            if dist >= half_d:
-                _maybe_arm_drag_precache(lv)
-            if dist >= loader_drag_start_distance():
-                setattr(lv, "_drag_precache_armed", False)
-                if self._card_grid_interaction:
-                    self._card_grid_interaction = False
-                    self._section.end_user_interaction()
-                self._drag_start_pos = None
-                lv.viewport().unsetCursor()
-                run_loader_drag_for_card(self)
-                event.accept()
-                return
+            lv = self._grid.list_view
+            cb = getattr(lv, "_drag_data_callback", None)
+            if callable(cb):
+                dist = (event.pos() - self._drag_start_pos).manhattanLength()
+                half_d = max(2, loader_drag_start_distance() // 2)
+                if dist >= half_d:
+                    _maybe_arm_drag_precache(lv)
+                if dist >= loader_drag_start_distance():
+                    setattr(lv, "_drag_precache_armed", False)
+                    if self._card_grid_interaction:
+                        self._card_grid_interaction = False
+                        self._section.end_user_interaction()
+                    self._drag_start_pos = None
+                    lv.viewport().unsetCursor()
+                    run_loader_drag_for_card(self)
+            event.accept()
+            return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         lv = self._grid.list_view
-        if self._card_grid_interaction:
-            self._card_grid_interaction = False
-            self._section.end_user_interaction()
-        self._drag_start_pos = None
-        setattr(lv, "_drag_precache_armed", False)
-        lv.viewport().unsetCursor()
+        if self._drag_start_pos is not None or self._card_grid_interaction:
+            if self._card_grid_interaction:
+                self._card_grid_interaction = False
+                self._section.end_user_interaction()
+            self._drag_start_pos = None
+            setattr(lv, "_drag_precache_armed", False)
+            lv.viewport().unsetCursor()
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
 
     def _flat_index(self) -> QtCore.QModelIndex:
