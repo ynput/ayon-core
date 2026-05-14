@@ -312,7 +312,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
         Args:
             thread_id (str): Thread id.
         """
-
         # Make sure to remove thread from '_refresh_threads' dict
         thread = self._refresh_threads.pop(thread_id)
         if (
@@ -460,6 +459,7 @@ class TasksWidget(QtWidgets.QWidget):
         """
         self._use_task_type_sorting = None
         self._update_task_type_sorting()
+        self._tasks_proxy_model.sort(0)
         self._tasks_model.refresh()
 
     def get_selected_task_info(self):
