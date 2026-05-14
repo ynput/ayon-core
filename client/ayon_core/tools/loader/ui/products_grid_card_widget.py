@@ -424,6 +424,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         if lv.source_drag_guard_active():
             event.accept()
             return
+        if getattr(self._grid._owner, "_active_source_drag_list_view", None):
+            event.accept()
+            return
         idx = self._flat_index()
         if not idx.isValid():
             super().mousePressEvent(event)
@@ -452,6 +455,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         ):
             lv = self._grid.list_view
             if lv.source_drag_guard_active():
+                event.accept()
+                return
+            if getattr(self._grid._owner, "_active_source_drag_list_view", None):
                 event.accept()
                 return
             cb = getattr(lv, "_drag_data_callback", None)

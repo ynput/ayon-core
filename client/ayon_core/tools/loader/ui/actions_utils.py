@@ -1074,6 +1074,7 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_precache_armed = False
         self._source_drag_active_until_release = False
         self._source_drag_selection_rect_was_visible: Optional[bool] = None
+        self._source_drag_left_up_confirmations = 0
 
     def source_drag_guard_active(self) -> bool:
         return bool(self._source_drag_active_until_release)
@@ -1082,17 +1083,25 @@ class LoaderDragListView(QtWidgets.QListView):
         if self._source_drag_active_until_release:
             return
         self._source_drag_active_until_release = True
+        self._source_drag_left_up_confirmations = 0
         self._source_drag_selection_rect_was_visible = bool(
             self.isSelectionRectVisible()
         )
         self.setSelectionRectVisible(False)
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None:
+            gw.register_active_source_drag_list_view(self)
 
     def end_source_drag_guard(self) -> None:
         if not self._source_drag_active_until_release:
             return
         self._source_drag_active_until_release = False
+        self._source_drag_left_up_confirmations = 0
         prev = self._source_drag_selection_rect_was_visible
         self._source_drag_selection_rect_was_visible = None
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None:
+            gw.clear_active_source_drag_list_view(self)
         if prev is not None and qt_cpp_object_alive(self):
             self.setSelectionRectVisible(prev)
 
@@ -1100,13 +1109,23 @@ class LoaderDragListView(QtWidgets.QListView):
         if not self._source_drag_active_until_release:
             return
         app = QtWidgets.QApplication.instance()
-        if app is not None and (
-            app.mouseButtons() & QtCore.Qt.MouseButton.LeftButton
-        ):
+        left_down = (
+            app is not None
+            and (app.mouseButtons() & QtCore.Qt.MouseButton.LeftButton)
+        )
+        if left_down:
+            self._source_drag_left_up_confirmations = 0
             QtCore.QTimer.singleShot(
                 16, self.end_source_drag_guard_when_left_released
             )
             return
+        self._source_drag_left_up_confirmations += 1
+        if self._source_drag_left_up_confirmations < 3:
+            QtCore.QTimer.singleShot(
+                16, self.end_source_drag_guard_when_left_released
+            )
+            return
+        self._source_drag_left_up_confirmations = 0
         self.end_source_drag_guard()
 
     def set_drag_data_callback(
@@ -1126,6 +1145,12 @@ class LoaderDragListView(QtWidgets.QListView):
         if self.source_drag_guard_active():
             event.accept()
             return
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None and getattr(
+            gw, "_active_source_drag_list_view", None
+        ) is not None:
+            event.accept()
+            return
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self._drag_precache_armed = False
             index = self.indexAt(event.pos())
@@ -1134,8 +1159,39 @@ class LoaderDragListView(QtWidgets.QListView):
                 self.setCurrentIndex(QtCore.QModelIndex())
         super().mousePressEvent(event)
 
+    def mouseMoveEvent(self, event):
+        if self.source_drag_guard_active():
+            event.accept()
+            return
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None and getattr(
+            gw, "_active_source_drag_list_view", None
+        ) is not None:
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
     def mouseReleaseEvent(self, event):
         self._drag_precache_armed = False
+        if self.source_drag_guard_active():
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                self.end_source_drag_guard()
+            event.accept()
+            return
+        gw = getattr(self, "_products_grid_owner", None)
+        guard_lv = (
+            getattr(gw, "_active_source_drag_list_view", None)
+            if gw is not None
+            else None
+        )
+        if guard_lv is not None:
+            if (
+                event.button() == QtCore.Qt.MouseButton.LeftButton
+                and hasattr(guard_lv, "end_source_drag_guard")
+            ):
+                guard_lv.end_source_drag_guard()
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
 
     def _build_drag_mime_data(self):

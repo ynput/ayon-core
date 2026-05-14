@@ -105,6 +105,7 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._list_view_to_section: Dict[QtWidgets.QListView, ProductsGridSection] = {}
         self._collapsed_groups: set[str] = set()
         self._suppress_selection_broadcast = False
+        self._active_source_drag_list_view: Optional[QtWidgets.QListView] = None
 
         self._scroll = QtWidgets.QScrollArea(self)
         self._scroll.setWidgetResizable(True)
@@ -147,6 +148,17 @@ class ProductsGridWidget(QtWidgets.QWidget):
     @property
     def drag_precache(self) -> DragPayloadPrecache:
         return self._drag_precache
+
+    def register_active_source_drag_list_view(
+        self, list_view: QtWidgets.QListView
+    ) -> None:
+        self._active_source_drag_list_view = list_view
+
+    def clear_active_source_drag_list_view(
+        self, list_view: QtWidgets.QListView
+    ) -> None:
+        if self._active_source_drag_list_view is list_view:
+            self._active_source_drag_list_view = None
 
     @property
     def list_view(self) -> Optional[QtWidgets.QAbstractItemView]:

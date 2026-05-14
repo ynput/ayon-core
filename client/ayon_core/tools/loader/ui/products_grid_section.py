@@ -335,6 +335,7 @@ class ProductsGridSection(QtWidgets.QWidget):
             owner.get_section_drag_pixmap_builder(self)
         )
         self._list_view.set_drag_precache(owner.drag_precache)
+        self._list_view._products_grid_owner = owner
 
         for w in (self, self._list_holder, self._list_view, self._list_view.viewport()):
             apply_grid_view_surface_palette(w)
@@ -618,27 +619,27 @@ class ProductsGridSection(QtWidgets.QWidget):
         self._owner.on_card_version_changed(product_id, version_id)
 
     def eventFilter(self, obj, event):
+        guard_lv = getattr(self._owner, "_active_source_drag_list_view", None)
         if (
-            obj is self._list_view.viewport()
-            and self._list_view.source_drag_guard_active()
-        ):
-            if event.type() in (
+            guard_lv is not None
+            and obj is self._list_view.viewport()
+            and event.type()
+            in (
                 QtCore.QEvent.Type.MouseButtonPress,
                 QtCore.QEvent.Type.MouseMove,
                 QtCore.QEvent.Type.MouseButtonRelease,
+            )
+        ):
+            if (
+                event.type() == QtCore.QEvent.Type.MouseButtonRelease
+                and isinstance(event, QtGui.QMouseEvent)
+                and event.button() == QtCore.Qt.MouseButton.LeftButton
             ):
-                if (
-                    event.type() == QtCore.QEvent.Type.MouseButtonRelease
-                    and isinstance(event, QtGui.QMouseEvent)
-                    and event.button() == QtCore.Qt.MouseButton.LeftButton
-                ):
-                    end_fn = getattr(
-                        self._list_view, "end_source_drag_guard", None
-                    )
-                    if callable(end_fn):
-                        end_fn()
-                event.accept()
-                return True
+                end_fn = getattr(guard_lv, "end_source_drag_guard", None)
+                if callable(end_fn):
+                    end_fn()
+            event.accept()
+            return True
         if obj is self._list_view.viewport() and event.type() in (
             QtCore.QEvent.Type.Resize,
             QtCore.QEvent.Type.Show,
