@@ -1107,6 +1107,7 @@ class LoaderDragListView(QtWidgets.QListView):
             sec = getattr(self, "_grid_interaction_section", None)
             if sec is not None:
                 sec.begin_user_interaction()
+            QtWidgets.QListView.mousePressEvent(self, event)
             event.accept()
             return
         if getattr(self, "_grid_drag_interaction_active", False):

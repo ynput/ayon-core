@@ -278,9 +278,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
         sec = self._list_view_to_section.get(lv)
         if sec is None:
             return
+        idx = lv.indexAt(point)
         sm = lv.selectionModel()
         if sm is not None and not lv.selectedIndexes():
-            idx = lv.indexAt(point)
             if idx.isValid():
                 sm.clearSelection()
                 sm.select(idx, QtCore.QItemSelectionModel.SelectionFlag.Select)
@@ -827,6 +827,13 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._selected_merged_products = []
         project_name = self._controller.get_selected_project_name()
         if project_name and selected_version_ids:
+            if _log:
+                _log.debug(
+                    "loader drag precache: selection-changed pn=%s n=%d "
+                    "et=version",
+                    project_name,
+                    len(selected_version_ids),
+                )
             self._drag_precache.pre_build(
                 self._controller,
                 project_name,

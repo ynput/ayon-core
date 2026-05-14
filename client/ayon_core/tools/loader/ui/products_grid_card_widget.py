@@ -104,65 +104,15 @@ def _open_external_icon(icon_color: str) -> QtGui.QIcon:
 
 
 class _ThumbPaintWidget(QtWidgets.QWidget):
-    """Rounded thumbnail area (image or placeholder); gestures forward to list for drag."""
+    """Rounded thumbnail plate; opaque overlays receive their own mouse."""
 
     def __init__(self, card: "ProductsGridCardWidget"):
         super().__init__(card)
         self._card = card
         self.setMouseTracking(False)
-        self._forward_list_viewport_drag = False
-
-    def _interactive_thumb_child_at(
-        self, pos: QtCore.QPoint
-    ) -> Optional[QtWidgets.QWidget]:
-        w = self.childAt(pos)
-        if w is None:
-            return None
-        if w is self._card._review_btn:
-            return w
-        vc = self._card._version_combo
-        if vc is not None and (w is vc or vc.isAncestorOf(w)):
-            return w
-        return None
-
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            if self._interactive_thumb_child_at(event.pos()) is not None:
-                self._forward_list_viewport_drag = False
-                super().mousePressEvent(event)
-                return
-            self._forward_list_viewport_drag = True
-            self._card._route_mouse_event_to_list_view(event)
-            event.accept()
-            return
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if (
-            self._forward_list_viewport_drag
-            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
-        ):
-            self._card._route_mouse_event_to_list_view(event)
-            event.accept()
-            return
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        if (
-            event.button() == QtCore.Qt.MouseButton.LeftButton
-            and self._forward_list_viewport_drag
-        ):
-            self._forward_list_viewport_drag = False
-            self._card._route_mouse_event_to_list_view(event)
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
-
-    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
-        self._card._grid.open_context_menu_from_card(
-            event.globalPos(), self._card._flat_row
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
         )
-        event.accept()
 
     def paintEvent(self, _event: QtGui.QPaintEvent) -> None:
         painter = QtGui.QPainter(self)
@@ -238,6 +188,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self.setObjectName("ProductsGridCard")
         self.setAutoFillBackground(True)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
         self._grid = grid
         self._flat_row = flat_row
 
@@ -245,7 +198,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self._icon_label.setObjectName("ProductsGridCardIcon")
         self._icon_label.setFixedSize(20, 20)
         self._icon_label.setScaledContents(True)
-        self._icon_label.installEventFilter(self)
+        self._icon_label.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
 
         self._name_label = QtWidgets.QLabel(self)
         self._name_label.setObjectName("ProductsGridCardTitle")
@@ -255,7 +210,9 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             self._name_label.setElideMode(QtCore.Qt.TextElideMode.ElideRight)
         else:
             self._name_label.setWordWrap(False)
-        self._name_label.installEventFilter(self)
+        self._name_label.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
         self._full_product_name = ""
 
         self._header_layout = QtWidgets.QHBoxLayout()
@@ -496,24 +453,12 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
 
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
         combo = self._version_combo
-        context_targets = (
-            self._name_label,
-            self._icon_label,
-            self._review_btn,
-        )
+        context_targets = (self._review_btn,)
         if combo is not None:
             context_targets = context_targets + (combo,)
 
         if obj not in context_targets:
             return super().eventFilter(obj, event)
-
-        if event.type() == QtCore.QEvent.Type.MouseButtonPress:
-            if obj in (self._name_label, self._icon_label):
-                me = event
-                if isinstance(me, QtGui.QMouseEvent):
-                    if me.button() == QtCore.Qt.MouseButton.LeftButton:
-                        self._request_row_selection(me.modifiers())
-                        return True
 
         if event.type() == QtCore.QEvent.Type.ContextMenu:
             ce = event
@@ -536,76 +481,6 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         )
         url = f"{base}/projects/{project}/products?{query}"
         webbrowser.open_new_tab(url)
-
-    def _request_row_selection(self, modifiers: QtCore.Qt.KeyboardModifiers) -> None:
-        self._grid.select_flat_row(self._flat_row, modifiers)
-
-    def _route_mouse_event_to_list_view(self, event: QtGui.QMouseEvent) -> None:
-        """Queue card/thumb coords to ``LoaderDragListView`` as viewport-local events.
-
-        ``QApplication.sendEvent(viewport, ...)`` does not run ``QAbstractItemView``'s
-        ``viewportEvent`` → ``mousePressEvent`` chain. Direct ``lv.mousePressEvent``
-        from a child can run selection/drag logic while the child C++ frame is still
-        active; ``setIndexWidget`` rebuild may delete the child mid-call-stack. Post
-        to the viewport so delivery happens on a clean stack.
-        """
-        lv = self._grid.list_view
-        if lv is None:
-            return
-        vp = lv.viewport()
-        gp = event.globalPos()
-        lp = vp.mapFromGlobal(gp)
-        routed = QtGui.QMouseEvent(
-            event.type(),
-            lp,
-            gp,
-            event.button(),
-            event.buttons(),
-            event.modifiers(),
-        )
-        QtCore.QCoreApplication.postEvent(vp, routed)
-
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            pos = event.pos()
-            if self.rect().contains(pos) and self.childAt(pos) is None:
-                lv = self._grid.list_view
-                if lv is None:
-                    super().mousePressEvent(event)
-                    return
-                vp = lv.viewport()
-                gp = self.mapToGlobal(pos)
-                lp = vp.mapFromGlobal(gp)
-                press = QtGui.QMouseEvent(
-                    QtCore.QEvent.Type.MouseButtonPress,
-                    lp,
-                    gp,
-                    QtCore.Qt.MouseButton.LeftButton,
-                    QtCore.Qt.MouseButton.LeftButton,
-                    event.modifiers(),
-                )
-                QtCore.QCoreApplication.postEvent(vp, press)
-                return
-            w = None
-            if self._thumb.geometry().contains(pos):
-                tpos = self._thumb.mapFrom(self, pos)
-                w = self._thumb.childAt(tpos) if tpos is not None else None
-            if w is None:
-                w = self.childAt(pos)
-            if w is self._review_btn:
-                super().mousePressEvent(event)
-                return
-            if self._version_combo is not None and (
-                w is self._version_combo or self._version_combo.isAncestorOf(w)
-            ):
-                super().mousePressEvent(event)
-                return
-            if w is not self._thumb:
-                self._request_row_selection(event.modifiers())
-        super().mousePressEvent(event)
-
-    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
-        self._grid.open_context_menu_from_card(event.globalPos(), self._flat_row)
 
 
 class GridCellDelegate(QtWidgets.QStyledItemDelegate):
