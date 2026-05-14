@@ -618,7 +618,71 @@ class ProductsGridSection(QtWidgets.QWidget):
     def on_card_version_changed(self, product_id: str, version_id: str) -> None:
         self._owner.on_card_version_changed(product_id, version_id)
 
+    @staticmethod
+    def _mouse_event_global_point(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+        if hasattr(event, "globalPosition"):
+            return event.globalPosition().toPoint()
+        return event.globalPos()
+
     def eventFilter(self, obj, event):
+        if obj is self._list_view.viewport() and isinstance(
+            event, QtGui.QMouseEvent
+        ):
+            et = event.type()
+            armed = self._owner.armed_card_drag_card()
+            if armed is not None and et in (
+                QtCore.QEvent.Type.MouseButtonPress,
+                QtCore.QEvent.Type.MouseMove,
+                QtCore.QEvent.Type.MouseButtonRelease,
+            ):
+                if et == QtCore.QEvent.Type.MouseMove:
+                    if _log:
+                        _log.debug(
+                            "grid section eventFilter: armed MouseMove -> card "
+                            "handle_armed_drag_move"
+                        )
+                    armed.handle_armed_drag_move(
+                        self._mouse_event_global_point(event),
+                        event.buttons(),
+                    )
+                    event.accept()
+                    return True
+                if (
+                    et == QtCore.QEvent.Type.MouseButtonRelease
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
+                ):
+                    if _log:
+                        _log.debug(
+                            "grid section eventFilter: armed MouseButtonRelease -> "
+                            "cancel_armed_drag"
+                        )
+                    armed.cancel_armed_drag(reason="viewport_left_release")
+                    event.accept()
+                    return True
+                if (
+                    et == QtCore.QEvent.Type.MouseButtonPress
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
+                ):
+                    idx = self._list_view.indexAt(event.pos())
+                    w = (
+                        self._list_view.indexWidget(idx)
+                        if idx.isValid()
+                        else None
+                    )
+                    if not idx.isValid() or w is None:
+                        if _log:
+                            _log.debug(
+                                "grid section eventFilter: armed press on empty -> "
+                                "cancel_armed_drag"
+                            )
+                        armed.cancel_armed_drag(reason="viewport_press_empty")
+                    elif _log:
+                        _log.debug(
+                            "grid section eventFilter: armed press on indexWidget "
+                            "-> fallthrough"
+                        )
+                    return False
+
         guard_lv = getattr(self._owner, "_active_source_drag_list_view", None)
         if (
             guard_lv is not None

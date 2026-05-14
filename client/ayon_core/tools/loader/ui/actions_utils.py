@@ -118,6 +118,20 @@ def _controller_for_drag_precache(view: QtWidgets.QWidget) -> Any:
     return None
 
 
+def _loader_drag_controller_for_mime_view(view: QtWidgets.QWidget) -> Any:
+    """Resolve LoaderController for MIME build; walk parents (grid list -> holder -> section)."""
+    p = view.parentWidget()
+    while p is not None:
+        ctrl = getattr(p, "_controller", None)
+        if ctrl is not None:
+            return ctrl
+        ctrl = getattr(p, "controller", None)
+        if ctrl is not None:
+            return ctrl
+        p = p.parentWidget()
+    return None
+
+
 def _maybe_arm_drag_precache(view: QtWidgets.QWidget) -> None:
     if getattr(view, "_drag_precache_armed", False):
         return
@@ -646,8 +660,16 @@ def _mime_payload_from_selection(
     pre_cached: Optional[Dict[str, Any]] = None,
 ) -> tuple[Optional[QtCore.QMimeData], Optional[str], list[ActionItem], list[str], str]:
     """Build MIME data for loader drag; returns mime, temp_path, actions, flat_ids, eff_type."""
-    controller = getattr(view.parent(), "_controller", None)
+    controller = _loader_drag_controller_for_mime_view(view)
     if not controller:
+        if _log:
+            _log.debug(
+                "_mime_payload_from_selection: no controller (view=%s parent=%s)",
+                type(view).__name__,
+                type(view.parentWidget()).__name__
+                if view.parentWidget()
+                else None,
+            )
         return None, None, [], [], entity_type
 
     built: Optional[Dict[str, Any]] = pre_cached
@@ -777,9 +799,10 @@ def _run_loader_drag(
     if callable(begin_guard):
         begin_guard()
     try:
+        pixmap = _drag_pixmap_for_view(view, raw_result)
         drag = QtGui.QDrag(view)
         drag.setMimeData(mime_data)
-        drag.setPixmap(_drag_pixmap_for_view(view, raw_result))
+        drag.setPixmap(pixmap)
         drag.setHotSpot(QtCore.QPoint(10, 10))
         drag.exec_(QtCore.Qt.DropAction.CopyAction)
     finally:
@@ -811,24 +834,20 @@ def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
     except Exception:
         mime_data, temp_path, raw_result = None, None, None
     if mime_data is None or raw_result is None:
+        if _log:
+            _log.debug(
+                "run_loader_drag_for_card: abort mime=%s raw=%s (see "
+                "_mime_payload_from_selection / _build_drag_mime_data logs)",
+                mime_data is not None,
+                raw_result is not None,
+            )
         return
-    lv.begin_source_drag_guard()
-    try:
-        drag = QtGui.QDrag(card)
-        drag.setMimeData(mime_data)
-        drag.setPixmap(_drag_pixmap_for_view(lv, raw_result))
-        drag.setHotSpot(QtCore.QPoint(10, 10))
-        drag.exec_(QtCore.Qt.DropAction.CopyAction)
-    finally:
-        lv.end_source_drag_guard_when_left_released()
-        if qt_cpp_object_alive(lv) and hasattr(
-            lv, "_loader_drag_placeholder_pixmap"
-        ):
-            delattr(lv, "_loader_drag_placeholder_pixmap")
-    if temp_path:
-        QtCore.QTimer.singleShot(
-            60000, lambda p=temp_path: _delete_payload_temp_file_after_drag(p)
+    if _log and getattr(lv, "_last_drag_summary", None):
+        _log.debug(
+            "card drag: executing via list view source %s",
+            lv._last_drag_summary,  # noqa: SLF001
         )
+    _run_loader_drag(lv, mime_data, temp_path, raw_result)
 
 
 def _remime_from_decoded_payload(
@@ -1060,6 +1079,12 @@ class LoaderDragTreeView(DeselectableTreeView):
         super().startDrag(supportedActions)
 
 
+def _loader_mouse_event_global_point(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+    if hasattr(event, "globalPosition"):
+        return event.globalPosition().toPoint()
+    return event.globalPos()
+
+
 class LoaderDragListView(QtWidgets.QListView):
     """IconMode list: marquee on empty viewport; grid drags originate from cards."""
 
@@ -1137,11 +1162,35 @@ class LoaderDragListView(QtWidgets.QListView):
             event.accept()
             return
         gw = getattr(self, "_products_grid_owner", None)
-        if gw is not None and getattr(
-            gw, "_active_source_drag_list_view", None
-        ) is not None:
-            event.accept()
-            return
+        if gw is not None:
+            other_lv = gw.armed_card_drag_list_view()
+            if other_lv is not None and other_lv is not self:
+                ac = gw.armed_card_drag_card()
+                if ac is not None:
+                    ac.cancel_armed_drag(reason="list_view_other_section_press")
+            if getattr(gw, "_active_source_drag_list_view", None) is not None:
+                event.accept()
+                return
+            if (
+                gw.armed_card_drag_list_view() is self
+                and gw.armed_card_drag_card() is not None
+                and event.button() == QtCore.Qt.MouseButton.LeftButton
+            ):
+                idx_armed = self.indexAt(event.pos())
+                w_at = (
+                    self.indexWidget(idx_armed)
+                    if idx_armed.isValid()
+                    else None
+                )
+                if not idx_armed.isValid() or w_at is None:
+                    if _log:
+                        _log.debug(
+                            "LoaderDragListView.mousePressEvent: "
+                            "swallow_empty_while_armed pos=%s",
+                            event.pos(),
+                        )
+                    event.accept()
+                    return
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self._drag_precache_armed = False
             index = self.indexAt(event.pos())
@@ -1155,6 +1204,21 @@ class LoaderDragListView(QtWidgets.QListView):
             event.accept()
             return
         gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None and gw.armed_card_drag_list_view() is self:
+            ac = gw.armed_card_drag_card()
+            if ac is not None and isinstance(event, QtGui.QMouseEvent):
+                if _log:
+                    _log.debug(
+                        "LoaderDragListView.mouseMoveEvent: forward armed_card "
+                        "flat_row=%s",
+                        getattr(ac, "_flat_row", None),
+                    )
+                ac.handle_armed_drag_move(
+                    _loader_mouse_event_global_point(event),
+                    event.buttons(),
+                )
+            event.accept()
+            return
         if gw is not None and getattr(
             gw, "_active_source_drag_list_view", None
         ) is not None:
@@ -1170,6 +1234,13 @@ class LoaderDragListView(QtWidgets.QListView):
             event.accept()
             return
         gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None and gw.armed_card_drag_list_view() is self:
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                ac = gw.armed_card_drag_card()
+                if ac is not None:
+                    ac.cancel_armed_drag(reason="list_view_left_release")
+            event.accept()
+            return
         guard_lv = (
             getattr(gw, "_active_source_drag_list_view", None)
             if gw is not None

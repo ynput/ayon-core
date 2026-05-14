@@ -4,9 +4,9 @@ from __future__ import annotations
 import faulthandler
 import os
 
-from qtpy import QT_BINDING
-
 _installed = False
+# faulthandler keeps writing to the passed file; the handle must outlive enable().
+_loader_faulthandler_log_fp = None
 
 
 def _log_dir() -> str:
@@ -41,7 +41,7 @@ def install_loader_native_crash_diagnostics() -> None:
     - Qt message handler → ``~/.ayon/logs/loader_qt_messages.log`` (fatals/criticals).
     - ``QT_FATAL_WARNINGS`` is not set here; user may export it for stricter repro.
     """
-    global _installed
+    global _installed, _loader_faulthandler_log_fp
     if _installed:
         return
     _installed = True
@@ -60,6 +60,7 @@ def install_loader_native_crash_diagnostics() -> None:
     if fh is not None:
         try:
             faulthandler.enable(file=fh, all_threads=True)
+            _loader_faulthandler_log_fp = fh
         except Exception:
             try:
                 fh.close()
@@ -88,11 +89,22 @@ def qt_cpp_object_alive(obj: object) -> bool:
                 return bool(is_valid(obj))
         except Exception:
             continue
+    try:
+        from qtpy import QT_BINDING
+    except Exception:
+        return True
+    if QT_BINDING == "pyqt6":
+        try:
+            from PyQt6 import sip as _sip  # type: ignore[attr-defined]
+
+            return not _sip.isdeleted(obj)
+        except Exception:
+            pass
     if QT_BINDING in ("pyqt5", "pyqt6"):
         try:
-            import sip  # type: ignore
+            import sip as _sip  # type: ignore
 
-            return not sip.isdeleted(obj)
+            return not _sip.isdeleted(obj)
         except Exception:
             pass
     return True

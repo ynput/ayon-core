@@ -106,6 +106,8 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._collapsed_groups: set[str] = set()
         self._suppress_selection_broadcast = False
         self._active_source_drag_list_view: Optional[QtWidgets.QListView] = None
+        self._armed_card_drag_list_view: Optional[QtWidgets.QListView] = None
+        self._armed_card_drag_card: Optional[Any] = None
         self._marquee_backup_before_source_drag: Dict[int, bool] = {}
 
         self._scroll = QtWidgets.QScrollArea(self)
@@ -156,11 +158,62 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if self._active_source_drag_list_view is not None:
             return
         self._active_source_drag_list_view = list_view
-        self._suppress_marquee_for_source_drag()
+        self._armed_card_drag_list_view = None
+        self._armed_card_drag_card = None
+        self._suppress_marquee_if_needed()
 
-    def _suppress_marquee_for_source_drag(self) -> None:
-        """Hide rubber-band on every section list for the whole drag gesture."""
-        self._marquee_backup_before_source_drag.clear()
+    def begin_armed_card_drag(
+        self,
+        list_view: QtWidgets.QListView,
+        card: Any,
+    ) -> None:
+        """Arm grid-card drag: hide marquee immediately (before QDrag threshold)."""
+        prev = self._armed_card_drag_card
+        if prev is not None and prev is not card:
+            prev._clear_armed_drag_local(prev._grid.list_view)
+            prev._finish_card_interaction()
+        self._armed_card_drag_list_view = list_view
+        self._armed_card_drag_card = card
+        self._suppress_marquee_if_needed()
+        if _log:
+            _log.debug(
+                "grid begin_armed_card_drag: list_view=%s card_flat_row=%s",
+                id(list_view),
+                getattr(card, "_flat_row", None),
+            )
+
+    def clear_armed_card_drag(
+        self,
+        card: Any,
+        *,
+        restore_marquee: bool = True,
+    ) -> None:
+        if self._armed_card_drag_card is not card:
+            return
+        self._armed_card_drag_list_view = None
+        self._armed_card_drag_card = None
+        if (
+            restore_marquee
+            and self._active_source_drag_list_view is None
+            and self._marquee_backup_before_source_drag
+        ):
+            self._restore_marquee_after_source_drag()
+        if _log:
+            _log.debug(
+                "grid clear_armed_card_drag: restore_marquee=%s",
+                restore_marquee,
+            )
+
+    def armed_card_drag_card(self) -> Optional[Any]:
+        return self._armed_card_drag_card
+
+    def armed_card_drag_list_view(self) -> Optional[QtWidgets.QListView]:
+        return self._armed_card_drag_list_view
+
+    def _suppress_marquee_if_needed(self) -> None:
+        """Capture selection-rect visibility once; idempotent for armed then active drag."""
+        if self._marquee_backup_before_source_drag:
+            return
         for sec in self._sections_in_display_order():
             lv = sec.list_view
             key = id(lv)

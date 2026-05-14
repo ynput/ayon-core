@@ -4,11 +4,13 @@ import collections
 import inspect
 import os
 import sys
+import time
 import traceback
 import uuid
 from typing import Any, Callable, Optional
 
 import ayon_api
+from ayon_api.exceptions import HTTPRequestError
 
 from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.pipeline import get_current_host_name
@@ -47,6 +49,8 @@ REPRESENTATION_PANEL_ONLY_GROUP_LABELS = {
     "open folder",
 }
 NOT_SET = object()
+TRANSIENT_HTTP_STATUS_CODES = {502, 503, 504}
+TRANSIENT_RETRY_DELAYS = (0.2, 0.6)
 
 
 class LoaderActionsModel:
@@ -595,30 +599,42 @@ class LoaderActionsModel:
         if not project_name and not repre_ids:
             return version_context_by_id, repre_context_by_id
 
-        repre_entities = list(
-            ayon_api.get_representations(
-                project_name, representation_ids=repre_ids
-            )
+        repre_entities = self._call_ayon_api_with_transient_retries(
+            ayon_api.get_representations,
+            project_name,
+            representation_ids=repre_ids,
+            materialize=True,
         )
         version_ids = {r["versionId"] for r in repre_entities}
-        version_entities = ayon_api.get_versions(
-            project_name, version_ids=version_ids
+        version_entities = self._call_ayon_api_with_transient_retries(
+            ayon_api.get_versions,
+            project_name,
+            version_ids=version_ids,
+            materialize=True,
         )
         version_entities_by_id = {v["id"]: v for v in version_entities}
 
         product_ids = {v["productId"] for v in version_entities_by_id.values()}
-        product_entities = ayon_api.get_products(
-            project_name, product_ids=product_ids
+        product_entities = self._call_ayon_api_with_transient_retries(
+            ayon_api.get_products,
+            project_name,
+            product_ids=product_ids,
+            materialize=True,
         )
         product_entities_by_id = {p["id"]: p for p in product_entities}
 
         folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
-        folder_entities = ayon_api.get_folders(
-            project_name, folder_ids=folder_ids
+        folder_entities = self._call_ayon_api_with_transient_retries(
+            ayon_api.get_folders,
+            project_name,
+            folder_ids=folder_ids,
+            materialize=True,
         )
         folder_entities_by_id = {f["id"]: f for f in folder_entities}
 
-        project_entity = ayon_api.get_project(project_name)
+        project_entity = self._call_ayon_api_with_transient_retries(
+            ayon_api.get_project, project_name
+        )
 
         for version_id, version_entity in version_entities_by_id.items():
             product_id = version_entity["productId"]
@@ -652,8 +668,49 @@ class LoaderActionsModel:
     def _get_project(self, project_name: str) -> dict[str, Any]:
         cache = self._projects_cache[project_name]
         if not cache.is_valid:
-            cache.update_data(ayon_api.get_project(project_name))
+            cache.update_data(
+                self._call_ayon_api_with_transient_retries(
+                    ayon_api.get_project, project_name
+                )
+            )
         return cache.get_data()
+
+    def _is_transient_http_error(self, exc: Exception) -> bool:
+        if not isinstance(exc, HTTPRequestError):
+            return False
+        response = getattr(exc, "response", None)
+        status_code = getattr(response, "status_code", None)
+        return status_code in TRANSIENT_HTTP_STATUS_CODES
+
+    def _call_ayon_api_with_transient_retries(
+        self,
+        callback: Callable,
+        *args,
+        materialize: bool = False,
+        **kwargs,
+    ):
+        attempts = len(TRANSIENT_RETRY_DELAYS) + 1
+        for attempt in range(attempts):
+            try:
+                result = callback(*args, **kwargs)
+                return list(result) if materialize else result
+            except Exception as exc:
+                if (
+                    attempt >= attempts - 1
+                    or not self._is_transient_http_error(exc)
+                ):
+                    raise
+                delay = TRANSIENT_RETRY_DELAYS[attempt]
+                self._log.warning(
+                    "Transient AYON API error during %s; retrying %d/%d "
+                    "in %.1fs: %s",
+                    getattr(callback, "__name__", repr(callback)),
+                    attempt + 1,
+                    attempts - 1,
+                    delay,
+                    exc,
+                )
+                time.sleep(delay)
 
     def _get_folders(
         self, project_name: str, folder_ids: set[str]
@@ -722,9 +779,13 @@ class LoaderActionsModel:
         if missing_ids:
             repre_cache = self._representations_cache[project_name]
             repres_by_parent_id = collections.defaultdict(list)
-            for repre in ayon_api.get_representations(
-                project_name, version_ids=missing_ids
-            ):
+            repres = self._call_ayon_api_with_transient_retries(
+                ayon_api.get_representations,
+                project_name,
+                version_ids=missing_ids,
+                materialize=True,
+            )
+            for repre in repres:
                 version_id = repre["versionId"]
                 repre_cache[repre["id"]].update_data(repre)
                 repres_by_parent_id[version_id].append(repre)
@@ -761,7 +822,13 @@ class LoaderActionsModel:
                 missing_ids.add(entity_id)
 
         if missing_ids:
-            for entity in getter(project_name, **{filter_arg: missing_ids}):
+            fetched_entities = self._call_ayon_api_with_transient_retries(
+                getter,
+                project_name,
+                materialize=True,
+                **{filter_arg: missing_ids},
+            )
+            for entity in fetched_entities:
                 entities.append(entity)
                 entity_id = entity["id"]
                 project_cache[entity_id].update_data(entity)
