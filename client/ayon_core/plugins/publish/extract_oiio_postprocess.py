@@ -26,6 +26,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
     """
 
     label = "OIIO Post Process"
+    # After ExtractOIIOTranscode, before ExtractReview
     order = pyblish.api.ExtractorOrder + 0.0195
 
     settings_category = "core"
