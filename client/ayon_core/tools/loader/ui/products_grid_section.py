@@ -315,6 +315,9 @@ class ProductsGridSection(QtWidgets.QWidget):
         self._deferred_rebuild_attempts = 0
         self._syncing_index_widget_geometries = False
         self._index_widget_geometry_sync_queued = False
+        self._user_interacting = 0
+        self._pending_rebuild_force = False
+        self._rebuild_after_interaction_queued = False
 
         self._list_view.customContextMenuRequested.connect(
             owner.open_context_menu_from_section_list
@@ -332,6 +335,7 @@ class ProductsGridSection(QtWidgets.QWidget):
             owner.get_section_drag_pixmap_builder(self)
         )
         self._list_view.set_drag_precache(owner.drag_precache)
+        self._list_view.set_grid_interaction_section(self)
 
         for w in (self, self._list_holder, self._list_view, self._list_view.viewport()):
             apply_grid_view_surface_palette(w)
@@ -423,6 +427,36 @@ class ProductsGridSection(QtWidgets.QWidget):
         eff_w = max(vp.width(), inner, self._list_view.width())
         return eff_w >= GRID_READY_MIN_VIEWPORT_W
 
+    def begin_user_interaction(self) -> None:
+        self._user_interacting += 1
+
+    def end_user_interaction(self) -> None:
+        if self._user_interacting > 0:
+            self._user_interacting -= 1
+        if self._user_interacting == 0:
+            self._flush_pending_rebuild_after_interaction()
+
+    def _flush_pending_rebuild_after_interaction(self) -> None:
+        if not self._rebuild_after_interaction_queued:
+            return
+        self._rebuild_after_interaction_queued = False
+        force = self._pending_rebuild_force
+        self._pending_rebuild_force = False
+        self._rebuild_index_widgets(force=force)
+
+    def _defer_rebuild_while_interacting(self, force: bool) -> None:
+        self._pending_rebuild_force = bool(self._pending_rebuild_force or force)
+        if self._rebuild_after_interaction_queued:
+            return
+        self._rebuild_after_interaction_queued = True
+        QtCore.QTimer.singleShot(0, self._try_flush_rebuild_after_interaction)
+
+    def _try_flush_rebuild_after_interaction(self) -> None:
+        if self._user_interacting > 0:
+            QtCore.QTimer.singleShot(0, self._try_flush_rebuild_after_interaction)
+            return
+        self._flush_pending_rebuild_after_interaction()
+
     def refresh_cards(self) -> None:
         if self._show_header:
             self._header.refresh_mapping()
@@ -434,6 +468,9 @@ class ProductsGridSection(QtWidgets.QWidget):
 
     def _rebuild_index_widgets(self, *, force: bool = False) -> None:
         if self._rebuilding_index_widgets:
+            return
+        if self._user_interacting > 0:
+            self._defer_rebuild_while_interacting(force)
             return
         row_count = self._filter_proxy.rowCount()
         if (

@@ -541,12 +541,13 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
         self._grid.select_flat_row(self._flat_row, modifiers)
 
     def _route_mouse_event_to_list_view(self, event: QtGui.QMouseEvent) -> None:
-        """Deliver card/thumb coords to ``LoaderDragListView`` as viewport-local events.
+        """Queue card/thumb coords to ``LoaderDragListView`` as viewport-local events.
 
         ``QApplication.sendEvent(viewport, ...)`` does not run ``QAbstractItemView``'s
-        ``viewportEvent`` → ``mousePressEvent`` chain, so drags never armed and Qt's
-        rubber band still ran. Call the view's handlers directly with viewport coords
-        (same convention as Qt's forwarded events).
+        ``viewportEvent`` → ``mousePressEvent`` chain. Direct ``lv.mousePressEvent``
+        from a child can run selection/drag logic while the child C++ frame is still
+        active; ``setIndexWidget`` rebuild may delete the child mid-call-stack. Post
+        to the viewport so delivery happens on a clean stack.
         """
         lv = self._grid.list_view
         if lv is None:
@@ -562,19 +563,16 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
             event.buttons(),
             event.modifiers(),
         )
-        et = event.type()
-        if et == QtCore.QEvent.Type.MouseButtonPress:
-            lv.mousePressEvent(routed)
-        elif et == QtCore.QEvent.Type.MouseMove:
-            lv.mouseMoveEvent(routed)
-        elif et == QtCore.QEvent.Type.MouseButtonRelease:
-            lv.mouseReleaseEvent(routed)
+        QtCore.QCoreApplication.postEvent(vp, routed)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             pos = event.pos()
             if self.rect().contains(pos) and self.childAt(pos) is None:
                 lv = self._grid.list_view
+                if lv is None:
+                    super().mousePressEvent(event)
+                    return
                 vp = lv.viewport()
                 gp = self.mapToGlobal(pos)
                 lp = vp.mapFromGlobal(gp)
@@ -586,7 +584,7 @@ class ProductsGridCardWidget(QtWidgets.QWidget):
                     QtCore.Qt.MouseButton.LeftButton,
                     event.modifiers(),
                 )
-                lv.mousePressEvent(press)
+                QtCore.QCoreApplication.postEvent(vp, press)
                 return
             w = None
             if self._thumb.geometry().contains(pos):

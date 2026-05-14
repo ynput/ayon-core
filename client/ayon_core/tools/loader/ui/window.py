@@ -52,6 +52,7 @@ from .actions_utils import (
     show_loader_drop_action_picker,
     show_loader_drop_rep_action_picker,
 )
+from .loader_native_diag import install_loader_native_crash_diagnostics
 from ayon_core.tools.loader.drag_drop import (
     decode_loader_drag_payload_from_mime,
     filter_actions_by_drop_context,
@@ -166,6 +167,7 @@ class RefreshHandler:
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
         super(LoaderWindow, self).__init__(parent)
+        install_loader_native_crash_diagnostics()
 
         icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)

@@ -30,6 +30,8 @@ from ayon_core.tools.utils.widgets import (
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.loader.abstract import ActionItem
 
+from .loader_native_diag import qt_cpp_object_alive
+
 _log = Logger.get_logger(__name__)
 
 
@@ -97,6 +99,40 @@ def _set_file_urls_on_mime_data(mime_data: QtCore.QMimeData, paths: list) -> Non
 
 def _loader_drag_start_distance() -> int:
     return max(3, QtWidgets.QApplication.startDragDistance() // 2)
+
+
+def _controller_for_drag_precache(view: QtWidgets.QWidget) -> Any:
+    """Resolve LoaderController for precache (list parent chain vs tree header)."""
+    p = view.parentWidget()
+    if p is None:
+        return None
+    ctrl = getattr(p, "_controller", None)
+    if ctrl is not None:
+        return ctrl
+    gp = p.parentWidget()
+    if gp is not None:
+        return getattr(gp, "controller", None)
+    return None
+
+
+def _maybe_arm_drag_precache(view: QtWidgets.QWidget) -> None:
+    if getattr(view, "_drag_precache_armed", False):
+        return
+    precache = getattr(view, "_drag_precache", None)
+    cb = getattr(view, "_drag_data_callback", None)
+    if precache is None or not callable(cb):
+        return
+    try:
+        result = cb()
+        if result:
+            pn, eids, et = result
+            if pn and eids:
+                ctrl = _controller_for_drag_precache(view)
+                if ctrl is not None:
+                    precache.pre_build(ctrl, pn, set(eids), et)
+                    view._drag_precache_armed = True  # noqa: SLF001
+    except Exception:
+        pass
 
 
 # Bounded wait for DragPayloadPrecache before synchronous MIME rebuild (ms).
@@ -741,7 +777,9 @@ def _run_loader_drag(
         drag.setHotSpot(QtCore.QPoint(10, 10))
         drag.exec_(QtCore.Qt.DropAction.CopyAction)
     finally:
-        if hasattr(view, "_loader_drag_placeholder_pixmap"):
+        if qt_cpp_object_alive(view) and hasattr(
+            view, "_loader_drag_placeholder_pixmap"
+        ):
             delattr(view, "_loader_drag_placeholder_pixmap")
     # Cross-process drops (e.g. Photoshop Place) finish Qt's drag before the
     # host reads the temp JSON; delete after a bounded delay so embedded scans
@@ -784,6 +822,7 @@ class LoaderDragTreeView(DeselectableTreeView):
         self._last_drag_summary = None
         self._rubber_origin: Optional[QtCore.QPoint] = None
         self._rubber_band: Optional[QtWidgets.QRubberBand] = None
+        self._drag_precache_armed = False
 
     def set_drag_data_callback(
         self, callback: Optional[Callable[[], Optional[tuple]]]
@@ -808,6 +847,7 @@ class LoaderDragTreeView(DeselectableTreeView):
             self._rubber_band = None
 
     def mousePressEvent(self, event):
+        self._drag_precache_armed = False
         self._rubber_origin = None
         self._cleanup_rubber_band()
         self._clear_drag_cursor()
@@ -823,19 +863,6 @@ class LoaderDragTreeView(DeselectableTreeView):
                 self.viewport().setCursor(
                     QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
                 )
-                precache = getattr(self, "_drag_precache", None)
-                cb = getattr(self, "_drag_data_callback", None)
-                if precache is not None and callable(cb):
-                    try:
-                        result = cb()
-                        if result:
-                            pn, eids, et = result
-                            if pn and eids:
-                                ctrl = getattr(self.parent(), "_controller", None)
-                                if ctrl is not None:
-                                    precache.pre_build(ctrl, pn, set(eids), et)
-                    except Exception:
-                        pass
             else:
                 self._drag_start_pos = None
                 if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -856,6 +883,9 @@ class LoaderDragTreeView(DeselectableTreeView):
             and self._drag_data_callback
         ):
             dist = (event.pos() - self._drag_start_pos).manhattanLength()
+            half_d = max(2, _loader_drag_start_distance() // 2)
+            if dist >= half_d:
+                _maybe_arm_drag_precache(self)
             if dist >= _loader_drag_start_distance():
                 self._cleanup_rubber_band()
                 self._rubber_origin = None
@@ -894,6 +924,7 @@ class LoaderDragTreeView(DeselectableTreeView):
 
     def mouseReleaseEvent(self, event):
         self._drag_start_pos = None
+        self._drag_precache_armed = False
         self._clear_drag_cursor()
         if self._rubber_band is not None:
             rect = self._rubber_band.geometry()
@@ -1001,6 +1032,9 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_precache: Optional[DragPayloadPrecache] = None
         self._drag_start_pos = None
         self._last_drag_summary = None
+        self._grid_interaction_section = None
+        self._grid_drag_interaction_active = False
+        self._drag_precache_armed = False
 
     def set_drag_data_callback(
         self, callback: Optional[Callable[[], Optional[tuple]]]
@@ -1015,12 +1049,22 @@ class LoaderDragListView(QtWidgets.QListView):
     def set_drag_precache(self, cache: Optional[DragPayloadPrecache]) -> None:
         self._drag_precache = cache
 
+    def set_grid_interaction_section(self, section: Any) -> None:
+        """``ProductsGridSection`` for deferred card rebuild while dragging."""
+        self._grid_interaction_section = section
+
     def mousePressEvent(self, event):
         if event.button() != QtCore.Qt.MouseButton.LeftButton:
             super().mousePressEvent(event)
             return
+        self._drag_precache_armed = False
         index = self.indexAt(event.pos())
         if not index.isValid():
+            if getattr(self, "_grid_drag_interaction_active", False):
+                self._grid_drag_interaction_active = False
+                sec = getattr(self, "_grid_interaction_section", None)
+                if sec is not None:
+                    sec.end_user_interaction()
             self.clearSelection()
             self.setCurrentIndex(QtCore.QModelIndex())
             self._drag_start_pos = None
@@ -1059,21 +1103,17 @@ class LoaderDragListView(QtWidgets.QListView):
             self.viewport().setCursor(
                 QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             )
-            precache = getattr(self, "_drag_precache", None)
-            cb = getattr(self, "_drag_data_callback", None)
-            if precache is not None and callable(cb):
-                try:
-                    result = cb()
-                    if result:
-                        pn, eids, et = result
-                        if pn and eids:
-                            ctrl = getattr(self.parent(), "_controller", None)
-                            if ctrl is not None:
-                                precache.pre_build(ctrl, pn, set(eids), et)
-                except Exception:
-                    pass
+            self._grid_drag_interaction_active = True
+            sec = getattr(self, "_grid_interaction_section", None)
+            if sec is not None:
+                sec.begin_user_interaction()
             event.accept()
             return
+        if getattr(self, "_grid_drag_interaction_active", False):
+            self._grid_drag_interaction_active = False
+            sec = getattr(self, "_grid_interaction_section", None)
+            if sec is not None:
+                sec.end_user_interaction()
         self._drag_start_pos = None
         QtWidgets.QListView.mousePressEvent(self, event)
 
@@ -1084,6 +1124,9 @@ class LoaderDragListView(QtWidgets.QListView):
             and self._drag_data_callback
         ):
             dist = (event.pos() - self._drag_start_pos).manhattanLength()
+            half_d = max(2, _loader_drag_start_distance() // 2)
+            if dist >= half_d:
+                _maybe_arm_drag_precache(self)
             if dist >= _loader_drag_start_distance():
                 self._drag_start_pos = None
                 self.viewport().unsetCursor()
@@ -1101,7 +1144,13 @@ class LoaderDragListView(QtWidgets.QListView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if getattr(self, "_grid_drag_interaction_active", False):
+            self._grid_drag_interaction_active = False
+            sec = getattr(self, "_grid_interaction_section", None)
+            if sec is not None:
+                sec.end_user_interaction()
         self._drag_start_pos = None
+        self._drag_precache_armed = False
         self.viewport().unsetCursor()
         super().mouseReleaseEvent(event)
 
