@@ -773,6 +773,14 @@ def _run_loader_drag(
     temp_path: Optional[str],
     raw_result: RawDragResult,
 ) -> None:
+    toggle_target = (
+        view if hasattr(view, "setSelectionRectVisible") else None
+    )
+    prev_rect_visible = bool(
+        toggle_target.isSelectionRectVisible()
+    ) if toggle_target is not None else False
+    if toggle_target is not None and prev_rect_visible:
+        toggle_target.setSelectionRectVisible(False)
     try:
         drag = QtGui.QDrag(view)
         drag.setMimeData(mime_data)
@@ -780,6 +788,12 @@ def _run_loader_drag(
         drag.setHotSpot(QtCore.QPoint(10, 10))
         drag.exec_(QtCore.Qt.DropAction.CopyAction)
     finally:
+        if (
+            toggle_target is not None
+            and qt_cpp_object_alive(toggle_target)
+            and prev_rect_visible
+        ):
+            toggle_target.setSelectionRectVisible(True)
         if qt_cpp_object_alive(view) and hasattr(
             view, "_loader_drag_placeholder_pixmap"
         ):
@@ -806,6 +820,9 @@ def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
         mime_data, temp_path, raw_result = None, None, None
     if mime_data is None or raw_result is None:
         return
+    prev_rect_visible = bool(lv.isSelectionRectVisible())
+    if prev_rect_visible:
+        lv.setSelectionRectVisible(False)
     try:
         drag = QtGui.QDrag(card)
         drag.setMimeData(mime_data)
@@ -813,6 +830,8 @@ def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
         drag.setHotSpot(QtCore.QPoint(10, 10))
         drag.exec_(QtCore.Qt.DropAction.CopyAction)
     finally:
+        if qt_cpp_object_alive(lv) and prev_rect_visible:
+            lv.setSelectionRectVisible(True)
         if qt_cpp_object_alive(lv) and hasattr(
             lv, "_loader_drag_placeholder_pixmap"
         ):
