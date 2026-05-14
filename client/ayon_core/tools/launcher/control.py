@@ -6,8 +6,8 @@ from typing import Optional
 from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
-from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     UsersModel,
@@ -31,7 +31,6 @@ class BaseLauncherController(
     AbstractLauncherFrontEnd, AbstractLauncherBackend
 ):
     def __init__(self):
-        self._project_settings = {}
         self._event_system = None
         self._log = None
 
@@ -42,6 +41,7 @@ class BaseLauncherController(
 
         self._addons_manager = None
 
+        self._settings_model = SettingsModel()
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
@@ -128,14 +128,7 @@ class BaseLauncherController(
 
     # Project settings for applications actions
     def get_project_settings(self, project_name):
-        if project_name in self._project_settings:
-            return self._project_settings[project_name]
-        if project_name:
-            settings = get_project_settings(project_name)
-        else:
-            settings = get_studio_settings()
-        self._project_settings[project_name] = settings
-        return settings
+        return self._settings_model.get_settings(project_name)
 
     # Entity for backend
     def get_project_entity(self, project_name):
@@ -231,8 +224,7 @@ class BaseLauncherController(
     def refresh(self):
         self._emit_event("controller.refresh.started")
 
-        self._project_settings = {}
-
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
         self._users_model.reset()
@@ -246,7 +238,7 @@ class BaseLauncherController(
         self._emit_event("controller.refresh.actions.started")
 
         # Refresh project settings (used for actions discovery)
-        self._project_settings = {}
+        self._settings_model.reset()
         # Refresh projects - they define applications
         self._projects_model.reset()
         # Refresh actions
