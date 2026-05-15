@@ -13,13 +13,13 @@ from ayon_core.pipeline import (
     get_process_id,
 )
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     UsersModel,
 )
 
 from .models import (
-    SettingsModel,
     PublishModel,
     CreateModel,
 )
@@ -101,7 +101,7 @@ class PublisherController(
         self._host = registered_host()
         self._headless = headless
 
-        self._settings_model = SettingsModel(self)
+        self._settings_model = SettingsModel()
         self._create_model = CreateModel(self)
         self._publish_model = PublishModel(self)
 
