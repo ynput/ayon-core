@@ -256,7 +256,7 @@ def run_detached_process(args, **kwargs):
             new_args.extend(args)
             args = new_args
         else:
-            kwargs["start_new_session "] = True
+            kwargs["start_new_session"] = True
 
     elif low_platform == "windows":
         flags = (
