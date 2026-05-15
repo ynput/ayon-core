@@ -194,6 +194,10 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def get_project_entity(
         self, project_name: str
     ) -> Union[Dict[str, Any], None]:
