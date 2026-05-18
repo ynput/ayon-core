@@ -1,15 +1,16 @@
-import logging
 import os
 import re
 import sys
 import tempfile
 import threading
+import time
 import uuid
 from typing import Any, Callable, Dict, Optional, Union
 
 from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.tools.utils import DeselectableTreeView
 
@@ -29,7 +30,40 @@ from ayon_core.tools.utils.widgets import (
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.loader.abstract import ActionItem
 
-_log = logging.getLogger(__name__)
+_log = Logger.get_logger(__name__)
+
+
+def qt_cpp_object_alive(obj: object) -> bool:
+    """True if ``obj`` still wraps a live Qt C++ object (for post-drag cleanup)."""
+    if obj is None:
+        return False
+    for mod_name in ("shiboken6", "shiboken2"):
+        try:
+            mod = __import__(mod_name, fromlist=["isValid"])
+            is_valid = getattr(mod, "isValid", None)
+            if callable(is_valid):
+                return bool(is_valid(obj))
+        except Exception:
+            continue
+    try:
+        from qtpy import QT_BINDING
+    except Exception:
+        return True
+    if QT_BINDING == "pyqt6":
+        try:
+            from PyQt6 import sip as _sip  # type: ignore[attr-defined]
+
+            return not _sip.isdeleted(obj)
+        except Exception:
+            pass
+    if QT_BINDING in ("pyqt5", "pyqt6"):
+        try:
+            import sip as _sip  # type: ignore
+
+            return not _sip.isdeleted(obj)
+        except Exception:
+            pass
+    return True
 
 
 def _format_payload_summary(project_name, entity_type, entity_ids, action_items):
@@ -68,6 +102,11 @@ def _delete_payload_temp_file(path: Optional[str]) -> None:
         pass
 
 
+def _delete_payload_temp_file_after_drag(path: Optional[str]) -> None:
+    """Deferred cleanup after cross-process drag."""
+    _delete_payload_temp_file(path)
+
+
 def _set_file_urls_on_mime_data(mime_data: QtCore.QMimeData, paths: list) -> None:
     """Set file URLs on mime data for cross-platform drag (text/uri-list).
     On Windows, sets Preferred DropEffect to 5 (copy) so Explorer copies instead of moves.
@@ -85,6 +124,61 @@ def _set_file_urls_on_mime_data(mime_data: QtCore.QMimeData, paths: list) -> Non
 
 def _loader_drag_start_distance() -> int:
     return max(3, QtWidgets.QApplication.startDragDistance() // 2)
+
+
+loader_drag_start_distance = _loader_drag_start_distance
+
+
+def _controller_for_drag_precache(view: QtWidgets.QWidget) -> Any:
+    """Resolve LoaderController for precache (list parent chain vs tree header)."""
+    p = view.parentWidget()
+    if p is None:
+        return None
+    ctrl = getattr(p, "_controller", None)
+    if ctrl is not None:
+        return ctrl
+    gp = p.parentWidget()
+    if gp is not None:
+        return getattr(gp, "controller", None)
+    return None
+
+
+def _loader_drag_controller_for_mime_view(view: QtWidgets.QWidget) -> Any:
+    """Resolve LoaderController for MIME build; walk parents (grid list -> holder -> section)."""
+    p = view.parentWidget()
+    while p is not None:
+        ctrl = getattr(p, "_controller", None)
+        if ctrl is not None:
+            return ctrl
+        ctrl = getattr(p, "controller", None)
+        if ctrl is not None:
+            return ctrl
+        p = p.parentWidget()
+    return None
+
+
+def _maybe_arm_drag_precache(view: QtWidgets.QWidget) -> None:
+    if getattr(view, "_drag_precache_armed", False):
+        return
+    precache = getattr(view, "_drag_precache", None)
+    cb = getattr(view, "_drag_data_callback", None)
+    if precache is None or not callable(cb):
+        return
+    try:
+        result = cb()
+        if result:
+            pn, eids, et = result
+            if pn and eids:
+                ctrl = _controller_for_drag_precache(view)
+                if ctrl is not None:
+                    precache.pre_build(ctrl, pn, set(eids), et)
+                    view._drag_precache_armed = True  # noqa: SLF001
+    except Exception:
+        pass
+
+
+# Bounded wait for DragPayloadPrecache before synchronous MIME rebuild (ms).
+_DRAG_PRECACHE_WAIT_MS = 250
 
 
 def _primary_screen_device_pixel_ratio() -> float:
@@ -236,11 +330,44 @@ def _make_composite_drag_pixmap(
 RawDragResult = tuple[str, Union[set[str], Any], str]
 
 
+def _write_loader_drag_marker_file(
+    payload: Dict[str, Any],
+    file_paths: list[str],
+) -> Optional[str]:
+    """Write ``ayon_loader_*.json`` under the OS temp dir; return path or None."""
+    temp_path: Optional[str] = None
+    try:
+        fd, temp_path = tempfile.mkstemp(
+            suffix=".json",
+            prefix=LOADER_PAYLOAD_TEMP_PREFIX,
+            dir=tempfile.gettempdir(),
+        )
+        with os.fdopen(fd, "wb") as f:
+            marker_disk: Dict[str, Any] = dict(payload)
+            marker_disk["file_paths"] = list(file_paths)
+            f.write(loader_payload_to_bytes(marker_disk))
+    except Exception as e:
+        if _log:
+            _log.debug(
+                "_write_loader_drag_marker_file: temp json failed %s",
+                e,
+                exc_info=True,
+            )
+        if temp_path and os.path.isfile(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+        return None
+    return temp_path
+
+
 class DragPayloadPrecache:
     """Pre-build drag MIME payload data in a background thread on selection."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._cv = threading.Condition(self._lock)
         self._key: Optional[tuple[str, frozenset[str], str]] = None
         self._data: Optional[Dict[str, Any]] = None
 
@@ -254,7 +381,7 @@ class DragPayloadPrecache:
         if not project_name or not entity_ids:
             return
         key = (project_name, frozenset(entity_ids), entity_type)
-        with self._lock:
+        with self._cv:
             if self._key == key and self._data is not None:
                 return
             self._key = key
@@ -277,6 +404,36 @@ class DragPayloadPrecache:
                 return self._data
         return None
 
+    def wait(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        timeout_ms: int,
+    ) -> None:
+        """Block until precache fills for ``key`` or timeout (pumps Qt events)."""
+        key = (project_name, frozenset(entity_ids), entity_type)
+        deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
+        app = QtWidgets.QApplication.instance()
+        while time.monotonic() < deadline:
+            with self._cv:
+                if self._key != key:
+                    return
+                if self._data is not None:
+                    return
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self._cv.wait(timeout=min(0.05, remaining))
+            if app:
+                try:
+                    _pe = (
+                        QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+                    )
+                except AttributeError:
+                    _pe = QtCore.QEventLoop.ExcludeUserInputEvents  # type: ignore[attr-defined]
+                app.processEvents(_pe)
+
     def _run(
         self,
         controller: Any,
@@ -288,9 +445,32 @@ class DragPayloadPrecache:
         data = _build_drag_payload_data(
             controller, project_name, entity_ids, entity_type
         )
-        with self._lock:
+        if data is not None:
+            thumb_by_vid: Dict[str, Optional[str]] = {}
+            if entity_type == "version":
+                try:
+                    paths = controller.get_thumbnail_paths(
+                        project_name, "version", set(entity_ids)
+                    )
+                    thumb_by_vid = {
+                        str(k): v for k, v in (paths or {}).items()
+                    }
+                except Exception as exc:
+                    if _log:
+                        _log.debug(
+                            "DragPayloadPrecache: thumbnail paths %s",
+                            exc,
+                            exc_info=True,
+                        )
+            data["thumbnail_paths_by_version_id"] = thumb_by_vid
+            payload = data.get("payload") or {}
+            file_paths = list(data.get("file_paths") or [])
+            marker_path = _write_loader_drag_marker_file(payload, file_paths)
+            data["marker_temp_path"] = marker_path
+        with self._cv:
             if self._key == key:
                 self._data = data
+            self._cv.notify_all()
 
 
 def _build_drag_payload_data(
@@ -379,7 +559,6 @@ def _mime_qt_from_drag_payload_data(
     """Build QMimeData + optional temp json path from _build_drag_payload_data result."""
     payload = data["payload"]
     file_paths = data.get("file_paths") or []
-    in_host = bool(data.get("in_host"))
 
     mime_data = QtCore.QMimeData()
     mime_data.setData(
@@ -398,8 +577,15 @@ def _mime_qt_from_drag_payload_data(
                     exc_info=True,
                 )
 
-    temp_path: Optional[str] = None
-    if in_host:
+    # Cross-process hosts resolve the marker from custom MIME, legacy URL list,
+    # or temp-dir scan (Harmony, Unity, Photoshop CEP). Prefer a path written
+    # by DragPayloadPrecache on a worker thread; otherwise write temp JSON
+    # under the OS temp dir. Do **not** append the marker to ``setUrls``:
+    # native Photoshop treats every file URL as Place input and errors on
+    # ``.json``.
+    temp_path: Optional[str] = data.get("marker_temp_path")
+    if not (temp_path and os.path.isfile(temp_path)):
+        temp_path = None
         try:
             fd, temp_path = tempfile.mkstemp(
                 suffix=".json",
@@ -407,10 +593,9 @@ def _mime_qt_from_drag_payload_data(
                 dir=tempfile.gettempdir(),
             )
             with os.fdopen(fd, "wb") as f:
-                f.write(loader_payload_to_bytes(payload))
-            existing = list(mime_data.urls())
-            existing.append(QtCore.QUrl.fromLocalFile(temp_path))
-            mime_data.setUrls(existing)
+                marker_disk: Dict[str, Any] = dict(payload)
+                marker_disk["file_paths"] = list(file_paths)
+                f.write(loader_payload_to_bytes(marker_disk))
         except Exception as e:
             if _log:
                 _log.debug(
@@ -447,6 +632,9 @@ def _drag_pixmap_for_view(view: QtWidgets.QWidget, raw_result: RawDragResult) ->
             version_label = str(ctx.get("version_label") or "")
             count = int(ctx.get("count", count))
 
+    if getattr(view, "_loader_drag_placeholder_pixmap", False):
+        thumb_path = None
+
     # Match full-width 16:9 slot inside _make_composite_drag_pixmap (lw=110, margin=4).
     thumb_logical = QtCore.QSize(102, 58)
 
@@ -473,7 +661,7 @@ def _mime_payload_from_selection(
     pre_cached: Optional[Dict[str, Any]] = None,
 ) -> tuple[Optional[QtCore.QMimeData], Optional[str], list[ActionItem], list[str], str]:
     """Build MIME data for loader drag; returns mime, temp_path, actions, flat_ids, eff_type."""
-    controller = getattr(view.parent(), "_controller", None)
+    controller = _loader_drag_controller_for_mime_view(view)
     if not controller:
         return None, None, [], [], entity_type
 
@@ -505,8 +693,6 @@ def _build_drag_mime_data_core(
     view._last_drag_summary = None  # noqa: SLF001
     cb = getattr(view, "_drag_data_callback", None)
     if not cb:
-        if _log:
-            _log.debug("_build_drag_mime_data: reason=no_callback")
         return None, (), None, None
     try:
         result = cb()
@@ -515,39 +701,53 @@ def _build_drag_mime_data_core(
             _log.debug("_build_drag_mime_data: callback raised %s", e, exc_info=True)
         return None, (), None, None
     if not result:
-        if _log:
-            _log.debug("_build_drag_mime_data: reason=callback_returned_none")
         return None, (), None, None
     try:
         project_name, entity_ids, entity_type = result
     except (ValueError, TypeError) as e:
         if _log:
-            _log.debug("_build_drag_mime_data: unpack failed %s", e)
+            _log.debug("_build_drag_mime_data: unpack failed %s", e, exc_info=True)
         return None, (), None, None
     if not entity_ids:
-        if _log:
-            _log.debug("_build_drag_mime_data: reason=no_entity_ids")
         return None, (), None, None
 
     ids_set = set(entity_ids)
     raw_tuple: RawDragResult = (project_name, ids_set, entity_type)
     precache = getattr(view, "_drag_precache", None)
     pre_cached = None
+    precache_miss = False
     if precache is not None:
         pre_cached = precache.get(project_name, ids_set, entity_type)
-    mime_data, temp_path, action_items, flat_ids, eff_type = (
-        _mime_payload_from_selection(
-            view, project_name, ids_set, entity_type, pre_cached=pre_cached
+        if pre_cached is None:
+            precache_miss = True
+            precache.wait(
+                project_name, ids_set, entity_type, _DRAG_PRECACHE_WAIT_MS
+            )
+            pre_cached = precache.get(project_name, ids_set, entity_type)
+
+    if precache_miss:
+        view.viewport().setCursor(
+            QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor)
         )
-    )
+    try:
+        setattr(view, "_loader_drag_placeholder_pixmap", precache_miss)
+        mime_data, temp_path, action_items, flat_ids, eff_type = (
+            _mime_payload_from_selection(
+                view, project_name, ids_set, entity_type, pre_cached=pre_cached
+            )
+        )
+    finally:
+        if precache_miss:
+            view.viewport().unsetCursor()
+
     if mime_data is None:
+        if hasattr(view, "_loader_drag_placeholder_pixmap"):
+            delattr(view, "_loader_drag_placeholder_pixmap")
         return None, (), None, None
 
     summary = _format_payload_summary(
         project_name, eff_type, flat_ids, action_items
     )
-    if _log:
-        _log.debug("_build_drag_mime_data: %s", summary)
     view._last_drag_summary = summary  # noqa: SLF001
     return mime_data, (), temp_path, raw_tuple
 
@@ -580,12 +780,51 @@ def _run_loader_drag(
     temp_path: Optional[str],
     raw_result: RawDragResult,
 ) -> None:
-    drag = QtGui.QDrag(view)
-    drag.setMimeData(mime_data)
-    drag.setPixmap(_drag_pixmap_for_view(view, raw_result))
-    drag.setHotSpot(QtCore.QPoint(10, 10))
-    drag.exec_(QtCore.Qt.DropAction.CopyAction)
-    _delete_payload_temp_file(temp_path)
+    begin_guard = getattr(view, "begin_source_drag_guard", None)
+    if callable(begin_guard):
+        begin_guard()
+    if _log:
+        summ = getattr(view, "_last_drag_summary", None)
+        if summ:
+            _log.debug("loader drag start: %s", summ)
+    try:
+        pixmap = _drag_pixmap_for_view(view, raw_result)
+        drag = QtGui.QDrag(view)
+        drag.setMimeData(mime_data)
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(QtCore.QPoint(10, 10))
+        drag.exec_(QtCore.Qt.DropAction.CopyAction)
+    finally:
+        end_when = getattr(view, "end_source_drag_guard_when_left_released", None)
+        if callable(end_when):
+            end_when()
+        if qt_cpp_object_alive(view) and hasattr(
+            view, "_loader_drag_placeholder_pixmap"
+        ):
+            delattr(view, "_loader_drag_placeholder_pixmap")
+    # Cross-process drops (e.g. Photoshop Place) finish Qt's drag before the
+    # host reads the temp JSON; delete after a bounded delay so embedded scans
+    # can find ayon_loader_*.json. Host success paths may delete earlier.
+    # 60s: Plc + smart-object retries + JSX marker scan can exceed 5s easily.
+    if temp_path:
+        QtCore.QTimer.singleShot(
+            60000, lambda p=temp_path: _delete_payload_temp_file_after_drag(p)
+        )
+
+
+def run_loader_drag_for_card(card: QtWidgets.QWidget) -> None:
+    """Start loader ``QDrag`` from a grid card; MIME uses ``list_view`` selection."""
+    grid = getattr(card, "_grid", None)
+    lv = getattr(grid, "list_view", None) if grid is not None else None
+    if lv is None:
+        return
+    try:
+        mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(lv)
+    except Exception:
+        mime_data, temp_path, raw_result = None, None, None
+    if mime_data is None or raw_result is None:
+        return
+    _run_loader_drag(lv, mime_data, temp_path, raw_result)
 
 
 def _remime_from_decoded_payload(
@@ -619,6 +858,7 @@ class LoaderDragTreeView(DeselectableTreeView):
         self._last_drag_summary = None
         self._rubber_origin: Optional[QtCore.QPoint] = None
         self._rubber_band: Optional[QtWidgets.QRubberBand] = None
+        self._drag_precache_armed = False
 
     def set_drag_data_callback(
         self, callback: Optional[Callable[[], Optional[tuple]]]
@@ -643,6 +883,7 @@ class LoaderDragTreeView(DeselectableTreeView):
             self._rubber_band = None
 
     def mousePressEvent(self, event):
+        self._drag_precache_armed = False
         self._rubber_origin = None
         self._cleanup_rubber_band()
         self._clear_drag_cursor()
@@ -658,19 +899,6 @@ class LoaderDragTreeView(DeselectableTreeView):
                 self.viewport().setCursor(
                     QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
                 )
-                precache = getattr(self, "_drag_precache", None)
-                cb = getattr(self, "_drag_data_callback", None)
-                if precache is not None and callable(cb):
-                    try:
-                        result = cb()
-                        if result:
-                            pn, eids, et = result
-                            if pn and eids:
-                                ctrl = getattr(self.parent(), "_controller", None)
-                                if ctrl is not None:
-                                    precache.pre_build(ctrl, pn, set(eids), et)
-                    except Exception:
-                        pass
             else:
                 self._drag_start_pos = None
                 if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -691,6 +919,9 @@ class LoaderDragTreeView(DeselectableTreeView):
             and self._drag_data_callback
         ):
             dist = (event.pos() - self._drag_start_pos).manhattanLength()
+            half_d = max(2, _loader_drag_start_distance() // 2)
+            if dist >= half_d:
+                _maybe_arm_drag_precache(self)
             if dist >= _loader_drag_start_distance():
                 self._cleanup_rubber_band()
                 self._rubber_origin = None
@@ -700,11 +931,6 @@ class LoaderDragTreeView(DeselectableTreeView):
                     self
                 )
                 if mime_data is not None and raw_result is not None:
-                    if _log and getattr(self, "_last_drag_summary", None):
-                        _log.debug(
-                            "mouseMoveEvent: fallback drag %s",
-                            self._last_drag_summary,
-                        )
                     _run_loader_drag(self, mime_data, temp_path, raw_result)
                     return
 
@@ -729,6 +955,7 @@ class LoaderDragTreeView(DeselectableTreeView):
 
     def mouseReleaseEvent(self, event):
         self._drag_start_pos = None
+        self._drag_precache_armed = False
         self._clear_drag_cursor()
         if self._rubber_band is not None:
             rect = self._rubber_band.geometry()
@@ -765,11 +992,7 @@ class LoaderDragTreeView(DeselectableTreeView):
         return mime_data, (), temp_path
 
     def startDrag(self, supportedActions):
-        if _log:
-            _log.debug(
-                "startDrag: entry supportedActions=%s",
-                supportedActions,
-            )
+        _ = supportedActions
         try:
             mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(self)
         except Exception as e:
@@ -780,21 +1003,8 @@ class LoaderDragTreeView(DeselectableTreeView):
                     exc_info=True,
                 )
             mime_data, temp_path, raw_result = None, None, None
-        if _log:
-            _log.debug(
-                "startDrag: mime_data built=%s, fallback to super=%s",
-                mime_data is not None,
-                mime_data is None,
-            )
         if mime_data is not None and raw_result is not None:
-            if _log and getattr(self, "_last_drag_summary", None):
-                _log.debug(
-                    "startDrag: executing drag with custom mime_data %s",
-                    self._last_drag_summary,
-                )
             _run_loader_drag(self, mime_data, temp_path, raw_result)
-            if _log:
-                _log.debug("startDrag: drag finished")
             return
         model = self.model()
         sel = self.selectionModel()
@@ -806,26 +1016,26 @@ class LoaderDragTreeView(DeselectableTreeView):
             ):
                 payload = decode_loader_drag_payload_from_mime(model_mime)
                 if payload:
-                    if _log:
-                        _log.debug(
-                            "startDrag: model mimeData %s",
-                            _format_payload_summary_from_dict(payload),
-                        )
                     mime_b, temp_b, raw_b = _remime_from_decoded_payload(
                         self, payload
                     )
                     if mime_b is not None and raw_b is not None:
+                        self._last_drag_summary = (
+                            _format_payload_summary_from_dict(payload)
+                        )
                         _run_loader_drag(self, mime_b, temp_b, raw_b)
                         return
-        if _log:
-            _log.debug(
-                "startDrag: no payload (product row only?); fallback to super"
-            )
         super().startDrag(supportedActions)
 
 
+def _loader_mouse_event_global_point(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+    if hasattr(event, "globalPosition"):
+        return event.globalPosition().toPoint()
+    return event.globalPos()
+
+
 class LoaderDragListView(QtWidgets.QListView):
-    """List view that supports dragging loader action payload (grid mode)."""
+    """IconMode list: marquee on empty viewport; grid drags originate from cards."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -834,8 +1044,54 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_data_callback = None
         self._drag_pixmap_context_callback = None
         self._drag_precache: Optional[DragPayloadPrecache] = None
-        self._drag_start_pos = None
         self._last_drag_summary = None
+        self._drag_precache_armed = False
+        self._source_drag_active_until_release = False
+        self._source_drag_left_up_confirmations = 0
+
+    def source_drag_guard_active(self) -> bool:
+        return bool(self._source_drag_active_until_release)
+
+    def begin_source_drag_guard(self) -> None:
+        if self._source_drag_active_until_release:
+            return
+        self._source_drag_active_until_release = True
+        self._source_drag_left_up_confirmations = 0
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None:
+            gw.register_active_source_drag_list_view(self)
+
+    def end_source_drag_guard(self) -> None:
+        if not self._source_drag_active_until_release:
+            return
+        self._source_drag_active_until_release = False
+        self._source_drag_left_up_confirmations = 0
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None:
+            gw.clear_active_source_drag_list_view(self)
+
+    def end_source_drag_guard_when_left_released(self) -> None:
+        if not self._source_drag_active_until_release:
+            return
+        app = QtWidgets.QApplication.instance()
+        left_down = (
+            app is not None
+            and (app.mouseButtons() & QtCore.Qt.MouseButton.LeftButton)
+        )
+        if left_down:
+            self._source_drag_left_up_confirmations = 0
+            QtCore.QTimer.singleShot(
+                16, self.end_source_drag_guard_when_left_released
+            )
+            return
+        self._source_drag_left_up_confirmations += 1
+        if self._source_drag_left_up_confirmations < 3:
+            QtCore.QTimer.singleShot(
+                16, self.end_source_drag_guard_when_left_released
+            )
+            return
+        self._source_drag_left_up_confirmations = 0
+        self.end_source_drag_guard()
 
     def set_drag_data_callback(
         self, callback: Optional[Callable[[], Optional[tuple]]]
@@ -851,61 +1107,90 @@ class LoaderDragListView(QtWidgets.QListView):
         self._drag_precache = cache
 
     def mousePressEvent(self, event):
-        index = self.indexAt(event.pos())
-        if not index.isValid():
-            self.clearSelection()
-            self.setCurrentIndex(QtCore.QModelIndex())
-            self._drag_start_pos = None
-        else:
-            model = self.model()
-            if model and (model.flags(index) & QtCore.Qt.ItemIsDragEnabled):
-                self._drag_start_pos = event.pos()
-                self.viewport().setCursor(
-                    QtGui.QCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
+        if self.source_drag_guard_active():
+            event.accept()
+            return
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None:
+            other_lv = gw.armed_card_drag_list_view()
+            if other_lv is not None and other_lv is not self:
+                ac = gw.armed_card_drag_card()
+                if ac is not None:
+                    ac.cancel_armed_drag(reason="list_view_other_section_press")
+            if getattr(gw, "_active_source_drag_list_view", None) is not None:
+                event.accept()
+                return
+            if (
+                gw.armed_card_drag_list_view() is self
+                and gw.armed_card_drag_card() is not None
+                and event.button() == QtCore.Qt.MouseButton.LeftButton
+            ):
+                idx_armed = self.indexAt(event.pos())
+                w_at = (
+                    self.indexWidget(idx_armed)
+                    if idx_armed.isValid()
+                    else None
                 )
-                precache = getattr(self, "_drag_precache", None)
-                cb = getattr(self, "_drag_data_callback", None)
-                if precache is not None and callable(cb):
-                    try:
-                        result = cb()
-                        if result:
-                            pn, eids, et = result
-                            if pn and eids:
-                                ctrl = getattr(self.parent(), "_controller", None)
-                                if ctrl is not None:
-                                    precache.pre_build(ctrl, pn, set(eids), et)
-                    except Exception:
-                        pass
-            else:
-                self._drag_start_pos = None
-        QtWidgets.QListView.mousePressEvent(self, event)
+                if not idx_armed.isValid() or w_at is None:
+                    event.accept()
+                    return
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._drag_precache_armed = False
+            index = self.indexAt(event.pos())
+            if not index.isValid():
+                self.clearSelection()
+                self.setCurrentIndex(QtCore.QModelIndex())
+        super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if (
-            self._drag_start_pos is not None
-            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
-            and self._drag_data_callback
-        ):
-            dist = (event.pos() - self._drag_start_pos).manhattanLength()
-            if dist >= _loader_drag_start_distance():
-                self._drag_start_pos = None
-                self.viewport().unsetCursor()
-                mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(
-                    self
+        if self.source_drag_guard_active():
+            event.accept()
+            return
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None and gw.armed_card_drag_list_view() is self:
+            ac = gw.armed_card_drag_card()
+            if ac is not None and isinstance(event, QtGui.QMouseEvent):
+                ac.handle_armed_drag_move(
+                    _loader_mouse_event_global_point(event),
+                    event.buttons(),
                 )
-                if mime_data is not None and raw_result is not None:
-                    if _log and getattr(self, "_last_drag_summary", None):
-                        _log.debug(
-                            "mouseMoveEvent: fallback drag %s",
-                            self._last_drag_summary,
-                        )
-                    _run_loader_drag(self, mime_data, temp_path, raw_result)
-                    return
+            event.accept()
+            return
+        if gw is not None and getattr(
+            gw, "_active_source_drag_list_view", None
+        ) is not None:
+            event.accept()
+            return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        self._drag_start_pos = None
-        self.viewport().unsetCursor()
+        self._drag_precache_armed = False
+        if self.source_drag_guard_active():
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                self.end_source_drag_guard()
+            event.accept()
+            return
+        gw = getattr(self, "_products_grid_owner", None)
+        if gw is not None and gw.armed_card_drag_list_view() is self:
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                ac = gw.armed_card_drag_card()
+                if ac is not None:
+                    ac.cancel_armed_drag(reason="list_view_left_release")
+            event.accept()
+            return
+        guard_lv = (
+            getattr(gw, "_active_source_drag_list_view", None)
+            if gw is not None
+            else None
+        )
+        if guard_lv is not None:
+            if (
+                event.button() == QtCore.Qt.MouseButton.LeftButton
+                and hasattr(guard_lv, "end_source_drag_guard")
+            ):
+                guard_lv.end_source_drag_guard()
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
 
     def _build_drag_mime_data(self):
@@ -913,11 +1198,9 @@ class LoaderDragListView(QtWidgets.QListView):
         return mime_data, (), temp_path
 
     def startDrag(self, supportedActions):
-        if _log:
-            _log.debug(
-                "startDrag: entry supportedActions=%s",
-                supportedActions,
-            )
+        if self.source_drag_guard_active():
+            return
+        _ = supportedActions
         try:
             mime_data, _, temp_path, raw_result = _build_drag_mime_data_core(self)
         except Exception as e:
@@ -928,18 +1211,7 @@ class LoaderDragListView(QtWidgets.QListView):
                     exc_info=True,
                 )
             mime_data, temp_path, raw_result = None, None, None
-        if _log:
-            _log.debug(
-                "startDrag: mime_data built=%s, fallback to super=%s",
-                mime_data is not None,
-                mime_data is None,
-            )
         if mime_data is not None and raw_result is not None:
-            if _log and getattr(self, "_last_drag_summary", None):
-                _log.debug(
-                    "startDrag: executing drag with custom mime_data %s",
-                    self._last_drag_summary,
-                )
             _run_loader_drag(self, mime_data, temp_path, raw_result)
             return
         model = self.model()
@@ -952,21 +1224,15 @@ class LoaderDragListView(QtWidgets.QListView):
             ):
                 payload = decode_loader_drag_payload_from_mime(model_mime)
                 if payload:
-                    if _log:
-                        _log.debug(
-                            "startDrag: model mimeData %s",
-                            _format_payload_summary_from_dict(payload),
-                        )
                     mime_b, temp_b, raw_b = _remime_from_decoded_payload(
                         self, payload
                     )
                     if mime_b is not None and raw_b is not None:
+                        self._last_drag_summary = (
+                            _format_payload_summary_from_dict(payload)
+                        )
                         _run_loader_drag(self, mime_b, temp_b, raw_b)
                         return
-        if _log:
-            _log.debug(
-                "startDrag: no payload (product row only?); fallback to super"
-            )
         super().startDrag(supportedActions)
 
 

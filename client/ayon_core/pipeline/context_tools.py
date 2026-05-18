@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import logging
 import platform
+import threading
 import uuid
 import warnings
 from typing import Optional, Any
@@ -41,6 +42,7 @@ _registered_host = {"_": None}
 # Keep modules manager (and it's modules) in memory
 # - that gives option to register modules' callbacks
 _addons_manager = None
+_addons_manager_lock = threading.Lock()
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +61,12 @@ def _get_addons_manager(force: bool = False):
     in memory of process to be able trigger their event callbacks if they
     need any.
 
+    Lazy creation is serialized with a lock so concurrent first callers
+    cannot construct duplicate managers (thread-safe double-checked locking).
+    A ``force=True`` rebuild runs under the same lock so no reader returns a
+    partially replaced manager. This does not make individual addons'
+    internal APIs thread-safe.
+
     Args:
         force: When True, discard the cached instance and rebuild.
             Use when a caller needs a fresh studio-settings snapshot
@@ -69,8 +77,14 @@ def _get_addons_manager(force: bool = False):
     """
 
     global _addons_manager
-    if force or _addons_manager is None:
-        _addons_manager = AddonsManager()
+    if not force:
+        cached = _addons_manager
+        if cached is not None:
+            return cached
+
+    with _addons_manager_lock:
+        if force or _addons_manager is None:
+            _addons_manager = AddonsManager()
     return _addons_manager
 
 

@@ -1,8 +1,4 @@
-"""Windows-only native taskbar identity (AppUserModelID).
-
-Linux-native taskbar hints are not maintained in this package; see roadmap
-``PipelineEngineering/patch-stack/roadmap-cross-platform-dock-shim-upstream-hardening.md``.
-"""
+"""Windows-only native taskbar identity (AppUserModelID)."""
 
 from __future__ import annotations
 

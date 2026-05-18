@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import logging
 import numbers
 from typing import Optional
 
@@ -42,8 +41,6 @@ from .actions_utils import (
     LoaderDragTreeView,
     show_actions_menu,
 )
-
-_log = logging.getLogger(__name__)
 
 
 class ProductsProxyModel(RecursiveSortFilterProxyModel):
@@ -102,19 +99,11 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
 
     def mimeData(self, indexes):
         """Build loader payload from selected indexes so the view starts drag."""
-        if _log:
-            _log.debug("mimeData: indexes count=%s", len(indexes) if indexes else 0)
         if not indexes:
-            if _log:
-                _log.debug("mimeData: returning None (no indexes)")
             return None
         source = self.sourceModel()
         project_name = getattr(source, "get_last_project_name", lambda: None)()
-        if _log:
-            _log.debug("mimeData: project_name=%s", project_name)
         if not project_name:
-            if _log:
-                _log.debug("mimeData: returning None (no project_name)")
             return None
         version_ids = []
         seen = set()
@@ -128,11 +117,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             vid = source.data(src_idx, VERSION_ID_ROLE)
             if vid:
                 version_ids.append(vid)
-        if _log:
-            _log.debug("mimeData: version_ids=%s", version_ids)
         if not version_ids:
-            if _log:
-                _log.debug("mimeData: returning None (no version_ids)")
             return None
         payload = encode_loader_drag_payload(
             project_name, "version", version_ids, []
@@ -142,8 +127,6 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             LOADER_PAYLOAD_MIME_TYPE,
             QtCore.QByteArray(loader_payload_to_bytes(payload)),
         )
-        if _log:
-            _log.debug("mimeData: returning QMimeData")
         return mime
 
     def filterAcceptsRow(self, source_row, source_parent):
@@ -548,16 +531,37 @@ class ProductsWidget(QtWidgets.QWidget):
             first_vid = model.data(ix, VERSION_ID_ROLE)
         thumb_path = None
         if version_ids:
-            paths = self._controller.get_thumbnail_paths(
-                project_name, "version", set(version_ids)
-            )
-            if paths:
-                vid_for_thumb = (
-                    first_vid if first_vid and first_vid in paths else None
+            vset = set(version_ids)
+            precache = getattr(self._products_view, "_drag_precache", None)
+            tbmap = {}
+            if precache is not None:
+                built = precache.get(project_name, vset, "version")
+                if built:
+                    tbmap = built.get("thumbnail_paths_by_version_id") or {}
+            if tbmap:
+                vid_key = None
+                if first_vid is not None:
+                    fk = str(first_vid)
+                    if fk in tbmap or first_vid in tbmap:
+                        vid_key = fk if fk in tbmap else first_vid
+                if vid_key is None:
+                    sk = sorted(str(v) for v in vset)
+                    vid_key = sk[0] if sk else None
+                if vid_key is not None:
+                    thumb_path = tbmap.get(vid_key) or tbmap.get(str(vid_key))
+            if thumb_path is None:
+                paths = self._controller.get_thumbnail_paths(
+                    project_name, "version", vset
                 )
-                if vid_for_thumb is None:
-                    vid_for_thumb = sorted(version_ids)[0]
-                thumb_path = paths.get(vid_for_thumb)
+                if paths:
+                    vid_for_thumb = (
+                        first_vid
+                        if first_vid is not None and first_vid in paths
+                        else None
+                    )
+                    if vid_for_thumb is None:
+                        vid_for_thumb = sorted(vset)[0]
+                    thumb_path = paths.get(vid_for_thumb)
         return {
             "thumbnail_path": thumb_path,
             "product_label": product_label,

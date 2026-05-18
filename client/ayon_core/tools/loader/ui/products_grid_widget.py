@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.lib import Logger
 from ayon_core.tools.utils.lib import format_version
 
 from .products_flatten_proxy import ProductsFlattenProxyModel
@@ -56,8 +55,6 @@ __all__ = [
     "columns_from_density_scale",
 ]
 
-_log = Logger.get_logger("loader.ProductsGridWidget")
-
 
 class ProductsGridWidget(QtWidgets.QWidget):
     """Grid of product cards in grouped sections; drives same controller signals."""
@@ -105,6 +102,10 @@ class ProductsGridWidget(QtWidgets.QWidget):
         self._list_view_to_section: Dict[QtWidgets.QListView, ProductsGridSection] = {}
         self._collapsed_groups: set[str] = set()
         self._suppress_selection_broadcast = False
+        self._active_source_drag_list_view: Optional[QtWidgets.QListView] = None
+        self._armed_card_drag_list_view: Optional[QtWidgets.QListView] = None
+        self._armed_card_drag_card: Optional[Any] = None
+        self._marquee_backup_before_source_drag: Dict[int, bool] = {}
 
         self._scroll = QtWidgets.QScrollArea(self)
         self._scroll.setWidgetResizable(True)
@@ -147,6 +148,84 @@ class ProductsGridWidget(QtWidgets.QWidget):
     @property
     def drag_precache(self) -> DragPayloadPrecache:
         return self._drag_precache
+
+    def register_active_source_drag_list_view(
+        self, list_view: QtWidgets.QListView
+    ) -> None:
+        if self._active_source_drag_list_view is not None:
+            return
+        self._active_source_drag_list_view = list_view
+        self._armed_card_drag_list_view = None
+        self._armed_card_drag_card = None
+        self._suppress_marquee_if_needed()
+
+    def begin_armed_card_drag(
+        self,
+        list_view: QtWidgets.QListView,
+        card: Any,
+    ) -> None:
+        """Arm grid-card drag: hide marquee immediately (before QDrag threshold)."""
+        prev = self._armed_card_drag_card
+        if prev is not None and prev is not card:
+            prev._clear_armed_drag_local(prev._grid.list_view)
+            prev._finish_card_interaction()
+        self._armed_card_drag_list_view = list_view
+        self._armed_card_drag_card = card
+        self._suppress_marquee_if_needed()
+
+    def clear_armed_card_drag(
+        self,
+        card: Any,
+        *,
+        restore_marquee: bool = True,
+    ) -> None:
+        if self._armed_card_drag_card is not card:
+            return
+        self._armed_card_drag_list_view = None
+        self._armed_card_drag_card = None
+        if (
+            restore_marquee
+            and self._active_source_drag_list_view is None
+            and self._marquee_backup_before_source_drag
+        ):
+            self._restore_marquee_after_source_drag()
+
+    def armed_card_drag_card(self) -> Optional[Any]:
+        return self._armed_card_drag_card
+
+    def armed_card_drag_list_view(self) -> Optional[QtWidgets.QListView]:
+        return self._armed_card_drag_list_view
+
+    def _suppress_marquee_if_needed(self) -> None:
+        """Capture selection-rect visibility once; idempotent for armed then active drag."""
+        if self._marquee_backup_before_source_drag:
+            return
+        for sec in self._sections_in_display_order():
+            lv = sec.list_view
+            key = id(lv)
+            self._marquee_backup_before_source_drag[key] = bool(
+                lv.isSelectionRectVisible()
+            )
+            lv.setSelectionRectVisible(False)
+
+    def _restore_marquee_after_source_drag(self) -> None:
+        for sec in self._sections_in_display_order():
+            lv = sec.list_view
+            key = id(lv)
+            prev = self._marquee_backup_before_source_drag.pop(key, True)
+            try:
+                lv.setSelectionRectVisible(prev)
+            except RuntimeError:
+                pass
+        self._marquee_backup_before_source_drag.clear()
+
+    def clear_active_source_drag_list_view(
+        self, list_view: QtWidgets.QListView
+    ) -> None:
+        if self._active_source_drag_list_view is not list_view:
+            return
+        self._active_source_drag_list_view = None
+        self._restore_marquee_after_source_drag()
 
     @property
     def list_view(self) -> Optional[QtWidgets.QAbstractItemView]:
@@ -278,9 +357,9 @@ class ProductsGridWidget(QtWidgets.QWidget):
         sec = self._list_view_to_section.get(lv)
         if sec is None:
             return
+        idx = lv.indexAt(point)
         sm = lv.selectionModel()
         if sm is not None and not lv.selectedIndexes():
-            idx = lv.indexAt(point)
             if idx.isValid():
                 sm.clearSelection()
                 sm.select(idx, QtCore.QItemSelectionModel.SelectionFlag.Select)
@@ -370,8 +449,16 @@ class ProductsGridWidget(QtWidgets.QWidget):
         if not data:
             return None
         project_name, version_ids, _ = data
+        vset = set(version_ids)
         first_vid = next(iter(version_ids))
-        thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
+        thumb_path = None
+        pc = self.drag_precache.get(project_name, vset, "version")
+        if pc:
+            tbmap = pc.get("thumbnail_paths_by_version_id") or {}
+            fk = str(first_vid)
+            thumb_path = tbmap.get(fk) or tbmap.get(first_vid)
+        if thumb_path is None:
+            thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
         indexes = list_view.selectionModel().selectedIndexes()
         ix = indexes[0] if indexes else None
         product_label = ""
@@ -503,8 +590,16 @@ class ProductsGridWidget(QtWidgets.QWidget):
         version_ids = collect_version_ids_from_column0_indexes(pm, column0_indexes)
         if not version_ids:
             return None
+        vset = set(version_ids)
         first_vid = next(iter(version_ids))
-        thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
+        thumb_path = None
+        pc = self.drag_precache.get(project_name, vset, "version")
+        if pc:
+            tbmap = pc.get("thumbnail_paths_by_version_id") or {}
+            fk = str(first_vid)
+            thumb_path = tbmap.get(fk) or tbmap.get(first_vid)
+        if thumb_path is None:
+            thumb_path = self._thumbnail_path_by_version_id.get(first_vid)
         ix = column0_indexes[0]
         product_label = ""
         version_label = ""

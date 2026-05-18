@@ -46,8 +46,6 @@ class BaseLauncherController(
             get_launcher_local_dir("tools")
         )
 
-        self._addons_manager = None
-
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
@@ -102,9 +100,9 @@ class BaseLauncherController(
             fn()
 
     def get_addons_manager(self) -> AddonsManager:
-        if self._addons_manager is None:
-            self._addons_manager = AddonsManager()
-        return self._addons_manager
+        from ayon_core.pipeline.context_tools import _get_addons_manager
+
+        return _get_addons_manager()
 
     def get_extension_to_host_map(self) -> dict[str, str]:
         """Normalized extension -> host_name (from cached applications index)."""

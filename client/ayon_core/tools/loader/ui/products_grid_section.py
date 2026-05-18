@@ -315,6 +315,9 @@ class ProductsGridSection(QtWidgets.QWidget):
         self._deferred_rebuild_attempts = 0
         self._syncing_index_widget_geometries = False
         self._index_widget_geometry_sync_queued = False
+        self._user_interacting = 0
+        self._pending_rebuild_force = False
+        self._rebuild_after_interaction_queued = False
 
         self._list_view.customContextMenuRequested.connect(
             owner.open_context_menu_from_section_list
@@ -332,6 +335,7 @@ class ProductsGridSection(QtWidgets.QWidget):
             owner.get_section_drag_pixmap_builder(self)
         )
         self._list_view.set_drag_precache(owner.drag_precache)
+        self._list_view._products_grid_owner = owner
 
         for w in (self, self._list_holder, self._list_view, self._list_view.viewport()):
             apply_grid_view_surface_palette(w)
@@ -423,6 +427,36 @@ class ProductsGridSection(QtWidgets.QWidget):
         eff_w = max(vp.width(), inner, self._list_view.width())
         return eff_w >= GRID_READY_MIN_VIEWPORT_W
 
+    def begin_user_interaction(self) -> None:
+        self._user_interacting += 1
+
+    def end_user_interaction(self) -> None:
+        if self._user_interacting > 0:
+            self._user_interacting -= 1
+        if self._user_interacting == 0:
+            self._flush_pending_rebuild_after_interaction()
+
+    def _flush_pending_rebuild_after_interaction(self) -> None:
+        if not self._rebuild_after_interaction_queued:
+            return
+        self._rebuild_after_interaction_queued = False
+        force = self._pending_rebuild_force
+        self._pending_rebuild_force = False
+        self._rebuild_index_widgets(force=force)
+
+    def _defer_rebuild_while_interacting(self, force: bool) -> None:
+        self._pending_rebuild_force = bool(self._pending_rebuild_force or force)
+        if self._rebuild_after_interaction_queued:
+            return
+        self._rebuild_after_interaction_queued = True
+        QtCore.QTimer.singleShot(0, self._try_flush_rebuild_after_interaction)
+
+    def _try_flush_rebuild_after_interaction(self) -> None:
+        if self._user_interacting > 0:
+            QtCore.QTimer.singleShot(0, self._try_flush_rebuild_after_interaction)
+            return
+        self._flush_pending_rebuild_after_interaction()
+
     def refresh_cards(self) -> None:
         if self._show_header:
             self._header.refresh_mapping()
@@ -434,6 +468,9 @@ class ProductsGridSection(QtWidgets.QWidget):
 
     def _rebuild_index_widgets(self, *, force: bool = False) -> None:
         if self._rebuilding_index_widgets:
+            return
+        if self._user_interacting > 0:
+            self._defer_rebuild_while_interacting(force)
             return
         row_count = self._filter_proxy.rowCount()
         if (
@@ -460,10 +497,12 @@ class ProductsGridSection(QtWidgets.QWidget):
                     if isinstance(existing, ProductsGridCardWidget):
                         existing._flat_row = row
                         existing.setFixedSize(w, h)
+                        existing.set_section(self)
                         existing.refresh_from_model()
                     else:
                         card = ProductsGridCardWidget(self, row, self._list_view.viewport())
                         card.setFixedSize(w, h)
+                        card.set_section(self)
                         self._list_view.setIndexWidget(idx, card)
                         card.refresh_from_model()
                         card.raise_()
@@ -579,7 +618,72 @@ class ProductsGridSection(QtWidgets.QWidget):
     def on_card_version_changed(self, product_id: str, version_id: str) -> None:
         self._owner.on_card_version_changed(product_id, version_id)
 
+    @staticmethod
+    def _mouse_event_global_point(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+        if hasattr(event, "globalPosition"):
+            return event.globalPosition().toPoint()
+        return event.globalPos()
+
     def eventFilter(self, obj, event):
+        if obj is self._list_view.viewport() and isinstance(
+            event, QtGui.QMouseEvent
+        ):
+            et = event.type()
+            armed = self._owner.armed_card_drag_card()
+            if armed is not None and et in (
+                QtCore.QEvent.Type.MouseButtonPress,
+                QtCore.QEvent.Type.MouseMove,
+                QtCore.QEvent.Type.MouseButtonRelease,
+            ):
+                if et == QtCore.QEvent.Type.MouseMove:
+                    armed.handle_armed_drag_move(
+                        self._mouse_event_global_point(event),
+                        event.buttons(),
+                    )
+                    event.accept()
+                    return True
+                if (
+                    et == QtCore.QEvent.Type.MouseButtonRelease
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
+                ):
+                    armed.cancel_armed_drag(reason="viewport_left_release")
+                    event.accept()
+                    return True
+                if (
+                    et == QtCore.QEvent.Type.MouseButtonPress
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
+                ):
+                    idx = self._list_view.indexAt(event.pos())
+                    w = (
+                        self._list_view.indexWidget(idx)
+                        if idx.isValid()
+                        else None
+                    )
+                    if not idx.isValid() or w is None:
+                        armed.cancel_armed_drag(reason="viewport_press_empty")
+                    return False
+
+        guard_lv = getattr(self._owner, "_active_source_drag_list_view", None)
+        if (
+            guard_lv is not None
+            and obj is self._list_view.viewport()
+            and event.type()
+            in (
+                QtCore.QEvent.Type.MouseButtonPress,
+                QtCore.QEvent.Type.MouseMove,
+                QtCore.QEvent.Type.MouseButtonRelease,
+            )
+        ):
+            if (
+                event.type() == QtCore.QEvent.Type.MouseButtonRelease
+                and isinstance(event, QtGui.QMouseEvent)
+                and event.button() == QtCore.Qt.MouseButton.LeftButton
+            ):
+                end_fn = getattr(guard_lv, "end_source_drag_guard", None)
+                if callable(end_fn):
+                    end_fn()
+            event.accept()
+            return True
         if obj is self._list_view.viewport() and event.type() in (
             QtCore.QEvent.Type.Resize,
             QtCore.QEvent.Type.Show,
