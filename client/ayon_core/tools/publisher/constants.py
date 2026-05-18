@@ -30,9 +30,7 @@ GROUP_ROLE = QtCore.Qt.UserRole + 8
 CONVERTER_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 9
 CREATOR_SORT_ROLE = QtCore.Qt.UserRole + 10
 
-ResetKeySequence = QtGui.QKeySequence(
-    QtCore.Qt.ControlModifier | QtCore.Qt.Key_R
-)
+ResetKeySequence = QtGui.QKeySequence("Ctrl+R")
 
 __all__ = (
     "CONTEXT_ID",

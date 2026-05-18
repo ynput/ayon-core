@@ -58,12 +58,8 @@ from ayon_core.tools.loader.drag_drop import (
     LOADER_PAYLOAD_MIME_TYPE,
 )
 
-FIND_KEY_SEQUENCE = QtGui.QKeySequence(
-    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
-)
-GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
-    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
-)
+FIND_KEY_SEQUENCE = QtGui.QKeySequence("Ctrl+F")
+GROUP_KEY_SEQUENCE = QtGui.QKeySequence("Ctrl+G")
 
 LOADER_SETTINGS_GROUP = "loader"
 LOADER_VIEW_MODE_KEY = "view_mode"
