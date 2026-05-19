@@ -72,6 +72,7 @@ from .execute import (
 )
 from .log import (
     Logger,
+    log_timing,
 )
 
 from .path_templates import (
@@ -246,6 +247,7 @@ __all__ = [
     "get_formatted_current_time",
 
     "Logger",
+    "log_timing",
 
     "is_in_ayon_launcher_process",
     "is_running_from_build",
