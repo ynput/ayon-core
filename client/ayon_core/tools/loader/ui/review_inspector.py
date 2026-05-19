@@ -13,6 +13,8 @@ from ayon_ui_qt.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.tools.loader.abstract import RepreItem
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
+from ayon_core.tools.loader.ui.review_controller import ReviewController
 from ayon_core.tools.utils import get_qt_icon
 
 from ._review_thumbnails import _thumbnail_loader
@@ -29,7 +31,12 @@ def _str_wrap(text: str) -> str:
 class ReviewInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
 
-    def __init__(self, *args, controller=None, **kwargs):
+    def __init__(
+        self,
+        controller: ReviewController,
+        *args,
+        **kwargs,
+    ):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
@@ -144,7 +151,7 @@ class ReviewInspector(AYContainer):
                 rel_text_size=1,
             )
         )
-        self._representations = Representations()
+        self._representations = Representations(self._controller)
         self.add_widget(self._representations)
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
@@ -330,7 +337,7 @@ class Representations(AYContainer):
     rows regardless of the mode.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, controller: ReviewController, *args, **kwargs):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
@@ -338,6 +345,10 @@ class Representations(AYContainer):
             layout_margin=2,
             **kwargs,
         )
+        self._controller = controller
+        self._current_project_name: str = ""
+        self._controller.project_changed.connect(self._on_project_change)
+
         self._layout.setAlignment(QtCore.Qt.AlignTop)
         self._table: AYTableView = AYTableView(
             variant=AYTableView.Variants.Low,
@@ -345,12 +356,66 @@ class Representations(AYContainer):
         self._model = QtGui.QStandardItemModel()
         self._model.setHorizontalHeaderLabels(["Name", "Folder", "Product"])
         self._table.setModel(self._model)
+        self._table.setSortingEnabled(True)
+        self._table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self._table.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._table.customContextMenuRequested.connect(self._on_context_menu)
 
         self.add_widget(self._table)
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _on_project_change(self, project_name: str) -> None:
+        self._current_project_name = project_name
+
+    def _get_selected_ids(self) -> set[str]:
+        selected_ids = set()
+        for midx in self._table.selectedIndexes():
+            if midx.column() > 0:
+                continue
+            user_data = midx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            if user_data.get("is_group", False):
+                # If this is a group row, include all its children.
+                model = midx.model()
+                for i in range(model.rowCount(midx)):
+                    child_idx = model.index(i, 0, midx)
+                    child_user_data = (
+                        child_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+                    )
+                    selected_ids.add(child_user_data.get("id", ""))
+            else:
+                selected_ids.add(user_data.get("id", ""))
+        selected_ids.discard("")
+        return selected_ids
+
+    def _on_context_menu(self, pos: QtCore.QPoint) -> None:
+        selected_ids = self._get_selected_ids()
+        action_items = self._controller.get_action_items(
+            self._current_project_name, selected_ids, "representation"
+        )
+        global_point = self._table.mapToGlobal(pos)
+        result = show_actions_menu(
+            action_items, global_point, len(selected_ids) == 1, self
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=self._current_project_name,
+            selected_ids=selected_ids,
+            selected_entity_type="representation",
+            data=action_item.data,
+            options=options,
+            form_values={},
+        )
 
     def _set_tree_mode(self, enabled: bool) -> None:
         """Enable or disable tree decoration on the view.
@@ -378,6 +443,10 @@ class Representations(AYContainer):
         icon = get_qt_icon(repre.representation_icon)
         if icon is not None:
             name_item.setIcon(icon)
+        name_item.setData(
+            {"id": repre.representation_id, "is_group": False},
+            QtCore.Qt.ItemDataRole.UserRole,
+        )
 
         folder_item = QtGui.QStandardItem(repre.folder_label)
         folder_item.setEditable(False)
@@ -409,6 +478,7 @@ class Representations(AYContainer):
         icon = get_qt_icon(sample_repre.representation_icon)
         if icon is not None:
             group_item.setIcon(icon)
+        group_item.setData({"is_group": True}, QtCore.Qt.ItemDataRole.UserRole)
         return group_item
 
     # ------------------------------------------------------------------
