@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import collections
 from uuid import uuid4
@@ -9,6 +11,7 @@ from typing import Optional, Dict, List, Any
 from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
+    ButtonDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
@@ -43,6 +46,12 @@ class ParentFlags(IntEnum):
     # NOTE It might be helpful to have a function that would return "real"
     #   active state for instances
     share_active = 1 << 1
+
+
+@dataclass
+class ButtonCallbackInfo:
+    """Button callback info passed to button definition callback.."""
+    instance_ids: list[str | None]
 
 
 @dataclass
@@ -165,11 +174,14 @@ class AttributeValues:
             origin_data = copy.deepcopy(values)
         self._origin_data = origin_data
 
-        attr_defs_by_key = {
-            attr_def.key: attr_def
-            for attr_def in attr_defs
-            if attr_def.is_value_def
-        }
+        attr_defs_by_key = {}
+        button_defs_by_key = {}
+        for attr_def in attr_defs:
+            if attr_def.is_value_def:
+                attr_defs_by_key[attr_def.key] = attr_def
+            elif isinstance(attr_def, ButtonDef):
+                button_defs_by_key[attr_def.key] = attr_def
+
         for key, value in values.items():
             if key not in attr_defs_by_key:
                 new_def = UnknownDef(key, label=key, default=value)
@@ -178,6 +190,7 @@ class AttributeValues:
 
         self._attr_defs = attr_defs
         self._attr_defs_by_key = attr_defs_by_key
+        self._button_defs_by_key = button_defs_by_key
 
         self._data = {}
         for attr_def in attr_defs:
@@ -224,6 +237,9 @@ class AttributeValues:
             yield key, self._data.get(key)
 
     def get_attr_def(self, key, default=None):
+        button_def = self._button_defs_by_key.get(key)
+        if button_def is not None:
+            return button_def
         return self._attr_defs_by_key.get(key, default)
 
     def update(self, value):

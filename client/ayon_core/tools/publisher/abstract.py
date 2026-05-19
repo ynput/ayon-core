@@ -7,6 +7,7 @@ from typing import (
     Dict,
     List,
     Tuple,
+    Literal,
     Any,
     Callable,
     Union,
@@ -466,6 +467,16 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         instance_ids: List["Union[str, None]"],
         plugin_name: str,
         key: str,
+    ):
+        pass
+
+    @abstractmethod
+    def trigger_button_attribute_callback(
+        self,
+        source: Literal["precreate", "create", "publish"],
+        plugin_id: str | None,
+        key: str,
+        instance_ids: list[str | None],
     ):
         pass
 
