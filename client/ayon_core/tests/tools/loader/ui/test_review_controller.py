@@ -24,7 +24,7 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
 ):
     controller = ReviewController(None)
     controller._current_project = "test_project"
-    controller._selected_folder_id = "folder_A"
+    controller._selected_folder_ids = ["folder_A"]
 
     calls: list[str | None] = []
 
