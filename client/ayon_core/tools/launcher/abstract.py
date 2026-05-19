@@ -34,6 +34,7 @@ class ActionItem:
         action_type (Literal["webaction", "local"]): Type of action.
         identifier (str): Unique identifier of action item.
         order (int): Action ordering.
+        suborder (int): Internal ordering used for webactions order.
         label (str): Action label.
         variant_label (Optional[str]): Variant label, full label is
             concatenated with space. Actions are grouped under single
@@ -49,6 +50,7 @@ class ActionItem:
     action_type: str
     identifier: str
     order: int
+    suborder: int
     label: str
     variant_label: Optional[str]
     full_label: str
