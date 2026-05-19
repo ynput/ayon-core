@@ -1,14 +1,21 @@
-import os
-import sys
+import copy
+import datetime
 import getpass
+import inspect
 import logging
+import os
 import platform
 import socket
-import time
+import sys
 import threading
-import copy
+import time
+from contextlib import contextmanager
+from typing import Generator
 
 from . import Terminal
+
+# force the logger to use the same format for all log levels.
+USE_STD_FMT = bool(os.environ.get("AYON_USE_STD_LOG_FORMAT", 0))
 
 
 class LogStreamHandler(logging.StreamHandler):
@@ -58,8 +65,7 @@ class LogStreamHandler(logging.StreamHandler):
 
 
 class LogFormatter(logging.Formatter):
-
-    DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ]'
+    DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ]"
     default_formatter = logging.Formatter(DFT)
 
     def __init__(self, formats):
@@ -86,25 +92,33 @@ class LogFormatter(logging.Formatter):
                 line_len * "=",
                 str(record.exc_info[1]),
                 line_len * "=",
-                self.formatException(record.exc_info)
+                self.formatException(record.exc_info),
             )
         return out
 
+    def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
+        return (
+            datetime.fromtimestamp(record.created)
+            .astimezone(datetime.timezone.utc)
+            .isoformat(timespec="milliseconds")
+        )
+
 
 class Logger:
-    DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
+    DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ] "
     DBG = "  - { %(name)s }: [ %(message)s ] "
     INF = ">>> [ %(message)s ] "
     WRN = "*** WRN: >>> { %(name)s }: [ %(message)s ] "
     ERR = "!!! ERR: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
     CRI = "!!! CRI: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
+    STD = "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
 
     FORMAT_FILE = {
-        logging.INFO: INF,
-        logging.DEBUG: DBG,
-        logging.WARNING: WRN,
-        logging.ERROR: ERR,
-        logging.CRITICAL: CRI,
+        logging.INFO: STD if USE_STD_FMT else INF,
+        logging.DEBUG: STD if USE_STD_FMT else DBG,
+        logging.WARNING: STD if USE_STD_FMT else WRN,
+        logging.ERROR: STD if USE_STD_FMT else ERR,
+        logging.CRITICAL: STD if USE_STD_FMT else CRI,
     }
 
     # Is static class initialized
@@ -207,7 +221,7 @@ class Logger:
             "hostip": host_ip,
             "username": getpass.getuser(),
             "system_name": platform.system(),
-            "process_name": process_name
+            "process_name": process_name,
         }
         return copy.deepcopy(cls.process_data)
 
@@ -236,6 +250,7 @@ class Logger:
         if not process_name:
             try:
                 import psutil
+
                 process = psutil.Process(os.getpid())
                 process_name = process.name()
 
@@ -247,3 +262,50 @@ class Logger:
 
         cls._process_name = process_name
         return cls._process_name
+
+
+# Dedicated logger for timing with a concise format
+if os.environ.get("AYON_CORE_TIMERS", 0):
+    _timing_logger = Logger.get_logger("ayon-core-timers")
+    _timing_logger.setLevel(logging.INFO)
+
+    @contextmanager
+    def log_timing(message: str) -> Generator[None, None, None]:
+        """Context manager to log the execution time of a code block.
+
+        Args:
+            message (str): Description of the operation being timed.
+
+        Yields:
+            None
+
+        Example:
+            with log_timing("Loading activities"):
+                # Your code here
+                data = fetch_data()
+        """
+        # Get the caller's function name with simple error handling
+        func_name = "unknown"
+        try:
+            frame = inspect.currentframe()
+            if frame and frame.f_back and frame.f_back.f_back:
+                func_name = frame.f_back.f_back.f_code.co_name
+        except (AttributeError, ValueError):
+            pass  # Use default "unknown" if inspection fails
+
+        start = time.perf_counter()
+        try:
+            yield
+        finally:
+            elapsed = time.perf_counter() - start
+            _timing_logger.info(
+                "TIMER:  %s :: %s took %.3f seconds",
+                func_name,
+                message,
+                elapsed,
+            )
+else:
+    # Dummy context manager if timing is not enabled
+    @contextmanager
+    def log_timing(message: str) -> Generator[None, None, None]:
+        yield
