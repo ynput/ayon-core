@@ -156,6 +156,21 @@ class ReviewInspector(AYContainer):
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
+        if self._view is view:
+            # already configured
+            return
+
+        if self._view is not None:
+            # disconnect from previous view signals, if any
+            try:
+                self._view.activated.disconnect(self._on_activated)
+                self._view.selection_changed.disconnect(
+                    self._on_selection_changed
+                )
+                self._view.model().modelReset.disconnect(self._on_model_reset)
+            except (RuntimeError, TypeError):
+                pass
+
         self._view = view
         self._view.activated.connect(self._on_activated)
         self._view.selection_changed.connect(self._on_selection_changed)
