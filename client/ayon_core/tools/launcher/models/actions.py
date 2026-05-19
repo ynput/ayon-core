@@ -631,6 +631,7 @@ class ActionsModel:
                 self.log.warning(
                     f"Got action without order. Identifier: {identifier}"
                 )
+
             item = ActionItem(
                 action_type="local",
                 identifier=identifier,
