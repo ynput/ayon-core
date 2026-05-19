@@ -879,6 +879,7 @@ class ReviewController(QtCore.QObject):
                 "product/version__icon": icon or "label",
                 "entityType": group_option.label,
                 "entityType__icon": group_option.icon,
+                "project_name": self._current_project,
             }
         )
         if color:

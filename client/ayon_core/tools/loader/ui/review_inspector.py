@@ -194,8 +194,7 @@ class ReviewInspector(AYContainer):
         self._update()
 
     def _update(self) -> None:
-        """Update the inspector with the current selection,
-        if it is visible."""
+        """Update the inspector with the current selection, if visible."""
         if not self.isVisible():
             return
 
