@@ -220,10 +220,9 @@ class ReviewInspector(AYContainer):
         index = next(iter(self._current_selection), QtCore.QModelIndex())
         data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
 
-        # Folder rows have no version data — clear and bail out.
+        # Folder rows have no version data — clear the inspector.
         if data.get("entityType", "") == "Folder":
-            self._representations.set_items([])
-            return
+            data = {}
 
         # print(f"Updating inspector with data: {data}")
         self._path_label.setText(
