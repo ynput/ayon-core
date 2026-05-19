@@ -260,8 +260,8 @@ class LoaderWindow(AYContainer):
         )
 
         self._tab = QtWidgets.QTabWidget()
-        self._tab.addTab(main_splitter, " Loader ")
-        self._tab.addTab(self.review_wdgt, " Reviews ")
+        self._tab.addTab(main_splitter, "Folders")
+        self._tab.addTab(self.review_wdgt, "Reviews")
 
         self.add_widget(self._tab)
 
