@@ -498,6 +498,10 @@ class BackendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def get_product_type_icons_mapping(
         self, project_name: Optional[str]
     ) -> ProductTypeIconMapping:
@@ -1164,6 +1168,33 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             Union[dict[str, Any], None]: Icon definition or None if site sync
                 is not enabled for the project.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_active_site(self, project_name: str) -> str | None:
+        """Active site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_remote_site(self, project_name: str) -> str | None:
+        """Remote site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
         """
 
         pass
