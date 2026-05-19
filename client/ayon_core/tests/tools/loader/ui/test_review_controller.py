@@ -22,7 +22,7 @@ def _make_request(
 def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
     monkeypatch,
 ):
-    controller = ReviewController()
+    controller = ReviewController(None)
     controller._current_project = "test_project"
     controller._selected_folder_id = "folder_A"
 
@@ -101,7 +101,7 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
 def test_fetch_versions_page_batch_page_zero_prepends_folders_and_tracks_cursors(
     monkeypatch,
 ):
-    controller = ReviewController()
+    controller = ReviewController(None)
     controller._current_project = "test_project"
     controller._folder_cursors = {"A": "stale", "B": "stale"}
     controller._folder_has_more = {"A": True, "B": True}
@@ -168,7 +168,7 @@ def test_fetch_versions_page_batch_page_zero_prepends_folders_and_tracks_cursors
 def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
     monkeypatch,
 ):
-    controller = ReviewController()
+    controller = ReviewController(None)
     controller._current_project = "test_project"
     controller._folder_cursors = {"A": "cursor:A", "B": "cursor:B"}
     controller._folder_has_more = {"A": True, "B": False}

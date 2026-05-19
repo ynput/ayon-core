@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
@@ -17,6 +17,7 @@ from qtpy import QtCore
 
 from ayon_core.lib import Logger
 from ayon_core.tools.loader.abstract import ActionItem
+from ayon_core.tools.loader.control import LoaderController
 from ayon_core.tools.loader.ui.review_group_by import (
     BUILTIN_GROUPS,
     GROUP_BY_NONE_KEY,
@@ -37,11 +38,6 @@ from ayon_core.tools.loader.ui.review_queries import (
 )
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
 from ayon_core.tools.utils.user_prefs import UserPreferences
-
-if TYPE_CHECKING:
-    from ayon_core.tools.loader.abstract import (
-        FrontendLoaderController,
-    )
 
 # Maximum number of pages to fetch when building product group headers.
 # Each page contains up to 1 000 products, so this caps the total at
@@ -79,8 +75,8 @@ class ReviewController(QtCore.QObject):
 
     def __init__(
         self,
+        loader_controller: LoaderController,
         parent: QtCore.QObject | None = None,
-        loader_controller: FrontendLoaderController | None = None,
     ) -> None:
         super().__init__(parent)
         self._loader_controller = loader_controller
@@ -439,7 +435,8 @@ class ReviewController(QtCore.QObject):
             # the tree can be navigated depth-first all the way down to
             # version leaves.
             folder_rows = (
-                self._get_child_folder_rows(parent_id) if page_number == 0
+                self._get_child_folder_rows(parent_id)
+                if page_number == 0
                 else []
             )
 
@@ -663,7 +660,11 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of :class:`ActionItem` objects.
         """
-        if self._loader_controller is None:
+        if not isinstance(self._loader_controller, LoaderController):
+            self.log.warning(
+                "get_action_items called but no loader controller is "
+                "available, returning empty list."
+            )
             return []
         return self._loader_controller.get_action_items(
             project_name, entity_ids, entity_type
@@ -688,7 +689,11 @@ class ReviewController(QtCore.QObject):
             List of :class:`~ayon_core.tools.loader.abstract.RepreItem`
             objects.
         """
-        if self._loader_controller is None:
+        if not isinstance(self._loader_controller, LoaderController):
+            self.log.warning(
+                "get_representation_items called but no loader controller is "
+                "available, returning empty list."
+            )
             return []
         return self._loader_controller.get_representation_items(
             project_name, version_ids
@@ -719,7 +724,11 @@ class ReviewController(QtCore.QObject):
             options: Loader option values.
             form_values: Form values returned by the action dialog.
         """
-        if self._loader_controller is None:
+        if not isinstance(self._loader_controller, LoaderController):
+            self.log.warning(
+                "trigger_action_item called but no loader controller is "
+                "available, action will not be triggered."
+            )
             return
         self._loader_controller.trigger_action_item(
             identifier=identifier,
@@ -893,9 +902,7 @@ class ReviewController(QtCore.QObject):
             )
             row["folderName"] = featured_version.get("parents", ["", ""])[-2]
             row["author"] = featured_version.get("author", "")
-            v_str = (
-                f"({num_versions} versions)" if num_versions else ""
-            )
+            v_str = f"({num_versions} versions)" if num_versions else ""
             row["version"] = (
                 f"{featured_version.get('name', '')} {v_str}".strip()
             )
@@ -1165,9 +1172,7 @@ class ReviewController(QtCore.QObject):
                 self._group_by_options[GROUP_BY_PRODUCT_KEY],
                 value=p_id,
                 label=p_name,
-                icon=self._pinfo(
-                    "productTypes", p_type, "icon", "view_in_ar"
-                ),
+                icon=self._pinfo("productTypes", p_type, "icon", "view_in_ar"),
                 color=self._pinfo("productTypes", p_type, "color"),
                 product_type=p_type,
                 featured_version=featured_v,
@@ -1543,23 +1548,18 @@ class ReviewController(QtCore.QObject):
         product_base_types = config.get("productBaseTypes", {})
         self._project_info["by_name"] = {
             "folderTypes": {
-                ft["name"]: ft
-                for ft in project_entity.get("folderTypes", [])
+                ft["name"]: ft for ft in project_entity.get("folderTypes", [])
             },
             "taskTypes": {
-                tt["name"]: tt
-                for tt in project_entity.get("taskTypes", [])
+                tt["name"]: tt for tt in project_entity.get("taskTypes", [])
             },
             "linkTypes": {
-                lt["name"]: lt
-                for lt in project_entity.get("linkTypes", [])
+                lt["name"]: lt for lt in project_entity.get("linkTypes", [])
             },
             "statuses": {
                 s["name"]: s for s in project_entity.get("statuses", [])
             },
-            "tags": {
-                t["name"]: t for t in project_entity.get("tags", [])
-            },
+            "tags": {t["name"]: t for t in project_entity.get("tags", [])},
             "productTypes": (
                 {
                     t["name"]: t

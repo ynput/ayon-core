@@ -12,6 +12,7 @@ from ayon_core.lib import Logger
 from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
 from ayon_core.tools.loader.ui.review_controller import ReviewController
 from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.loader.control import LoaderController
 from ayon_core.tools.utils.user_prefs import UserPreferences
 
 from ._review_slicer import ReviewSlicer
@@ -27,7 +28,7 @@ class ReviewsWidget(AYContainer):
     def __init__(
         self,
         *args: Any,
-        loader_controller: Any = None,
+        loader_controller: LoaderController | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -43,8 +44,13 @@ class ReviewsWidget(AYContainer):
             ReviewCategory.HIERARCHY.value,
         )
 
+        if not isinstance(loader_controller, LoaderController):
+            raise TypeError(
+                f"Expected LoaderController, got {type(loader_controller)}"
+            )
         self._controller = ReviewController(
-            parent=self, loader_controller=loader_controller
+            loader_controller,
+            parent=self,
         )
         self._slicer = ReviewSlicer(
             self._controller,
@@ -69,7 +75,7 @@ class ReviewsWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
-        self._inspector = ReviewInspector(controller=self._controller)
+        self._inspector = ReviewInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._inspector.set_view(self._table.active_view)
         self._build()
