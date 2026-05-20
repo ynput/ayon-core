@@ -556,6 +556,8 @@ class PublishErrorsView(QtWidgets.QWidget):
         self._clear()
 
         select_id = None
+        validation_select_id = None
+        crash_select_id = None
         for title_item in grouped_error_items:
             title_id = title_item["id"]
             if select_id is None:
@@ -563,10 +565,14 @@ class PublishErrorsView(QtWidgets.QWidget):
             widget = PublishErrorTitleWidget(title_id, title_item, self)
             widget.selected.connect(self._on_select)
             widget.instance_changed.connect(self._on_instance_change)
-            if widget.is_crashing_error:
-                select_id = title_id
+            if not widget.is_crashing_error and validation_select_id is None:
+                validation_select_id = title_id
+            elif widget.is_crashing_error:
+                crash_select_id = title_id
             self._errors_layout.addWidget(widget)
             self._title_widgets[title_id] = widget
+
+        select_id = validation_select_id or crash_select_id or select_id
 
         self._errors_layout.addStretch(1)
 
@@ -1861,14 +1867,14 @@ class ReportsWidget(QtWidgets.QWidget):
         has_finished = self._controller.publish_has_finished()
         has_crashed = self._controller.publish_has_crashed()
         error_info = None
-        if has_crashed:
+        if has_crashed and not has_validation_error:
             error_info = self._controller.get_publish_error_info()
 
         publish_error_mode = False
-        if error_info is not None:
-            publish_error_mode = not error_info.is_unknown_error
-        elif has_validation_error:
+        if has_validation_error:
             publish_error_mode = True
+        elif error_info is not None:
+            publish_error_mode = not error_info.is_unknown_error
 
         if publish_error_mode:
             view = self._publish_error_view
@@ -1980,10 +1986,10 @@ class ReportPageWidget(QtWidgets.QFrame):
         if not self._controller.publish_has_started():
             # This probably never happen when this widget is visible
             header_label = "Nothing to report until you run publish"
-        elif self._controller.publish_has_crashed():
-            header_label = "Publish error report"
         elif self._controller.publish_has_validation_errors():
             header_label = "Publish validation report"
+        elif self._controller.publish_has_crashed():
+            header_label = "Publish error report"
         elif self._controller.publish_has_finished():
             header_label = "Publish success report"
         else:
