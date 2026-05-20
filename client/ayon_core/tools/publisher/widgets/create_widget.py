@@ -1,4 +1,7 @@
 import re
+import collections
+import typing
+from typing import Optional, Union
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -12,8 +15,9 @@ from ayon_core.pipeline.create import (
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     VARIANT_TOOLTIP,
-    PRODUCT_TYPE_ROLE,
     CREATOR_IDENTIFIER_ROLE,
+    PRODUCT_TYPE_ROLE,
+    PRODUCT_BASE_TYPE_ROLE,
     CREATOR_THUMBNAIL_ENABLED_ROLE,
     CREATOR_SORT_ROLE,
     INPUTS_LAYOUT_HSPACING,
@@ -28,6 +32,9 @@ from .widgets import (
 )
 from .create_context_widgets import CreateContextWidget
 from .precreate_widget import PreCreateWidget
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.publisher.abstract import CreatorItem
 
 
 class ResizeControlWidget(QtWidgets.QWidget):
@@ -50,8 +57,8 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --- Short description inputs ---
         short_desc_input_widget = QtWidgets.QWidget(self)
 
-        product_type_label = QtWidgets.QLabel(short_desc_input_widget)
-        product_type_label.setAlignment(
+        product_base_type_label = QtWidgets.QLabel(short_desc_input_widget)
+        product_base_type_label.setAlignment(
             QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft
         )
 
@@ -64,7 +71,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
             short_desc_input_widget
         )
         short_desc_input_layout.setSpacing(0)
-        short_desc_input_layout.addWidget(product_type_label)
+        short_desc_input_layout.addWidget(product_base_type_label)
         short_desc_input_layout.addWidget(description_label)
         # --------------------------------
 
@@ -75,24 +82,31 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --------------------------------
 
         self._icon_widget = icon_widget
-        self._product_type_label = product_type_label
+        self._product_base_type_label = product_base_type_label
         self._description_label = description_label
 
-    def set_creator_item(self, creator_item=None):
+    def set_creator_item(
+        self,
+        creator_item: Optional["CreatorItem"] = None,
+        product_type: Optional[str] = None,
+    ) -> None:
         if not creator_item:
             self._icon_widget.set_icon_def(None)
-            self._product_type_label.setText("")
+            self._product_base_type_label.setText("")
             self._description_label.setText("")
             return
 
         plugin_icon = creator_item.icon
         description = creator_item.description or ""
-
+        product_base_type = creator_item.product_base_type
+        product_base_label = ""
+        if product_base_type != product_type:
+            product_base_label = f" [<i>{product_base_type}</i>]"
         self._icon_widget.set_icon_def(plugin_icon)
-        self._product_type_label.setText(
-            "<b>{}</b>".format(creator_item.product_base_type)
+        self._product_base_type_label.setText(
+            f"<b>{product_type}{product_base_label}</b>"
         )
-        self._product_type_label.setTextInteractionFlags(
+        self._product_base_type_label.setTextInteractionFlags(
             QtCore.Qt.NoTextInteraction
         )
         self._description_label.setText(description)
@@ -116,6 +130,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._folder_path = None
         self._product_names = None
         self._selected_creator_identifier = None
+        self._selected_product_type = None
 
         self._prereq_available = False
 
@@ -176,7 +191,6 @@ class CreateWidget(QtWidgets.QWidget):
         variant_widget.setToolTip(VARIANT_TOOLTIP)
 
         product_name_input = QtWidgets.QLineEdit(product_variant_widget)
-        product_name_input.setObjectName("CreateProductInput")
         product_name_input.setEnabled(False)
 
         product_variant_layout = QtWidgets.QFormLayout(product_variant_widget)
@@ -269,7 +283,7 @@ class CreateWidget(QtWidgets.QWidget):
         )
         controller.register_event_callback(
             "create.context.pre.create.attrs.changed",
-            self._pre_create_attr_changed,
+            self._pre_create_attr_changed
         )
 
         self._main_splitter_widget = main_splitter_widget
@@ -315,9 +329,6 @@ class CreateWidget(QtWidgets.QWidget):
         folder_path = None
         if self._context_change_is_enabled():
             folder_path = self._context_widget.get_selected_folder_path()
-
-        if folder_path is None:
-            folder_path = self.get_current_folder_path()
         return folder_path or None
 
     def _get_folder_id(self):
@@ -333,9 +344,6 @@ class CreateWidget(QtWidgets.QWidget):
             folder_path = self._context_widget.get_selected_folder_path()
             if folder_path:
                 task_name = self._context_widget.get_selected_task_name()
-
-        if not task_name:
-            task_name = self.get_current_task_name()
         return task_name
 
     def _set_context_enabled(self, enabled):
@@ -361,10 +369,13 @@ class CreateWidget(QtWidgets.QWidget):
 
         # Replace by current context if last loaded context was
         #   'current context' before reset
-        if self._use_current_context or (
-            self._last_current_context_folder_path
-            and folder_path == self._last_current_context_folder_path
-            and task_name == self._last_current_context_task
+        if (
+            self._use_current_context
+            or (
+                self._last_current_context_folder_path
+                and folder_path == self._last_current_context_folder_path
+                and task_name == self._last_current_context_task
+            )
         ):
             folder_path = current_folder_path
             task_name = current_task_name
@@ -453,49 +464,58 @@ class CreateWidget(QtWidgets.QWidget):
             self.product_name_input.setText("< Folder is not set >")
 
     def _refresh_creators(self):
-        # Refresh creators and add their product types to list
-        existing_items = {}
-        old_creators = set()
+        # Refresh creators and add their product base types to list
+        existing_items = collections.defaultdict(dict)
         for row in range(self._creators_model.rowCount()):
             item = self._creators_model.item(row, 0)
             identifier = item.data(CREATOR_IDENTIFIER_ROLE)
-            existing_items[identifier] = item
-            old_creators.add(identifier)
+            product_type = item.data(PRODUCT_TYPE_ROLE)
+            existing_items[identifier][product_type] = item
 
         # Add new create plugins
-        new_creators = set()
+        new_creators = collections.defaultdict(set)
         creator_items_by_identifier = self._controller.get_creator_items()
         for identifier, creator_item in creator_items_by_identifier.items():
             if creator_item.creator_type != "artist":
                 continue
 
             # TODO add details about creator
-            new_creators.add(identifier)
-            if identifier in existing_items:
-                is_new = False
-                item = existing_items[identifier]
-            else:
-                is_new = True
-                item = QtGui.QStandardItem()
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-                )
+            for ui_item in creator_item.ui_items:
+                if ui_item.filtered:
+                    continue
 
-            item.setData(creator_item.label, QtCore.Qt.DisplayRole)
-            item.setData(creator_item.show_order, CREATOR_SORT_ROLE)
-            item.setData(identifier, CREATOR_IDENTIFIER_ROLE)
-            item.setData(
-                creator_item.create_allow_thumbnail,
-                CREATOR_THUMBNAIL_ENABLED_ROLE,
-            )
-            item.setData(creator_item.product_base_type, PRODUCT_TYPE_ROLE)
-            if is_new:
-                self._creators_model.appendRow(item)
+                items_by_identifier = new_creators[identifier]
+                items_by_identifier.add(ui_item.product_type)
+                is_new = False
+                item = existing_items[identifier].get(ui_item.product_type)
+                if item is None:
+                    is_new = True
+                    item = QtGui.QStandardItem()
+                    item.setFlags(
+                        QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+                    )
+
+                item.setData(ui_item.label, QtCore.Qt.DisplayRole)
+                item.setData(creator_item.show_order, CREATOR_SORT_ROLE)
+                item.setData(identifier, CREATOR_IDENTIFIER_ROLE)
+                item.setData(
+                    creator_item.product_base_type,
+                    PRODUCT_BASE_TYPE_ROLE
+                )
+                item.setData(ui_item.product_type, PRODUCT_TYPE_ROLE)
+                item.setData(
+                    creator_item.create_allow_thumbnail,
+                    CREATOR_THUMBNAIL_ENABLED_ROLE
+                )
+                if is_new:
+                    self._creators_model.appendRow(item)
 
         # Remove create plugins that are no more available
-        for identifier in old_creators - new_creators:
-            item = existing_items[identifier]
-            self._creators_model.takeRow(item.row())
+        for identifier, items_by_pt in existing_items.items():
+            n_product_types = new_creators[identifier]
+            for product_type, item in items_by_pt.items():
+                if product_type not in n_product_types:
+                    self._creators_model.takeRow(item.row())
 
         if self._creators_model.rowCount() < 1:
             return
@@ -510,9 +530,10 @@ class CreateWidget(QtWidgets.QWidget):
             index = indexes[0]
 
         identifier = index.data(CREATOR_IDENTIFIER_ROLE)
+        product_type = index.data(PRODUCT_TYPE_ROLE)
         create_item = creator_items_by_identifier.get(identifier)
 
-        self._set_creator(create_item)
+        self._set_creator(create_item, product_type)
 
     def _on_controler_reset(self):
         # Trigger refresh only if is visible
@@ -525,7 +546,10 @@ class CreateWidget(QtWidgets.QWidget):
         ):
             return
 
-        self._set_creator_by_identifier(self._selected_creator_identifier)
+        self._set_creator_by_identifier(
+            self._selected_creator_identifier,
+            self._selected_product_type,
+        )
 
     def _on_folder_change(self):
         self._refresh_product_name()
@@ -545,9 +569,11 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _on_creator_item_change(self, new_index, _old_index):
         identifier = None
+        product_type = None
         if new_index.isValid():
             identifier = new_index.data(CREATOR_IDENTIFIER_ROLE)
-        self._set_creator_by_identifier(identifier)
+            product_type = new_index.data(PRODUCT_TYPE_ROLE)
+        self._set_creator_by_identifier(identifier, product_type)
 
     def _set_creator_detailed_text(self, creator_item):
         # TODO implement
@@ -555,31 +581,50 @@ class CreateWidget(QtWidgets.QWidget):
         if creator_item is not None:
             description = creator_item.detailed_description or description
         self._controller.emit_event(
-            "show.detailed.help", {"message": description}, "create.widget"
+            "show.detailed.help",
+            {
+                "message": description
+            },
+            "create.widget"
         )
 
-    def _set_creator_by_identifier(self, identifier):
-        creator_item = self._controller.get_creator_item_by_id(identifier)
-        self._set_creator(creator_item)
+    def _set_creator_by_identifier(
+        self,
+        identifier: Union[str, None],
+        product_type: Union[str, None],
+    ) -> None:
+        creator_item = self._controller.get_creator_item_by_id(
+            identifier
+        )
+        self._set_creator(creator_item, product_type)
 
-    def _set_creator(self, creator_item):
+    def _set_creator(
+        self,
+        creator_item: Union["CreatorItem", None],
+        product_type: Union[str, None],
+    ) -> None:
         """Set current creator item.
 
         Args:
             creator_item (CreatorItem): Item representing creator that can be
                 triggered by artist.
-        """
+            product_type (str): Product type of creator item.
 
-        self._creator_short_desc_widget.set_creator_item(creator_item)
+        """
+        self._creator_short_desc_widget.set_creator_item(
+            creator_item, product_type
+        )
         self._set_creator_detailed_text(creator_item)
         self._pre_create_widget.set_creator_item(creator_item)
 
         if not creator_item:
             self._selected_creator_identifier = None
+            self._selected_product_type = None
             self._set_context_enabled(False)
             return
 
         self._selected_creator_identifier = creator_item.identifier
+        self._selected_product_type = product_type
 
         if (
             creator_item.create_allow_context_change
@@ -588,7 +633,9 @@ class CreateWidget(QtWidgets.QWidget):
             self._set_context_enabled(creator_item.create_allow_context_change)
             self._refresh_product_name()
 
-        self._thumbnail_widget.setVisible(creator_item.create_allow_thumbnail)
+        self._thumbnail_widget.setVisible(
+            creator_item.create_allow_thumbnail
+        )
 
         default_variants = creator_item.default_variants
         if not default_variants:
@@ -639,9 +686,10 @@ class CreateWidget(QtWidgets.QWidget):
         try:
             product_name = self._controller.get_product_name(
                 self._selected_creator_identifier,
+                self._selected_product_type,
                 variant_value,
-                task_name,
                 folder_path,
+                task_name,
             )
         except TaskNotSetError:
             self._create_btn.setEnabled(False)
@@ -661,13 +709,14 @@ class CreateWidget(QtWidgets.QWidget):
         else:
             existing_product_names = set()
         existing_product_names_low = set(
-            _name.lower() for _name in existing_product_names
+            _name.lower()
+            for _name in existing_product_names
         )
 
         # Replace
-        compare_regex = re.compile(
-            re.sub(variant_value, "(.+)", product_name, flags=re.IGNORECASE)
-        )
+        compare_regex = re.compile(re.sub(
+            variant_value, "(.+)", product_name, flags=re.IGNORECASE
+        ))
         variant_hints = set()
         if variant_value:
             for _name in existing_product_names:
@@ -705,11 +754,13 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _on_first_show(self):
         width = self.width()
-        part = int(width / 4)
-        rem_width = width - part
-        self._main_splitter_widget.setSizes([part, rem_width])
-        rem_width = rem_width - part
-        self._creators_splitter.setSizes([part, rem_width])
+        part = int(width / 9)
+        context_width = part * 3
+        create_sel_width = part * 2
+        rem_width = width - context_width
+        self._main_splitter_widget.setSizes([context_width, rem_width])
+        rem_width -= create_sel_width
+        self._creators_splitter.setSizes([create_sel_width, rem_width])
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -733,6 +784,7 @@ class CreateWidget(QtWidgets.QWidget):
         index = indexes[0]
         creator_identifier = index.data(CREATOR_IDENTIFIER_ROLE)
         product_type = index.data(PRODUCT_TYPE_ROLE)
+        product_base_type = index.data(PRODUCT_BASE_TYPE_ROLE)
         variant = self._variant_widget.text()
         # Care about product name only if context change is enabled
         product_name = None
@@ -755,26 +807,23 @@ class CreateWidget(QtWidgets.QWidget):
             "folderPath": folder_path,
             "task": task_name,
             "variant": variant,
+            "productBaseType": product_base_type,
             "productType": product_type,
         }
 
-        # # Notify user that creation has started
-        # if hasattr(self._controller, "creation_started_message"):
-        #     self._controller.emit_card_message(
-        #         self._controller.creation_started_message
-        #     )
-        # else:
-        #     self._controller.emit_card_message(
-        #         "Creation started, Please wait..."
-        #     )
-
         success = self._controller.create(
-            creator_identifier, product_name, instance_data, pre_create_data
+            creator_identifier,
+            product_name,
+            instance_data,
+            pre_create_data
         )
 
         if success:
-            self._set_creator_by_identifier(self._selected_creator_identifier)
+            self._set_creator_by_identifier(
+                self._selected_creator_identifier,
+                self._selected_product_type,
+            )
             self._variant_widget.setText(variant)
-            # self._controller.emit_card_message("Creation finished...")
+            self._controller.emit_card_message("Creation finished...")
             self._last_thumbnail_path = None
             self._thumbnail_widget.set_current_thumbnails()
