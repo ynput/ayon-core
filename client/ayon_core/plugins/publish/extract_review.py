@@ -190,11 +190,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if not instance.data.get("review", True):
             return
 
+        orig_representations = tuple(instance.data["representations"])
+
         # Run processing
         self.main_process(instance)
 
         # Make sure cleanup happens and pop representations with "delete" tag.
-        for repre in tuple(instance.data["representations"]):
+        for repre in orig_representations:
             tags = repre.get("tags") or []
             # Representation is not marked to be deleted
             if "delete" not in tags:
