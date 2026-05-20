@@ -10,6 +10,7 @@ from typing import List, Optional
 from ayon_core.lib import create_hard_link
 
 import speedcopy
+import speedcopy.version
 
 _IS_MACOS = platform.system().lower() == "darwin"
 
@@ -25,9 +26,9 @@ def copyfile(src, dst):
         src (str): Source path.
         dst (str): Destination path.
     """
-    # NOTE speedcopy has a bug that causes failure on macOs.
+    # NOTE speedcopy has a bug that causes failure on macOS, fixed in 2.2.0
     # TODO find out if speedcopy is still needed and remove if not.
-    if _IS_MACOS:
+    if _IS_MACOS and speedcopy.version.version_info <= (2, 2, 0):
         shutil.copyfile(src, dst)
     elif os.getenv("AYON_COPY_FILE_DISABLE_SPEEDCOPY") != "1":
         speedcopy.copyfile(src, dst)
