@@ -469,13 +469,13 @@ class IntegrateAsset(
         version_data = {}
         version_attributes = {}
         attr_defs = self._get_attributes_for_type(instance.context, "version")
-        
+
         # Special behavior for tags - they are neither `data` nor `attributes`
         attr_values = self.get_attr_values_from_data(instance.data)
         version_tags = attr_values.get("version_tags", [])
         tags = all_version_data.pop("tags", None)
         if (
-            isinstance(tags, (list, tuple, set)) 
+            isinstance(tags, (list, tuple, set))
             and all(isinstance(tag, str) for tag in tags)
         ):
             version_tags.extend(tags)
