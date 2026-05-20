@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable
 
 import ayon_api
 from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
+from ayon_ui_qt.components.frame import AYFrame
 from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
 from ayon_ui_qt.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
@@ -217,7 +218,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         super().paintEvent(event)
 
 
-class PlaceholderThumbnail(QtWidgets.QWidget):
+class PlaceholderThumbnail(AYFrame):
     """Lightweight placeholder that creates the real thumbnail lazily.
 
     The widget returned by a ``widget_factory`` is instantiated by Qt as
@@ -242,13 +243,10 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         ),
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(parent, variant=AYFrame.Variants.Low_Table_Editor)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
-        )
-        self.setAttribute(
-            QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True
         )
         self._make_real: Callable | None = make_real
         self._real: QtWidgets.QWidget | None = None
