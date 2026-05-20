@@ -38,8 +38,62 @@ import collections
 import pyblish.api
 import ayon_api
 
+from ayon_core.pipeline.publish import PublishXmlValidationError
 from ayon_core.pipeline.template_data import get_folder_template_data
 from ayon_core.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.workfile import save_next_version
+from ayon_core.pipeline.workfile.subversion_validation import (
+    build_invalid_product_name_error,
+    find_first_invalid_product_name_for_publish,
+    resolve_workfile_subversion_from_instance,
+    sanitize_workfile_subversion,
+)
+
+
+class SanitizeWorkfileSubversionRepair(pyblish.api.Action):
+    """Save a new workfile version with sanitized Subversion."""
+
+    label = "Fix Workfile Name"
+    icon = "save"
+    on = "failed"
+
+    def process(self, context, plugin):
+        workfile_instances = [
+            instance
+            for instance in context
+            if instance.data.get("productType") == "workfile"
+        ]
+        if not workfile_instances:
+            self.log.warning("No workfile instances found for repair.")
+            return
+
+        instance = workfile_instances[0]
+        raw = resolve_workfile_subversion_from_instance(instance)
+        if not raw:
+            self.log.warning(
+                "Could not resolve Subversion to repair on workfile instance."
+            )
+            return
+
+        sanitized = sanitize_workfile_subversion(raw)
+        if sanitized == raw:
+            self.log.info(
+                "Subversion %r is already valid after sanitization rules.",
+                raw,
+            )
+            return
+
+        self.log.info(
+            "Saving new workfile version with sanitized Subversion: %r -> %r",
+            raw,
+            sanitized,
+        )
+        save_next_version(comment=sanitized)
+        instance.data["workfileSubversion"] = sanitized
+        instance.data.pop("comment", None)
+        self.log.info(
+            "Saved new workfile version. Re-run publish when the save completes."
+        )
 
 
 class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
@@ -54,9 +108,28 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
     settings_category = "core"
 
     follow_workfile_version = False
+    actions = [SanitizeWorkfileSubversionRepair]
+
+    def _raise_if_invalid_product_names(self, context):
+        invalid = find_first_invalid_product_name_for_publish(context)
+        if invalid is None:
+            return
+
+        _instance, product_name, subversion = invalid
+        message, formatting_data = build_invalid_product_name_error(
+            product_name,
+            subversion,
+        )
+        raise PublishXmlValidationError(
+            self,
+            message,
+            formatting_data=formatting_data,
+            help_filename="collect_anatomy_invalid_product_name.xml",
+        )
 
     def process(self, context):
         self.log.debug("Collecting anatomy data for all instances.")
+        self._raise_if_invalid_product_names(context)
 
         project_name = context.data["projectName"]
         self.fill_missing_folder_entities(context, project_name)

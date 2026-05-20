@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Workfile name not allowed</title>
+<description>
+This workfile version name uses characters AYON cannot publish.
+
+Published name: ``{product_name}``
+
+Suggested name for a new save: ``{sanitized}``
+
+**Fix Workfile Name** saves a new version with a corrected name, then publish again.
+
+Or open **Workfiles → Save As** and enter a valid version name (invalid names are blocked there).
+</description>
+<detail>
+**Fix Workfile Name** creates a new workfile version on disk with a valid name. Your current file is not renamed in place.
+</detail>
+</error>
+</root>
