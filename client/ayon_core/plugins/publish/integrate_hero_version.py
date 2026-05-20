@@ -243,6 +243,7 @@ class IntegrateHeroVersion(
         if old_version:
             entity_id = old_version["id"]
 
+        tags = src_version_entity.get("tags", None)
         new_hero_version = new_version_entity(
             - src_version_entity["version"],
             src_version_entity["productId"],
@@ -250,6 +251,7 @@ class IntegrateHeroVersion(
             data=copy.deepcopy(src_version_entity["data"]),
             attribs=copy.deepcopy(src_version_entity["attrib"]),
             entity_id=entity_id,
+            tags=tags,
         )
 
         if old_version:

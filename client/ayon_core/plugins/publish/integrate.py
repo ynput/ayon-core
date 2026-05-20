@@ -19,13 +19,14 @@ from ayon_api.operations import (
 )
 from ayon_api.utils import create_entity_id
 
-from ayon_core.lib import source_hash
+from ayon_core.lib import source_hash, EnumDef
 from ayon_core.lib.file_transaction import (
     FileTransaction,
     DuplicateDestinationError
 )
 from ayon_core.pipeline.publish import (
     KnownPublishError,
+    OptionalPyblishPluginMixin,
     get_publish_template_name,
 )
 from ayon_core.pipeline import is_product_base_type_supported
@@ -83,7 +84,9 @@ def get_frame_padded(frame, padding):
     return "{frame:0{padding}d}".format(padding=padding, frame=frame)
 
 
-class IntegrateAsset(pyblish.api.InstancePlugin):
+class IntegrateAsset(
+    OptionalPyblishPluginMixin, pyblish.api.InstancePlugin
+):
     """Register publish in the database and transfer files to destinations.
 
     Steps:
@@ -466,6 +469,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         version_data = {}
         version_attributes = {}
         attr_defs = self._get_attributes_for_type(instance.context, "version")
+        
+        # Special behavior for tags - they are neither `data` nor `attributes`
+        attr_values = self.get_attr_values_from_data(instance.data)
+        version_tags = attr_values.get("version_tags", [])
+        tags = all_version_data.pop("tags", None)
+        if (
+            isinstance(tags, (list, tuple, set)) 
+            and all(isinstance(tag, str) for tag in tags)
+        ):
+            version_tags.extend(tags)
+
+        tags = version_tags
+
         for key, value in all_version_data.items():
             if key in attr_defs:
                 version_attributes[key] = value
@@ -483,6 +499,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             data=version_data,
             attribs=version_attributes,
             entity_id=version_id,
+            tags=tags,
         )
 
         if existing_version:
@@ -1058,3 +1075,30 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 attributes[key] = get_attributes_for_type(key)
             context.data["ayonAttributes"] = attributes
         return attributes
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        items = []
+        project_entity = create_context.get_current_project_entity()
+
+        for tag in project_entity["tags"]:
+
+            items.append(
+                {
+                    "label": tag["name"],
+                    "value": tag["name"],
+                }
+            )
+
+        return [
+            EnumDef(
+                "version_tags",
+                label="Version Tags",
+                multiselection=True,
+                items=items,
+                tooltip="Set these tags to versions",
+            )
+        ]
