@@ -5,7 +5,6 @@ from typing import Dict
 
 import ayon_api
 
-from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline.create import get_product_name_template
@@ -16,6 +15,7 @@ from ayon_core.tools.common_models import (
 )
 
 from .models import (
+    SettingsModel,
     PushToProjectSelectionModel,
     UserPublishValuesModel,
     IntegrateModel,
@@ -27,6 +27,7 @@ class PushToContextController:
     def __init__(self, project_name=None, version_ids=None):
         self._event_system = self._create_event_system()
 
+        self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._integrate_model = IntegrateModel(self)
@@ -150,6 +151,9 @@ class PushToContextController:
         if self._src_label is None:
             self._src_label = self._prepare_source_label()
         return self._src_label
+
+    def get_project_settings(self, project_name):
+        return self._settings_model.get_settings(project_name)
 
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
@@ -322,7 +326,7 @@ class PushToContextController:
             version_entity["productId"]
         )
 
-        project_settings = get_project_settings(project_name)
+        project_settings = self.get_project_settings(project_name)
         product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
         if not product_base_type:

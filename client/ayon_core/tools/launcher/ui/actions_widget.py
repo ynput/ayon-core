@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 import collections
 import platform
@@ -19,12 +21,13 @@ ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
 ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
 ACTION_HAS_CONFIGS_ROLE = QtCore.Qt.UserRole + 4
-ACTION_SORT_ROLE = QtCore.Qt.UserRole + 5
-ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 6
-ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 7
-PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 8
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 9
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 10
+ACTION_ORDER_ROLE = QtCore.Qt.UserRole + 5
+ACTION_SUBORDER_ROLE = QtCore.Qt.UserRole + 6
+ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 7
+ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 8
+PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 9
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 10
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 11
 
 
 def _variant_label_sort_getter(action_item):
@@ -260,7 +263,8 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             item.setData(action_item.action_type, ACTION_TYPE_ROLE)
             item.setData(action_item.addon_name, ACTION_ADDON_NAME_ROLE)
             item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
-            item.setData(action_item.order, ACTION_SORT_ROLE)
+            item.setData(action_item.order, ACTION_ORDER_ROLE)
+            item.setData(action_item.suborder, ACTION_SUBORDER_ROLE)
             items_by_id[action_item.identifier] = item
 
         if new_items:
@@ -344,7 +348,8 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                 bool(action_item.config_fields),
                 ACTION_HAS_CONFIGS_ROLE
             )
-            item.setData(action_item.order, ACTION_SORT_ROLE)
+            item.setData(action_item.order, ACTION_ORDER_ROLE)
+            item.setData(action_item.suborder, ACTION_SUBORDER_ROLE)
 
             new_items.append(item)
 
@@ -820,24 +825,16 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
         if right.data(PLACEHOLDER_ITEM_ROLE):
             return False
 
-        left_value = left.data(ACTION_SORT_ROLE)
-        right_value = right.data(ACTION_SORT_ROLE)
+        left_order_value: int = left.data(ACTION_ORDER_ROLE) or 0
+        right_order_value: int = right.data(ACTION_ORDER_ROLE) or 0
+        if left_order_value != right_order_value:
+            return left_order_value < right_order_value
 
-        # Values are same -> use super sorting
-        if left_value == right_value:
-            # Default behavior is using DisplayRole
-            return super().lessThan(left, right)
-
-        # Validate 'None' values
-        if right_value is None:
-            return True
-        if left_value is None:
-            return False
-        # Sort values and handle incompatible types
-        try:
-            return left_value < right_value
-        except TypeError:
-            return True
+        left_suborder_value: int = left.data(ACTION_SUBORDER_ROLE) or 0
+        right_suborder_value: int = right.data(ACTION_SUBORDER_ROLE) or 0
+        if left_suborder_value != right_suborder_value:
+            return left_suborder_value < right_suborder_value
+        return super().lessThan(left, right)
 
 
 class ActionsView(QtWidgets.QListView):
