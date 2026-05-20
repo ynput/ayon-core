@@ -17,6 +17,17 @@ from .path_resolving import (
     get_comments_from_workfile_paths,
 )
 
+from .subversion_validation import (
+    INVALID_FIELD_QSS,
+    WORKFILE_SUBVERSION_ALLOWED_SYMBOLS,
+    WorkfileSubversionError,
+    is_valid_ayon_product_name,
+    is_valid_workfile_subversion,
+    require_valid_workfile_subversion,
+    sanitize_workfile_subversion,
+    workfile_subversion_error_message,
+)
+
 from .utils import (
     should_use_last_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
@@ -61,6 +72,15 @@ __all__ = (
     "create_workdir_extra_folders",
 
     "get_comments_from_workfile_paths",
+
+    "INVALID_FIELD_QSS",
+    "WORKFILE_SUBVERSION_ALLOWED_SYMBOLS",
+    "WorkfileSubversionError",
+    "is_valid_ayon_product_name",
+    "is_valid_workfile_subversion",
+    "require_valid_workfile_subversion",
+    "sanitize_workfile_subversion",
+    "workfile_subversion_error_message",
 
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",

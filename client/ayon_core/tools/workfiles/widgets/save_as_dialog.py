@@ -1,5 +1,10 @@
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.pipeline.workfile.subversion_validation import (
+    INVALID_FIELD_QSS,
+    is_valid_workfile_subversion,
+    workfile_subversion_error_message,
+)
 from ayon_core.tools.utils import PlaceholderLineEdit, PlaceholderPlainTextEdit
 
 from .thumbnail_widget import WorkfileThumbnailWidget
@@ -106,6 +111,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._last_version = None
         self._template_key = None
         self._comment_value = None
+        self._template_has_comment = False
         self._version_value = None
         self._ext_value = None
         self._filename = None
@@ -269,6 +275,7 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         template_has_version = data["template_has_version"]
         template_has_comment = data["template_has_comment"]
+        self._template_has_comment = template_has_comment
 
         self._folder_id = folder_id
         self._task_id = task_id
@@ -313,6 +320,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         if template_has_comment:
             self._subversion_input.set_text(comment or "")
             self._subversion_input.set_values(comment_hints)
+            self._apply_subversion_field_style()
         self._thumbnail_workfile_widget.set_current_thumbnails(None)
         self._update_filename()
 
@@ -336,7 +344,28 @@ class SaveAsDialog(QtWidgets.QDialog):
         if self._comment_value == text:
             return
         self._comment_value = text
+        self._apply_subversion_field_style()
         self._update_filename()
+
+    def _is_subversion_valid(self):
+        if not self._template_has_comment:
+            return True
+        value = self._comment_value
+        if value is None or not str(value).strip():
+            return True
+        return is_valid_workfile_subversion(str(value))
+
+    def _apply_subversion_field_style(self):
+        if not self._template_has_comment:
+            return
+        input_field = self._subversion_input._input_field
+        if self._is_subversion_valid():
+            input_field.setStyleSheet("")
+            input_field.setToolTip("")
+            return
+        input_field.setStyleSheet(INVALID_FIELD_QSS)
+        value = self._comment_value or ""
+        input_field.setToolTip(workfile_subversion_error_message(str(value)))
 
     def _on_extension_change(self):
         ext = self._extension_combobox.currentText()
@@ -375,7 +404,8 @@ class SaveAsDialog(QtWidgets.QDialog):
             self._comment_value,
         )
         self._filename = result.filename
-        self._btn_ok.setEnabled(not result.exists)
+        subversion_valid = self._is_subversion_valid()
+        self._btn_ok.setEnabled(not result.exists and subversion_valid)
 
         if result.exists:
             self._preview_widget.setText(
@@ -384,6 +414,11 @@ class SaveAsDialog(QtWidgets.QDialog):
                     "because file exists!"
                     "</font>"
                 ).format(result.filename)
+            )
+        elif not subversion_valid:
+            self._preview_widget.setText(
+                "<font color='red'>Subversion contains characters that are "
+                "not allowed. Use only letters, numbers, and - _ .</font>"
             )
         else:
             self._preview_widget.setText(

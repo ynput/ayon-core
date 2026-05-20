@@ -90,7 +90,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
 
         self._icon_widget.set_icon_def(plugin_icon)
         self._product_type_label.setText(
-            "<b>{}</b>".format(creator_item.product_type)
+            "<b>{}</b>".format(creator_item.product_base_type)
         )
         self._product_type_label.setTextInteractionFlags(
             QtCore.Qt.NoTextInteraction
@@ -488,7 +488,7 @@ class CreateWidget(QtWidgets.QWidget):
                 creator_item.create_allow_thumbnail,
                 CREATOR_THUMBNAIL_ENABLED_ROLE,
             )
-            item.setData(creator_item.product_type, PRODUCT_TYPE_ROLE)
+            item.setData(creator_item.product_base_type, PRODUCT_TYPE_ROLE)
             if is_new:
                 self._creators_model.appendRow(item)
 
