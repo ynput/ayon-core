@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections import defaultdict
 
 from ayon_ui_qt.components.buttons import AYButton
@@ -55,6 +56,14 @@ class ReviewInspector(AYContainer):
         self._current_selection: dict[QtCore.QModelIndex, None] = {}
         # Track if mouse is currently pressed for drag selection
         self._mouse_pressed: bool = False
+        # Timer for throttling updates during drag selection
+        self._update_timer = QtCore.QTimer()
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._throttled_update)
+        # Interval for throttling updates (in milliseconds)
+        self._base_update_time: int = 0
+        # Flag to indicate if the first update has been measured
+        self._first_update_measured: bool = False
 
         self._build()
 
@@ -182,14 +191,29 @@ class ReviewInspector(AYContainer):
         # Install event filter on the viewport to track mouse press/release
         self._view.viewport().installEventFilter(self)
 
+    def _throttled_update(self) -> None:
+        """Throttled update method called by the timer during drag selection."""
+        if self._mouse_pressed:
+            start_time = time.time()
+            self._update()
+            elapsed_time = time.time() - start_time
+            num_selected = len(self._current_selection)
+            if not self._first_update_measured and num_selected > 0:
+                # Calculate the update interval based on the first update time
+                self._base_update_time = max(
+                    16,
+                    int((elapsed_time * 1000) / num_selected),
+                )
+                self._first_update_measured = True
+                print(f"base update time: {self._base_update_time} ms")
+            self._update_timer.start(self._base_update_time * num_selected)
+
     def _on_model_reset(self) -> None:
         """Clear the selection when the model is reset."""
         self._current_selection.clear()
         self._update()
 
-    def eventFilter(
-        self, obj: QtCore.QObject, event: QtCore.QEvent
-    ) -> bool:
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
         """Track mouse press/release events on the view's viewport.
 
         Args:
@@ -202,8 +226,11 @@ class ReviewInspector(AYContainer):
         if obj is self._view.viewport():
             if event.type() == QtCore.QEvent.Type.MouseButtonPress:
                 self._mouse_pressed = True
+                # Trigger an immediate update on first mouse down
+                self._throttled_update()
             elif event.type() == QtCore.QEvent.Type.MouseButtonRelease:
                 self._mouse_pressed = False
+                self._update_timer.stop()
                 # Trigger update on mouse release for finalized selection
                 if self.isVisible():
                     self._update()
