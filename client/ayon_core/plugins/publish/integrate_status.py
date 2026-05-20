@@ -55,10 +55,17 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         instance.data["status"] = status
 
     @classmethod
-    def get_attribute_defs(cls):
+    def get_attr_defs_for_instance(
+        cls, create_context: "CreateContext", instance: "CreatedInstance"
+    ):
         if not cls.status_profiles:
             return []
-        statuses = get_project_status()
+        project_entity = context.get_current_project_entity()
+        statuses = [
+            status["name"]
+            for status in project_entity["statuses"]
+        ]
+
         return [
             EnumDef(
                 "status",
