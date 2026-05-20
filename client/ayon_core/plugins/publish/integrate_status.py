@@ -1,10 +1,8 @@
 from typing import List
 
 import pyblish.api
-import ayon_api
 from ayon_core.lib import EnumDef, filter_profiles
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_core.pipeline import get_current_project_name
 
 
 class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
@@ -49,7 +47,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
 
         attr_values = self.get_attr_values_from_data(instance.data)
         status = attr_values.get("status")
-        instance.data["status"] = status
+        version_data["status"] = status
 
     @classmethod
     def get_attr_defs_for_instance(
@@ -57,7 +55,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     ):
         if not cls.status_profiles:
             return []
-        project_entity = context.get_current_project_entity()
+        project_entity = cls.create_context.get_current_project_entity()
         statuses = [
             status["name"]
             for status in project_entity["statuses"]
