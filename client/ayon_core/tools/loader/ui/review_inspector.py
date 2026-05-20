@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.layouts import AYHBoxLayout
-from ayon_ui_qt.components.label import AYLabel
-from ayon_ui_qt.components.buttons import AYButton
-from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
-from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
-from ayon_ui_qt.components.table_view import AYTableView
-from ayon_ui_qt.image_cache import ImageCache
-from qtpy import QtCore, QtWidgets, QtGui, shiboken
+from collections import defaultdict
 
+from ayon_ui_qt.components.buttons import AYButton
+from ayon_ui_qt.components.container import AYContainer
+from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
+from ayon_ui_qt.components.label import AYLabel
+from ayon_ui_qt.components.layouts import AYHBoxLayout
+from ayon_ui_qt.components.table_view import AYTableView
+from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
+from ayon_ui_qt.image_cache import ImageCache
+from qtpy import QtCore, QtGui, QtWidgets, shiboken
+
+from ayon_core.tools.loader.abstract import RepreItem
+from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
+from ayon_core.tools.loader.ui.review_controller import ReviewController
 from ayon_core.tools.utils import get_qt_icon
 
 from ._review_thumbnails import _thumbnail_loader
@@ -26,7 +31,12 @@ def _str_wrap(text: str) -> str:
 class ReviewInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
 
-    def __init__(self, *args, controller=None, **kwargs):
+    def __init__(
+        self,
+        controller: ReviewController,
+        *args,
+        **kwargs,
+    ):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
@@ -141,11 +151,26 @@ class ReviewInspector(AYContainer):
                 rel_text_size=1,
             )
         )
-        self._representations = Representations()
+        self._representations = Representations(self._controller)
         self.add_widget(self._representations)
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
+        if self._view is view:
+            # already configured
+            return
+
+        if self._view is not None:
+            # disconnect from previous view signals, if any
+            try:
+                self._view.activated.disconnect(self._on_activated)
+                self._view.selection_changed.disconnect(
+                    self._on_selection_changed
+                )
+                self._view.model().modelReset.disconnect(self._on_model_reset)
+            except (RuntimeError, TypeError):
+                pass
+
         self._view = view
         self._view.activated.connect(self._on_activated)
         self._view.selection_changed.connect(self._on_selection_changed)
@@ -184,7 +209,7 @@ class ReviewInspector(AYContainer):
         self._update()
 
     def _update(self) -> None:
-        """Update the inspector with the current selection, if it is visible."""
+        """Update the inspector with the current selection, if visible."""
         if not self.isVisible():
             return
 
@@ -195,10 +220,9 @@ class ReviewInspector(AYContainer):
         index = next(iter(self._current_selection), QtCore.QModelIndex())
         data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
 
-        # Folder rows have no version data — clear and bail out.
+        # Folder rows have no version data — clear the inspector.
         if data.get("entityType", "") == "Folder":
-            self._representations.set_items([])
-            return
+            data = {}
 
         # print(f"Updating inspector with data: {data}")
         self._path_label.setText(
@@ -221,8 +245,8 @@ class ReviewInspector(AYContainer):
         )
 
         thumb_keys: list[str] = []
-        version_id = data.get("_version_id") or data.get("id", "")
-        project_name = data.get("project_name", "")
+        version_ids: list[str] = []
+        project_name: str = data.get("project_name", "")
         for idx in self._current_selection:
             d = idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             tid = d.get("thumbnailId", "")
@@ -230,6 +254,8 @@ class ReviewInspector(AYContainer):
             pname = d.get("project_name", "")
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
+            if vid:
+                version_ids.append(vid)
 
         if thumb_keys:
             self._load_thumbnail(thumb_keys)
@@ -237,12 +263,15 @@ class ReviewInspector(AYContainer):
             self._current_thumb_key = ""
             self._thumbnail.set_thumbnail("")
 
-        # Fetch and display representations for this version.
-        if self._controller and project_name and version_id:
+        # Fetch and display representations for all selected versions.
+        if self._controller and project_name and version_ids:
             repre_items = self._controller.get_representation_items(
-                project_name, [version_id]
+                project_name, version_ids
             )
-            self._representations.set_items(repre_items)
+            self._representations.set_items(
+                repre_items,
+                multi_version=len(version_ids) > 1,
+            )
         else:
             self._representations.set_items([])
 
@@ -312,9 +341,16 @@ class ReviewInspector(AYContainer):
 
 
 class Representations(AYContainer):
-    """Widget displaying the representations for an inspected version."""
+    """Widget displaying the representations for an inspected version.
 
-    def __init__(self, *args, **kwargs):
+    When multiple versions share common representation names the widget
+    switches to tree mode: each shared name becomes a collapsible parent
+    row and the individual representations appear as its children.  Names
+    that are unique across the current selection are shown as flat root
+    rows regardless of the mode.
+    """
+
+    def __init__(self, controller: ReviewController, *args, **kwargs):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
@@ -322,6 +358,10 @@ class Representations(AYContainer):
             layout_margin=2,
             **kwargs,
         )
+        self._controller = controller
+        self._current_project_name: str = ""
+        self._controller.project_changed.connect(self._on_project_change)
+
         self._layout.setAlignment(QtCore.Qt.AlignTop)
         self._table: AYTableView = AYTableView(
             variant=AYTableView.Variants.Low,
@@ -329,31 +369,185 @@ class Representations(AYContainer):
         self._model = QtGui.QStandardItemModel()
         self._model.setHorizontalHeaderLabels(["Name", "Folder", "Product"])
         self._table.setModel(self._model)
+        self._table.setSortingEnabled(True)
+        self._table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self._table.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._table.customContextMenuRequested.connect(self._on_context_menu)
 
         self.add_widget(self._table)
 
-    def set_items(self, repre_items: list) -> None:
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _on_project_change(self, project_name: str) -> None:
+        self._current_project_name = project_name
+
+    def _get_selected_ids(self) -> set[str]:
+        selected_ids = set()
+        for midx in self._table.selectedIndexes():
+            if midx.column() > 0:
+                continue
+            user_data = midx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            if user_data.get("is_group", False):
+                # If this is a group row, include all its children.
+                model = midx.model()
+                for i in range(model.rowCount(midx)):
+                    child_idx = model.index(i, 0, midx)
+                    child_user_data = (
+                        child_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+                    )
+                    selected_ids.add(child_user_data.get("id", ""))
+            else:
+                selected_ids.add(user_data.get("id", ""))
+        selected_ids.discard("")
+        return selected_ids
+
+    def _on_context_menu(self, pos: QtCore.QPoint) -> None:
+        selected_ids = self._get_selected_ids()
+        action_items = self._controller.get_action_items(
+            self._current_project_name, selected_ids, "representation"
+        )
+        global_point = self._table.mapToGlobal(pos)
+        result = show_actions_menu(
+            action_items, global_point, len(selected_ids) == 1, self
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=self._current_project_name,
+            selected_ids=selected_ids,
+            selected_entity_type="representation",
+            data=action_item.data,
+            options=options,
+            form_values={},
+        )
+
+    def _set_tree_mode(self, enabled: bool) -> None:
+        """Enable or disable tree decoration on the view.
+
+        Args:
+            enabled: ``True`` to show collapse/expand indicators.
+        """
+        self._table._apply_tree_mode(enabled)
+
+    def _make_row(self, repre: RepreItem) -> list[QtGui.QStandardItem]:
+        """Build the three-column item list for a single representation.
+
+        Args:
+            repre: A
+                :class:`~ayon_core.tools.loader.abstract.RepreItem`
+                instance.
+
+        Returns:
+            A three-element list ``[name_item, folder_item,
+            product_item]`` ready to pass to
+            :meth:`QtGui.QStandardItemModel.appendRow`.
+        """
+        name_item = QtGui.QStandardItem(repre.representation_name)
+        name_item.setEditable(False)
+        icon = get_qt_icon(repre.representation_icon)
+        if icon is not None:
+            name_item.setIcon(icon)
+        name_item.setData(
+            {"id": repre.representation_id, "is_group": False},
+            QtCore.Qt.ItemDataRole.UserRole,
+        )
+
+        folder_item = QtGui.QStandardItem(repre.folder_label)
+        folder_item.setEditable(False)
+
+        product_item = QtGui.QStandardItem(repre.product_name)
+        product_item.setEditable(False)
+
+        return [name_item, folder_item, product_item]
+
+    def _make_group_row(
+        self, name: str, sample_repre: RepreItem
+    ) -> QtGui.QStandardItem:
+        """Build the parent (group) item for a shared representation name.
+
+        The group item spans the Name column only; Folder and Product
+        cells are intentionally left empty.
+
+        Args:
+            name: The shared representation name used as the label.
+            sample_repre: Any child
+                :class:`~ayon_core.tools.loader.abstract.RepreItem`
+                from this group — used to copy the icon.
+
+        Returns:
+            A :class:`QtGui.QStandardItem` to use as the parent row.
+        """
+        group_item = QtGui.QStandardItem(name)
+        group_item.setEditable(False)
+        icon = get_qt_icon(sample_repre.representation_icon)
+        if icon is not None:
+            group_item.setIcon(icon)
+        group_item.setData({"is_group": True}, QtCore.Qt.ItemDataRole.UserRole)
+        return group_item
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def set_items(
+        self,
+        repre_items: list[RepreItem],
+        multi_version: bool = False,
+    ) -> None:
         """Populate the table from a list of RepreItem.
+
+        When *multi_version* is ``True`` and at least one representation
+        name is shared across the provided items, the view switches to
+        tree mode.  Each shared name gets a collapsible parent row; its
+        individual representations appear as children below it.  Names
+        that appear only once remain as flat root rows.
+
+        When *multi_version* is ``False`` (or no duplicate names exist)
+        the view renders as a plain flat table.
 
         Args:
             repre_items: List of
                 :class:`~ayon_core.tools.loader.abstract.RepreItem`
                 objects to display.
+            multi_version: ``True`` when the items come from more than
+                one selected version.
         """
         self._model.removeRows(0, self._model.rowCount())
+        sort_column = self._table.header().sortIndicatorSection()
+
+        if not multi_version:
+            self._set_tree_mode(False)
+            for repre in repre_items:
+                self._model.appendRow(self._make_row(repre))
+            self._model.sort(sort_column, QtCore.Qt.SortOrder.AscendingOrder)
+            return
+
+        # Group representations by name to detect shared names.
+        groups: dict[str, list[RepreItem]] = defaultdict(list)
         for repre in repre_items:
-            # print(repre.to_data())
+            groups[repre.representation_name].append(repre)
 
-            name_item = QtGui.QStandardItem(repre.representation_name)
-            name_item.setEditable(False)
-            icon = get_qt_icon(repre.representation_icon)
-            if icon is not None:
-                name_item.setIcon(icon)
+        has_groups = any(len(items) > 1 for items in groups.values())
+        self._set_tree_mode(has_groups)
 
-            folder_item = QtGui.QStandardItem(repre.folder_label)
-            folder_item.setEditable(False)
+        for name, items in groups.items():
+            if len(items) == 1:
+                # Unique name — keep as a flat root row.
+                self._model.appendRow(self._make_row(items[0]))
+            else:
+                # Shared name — create a collapsible parent.
+                group_item = self._make_group_row(name, items[0])
+                for repre in items:
+                    group_item.appendRow(self._make_row(repre))
+                self._model.appendRow(group_item)
 
-            product_item = QtGui.QStandardItem(repre.product_name)
-            product_item.setEditable(False)
-
-            self._model.appendRow([name_item, folder_item, product_item])
+        self._model.sort(sort_column, QtCore.Qt.SortOrder.AscendingOrder)
