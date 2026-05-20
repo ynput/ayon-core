@@ -23,6 +23,7 @@ from .path_resolving import (
     get_workdir,
     get_workfile_template_key,
 )
+from .subversion_validation import require_valid_workfile_subversion
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
@@ -507,6 +508,7 @@ def save_current_workfile_to(
     task_entity = ayon_api.get_task_by_name(
         project_name, folder_entity["id"], task_name
     )
+    require_valid_workfile_subversion(comment)
     host.save_workfile_with_context(
         workfile_path,
         folder_entity,
@@ -555,6 +557,7 @@ def save_workfile_with_current_context(
                 project_name, folder_entity["id"], task_name
             )
 
+    require_valid_workfile_subversion(comment)
     host.save_workfile_with_context(
         workfile_path,
         folder_entity,
@@ -702,6 +705,8 @@ def save_next_version(
     if comment is None and current_workfile is not None:
         comment = current_workfile.comment
 
+    require_valid_workfile_subversion(comment)
+
     template_data["version"] = version
     if comment:
         template_data["comment"] = comment
@@ -836,6 +841,7 @@ def copy_workfile_to_context(
         prepared_data.project_settings,
     )
     template_data["version"] = version
+    require_valid_workfile_subversion(comment)
     if comment:
         template_data["comment"] = comment
 
