@@ -1111,6 +1111,28 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
     )
 
 
+class IntegrateStatusProfile(BaseSettingsModel):
+    _layout = "expanded"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    status: bool = SettingsField(title="Status")
+
+
 class IntegrateProductGroupProfile(BaseSettingsModel):
     product_base_types: list[str] = SettingsField(
         default_factory=list,
@@ -1130,6 +1152,13 @@ class IntegrateProductGroupProfile(BaseSettingsModel):
         title="Task names",
     )
     template: str = SettingsField("", title="Template")
+
+
+class IntegrateStatusModel(BaseSettingsModel):
+    status_profiles: list[IntegrateStatusProfile] = SettingsField(
+        default_factory=list,
+        title="Status profiles"
+    )
 
 
 class IntegrateProductGroupModel(BaseSettingsModel):
@@ -1297,6 +1326,10 @@ class PublishPuginsModel(BaseSettingsModel):
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
         title="Override Integrate Thumbnail Representations"
+    )
+    IntegrateStatus: IntegrateStatusModel = SettingsField(
+        default_factory=IntegrateStatusModel,
+        title="Integrate Status"
     )
     IntegrateProductGroup: IntegrateProductGroupModel = SettingsField(
         default_factory=IntegrateProductGroupModel,
@@ -1824,6 +1857,9 @@ DEFAULT_PUBLISH_VALUES = {
     "PreIntegrateThumbnails": {
         "enabled": True,
         "integrate_profiles": []
+    },
+    "IntegrateStatus": {
+        "status_profiles": [],
     },
     "IntegrateProductGroup": {
         "product_grouping_profiles": [
