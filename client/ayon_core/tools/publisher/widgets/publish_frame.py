@@ -419,12 +419,12 @@ class PublishFrame(QtWidgets.QWidget):
         self._validate_btn.setEnabled(validate_enabled)
         self._publish_btn.setEnabled(publish_enabled)
 
-        if self._controller.publish_has_crashed():
-            self._set_error_msg()
-
-        elif self._controller.publish_has_validation_errors():
+        if self._controller.publish_has_validation_errors():
             self._set_progress_visibility(False)
             self._set_validation_errors()
+
+        elif self._controller.publish_has_crashed():
+            self._set_error_msg()
 
         elif self._controller.publish_has_finished():
             self._set_finished()

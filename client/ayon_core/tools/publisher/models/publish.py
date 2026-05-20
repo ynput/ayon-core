@@ -961,6 +961,7 @@ class PublishModel:
         self._publish_has_validated: bool = False
 
         self._publish_has_validation_errors: bool = False
+        self._stop_publish_after_collect_validation: bool = False
         self._publish_has_crashed: bool = False
         # All publish plugins are processed
         self._publish_has_started: bool = False
@@ -1016,6 +1017,7 @@ class PublishModel:
         self._set_has_validated(False)
         self._set_is_crashed(False)
         self._set_has_validation_errors(False)
+        self._stop_publish_after_collect_validation = False
         self._set_finished(False)
 
         self._main_thread_iter = self._publish_iterator()
@@ -1314,6 +1316,9 @@ class PublishModel:
                     )
 
                     yield partial(self._process_and_continue, plugin, instance)
+                    if self._stop_publish_after_collect_validation:
+                        yield partial(self.stop_publish)
+                        return
             else:
                 families = collect_families_from_instances(
                     self._publish_context, only_active=True
@@ -1333,6 +1338,9 @@ class PublishModel:
                     {"instance_label": instance_label},
                 )
                 yield partial(self._process_and_continue, plugin, None)
+                if self._stop_publish_after_collect_validation:
+                    yield partial(self.stop_publish)
+                    return
 
             self._publish_report.set_plugin_passed(plugin.id)
 
@@ -1445,7 +1453,7 @@ class PublishModel:
                 and not self._publish_has_validated
             ):
                 result["is_validation_error"] = True
-                self._add_validation_error(result)
+                self._add_validation_error(result, plugin)
 
             else:
                 if isinstance(exception, PublishError):
@@ -1453,17 +1461,25 @@ class PublishModel:
                         exception.title = plugin.label or plugin.__name__
                     self._add_publish_error_to_report(result)
 
-                error_info = PublishErrorInfo.from_exception(exception)
-                self._set_publish_error_info(error_info)
-                self._set_is_crashed(True)
+                if not self._publish_has_validation_errors:
+                    error_info = PublishErrorInfo.from_exception(exception)
+                    self._set_publish_error_info(error_info)
+                    self._set_is_crashed(True)
 
                 result["is_validation_error"] = False
 
         self._publish_report.add_result(plugin.id, result)
 
-    def _add_validation_error(self, result: Dict[str, Any]):
+    def _add_validation_error(
+        self, result: Dict[str, Any], plugin: pyblish.api.Plugin
+    ):
         self._set_has_validation_errors(True)
         self._add_publish_error_to_report(result)
+        if (
+            not self._publish_has_validated
+            and plugin.order < self._validation_order
+        ):
+            self._stop_publish_after_collect_validation = True
 
     def _add_publish_error_to_report(self, result: Dict[str, Any]):
         self._publish_errors.add_error(
