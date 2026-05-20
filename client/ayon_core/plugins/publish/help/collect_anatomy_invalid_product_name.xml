@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Invalid Workfile Subversion</title>
+<description>
+## Workfile Subversion contains characters that are not allowed
+
+The **Subversion** field from Workfiles Save-As (the anatomy ``{{comment}}`` token)
+feeds into the published workfile product name. Spaces and other punctuation
+cause AYON server product lookups to fail during **Collect Anatomy Instance data**
+(which queries products by name).
+
+Product name: ``{product_name}``
+
+Suggested Subversion for a new save: ``{sanitized}``
+
+### Allowed characters
+
+Letters and numbers (`a-z`, `A-Z`, `0-9`) and delimiters only: `-`, `_`, `.`
+
+### How to fix
+
+1. Use **Fix Workfile Name** to save a new version
+   with a corrected Subversion automatically, then re-run publish.
+2. Or open **Workfiles**, Save-As a new version, and enter a valid Subversion
+   (the Save-As dialog blocks invalid input).
+
+</description>
+<detail>
+### __Repair action__
+
+The repair action calls `save_next_version` with a sanitized Subversion string.
+Your current zip on disk is not renamed; a new version is created with a valid
+basename and metadata.
+
+### __Artist Note__
+
+The Publisher version note (``comment`` on the instance) is separate from
+Workfiles Subversion and is not restricted by this check.
+</detail>
+</error>
+</root>

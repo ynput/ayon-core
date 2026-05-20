@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import Any, Optional, Tuple
 
 WORKFILE_SUBVERSION_ALLOWED_SYMBOLS = "a-zA-Z0-9_.-"
 
@@ -85,3 +85,72 @@ def require_valid_workfile_subversion(comment: Optional[str]) -> None:
         raise WorkfileSubversionError(
             workfile_subversion_error_message(text)
         )
+
+
+def resolve_workfile_subversion_from_instance(instance) -> str:
+    """Read Workfiles Subversion from instance data (no host imports)."""
+    existing = str(instance.data.get("workfileSubversion") or "").strip()
+    if existing:
+        return existing
+    return str(instance.data.get("comment") or "").strip()
+
+
+def build_invalid_product_name_error(
+    product_name: str,
+    subversion: str,
+) -> Tuple[str, dict[str, Any]]:
+    """Build console message and XML formatting data for invalid product names."""
+    sanitized = sanitize_workfile_subversion(subversion or product_name)
+    msg = (
+        f"Product name {product_name!r} is not allowed on the AYON server "
+        f"(spaces and other characters break product lookup during publish). "
+    )
+    if subversion and not is_valid_workfile_subversion(subversion):
+        msg += f"{workfile_subversion_error_message(subversion)} "
+    msg += f"Suggested Subversion for a new save: {sanitized!r}."
+    formatting_data = {
+        "product_name": product_name,
+        "subversion": subversion or "",
+        "sanitized": sanitized,
+    }
+    return msg, formatting_data
+
+
+def find_first_invalid_product_name_for_publish(context):
+    """Return first instance with invalid product name or workfile Subversion.
+
+    Workfile instances are checked before other instances.
+
+    Returns:
+        ``(instance, product_name, subversion)`` or ``None``.
+    """
+    workfile_instances = []
+    other_instances = []
+    for instance in context:
+        if not instance.data.get("folderEntity"):
+            continue
+        if instance.data.get("productType") == "workfile":
+            workfile_instances.append(instance)
+        else:
+            other_instances.append(instance)
+
+    for instances in (workfile_instances, other_instances):
+        for instance in instances:
+            product_name = (
+                instance.data.get("productName")
+                or instance.data.get("product_name")
+                or ""
+            )
+            subversion = resolve_workfile_subversion_from_instance(instance)
+
+            if product_name and not is_valid_ayon_product_name(product_name):
+                return instance, product_name, subversion
+
+            if (
+                instance.data.get("productType") == "workfile"
+                and subversion
+                and not is_valid_workfile_subversion(subversion)
+            ):
+                return instance, product_name, subversion
+
+    return None
