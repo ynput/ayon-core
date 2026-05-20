@@ -27,10 +27,15 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             return
         folder_entity = instance.data["folderEntity"]
         task_entity = instance.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         filter_data = {
             "host_names": instance.context.data["hostName"],
-            "task_types": task_entity["taskType"],
-            "task_names": task_entity["name"],
+            "task_types": task_type,
+            "task_names": task_name ,
             "folder_paths": folder_entity["path"]
         }
         status_profile = filter_profiles(
