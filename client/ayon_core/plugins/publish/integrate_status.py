@@ -7,14 +7,6 @@ from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.pipeline import get_current_project_name
 
 
-def get_project_status() -> List[str]:
-    """Return available status names in current project"""
-    project_name = get_current_project_name()
-    project_entity = ayon_api.get_project(project_name)
-    statuses = project_entity["statuses"]
-    return [status["name"] for status in statuses]
-
-
 class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     """Allow user to set status for the published version
     based on profiles defined in settings."""
