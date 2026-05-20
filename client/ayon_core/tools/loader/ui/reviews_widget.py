@@ -27,8 +27,8 @@ class ReviewsWidget(AYContainer):
 
     def __init__(
         self,
+        loader_controller: LoaderController,
         *args: Any,
-        loader_controller: LoaderController | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -44,10 +44,6 @@ class ReviewsWidget(AYContainer):
             ReviewCategory.HIERARCHY.value,
         )
 
-        if not isinstance(loader_controller, LoaderController):
-            raise TypeError(
-                f"Expected LoaderController, got {type(loader_controller)}"
-            )
         self._controller = ReviewController(
             loader_controller,
             parent=self,

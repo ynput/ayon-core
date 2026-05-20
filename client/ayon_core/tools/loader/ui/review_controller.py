@@ -660,12 +660,6 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of :class:`ActionItem` objects.
         """
-        if not isinstance(self._loader_controller, LoaderController):
-            self.log.warning(
-                "get_action_items called but no loader controller is "
-                "available, returning empty list."
-            )
-            return []
         return self._loader_controller.get_action_items(
             project_name, entity_ids, entity_type
         )
@@ -689,12 +683,6 @@ class ReviewController(QtCore.QObject):
             List of :class:`~ayon_core.tools.loader.abstract.RepreItem`
             objects.
         """
-        if not isinstance(self._loader_controller, LoaderController):
-            self.log.warning(
-                "get_representation_items called but no loader controller is "
-                "available, returning empty list."
-            )
-            return []
         return self._loader_controller.get_representation_items(
             project_name, version_ids
         )
@@ -724,12 +712,6 @@ class ReviewController(QtCore.QObject):
             options: Loader option values.
             form_values: Form values returned by the action dialog.
         """
-        if not isinstance(self._loader_controller, LoaderController):
-            self.log.warning(
-                "trigger_action_item called but no loader controller is "
-                "available, action will not be triggered."
-            )
-            return
         self._loader_controller.trigger_action_item(
             identifier=identifier,
             project_name=project_name,
