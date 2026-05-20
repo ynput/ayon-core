@@ -436,7 +436,7 @@ class ActionsModel:
             return []
 
         action_items = []
-        for action in response.data["actions"]:
+        for idx, action in enumerate(response.data["actions"]):
             # NOTE Settings variant may be important for triggering?
             # - action["variant"]
             icon = action.get("icon")
@@ -454,10 +454,19 @@ class ActionsModel:
             full_label = self.calculate_full_label(
                 group_label, variant_label
             )
+            identifier = action["identifier"]
+            order = action["order"]
+            if order is None:
+                order = 0
+                self.log.warning(
+                    f"Got webaction without order. Identifier: {identifier}"
+                )
+
             action_items.append(ActionItem(
                 action_type="webaction",
                 identifier=action["identifier"],
-                order=action["order"],
+                order=order,
+                suborder=idx,
                 label=group_label,
                 variant_label=variant_label,
                 full_label=full_label,
@@ -615,11 +624,19 @@ class ActionsModel:
                 label, variant_label
             )
             icon = get_action_icon(action)
+            order = action.order
+            # Make sure it is not 'None'
+            if order is None:
+                order = 0
+                self.log.warning(
+                    f"Got action without order. Identifier: {identifier}"
+                )
 
             item = ActionItem(
                 action_type="local",
                 identifier=identifier,
-                order=action.order,
+                order=order,
+                suborder=0,
                 label=label,
                 variant_label=variant_label,
                 full_label=full_label,
