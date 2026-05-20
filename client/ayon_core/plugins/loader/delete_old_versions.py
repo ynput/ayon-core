@@ -16,6 +16,7 @@ from ayon_core.lib import (
     TextDef,
     UILabelDef,
 )
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     ActionForm,
@@ -58,11 +59,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                     "product_ids": list(product_ids),
                     "action": "delete-versions",
                 },
-                icon={
-                    "type": "material-symbols",
-                    "name": "delete",
-                    "color": "#d8d8d8",
-                }
+                icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
             ),
             LoaderActionItem(
                 label="Calculate Versions size",
@@ -71,11 +68,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                     "product_ids": list(product_ids),
                     "action": "calculate-versions-size",
                 },
-                icon={
-                    "type": "material-symbols",
-                    "name": "auto_delete",
-                    "color": "#d8d8d8",
-                }
+                icon=MaterialSymbolsIcon("auto_delete", color="#d8d8d8"),
             )
         ]
 
