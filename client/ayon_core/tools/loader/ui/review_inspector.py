@@ -53,6 +53,8 @@ class ReviewInspector(AYContainer):
         self._current_thumb_key: str = ""
         # Use a dict as an ordered set to track the currently selected indices
         self._current_selection: dict[QtCore.QModelIndex, None] = {}
+        # Track if mouse is currently pressed for drag selection
+        self._mouse_pressed: bool = False
 
         self._build()
 
@@ -168,6 +170,8 @@ class ReviewInspector(AYContainer):
                     self._on_selection_changed
                 )
                 self._view.model().modelReset.disconnect(self._on_model_reset)
+                # Remove event filter from previous view's viewport
+                self._view.viewport().removeEventFilter(self)
             except (RuntimeError, TypeError):
                 pass
 
@@ -175,11 +179,35 @@ class ReviewInspector(AYContainer):
         self._view.activated.connect(self._on_activated)
         self._view.selection_changed.connect(self._on_selection_changed)
         self._view.model().modelReset.connect(self._on_model_reset)
+        # Install event filter on the viewport to track mouse press/release
+        self._view.viewport().installEventFilter(self)
 
     def _on_model_reset(self) -> None:
         """Clear the selection when the model is reset."""
         self._current_selection.clear()
         self._update()
+
+    def eventFilter(
+        self, obj: QtCore.QObject, event: QtCore.QEvent
+    ) -> bool:
+        """Track mouse press/release events on the view's viewport.
+
+        Args:
+            obj: The watched object.
+            event: The event.
+
+        Returns:
+            True if the event was handled, False otherwise.
+        """
+        if obj is self._view.viewport():
+            if event.type() == QtCore.QEvent.Type.MouseButtonPress:
+                self._mouse_pressed = True
+            elif event.type() == QtCore.QEvent.Type.MouseButtonRelease:
+                self._mouse_pressed = False
+                # Trigger update on mouse release for finalized selection
+                if self.isVisible():
+                    self._update()
+        return super().eventFilter(obj, event)
 
     def _on_activated(self, index: QtCore.QModelIndex) -> None:
         """Activation is typically when the user double-clicks on an item.
@@ -206,7 +234,10 @@ class ReviewInspector(AYContainer):
         for idx in deselected.indexes():
             if idx.column() == 0:
                 self._current_selection.pop(idx, None)
-        self._update()
+        # Only update immediately if mouse is not pressed (keyboard selection)
+        # Otherwise, update will be triggered on mouse release
+        if not self._mouse_pressed:
+            self._update()
 
     def _update(self) -> None:
         """Update the inspector with the current selection, if visible."""
