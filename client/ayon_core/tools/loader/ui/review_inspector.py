@@ -522,11 +522,13 @@ class Representations(AYContainer):
                 one selected version.
         """
         self._model.removeRows(0, self._model.rowCount())
+        sort_column = self._table.header().sortIndicatorSection()
 
         if not multi_version:
             self._set_tree_mode(False)
             for repre in repre_items:
                 self._model.appendRow(self._make_row(repre))
+            self._model.sort(sort_column, QtCore.Qt.SortOrder.AscendingOrder)
             return
 
         # Group representations by name to detect shared names.
@@ -547,3 +549,5 @@ class Representations(AYContainer):
                 for repre in items:
                     group_item.appendRow(self._make_row(repre))
                 self._model.appendRow(group_item)
+
+        self._model.sort(sort_column, QtCore.Qt.SortOrder.AscendingOrder)
