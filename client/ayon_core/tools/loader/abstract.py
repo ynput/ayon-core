@@ -505,6 +505,10 @@ class BackendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def get_product_type_icons_mapping(
         self, project_name: Optional[str]
     ) -> ProductTypeIconMapping:
