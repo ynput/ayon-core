@@ -156,14 +156,14 @@ class ReviewsWidget(AYContainer):
             row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             if row_dict.get("entityType", "") == "Folder":
                 continue
-            version_id = row_dict.get("_version_id", row_dict.get("id", ""))
-            if version_id:
+            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
+            if version_id and not version_id.startswith("grp:"):
                 version_ids.add(version_id)
 
         global_point = self._table.active_view.viewport().mapToGlobal(pos)
 
         if not version_ids or not project_name:
-            log.warning("No version ids or project name")
+            log.debug("No version ids or project name")
             return
 
         action_items = self._controller.get_action_items(
