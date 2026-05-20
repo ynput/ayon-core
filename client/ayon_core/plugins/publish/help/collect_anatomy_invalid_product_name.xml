@@ -1,42 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <error id="main">
-<title>Invalid Workfile Subversion</title>
+<title>Workfile name not allowed</title>
 <description>
-## Workfile Subversion contains characters that are not allowed
+This workfile version name uses characters AYON cannot publish.
 
-The **Subversion** field from Workfiles Save-As (the anatomy ``{{comment}}`` token)
-feeds into the published workfile product name. Spaces and other punctuation
-cause AYON server product lookups to fail during **Collect Anatomy Instance data**
-(which queries products by name).
+Published name: ``{product_name}``
 
-Product name: ``{product_name}``
+Suggested name for a new save: ``{sanitized}``
 
-Suggested Subversion for a new save: ``{sanitized}``
+**Fix Workfile Name** saves a new version with a corrected name, then publish again.
 
-### Allowed characters
-
-Letters and numbers (`a-z`, `A-Z`, `0-9`) and delimiters only: `-`, `_`, `.`
-
-### How to fix
-
-1. Use **Fix Workfile Name** to save a new version
-   with a corrected Subversion automatically, then re-run publish.
-2. Or open **Workfiles**, Save-As a new version, and enter a valid Subversion
-   (the Save-As dialog blocks invalid input).
-
+Or open **Workfiles → Save As** and enter a valid version name (invalid names are blocked there).
 </description>
 <detail>
-### __Repair action__
-
-The repair action calls `save_next_version` with a sanitized Subversion string.
-Your current zip on disk is not renamed; a new version is created with a valid
-basename and metadata.
-
-### __Artist Note__
-
-The Publisher version note (``comment`` on the instance) is separate from
-Workfiles Subversion and is not restricted by this check.
+**Fix Workfile Name** creates a new workfile version on disk with a valid name. Your current file is not renamed in place.
 </detail>
 </error>
 </root>

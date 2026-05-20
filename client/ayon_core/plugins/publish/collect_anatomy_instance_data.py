@@ -110,8 +110,26 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
     follow_workfile_version = False
     actions = [SanitizeWorkfileSubversionRepair]
 
+    def _raise_if_invalid_product_names(self, context):
+        invalid = find_first_invalid_product_name_for_publish(context)
+        if invalid is None:
+            return
+
+        _instance, product_name, subversion = invalid
+        message, formatting_data = build_invalid_product_name_error(
+            product_name,
+            subversion,
+        )
+        raise PublishXmlValidationError(
+            self,
+            message,
+            formatting_data=formatting_data,
+            help_filename="collect_anatomy_invalid_product_name.xml",
+        )
+
     def process(self, context):
         self.log.debug("Collecting anatomy data for all instances.")
+        self._raise_if_invalid_product_names(context)
 
         project_name = context.data["projectName"]
         self.fill_missing_folder_entities(context, project_name)
@@ -318,20 +336,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 hierarchy[folder_id][product_name] = []
             hierarchy[folder_id][product_name].append(instance)
             names_by_folder_ids[folder_id].add(product_name)
-
-        invalid = find_first_invalid_product_name_for_publish(context)
-        if invalid is not None:
-            _instance, product_name, subversion = invalid
-            message, formatting_data = build_invalid_product_name_error(
-                product_name,
-                subversion,
-            )
-            raise PublishXmlValidationError(
-                self,
-                message,
-                formatting_data=formatting_data,
-                help_filename="collect_anatomy_invalid_product_name.xml",
-            )
 
         product_entities = []
         if names_by_folder_ids:
