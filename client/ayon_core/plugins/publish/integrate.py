@@ -325,7 +325,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             repre_update_data = prepared["repre_update_data"]
             transfers = prepared["transfers"]
             destinations = [dst for src, dst in transfers]
-            
+
             repre_files = self.get_files_info(
                 destinations, anatomy, prefered_root_name
             )
