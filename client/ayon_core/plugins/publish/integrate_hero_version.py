@@ -382,6 +382,7 @@ class IntegrateHeroVersion(
                 }
 
                 dst_paths = []
+                is_udim = bool(repre_context.get("udim"))
                 # Prepare paths of source and destination files
                 if len(published_files) == 1:
                     dst_paths.append(str(template_filled))
@@ -402,7 +403,10 @@ class IntegrateHeroVersion(
 
                     # Get head and tail for collection
                     frame_splitter = "_-_FRAME_SPLIT_-_"
-                    anatomy_data["frame"] = frame_splitter
+                    if is_udim:
+                        anatomy_data["udim"] = frame_splitter
+                    else:
+                        anatomy_data["frame"] = frame_splitter
                     _template_filled = path_template_obj.format_strict(
                         anatomy_data
                     )
