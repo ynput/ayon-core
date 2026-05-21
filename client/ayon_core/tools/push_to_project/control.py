@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-from typing import Dict
 
 import ayon_api
 
@@ -207,7 +206,7 @@ class PushToContextController:
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
-    def get_process_items(self) -> Dict[str, ProjectPushItemProcess]:
+    def get_process_items(self) -> dict[str, ProjectPushItemProcess]:
         """Returns dict of all ProjectPushItemProcess items """
         return self._integrate_model.get_items()
 
