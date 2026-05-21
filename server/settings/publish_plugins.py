@@ -9,6 +9,7 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
+from ayon_server.enum.resolvers import StatusesEnumResolver
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
 
@@ -1113,9 +1114,6 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
 
 class IntegrateStatusProfile(BaseSettingsModel):
     _layout = "expanded"
-    enabled: bool = SettingsField(True, title="Enabled")
-    active: bool = SettingsField(True, title="Active")
-    optional: bool = SettingsField(False, title="Optional")
     product_base_types: list[str] = SettingsField(
         default_factory=list,
         title="Product base types",
@@ -1133,7 +1131,10 @@ class IntegrateStatusProfile(BaseSettingsModel):
         default_factory=list,
         title="Task names",
     )
-    status: bool = SettingsField(title="Status")
+    default_status: bool = SettingsField(
+        title="Default status",
+        enum_resolver=lambda: StatusesEnumResolver
+    )
 
 
 class IntegrateProductGroupProfile(BaseSettingsModel):
