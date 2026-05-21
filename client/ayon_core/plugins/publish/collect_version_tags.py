@@ -1,0 +1,66 @@
+import pyblish.api
+
+from ayon_core.lib import EnumDef
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+
+
+class CollectVersionTags(
+    pyblish.api.InstancePlugin,
+    AYONPyblishPluginMixin
+):
+    """Collect Version Tags
+
+    Provides a selectable list of tags for the user. Selected tags are stored
+     in the instance metadata and applied to the Version Entity during
+     integration.
+    """
+
+    order = pyblish.api.CollectorOrder + 0.499
+    label = "CollectVersionTags"
+    settings_category = "core"
+
+    enabled = False
+
+    def process(self, instance):
+
+        self.log.debug(instance.data)
+        version_data = instance.data.setdefault("versionData", {})
+        tags = version_data.setdefault("tags", [])
+
+        attr_values = self.get_attr_values_from_data(instance.data)
+        version_tags = attr_values.get("version_tags", [])
+
+        if (
+            isinstance(tags, (list, tuple, set))
+            and all(isinstance(tag, str) for tag in tags)
+        ):
+            tags.extend([t for t in version_tags if t not in tags])
+
+        self.log.debug(f"Collected Tags: {tags}")
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        items = []
+        project_entity = create_context.get_current_project_entity()
+
+        for tag in project_entity["tags"]:
+
+            items.append(
+                {
+                    "label": tag["name"],
+                    "value": tag["name"],
+                }
+            )
+
+        return [
+            EnumDef(
+                "version_tags",
+                label="Version Tags",
+                multiselection=True,
+                items=items,
+                tooltip="Set these tags to versions",
+            )
+        ]
