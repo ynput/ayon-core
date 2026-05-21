@@ -1,4 +1,5 @@
-from typing import List, TYPE_CHECKING
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import pyblish.api
 from ayon_core.lib import EnumDef, filter_profiles
