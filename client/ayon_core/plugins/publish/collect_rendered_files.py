@@ -12,7 +12,6 @@ import json
 
 import pyblish.api
 
-from ayon_core.pipeline import KnownPublishError
 from ayon_core.pipeline.publish.input_versions import (
     deserialize_input_versions
 )
