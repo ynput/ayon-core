@@ -152,7 +152,9 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
 
         publish_data_paths = os.environ.get("AYON_PUBLISH_DATA")
         if not publish_data_paths:
-            raise KnownPublishError("Missing `AYON_PUBLISH_DATA`")
+            self.log.warning(
+                "Environment variable `AYON_PUBLISH_DATA` is not set. ")
+            return
 
         # QUESTION
         #   Do we support (or want support) multiple files in the variable?
