@@ -49,20 +49,23 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             task_entity = cls.create_context.get_task_entity(
                 folder_path, task_name
             )
+        filter_data = {
+            "host_names": cls.create_context.host_name,
+            "task_types": task_entity["taskType"],
+            "task_names": instance.get("task"),
+            "product_base_types": instance.product_base_type,
+        }
         if task_entity:
-            filter_data = {
-                "host_names": cls.create_context.host_name,
-                "task_types": task_entity["taskType"],
-                "task_names": task_entity["name"],
-                "product_base_types": instance.product_base_type,
-            }
-            status_profile = filter_profiles(
-                cls.status_profiles,
-                filter_data,
-                logger=cls.log
-            )
-            if status_profile:
-                default_status = status_profile["default_status"]
+            filter_data["task_types"] = task_entity["taskType"]
+        
+        status_profile = filter_profiles(
+            cls.status_profiles,
+            filter_data,
+            logger=cls.log
+        )
+        default_status = None
+        if status_profile:
+            default_status = status_profile["default_status"]
 
         if default_status not in statuses:
             default_status = statuses[0]
