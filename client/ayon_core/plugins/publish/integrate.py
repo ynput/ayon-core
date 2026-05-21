@@ -486,7 +486,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                     "Got: {}".format(repr(tags))
                 )
                 tags = None
-        self.log.debug(f">>> Tags: {tags}")
 
         version_entity = new_version_entity(
             version_number,
