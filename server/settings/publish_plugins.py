@@ -1113,6 +1113,9 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
 
 class IntegrateStatusProfile(BaseSettingsModel):
     _layout = "expanded"
+    enabled: bool = SettingsField(True, title="Enabled")
+    active: bool = SettingsField(True, title="Active")
+    optional: bool = SettingsField(False, title="Optional")
     product_base_types: list[str] = SettingsField(
         default_factory=list,
         title="Product base types",

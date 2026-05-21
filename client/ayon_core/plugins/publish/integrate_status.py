@@ -2,19 +2,23 @@ from typing import List
 
 import pyblish.api
 from ayon_core.lib import EnumDef, filter_profiles
-from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 
 
-class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
+class IntegrateStatus(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
     """Allow user to set status for the published version
     based on profiles defined in settings."""
 
     order = pyblish.api.IntegratorOrder - 0.01
     label = "Integrate Status"
 
+    optional = True
     status_profiles: List[dict] = []
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         if not self.status_profiles:
             self.log.debug("No status profiles defined in settings.")
             return
@@ -55,10 +59,10 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     ):
         if not cls.status_profiles:
             return []
-        project_entity = cls.create_context.get_current_project_entity()
+        version_entity = cls.create_context.get_current_version_entity()
         statuses = [
             status["name"]
-            for status in project_entity["statuses"]
+            for status in version_entity["statuses"]
         ]
 
         return [
