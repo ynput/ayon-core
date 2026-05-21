@@ -23,9 +23,7 @@ class CollectVersionTags(
 
     def process(self, instance):
 
-        self.log.debug(instance.data)
-        version_data = instance.data.setdefault("versionData", {})
-        tags = version_data.setdefault("tags", [])
+        tags = instance.data.setdefault("tags", [])
 
         attr_values = self.get_attr_values_from_data(instance.data)
         version_tags = attr_values.get("version_tags", [])

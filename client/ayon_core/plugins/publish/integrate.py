@@ -475,7 +475,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         host_name = instance.context.data["hostName"]
         version_data["host_name"] = host_name
 
-        tags = all_version_data.pop("tags", None)
+        tags = instance.data.get("tags", None)
         if tags is not None:
             # If not an iterable of strings, then log warning and set to None
             if not isinstance(tags, (list, tuple, set)) or not all(
