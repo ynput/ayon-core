@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import os
 import logging
 import sys
 import copy
+from typing import Iterable, Any
 
 import clique
 import pyblish.api
@@ -29,6 +32,12 @@ from ayon_core.pipeline.publish import (
     get_publish_template_name,
 )
 from ayon_core.pipeline import is_product_base_type_supported
+from ayon_core.pipeline.anatomy import (
+    Anatomy,
+    AnatomyStringTemplate,
+    AnatomyTemplateResult,
+    AnatomyRoot,
+)
 
 log = logging.getLogger(__name__)
 
@@ -216,6 +225,16 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         anatomy = instance.context.data["anatomy"]
         publish_template = anatomy.get_template_item("publish", template_name)
 
+        # Prepare prefered root to use for representation files
+        path_template_obj: AnatomyStringTemplate = publish_template["path"]
+        result: AnatomyTemplateResult = path_template_obj.format(
+            {"root": anatomy.roots}
+        )
+        root_value = result.used_values.get("root")
+        prefered_root_name = None
+        if root_value:
+            prefered_root_name = next(iter(root_value.keys()))
+
         op_session = OperationsSession()
         product_entity = self.prepare_product(
             instance, op_session, project_name
@@ -295,7 +314,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # version instance instead of an individual representation) so
         # we can reuse those file infos per representation
         resource_file_infos = self.get_files_info(
-            resource_destinations, anatomy
+            resource_destinations, anatomy, prefered_root_name
         )
 
         # Finalize the representations now the published files are integrated
@@ -306,8 +325,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             repre_update_data = prepared["repre_update_data"]
             transfers = prepared["transfers"]
             destinations = [dst for src, dst in transfers]
+            
             repre_files = self.get_files_info(
-                destinations, anatomy
+                destinations, anatomy, prefered_root_name
             )
             # Add the version resource file infos to each representation
             repre_files += resource_file_infos
@@ -986,38 +1006,66 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             ).format(path))
         return path
 
-    def get_files_info(self, filepaths, anatomy):
+    def get_files_info(
+        self,
+        filepaths: Iterable[str],
+        anatomy: Anatomy,
+        prefered_root_name: str | None,
+    ) -> list[dict[str, Any]]:
         """Prepare 'files' info portion for representations.
 
         Arguments:
             filepaths (Iterable[str]): List of transferred file paths.
             anatomy (Anatomy): Project anatomy.
+            prefered_root_name (str | None): If set, it will be tried as first
+                option for rootless path.
 
         Returns:
             list[dict[str, Any]]: Representation 'files' information.
 
         """
+        obj_root = None
+        if prefered_root_name:
+            obj_root = anatomy.roots[prefered_root_name]
         file_infos = []
         for filepath in filepaths:
-            file_info = self.prepare_file_info(filepath, anatomy)
+            file_info = self.prepare_file_info(
+                filepath, anatomy, obj_root
+            )
             file_infos.append(file_info)
         return file_infos
 
-    def prepare_file_info(self, path, anatomy):
+    def prepare_file_info(
+        self,
+        path: str,
+        anatomy: Anatomy,
+        root: AnatomyRoot | None,
+    ) -> dict[str, Any]:
         """ Prepare information for one file (asset or resource)
 
         Arguments:
             path (str): Destination url of published file.
             anatomy (Anatomy): Project anatomy part from instance.
+            root (AnatomyRoot | None): If set, it will be tried as first
+                option for rootless path.
 
         Returns:
             dict[str, Any]: Representation file info dictionary.
 
         """
+        rootless_path = None
+        if root is not None:
+            success, rootless_path = root.find_root_template_from_path(path)
+            if not success:
+                rootless_path = None
+
+        if rootless_path is None:
+            rootless_path = self.get_rootless_path(anatomy, path)
+
         return {
             "id": create_entity_id(),
             "name": os.path.basename(path),
-            "path": self.get_rootless_path(anatomy, path),
+            "path": rootless_path,
             "size": os.path.getsize(path),
             "hash": source_hash(path),
             "hash_type": "op3",
