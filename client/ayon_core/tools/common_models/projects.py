@@ -10,6 +10,10 @@ import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
 
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+)
 from ayon_core.lib import CacheItem, NestedCacheItem
 
 PROJECTS_MODEL_SENDER = "projects.model"
@@ -175,7 +179,7 @@ class ProjectItem:
     name: str
     active: bool
     is_library: bool
-    icon: dict[str, Any]
+    icon: AwesomeFontIcon
     is_pinned: bool = False
 
     @classmethod
@@ -189,11 +193,10 @@ class ProjectItem:
             ProjectItem: Project item.
 
         """
-        icon = {
-            "type": "awesome-font",
-            "name": "fa.book" if project_entity["library"] else "fa.map",
-            "color": get_default_entity_icon_color(),
-        }
+        icon = AwesomeFontIcon(
+            "fa.book" if project_entity["library"] else "fa.map",
+            color=get_default_entity_icon_color(),
+        )
         return cls(
             project_entity["name"],
             project_entity["active"],
@@ -212,7 +215,10 @@ class ProjectItem:
             "name": self.name,
             "active": self.active,
             "is_library": self.is_library,
-            "icon": self.icon,
+            "icon": {
+                "name": self.icon.name,
+                "color": self.icon.color,
+            },
         }
 
     @classmethod
@@ -225,7 +231,9 @@ class ProjectItem:
         Returns:
             FolderItem: Folder item.
         """
-
+        icon = data["icon"]
+        if isinstance(icon, dict):
+            data["icon"] = AwesomeFontIcon(icon["name"], color=icon["color"])
         return cls(**data)
 
 
@@ -252,26 +260,27 @@ class ProductTypeIconMapping:
             icon = defs.get(product_base_type)
             if icon is None:
                 icon = self._get_default_def()
-        return icon.copy()
+
+        if isinstance(icon, dict):
+            return icon.copy()
+        return icon
 
     def _get_default_def(self) -> dict[str, str]:
         if self._default_def is None:
-            self._default_def = {
-                "type": "material-symbols",
-                "name": self._default.get("icon", "deployed_code"),
-                "color": self._default.get("color", "#cccccc"),
-            }
+            self._default_def = MaterialSymbolsIcon(
+                self._default.get("icon", "deployed_code"),
+                self._default.get("color", "#cccccc"),
+            )
 
         return self._default_def
 
     def _get_defs_by_name(self) -> dict[str, dict[str, str]]:
         if self._definitions_by_name is None:
             self._definitions_by_name = {
-                product_base_type_def["name"]: {
-                    "type": "material-symbols",
-                    "name": product_base_type_def.get("icon", "deployed_code"),
-                    "color": product_base_type_def.get("color", "#cccccc"),
-                }
+                product_base_type_def["name"]: MaterialSymbolsIcon(
+                    product_base_type_def.get("icon", "deployed_code"),
+                    product_base_type_def.get("color", "#cccccc"),
+                )
                 for product_base_type_def in self._definitions
             }
         return self._definitions_by_name

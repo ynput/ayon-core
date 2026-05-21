@@ -1637,3 +1637,15 @@ class TemplateItem:
         self.template = template
         self.template_data = template_data
         self.template_object = template_object
+
+
+def get_default_reviewable_layers(project_settings: dict) -> list[str]:
+    """Get default reviewable layers from project settings.
+
+    Args:
+        project_settings (dict): Project settings.
+
+    Returns:
+        list[str]: List of default reviewable layers.
+    """
+    return project_settings["core"]["reviewable_layers"]["review_layers"]
