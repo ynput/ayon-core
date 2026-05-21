@@ -1460,7 +1460,7 @@ class ProjectPushItemProcess:
                     counter_str = f"_{counter + 1}"
                 names_by_ext[ext] += 1
 
-                filename = f"{self._product_name}{counter_str}"
+                filename = f"{self._product_name}{counter_str}{ext}"
 
                 ayon_api.upload_reviewable(
                     self._item.dst_project_name,
