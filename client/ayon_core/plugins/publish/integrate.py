@@ -212,6 +212,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             )
 
         template_name = self.get_template_name(instance)
+        self.log.debug(f"Anatomy template name: {template_name}")
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item("publish", template_name)
 
         op_session = OperationsSession()
         product_entity = self.prepare_product(
@@ -239,7 +242,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # todo: reduce/simplify what is returned from this function
             prepared = self.prepare_representation(
                 repre,
-                template_name,
+                publish_template,
                 existing_repres_by_name,
                 version_entity,
                 instance_stagingdir,
@@ -549,7 +552,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     def prepare_representation(
         self,
         repre,
-        template_name,
+        publish_template,
         existing_repres_by_name,
         version_entity,
         instance_stagingdir,
@@ -621,9 +624,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if value is not None:
                 template_data[anatomy_key] = value
 
-        self.log.debug("Anatomy template name: {}".format(template_name))
         anatomy = instance.context.data["anatomy"]
-        publish_template = anatomy.get_template_item("publish", template_name)
         path_template_obj = publish_template["path"]
         template = path_template_obj.template.replace("\\", "/")
 
