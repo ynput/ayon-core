@@ -2,6 +2,7 @@ import os
 import re
 import copy
 import itertools
+import shutil
 import sys
 import tempfile
 import traceback
@@ -442,6 +443,7 @@ class ProjectPushItemProcess:
         self._src_folder_entity = None
         self._src_product_entity = None
         self._src_version_entity = None
+        self._src_reviewable_files = None
         self._src_repre_items = None
 
         self._project_entity = None
@@ -494,6 +496,8 @@ class ProjectPushItemProcess:
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
             self._integrate_representations()
+            self._log_info("Representations created")
+            self._reupload_reviewables()
             self._log_info("Integration finished")
 
         except PushToProjectError as exc:
@@ -604,7 +608,7 @@ class ProjectPushItemProcess:
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        anatomy = Anatomy(src_project_name)
+        anatomy = Anatomy(src_project_name, project_entity=project_entity)
 
         repre_entities = ayon_api.get_representations(
             src_project_name,
@@ -625,9 +629,23 @@ class ProjectPushItemProcess:
             )
             raise PushToProjectError(self._status.fail_reason)
 
+        reviewable_files = []
+        for activity in ayon_api.get_activities(
+            src_project_name,
+            entity_ids={src_version_id},
+            activity_types={"reviewable"},
+            fields={
+                "files.id",
+                "files.name",
+                "files.mime",
+            },
+        ):
+            reviewable_files.extend(activity["files"])
+
         self._src_folder_entity = folder_entity
         self._src_product_entity = product_entity
         self._src_version_entity = version_entity
+        self._src_reviewable_files = reviewable_files
         self._src_repre_items = repre_items
 
     def _fill_destination_project(self):
@@ -1417,6 +1435,45 @@ class ProjectPushItemProcess:
         )
 
         return description
+
+    def _reupload_reviewables(self):
+        tmp_dir = tempfile.mkdtemp(prefix="ayon_push_")
+        try:
+            names_by_ext = {}
+            for file_item in self._src_reviewable_files:
+                dst_path = os.path.join(tmp_dir, file_item["name"])
+                progress = ayon_api.download_project_file(
+                    self._item.src_project_name,
+                    file_item["id"],
+                    dst_path,
+                )
+                if progress.failed:
+                    reason = progress.get_fail_reason()
+                    raise PushToProjectError(
+                        f"Failed to download reviewable file: '{reason}'"
+                    )
+
+                ext = os.path.splitext(dst_path)[1].lower()
+                counter = names_by_ext.setdefault(ext, 0)
+                counter_str = ""
+                if counter > 0:
+                    counter_str = f"_{counter + 1}"
+                names_by_ext[ext] += 1
+
+                filename = f"{self._product_name}{counter_str}"
+
+                ayon_api.upload_reviewable(
+                    self._item.dst_project_name,
+                    self._version_entity["id"],
+                    dst_path,
+                    content_type=file_item["mime"],
+                    filename=filename,
+                    # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
+                    headers={},
+                )
+
+        finally:
+            shutil.rmtree(tmp_dir)
 
 
 class IntegrateModel:
