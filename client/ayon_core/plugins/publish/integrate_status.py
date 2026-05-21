@@ -17,7 +17,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     order = pyblish.api.IntegratorOrder - 0.01
     label = "Integrate Status"
 
-    status_profiles: List[dict] = []
+    status_profiles: list[dict] = []
 
     def process(self, instance):
         if instance.data.get("status"):
