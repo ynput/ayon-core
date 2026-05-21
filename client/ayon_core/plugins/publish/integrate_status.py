@@ -59,10 +59,11 @@ class IntegrateStatus(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
     ):
         if not cls.status_profiles:
             return []
-        version_entity = cls.create_context.get_current_version_entity()
+        project_entity = cls.create_context.get_current_project_entity()
         statuses = [
             status["name"]
-            for status in version_entity["statuses"]
+            for status in project_entity["statuses"]
+            if "version" in status["scope"]
         ]
 
         return [
