@@ -214,10 +214,10 @@ class PushToContextController:
     # Processing methods
     def submit(self, wait=True):
         if not self._submission_enabled:
-            return
+            return []
 
         if self._process_thread is not None:
-            return
+            return []
 
         item_ids = []
         for src_version_entity in self._src_version_entities:
@@ -240,7 +240,7 @@ class PushToContextController:
         if wait:
             self._submit_callback()
             self._process_item_ids = []
-            return item_id
+            return item_ids
 
         thread = threading.Thread(target=self._submit_callback)
         self._process_thread = thread
