@@ -9,13 +9,13 @@ from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline.create import get_product_name_template
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     TaskTypeItem,
 )
 
 from .models import (
-    SettingsModel,
     PushToProjectSelectionModel,
     UserPublishValuesModel,
     IntegrateModel,
