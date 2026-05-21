@@ -80,6 +80,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         title="Show 'Rewrite latest version' toggle"
     )
 
+
 class CollectVersionTagsModel(BaseSettingsModel):
     enabled: bool = SettingsField(False)
 
@@ -1239,7 +1240,7 @@ class PublishPuginsModel(BaseSettingsModel):
     )
     CollectVersionTags: CollectVersionTagsModel = SettingsField(
         title="Collect Version Tags",
-        description= (
+        description=(
             "Provides a selectable list of tags for the user in the"
             " publisher."
         )
