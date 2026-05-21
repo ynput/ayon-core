@@ -33,7 +33,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         filter_data = {
             "host_names": instance.context.data["hostName"],
             "task_types": task_type,
-            "task_names": task_name ,
+            "task_names": task_name,
             "folder_paths": folder_entity["path"]
         }
         status_profile = filter_profiles(
