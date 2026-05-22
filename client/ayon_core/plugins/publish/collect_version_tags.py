@@ -40,17 +40,17 @@ class CollectVersionTags(
         if not cls.instance_matches_plugin_families(instance):
             return []
 
-        items = []
         project_entity = create_context.get_current_project_entity()
+        items = [
+            {
+                "label": tag["name"],
+                "value": tag["name"],
+            }
+            for tag in project_entity["tags"]
+        ]
+        if not items:
+            return []
 
-        for tag in project_entity["tags"]:
-
-            items.append(
-                {
-                    "label": tag["name"],
-                    "value": tag["name"],
-                }
-            )
 
         return [
             EnumDef(
