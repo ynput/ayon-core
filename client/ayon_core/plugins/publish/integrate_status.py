@@ -25,7 +25,6 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             return
         attr_values = self.get_attr_values_from_data(instance.data)
         status = attr_values.get("status")
-        self.log.debug(f"Setting status '{status}' to instance '{instance.name}'")
         if status:
             instance.data["status"] = status
 
