@@ -45,13 +45,7 @@ class CollectVersionTags(
             return []
 
         project_entity = create_context.get_current_project_entity()
-        items = [
-            {
-                "label": tag["name"],
-                "value": tag["name"],
-            }
-            for tag in project_entity["tags"]
-        ]
+        items = [tag["name"] for tag in project_entity["tags"]]
         if not items:
             return []
 
