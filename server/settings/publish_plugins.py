@@ -1128,7 +1128,7 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
     )
 
 
-class IntegrateStatusProfile(BaseSettingsModel):
+class CollectStatusProfile(BaseSettingsModel):
     _layout = "expanded"
     product_base_types: list[str] = SettingsField(
         default_factory=list,
@@ -1147,12 +1147,13 @@ class IntegrateStatusProfile(BaseSettingsModel):
         default_factory=list,
         title="Task names",
     )
-    showed_in_publisher_ui: bool = SettingsField(
+    artist_can_change: bool = SettingsField(
         True,
-        title="Show in publisher UI",
+        title="Artist can change",
         description=(
-            "Show this status in publisher UI. This does not affect if the"
-            " status is set or not, just if it is visible in UI."
+            "Allow the artist to change the status in the publisher UI. "
+            "This does not affect if the status is set or not, just if "
+            "it is editable in UI."
         )
     )
     default_status: str = SettingsField(
@@ -1182,9 +1183,9 @@ class IntegrateProductGroupProfile(BaseSettingsModel):
     template: str = SettingsField("", title="Template")
 
 
-class IntegrateStatusModel(BaseSettingsModel):
+class CollectStatusModel(BaseSettingsModel):
     enabled: bool = SettingsField(False)
-    status_profiles: list[IntegrateStatusProfile] = SettingsField(
+    status_profiles: list[CollectStatusProfile] = SettingsField(
         default_factory=list,
         title="Status profiles"
     )
@@ -1274,6 +1275,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectCommentPIModel,
         title="Collect comment per instance",
     )
+    CollectStatus: CollectStatusModel = SettingsField(
+        default_factory=CollectStatusModel,
+        title="Collect Status"
+    )
     CollectFramesFixDef: CollectFramesFixDefModel = SettingsField(
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
@@ -1356,10 +1361,6 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=PreIntegrateThumbnailsModel,
         title="Override Integrate Thumbnail Representations"
     )
-    IntegrateStatus: IntegrateStatusModel = SettingsField(
-        default_factory=IntegrateStatusModel,
-        title="Integrate Status"
-    )
     IntegrateProductGroup: IntegrateProductGroupModel = SettingsField(
         default_factory=IntegrateProductGroupModel,
         title="Integrate Product Group"
@@ -1422,6 +1423,10 @@ DEFAULT_PUBLISH_VALUES = {
     "collect_comment_per_instance": {
         "enabled": False,
         "families": []
+    },
+    "CollectStatus": {
+        "enabled": False,
+        "status_profiles": [],
     },
     "CollectFramesFixDef": {
         "enabled": True,
@@ -1886,10 +1891,6 @@ DEFAULT_PUBLISH_VALUES = {
     "PreIntegrateThumbnails": {
         "enabled": True,
         "integrate_profiles": []
-    },
-    "IntegrateStatus": {
-        "enabled": False,
-        "status_profiles": [],
     },
     "IntegrateProductGroup": {
         "product_grouping_profiles": [

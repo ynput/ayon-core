@@ -10,13 +10,14 @@ if TYPE_CHECKING:
     from ayon_core.created_instance import CreatedInstance
 
 
-class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
+class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     """Allow user to set status for the published version
     based on profiles defined in settings."""
 
-    order = pyblish.api.IntegratorOrder - 0.01
-    label = "Integrate Status"
+    order = pyblish.api.CollectorOrder + 0.499
+    label = "Collect Status"
 
+    enabled = False
     status_profiles: list[dict] = []
 
     def process(self, instance):
@@ -27,7 +28,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             # already set so we won't override it
             return
         attr_values = self.get_attr_values_from_data(instance.data)
-        status = attr_values.get("status")
+        status = attr_values.get("status", "")
         if status:
             instance.data["status"] = status
 
@@ -69,12 +70,18 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             logger=cls.log
         )
         default_status = None
-        showed_in_publisher_ui = True
+        artist_can_change = True
         if status_profile:
-            showed_in_publisher_ui = status_profile.get(
-                "show_in_publisher_ui", True
+            artist_can_change = status_profile.get(
+                "artist_can_change", True
             )
-            default_status = status_profile["default_status"]
+            if not artist_can_change:
+                cls.log.debug(
+                    "Artist cannot change status based on profile settings."
+                )
+                return []
+
+            default_status = status_profile.get("default_status", "")
 
         if default_status not in statuses:
             cls.log.warning(
@@ -88,7 +95,6 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
                 "status",
                 label="Version status",
                 items=statuses,
-                visible=showed_in_publisher_ui,
                 default=default_status,
             )
         ]
