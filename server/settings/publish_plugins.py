@@ -1147,6 +1147,14 @@ class IntegrateStatusProfile(BaseSettingsModel):
         default_factory=list,
         title="Task names",
     )
+    showed_in_publisher_ui: bool = SettingsField(
+        True,
+        title="Show in publisher UI",
+        description=(
+            "Show this status in publisher UI. This does not affect if the"
+            " status is set or not, just if it is visible in UI."
+        )
+    )
     default_status: str = SettingsField(
         title="Default status",
         enum_resolver=_version_statuses_enum
@@ -1175,6 +1183,7 @@ class IntegrateProductGroupProfile(BaseSettingsModel):
 
 
 class IntegrateStatusModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
     status_profiles: list[IntegrateStatusProfile] = SettingsField(
         default_factory=list,
         title="Status profiles"
@@ -1879,6 +1888,7 @@ DEFAULT_PUBLISH_VALUES = {
         "integrate_profiles": []
     },
     "IntegrateStatus": {
+        "enabled": False,
         "status_profiles": [],
     },
     "IntegrateProductGroup": {

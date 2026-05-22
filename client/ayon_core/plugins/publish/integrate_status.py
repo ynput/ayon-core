@@ -67,7 +67,11 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             logger=cls.log
         )
         default_status = None
+        showed_in_publisher_ui = True
         if status_profile:
+            showed_in_publisher_ui = status_profile.get(
+                "show_in_publisher_ui", True
+            )
             default_status = status_profile["default_status"]
 
         if default_status not in statuses:
@@ -82,6 +86,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
                 "status",
                 label="Version status",
                 items=statuses,
+                visible=showed_in_publisher_ui,
                 default=default_status,
             )
         ]
