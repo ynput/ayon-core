@@ -43,7 +43,6 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         if not statuses:
             cls.log.warning("No version statuses found in current project.")
             return []
-        default_status = None
         folder_path = instance.get("folderPath")
         folder_entity = create_context.get_folder_entity(folder_path)
         task_entity = None
