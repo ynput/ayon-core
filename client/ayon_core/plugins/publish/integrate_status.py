@@ -25,6 +25,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             return
         attr_values = self.get_attr_values_from_data(instance.data)
         status = attr_values.get("status")
+        self.log.debug(f"Setting status '{status}' to instance '{instance.name}'")
         if status:
             instance.data["status"] = status
 
@@ -34,7 +35,7 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     ):
         if not cls.status_profiles:
             return []
-        project_entity = cls.create_context.get_current_project_entity()
+        project_entity = create_context.get_current_project_entity()
         statuses = [
             status["name"]
             for status in project_entity["statuses"]
@@ -42,15 +43,15 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         ]
         default_status = None
         folder_path = instance.get("folderPath")
-        folder_entity = cls.create_context.get_folder_entity(folder_path)
+        folder_entity = create_context.get_folder_entity(folder_path)
         task_entity = None
         if folder_entity:
             task_name = instance.get("task")
-            task_entity = cls.create_context.get_task_entity(
+            task_entity = create_context.get_task_entity(
                 folder_path, task_name
             )
         filter_data = {
-            "host_names": cls.create_context.host_name,
+            "host_names": create_context.host_name,
             "task_types": task_entity["taskType"],
             "task_names": instance.get("task"),
             "product_base_types": instance.product_base_type,
