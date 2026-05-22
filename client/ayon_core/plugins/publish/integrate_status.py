@@ -20,6 +20,9 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     status_profiles: list[dict] = []
 
     def process(self, instance):
+        if not self.status_profiles:
+            return
+
         if instance.data.get("status"):
             # already set so we won't override it
             return
