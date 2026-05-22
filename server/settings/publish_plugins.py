@@ -9,9 +9,25 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
-from ayon_server.enum.resolvers import StatusesEnumResolver
+from ayon_server.settings.anatomy import Anatomy
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
+from ayon_server.helpers.anatomy import get_project_anatomy
+
+
+async def _get_anatomy(project_name: str | None = None) -> Anatomy:
+    if not project_name:
+        return Anatomy()
+    return await get_project_anatomy(project_name)
+
+
+async def _version_statuses_enum(project_name: str | None = None):
+    anatomy = await _get_anatomy(project_name)
+    return [
+        status.name
+        for status in anatomy.statuses
+        if "version" in status.scope
+    ]
 
 
 def _handle_missing_frames_enum():
@@ -1131,9 +1147,9 @@ class IntegrateStatusProfile(BaseSettingsModel):
         default_factory=list,
         title="Task names",
     )
-    default_status: bool = SettingsField(
+    default_status: str = SettingsField(
         title="Default status",
-        enum_resolver=lambda: StatusesEnumResolver
+        enum_resolver=_version_statuses_enum
     )
 
 
