@@ -78,8 +78,8 @@ class IntegrateStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
 
         if default_status not in statuses:
             cls.log.warning(
-                f"Default status '{default_status}' is not in the list of "
-                f"available statuses: {statuses}"
+                f"Default status '{default_status}' is not available"
+                f" on project: {project_entity['name']}"
                 f"Use {statuses[0]} instead."
             )
             default_status = statuses[0]
