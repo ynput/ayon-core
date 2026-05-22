@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-from typing import Dict
 
 import ayon_api
 
@@ -9,13 +8,13 @@ from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline.create import get_product_name_template
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     TaskTypeItem,
 )
 
 from .models import (
-    SettingsModel,
     PushToProjectSelectionModel,
     UserPublishValuesModel,
     IntegrateModel,
@@ -207,17 +206,17 @@ class PushToContextController:
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
-    def get_process_items(self) -> Dict[str, ProjectPushItemProcess]:
+    def get_process_items(self) -> dict[str, ProjectPushItemProcess]:
         """Returns dict of all ProjectPushItemProcess items """
         return self._integrate_model.get_items()
 
     # Processing methods
     def submit(self, wait=True):
         if not self._submission_enabled:
-            return
+            return []
 
         if self._process_thread is not None:
-            return
+            return []
 
         item_ids = []
         for src_version_entity in self._src_version_entities:
@@ -240,7 +239,7 @@ class PushToContextController:
         if wait:
             self._submit_callback()
             self._process_item_ids = []
-            return item_id
+            return item_ids
 
         thread = threading.Thread(target=self._submit_callback)
         self._process_thread = thread
