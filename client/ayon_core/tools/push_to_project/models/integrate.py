@@ -1439,7 +1439,6 @@ class ProjectPushItemProcess:
     def _reupload_reviewables(self):
         tmp_dir = tempfile.mkdtemp(prefix="ayon_push_")
         try:
-            names_by_ext = {}
             for file_item in self._src_reviewable_files:
                 dst_path = os.path.join(tmp_dir, file_item["name"])
                 progress = ayon_api.download_project_file(
@@ -1453,21 +1452,11 @@ class ProjectPushItemProcess:
                         f"Failed to download reviewable file: '{reason}'"
                     )
 
-                ext = os.path.splitext(dst_path)[1].lower()
-                counter = names_by_ext.setdefault(ext, 0)
-                counter_str = ""
-                if counter > 0:
-                    counter_str = f"_{counter + 1}"
-                names_by_ext[ext] += 1
-
-                filename = f"{self._product_name}{counter_str}{ext}"
-
                 ayon_api.upload_reviewable(
                     self._item.dst_project_name,
                     self._version_entity["id"],
                     dst_path,
                     content_type=file_item["mime"],
-                    filename=filename,
                     # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
                     headers={},
                 )
