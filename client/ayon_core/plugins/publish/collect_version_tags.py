@@ -23,16 +23,13 @@ class CollectVersionTags(
 
     def process(self, instance):
 
-        tags = instance.data.setdefault("tags", [])
+        tags: set[str] = set(instance.data.get("tags", set()))
 
         attr_values = self.get_attr_values_from_data(instance.data)
-        version_tags = attr_values.get("version_tags", [])
+        version_tags: list[str] = attr_values.get("version_tags", [])
 
-        if (
-            isinstance(tags, (list, tuple, set))
-            and all(isinstance(tag, str) for tag in tags)
-        ):
-            tags.extend([t for t in version_tags if t not in tags])
+        tags.update(version_tags)
+        instance.data["tags"] = tags
 
         self.log.debug(f"Collected Tags: {tags}")
 
