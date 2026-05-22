@@ -51,7 +51,6 @@ class CollectVersionTags(
         if not items:
             return []
 
-
         return [
             EnumDef(
                 "version_tags",
