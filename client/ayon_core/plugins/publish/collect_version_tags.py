@@ -30,10 +30,14 @@ class CollectVersionTags(
             return
 
         self.log.debug(f"Adding tags: {version_tags}")
-        tags: set[str] = set(instance.data.get("tags", set()))
+        tags = instance.data.get("versionTags")
+        if tags is None:
+            tags = set()
+        elif not isinstance(tags, set):
+            tags = set(tags)
+
         tags.update(version_tags)
-        instance.data["tags"] = tags
-        self.log.debug(f"Collected tags: {tags}")
+        self.log.debug(f"Collected version tags: {tags}")
 
     @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):

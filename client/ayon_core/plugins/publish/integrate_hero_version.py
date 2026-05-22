@@ -243,7 +243,7 @@ class IntegrateHeroVersion(
         if old_version:
             entity_id = old_version["id"]
 
-        tags = instance.data.get("tags", None)
+        tags = instance.data.get("version_tags", None)
         if tags is not None:
             # Tags contents are checked at eariler step "IntegrateAsset"
             # Force the type to be list for the new_version_entity call.
