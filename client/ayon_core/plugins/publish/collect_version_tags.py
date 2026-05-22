@@ -23,15 +23,17 @@ class CollectVersionTags(
 
     def process(self, instance):
 
-        tags: set[str] = set(instance.data.get("tags", set()))
-
         attr_values = self.get_attr_values_from_data(instance.data)
         version_tags: list[str] = attr_values.get("version_tags", [])
 
+        if not version_tags:
+            return
+
+        self.log.debug(f"Adding tags: {version_tags}")
+        tags: set[str] = set(instance.data.get("tags", set()))
         tags.update(version_tags)
         instance.data["tags"] = tags
-
-        self.log.debug(f"Collected Tags: {tags}")
+        self.log.debug(f"Collected tags: {tags}")
 
     @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):
