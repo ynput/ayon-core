@@ -7,6 +7,10 @@ from qtpy import QtWidgets, QtGui, QtCore
 from ayon_ui_qt.components import AYCheckBox, AYLineEdit, AYTreeView
 
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.lib.icon_definitions import (
+    AwesomeFontIcon,
+    MaterialSymbolsIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
     ProjectsModel,
@@ -153,11 +157,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     @classmethod
     def _get_default_folder_icon(cls):
         if cls._default_folder_icon is None:
-            cls._default_folder_icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.folder",
-                "color": get_default_entity_icon_color()
-            })
+            cls._default_folder_icon = get_qt_icon(
+                AwesomeFontIcon(
+                    "fa.folder",
+                    color=get_default_entity_icon_color(),
+                )
+            )
         return cls._default_folder_icon
 
     def _clear_items(self):
@@ -221,11 +226,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         )
         icon = None
         if folder_type_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": folder_type_item.icon,
-                "color": get_default_entity_icon_color()
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                folder_type_item.icon,
+                color=get_default_entity_icon_color(),
+            ))
 
         if icon is None:
             icon = self._get_default_folder_icon()

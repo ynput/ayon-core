@@ -362,6 +362,8 @@ class WorkfilesToolWindow(AYContainer):
 
         self._project_name = self._controller.get_current_project_name()
         self._folders_widget.set_project_name(self._project_name)
+        self._tasks_widget.refresh()
+
         # Update my tasks
         self._on_my_tasks_checkbox_state_changed(
             self._filters_widget.is_my_tasks_checked()

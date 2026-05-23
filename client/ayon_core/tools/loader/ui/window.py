@@ -4,6 +4,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
 from ayon_core.pipeline.actions import LoaderActionResult
@@ -655,11 +656,9 @@ class LoaderWindow(QtWidgets.QWidget):
         ]
         filter_status_items = [
             {
-                "icon": {
-                    "type": "material-symbols",
-                    "name": status_item.icon,
-                    "color": status_item.color
-                },
+                "icon": MaterialSymbolsIcon(
+                    status_item.icon, color=status_item.color
+                ),
                 "color": status_item.color,
                 "value": status_item.name,
             }

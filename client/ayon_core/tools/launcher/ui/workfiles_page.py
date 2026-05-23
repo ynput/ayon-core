@@ -7,11 +7,17 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_ui_qt.components import AYContainer, AYTreeView
-
+from ayon_core.lib.icon_definitions import (
+    AYONUrlIcon,
+    UrlIcon,
+    TransparentIcon,
+)
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
+
+from ayon_ui_qt.components import AYContainer, AYTreeView
+
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
@@ -212,15 +218,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
         base_url = ayon_api.get_base_url()
         if icon_url.startswith(base_url):
-            icon_def = {
-                "type": "ayon_url",
-                "url": icon_url[len(base_url) + 1:],
-            }
+            url = icon_url[len(base_url) + 1:]
+            icon_def = AYONUrlIcon(url)
         else:
-            icon_def = {
-                "type": "url",
-                "url": icon_url,
-            }
+            icon_def = UrlIcon(icon_url)
 
         icon = get_qt_icon(icon_def)
         if icon is None:
@@ -244,15 +245,8 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
         return super().lessThan(source_left, source_right)
 
 
-class WorkfilesView(AYTreeView):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # Show both "Workfiles" and "Modified" column headers
-        self.setHeaderHidden(False)
-        self.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
-
+class WorkfilesView(DeselectableTreeView):
     def drawBranches(self, painter, rect, index):
-        # Suppress branch indicators — workfiles are always flat
         return
 
 

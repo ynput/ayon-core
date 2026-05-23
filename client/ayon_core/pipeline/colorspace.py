@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import re
 import os
 import json
@@ -580,11 +581,11 @@ def convert_colorspace_enumerator_item(
 
 
 def get_colorspaces_enumerator_items(
-    config_items,
-    include_aliases=False,
-    include_looks=False,
-    include_roles=False,
-    include_display_views=False
+    config_items: dict[str, Any],
+    include_aliases: bool = False,
+    include_looks: bool = False,
+    include_roles: bool = False,
+    include_display_views: bool = False
 ):
     """Get all colorspace data with labels
 
@@ -594,10 +595,10 @@ def get_colorspaces_enumerator_items(
     Args:
         config_items (dict[str,dict]): Colorspace data coming from
             `get_ocio_config_colorspaces` function.
-        include_aliases (Optional[bool]): Include aliases in result.
-        include_looks (Optional[bool]): Include looks in result.
-        include_roles (Optional[bool]): Include roles in result.
-        include_display_views (Optional[bool]): Include display views
+        include_aliases (bool): Include aliases in result.
+        include_looks (bool): Include looks in result.
+        include_roles (bool): Include roles in result.
+        include_display_views (bool): Include display views
             in result.
 
     Returns:
@@ -744,13 +745,14 @@ def _get_config_path_from_profile_data(
 
 
 def _get_global_config_data(
-    project_name,
-    host_name,
-    anatomy,
-    template_data,
-    imageio_global,
-    folder_id,
-    log,
+    project_name: str,
+    host_name: str,
+    app_name: str | None,
+    anatomy: Anatomy,
+    template_data: dict[str, Any],
+    imageio_global: dict[str, Any],
+    folder_id: str,
+    log: logging.Logger,
 ) -> ConfigData:
     """Get global config data.
 
@@ -768,6 +770,7 @@ def _get_global_config_data(
     Args:
         project_name (str): Project name.
         host_name (str): Host name.
+        app_name (str | None): Applications name.
         anatomy (Anatomy): Project anatomy object.
         template_data (dict[str, Any]): Template data.
         imageio_global (dict[str, Any]): Core imagio settings.
@@ -788,6 +791,7 @@ def _get_global_config_data(
         "task_names": task_name,
         "task_types": task_type,
         "host_names": host_name,
+        "app_names": app_name,
     }
     profile = filter_profiles(
         imageio_global["ocio_config_profiles"], filter_values
@@ -897,15 +901,17 @@ def _get_global_config_data(
 
 
 def get_imageio_config_preset(
-    project_name,
-    folder_path,
-    task_name,
-    host_name,
-    anatomy=None,
-    project_settings=None,
-    template_data=None,
-    env=None,
-    folder_id=None,
+    project_name: str,
+    folder_path: str,
+    task_name: str,
+    host_name: str,
+    app_name: str | None = None,
+    *,
+    anatomy: Anatomy | None = None,
+    project_settings: dict | None = None,
+    template_data: dict | None = None,
+    env: dict | None = None,
+    folder_id: str | None = None,
 ):
     """Returns config data from settings
 
@@ -918,6 +924,7 @@ def get_imageio_config_preset(
         folder_path (str): Folder path.
         task_name (str): Task name.
         host_name (str): Host name.
+        app_name (str): Application name.
         anatomy (Optional[Anatomy]): Project anatomy object.
         project_settings (Optional[dict]): Project settings.
         template_data (Optional[dict]): Template data used for
@@ -984,7 +991,7 @@ def get_imageio_config_preset(
         if not project_entity:
             project_entity = ayon_api.get_project(project_name)
 
-        folder_entity = task_entity = folder_id = None
+        folder_entity = task_entity = None
         if folder_path:
             folder_entity = ayon_api.get_folder_by_path(
                 project_name, folder_path
@@ -1021,11 +1028,12 @@ def get_imageio_config_preset(
         config_data = _get_global_config_data(
             project_name,
             host_name,
-            anatomy,
-            template_data,
-            imageio_global,
-            folder_id,
-            log,
+            app_name,
+            anatomy=anatomy,
+            template_data=template_data,
+            imageio_global=imageio_global,
+            folder_id=folder_id,
+            log=log,
         )
     else:
         config_data = _get_host_config_data(
@@ -1088,7 +1096,8 @@ def get_imageio_file_rules(project_name, host_name, project_settings=None):
         list[dict[str, Any]]: file rules data
 
     """
-    project_settings = project_settings or get_project_settings(project_name)
+    if not project_settings:
+        project_settings = get_project_settings(project_name)
 
     imageio_global, imageio_host = _get_imageio_settings(
         project_settings, host_name)
@@ -1208,6 +1217,7 @@ def get_colorspace_settings_from_publish_context(context_data):
     folder_path = context_data["folderPath"]
     task_name = context_data["task"]
     host_name = context_data["hostName"]
+    app_name = context_data.get("appName")
     anatomy = context_data["anatomy"]
     template_data = context_data["anatomyData"]
     project_settings = context_data["project_settings"]
@@ -1221,6 +1231,7 @@ def get_colorspace_settings_from_publish_context(context_data):
         folder_path,
         task_name,
         host_name,
+        app_name,
         anatomy=anatomy,
         project_settings=project_settings,
         template_data=template_data,
@@ -1525,19 +1536,21 @@ def _get_ocio_config_views(config_path):
 
 # --- Current context functions ---
 def get_current_context_imageio_config_preset(
-    anatomy=None,
-    project_settings=None,
-    template_data=None,
-    env=None,
+    anatomy: Anatomy | None = None,
+    project_settings: dict | None = None,
+    template_data: dict | None = None,
+    env: dict[str, str] | None = None,
+    app_name: str | None = None,
 ):
     """Get ImageIO config preset for current context.
 
     Args:
-        anatomy (Optional[Anatomy]): Current project anatomy.
-        project_settings (Optional[dict[str, Any]]): Current project settings.
-        template_data (Optional[dict[str, Any]]): Prepared template data
+        anatomy (Anatomy | None): Current project anatomy.
+        project_settings (dict[str, Any] | NOne): Current project settings.
+        template_data (dict[str, Any] | None): Prepared template data
             for current context.
-        env (Optional[dict[str, str]]): Custom environment variable values.
+        env (dict[str, str] | None): Custom environment variable values.
+        app_name (str | None): Application name.
 
     Returns:
         dict: ImageIO config preset.
@@ -1547,11 +1560,14 @@ def get_current_context_imageio_config_preset(
 
     context = get_current_context()
     host_name = get_current_host_name()
+    if not app_name:
+        app_name = os.getenv("AYON_APP_NAME")
     return get_imageio_config_preset(
         context["project_name"],
         context["folder_path"],
         context["task_name"],
         host_name,
+        app_name,
         anatomy=anatomy,
         project_settings=project_settings,
         template_data=template_data,
@@ -1560,74 +1576,14 @@ def get_current_context_imageio_config_preset(
 
 
 # --- Deprecated functions ---
-@deprecated("has_compatible_ocio_package")
-def compatibility_check():
-    """Making sure PyOpenColorIO is importable
-
-    Deprecated:
-        Deprecated since '0.3.2'. Use `has_compatible_ocio_package` instead.
-    """
-
-    return has_compatible_ocio_package()
-
-
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_imageio_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_colorspace_data_subprocess(config_path):
-    """[Deprecated] Get colorspace data via subprocess
-
-    Deprecated:
-        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: colorspace and family in couple
-    """
-    return _get_wrapped_with_subprocess(
-        "get_ocio_config_colorspaces",
-        config_path=config_path
-    )
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_views_data_subprocess(config_path):
-    """[Deprecated] Get viewers data via subprocess
-
-    Deprecated:
-        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: `display/viewer` and viewer data
-
-    """
-    return _get_wrapped_with_subprocess(
-        "get_ocio_config_views",
-        config_path=config_path
-    )
-
-
 @deprecated("get_imageio_config_preset")
 def get_imageio_config(
-    project_name,
-    host_name,
-    project_settings=None,
-    anatomy_data=None,
-    anatomy=None,
-    env=None
+    project_name: str,
+    host_name: str,
+    project_settings: dict | None = None,
+    anatomy_data: dict | None = None,
+    anatomy: Anatomy | None = None,
+    env: dict[str, str] | None = None,
 ):
     """Returns config data from settings
 
@@ -1653,6 +1609,13 @@ def get_imageio_config(
         from .context_tools import get_current_context_template_data
         anatomy_data = get_current_context_template_data()
 
+    app_name = None
+    if env is not None:
+        app_name = env.get("AYON_APP_NAME")
+
+    if not app_name:
+        app_name = os.getenv("AYON_APP_NAME")
+
     task_name = anatomy_data.get("task", {}).get("name")
     folder_path = anatomy_data.get("folder", {}).get("path")
     return get_imageio_config_preset(
@@ -1660,6 +1623,7 @@ def get_imageio_config(
         folder_path,
         task_name,
         host_name,
+        app_name,
         anatomy=anatomy,
         project_settings=project_settings,
         template_data=anatomy_data,
