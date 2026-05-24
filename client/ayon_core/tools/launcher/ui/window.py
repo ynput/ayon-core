@@ -1,5 +1,9 @@
 from ayon_ui_qt.components import (
-    AYContainer, AYHBoxLayout, AYVBoxLayout, AYLineEdit, AYButton,
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYLineEdit,
+    AYButton,
 )
 from qtpy import QtWidgets, QtCore, QtGui
 

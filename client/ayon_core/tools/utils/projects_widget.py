@@ -6,6 +6,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_ui_qt.components import AYComboBox
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import (
     ProjectItem,
@@ -632,7 +633,8 @@ class ProjectsCombobox(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        projects_combobox = QtWidgets.QComboBox(self)
+        #TODO: Need to update component to support to show project pin
+        projects_combobox = AYComboBox(self)
         combobox_delegate = ProjectsDelegate(projects_combobox)
         projects_combobox.setItemDelegate(combobox_delegate)
         projects_model = ProjectsQtModel(controller)

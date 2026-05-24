@@ -1,6 +1,11 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_ui_qt.components import AYButton, AYLabel, AYHBoxLayout, AYVBoxLayout
+from ayon_ui_qt.components import (
+    AYButton,
+    AYLabel,
+    AYHBoxLayout,
+    AYVBoxLayout
+)
 
 from ayon_core.style import load_stylesheet, get_app_icon_path
 from ayon_core.pipeline.workfile.lock_workfile import get_workfile_lock_data

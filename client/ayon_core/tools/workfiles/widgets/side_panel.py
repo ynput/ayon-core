@@ -3,7 +3,12 @@ from typing import Optional
 
 from qtpy import QtCore
 
-from ayon_ui_qt.components import AYContainer, AYButton, AYLabel, AYTextEdit
+from ayon_ui_qt.components import (
+    AYContainer,
+    AYButton,
+    AYLabel,
+    AYTextEdit
+)
 
 
 def file_size_to_string(file_size):

@@ -16,7 +16,10 @@ from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
-from ayon_ui_qt.components import AYContainer, AYTreeView
+from ayon_ui_qt.components import (
+    AYContainer,
+    AYTreeView
+)
 
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
@@ -204,9 +207,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
     def _get_transparent_icon(self) -> QtGui.QIcon:
         if self._transparent_icon is None:
-            self._transparent_icon = get_qt_icon({
-                "type": "transparent", "size": 256
-            })
+            self._transparent_icon = get_qt_icon(
+                TransparentIcon(256)
+            )
         return self._transparent_icon
 
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
@@ -245,11 +248,6 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
         return super().lessThan(source_left, source_right)
 
 
-class WorkfilesView(DeselectableTreeView):
-    def drawBranches(self, painter, rect, index):
-        return
-
-
 class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         option.textElideMode = QtCore.Qt.ElideMiddle
@@ -261,6 +259,8 @@ class WorkfilesPage(AYContainer):
         self,
         controller: AbstractLauncherFrontEnd,
         parent: QtWidgets.QWidget,
+        view_variant=AYTreeView.Variants.Default,
+
     ) -> None:
         super().__init__(
             parent,
@@ -270,7 +270,7 @@ class WorkfilesPage(AYContainer):
             layout_spacing=0,
         )
 
-        workfiles_view = WorkfilesView(self)
+        workfiles_view = AYTreeView(self, variant=view_variant)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)

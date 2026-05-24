@@ -3,7 +3,12 @@ import os
 import qtpy
 from qtpy import QtWidgets, QtCore
 
-from ayon_ui_qt.components import AYContainer, AYHBoxLayout, AYVBoxLayout, AYButton
+from ayon_ui_qt.components import (
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYButton
+)
 
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
