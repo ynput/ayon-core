@@ -1678,12 +1678,10 @@ class PlaceholderLoadMixin(object):
         if not folder_ids:
             return []
 
-        # TODO this should filter by product_base_types
-        # - that can change only when AYON server 1.14.0 is required
         products = list(get_products(
             project_name,
             folder_ids=folder_ids,
-            product_types={product_base_type},
+            product_base_types={product_base_type},
             fields={"id", "name"}
         ))
         filtered_product_ids = set()
