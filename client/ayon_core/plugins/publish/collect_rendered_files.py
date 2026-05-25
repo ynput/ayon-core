@@ -152,7 +152,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         publish_data_paths = os.environ.get("AYON_PUBLISH_DATA")
         if not publish_data_paths:
             self.log.warning(
-                "Environment variable `AYON_PUBLISH_DATA` is not set. ")
+                "Environment variable `AYON_PUBLISH_DATA` is not set.")
             return
 
         # QUESTION
