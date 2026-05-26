@@ -38,7 +38,7 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
         if not frames:
             raise KnownPublishError("Please fill `Custom Frames` value")
 
-        instance.data["custom_frames"] = frames
+        instance.data["customFrames"] = frames
         if use_custom_frames == "reuse_last_version":
             instance.data["reuse_last_version"] = True
 
