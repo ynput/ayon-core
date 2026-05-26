@@ -91,7 +91,11 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             artist_can_change = status_profile.get(
                 "artist_can_change", True
             )
+            default_status = status_profile.get("default_status", "")
             if not artist_can_change:
+                self._set_instance_state(
+                    instance, status_state_attr, f"status|{default_status}"
+                )
                 cls.log.debug(
                     "Artist cannot change status based on profile settings."
                 )
