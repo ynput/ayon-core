@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyblish.api
-from ayon_core.lib import EnumDef, filter_profiles
+from ayon_core.lib import EnumDef, TextDef, filter_profiles
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         status_state = attr_values.get("status_state")
         if status_state == "dont_use":
             return
-            
+
         if status_state == "use_status":
             status = attr_values.get("status", "")
         elif status_state.startswith("use|"):
@@ -50,18 +50,9 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         )
         output = [status_state_attr]
         if not cls.status_profiles:
-             self._set_instance_state(instace, status_state_attr, "dont_use")
-             return output
-
-    def _set_instance_state(self, instance, attr, state):
-        attr.default = state
-        plugin_attributes = instance.publish_attributes.get(cls.__name__)
-        if plugin_attributes is None:
-            return
-
-        plugin_attributes["status_state"] = state
-            self._set_instance_state(instance, status_state_attr, "dont_use")
+            cls._set_instance_state(instance, status_state_attr, "dont_use")
             return output
+
         project_entity = create_context.get_current_project_entity()
         statuses = [
             status["name"]
@@ -70,8 +61,9 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         ]
         if not statuses:
             cls.log.warning("No version statuses found in current project.")
-            self._set_instance_state(instance, status_state_attr, "dont_use")
-            return output 
+            cls._set_instance_state(instance, status_state_attr, "dont_use")
+            return output
+
         folder_path = instance.get("folderPath")
         folder_entity = create_context.get_folder_entity(folder_path)
         task_entity = None
@@ -102,17 +94,17 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             )
             default_status = status_profile.get("default_status", "")
             if not artist_can_change:
-                self._set_instance_state(
+                cls._set_instance_state(
                     instance, status_state_attr, f"status|{default_status}"
                 )
                 cls.log.debug(
                     "Artist cannot change status based on profile settings."
                 )
-                return []
+                return output
 
             default_status = status_profile["default_status"]
 
-        self._set_instance_state(instance, status_state_attr, "use_status")
+        cls._set_instance_state(instance, status_state_attr, "use_status")
         if default_status not in statuses:
             cls.log.warning(
                 f"Default status '{default_status}' is not available"
@@ -127,3 +119,18 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             default=default_status,
         ))
         return output
+
+    @classmethod
+    def _set_instance_state(
+        cls,
+        instance: "CreatedInstance",
+        status_state_attr: "TextDef",
+        state: str
+    ) -> None:
+        status_state_attr.default = state
+        plugin_attributes = instance.publish_attributes.get(cls.__name__)
+        if plugin_attributes is None:
+            return
+
+        plugin_attributes["status_state"] = state
+        cls._set_instance_state(instance, status_state_attr, "dont_use")
