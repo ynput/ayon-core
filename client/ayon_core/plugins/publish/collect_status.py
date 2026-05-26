@@ -61,7 +61,8 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         ]
         if not statuses:
             cls.log.warning("No version statuses found in current project.")
-            return []
+            self._set_instance_state(instance, status_state_attr, "dont_use")
+            return output 
         folder_path = instance.get("folderPath")
         folder_entity = create_context.get_folder_entity(folder_path)
         task_entity = None
