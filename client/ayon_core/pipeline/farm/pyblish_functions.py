@@ -949,6 +949,8 @@ def _create_instances_for_aov(
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_files_to_render(
                 collections[0], aov_frames_to_render)
+            if len(collected_files) == 1:
+                collected_files = collected_files[0]
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))
