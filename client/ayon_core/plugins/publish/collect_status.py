@@ -28,7 +28,16 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             # already set so we won't override it
             return
         attr_values = self.get_attr_values_from_data(instance.data)
-        status = attr_values.get("status", "")
+        status_state = attr_values.get("status_state")
+        if status_state == "dont_use":
+            return
+            
+        if status_state == "use_status":
+            status = attr_values.get("status", "")
+        elif status_state.startswith("use|"):
+            status = status_state.split("|", 1)[1]
+        else:
+            return
         if status:
             instance.data["status"] = status
 
