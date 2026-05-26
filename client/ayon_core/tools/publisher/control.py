@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import logging
 import tempfile
@@ -13,6 +15,7 @@ from ayon_core.pipeline import (
     get_process_id,
 )
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     UsersModel,
@@ -100,6 +103,7 @@ class PublisherController(
         self._host = registered_host()
         self._headless = headless
 
+        self._settings_model = SettingsModel()
         self._create_model = CreateModel(self)
         self._publish_model = PublishModel(self)
 
@@ -239,6 +243,9 @@ class PublisherController(
 
     def get_convertor_items(self):
         return self._create_model.get_convertor_items()
+
+    def get_project_settings(self, project_name: str | None) -> dict:
+        return self._settings_model.get_settings(project_name)
 
     def get_project_entity(self, project_name):
         return self._projects_model.get_project_entity(project_name)
@@ -384,6 +391,7 @@ class PublisherController(
         self._users_model.reset()
 
         # Publish part must be reset after plugins
+        self._settings_model.reset()
         self._create_model.reset()
         self._publish_model.reset()
 
