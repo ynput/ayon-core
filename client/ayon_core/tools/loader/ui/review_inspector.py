@@ -196,16 +196,16 @@ class ReviewInspector(AYContainer):
         if self._mouse_pressed:
             start_time = time.time()
             self._update()
-            elapsed_time = time.time() - start_time
+            elapsed_time_ms = (time.time() - start_time) * 1000
             num_selected = len(self._current_selection)
             if not self._first_update_measured and num_selected > 0:
                 # Calculate the update interval based on the first update time
                 self._base_update_time = max(
                     16,
-                    int((elapsed_time * 1000) / num_selected),
+                    int(elapsed_time_ms / num_selected),
                 )
                 self._first_update_measured = True
-                print(f"base update time: {self._base_update_time} ms")
+                # print(f"base update time: {self._base_update_time} ms")
             self._update_timer.start(self._base_update_time * num_selected)
 
     def _on_model_reset(self) -> None:
@@ -316,6 +316,7 @@ class ReviewInspector(AYContainer):
                 version_ids.append(vid)
 
         if thumb_keys:
+            thumb_keys = sorted(thumb_keys)  # limit cache misses
             self._load_thumbnail(thumb_keys)
         else:
             self._current_thumb_key = ""
