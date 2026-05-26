@@ -103,6 +103,7 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
 
             default_status = status_profile.get("default_status", "")
 
+        self._set_instance_state(instance, status_state_attr, "use_status")
         if default_status not in statuses:
             cls.log.warning(
                 f"Default status '{default_status}' is not available"
