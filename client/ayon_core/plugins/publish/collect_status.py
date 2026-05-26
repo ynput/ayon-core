@@ -111,11 +111,10 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
                 f"Using '{statuses[0]}' instead."
             )
             default_status = statuses[0]
-        return [
-            EnumDef(
-                "status",
-                label="Version status",
-                items=statuses,
-                default=default_status,
-            )
-        ]
+        output.append(EnumDef(
+           "status",
+            label="Version status",
+            items=statuses,
+            default=default_status,
+        ))
+        return output
