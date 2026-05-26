@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 
 import pyblish.api
-from typing import TYPE_CHECKING, Optional, Literal
+from typing import TYPE_CHECKING, Literal
 
 from ayon_core.host import ILoadHost, IPublishHost
 from ayon_core.lib import Logger
@@ -20,11 +20,10 @@ if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
     from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
-TPublisherTabs = Literal["create", "publish", "report", "details"]
-TToolNames = Literal[
+PublisherTabs = Literal["create", "publish", "report", "details"]
+ToolName = Literal[
     "workfiles",
     "loader",
-    "libraryloader",
     "sceneinventory",
     "publisher",
     "experimental_tools",
@@ -70,13 +69,13 @@ class HostToolsHelper:
         return self._workfiles_tool
 
     def show_workfiles(
-            self,
-            parent=None,
-            *,
-            use_context: Optional[bool] = False,
-            save: Optional[bool] = None,
-            on_top: Optional[bool] = None
-    ) -> Optional[QWidget]:
+        self,
+        parent: QWidget | None = None,
+        *,
+        use_context: bool = False,
+        save: bool | None = None,
+        on_top: bool | None = None,
+    ) -> QWidget:
         """Workfiles tool for changing context and saving workfiles."""
 
         with qt_app_context():
@@ -105,8 +104,8 @@ class HostToolsHelper:
         return self._loader_tool
 
     def show_loader(
-            self,
-            parent: Optional[QWidget] = None) -> QWidget:
+        self, parent: QWidget | None = None
+    ) -> QWidget:
         """Loader tool for loading representations.
 
         Args:
@@ -143,7 +142,8 @@ class HostToolsHelper:
         return self._scene_inventory_tool
 
     def show_scene_inventory(
-            self, parent: Optional[QWidget] = None) -> QWidget:
+        self, parent: QWidget | None = None
+    ) -> QWidget:
         """Show tool maintain loaded containers."""
         with qt_app_context():
             scene_inventory_tool = self.get_scene_inventory_tool(parent)
@@ -161,7 +161,7 @@ class HostToolsHelper:
         """Create, cache and return library loader tool window."""
         return self.get_loader_tool(parent)
 
-    def show_library_loader(self, parent: Optional[QWidget] = None) -> QWidget:
+    def show_library_loader(self, parent: QWidget | None = None) -> QWidget:
         """Loader tool for loading representations from library project.
 
         Args:
@@ -174,7 +174,7 @@ class HostToolsHelper:
         return self.show_loader(parent)
 
     def show_publish(
-            self, parent: Optional[QWidget] = None) -> QWidget:
+            self, parent: QWidget | None = None) -> QWidget:
         """Try showing the most desirable publish GUI
 
         This function cycles through the currently registered
@@ -219,7 +219,8 @@ class HostToolsHelper:
         return self._experimental_tools_dialog
 
     def show_experimental_tools_dialog(
-            self, parent: Optional[QWidget] = None) -> QWidget:
+        self, parent: QWidget | None = None
+    ) -> QWidget:
         """Show dialog with experimental tools.
 
         Args:
@@ -257,10 +258,11 @@ class HostToolsHelper:
         return self._publisher_tool
 
     def show_publisher_tool(
-            self,
-            parent: Optional[QWidget] = None,
-            controller: Optional[AbstractPublisherFrontend] = None,
-            tab: Optional[TPublisherTabs] = None) -> QWidget:
+        self,
+        parent: QWidget | None = None,
+        controller: AbstractPublisherFrontend | None = None,
+        tab: PublisherTabs | None = None
+    ) -> QWidget:
         with qt_app_context():
             window = self.get_publisher_tool(parent, controller)
             if tab:
@@ -269,15 +271,27 @@ class HostToolsHelper:
             return window
 
     def get_tool_by_name(
-            self,
-            tool_name: TToolNames,
-            parent: Optional[QWidget] = None,
-            *args,
-            **kwargs
-    ) -> Optional[QWidget]:
+        self,
+        tool_name: PublisherTabs,
+        parent: QWidget | None = None,
+        *args,
+        **kwargs
+    ) -> QWidget | None:
         """Show tool by its name.
 
-        This is helper for
+        This is helper for `show_tool_by_name` if you need only get
+        tool window without showing it.
+
+        Args:
+            tool_name: name of the tool
+            parent: tool parent
+            *args: tool args
+            **kwargs: tool kwargs
+
+        Returns:
+            QWidget of the tool shown or None if tool name is unknown
+            or tool can't be created.
+
         """
         if tool_name == "workfiles":
             return self.get_workfiles_tool(parent)
@@ -307,42 +321,52 @@ class HostToolsHelper:
 
     def show_tool_by_name(
             self,
-            tool_name: TToolNames,
-            parent: Optional[QWidget] = None,
+            tool_name: ToolName,
+            parent: QWidget | None = None,
             *args,
             **kwargs
-    ) -> Optional[QWidget]:
+    ) -> QWidget | None:
         """Show tool by its name.
 
-        This is helper for
+        This is helper for showing tool window by its name. It is possible
+        to pass additional args and kwargs.
+
+        Args:
+            tool_name: name of the tool
+            parent: tool parent
+            *args: tool args
+            **kwargs: tool kwargs
+
+        Returns:
+            QWidget of the tool shown or None if tool name is unknown
+            or tool can't be created.
+
         """
-        tool = None
         if tool_name == "workfiles":
-            tool = self.show_workfiles(parent, *args, **kwargs)
+            return self.show_workfiles(parent, *args, **kwargs)
 
-        elif tool_name == "loader":
-            tool = self.show_loader(parent)
+        if tool_name == "loader":
+            return self.show_loader(parent)
 
-        elif tool_name == "libraryloader":
-            tool = self.show_library_loader(parent)
+        if tool_name == "libraryloader":
+            return self.show_library_loader(parent)
 
-        elif tool_name == "sceneinventory":
-            tool = self.show_scene_inventory(parent)
+        if tool_name == "sceneinventory":
+            return self.show_scene_inventory(parent)
 
-        elif tool_name == "publish":
-            tool = self.show_publish(parent)
+        if tool_name == "publish":
+            return self.show_publish(parent)
 
-        elif tool_name == "publisher":
-            tool = self.show_publisher_tool(parent, *args, **kwargs)
+        if tool_name == "publisher":
+            return self.show_publisher_tool(parent, *args, **kwargs)
 
-        elif tool_name == "experimental_tools":
-            tool = self.show_experimental_tools_dialog(parent)
+        if tool_name == "experimental_tools":
+            return self.show_experimental_tools_dialog(parent)
 
-        else:
-            self.log.warning(
-                "Can't show unknown tool name: \"%s\"", tool_name)
-            return None
-        return tool
+        self.log.warning(
+            "Can't show unknown tool name: \"%s\"", tool_name
+        )
+        return None
 
 
 class _SingletonPoint:
@@ -361,11 +385,12 @@ class _SingletonPoint:
 
     @classmethod
     def show_tool_by_name(
-            cls,
-            tool_name: TToolNames,
-            parent: Optional[QWidget] = None,
-            *args,
-            **kwargs) -> Optional[QWidget]:
+        cls,
+        tool_name: ToolName,
+        parent: QWidget | None = None,
+        *args,
+        **kwargs
+    ) -> QWidget | None:
         cls._create_helper()
         return cls.helper.show_tool_by_name(tool_name, parent, *args, **kwargs)
 
@@ -381,10 +406,11 @@ def get_tool_by_name(tool_name, parent=None, *args, **kwargs):
 
 
 def show_tool_by_name(
-        tool_name: TToolNames,
-        parent: Optional[QWidget] = None,
-        *args,
-        **kwargs) -> Optional[QWidget]:
+    tool_name: ToolName,
+    parent: QWidget | None = None,
+    *args,
+    **kwargs
+) -> QWidget | None:
     """Show tool by its name.
 
     Args:
@@ -401,7 +427,7 @@ def show_tool_by_name(
         tool_name, parent, *args, **kwargs)
 
 
-def show_workfiles(*args, **kwargs) -> Optional[QWidget]:
+def show_workfiles(*args, **kwargs) -> QWidget | None:
     """Show workfiles tool.
 
     Args:
@@ -417,9 +443,9 @@ def show_workfiles(*args, **kwargs) -> Optional[QWidget]:
 
 
 def show_loader(
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
         *,
-        use_context: bool = False) -> Optional[QWidget]:
+        use_context: bool = False) -> QWidget | None:
     """Show loader tool.
 
     Args:
@@ -435,22 +461,8 @@ def show_loader(
     )
 
 
-def show_library_loader(
-        parent: Optional[QWidget] = None) -> Optional[QWidget]:
-    """Show library loader tool.
-
-    Args:
-        parent: tool parent,
-
-    Returns:
-        QWidget of the tool
-
-    """
-    return _SingletonPoint.show_tool_by_name("libraryloader", parent)
-
-
 def show_scene_inventory(
-        parent: Optional[QWidget] = None) -> Optional[QWidget]:
+        parent: QWidget | None = None) -> QWidget | None:
     """Show scene inventory tool.
 
     Args:
@@ -464,7 +476,7 @@ def show_scene_inventory(
         "sceneinventory", parent)
 
 
-def show_publish(parent: Optional[QWidget] = None) -> Optional[QWidget]:
+def show_publish(parent: QWidget | None = None) -> QWidget | None:
     """Show publish tool.
 
     Args:
@@ -478,8 +490,8 @@ def show_publish(parent: Optional[QWidget] = None) -> Optional[QWidget]:
 
 
 def show_publisher(
-        parent: Optional[QWidget] = None,
-        **kwargs) -> Optional[QWidget]:
+        parent: QWidget | None = None,
+        **kwargs) -> QWidget | None:
     """Show publisher tool.
 
     Args:
@@ -495,7 +507,7 @@ def show_publisher(
 
 
 def show_experimental_tools_dialog(
-        parent: Optional[QWidget] = None) -> Optional[QWidget]:
+        parent: QWidget | None = None) -> QWidget | None:
     """Show experimental tools dialog.
 
     Args:
