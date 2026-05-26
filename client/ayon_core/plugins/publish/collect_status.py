@@ -37,7 +37,8 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         cls, create_context: "CreateContext", instance: "CreatedInstance"
     ):
         if not cls.status_profiles:
-            return []
+            self._set_instance_state(instance, status_state_attr, "dont_use")
+            return output
         project_entity = create_context.get_current_project_entity()
         statuses = [
             status["name"]
