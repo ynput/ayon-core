@@ -36,7 +36,21 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     def get_attr_defs_for_instance(
         cls, create_context: "CreateContext", instance: "CreatedInstance"
     ):
+        status_state_attr = TextDef(
+            "status_state", visible=False, default="dont_use"
+        )
+        output = [status_state_attr]
         if not cls.status_profiles:
+             self._set_instance_state(instace, status_state_attr, "dont_use")
+             return output
+
+    def _set_instance_state(self, instance, attr, state):
+        attr.default = state
+        plugin_attributes = instance.publish_attributes.get(cls.__name__)
+        if plugin_attributes is None:
+            return
+
+        plugin_attributes["status_state"] = state
             self._set_instance_state(instance, status_state_attr, "dont_use")
             return output
         project_entity = create_context.get_current_project_entity()
