@@ -277,7 +277,6 @@ class ReviewTable(AYContainer):
         if active is self._table:
             self._eagerly_enqueue_visible_thumbnails()
 
-
         self.display_type_changed.emit(active)
 
     def _on_group_by_options_changed(
