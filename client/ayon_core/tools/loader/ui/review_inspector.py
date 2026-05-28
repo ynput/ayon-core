@@ -206,7 +206,7 @@ class ReviewInspector(AYContainer):
                 )
                 self._first_update_measured = True
                 # print(f"base update time: {self._base_update_time} ms")
-            self._update_timer.start(self._base_update_time * num_selected)
+            self._update_timer.start(max(16, self._base_update_time * num_selected))
 
     def _on_model_reset(self) -> None:
         """Clear the selection when the model is reset."""
