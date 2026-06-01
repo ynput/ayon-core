@@ -351,10 +351,13 @@ class WorkfilesPage(QtWidgets.QWidget):
         view_header.resizeSection(view_header.logicalIndex(0), col_1_width)
 
     def _on_selection_changed(self, selected, _deselected) -> None:
-        workfile_id = None
         for index in selected.indexes():
-            workfile_id = index.data(WORKFILE_ID_ROLE)
-        self._controller.set_selected_workfile(workfile_id)
+            if workfile_id := index.data(WORKFILE_ID_ROLE):
+                self._controller.set_selected_workfile(workfile_id)
+                return
+
+        # no workfile selected
+        self._controller.set_selected_workfile(None)
 
     def _on_view_clicked(self, index) -> None:
         if not index.isValid() or index.data(ITEM_TYPE_ROLE) != 1:
