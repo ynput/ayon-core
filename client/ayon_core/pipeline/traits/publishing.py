@@ -648,6 +648,14 @@ def get_legacy_files_for_representation(
     This expects the file to exist - it must run after the transfer
     is done.
 
+    This is used to prepare file information for tools working with legacy
+    file data on representation. Like site-sync, etc.
+
+    Args:
+        transfer_items (list[TransferItem]): List of transfer items.
+        representation (Representation): Representation to get files for.
+        anatomy (Anatomy): Anatomy to use for preparing file info.
+
     Returns:
         list: List of legacy files.
 
