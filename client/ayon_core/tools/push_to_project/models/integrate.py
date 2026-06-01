@@ -807,6 +807,29 @@ class ProjectPushItemProcess:
         )
         raise PushToProjectError(self._status.fail_reason)
 
+    def _get_dst_task_type(self, task_type_name: str) -> dict[str, Any]:
+        """Get a task type definition.
+
+        Args:
+            task_type_name (str): Task type name. (case insensitive)
+
+        Returns:
+            dict[str, Any]: Task type definition.
+
+        Raises:
+            PushToProjectError: If task type is not found.
+
+        """
+        for task_type in self._project_entity["taskTypes"]:
+            if task_type["name"].lower() == task_type_name.lower():
+                return task_type
+
+        self._status.set_failed(
+            f"'{task_type_name}' task type is not configured in "
+            f"project Anatomy."
+        )
+        raise PushToProjectError(self._status.fail_reason)
+
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
         dst_folder_id = self._item.dst_folder_id
@@ -880,14 +903,8 @@ class ProjectPushItemProcess:
         task_info = copy.deepcopy(task_info)
         task_info["name"] = dst_task_name
         # Fill rest of task information based on task type
-        task_type_name = task_info["taskType"]
-        task_types_by_name = {
-            task_type["name"]: task_type
-            for task_type in self._project_entity["taskTypes"]
-        }
-        task_type_info = copy.deepcopy(
-            task_types_by_name.get(task_type_name, {})
-        )
+        task_type_info = self._get_dst_task_type(task_info["taskType"])
+        task_type_info = copy.deepcopy(task_type_info)
         task_type_info.pop("name")  # do not overwrite real task name
         task_info.update(task_type_info)
         self._task_info = task_info
@@ -1110,26 +1127,13 @@ class ProjectPushItemProcess:
     ) -> dict[str, Any]:
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
-        found_task_type = False
-        src_task_type = task_info["taskType"]
-        for task_type in self._project_entity["taskTypes"]:
-            if task_type["name"].lower() == src_task_type.lower():
-                found_task_type = True
-                break
-
-        if not found_task_type:
-            self._status.set_failed(
-                f"'{src_task_type}' task type is not configured in "
-                 "project Anatomy."
-            )
-
-            raise PushToProjectError(self._status.fail_reason)
+        task_type = self._get_dst_task_type(task_info["taskType"])
 
         task_info = self._operations.create_task(
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
-            task_type=src_task_type,
+            task_type=task_type["name"],
             attrib=task_info["attrib"],
         )
         self._task_info = task_info.data
