@@ -9,8 +9,25 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
+from ayon_server.settings.anatomy import Anatomy
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
+from ayon_server.helpers.anatomy import get_project_anatomy
+
+
+async def _get_anatomy(project_name: str | None = None) -> Anatomy:
+    if not project_name:
+        return Anatomy()
+    return await get_project_anatomy(project_name)
+
+
+async def _version_statuses_enum(project_name: str | None = None):
+    anatomy = await _get_anatomy(project_name)
+    return [
+        status.name
+        for status in anatomy.statuses
+        if "version" in status.scope
+    ]
 
 
 def _handle_missing_frames_enum():
@@ -1111,6 +1128,40 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
     )
 
 
+class CollectStatusProfile(BaseSettingsModel):
+    _layout = "expanded"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    artist_can_change: bool = SettingsField(
+        True,
+        title="Artist can change",
+        description=(
+            "Allow the artist to change the status in the publisher UI. "
+            "This does not affect if the status is set or not, just if "
+            "it is editable in UI."
+        )
+    )
+    default_status: str = SettingsField(
+        title="Default status",
+        enum_resolver=_version_statuses_enum
+    )
+
+
 class IntegrateProductGroupProfile(BaseSettingsModel):
     product_base_types: list[str] = SettingsField(
         default_factory=list,
@@ -1130,6 +1181,14 @@ class IntegrateProductGroupProfile(BaseSettingsModel):
         title="Task names",
     )
     template: str = SettingsField("", title="Template")
+
+
+class CollectStatusModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
+    status_profiles: list[CollectStatusProfile] = SettingsField(
+        default_factory=list,
+        title="Status profiles"
+    )
 
 
 class IntegrateProductGroupModel(BaseSettingsModel):
@@ -1215,6 +1274,10 @@ class PublishPuginsModel(BaseSettingsModel):
     collect_comment_per_instance: CollectCommentPIModel = SettingsField(
         default_factory=CollectCommentPIModel,
         title="Collect comment per instance",
+    )
+    CollectStatus: CollectStatusModel = SettingsField(
+        default_factory=CollectStatusModel,
+        title="Collect Status"
     )
     CollectFramesFixDef: CollectFramesFixDefModel = SettingsField(
         default_factory=CollectFramesFixDefModel,
@@ -1360,6 +1423,10 @@ DEFAULT_PUBLISH_VALUES = {
     "collect_comment_per_instance": {
         "enabled": False,
         "families": []
+    },
+    "CollectStatus": {
+        "enabled": False,
+        "status_profiles": [],
     },
     "CollectFramesFixDef": {
         "enabled": True,
