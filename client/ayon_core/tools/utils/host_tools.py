@@ -174,7 +174,8 @@ class HostToolsHelper:
         return self.show_loader(parent)
 
     def show_publish(
-            self, parent: QWidget | None = None) -> QWidget:
+        self, parent: QWidget | None = None
+    ) -> QWidget:
         """Try showing the most desirable publish GUI
 
         This function cycles through the currently registered
@@ -320,11 +321,11 @@ class HostToolsHelper:
         return None
 
     def show_tool_by_name(
-            self,
-            tool_name: ToolName,
-            parent: QWidget | None = None,
-            *args,
-            **kwargs
+        self,
+        tool_name: ToolName,
+        parent: QWidget | None = None,
+        *args,
+        **kwargs
     ) -> QWidget | None:
         """Show tool by its name.
 
@@ -392,7 +393,9 @@ class _SingletonPoint:
         **kwargs
     ) -> QWidget | None:
         cls._create_helper()
-        return cls.helper.show_tool_by_name(tool_name, parent, *args, **kwargs)
+        return cls.helper.show_tool_by_name(
+            tool_name, parent, *args, **kwargs
+        )
 
     @classmethod
     def get_tool_by_name(cls, tool_name, parent=None, *args, **kwargs):
@@ -402,7 +405,9 @@ class _SingletonPoint:
 
 # Function callbacks using singleton access point
 def get_tool_by_name(tool_name, parent=None, *args, **kwargs):
-    return _SingletonPoint.get_tool_by_name(tool_name, parent, *args, **kwargs)
+    return _SingletonPoint.get_tool_by_name(
+        tool_name, parent, *args, **kwargs
+    )
 
 
 def show_tool_by_name(
@@ -424,7 +429,8 @@ def show_tool_by_name(
 
     """
     return _SingletonPoint.show_tool_by_name(
-        tool_name, parent, *args, **kwargs)
+        tool_name, parent, *args, **kwargs
+    )
 
 
 def show_workfiles(*args, **kwargs) -> QWidget | None:
@@ -443,9 +449,10 @@ def show_workfiles(*args, **kwargs) -> QWidget | None:
 
 
 def show_loader(
-        parent: QWidget | None = None,
-        *,
-        use_context: bool = False) -> QWidget | None:
+    parent: QWidget | None = None,
+    *,
+    use_context: bool = False
+) -> QWidget | None:
     """Show loader tool.
 
     Args:
@@ -462,7 +469,8 @@ def show_loader(
 
 
 def show_scene_inventory(
-        parent: QWidget | None = None) -> QWidget | None:
+    parent: QWidget | None = None
+) -> QWidget | None:
     """Show scene inventory tool.
 
     Args:
@@ -473,7 +481,8 @@ def show_scene_inventory(
 
     """
     return _SingletonPoint.show_tool_by_name(
-        "sceneinventory", parent)
+        "sceneinventory", parent
+    )
 
 
 def show_publish(parent: QWidget | None = None) -> QWidget | None:
@@ -490,8 +499,9 @@ def show_publish(parent: QWidget | None = None) -> QWidget | None:
 
 
 def show_publisher(
-        parent: QWidget | None = None,
-        **kwargs) -> QWidget | None:
+    parent: QWidget | None = None,
+    **kwargs
+) -> QWidget | None:
     """Show publisher tool.
 
     Args:
@@ -503,11 +513,13 @@ def show_publisher(
 
     """
     return _SingletonPoint.show_tool_by_name(
-        "publisher", parent, **kwargs)
+        "publisher", parent, **kwargs
+    )
 
 
 def show_experimental_tools_dialog(
-        parent: QWidget | None = None) -> QWidget | None:
+    parent: QWidget | None = None
+) -> QWidget | None:
     """Show experimental tools dialog.
 
     Args:
@@ -518,7 +530,8 @@ def show_experimental_tools_dialog(
 
     """
     return _SingletonPoint.show_tool_by_name(
-        "experimental_tools", parent)
+        "experimental_tools", parent
+    )
 
 
 def get_pyblish_icon():
