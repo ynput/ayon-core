@@ -5,7 +5,7 @@ import contextlib
 import copy
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from ayon_api.utils import create_entity_id
 from ayon_core.lib import source_hash
@@ -13,7 +13,6 @@ from ayon_core.lib import source_hash
 from ayon_core.pipeline.publish import (
     PublishError,
     IntegrationTemplateItem,
-    get_instance_template_name,
     get_rootless_path,
 )
 from ayon_core.pipeline.traits import (
