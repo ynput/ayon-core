@@ -228,6 +228,9 @@ class CreateContext:
 
         self.creator_discover_result = None
         self.convertor_discover_result = None
+
+        self.failed_init_create_plugins = []
+
         # Discovered creators
         self.creators = {}
         # Prepare categories of creators
@@ -751,6 +754,7 @@ class CreateContext:
         disabled_creators = {}
         autocreators = {}
         manual_creators = {}
+        failed_init_create_plugins = []
         report = discover_creator_plugins(return_report=True)
         self.creator_discover_result = report
         for creator_class in report.abstract_plugins:
@@ -785,6 +789,9 @@ class CreateContext:
             try:
                 creator = creator_class(project_settings, self, self.headless)
             except Exception:
+                failed_init_create_plugins.append(
+                    (creator_class, sys.exc_info())
+                )
                 self.log.error(
                     f"Failed to initialize plugin: {creator_class}",
                     exc_info=True
@@ -812,6 +819,8 @@ class CreateContext:
                 autocreators[creator_identifier] = creator
             elif isinstance(creator, Creator):
                 manual_creators[creator_identifier] = creator
+
+        self.failed_init_create_plugins = failed_init_create_plugins
 
         self.autocreators = autocreators
         self.manual_creators = manual_creators
