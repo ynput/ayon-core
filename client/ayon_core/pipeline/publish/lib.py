@@ -1469,22 +1469,34 @@ def get_instance_publish_template(instance: pyblish.api.Instance) -> str:
 
 
 def get_publish_template_object(
-        instance: pyblish.api.Instance) -> "AnatomyTemplateItem":
+        instance: pyblish.api.Instance,
+        category_name: str = "publish",
+        template_name: Optional[str] = None,
+) -> "AnatomyTemplateItem":
     """Return anatomy template object to use for integration.
 
     Note: What is the actual type of the object?
 
     Args:
         instance (pyblish.api.Instance): Instance to process.
+        category_name (str): Category name of the template to use.
+            Defaults to "publish".
+        template_name (str, optional): Template name to use.
+            If not provided, it will get the template name from
+            the provided instance.
 
     Returns:
         AnatomyTemplateItem: Anatomy template object
 
     """
     # Anatomy data is pre-filled by Collectors
-    template_name = get_instance_template_name(instance)
-    anatomy = instance.context.data["anatomy"]
-    return anatomy.get_template_item("publish", template_name)
+    if not template_name:
+        template_name = get_instance_template_name(instance)
+    anatomy: Anatomy = instance.context.data["anatomy"]
+    return anatomy.get_template_item(
+        category_name=category_name,
+        template_name=template_name
+    )
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
