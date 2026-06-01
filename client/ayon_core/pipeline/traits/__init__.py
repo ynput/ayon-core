@@ -49,6 +49,7 @@ from .publishing import (
     get_transfers_from_representations,
     get_template_data_from_representation,
     get_legacy_files_for_representation,
+    replace_paths_in_representation,
 )
 
 
@@ -117,4 +118,5 @@ __all__ = [  # noqa: RUF022
     "get_transfers_from_representations",
     "get_template_data_from_representation",
     "get_legacy_files_for_representation",
+    "replace_paths_in_representation",
 ]

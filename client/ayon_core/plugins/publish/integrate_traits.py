@@ -40,7 +40,9 @@ from ayon_core.pipeline.traits import (
     get_transfers_from_representations,
     get_template_data_from_representation,
     get_legacy_files_for_representation,
+    replace_paths_in_representation,
 )
+
 
 if TYPE_CHECKING:
     import logging
@@ -271,6 +273,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 tags=[],
                 status="",
             )
+            # replace original paths with the destination
+            # in representation entity
+            replace_paths_in_representation(representation_entity, transfers)
+
             # add traits to representation entity
             representation_entity["traits"] = representation.traits_as_dict()
             op_session.create_entity(

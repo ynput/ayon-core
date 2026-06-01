@@ -21,6 +21,7 @@ from ayon_core.pipeline.traits import (
 )
 from ayon_core.pipeline.traits.publishing import (
     get_transfers_from_representations,
+    replace_paths_in_representation,
 )
 
 
@@ -274,3 +275,41 @@ def test_get_transfers_from_representations_raises_publish_error_on_invalid_repr
             _make_template(instance, "{representation}/publish.dat"),
             [representation],
         )
+
+
+def test_replace_paths_in_representation_updates_file_locations(
+    instance: pyblish.api.Instance,
+    tmp_path: Path,
+) -> None:
+    """FileLocation traits should be updated with the transfer destination."""
+    files = [
+        _create_file(tmp_path / "source" / f"img.{frame:04d}.png")
+        for frame in (1, 2)
+    ]
+    representation = Representation(name="sequence", traits=[
+        FrameRanged(frame_start=1, frame_end=2, frames_per_second="24"),
+        Sequence(
+            frame_padding=4,
+            frame_regex=re.compile(
+                r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$"),
+        ),
+        FileLocations(file_paths=[
+            FileLocation(file_path=file_path)
+            for file_path in files
+        ]),
+    ])
+
+    transfers = get_transfers_from_representations(
+        instance,
+        _make_template(instance, "{representation}/{frame:04d}.{ext}"),
+        [representation],
+    )
+
+    replace_paths_in_representation(representation, transfers)
+
+    assert representation.get_trait(FileLocations).file_paths == [
+        FileLocation(
+            file_path=instance.data["publish_root"] / "sequence" / "0001.png"),
+        FileLocation(
+            file_path=instance.data["publish_root"] / "sequence" / "0002.png"),
+    ]

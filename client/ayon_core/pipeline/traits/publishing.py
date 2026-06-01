@@ -672,3 +672,39 @@ def get_legacy_files_for_representation(
         for item in selected
     )
     return files
+
+
+def replace_paths_in_representation(
+        representation: Representation,
+        transfers: list[TransferItem]
+) -> None:
+    """Replace paths in representation traits based on transfers.
+
+    This is used to update the traits with the new file paths after the
+    transfer is done.
+
+    Args:
+        representation (Representation): Representation to update.
+        transfers (list[TransferItem]): List of transfer items.
+
+    Mutates:
+        representation (Representation): Representation with updated paths.
+
+    """
+    for transfer in transfers:
+        if transfer.representation == representation:
+            if representation.contains_trait(FileLocation):
+                f_trait: FileLocation = representation.get_trait(
+                    FileLocation)
+                path_in_trait = f_trait.file_path
+                if path_in_trait == transfer.source:
+                    f_trait.file_path = transfer.destination
+            if representation.contains_trait(FileLocations):
+                fl_trait: FileLocations = representation.get_trait(
+                    FileLocations)
+                for idx, file_loc in enumerate(fl_trait.file_paths):
+                    path_in_trait = file_loc.file_path
+                    if path_in_trait == transfer.source:
+                        fl_trait.file_paths[idx].file_path = (
+                            transfer.destination
+                        )

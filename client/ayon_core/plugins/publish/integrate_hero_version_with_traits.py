@@ -8,7 +8,8 @@ import copy
 from ayon_core.pipeline.traits import (
     Representation,
     get_transfers_from_representations,
-    get_legacy_files_for_representation
+    get_legacy_files_for_representation,
+    replace_paths_in_representation,
 )
 from ayon_core.lib.file_transaction import (
     DuplicateDestinationError,
@@ -324,6 +325,11 @@ class IntegrateHeroVersionTraits(
                 anatomy=anatomy,
             )
             new_repre["files"] = files
+
+            # replace original paths with the destination
+            # in representation entity
+            replace_paths_in_representation(new_repre, transfers)
+
             op_session.create_entity(
                 project_name, "representation", new_repre
             )
