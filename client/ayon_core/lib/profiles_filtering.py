@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import re
 import logging
+import typing
 
 log = logging.getLogger(__name__)
 
@@ -23,60 +26,30 @@ def compile_list_of_regexes(in_list):
     return regexes
 
 
-def _profile_exclusion(matching_profiles, logger):
-    """Find out most matching profile byt host, task and family match.
-
-    Profiles are selectively filtered. Each item in passed argument must
-    contain tuple of (profile, profile's score) where score is list of
-    booleans. Each boolean represents existence of filter for specific key.
-    Profiles are looped in sequence. In each sequence are profiles split into
-    true_list and false_list. For next sequence loop are used profiles in
-    true_list if there are any profiles else false_list is used.
-
-    Filtering ends when only one profile left in true_list. Or when all
-    existence booleans loops passed, in that case first profile from remainded
-    profiles is returned.
-
-    Args:
-        matching_profiles (list): Profiles with same scores. Each item is tuple
-            with (profile, profile values)
-
-    Returns:
-        dict: Most matching profile.
-    """
-    if not matching_profiles:
-        return None
-
-    if len(matching_profiles) == 1:
-        return matching_profiles[0][0]
-
-    scores_len = len(matching_profiles[0][1])
-    for idx in range(scores_len):
-        profiles_true = []
-        profiles_false = []
-        for profile, score in matching_profiles:
-            if score[idx]:
-                profiles_true.append((profile, score))
-            else:
-                profiles_false.append((profile, score))
-
-        if profiles_true:
-            matching_profiles = profiles_true
-        else:
-            matching_profiles = profiles_false
-
-        if len(matching_profiles) == 1:
-            return matching_profiles[0][0]
-
-    return matching_profiles[0][0]
-
-
 def fullmatch(regex, string, flags=0):
     """Emulate python-3.4 re.fullmatch()."""
     matched = re.match(regex, string, flags=flags)
     if matched and matched.span()[1] == len(string):
         return matched
     return None
+
+
+def sort_dict(data: dict, keys_order: typing.Iterable[str]):
+    """Sort dictionary by a given key order.
+
+    Keys not included in `keys_order` are added to the end of the dictionary.
+
+    Args:
+        data (dict): Dictionary to sort.
+        keys_order (Iterable[str]): Desired order of keys.
+
+    Returns:
+        dict: Sorted dictionary.
+
+    """
+    ordered = {k: data[k] for k in keys_order if k in data}
+    rest = {k: data[k] for k in data if k not in ordered}
+    return ordered | rest
 
 
 def validate_value_by_regexes(value, in_list):
@@ -116,23 +89,145 @@ def validate_value_by_regexes(value, in_list):
     return -1
 
 
+def rank_profile(
+    profile: dict[str, typing.Any],
+    key_values: dict[str, typing.Any],
+    logger: logging.Logger | None = None,
+) -> int:
+    """Compute a match score for a profile against the given key values.
+
+    The score is calculated by the following rules:
+    - If any key does not match: return -1.
+
+    The score is a binary number where each bit represents a match or
+    no match for a key.
+
+    Examples:
+        failed match:
+        >>> rank_profile({"a": ["A"], "b": ["B"]}, {"a": "A", "b": "D"}),
+        -1
+
+        value match on both keys:
+        >>> rank_profile({"a": ["A"], "b": ["B"]}, {"a": "A", "b": "B"}),
+        3  # => binary: 11
+
+        value match on first key, wildcard match on second key:
+        >>> rank_profile({"a": ["A"], "b": ["*"]}, {"a": "a", "b": "B"}),
+        2  # => binary: 10
+
+        implicit wildcard match on "a", value match on "b":
+        >>> rank_profile({"b": ["B"]}, {"a": "a", "b": "B"}),
+        1  # => binary: 01
+
+    Args:
+        profile (dict): Profile to rank.
+        key_values (dict): Key values to rank profile by.
+        logger (logging.Logger | None): Logger for debug output.
+
+    Returns:
+        int: Rank of profile.
+
+    """
+    logger = logger or log
+
+    score = 0
+    for key, value in key_values.items():
+        profile_value = profile.get(key) or []
+
+        match = validate_value_by_regexes(value, profile_value)
+        if match == -1:
+            logger.debug(f"'{value}' not found in '{key}': {profile_value}")
+            return -1
+
+        score <<= 1     # shift score left by 1 bit
+        score |= match  # set the current match bit in the score
+
+    return score
+
+
+def rank_profiles(
+    profiles: list[dict[str, typing.Any]],
+    key_values: dict[str, typing.Any],
+    logger: logging.Logger,
+) -> list[tuple[dict[str, typing.Any], int]]:
+    """Rank profiles by the given filter criteria.
+
+    Returns a list of (profile, score) tuples.
+    """
+    return [
+        (profile, rank_profile(profile, key_values, logger))
+        for profile in profiles
+    ]
+
+
+def get_matching_profiles(
+    profiles: list[dict[str, typing.Any]],
+    key_values: dict[str, typing.Any],
+    logger: logging.Logger,
+) -> list[dict[str, typing.Any]]:
+    """Get all profiles matching the given filter criteria.
+
+    Note:
+        this returns ALL matching profiles, not just the highest score.
+        Use `get_highest_score_profiles` to get only the highest-scoring
+        profiles.
+
+    Args:
+        profiles (list[dict[str, typing.Any]]): List of profiles to rank.
+        key_values (dict[str, typing.Any]): Key values to rank profiles by.
+        logger (logging.Logger): Logger to use.
+
+    Returns:
+        list[dict[str, typing.Any]]: List of matching profiles.
+
+    """
+    return [
+        profile
+        for profile, score in rank_profiles(profiles, key_values, logger)
+        if score >= 0
+    ]
+
+
+def get_highest_score_profiles(
+    profiles: list[dict[str, typing.Any]],
+    key_values: dict[str, typing.Any],
+    logger: logging.Logger,
+) -> list[dict[str, typing.Any]]:
+    """Return all profiles that have the highest match score.
+
+    Args:
+        profiles (list[dict[str, typing.Any]]): List of profiles to rank.
+        key_values (dict[str, typing.Any]): Key values to rank profiles by.
+        logger (logging.Logger): Logger to use.
+
+    Returns:
+        list[dict[str, typing.Any]]: List of profiles with the highest score.
+    """
+    ranked_profiles = rank_profiles(profiles, key_values, logger)
+
+    if not ranked_profiles:
+        return []
+
+    # get highest score
+    scores = [score for _, score in ranked_profiles]
+    highest_profile_points = max(scores)
+
+    # get profiles with highest score
+    return [
+        profile
+        for profile, score in ranked_profiles
+        if score >= 0 and score == highest_profile_points
+    ]
+
+
 def filter_profiles(profiles_data, key_values, keys_order=None, logger=None):
-    """ Filter profiles by entered key -> values.
+    """Filter profiles by the given key-value pairs.
 
-    Profile if marked with score for each key/value from `key_values` with
-    points -1, 0 or 1.
-    - if profile contain the key and profile's value contain value from
-        `key_values` then profile gets 1 point
-    - if profile does not contain the key or profile's value is empty or
-        contain "*" then got 0 point
-    - if profile contain the key, profile's value is not empty and does not
-        contain "*" and value from `key_values` is not available in the value
-        then got -1 point
+    Each profile is ranked based on the number of keys that match the
+    `key_values`. If any key does not match, the profile is skipped.
 
-    If profile gets -1 point at any time then is skipped and not used for
-    output. Profile with higher score is returned. If there are multiple
-    profiles with same score then first in order is used (order of profiles
-    matter).
+    The profile with the highest number of exact matches (vs. wildcard matches)
+    is returned.
 
     Args:
         profiles_data (list): Profile definitions as dictionaries.
@@ -145,83 +240,28 @@ def filter_profiles(profiles_data, key_values, keys_order=None, logger=None):
     Returns:
         dict/None: Return most matching profile or None if none of profiles
             match at least one criteria.
+
     """
     if not profiles_data:
         return None
 
-    if not logger:
-        logger = log
+    logger = logger or log
 
-    if not keys_order:
-        keys_order = tuple(key_values.keys())
-    else:
-        _keys_order = list(keys_order)
-        # Make all keys from `key_values` are passed
-        for key in key_values.keys():
-            if key not in _keys_order:
-                _keys_order.append(key)
-        keys_order = tuple(_keys_order)
+    if keys_order:
+        key_values = sort_dict(key_values, keys_order)
 
-    log_parts = " | ".join([
-        "{}: \"{}\"".format(*item)
-        for item in key_values.items()
-    ])
+    log_parts = " | ".join([f'{k}: "{v}"' for k, v in key_values.items()])
 
-    logger.debug(
-        "Looking for matching profile for: {}".format(log_parts)
-    )
+    logger.debug("Looking for matching profile for: {}".format(log_parts))
+    profiles = get_highest_score_profiles(profiles_data, key_values, logger)
 
-    matching_profiles = None
-    highest_profile_points = -1
-    # Each profile get 1 point for each matching filter. Profile with most
-    # points is returned. For cases when more than one profile will match
-    # are also stored ordered lists of matching values.
-    for profile in profiles_data:
-        profile_points = 0
-        profile_scores = []
-
-        for key in keys_order:
-            value = key_values[key]
-            match = validate_value_by_regexes(value, profile.get(key))
-            if match == -1:
-                profile_value = profile.get(key) or []
-                logger.debug(
-                    "\"{}\" not found in \"{}\": {}".format(value, key,
-                                                            profile_value)
-                )
-                profile_points = -1
-                break
-
-            profile_points += match
-            profile_scores.append(bool(match))
-
-        if (
-            profile_points < 0
-            or profile_points < highest_profile_points
-        ):
-            continue
-
-        if profile_points > highest_profile_points:
-            matching_profiles = []
-            highest_profile_points = profile_points
-
-        if profile_points == highest_profile_points:
-            matching_profiles.append((profile, profile_scores))
-
-    if not matching_profiles:
-        logger.debug(
-            "None of profiles match your setup. {}".format(log_parts)
-        )
+    if not profiles:
+        logger.debug(f"None of profiles match your setup. {log_parts}")
         return None
 
-    if len(matching_profiles) > 1:
-        logger.debug(
-            "More than one profile match your setup. {}".format(log_parts)
-        )
+    if len(profiles) > 1:
+        logger.debug(f"More than one profile match your setup. {log_parts}")
 
-    profile = _profile_exclusion(matching_profiles, logger)
-    if profile:
-        logger.debug(
-            "Profile selected: {}".format(profile)
-        )
+    profile = profiles[0]
+    logger.debug(f"Profile selected: {profile}")
     return profile
