@@ -349,7 +349,8 @@ def create_skeleton_instance(
 
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
-    if instance_version != 1:
+    lock_version = instance.context.data.get("lockVersionOnFarm", True)
+    if lock_version and instance_version != 1:
         instance_skeleton_data["version"] = instance_version
 
     # transfer specific families from original instance to new render
@@ -1301,7 +1302,8 @@ def create_skeleton_instance_cache(instance):
 
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
-    if instance_version != 1:
+    lock_version = instance.context.data.get("lockVersionOnFarm", True)
+    if lock_version and instance_version != 1:
         instance_skeleton_data["version"] = instance_version
 
     representations = get_transferable_representations(instance)
