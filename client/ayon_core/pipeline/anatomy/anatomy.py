@@ -5,7 +5,7 @@ import re
 import copy
 import platform
 import collections
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import ayon_api
 
