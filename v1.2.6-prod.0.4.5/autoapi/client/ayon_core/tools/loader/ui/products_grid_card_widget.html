@@ -1,0 +1,1122 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=products_flatten_proxy.html><link rel=next href=products_grid_constants.html><link rel=icon href=../../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.6"><title>products_grid_card_widget - ayon-core</title><link rel=stylesheet href=../../../../../../assets/stylesheets/main.484c7ddc.min.css><link rel=stylesheet href=../../../../../../assets/stylesheets/palette.ab4e12ef.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../../css/custom.css><script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> products_grid_card_widget </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <div class=md-nav__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <label class=md-nav__link for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class=md-ellipsis> client </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <label class=md-nav__link for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class=md-ellipsis> ayon_core </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../host/abstract.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../lib/_compatibility.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../pipeline/actions/inventory.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14 checked> <label class=md-nav__link for=__nav_3_1_1_14 id=__nav_3_1_1_14_label tabindex=0> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_8 checked> <label class=md-nav__link for=__nav_3_1_1_14_8 id=__nav_3_1_1_14_8_label tabindex=0> <span class=md-ellipsis> loader </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_14_8_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_8> <span class="md-nav__icon md-icon"></span> loader </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../abstract.html class=md-nav__link> <span class=md-ellipsis> abstract </span> </a> </li> <li class=md-nav__item> <a href=../control.html class=md-nav__link> <span class=md-ellipsis> control </span> </a> </li> <li class=md-nav__item> <a href=../drag_drop.html class=md-nav__link> <span class=md-ellipsis> drag_drop </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../models/actions.html class=md-nav__link> <span class=md-ellipsis> models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../providers/activity.html class=md-nav__link> <span class=md-ellipsis> providers </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_8_6 checked> <label class=md-nav__link for=__nav_3_1_1_14_8_6 id=__nav_3_1_1_14_8_6_label tabindex=0> <span class=md-ellipsis> ui </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=6 aria-labelledby=__nav_3_1_1_14_8_6_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_8_6> <span class="md-nav__icon md-icon"></span> ui </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=_multicombobox.html class=md-nav__link> <span class=md-ellipsis> _multicombobox </span> </a> </li> <li class=md-nav__item> <a href=actions_utils.html class=md-nav__link> <span class=md-ellipsis> actions_utils </span> </a> </li> <li class=md-nav__item> <a href=folders_widget.html class=md-nav__link> <span class=md-ellipsis> folders_widget </span> </a> </li> <li class=md-nav__item> <a href=info_widget.html class=md-nav__link> <span class=md-ellipsis> info_widget </span> </a> </li> <li class=md-nav__item> <a href=product_group_dialog.html class=md-nav__link> <span class=md-ellipsis> product_group_dialog </span> </a> </li> <li class=md-nav__item> <a href=products_delegates.html class=md-nav__link> <span class=md-ellipsis> products_delegates </span> </a> </li> <li class=md-nav__item> <a href=products_flatten_proxy.html class=md-nav__link> <span class=md-ellipsis> products_flatten_proxy </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> products_grid_card_widget </span> <span class="md-nav__icon md-icon"></span> </label> <a href=products_grid_card_widget.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> products_grid_card_widget </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget class=md-nav__link> <span class=md-ellipsis> products_grid_card_widget </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.GridCellDelegate class=md-nav__link> <span class=md-ellipsis> GridCellDelegate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget class=md-nav__link> <span class=md-ellipsis> ProductsGridCardWidget </span> </a> <nav class=md-nav aria-label=ProductsGridCardWidget> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.handle_armed_drag_move class=md-nav__link> <span class=md-ellipsis> handle_armed_drag_move </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.set_grid_row_selected class=md-nav__link> <span class=md-ellipsis> set_grid_row_selected </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.set_section class=md-nav__link> <span class=md-ellipsis> set_section </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.layout_dims_for_cell_width class=md-nav__link> <span class=md-ellipsis> layout_dims_for_cell_width </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.tile_size_for_cell_width class=md-nav__link> <span class=md-ellipsis> tile_size_for_cell_width </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=products_grid_constants.html class=md-nav__link> <span class=md-ellipsis> products_grid_constants </span> </a> </li> <li class=md-nav__item> <a href=products_grid_geometry.html class=md-nav__link> <span class=md-ellipsis> products_grid_geometry </span> </a> </li> <li class=md-nav__item> <a href=products_grid_section.html class=md-nav__link> <span class=md-ellipsis> products_grid_section </span> </a> </li> <li class=md-nav__item> <a href=products_grid_widget.html class=md-nav__link> <span class=md-ellipsis> products_grid_widget </span> </a> </li> <li class=md-nav__item> <a href=products_model.html class=md-nav__link> <span class=md-ellipsis> products_model </span> </a> </li> <li class=md-nav__item> <a href=products_proxy_selection.html class=md-nav__link> <span class=md-ellipsis> products_proxy_selection </span> </a> </li> <li class=md-nav__item> <a href=products_single_group_row_proxy.html class=md-nav__link> <span class=md-ellipsis> products_single_group_row_proxy </span> </a> </li> <li class=md-nav__item> <a href=products_tree_view_setup.html class=md-nav__link> <span class=md-ellipsis> products_tree_view_setup </span> </a> </li> <li class=md-nav__item> <a href=products_widget.html class=md-nav__link> <span class=md-ellipsis> products_widget </span> </a> </li> <li class=md-nav__item> <a href=repres_widget.html class=md-nav__link> <span class=md-ellipsis> repres_widget </span> </a> </li> <li class=md-nav__item> <a href=scale_slider_overlay.html class=md-nav__link> <span class=md-ellipsis> scale_slider_overlay </span> </a> </li> <li class=md-nav__item> <a href=search_bar.html class=md-nav__link> <span class=md-ellipsis> search_bar </span> </a> </li> <li class=md-nav__item> <a href=tasks_widget.html class=md-nav__link> <span class=md-ellipsis> tasks_widget </span> </a> </li> <li class=md-nav__item> <a href=view_mode_selector.html class=md-nav__link> <span class=md-ellipsis> view_mode_selector </span> </a> </li> <li class=md-nav__item> <a href=window.html class=md-nav__link> <span class=md-ellipsis> window </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../publisher/abstract.html class=md-nav__link> <span class=md-ellipsis> publisher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../stdout_broker/broker.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tool_icon_wrapper/_taskbar_identity_windows.html class=md-nav__link> <span class=md-ellipsis> tool_icon_wrapper </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tray/dock_shim_installer.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../utils/color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> utils </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget class=md-nav__link> <span class=md-ellipsis> products_grid_card_widget </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.GridCellDelegate class=md-nav__link> <span class=md-ellipsis> GridCellDelegate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget class=md-nav__link> <span class=md-ellipsis> ProductsGridCardWidget </span> </a> <nav class=md-nav aria-label=ProductsGridCardWidget> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.handle_armed_drag_move class=md-nav__link> <span class=md-ellipsis> handle_armed_drag_move </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.set_grid_row_selected class=md-nav__link> <span class=md-ellipsis> set_grid_row_selected </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.set_section class=md-nav__link> <span class=md-ellipsis> set_section </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.layout_dims_for_cell_width class=md-nav__link> <span class=md-ellipsis> layout_dims_for_cell_width </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui.products_grid_card_widget.tile_size_for_cell_width class=md-nav__link> <span class=md-ellipsis> tile_size_for_cell_width </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <nav class=md-path aria-label=Navigation> <ol class=md-path__list> <li class=md-path__item> <a href=../../../../../../index.html class=md-path__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-path__item> <a href=../../../__main__.html class=md-path__link> <span class=md-ellipsis> Reference </span> </a> </li> <li class=md-path__item> <a href=../../../__main__.html class=md-path__link> <span class=md-ellipsis> client </span> </a> </li> <li class=md-path__item> <a href=../../../__main__.html class=md-path__link> <span class=md-ellipsis> ayon_core </span> </a> </li> <li class=md-path__item> <a href=../../attribute_defs/_constants.html class=md-path__link> <span class=md-ellipsis> tools </span> </a> </li> <li class=md-path__item> <a href=../abstract.html class=md-path__link> <span class=md-ellipsis> loader </span> </a> </li> <li class=md-path__item> <a href=_multicombobox.html class=md-path__link> <span class=md-ellipsis> ui </span> </a> </li> </ol> </nav> <article class="md-content__inner md-typeset"> <h1>products_grid_card_widget</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.loader.ui.products_grid_card_widget></a> <div class="doc doc-contents first"> <p>Single product card for Loader grid view (web-style layout).</p> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.GridCellDelegate class="doc doc-heading"> <code>GridCellDelegate</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QStyledItemDelegate>QStyledItemDelegate</span></code></p> <p>Thin selection/hover ring when a card indexWidget is present; else style panel.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>660</span>
+<span class=normal>661</span>
+<span class=normal>662</span>
+<span class=normal>663</span>
+<span class=normal>664</span>
+<span class=normal>665</span>
+<span class=normal>666</span>
+<span class=normal>667</span>
+<span class=normal>668</span>
+<span class=normal>669</span>
+<span class=normal>670</span>
+<span class=normal>671</span>
+<span class=normal>672</span>
+<span class=normal>673</span>
+<span class=normal>674</span>
+<span class=normal>675</span>
+<span class=normal>676</span>
+<span class=normal>677</span>
+<span class=normal>678</span>
+<span class=normal>679</span>
+<span class=normal>680</span>
+<span class=normal>681</span>
+<span class=normal>682</span>
+<span class=normal>683</span>
+<span class=normal>684</span>
+<span class=normal>685</span>
+<span class=normal>686</span>
+<span class=normal>687</span>
+<span class=normal>688</span>
+<span class=normal>689</span>
+<span class=normal>690</span>
+<span class=normal>691</span>
+<span class=normal>692</span>
+<span class=normal>693</span>
+<span class=normal>694</span>
+<span class=normal>695</span>
+<span class=normal>696</span>
+<span class=normal>697</span>
+<span class=normal>698</span>
+<span class=normal>699</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>GridCellDelegate</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyledItemDelegate</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Thin selection/hover ring when a card indexWidget is present; else style panel.&quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>grid</span><span class=p>:</span> <span class=n>Any</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span> <span class=o>=</span> <span class=n>grid</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_item_view_for_paint</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>option</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAbstractItemView</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;QAbstractItemView passes the viewport as option.widget, not the list.&quot;&quot;&quot;</span>
+        <span class=n>w</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>w</span><span class=p>,</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAbstractItemView</span><span class=p>):</span>
+            <span class=k>return</span> <span class=n>w</span>
+        <span class=k>if</span> <span class=n>w</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>p</span> <span class=o>=</span> <span class=n>w</span><span class=o>.</span><span class=n>parent</span><span class=p>()</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAbstractItemView</span><span class=p>):</span>
+                <span class=k>return</span> <span class=n>p</span>
+        <span class=n>parent</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>parent</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>parent</span> <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>parent</span><span class=p>,</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAbstractItemView</span><span class=p>)</span> <span class=k>else</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>sizeHint</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>  <span class=c1># noqa: ARG002</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>get_grid_stride_size</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>paint</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>return</span>
+        <span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;=</span> <span class=o>~</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_HasFocus</span>
+        <span class=n>opt</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionViewItem</span><span class=p>(</span><span class=n>option</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>initStyleOption</span><span class=p>(</span><span class=n>opt</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+        <span class=n>item_view</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_item_view_for_paint</span><span class=p>(</span><span class=n>option</span><span class=p>)</span>
+        <span class=n>style_widget</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>widget</span> <span class=ow>or</span> <span class=n>item_view</span>
+        <span class=n>style</span> <span class=o>=</span> <span class=n>style_widget</span><span class=o>.</span><span class=n>style</span><span class=p>()</span> <span class=k>if</span> <span class=n>style_widget</span> <span class=k>else</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>style</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>item_view</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>item_view</span><span class=o>.</span><span class=n>indexWidget</span><span class=p>(</span><span class=n>index</span><span class=p>)</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=n>style</span><span class=o>.</span><span class=n>drawPrimitive</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>PE_PanelItemViewItem</span><span class=p>,</span>
+            <span class=n>opt</span><span class=p>,</span>
+            <span class=n>painter</span><span class=p>,</span>
+            <span class=n>style_widget</span><span class=p>,</span>
+        <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget class="doc doc-heading"> <code>ProductsGridCardWidget</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QWidget>QWidget</span></code></p> <p>Title/header strip + thumbnail plate (THUMB_REF aspect) + overlays; tile height from layout_dims.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span>
+<span class=normal>547</span>
+<span class=normal>548</span>
+<span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span>
+<span class=normal>566</span>
+<span class=normal>567</span>
+<span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span>
+<span class=normal>597</span>
+<span class=normal>598</span>
+<span class=normal>599</span>
+<span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span>
+<span class=normal>606</span>
+<span class=normal>607</span>
+<span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span>
+<span class=normal>613</span>
+<span class=normal>614</span>
+<span class=normal>615</span>
+<span class=normal>616</span>
+<span class=normal>617</span>
+<span class=normal>618</span>
+<span class=normal>619</span>
+<span class=normal>620</span>
+<span class=normal>621</span>
+<span class=normal>622</span>
+<span class=normal>623</span>
+<span class=normal>624</span>
+<span class=normal>625</span>
+<span class=normal>626</span>
+<span class=normal>627</span>
+<span class=normal>628</span>
+<span class=normal>629</span>
+<span class=normal>630</span>
+<span class=normal>631</span>
+<span class=normal>632</span>
+<span class=normal>633</span>
+<span class=normal>634</span>
+<span class=normal>635</span>
+<span class=normal>636</span>
+<span class=normal>637</span>
+<span class=normal>638</span>
+<span class=normal>639</span>
+<span class=normal>640</span>
+<span class=normal>641</span>
+<span class=normal>642</span>
+<span class=normal>643</span>
+<span class=normal>644</span>
+<span class=normal>645</span>
+<span class=normal>646</span>
+<span class=normal>647</span>
+<span class=normal>648</span>
+<span class=normal>649</span>
+<span class=normal>650</span>
+<span class=normal>651</span>
+<span class=normal>652</span>
+<span class=normal>653</span>
+<span class=normal>654</span>
+<span class=normal>655</span>
+<span class=normal>656</span>
+<span class=normal>657</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ProductsGridCardWidget</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QWidget</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Title/header strip + thumbnail plate (THUMB_REF aspect) + overlays; tile height from layout_dims.&quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>grid</span><span class=p>:</span> <span class=n>Any</span><span class=p>,</span> <span class=n>flat_row</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QWidget</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductsGridCard&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setAutoFillBackground</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setAttribute</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>WidgetAttribute</span><span class=o>.</span><span class=n>WA_StyledBackground</span><span class=p>,</span> <span class=kc>True</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span> <span class=o>=</span> <span class=n>grid</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_section</span><span class=p>:</span> <span class=n>Any</span> <span class=o>=</span> <span class=n>grid</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_flat_row</span> <span class=o>=</span> <span class=n>flat_row</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_pos</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_global_pos</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_card_grid_interaction</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QLabel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductsGridCardIcon&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>setFixedSize</span><span class=p>(</span><span class=mi>20</span><span class=p>,</span> <span class=mi>20</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>setScaledContents</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>setAttribute</span><span class=p>(</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>WidgetAttribute</span><span class=o>.</span><span class=n>WA_TransparentForMouseEvents</span><span class=p>,</span> <span class=kc>True</span>
+        <span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QLabel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductsGridCardTitle&quot;</span><span class=p>)</span>
+        <span class=c1># Qt 5: QLabel has setElideMode. Qt 6 / PySide6: elide via QFontMetrics in</span>
+        <span class=c1># _apply_name_label_text + resizeEvent.</span>
+        <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=p>,</span> <span class=s2>&quot;setElideMode&quot;</span><span class=p>):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=o>.</span><span class=n>setElideMode</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>TextElideMode</span><span class=o>.</span><span class=n>ElideRight</span><span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=o>.</span><span class=n>setWordWrap</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=o>.</span><span class=n>setAttribute</span><span class=p>(</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>WidgetAttribute</span><span class=o>.</span><span class=n>WA_TransparentForMouseEvents</span><span class=p>,</span> <span class=kc>True</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_full_product_name</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QHBoxLayout</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=o>.</span><span class=n>setContentsMargins</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=o>.</span><span class=n>setSpacing</span><span class=p>(</span><span class=mi>6</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=o>.</span><span class=n>addWidget</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=o>.</span><span class=n>addWidget</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span> <span class=o>=</span> <span class=n>_ThumbPaintWidget</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductsGridCardThumb&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=o>.</span><span class=n>setSizePolicy</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QSizePolicy</span><span class=o>.</span><span class=n>Policy</span><span class=o>.</span><span class=n>Expanding</span><span class=p>,</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QSizePolicy</span><span class=o>.</span><span class=n>Policy</span><span class=o>.</span><span class=n>Fixed</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=c1># Overlays on the thumb (local coords; clip to plate with siblings above paint).</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>VersionComboBox</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QToolButton</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductsGridReviewButton&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>installEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setAutoRaise</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Open in AYON (version / activity)&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>clicked</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_review_clicked</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QVBoxLayout</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span><span class=o>.</span><span class=n>setContentsMargins</span><span class=p>(</span>
+            <span class=n>CARD_H_PADDING</span><span class=p>,</span>
+            <span class=n>CARD_V_PADDING</span><span class=p>,</span>
+            <span class=n>CARD_H_PADDING</span><span class=p>,</span>
+            <span class=n>CARD_V_PADDING</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span><span class=o>.</span><span class=n>setSpacing</span><span class=p>(</span><span class=n>ROOT_LAYOUT_SPACING</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span><span class=o>.</span><span class=n>addLayout</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span><span class=o>.</span><span class=n>addWidget</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>product_icon</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>version_id</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_product_id</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>version_combo</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=n>VersionComboBox</span><span class=p>]:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>thumb_corner_radius_px</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>float</span><span class=p>:</span>
+        <span class=n>tw</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>tw</span> <span class=o>&lt;=</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>THUMB_CORNER_RADIUS</span>
+        <span class=k>return</span> <span class=nb>max</span><span class=p>(</span><span class=mf>3.0</span><span class=p>,</span> <span class=n>THUMB_CORNER_RADIUS</span> <span class=o>*</span> <span class=n>tw</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>CARD_BASE_WIDTH</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_grid_row_selected</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>selected</span><span class=p>:</span> <span class=nb>bool</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Header strip accent follows list selection (QSS reads dynamic property).&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setProperty</span><span class=p>(</span><span class=s2>&quot;gridSelected&quot;</span><span class=p>,</span> <span class=nb>bool</span><span class=p>(</span><span class=n>selected</span><span class=p>))</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>style</span><span class=p>()</span><span class=o>.</span><span class=n>unpolish</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>style</span><span class=p>()</span><span class=o>.</span><span class=n>polish</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>paintEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPaintEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>paintEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>property</span><span class=p>(</span><span class=s2>&quot;gridSelected&quot;</span><span class=p>):</span>
+            <span class=k>return</span>
+
+        <span class=n>painter</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setRenderHint</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>RenderHint</span><span class=o>.</span><span class=n>Antialiasing</span><span class=p>,</span> <span class=kc>True</span><span class=p>)</span>
+        <span class=n>pen</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPen</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QColor</span><span class=p>(</span><span class=n>GRID_CARD_SELECTION_HEX</span><span class=p>))</span>
+        <span class=n>pen</span><span class=o>.</span><span class=n>setWidth</span><span class=p>(</span><span class=n>GRID_CARD_SELECTION_WIDTH_PX</span><span class=p>)</span>
+        <span class=n>pen</span><span class=o>.</span><span class=n>setJoinStyle</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>PenJoinStyle</span><span class=o>.</span><span class=n>RoundJoin</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>pen</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setBrush</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>BrushStyle</span><span class=o>.</span><span class=n>NoBrush</span><span class=p>)</span>
+        <span class=n>inset</span> <span class=o>=</span> <span class=n>GRID_CARD_SELECTION_WIDTH_PX</span> <span class=o>*</span> <span class=mf>0.5</span>
+        <span class=n>rect</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRectF</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>rect</span><span class=p>())</span><span class=o>.</span><span class=n>adjusted</span><span class=p>(</span><span class=n>inset</span><span class=p>,</span> <span class=n>inset</span><span class=p>,</span> <span class=o>-</span><span class=n>inset</span><span class=p>,</span> <span class=o>-</span><span class=n>inset</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawRoundedRect</span><span class=p>(</span>
+            <span class=n>rect</span><span class=p>,</span>
+            <span class=n>GRID_CARD_OUTLINE_RADIUS_PX</span><span class=p>,</span>
+            <span class=n>GRID_CARD_OUTLINE_RADIUS_PX</span><span class=p>,</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_sync_scaled_chrome</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>tw</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>tw</span> <span class=o>&lt;</span> <span class=mi>4</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>d</span> <span class=o>=</span> <span class=n>layout_dims_for_cell_width</span><span class=p>(</span><span class=n>tw</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span><span class=o>.</span><span class=n>setContentsMargins</span><span class=p>(</span>
+            <span class=n>d</span><span class=p>[</span><span class=s2>&quot;h_pad&quot;</span><span class=p>],</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;v_pad_top&quot;</span><span class=p>],</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;h_pad&quot;</span><span class=p>],</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;v_pad_bot&quot;</span><span class=p>]</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root_layout</span><span class=o>.</span><span class=n>setSpacing</span><span class=p>(</span><span class=n>d</span><span class=p>[</span><span class=s2>&quot;g&quot;</span><span class=p>])</span>
+        <span class=n>iz</span> <span class=o>=</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;iz&quot;</span><span class=p>]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>setFixedSize</span><span class=p>(</span><span class=n>iz</span><span class=p>,</span> <span class=n>iz</span><span class=p>)</span>
+        <span class=n>scale</span> <span class=o>=</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;scale&quot;</span><span class=p>]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=o>.</span><span class=n>setSpacing</span><span class=p>(</span><span class=nb>max</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=mi>6</span> <span class=o>*</span> <span class=n>scale</span><span class=p>))))</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=o>.</span><span class=n>setMinimumHeight</span><span class=p>(</span><span class=n>d</span><span class=p>[</span><span class=s2>&quot;hdr_h&quot;</span><span class=p>])</span>
+        <span class=n>strip_pad</span> <span class=o>=</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;strip_pad&quot;</span><span class=p>]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_header_layout</span><span class=o>.</span><span class=n>setContentsMargins</span><span class=p>(</span>
+            <span class=n>strip_pad</span><span class=p>,</span> <span class=n>strip_pad</span><span class=p>,</span> <span class=n>strip_pad</span><span class=p>,</span> <span class=n>strip_pad</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=o>.</span><span class=n>setFixedHeight</span><span class=p>(</span><span class=nb>int</span><span class=p>(</span><span class=n>d</span><span class=p>[</span><span class=s2>&quot;thumb_h&quot;</span><span class=p>]))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>resizeEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QResizeEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>resizeEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_sync_scaled_chrome</span><span class=p>()</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span><span class=p>,</span> <span class=s2>&quot;setElideMode&quot;</span><span class=p>):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_apply_name_label_text</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_layout_overlays</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_layout_overlays</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>scale</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mf>0.25</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>CARD_BASE_WIDTH</span><span class=p>))</span>
+        <span class=n>overlay_scale</span> <span class=o>=</span> <span class=nb>min</span><span class=p>(</span><span class=n>scale</span><span class=p>,</span> <span class=mf>0.8</span><span class=p>)</span>
+        <span class=n>pad</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=n>scale</span><span class=p>)))</span>
+        <span class=n>w</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=n>h</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>w</span> <span class=o>&lt;</span> <span class=mi>4</span> <span class=ow>or</span> <span class=n>h</span> <span class=o>&lt;</span> <span class=mi>4</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>btn_side</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>18</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=mi>20</span> <span class=o>*</span> <span class=n>overlay_scale</span><span class=p>)))</span>
+        <span class=n>review_pad</span> <span class=o>=</span> <span class=n>pad</span>
+        <span class=n>gap_combo_review</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=mi>1</span> <span class=o>*</span> <span class=n>scale</span><span class=p>)))</span>
+        <span class=n>budget</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span>
+            <span class=mi>24</span><span class=p>,</span>
+            <span class=n>w</span> <span class=o>-</span> <span class=n>pad</span> <span class=o>-</span> <span class=n>review_pad</span> <span class=o>-</span> <span class=n>btn_side</span> <span class=o>-</span> <span class=n>gap_combo_review</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=p>:</span>
+            <span class=n>combo</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span>
+            <span class=n>cols</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>get_grid_columns</span><span class=p>()</span>
+            <span class=n>font_pt</span> <span class=o>=</span> <span class=n>GRID_VERSION_FONT_MAX_PT</span>
+            <span class=k>if</span> <span class=n>cols</span> <span class=o>&gt;=</span> <span class=mi>5</span><span class=p>:</span>
+                <span class=n>font_pt</span> <span class=o>=</span> <span class=n>GRID_VERSION_FONT_MIN_PT</span>
+            <span class=k>elif</span> <span class=n>cols</span> <span class=o>==</span> <span class=mi>4</span><span class=p>:</span>
+                <span class=n>font_pt</span> <span class=o>=</span> <span class=mi>9</span>
+            <span class=n>font</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QFont</span><span class=p>(</span><span class=n>combo</span><span class=o>.</span><span class=n>font</span><span class=p>())</span>
+            <span class=k>if</span> <span class=n>font</span><span class=o>.</span><span class=n>pointSize</span><span class=p>()</span> <span class=o>!=</span> <span class=n>font_pt</span><span class=p>:</span>
+                <span class=n>font</span><span class=o>.</span><span class=n>setPointSize</span><span class=p>(</span><span class=n>font_pt</span><span class=p>)</span>
+                <span class=n>combo</span><span class=o>.</span><span class=n>setFont</span><span class=p>(</span><span class=n>font</span><span class=p>)</span>
+                <span class=n>combo</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>setFont</span><span class=p>(</span><span class=n>font</span><span class=p>)</span>
+            <span class=n>combo</span><span class=o>.</span><span class=n>setMaximumWidth</span><span class=p>(</span><span class=n>budget</span><span class=p>)</span>
+            <span class=n>combo</span><span class=o>.</span><span class=n>updateGeometry</span><span class=p>()</span>
+            <span class=n>text</span> <span class=o>=</span> <span class=n>combo</span><span class=o>.</span><span class=n>currentText</span><span class=p>()</span>
+            <span class=n>fm</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QFontMetrics</span><span class=p>(</span><span class=n>combo</span><span class=o>.</span><span class=n>font</span><span class=p>())</span>
+            <span class=n>text_w</span> <span class=o>=</span> <span class=n>fm</span><span class=o>.</span><span class=n>horizontalAdvance</span><span class=p>(</span><span class=n>text</span><span class=p>)</span> <span class=k>if</span> <span class=n>text</span> <span class=k>else</span> <span class=mi>0</span>
+            <span class=n>text_pad</span> <span class=o>=</span> <span class=mi>16</span> <span class=k>if</span> <span class=n>font_pt</span> <span class=o>&gt;=</span> <span class=mi>9</span> <span class=k>else</span> <span class=mi>14</span>
+            <span class=n>sh</span> <span class=o>=</span> <span class=n>combo</span><span class=o>.</span><span class=n>sizeHint</span><span class=p>()</span>
+            <span class=n>combo_w</span> <span class=o>=</span> <span class=nb>min</span><span class=p>(</span><span class=nb>max</span><span class=p>(</span><span class=n>text_w</span> <span class=o>+</span> <span class=n>text_pad</span><span class=p>,</span> <span class=mi>38</span><span class=p>),</span> <span class=n>budget</span><span class=p>)</span>
+            <span class=n>ch</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>19</span><span class=p>,</span> <span class=nb>min</span><span class=p>(</span><span class=n>sh</span><span class=o>.</span><span class=n>height</span><span class=p>(),</span> <span class=nb>max</span><span class=p>(</span><span class=mi>19</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=mi>21</span> <span class=o>*</span> <span class=n>overlay_scale</span><span class=p>)))))</span>
+            <span class=n>y</span> <span class=o>=</span> <span class=n>h</span> <span class=o>-</span> <span class=n>ch</span> <span class=o>-</span> <span class=n>pad</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>setGeometry</span><span class=p>(</span><span class=n>pad</span><span class=p>,</span> <span class=n>y</span><span class=p>,</span> <span class=n>combo_w</span><span class=p>,</span> <span class=n>ch</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>raise_</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setGeometry</span><span class=p>(</span>
+            <span class=n>w</span> <span class=o>-</span> <span class=n>btn_side</span> <span class=o>-</span> <span class=n>review_pad</span><span class=p>,</span>
+            <span class=n>review_pad</span><span class=p>,</span>
+            <span class=n>btn_side</span><span class=p>,</span>
+            <span class=n>btn_side</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=n>isz</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>10</span><span class=p>,</span> <span class=n>btn_side</span> <span class=o>-</span> <span class=mi>7</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setIconSize</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>(</span><span class=n>isz</span><span class=p>,</span> <span class=n>isz</span><span class=p>))</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>raise_</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_section</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>section</span><span class=p>:</span> <span class=n>Any</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Owning ``ProductsGridSection`` (deferred rebuild scope during drag).&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_section</span> <span class=o>=</span> <span class=n>section</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_mouse_global_point</span><span class=p>(</span><span class=n>event</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QMouseEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>:</span>
+        <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=n>event</span><span class=p>,</span> <span class=s2>&quot;globalPosition&quot;</span><span class=p>):</span>
+            <span class=k>return</span> <span class=n>event</span><span class=o>.</span><span class=n>globalPosition</span><span class=p>()</span><span class=o>.</span><span class=n>toPoint</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>event</span><span class=o>.</span><span class=n>globalPos</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_apply_list_selection</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>lv</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=p>,</span>
+        <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>,</span>
+        <span class=n>modifiers</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>KeyboardModifiers</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>sm</span> <span class=o>=</span> <span class=n>lv</span><span class=o>.</span><span class=n>selectionModel</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>sm</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>flags</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QItemSelectionModel</span><span class=o>.</span><span class=n>SelectionFlag</span>
+        <span class=n>rows</span> <span class=o>=</span> <span class=n>flags</span><span class=o>.</span><span class=n>Rows</span>
+        <span class=k>if</span> <span class=n>modifiers</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>KeyboardModifier</span><span class=o>.</span><span class=n>ControlModifier</span><span class=p>:</span>
+            <span class=n>sm</span><span class=o>.</span><span class=n>select</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>flags</span><span class=o>.</span><span class=n>Toggle</span> <span class=o>|</span> <span class=n>rows</span><span class=p>)</span>
+        <span class=k>elif</span> <span class=n>modifiers</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>KeyboardModifier</span><span class=o>.</span><span class=n>ShiftModifier</span><span class=p>:</span>
+            <span class=n>cur</span> <span class=o>=</span> <span class=n>sm</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>()</span>
+            <span class=k>if</span> <span class=n>cur</span><span class=o>.</span><span class=n>isValid</span><span class=p>()</span> <span class=ow>and</span> <span class=n>cur</span><span class=o>.</span><span class=n>parent</span><span class=p>()</span> <span class=o>==</span> <span class=n>index</span><span class=o>.</span><span class=n>parent</span><span class=p>():</span>
+                <span class=n>sm</span><span class=o>.</span><span class=n>select</span><span class=p>(</span>
+                    <span class=n>QtCore</span><span class=o>.</span><span class=n>QItemSelection</span><span class=p>(</span><span class=n>cur</span><span class=p>,</span> <span class=n>index</span><span class=p>),</span>
+                    <span class=n>flags</span><span class=o>.</span><span class=n>Select</span> <span class=o>|</span> <span class=n>rows</span><span class=p>,</span>
+                <span class=p>)</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=n>sm</span><span class=o>.</span><span class=n>clearSelection</span><span class=p>()</span>
+                <span class=n>sm</span><span class=o>.</span><span class=n>select</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>flags</span><span class=o>.</span><span class=n>Select</span> <span class=o>|</span> <span class=n>rows</span><span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=k>if</span> <span class=ow>not</span> <span class=n>sm</span><span class=o>.</span><span class=n>isSelected</span><span class=p>(</span><span class=n>index</span><span class=p>):</span>
+                <span class=n>sm</span><span class=o>.</span><span class=n>clearSelection</span><span class=p>()</span>
+                <span class=n>sm</span><span class=o>.</span><span class=n>select</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>flags</span><span class=o>.</span><span class=n>Select</span> <span class=o>|</span> <span class=n>rows</span><span class=p>)</span>
+        <span class=n>sm</span><span class=o>.</span><span class=n>setCurrentIndex</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>flags</span><span class=o>.</span><span class=n>Current</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mousePressEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QMouseEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>button</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButton</span><span class=o>.</span><span class=n>RightButton</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>open_context_menu_from_card</span><span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_global_point</span><span class=p>(</span><span class=n>event</span><span class=p>),</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_flat_row</span><span class=p>,</span>
+            <span class=p>)</span>
+            <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+            <span class=k>return</span>
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>button</span><span class=p>()</span> <span class=o>!=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButton</span><span class=o>.</span><span class=n>LeftButton</span><span class=p>:</span>
+            <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mousePressEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+            <span class=k>return</span>
+        <span class=n>gw</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>_owner</span>
+        <span class=n>other_armed</span> <span class=o>=</span> <span class=n>gw</span><span class=o>.</span><span class=n>armed_card_drag_card</span><span class=p>()</span> <span class=k>if</span> <span class=n>gw</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=k>else</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=n>other_armed</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>other_armed</span> <span class=ow>is</span> <span class=ow>not</span> <span class=bp>self</span><span class=p>:</span>
+            <span class=n>other_armed</span><span class=o>.</span><span class=n>cancel_armed_drag</span><span class=p>(</span><span class=n>reason</span><span class=o>=</span><span class=s2>&quot;superseded_by_other_card&quot;</span><span class=p>)</span>
+        <span class=n>lv</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>list_view</span>
+        <span class=k>if</span> <span class=n>lv</span><span class=o>.</span><span class=n>source_drag_guard_active</span><span class=p>():</span>
+            <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+            <span class=k>return</span>
+        <span class=k>if</span> <span class=n>gw</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>gw</span><span class=o>.</span><span class=n>_active_source_drag_list_view</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+            <span class=k>return</span>
+        <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_flat_index</span><span class=p>()</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>idx</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mousePressEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+            <span class=k>return</span>
+        <span class=n>model</span> <span class=o>=</span> <span class=n>idx</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+        <span class=n>drag_arm</span> <span class=o>=</span> <span class=nb>bool</span><span class=p>(</span>
+            <span class=n>model</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+            <span class=ow>and</span> <span class=p>(</span><span class=n>model</span><span class=o>.</span><span class=n>flags</span><span class=p>(</span><span class=n>idx</span><span class=p>)</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemIsDragEnabled</span><span class=p>)</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_apply_list_selection</span><span class=p>(</span><span class=n>lv</span><span class=p>,</span> <span class=n>idx</span><span class=p>,</span> <span class=n>event</span><span class=o>.</span><span class=n>modifiers</span><span class=p>())</span>
+        <span class=k>if</span> <span class=n>drag_arm</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_pos</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>pos</span><span class=p>())</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_global_pos</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_global_point</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+            <span class=n>lv</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>setCursor</span><span class=p>(</span>
+                <span class=n>QtGui</span><span class=o>.</span><span class=n>QCursor</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CursorShape</span><span class=o>.</span><span class=n>ClosedHandCursor</span><span class=p>)</span>
+            <span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_card_grid_interaction</span> <span class=o>=</span> <span class=kc>True</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_section</span><span class=o>.</span><span class=n>begin_user_interaction</span><span class=p>()</span>
+            <span class=n>gw</span><span class=o>.</span><span class=n>begin_armed_card_drag</span><span class=p>(</span><span class=n>lv</span><span class=p>,</span> <span class=bp>self</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>grabMouse</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_pos</span> <span class=o>=</span> <span class=kc>None</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_global_pos</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_clear_armed_drag_local</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>lv</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>mouseGrabber</span><span class=p>()</span> <span class=ow>is</span> <span class=bp>self</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>releaseMouse</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_pos</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_global_pos</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=nb>setattr</span><span class=p>(</span><span class=n>lv</span><span class=p>,</span> <span class=s2>&quot;_drag_precache_armed&quot;</span><span class=p>,</span> <span class=kc>False</span><span class=p>)</span>
+        <span class=n>lv</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>unsetCursor</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>cancel_armed_drag</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>reason</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>_</span> <span class=o>=</span> <span class=n>reason</span>
+        <span class=n>gw</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>_owner</span>
+        <span class=n>lv</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>list_view</span>
+        <span class=k>if</span> <span class=n>gw</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>gw</span><span class=o>.</span><span class=n>armed_card_drag_card</span><span class=p>()</span> <span class=ow>is</span> <span class=bp>self</span><span class=p>:</span>
+            <span class=n>gw</span><span class=o>.</span><span class=n>clear_armed_card_drag</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>restore_marquee</span><span class=o>=</span><span class=kc>True</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_clear_armed_drag_local</span><span class=p>(</span><span class=n>lv</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_finish_card_interaction</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_finish_card_interaction</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_card_grid_interaction</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_card_grid_interaction</span> <span class=o>=</span> <span class=kc>False</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_section</span><span class=o>.</span><span class=n>end_user_interaction</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_start_card_drag</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>lv</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>gw</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>_owner</span>
+        <span class=n>gw</span><span class=o>.</span><span class=n>clear_armed_card_drag</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>restore_marquee</span><span class=o>=</span><span class=kc>False</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_clear_armed_drag_local</span><span class=p>(</span><span class=n>lv</span><span class=p>)</span>
+        <span class=k>try</span><span class=p>:</span>
+            <span class=n>run_loader_drag_for_card</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=k>finally</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_finish_card_interaction</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>handle_armed_drag_move</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>global_pos</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>,</span>
+        <span class=n>buttons</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButtons</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Viewport-routed move while this card owns the armed grid drag.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_handle_armed_drag_move</span><span class=p>(</span><span class=n>global_pos</span><span class=p>,</span> <span class=n>buttons</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_handle_armed_drag_move</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>global_pos</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>,</span>
+        <span class=n>buttons</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButtons</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_global_pos</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>False</span>
+        <span class=n>lv</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>list_view</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=p>(</span><span class=n>buttons</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButton</span><span class=o>.</span><span class=n>LeftButton</span><span class=p>):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>cancel_armed_drag</span><span class=p>(</span><span class=n>reason</span><span class=o>=</span><span class=s2>&quot;no_left_button&quot;</span><span class=p>)</span>
+            <span class=k>return</span> <span class=kc>True</span>
+        <span class=k>if</span> <span class=n>lv</span><span class=o>.</span><span class=n>source_drag_guard_active</span><span class=p>():</span>
+            <span class=k>return</span> <span class=kc>True</span>
+        <span class=k>if</span> <span class=nb>getattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>_owner</span><span class=p>,</span> <span class=s2>&quot;_active_source_drag_list_view&quot;</span><span class=p>,</span> <span class=kc>None</span><span class=p>):</span>
+            <span class=k>return</span> <span class=kc>True</span>
+
+        <span class=n>delta</span> <span class=o>=</span> <span class=n>global_pos</span> <span class=o>-</span> <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_global_pos</span>
+        <span class=n>dist</span> <span class=o>=</span> <span class=n>delta</span><span class=o>.</span><span class=n>manhattanLength</span><span class=p>()</span>
+        <span class=n>half_d</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=n>loader_drag_start_distance</span><span class=p>()</span> <span class=o>//</span> <span class=mi>2</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>dist</span> <span class=o>&gt;=</span> <span class=n>half_d</span><span class=p>:</span>
+            <span class=n>_maybe_arm_drag_precache</span><span class=p>(</span><span class=n>lv</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>dist</span> <span class=o>&gt;=</span> <span class=n>loader_drag_start_distance</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_start_card_drag</span><span class=p>(</span><span class=n>lv</span><span class=p>)</span>
+        <span class=k>return</span> <span class=kc>True</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mouseMoveEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QMouseEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_pos</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+            <span class=ow>and</span> <span class=n>event</span><span class=o>.</span><span class=n>buttons</span><span class=p>()</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButton</span><span class=o>.</span><span class=n>LeftButton</span>
+        <span class=p>):</span>
+            <span class=n>gpos</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_global_point</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_handle_armed_drag_move</span><span class=p>(</span><span class=n>gpos</span><span class=p>,</span> <span class=n>event</span><span class=o>.</span><span class=n>buttons</span><span class=p>())</span>
+            <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+            <span class=k>return</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mouseMoveEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mouseReleaseEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QMouseEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_drag_start_pos</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>or</span> <span class=bp>self</span><span class=o>.</span><span class=n>_card_grid_interaction</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>cancel_armed_drag</span><span class=p>(</span><span class=n>reason</span><span class=o>=</span><span class=s2>&quot;mouse_release&quot;</span><span class=p>)</span>
+            <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+            <span class=k>return</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mouseReleaseEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_flat_index</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>card_model</span><span class=p>()</span><span class=o>.</span><span class=n>index</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_flat_row</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_apply_name_label_text</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>name</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_full_product_name</span>
+        <span class=n>lbl</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_name_label</span>
+        <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=n>lbl</span><span class=p>,</span> <span class=s2>&quot;setElideMode&quot;</span><span class=p>):</span>
+            <span class=n>lbl</span><span class=o>.</span><span class=n>setText</span><span class=p>(</span><span class=n>name</span><span class=p>)</span>
+            <span class=k>return</span>
+        <span class=n>w</span> <span class=o>=</span> <span class=n>lbl</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>w</span> <span class=o>&lt;=</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=n>lbl</span><span class=o>.</span><span class=n>setText</span><span class=p>(</span><span class=n>name</span><span class=p>)</span>
+            <span class=k>return</span>
+        <span class=n>fm</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QFontMetrics</span><span class=p>(</span><span class=n>lbl</span><span class=o>.</span><span class=n>font</span><span class=p>())</span>
+        <span class=n>lbl</span><span class=o>.</span><span class=n>setText</span><span class=p>(</span>
+            <span class=n>fm</span><span class=o>.</span><span class=n>elidedText</span><span class=p>(</span><span class=n>name</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>TextElideMode</span><span class=o>.</span><span class=n>ElideRight</span><span class=p>,</span> <span class=nb>max</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=n>w</span><span class=p>))</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>refresh_from_model</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_flat_index</span><span class=p>()</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>idx</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>return</span>
+        <span class=n>model</span> <span class=o>=</span> <span class=n>idx</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+        <span class=n>name</span> <span class=o>=</span> <span class=n>model</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>PRODUCT_NAME_ROLE</span><span class=p>)</span> <span class=ow>or</span> <span class=n>model</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>)</span> <span class=ow>or</span> <span class=s2>&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_full_product_name</span> <span class=o>=</span> <span class=n>name</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>&gt;</span> <span class=mi>0</span> <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>height</span><span class=p>()</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_sync_scaled_chrome</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_apply_name_label_text</span><span class=p>()</span>
+        <span class=n>icon</span> <span class=o>=</span> <span class=n>model</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DecorationRole</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>product_icon</span> <span class=o>=</span> <span class=n>icon</span> <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>icon</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>)</span> <span class=k>else</span> <span class=kc>None</span>
+        <span class=n>tw</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=n>iz</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>12</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>width</span><span class=p>())</span> <span class=k>if</span> <span class=n>tw</span> <span class=o>&gt;</span> <span class=mi>0</span> <span class=k>else</span> <span class=mi>20</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>product_icon</span> <span class=ow>and</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>product_icon</span><span class=o>.</span><span class=n>isNull</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>setPixmap</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>product_icon</span><span class=o>.</span><span class=n>pixmap</span><span class=p>(</span><span class=n>iz</span><span class=p>,</span> <span class=n>iz</span><span class=p>))</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_icon_label</span><span class=o>.</span><span class=n>clear</span><span class=p>()</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>version_id</span> <span class=o>=</span> <span class=n>model</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>VERSION_ID_ROLE</span><span class=p>)</span>
+        <span class=n>product_id</span> <span class=o>=</span> <span class=n>model</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>PRODUCT_ID_ROLE</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_product_id</span> <span class=o>=</span> <span class=n>product_id</span>
+
+        <span class=n>pm</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>products_model</span><span class=p>()</span>
+        <span class=n>project</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>controller</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>()</span>
+        <span class=n>vp_combo</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>controller</span><span class=o>.</span><span class=n>get_version_padding</span><span class=p>(</span><span class=n>project</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>product_id</span> <span class=ow>and</span> <span class=n>pm</span><span class=p>:</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>get_product_id</span><span class=p>()</span> <span class=o>!=</span> <span class=n>product_id</span><span class=p>:</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>deleteLater</span><span class=p>()</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span> <span class=o>=</span> <span class=kc>None</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span> <span class=o>=</span> <span class=n>VersionComboBox</span><span class=p>(</span><span class=n>product_id</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductsGridVersionCombo&quot;</span><span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>setMinimumWidth</span><span class=p>(</span>
+                    <span class=n>GRID_VERSION_POPUP_MIN_WIDTH_PX</span>
+                <span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>installEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>value_changed</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>on_card_version_changed</span>
+                <span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>apply_filters_to_combo</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=p>)</span>
+            <span class=n>version_items</span> <span class=o>=</span> <span class=n>pm</span><span class=o>.</span><span class=n>get_version_items_by_product_id</span><span class=p>(</span><span class=n>product_id</span><span class=p>)</span> <span class=ow>or</span> <span class=p>[]</span>
+            <span class=n>task_tags_by_vid</span> <span class=o>=</span> <span class=p>{}</span>
+            <span class=k>for</span> <span class=n>vi</span> <span class=ow>in</span> <span class=n>version_items</span><span class=p>:</span>
+                <span class=n>tid</span> <span class=o>=</span> <span class=n>vi</span><span class=o>.</span><span class=n>task_id</span>
+                <span class=n>tags</span> <span class=o>=</span> <span class=n>pm</span><span class=o>.</span><span class=n>get_task_tags_by_id</span><span class=p>(</span><span class=n>tid</span><span class=p>)</span> <span class=k>if</span> <span class=n>tid</span> <span class=k>else</span> <span class=nb>set</span><span class=p>()</span>
+                <span class=n>task_tags_by_vid</span><span class=p>[</span><span class=n>vi</span><span class=o>.</span><span class=n>version_id</span><span class=p>]</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=n>tags</span><span class=p>)</span> <span class=k>if</span> <span class=n>tags</span> <span class=k>else</span> <span class=nb>set</span><span class=p>()</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>blockSignals</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>update_versions</span><span class=p>(</span>
+                <span class=n>version_items</span><span class=p>,</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>version_id</span><span class=p>,</span>
+                <span class=n>task_tags_by_vid</span><span class=p>,</span>
+                <span class=n>version_padding</span><span class=o>=</span><span class=n>vp_combo</span><span class=p>,</span>
+            <span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span><span class=o>.</span><span class=n>blockSignals</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setEnabled</span><span class=p>(</span><span class=nb>bool</span><span class=p>(</span><span class=n>project</span> <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>version_id</span><span class=p>))</span>
+
+        <span class=n>icon_color</span> <span class=o>=</span> <span class=n>get_default_entity_icon_color</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=n>_open_external_icon</span><span class=p>(</span><span class=n>icon_color</span><span class=p>))</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumb</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>refresh_overlays</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>refresh_overlays</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_layout_overlays</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>eventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>obj</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QObject</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QEvent</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+        <span class=n>combo</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_version_combo</span>
+        <span class=n>context_targets</span> <span class=o>=</span> <span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_review_btn</span><span class=p>,)</span>
+        <span class=k>if</span> <span class=n>combo</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>context_targets</span> <span class=o>=</span> <span class=n>context_targets</span> <span class=o>+</span> <span class=p>(</span><span class=n>combo</span><span class=p>,)</span>
+
+        <span class=k>if</span> <span class=n>obj</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>context_targets</span><span class=p>:</span>
+            <span class=k>return</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>eventFilter</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>type</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QEvent</span><span class=o>.</span><span class=n>Type</span><span class=o>.</span><span class=n>ContextMenu</span><span class=p>:</span>
+            <span class=n>ce</span> <span class=o>=</span> <span class=n>event</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>ce</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QContextMenuEvent</span><span class=p>):</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>open_context_menu_from_card</span><span class=p>(</span>
+                    <span class=n>ce</span><span class=o>.</span><span class=n>globalPos</span><span class=p>(),</span> <span class=bp>self</span><span class=o>.</span><span class=n>_flat_row</span>
+                <span class=p>)</span>
+                <span class=k>return</span> <span class=kc>True</span>
+
+        <span class=k>return</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>eventFilter</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_review_clicked</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>project</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_grid</span><span class=o>.</span><span class=n>controller</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>()</span>
+        <span class=n>vid</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>version_id</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project</span> <span class=ow>or</span> <span class=ow>not</span> <span class=n>vid</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>base</span> <span class=o>=</span> <span class=n>ayon_api</span><span class=o>.</span><span class=n>get_base_url</span><span class=p>()</span><span class=o>.</span><span class=n>rstrip</span><span class=p>(</span><span class=s2>&quot;/&quot;</span><span class=p>)</span>
+        <span class=n>query</span> <span class=o>=</span> <span class=n>urllib</span><span class=o>.</span><span class=n>parse</span><span class=o>.</span><span class=n>urlencode</span><span class=p>(</span>
+            <span class=p>{</span><span class=s2>&quot;project&quot;</span><span class=p>:</span> <span class=n>project</span><span class=p>,</span> <span class=s2>&quot;type&quot;</span><span class=p>:</span> <span class=s2>&quot;version&quot;</span><span class=p>,</span> <span class=s2>&quot;id&quot;</span><span class=p>:</span> <span class=n>vid</span><span class=p>}</span>
+        <span class=p>)</span>
+        <span class=n>url</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>base</span><span class=si>}</span><span class=s2>/projects/</span><span class=si>{</span><span class=n>project</span><span class=si>}</span><span class=s2>/products?</span><span class=si>{</span><span class=n>query</span><span class=si>}</span><span class=s2>&quot;</span>
+        <span class=n>webbrowser</span><span class=o>.</span><span class=n>open_new_tab</span><span class=p>(</span><span class=n>url</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.handle_armed_drag_move class="doc doc-heading"> <code class="highlight language-python"><span class=n>handle_armed_drag_move</span><span class=p>(</span><span class=n>global_pos</span><span class=p>,</span> <span class=n>buttons</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Viewport-routed move while this card owns the armed grid drag.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>handle_armed_drag_move</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>global_pos</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>,</span>
+    <span class=n>buttons</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>MouseButtons</span><span class=p>,</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Viewport-routed move while this card owns the armed grid drag.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_handle_armed_drag_move</span><span class=p>(</span><span class=n>global_pos</span><span class=p>,</span> <span class=n>buttons</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.set_grid_row_selected class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_grid_row_selected</span><span class=p>(</span><span class=n>selected</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Header strip accent follows list selection (QSS reads dynamic property).</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_grid_row_selected</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>selected</span><span class=p>:</span> <span class=nb>bool</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Header strip accent follows list selection (QSS reads dynamic property).&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>setProperty</span><span class=p>(</span><span class=s2>&quot;gridSelected&quot;</span><span class=p>,</span> <span class=nb>bool</span><span class=p>(</span><span class=n>selected</span><span class=p>))</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>style</span><span class=p>()</span><span class=o>.</span><span class=n>unpolish</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>style</span><span class=p>()</span><span class=o>.</span><span class=n>polish</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.ProductsGridCardWidget.set_section class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_section</span><span class=p>(</span><span class=n>section</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Owning <code>ProductsGridSection</code> (deferred rebuild scope during drag).</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_section</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>section</span><span class=p>:</span> <span class=n>Any</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Owning ``ProductsGridSection`` (deferred rebuild scope during drag).&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_section</span> <span class=o>=</span> <span class=n>section</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.layout_dims_for_cell_width class="doc doc-heading"> <code class="highlight language-python"><span class=n>layout_dims_for_cell_width</span><span class=p>(</span><span class=n>cell_w</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Shared chrome + thumb vertical math for a given cell (tile) width in pixels.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>46</span>
+<span class=normal>47</span>
+<span class=normal>48</span>
+<span class=normal>49</span>
+<span class=normal>50</span>
+<span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span>
+<span class=normal>54</span>
+<span class=normal>55</span>
+<span class=normal>56</span>
+<span class=normal>57</span>
+<span class=normal>58</span>
+<span class=normal>59</span>
+<span class=normal>60</span>
+<span class=normal>61</span>
+<span class=normal>62</span>
+<span class=normal>63</span>
+<span class=normal>64</span>
+<span class=normal>65</span>
+<span class=normal>66</span>
+<span class=normal>67</span>
+<span class=normal>68</span>
+<span class=normal>69</span>
+<span class=normal>70</span>
+<span class=normal>71</span>
+<span class=normal>72</span>
+<span class=normal>73</span>
+<span class=normal>74</span>
+<span class=normal>75</span>
+<span class=normal>76</span>
+<span class=normal>77</span>
+<span class=normal>78</span>
+<span class=normal>79</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>layout_dims_for_cell_width</span><span class=p>(</span><span class=n>cell_w</span><span class=p>:</span> <span class=nb>int</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Shared chrome + thumb vertical math for a given cell (tile) width in pixels.&quot;&quot;&quot;</span>
+    <span class=n>tw</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>4</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=n>cell_w</span><span class=p>))</span>
+    <span class=n>scale</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mf>0.18</span><span class=p>,</span> <span class=n>tw</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>CARD_BASE_WIDTH</span><span class=p>))</span>
+    <span class=n>h_pad</span> <span class=o>=</span> <span class=n>CARD_H_PADDING</span>
+    <span class=n>v_pad_top</span> <span class=o>=</span> <span class=n>CARD_V_PADDING</span>
+    <span class=n>v_pad_bot</span> <span class=o>=</span> <span class=n>CARD_V_PADDING</span>
+    <span class=n>g</span> <span class=o>=</span> <span class=n>ROOT_LAYOUT_SPACING</span>
+    <span class=n>iz</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>10</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=mi>13</span> <span class=o>*</span> <span class=n>scale</span><span class=p>)))</span>
+    <span class=n>hdr_h</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=n>iz</span><span class=p>,</span> <span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>(</span><span class=n>HEADER_BASE_H</span> <span class=o>*</span> <span class=n>scale</span><span class=p>)))</span>
+    <span class=n>strip_pad</span> <span class=o>=</span> <span class=n>CARD_TITLE_PADDING</span>
+    <span class=n>row_inner</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=n>iz</span><span class=p>,</span> <span class=n>hdr_h</span><span class=p>)</span>
+    <span class=n>header_outer_h</span> <span class=o>=</span> <span class=n>row_inner</span> <span class=o>+</span> <span class=mi>2</span> <span class=o>*</span> <span class=n>strip_pad</span>
+    <span class=n>inner_w</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=n>tw</span> <span class=o>-</span> <span class=mi>2</span> <span class=o>*</span> <span class=n>h_pad</span><span class=p>)</span>
+    <span class=n>thumb_h</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span>
+        <span class=nb>round</span><span class=p>(</span><span class=n>inner_w</span> <span class=o>*</span> <span class=nb>float</span><span class=p>(</span><span class=n>THUMB_REF_HEIGHT</span><span class=p>)</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>THUMB_REF_WIDTH</span><span class=p>))</span>
+    <span class=p>)</span>
+    <span class=n>thumb_h</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=n>MIN_THUMB_HEIGHT_PX</span><span class=p>,</span> <span class=n>thumb_h</span><span class=p>)</span>
+    <span class=n>tile_h</span> <span class=o>=</span> <span class=n>v_pad_top</span> <span class=o>+</span> <span class=n>header_outer_h</span> <span class=o>+</span> <span class=n>g</span> <span class=o>+</span> <span class=n>thumb_h</span> <span class=o>+</span> <span class=n>v_pad_bot</span>
+    <span class=k>return</span> <span class=p>{</span>
+        <span class=s2>&quot;tw&quot;</span><span class=p>:</span> <span class=n>tw</span><span class=p>,</span>
+        <span class=s2>&quot;scale&quot;</span><span class=p>:</span> <span class=n>scale</span><span class=p>,</span>
+        <span class=s2>&quot;h_pad&quot;</span><span class=p>:</span> <span class=n>h_pad</span><span class=p>,</span>
+        <span class=s2>&quot;v_pad_top&quot;</span><span class=p>:</span> <span class=n>v_pad_top</span><span class=p>,</span>
+        <span class=s2>&quot;v_pad_bot&quot;</span><span class=p>:</span> <span class=n>v_pad_bot</span><span class=p>,</span>
+        <span class=s2>&quot;g&quot;</span><span class=p>:</span> <span class=n>g</span><span class=p>,</span>
+        <span class=s2>&quot;iz&quot;</span><span class=p>:</span> <span class=n>iz</span><span class=p>,</span>
+        <span class=s2>&quot;hdr_h&quot;</span><span class=p>:</span> <span class=n>hdr_h</span><span class=p>,</span>
+        <span class=s2>&quot;strip_pad&quot;</span><span class=p>:</span> <span class=n>strip_pad</span><span class=p>,</span>
+        <span class=s2>&quot;header_outer_h&quot;</span><span class=p>:</span> <span class=n>header_outer_h</span><span class=p>,</span>
+        <span class=s2>&quot;inner_w&quot;</span><span class=p>:</span> <span class=n>inner_w</span><span class=p>,</span>
+        <span class=s2>&quot;thumb_h&quot;</span><span class=p>:</span> <span class=n>thumb_h</span><span class=p>,</span>
+        <span class=s2>&quot;tile_h&quot;</span><span class=p>:</span> <span class=n>tile_h</span><span class=p>,</span>
+    <span class=p>}</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.loader.ui.products_grid_card_widget.tile_size_for_cell_width class="doc doc-heading"> <code class="highlight language-python"><span class=n>tile_size_for_cell_width</span><span class=p>(</span><span class=n>cell_w</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>List item / card size: width × (title chrome + thumb at THUMB_REF aspect).</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/loader/ui/products_grid_card_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>82</span>
+<span class=normal>83</span>
+<span class=normal>84</span>
+<span class=normal>85</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>tile_size_for_cell_width</span><span class=p>(</span><span class=n>cell_w</span><span class=p>:</span> <span class=nb>int</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;List item / card size: width × (title chrome + thumb at THUMB_REF aspect).&quot;&quot;&quot;</span>
+    <span class=n>d</span> <span class=o>=</span> <span class=n>layout_dims_for_cell_width</span><span class=p>(</span><span class=n>cell_w</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>(</span><span class=n>d</span><span class=p>[</span><span class=s2>&quot;tw&quot;</span><span class=p>],</span> <span class=n>d</span><span class=p>[</span><span class=s2>&quot;tile_h&quot;</span><span class=p>])</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"annotate": null, "base": "../../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../../assets/javascripts/bundle.79ae519e.min.js></script> </body> </html>
