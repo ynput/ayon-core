@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import copy
@@ -730,6 +732,13 @@ class ProjectPushItemProcess:
             project_entity,
             src_folder_type
         )
+        if not dst_folder_type:
+            self._status.set_failed(
+                f"'{src_folder_type}' folder type is not configured in "
+                f"project Anatomy."
+            )
+            raise PushToProjectError(self._status.fail_reason)
+
         new_thumbnail_id = self._create_new_folder_thumbnail(
             project_entity, src_folder_entity)
         folder_entity = new_folder_entity(
@@ -795,40 +804,27 @@ class ProjectPushItemProcess:
         self,
         project_entity: dict[str, Any],
         src_folder_type: str
-    ) -> str:
+    ) -> str | None:
         """Get new folder type."""
         for folder_type in project_entity["folderTypes"]:
             if folder_type["name"].lower() == src_folder_type.lower():
                 return folder_type["name"]
+        return None
 
-        self._status.set_failed(
-            f"'{src_folder_type}' folder type is not configured in "
-            f"project Anatomy."
-        )
-        raise PushToProjectError(self._status.fail_reason)
-
-    def _get_dst_task_type(self, task_type_name: str) -> dict[str, Any]:
+    def _get_dst_task_type(self, task_type_name: str) -> dict[str, Any] | None:
         """Get a task type definition.
 
         Args:
             task_type_name (str): Task type name. (case insensitive)
 
         Returns:
-            dict[str, Any]: Task type definition.
-
-        Raises:
-            PushToProjectError: If task type is not found.
+            dict[str, Any] | None: Task type definition or None if not found.
 
         """
         for task_type in self._project_entity["taskTypes"]:
             if task_type["name"].lower() == task_type_name.lower():
                 return task_type
-
-        self._status.set_failed(
-            f"'{task_type_name}' task type is not configured in "
-            f"project Anatomy."
-        )
-        raise PushToProjectError(self._status.fail_reason)
+        return None
 
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
@@ -1127,13 +1123,20 @@ class ProjectPushItemProcess:
     ) -> dict[str, Any]:
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
-        task_type = self._get_dst_task_type(task_info["taskType"])
+        src_task_type = task_info["taskType"]
+        task_type = self._get_dst_task_type(src_task_type)
+        if not task_type:
+            self._status.set_failed(
+                f"'{src_task_type}' task type is not configured in "
+                "project Anatomy."
+            )
+            raise PushToProjectError(self._status.fail_reason)
 
         task_info = self._operations.create_task(
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
-            task_type=task_type["name"],
+            task_type=src_task_type,
             attrib=task_info["attrib"],
         )
         self._task_info = task_info.data
