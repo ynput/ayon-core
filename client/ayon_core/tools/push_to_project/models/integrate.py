@@ -882,11 +882,11 @@ class ProjectPushItemProcess:
         # Fill rest of task information based on task type
         task_type_name = task_info["taskType"]
         task_types_by_name = {
-            task_type["name"].lower(): task_type
+            task_type["name"]: task_type
             for task_type in self._project_entity["taskTypes"]
         }
         task_type_info = copy.deepcopy(
-            task_types_by_name.get(task_type_name.lower(), {})
+            task_types_by_name.get(task_type_name, {})
         )
         task_type_info.pop("name")  # do not overwrite real task name
         task_info.update(task_type_info)
