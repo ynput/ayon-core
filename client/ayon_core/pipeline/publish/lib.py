@@ -1419,7 +1419,7 @@ def _get_last_version_files(
     return (version_entity, repre_file_paths)
 
 
-def get_template_name(instance: pyblish.api.Instance) -> str:
+def get_instance_template_name(instance: pyblish.api.Instance) -> str:
     """Return anatomy template name to use for integration.
 
     Args:
@@ -1453,7 +1453,7 @@ def get_template_name(instance: pyblish.api.Instance) -> str:
     )
 
 
-def get_publish_template(instance: pyblish.api.Instance) -> str:
+def get_instance_publish_template(instance: pyblish.api.Instance) -> str:
     """Return anatomy template name to use for integration.
 
     Args:
@@ -1464,11 +1464,8 @@ def get_publish_template(instance: pyblish.api.Instance) -> str:
 
     """
     # Anatomy data is pre-filled by Collectors
-    template_name = get_template_name(instance)
-    anatomy = instance.context.data["anatomy"]
-    publish_template = anatomy.get_template_item("publish", template_name)
-    path_template_obj = publish_template["path"]
-    return path_template_obj.template.replace("\\", "/")
+    publish_template = get_publish_template_object(instance)
+    return publish_template["path"].template.replace("\\", "/")
 
 
 def get_publish_template_object(
@@ -1485,7 +1482,7 @@ def get_publish_template_object(
 
     """
     # Anatomy data is pre-filled by Collectors
-    template_name = get_template_name(instance)
+    template_name = get_instance_template_name(instance)
     anatomy = instance.context.data["anatomy"]
     return anatomy.get_template_item("publish", template_name)
 
@@ -1603,38 +1600,33 @@ def get_rootless_path(anatomy: "Anatomy", path: str) -> str:
     return path
 
 
-class TemplateItem:
+class IntegrationTemplateItem:
     """Represents single template item.
 
     Template path, template data that was used in the template.
 
     Attributes:
         anatomy (Anatomy): Anatomy object.
-        template (str): Template path.
         template_data (dict[str, Any]): Template data.
         template_object (AnatomyTemplateItem): Template object
     """
     anatomy: Anatomy
-    template: str
     template_data: dict[str, Any]
     template_object: "AnatomyTemplateItem"
 
     def __init__(self,
         anatomy: "Anatomy",
-        template: str,
         template_data: dict[str, Any],
         template_object: "AnatomyTemplateItem"):
         """Initialize TemplateItem.
 
         Args:
             anatomy (Anatomy): Anatomy object.
-            template (str): Template path.
             template_data (dict[str, Any]): Template data.
             template_object (AnatomyTemplateItem): Template object.
 
         """
         self.anatomy = anatomy
-        self.template = template
         self.template_data = template_data
         self.template_object = template_object
 

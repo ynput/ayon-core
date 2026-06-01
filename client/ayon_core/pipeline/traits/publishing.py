@@ -12,8 +12,8 @@ from ayon_core.lib import source_hash
 
 from ayon_core.pipeline.publish import (
     PublishError,
-    get_template_name,
-    TemplateItem,
+    IntegrationTemplateItem,
+    get_instance_template_name,
     get_rootless_path,
 )
 from ayon_core.pipeline.traits import (
@@ -91,7 +91,7 @@ class TransferItem:
         self.related_trait = related_trait
 
     @staticmethod
-    def get_size(file_path: Path) -> int:
+    def get_file_size(file_path: Path) -> int:
         """Get the size of the file.
 
         Args:
@@ -104,7 +104,7 @@ class TransferItem:
         return file_path.stat().st_size
 
     @staticmethod
-    def get_checksum(file_path: Path) -> str:
+    def get_file_checksum(file_path: Path) -> str:
         """Get checksum of the file.
 
         Args:
@@ -142,7 +142,7 @@ def get_publish_template_object(
     """
     # Anatomy data is pre-filled by Collectors
     if not template_name:
-        template_name = get_template_name(instance)
+        template_name = get_instance_template_name(instance)
     anatomy: Anatomy = instance.context.data["anatomy"]
     return anatomy.get_template_item(
         category_name=category_name,
@@ -152,14 +152,14 @@ def get_publish_template_object(
 
 def get_transfers_from_sequence(
         representation: Representation,
-        template_item: TemplateItem,
+        template_item: IntegrationTemplateItem,
         transfers: list[TransferItem]
 ) -> None:
     """Get transfers from Sequence trait.
 
     Args:
         representation (Representation): Representation to process.
-        template_item (TemplateItem): Template item.
+        template_item (IntegrationTemplateItem): Template item.
         transfers (list): List of transfers.
 
     Mutates:
@@ -168,7 +168,9 @@ def get_transfers_from_sequence(
 
     """
     sequence: Sequence = representation.get_trait(Sequence)
-    path_template_object = template_item.template_object["path"]
+    path_template_object: AnatomyStringTemplate = (
+        template_item.template_object["path"]
+    )
     frames: list[int] = sequence.get_frame_list(
         representation.get_trait(FileLocations),
         regex=sequence.frame_regex)
@@ -185,7 +187,7 @@ def get_transfers_from_sequence(
         template_item.template_data["ext"] = (
             file_loc.file_path.suffix.lstrip("."))
         template_filled = path_template_object.format_strict(
-            template_item.template_data
+                template_item.template_data
         )
 
         # add used values to the template data
@@ -196,11 +198,11 @@ def get_transfers_from_sequence(
             TransferItem(
                 source=file_loc.file_path,
                 destination=Path(template_filled),
-                size=file_loc.file_size or TransferItem.get_size(
+                size=file_loc.file_size or TransferItem.get_file_size(
                     file_loc.file_path),
-                checksum=file_loc.file_hash or TransferItem.get_checksum(
+                checksum=file_loc.file_hash or TransferItem.get_file_checksum(
                     file_loc.file_path),
-                template=template_item.template,
+                template=template_item.template_object["path"],
                 template_data=template_item.template_data,
                 representation=representation,
                 related_trait=file_loc
@@ -210,21 +212,21 @@ def get_transfers_from_sequence(
     # add template path and the data to resolve it
     if not representation.contains_trait(TemplatePath):
         representation.add_trait(TemplatePath(
-            template=template_item.template,
+            template=template_item.template_object["path"],
             data=template_item.template_data
         ))
 
 
 def get_transfers_from_udim(
         representation: Representation,
-        template_item: TemplateItem,
+        template_item: IntegrationTemplateItem,
         transfers: list[TransferItem]
 ) -> None:
     """Get transfers from UDIM trait.
 
     Args:
         representation (Representation): Representation to process.
-        template_item (TemplateItem): Template item.
+        template_item (IntegrationTemplateItem): Template item.
         transfers (list): List of transfers.
 
     Mutates:
@@ -254,11 +256,11 @@ def get_transfers_from_udim(
             TransferItem(
                 source=file_loc.file_path,
                 destination=Path(template_filled),
-                size=file_loc.file_size or TransferItem.get_size(
+                size=file_loc.file_size or TransferItem.get_file_size(
                     file_loc.file_path),
-                checksum=file_loc.file_hash or TransferItem.get_checksum(
+                checksum=file_loc.file_hash or TransferItem.get_file_checksum(
                     file_loc.file_path),
-                template=template_item.template,
+                template=template_item.template_object["path"],
                 template_data=template_item.template_data,
                 representation=representation,
                 related_trait=file_loc
@@ -266,20 +268,20 @@ def get_transfers_from_udim(
         )
     # add template path and the data to resolve it
     representation.add_trait(TemplatePath(
-        template=template_item.template,
+        template=template_item.template_object["path"],
         data=template_item.template_data
     ))
 
 
 def get_transfers_from_file_locations(
         representation: Representation,
-        template_item: TemplateItem,
+        template_item: IntegrationTemplateItem,
         transfers: list[TransferItem]) -> None:
     """Get transfers from FileLocations trait.
 
     Args:
         representation (Representation): Representation to process.
-        template_item (TemplateItem): Template item.
+        template_item (IntegrationTemplateItem): Template item.
         transfers (list): List of transfers.
 
     Mutates:
@@ -307,14 +309,14 @@ def get_transfers_from_file_locations(
 
 def get_transfers_from_file_location(
         representation: Representation,
-        template_item: TemplateItem,
+        template_item: IntegrationTemplateItem,
         transfers: list[TransferItem]
 ) -> None:
     """Get transfers from FileLocation trait.
 
     Args:
         representation (Representation): Representation to process.
-        template_item (TemplateItem): Template item.
+        template_item (IntegrationTemplateItem): Template item.
         transfers (list): List of transfers.
 
     Mutates:
@@ -354,11 +356,11 @@ def get_transfers_from_file_location(
         TransferItem(
             source=file_path,
             destination=Path(template_filled),
-            size=file_loc.file_size or TransferItem.get_size(
+            size=file_loc.file_size or TransferItem.get_file_size(
                 file_path),
-            checksum=file_loc.file_hash or TransferItem.get_checksum(
+            checksum=file_loc.file_hash or TransferItem.get_file_checksum(
                 file_path),
-            template=template_item.template,
+            template=template_item.template_object["path"],
             template_data=template_item.template_data,
             representation=representation,
             related_trait=file_loc
@@ -370,14 +372,14 @@ def get_transfers_from_file_location(
         representation.remove_trait(TemplatePath)
 
     representation.add_trait(TemplatePath(
-        template=template_item.template,
+        template=template_item.template_object["path"],
         data=template_item.template_data
     ))
 
 
 def get_transfers_from_bundle(
         representation: Representation,
-        template_item: TemplateItem,
+        template_item: IntegrationTemplateItem,
         transfers: list[TransferItem]
 ) -> None:
     """Get transfers from Bundle trait.
@@ -387,7 +389,7 @@ def get_transfers_from_bundle(
 
     Args:
         representation (Representation): Representation to process.
-        template_item (TemplateItem): Template item.
+        template_item (IntegrationTemplateItem): Template item.
         transfers (list): List of transfers.
 
     Mutates:
@@ -418,14 +420,14 @@ def get_transfers_from_bundle(
 
 def get_transfers_from_file_locations_common_root(
         representation: Representation,
-        template_item: TemplateItem,
+        template_item: IntegrationTemplateItem,
         transfers: list[TransferItem]
 ) -> None:
     """Get transfers from FileLocations trait preserving relative hierarchy.
 
     Args:
         representation (Representation): Representation to process.
-        template_item (TemplateItem): Template item.
+        template_item (IntegrationTemplateItem): Template item.
         transfers (list): List of transfers.
 
     Mutates:
@@ -469,12 +471,12 @@ def get_transfers_from_file_locations_common_root(
             TransferItem(
                 source=source,
                 destination=destination,
-                size=file_loc.file_size or TransferItem.get_size(source),
+                size=file_loc.file_size or TransferItem.get_file_size(source),
                 checksum=(
                     file_loc.file_hash
-                    or TransferItem.get_checksum(source)
+                    or TransferItem.get_file_checksum(source)
                 ),
-                template=template_item.template,
+                template=template_item.template_object["path"],
                 template_data=template_item.template_data,
                 representation=representation,
                 related_trait=file_loc
@@ -484,7 +486,7 @@ def get_transfers_from_file_locations_common_root(
     if not representation.contains_trait(TemplatePath):
         representation.add_trait(
             TemplatePath(
-                template=template_item.template,
+                template=template_item.template_object["path"],
                 data=template_item.template_data,
             )
         )
@@ -541,9 +543,8 @@ def get_transfers_from_representations(
                 representation.get_trait(Variant).variant
             )
 
-        template_item = TemplateItem(
+        template_item = IntegrationTemplateItem(
             anatomy=instance.context.data["anatomy"],
-            template=template["path"],
             template_data=copy.deepcopy(template_data),
             template_object=template
         )

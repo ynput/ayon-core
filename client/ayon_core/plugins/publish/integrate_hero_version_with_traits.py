@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.anatomy.templates import (
         TemplateItem as AnatomyTemplateItem,
+        AnatomyStringTemplate
     )
     import logging
 
@@ -495,7 +496,7 @@ class IntegrateHeroVersionTraits(
                 "originalBasename": instance.data.get("originalBasename")
             })
 
-        template_obj = anatomy.get_template_item(
+        template_obj: AnatomyStringTemplate = anatomy.get_template_item(
             "hero", template_key, "directory"
         )
         publish_folder = os.path.normpath(

@@ -16,8 +16,8 @@ from ayon_core.lib.file_transaction import (
 
 from ayon_core.pipeline.anatomy import Anatomy
 from ayon_core.pipeline.publish import (
-    TemplateItem,
-    get_template_name,
+    IntegrationTemplateItem,
+    get_instance_template_name,
 )
 from ayon_core.pipeline.traits import (
     Bundle,
@@ -257,7 +257,7 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
         to set up the studio overrides in the test environment.
 
     """
-    template_name = get_template_name(
+    template_name = get_instance_template_name(
         mock_context[0])
 
     assert template_name == "default"
@@ -463,7 +463,7 @@ def test_get_transfers_from_representation(
     assert len(transfers) == 22
 
     for transfer in transfers:
-        assert transfer.checksum == TransferItem.get_checksum(
+        assert transfer.checksum == TransferItem.get_file_checksum(
             transfer.source)
 
     file_transactions = FileTransaction(
@@ -523,9 +523,8 @@ def test_get_transfers_from_representation_preserves_hierarchy(
         def format_strict(self, _data: dict) -> _DummyTemplateResult:
             return _DummyTemplateResult(self.value)
 
-    template_item = TemplateItem(
+    template_item = IntegrationTemplateItem(
         anatomy=cast(Anatomy, object()),
-        template="{root}/publish/placeholder.png",
         template_data={},
         template_object=cast(Any, {
             "path": _DummyPathTemplate(
@@ -554,4 +553,4 @@ def test_get_transfers_from_representation_preserves_hierarchy(
     assert relative_destinations == expected_relative_destinations
 
     template_path = representation.get_trait(TemplatePath)
-    assert template_path.template == template_item.template
+    assert template_path.template == template_item.template_object["path"]

@@ -186,3 +186,21 @@ def test_get_file_location_from_frame() -> None:
     assert file_locations_trait.get_file_location_for_frame(
         frame=1001, sequence_trait=sequence) == \
             file_locations_list[0]
+
+
+def test_get_sequence_from_files() -> None:
+    """Test get_sequence_from_files method."""
+    file_paths = [
+        Path(f"foo.{frame}.exr") for frame in range(1001, 1051)
+    ]
+    single_frame_sequence = [Path("foo.1001.exr")]
+
+    seq = FileLocations.get_sequence_from_files(paths=file_paths)
+    assert seq.frame_start == 1001
+    assert seq.frame_end == 1050
+
+    single = FileLocations.get_sequence_from_files(
+        paths=single_frame_sequence)
+
+    assert single.frame_start == 1001
+    assert single.frame_end == 1001

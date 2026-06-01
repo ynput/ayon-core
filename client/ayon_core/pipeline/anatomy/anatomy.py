@@ -20,7 +20,7 @@ from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
 from .roots import AnatomyRoots
-from .templates import AnatomyTemplates, PLACEHOLDER
+from .templates import AnatomyTemplates, NOT_SET
 
 
 if TYPE_CHECKING:
@@ -116,9 +116,9 @@ class BaseAnatomy(object):
             self,
             category_name: str,
             template_name: str,
-            subkey: Optional[str] = None,
-            default: Any = PLACEHOLDER,
-    ) -> Union[TemplateItem, str, None]:
+            subkey: str | None = None,
+            default: Any = NOT_SET,
+    ) -> TemplateItem | Any:
         """Get template item from category.
 
         Args:

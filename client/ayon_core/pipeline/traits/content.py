@@ -37,6 +37,8 @@ class MimeType(TraitBase):
         description (str): Trait description.
         id (str): id should be a namespaced trait name with version
         mime_type (str): Mime type like image/jpeg.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "MimeType"
@@ -63,6 +65,8 @@ class LocatableContent(TraitBase):
         location (str): Location.
         is_templated (Optional[bool]): Is the location templated?
             Default is None.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "LocatableContent"
@@ -88,6 +92,8 @@ class FileLocation(TraitBase):
         file_path (str): File path.
         file_size (Optional[int]): File size in bytes.
         file_hash (Optional[str]): File hash.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "FileLocation"
@@ -97,6 +103,28 @@ class FileLocation(TraitBase):
     file_path: Path
     file_size: Optional[int] = None
     file_hash: Optional[str] = None
+
+    def validate_trait(self, representation: Representation) -> None:
+        """Validate the trait.
+
+        This method validates the trait against others in the representation.
+        In particular, it checks that the FileLocations trait is not present.
+
+        Args:
+            representation (Representation): Representation to validate.
+
+        Raises:
+            TraitValidationError: If the trait is invalid within the
+                representation.
+
+        """
+        super().validate_trait(representation)
+        if representation.contains_trait(FileLocations):
+            msg = (
+                "Representation contains a file location. It can not contain "
+                "both `FileLocation` and `FileLocations`."
+            )
+            raise TraitValidationError(self.name, msg)
 
 
 @dataclass
@@ -111,7 +139,8 @@ class FileLocations(TraitBase):
         description (str): Trait description.
         id (str): id should be a namespaced trait name with version
         file_paths (list of FileLocation): File locations.
-
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "FileLocations"
@@ -238,6 +267,12 @@ class FileLocations(TraitBase):
                     "preserved."
                 )
                 raise TraitValidationError(self.name, msg) from exc
+        if representation.contains_trait(FileLocation):
+            msg = (
+                "Representation contains a file location. It can not contain "
+                "both `FileLocation` and `FileLocations`."
+            )
+            raise TraitValidationError(self.name, msg)
 
     def _validate_frame_range(self, representation: Representation) -> None:
         """Validate the frame range against the file paths.
@@ -409,10 +444,16 @@ class FileLocations(TraitBase):
             ValueError: If paths cannot be assembled into one collection
 
         """
-        cols, rems = assemble([path.as_posix() for path in paths])
+        cols, rems = assemble(
+            [path.as_posix() for path in paths],
+            minimum_items=1)
         if rems:
-            msg = "Cannot assemble paths into one collection"
+            msg = (
+                "Assembled paths have singular file(s) and "
+                "sequences at the same time. This is not supported. "
+            )
             raise ValueError(msg)
+
         if len(cols) != 1:
             msg = "More than one collection found"
             raise ValueError(msg)
@@ -421,7 +462,6 @@ class FileLocations(TraitBase):
         sorted_frames = sorted(col.indexes)
         # First frame used for end value
         first_frame = sorted_frames[0]
-        # Get last frame for padding
         last_frame = sorted_frames[-1]
         # Use padding from a collection of the last frame lengths as string
         # padding = max(col.padding, len(str(last_frame)))
@@ -451,6 +491,8 @@ class RootlessLocation(TraitBase):
         description (str): Trait description.
         id (str): id should be a namespaced trait name with version
         rootless_path (str): Rootless path.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "RootlessLocation"
@@ -476,6 +518,8 @@ class Compressed(TraitBase):
         description (str): Trait description.
         id (str): id should be a namespaced trait name with version
         compression_type (str): Compression type.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "Compressed"
@@ -516,6 +560,8 @@ class Bundle(TraitBase):
         description (str): Trait description.
         id (str): id should be a namespaced trait name with version
         items (list[list[TraitBase]]): List of representations.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "Bundle"
@@ -559,6 +605,8 @@ class Fragment(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         parent (str): Parent representation id.
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "Fragment"
@@ -579,6 +627,8 @@ class OriginalFilename(TraitBase):
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
+        persistent (bool): Should the mime type be stored with the
+            representation on the server or not.
     """
 
     name: ClassVar[str] = "OriginalFilename"
