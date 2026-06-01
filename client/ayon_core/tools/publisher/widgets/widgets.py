@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 import os
 import functools
+
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
+from ayon_core.lib import MaterialSymbolsIcon
 from ayon_core.style import get_objected_colors
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
@@ -23,7 +24,9 @@ FA_PREFIXES = ["", "fa.", "fa5.", "fa5b.", "fa5s.", "ei.", "mdi."]
 
 
 def parse_icon_def(
-    icon_def, default_width=None, default_height=None, color=None
+    icon_def,
+    default_width=None,
+    default_height=None,
 ):
     if not icon_def:
         return None
@@ -31,28 +34,32 @@ def parse_icon_def(
     if isinstance(icon_def, QtGui.QPixmap):
         return icon_def
 
-    color = color or "white"
     default_width = default_width or 512
     default_height = default_height or 512
 
     if isinstance(icon_def, QtGui.QIcon):
         return icon_def.pixmap(default_width, default_height)
 
-    try:
+    if isinstance(icon_def, str):
         if os.path.exists(icon_def):
-            return QtGui.QPixmap(icon_def)
-    except Exception:
-        # TODO logging
-        pass
+            try:
+                return QtGui.QPixmap(icon_def)
+            except Exception:
+                # TODO logging
+                return None
 
-    for prefix in FA_PREFIXES:
-        try:
-            icon_name = "{}{}".format(prefix, icon_def)
-            icon = qtawesome.icon(icon_name, color=color)
-            return icon.pixmap(default_width, default_height)
-        except Exception:
-            # TODO logging
-            continue
+        for prefix in FA_PREFIXES:
+            try:
+                icon_name = f"{prefix}{icon_def}"
+                icon = qtawesome.icon(icon_name, color="white")
+                return icon.pixmap(default_width, default_height)
+            except Exception:
+                # TODO logging
+                continue
+        return None
+
+    icon_def = get_qt_icon(icon_def)
+    return icon_def.pixmap(default_width, default_height)
 
 
 class PublishPixmapLabel(PixmapLabel):
@@ -308,10 +315,7 @@ class ChangeViewBtn(IconButton):
 
         # "format_align_right"
         # "segment"
-        icon = get_qt_icon({
-            "type": "material-symbols",
-            "name": icon_name,
-        })
+        icon = get_qt_icon(MaterialSymbolsIcon(icon_name))
         self.setIcon(icon)
         self.setToolTip(tooltip)
 
