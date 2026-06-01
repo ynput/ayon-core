@@ -445,7 +445,7 @@ class FileLocations(TraitBase):
 
         """
         cols, rems = assemble(
-            [path.as_posix() for path in paths],
+            [path.name for path in paths],
             minimum_items=1)
         if rems:
             msg = (
@@ -455,7 +455,7 @@ class FileLocations(TraitBase):
             raise ValueError(msg)
 
         if len(cols) != 1:
-            msg = "More than one collection found"
+            msg = f"More than one collection found ({len(cols)})."
             raise ValueError(msg)
         col = cols[0]
 
