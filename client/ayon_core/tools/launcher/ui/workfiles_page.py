@@ -271,6 +271,7 @@ class WorkfilesPage(AYContainer):
         )
 
         workfiles_view = AYTreeView(self, variant=view_variant)
+        workfiles_view.setHeaderHidden(False)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
