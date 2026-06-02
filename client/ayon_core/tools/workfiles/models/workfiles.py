@@ -442,16 +442,9 @@ class WorkfilesModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        rootless_workdir = workdir
+        rootless_workdir = workdir.rootless
         if platform.system().lower() == "windows":
             rootless_workdir = rootless_workdir.replace("\\", "/")
-
-        used_roots = workdir.used_values.get("root")
-        if used_roots:
-            used_root_name = next(iter(used_roots))
-            root_value = used_roots[used_root_name]
-            workdir_end = rootless_workdir[len(root_value):].lstrip("/")
-            rootless_workdir = f"{{root[{used_root_name}]}}/{workdir_end}"
 
         file_template = anatomy.get_template_item(
             "work", template_key, "file"
