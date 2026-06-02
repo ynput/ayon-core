@@ -201,6 +201,72 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
         return value
 
 
+class CollectVersionToListProfileModel(BaseSettingsModel):
+    """."""
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+        description="The host names to match this profile to.",
+        section="Filter",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+        description="The task names to match this profile to.",
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description=(
+            "The product base types to match this profile to. When matched,"
+            " the settings below would apply to the instance as default"
+            " attributes."
+        )
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names",
+        description="The product names to match this profile to.",
+    )
+    name_template: str = SettingsField(
+        "",
+        title="Name template",
+        description="Anatomy formattable template for the name.",
+        section="List configuration",
+    )
+    parent_folders: list[str] = SettingsField(
+        default_factory=list,
+        title="Parent folders",
+        description="Folder hierarchy formed from top to bottom.",
+    )
+    is_review_list: bool = SettingsField(
+        False,
+        title="Is review list",
+        description="",
+    )
+
+
+class CollectVersionToListModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    profiles: list[CollectVersionToListProfileModel] = SettingsField(
+        default_factory=list,
+        title="Profiles",
+        description=(
+            ""
+        )
+    )
+
 class ResolutionOptionsModel(BaseSettingsModel):
     _layout = "compact"
     width: int = SettingsField(
@@ -1226,6 +1292,10 @@ class PublishPuginsModel(BaseSettingsModel):
             title="Collect USD Layer Contributions",
         )
     )
+    CollectVersionToList: CollectVersionToListModel = SettingsField(
+        default_factory=CollectVersionToListModel,
+        title="Collect Version to List",
+    )
     CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
         default_factory=CollectExplicitResolutionModel,
         title="Collect Explicit Resolution"
@@ -1427,6 +1497,18 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": False,
                 "contribution_target_product": "usdShot"
             },
+        ]
+    },
+    "CollectVersionToList": {
+        "enabled": True,
+        "profiles": [
+            {
+                "host_names": [],
+                "task_types": [],
+                "task_names": [],
+                "product_base_types": [],
+                "product_names": [],
+            }
         ]
     },
     "CollectExplicitResolution": {
