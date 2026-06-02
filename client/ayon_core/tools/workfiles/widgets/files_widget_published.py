@@ -6,14 +6,15 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_ui_qt.components import (
     AYContainer,
     AYLabel,
-    AYHBoxLayout
+    AYHBoxLayout,
+    AYTreeView
 )
 
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.tools.utils import TreeView
+
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 from .utils import BaseOverlayFrame
@@ -318,7 +319,8 @@ class PublishedFilesWidget(AYContainer):
             layout_spacing=0,
         )
 
-        view = TreeView(self)
+        view = AYTreeView(self, variant=AYTreeView.Variants.Default)
+        view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Smaller indentation
