@@ -6,6 +6,8 @@ import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_ui_qt.components import AYContainer
+
 from ayon_core.lib import Logger
 from ayon_core.lib.icon_definitions import (
     MaterialSymbolsIcon,
@@ -911,9 +913,15 @@ class ActionsView(QtWidgets.QListView):
         self._overlay_widgets = overlay_widgets
 
 
-class ActionsWidget(QtWidgets.QWidget):
+class ActionsWidget(AYContainer):
     def __init__(self, controller, parent):
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         self._controller = controller
 
@@ -927,9 +935,7 @@ class ActionsWidget(QtWidgets.QWidget):
         proxy_model.setSourceModel(model)
         view.setModel(proxy_model)
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(view)
+        self.add_widget(view)
 
         animation_timer = QtCore.QTimer()
         animation_timer.setInterval(40)

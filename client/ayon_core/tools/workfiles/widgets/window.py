@@ -1,12 +1,21 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_ui_qt.components import (
+    AYButton,
+    AYCheckBox,
+    AYLabel,
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYLineEdit
+)
+
+
+
 from ayon_core import resources, style
 from ayon_core.tools.utils import (
     FoldersWidget,
-    GoToCurrentButton,
     MessageOverlayObject,
-    PlaceholderLineEdit,
-    RefreshButton,
     TasksWidget,
     FoldersFiltersWidget,
 )
@@ -21,18 +30,18 @@ class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        label_widget = QtWidgets.QLabel(
+        label_widget = AYLabel(
             (
                 "Workfiles tool is not supported in this host/DCCs."
                 "<br/><br/>This may be caused by a bug."
                 " Please contact your TD for more information."
             ),
-            self
+            parent=self,
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
         label_widget.setObjectName("OverlayFrameLabel")
 
-        layout = QtWidgets.QVBoxLayout(self)
+        layout = AYVBoxLayout(self)
         layout.addStretch(2)
         layout.addWidget(label_widget, 0, QtCore.Qt.AlignCenter)
         layout.addStretch(3)
@@ -40,7 +49,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
 
-class WorkfilesToolWindow(QtWidgets.QWidget):
+class WorkfilesToolWindow(AYContainer):
     """WorkFiles Window.
 
     Main windows of workfiles tool.
@@ -58,7 +67,13 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if subtitle:
             title += f" - {subtitle}"
 
-        super().__init__(parent=parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.High,
+            layout_margin=16,
+            layout_spacing=16,
+        )
         self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
@@ -95,11 +110,11 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         pages_widget.addWidget(home_page_widget)
 
         # Build home
-        home_page_layout = QtWidgets.QVBoxLayout(home_page_widget)
+        home_page_layout = AYVBoxLayout(home_page_widget, margin=0, spacing=4)
         home_page_layout.addWidget(home_body_widget)
 
         # Build home - body
-        body_layout = QtWidgets.QVBoxLayout(home_body_widget)
+        body_layout = AYVBoxLayout(home_body_widget, margin=0, spacing=4)
         split_widget = QtWidgets.QSplitter(home_body_widget)
         split_widget.addWidget(col_1_widget)
         split_widget.addWidget(tasks_widget)
@@ -109,9 +124,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         body_layout.addWidget(split_widget)
 
-        main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.addWidget(pages_widget, 1)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.add_widget(pages_widget, stretch=1)
 
         overlay_messages_widget = MessageOverlayObject(self)
         overlay_invalid_host = InvalidHostOverlay(self)
@@ -178,11 +191,20 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         filters_widget = FoldersFiltersWidget(header_widget)
 
-        go_to_current_btn = GoToCurrentButton(header_widget)
-        refresh_btn = RefreshButton(header_widget)
+        go_to_current_btn = AYButton(
+            icon="arrow_downward",
+            variant=AYButton.Variants.Surface,
+            tooltip="Go to current",
+            parent=header_widget,
+        )
+        refresh_btn = AYButton(
+            icon="refresh",
+            variant=AYButton.Variants.Surface,
+            tooltip="Refresh",
+            parent=header_widget,
+        )
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(filters_widget, 1)
         header_layout.addWidget(go_to_current_btn, 0)
         header_layout.addWidget(refresh_btn, 0)
@@ -191,8 +213,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             controller, col_widget, handle_expected_selection=True
         )
 
-        col_layout = QtWidgets.QVBoxLayout(col_widget)
-        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(folder_widget, 1)
 
@@ -214,21 +235,22 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         header_widget = QtWidgets.QWidget(col_widget)
 
-        files_filter_input = PlaceholderLineEdit(header_widget)
-        files_filter_input.setPlaceholderText("Filter files..")
+        files_filter_input = AYLineEdit(
+            placeholder="Filter files..",
+            variant=AYLineEdit.Variants.Search_Field,
+            parent=header_widget,
+        )
 
-        published_checkbox = QtWidgets.QCheckBox("Published", header_widget)
+        published_checkbox = AYCheckBox("Published", parent=header_widget)
         published_checkbox.setToolTip("Show published workfiles")
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(files_filter_input, 1)
         header_layout.addWidget(published_checkbox, 0)
 
         files_widget = FilesWidget(controller, col_widget)
 
-        col_layout = QtWidgets.QVBoxLayout(col_widget)
-        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(files_widget, 1)
 

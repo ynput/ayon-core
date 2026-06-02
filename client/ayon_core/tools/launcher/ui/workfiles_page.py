@@ -12,9 +12,15 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
+
+from ayon_ui_qt.components import (
+    AYContainer,
+    AYTreeView
+)
+
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
@@ -242,26 +248,29 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
         return super().lessThan(source_left, source_right)
 
 
-class WorkfilesView(DeselectableTreeView):
-    def drawBranches(self, painter, rect, index):
-        return
-
-
 class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         option.textElideMode = QtCore.Qt.ElideMiddle
         super().paint(painter, option, index)
 
 
-class WorkfilesPage(QtWidgets.QWidget):
+class WorkfilesPage(AYContainer):
     def __init__(
         self,
         controller: AbstractLauncherFrontEnd,
         parent: QtWidgets.QWidget,
-    ) -> None:
-        super().__init__(parent)
+        view_variant=AYTreeView.Variants.Default,
 
-        workfiles_view = WorkfilesView(self)
+    ) -> None:
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
+
+        workfiles_view = AYTreeView(self, variant=view_variant)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -280,9 +289,7 @@ class WorkfilesPage(QtWidgets.QWidget):
         workfiles_view.setItemDelegateForColumn(0, workfiles_delegate)
         workfiles_view.setItemDelegateForColumn(1, updated_at_delegate)
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(workfiles_view, 1)
+        self.add_widget(workfiles_view, stretch=1)
 
         resize_timer = QtCore.QTimer()
 

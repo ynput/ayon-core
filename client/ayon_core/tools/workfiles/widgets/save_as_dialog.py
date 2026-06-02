@@ -1,6 +1,16 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.utils import PlaceholderLineEdit, PlaceholderPlainTextEdit
+from ayon_ui_qt.components import (
+    AYButton,
+    AYCheckBox,
+    AYComboBox,
+    AYLabel,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYGridLayout,
+    AYLineEdit,
+)
+from ayon_core.tools.utils import PlaceholderPlainTextEdit
 
 
 class SubversionLineEdit(QtWidgets.QWidget):
@@ -11,16 +21,18 @@ class SubversionLineEdit(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super(SubversionLineEdit, self).__init__(*args, **kwargs)
 
-        input_field = PlaceholderLineEdit(self)
-        menu_btn = QtWidgets.QPushButton(self)
+        input_field = AYLineEdit(parent=self)
+        menu_btn = AYButton(
+            variant=AYButton.Variants.Surface,
+            icon="arrow_drop_down",
+            parent=self,
+        )
         menu_btn.setFixedWidth(18)
 
         menu = QtWidgets.QMenu(self)
         menu_btn.setMenu(menu)
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(3)
+        layout = AYHBoxLayout(self, margin=0, spacing=3)
 
         layout.addWidget(input_field, 1)
         layout.addWidget(menu_btn, 0)
@@ -96,6 +108,7 @@ class SaveAsDialog(QtWidgets.QDialog):
     def __init__(self, controller, parent):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        self.setMinimumWidth(330)
 
         self._controller = controller
 
@@ -115,10 +128,16 @@ class SaveAsDialog(QtWidgets.QDialog):
         # Btns widget
         btns_widget = QtWidgets.QWidget(self)
 
-        btn_ok = QtWidgets.QPushButton("Ok", btns_widget)
-        btn_cancel = QtWidgets.QPushButton("Cancel", btns_widget)
+        btn_ok = AYButton(
+            "Ok", variant=AYButton.Variants.Filled,
+            parent=btns_widget,
+        )
+        btn_cancel = AYButton(
+            "Cancel", variant=AYButton.Variants.Surface,
+            parent=btns_widget,
+        )
 
-        btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=4)
         btns_layout.addWidget(btn_ok)
         btns_layout.addWidget(btn_cancel)
 
@@ -134,13 +153,16 @@ class SaveAsDialog(QtWidgets.QDialog):
         version_input.setMaximum(9999)
 
         # Last version checkbox
-        last_version_check = QtWidgets.QCheckBox(
-            "Next Available Version", version_widget
+        last_version_check = AYCheckBox(
+            "Next Available Version", parent=version_widget,
         )
         last_version_check.setChecked(True)
+        last_version_check.setSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Fixed,
+        )
 
-        version_layout = QtWidgets.QHBoxLayout(version_widget)
-        version_layout.setContentsMargins(0, 0, 0, 0)
+        version_layout = AYHBoxLayout(version_widget, margin=0, spacing=4)
         version_layout.addWidget(version_input)
         version_layout.addWidget(last_version_check)
 
@@ -150,27 +172,26 @@ class SaveAsDialog(QtWidgets.QDialog):
             "Provide a note about this workfile.")
 
         # Preview widget
-        preview_widget = QtWidgets.QLabel("Preview filename", inputs_widget)
+        preview_widget = AYLabel("Preview filename", parent=inputs_widget)
         preview_widget.setWordWrap(True)
 
         # Subversion input
         subversion_input = SubversionLineEdit(inputs_widget)
         subversion_input.set_placeholder("Will be part of filename.")
 
-        # Extensions combobox
-        extension_combobox = QtWidgets.QComboBox(inputs_widget)
+        extension_combobox = AYComboBox(parent=inputs_widget, show_chevron=True)
         # Add styled delegate to use stylesheets
         extension_delegate = QtWidgets.QStyledItemDelegate()
         extension_combobox.setItemDelegate(extension_delegate)
 
-        version_label = QtWidgets.QLabel("Version:", inputs_widget)
-        subversion_label = QtWidgets.QLabel("Subversion:", inputs_widget)
-        extension_label = QtWidgets.QLabel("Extension:", inputs_widget)
-        preview_label = QtWidgets.QLabel("Preview:", inputs_widget)
-        description_label = QtWidgets.QLabel("Artist Note:", inputs_widget)
+        version_label = AYLabel("Version:", parent=inputs_widget)
+        subversion_label = AYLabel("Subversion:", parent=inputs_widget)
+        extension_label = AYLabel("Extension:", parent=inputs_widget)
+        preview_label = AYLabel("Preview:", parent=inputs_widget)
+        description_label = AYLabel("Artist Note:", parent=inputs_widget)
 
         # Build inputs
-        inputs_layout = QtWidgets.QGridLayout(inputs_widget)
+        inputs_layout = AYGridLayout(inputs_widget, margin=0, spacing=4)
         inputs_layout.addWidget(version_label, 0, 0)
         inputs_layout.addWidget(version_widget, 0, 1)
         inputs_layout.addWidget(subversion_label, 1, 0)
@@ -183,7 +204,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(description_input, 5, 0, 1, 2)
 
         # Build layout
-        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout = AYVBoxLayout(self, margin=8, spacing=4)
         main_layout.addWidget(inputs_widget)
         main_layout.addWidget(btns_widget)
 
@@ -357,11 +378,12 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._btn_ok.setEnabled(not result.exists)
 
         if result.exists:
-            self._preview_widget.setText((
-                "<font color='red'>Cannot create \"{}\" because file exists!"
-                "</font>"
-            ).format(result.filename))
-        else:
+            self._preview_widget._text_color = "red"
             self._preview_widget.setText(
-                "<font color='green'>{}</font>".format(result.filename)
+                'Cannot create "{}" because file exists!'.format(
+                    result.filename
+                )
             )
+        else:
+            self._preview_widget._text_color = "green"
+            self._preview_widget.setText(result.filename)

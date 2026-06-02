@@ -9,12 +9,14 @@ from ayon_core.lib.icon_definitions import (
     AwesomeFontIcon,
     MaterialSymbolsIcon,
 )
+
+from ayon_ui_qt.components import AYTreeView
+
 from ayon_core.style import (
     get_disabled_entity_icon_color,
     get_default_entity_icon_color,
 )
 
-from .views import DeselectableTreeView
 from .lib import RefreshThread, get_qt_icon
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
@@ -408,8 +410,12 @@ class TasksWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent, handle_expected_selection=False):
         super().__init__(parent)
 
-        tasks_view = DeselectableTreeView(self)
+        tasks_view = AYTreeView(self)
         tasks_view.setIndentation(0)
+        tasks_view.setHeaderHidden(False)
+        tasks_view.setSelectionMode(
+            AYTreeView.SelectionMode.SingleSelection
+        )
 
         tasks_model = TasksQtModel(controller)
         tasks_proxy_model = TasksProxyModel()

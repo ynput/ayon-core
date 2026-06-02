@@ -3,6 +3,8 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_ui_qt.components import AYContainer
+
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
@@ -280,7 +282,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._fill_items()
 
 
-class WorkAreaFilesWidget(QtWidgets.QWidget):
+class WorkAreaFilesWidget(AYContainer):
     """Workarea files widget.
 
     Args:
@@ -293,7 +295,13 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
     duplicate_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(WorkAreaFilesWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         view = TreeView(self)
         view.setSortingEnabled(True)
@@ -316,9 +324,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         # about and the date modified is relatively small anyway.
         view.setColumnWidth(0, 330)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(view, 1)
+        self.add_widget(view, stretch=1)
 
         selection_model = view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
