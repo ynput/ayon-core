@@ -11,7 +11,9 @@ class CollectLastPublishedWorkfileData(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        if not self.data.get("start_last_workfile"):
+        if self.data.get("workfile_path") or self.data.get(
+            "start_last_workfile"
+        ):
             return
 
         project_name = self.data["project_name"]
@@ -27,11 +29,6 @@ class CollectLastPublishedWorkfileData(PreLaunchHook):
             project_settings=self.data.get("project_settings"),
         )
         if not profile or not profile.use_last_published_workfile:
-            return
-
-        folder_entity = self.data.get("folder_entity")
-        task_entity = self.data.get("task_entity")
-        if not folder_entity or not task_entity:
             return
 
         self.data["copy_last_published_workfile_enabled"] = True

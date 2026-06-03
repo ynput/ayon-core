@@ -19,20 +19,14 @@ class FindLastPublishedWorkfileRepresentation(PreLaunchHook):
         project_name = self.data["project_name"]
         folder_entity = self.data.get("folder_entity")
         task_entity = self.data.get("task_entity")
-        if not folder_entity or not task_entity:
-            return
 
         host_addon = self.addons_manager.get_host_addon(
             self.application.host_name
         )
-        extensions = set()
-        if host_addon:
-            extensions = {
-                str(ext).lstrip(".").lower()
-                for ext in host_addon.get_workfile_extensions()
-            }
-        if not extensions:
-            return
+        extensions = {
+            str(ext).lstrip(".").lower()
+            for ext in host_addon.get_workfile_extensions()
+        }
 
         anatomy = self.data.get("anatomy")
         project_settings = self.data.get("project_settings")
