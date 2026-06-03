@@ -31,7 +31,7 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
     def process(self, instance):
         version_lists_templates = instance.data.get(
             "versionListsTemplates", [])
-        profile = self._get_config_from_profile(instance)
+        profile = self._get_profile_for_instance(instance)
         if not profile and not version_lists_templates:
             self.log.debug(f"No profile found for instance {instance}")
             return
@@ -67,7 +67,7 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
             )
         self.log.debug(f"Collected version lists: {version_lists}")
 
-    def _get_config_from_profile(
+    def _get_profile_for_instance(
         self,
         instance: pyblish.api.Instance
     ) -> dict | None:
