@@ -42,9 +42,8 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
         if profile:
             processing_items.append(profile)
 
-        anatomy_data: dict[str, Any] = instance.data["anatomyData"]
         anatomy: Anatomy = instance.context.data["anatomy"]
-        template_data = deepcopy(anatomy_data)
+        template_data = deepcopy(instance.data["anatomyData"])
         template_data.update({
             "root": anatomy.roots,
             "platform": platform.system().lower(),
