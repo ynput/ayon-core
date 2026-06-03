@@ -7,13 +7,17 @@ requested folder hierarchy on the server.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import platform
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any, Generator
 
 import ayon_api
 import pyblish.api
 from ayon_api.utils import create_entity_id
+from ayon_core.lib import StringTemplate
 
 if TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.structures import ListConfig
 
 
@@ -36,29 +40,50 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             if not version_entity or not version_lists:
                 continue
             for list_config in version_lists:
+                anatomy: Anatomy = instance.context.data["anatomy"]
+                template_keys = deepcopy(instance.data["anatomyData"])
+                template_keys.update({
+                    "root": anatomy.roots,
+                    "platform": platform.system().lower(),
+                })
+                list_name = StringTemplate.format_strict_template(
+                    list_config.name, template_keys)
+
                 list_data = list_name_mapping.setdefault(
-                    list_config.name, {})
+                    list_name, {})
+                parent_folders: list[str] | None
+                if parent_folders := list_config.parent_folders:
+                    parent_folders = [
+                        StringTemplate.format_template(
+                            folder,
+                            template_keys
+                        )
+                        for folder in parent_folders
+                    ]
                 list_data.update({
-                    "parent_folders": list_config.parent_folders,
-                    "is_review_list": list_config.is_review_list,
+                    "parent_folders": parent_folders,
+                    "list_type": list_config.list_type,
                 })
                 version_ids = list_data.setdefault(
                     "version_ids", [])
                 version_ids.append(version_entity["id"])
 
+        # Get all list entities for the project from server
+        all_list_entities = ayon_api.get_entity_lists(
+            project_name=project_name,
+        )
         for list_label, list_data in list_name_mapping.items():
             version_ids = list_data["version_ids"]
             if not version_ids:
                 self.log.debug(f"No version ids for list: {list_label}")
                 continue
 
-            is_review_list = list_data["is_review_list"]
             parent_folders = list_data["parent_folders"]
             # check first if list exists
             existing_list = self._existing_list(
-                project_name=project_name,
+                all_list_entities=all_list_entities,
                 list_label=list_label,
-                list_type="review-session" if is_review_list else None,
+                list_type=list_data["list_type"],
             )
             if existing_list:
                 self._update_entity_list(
@@ -204,16 +229,14 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
 
     @staticmethod
     def _existing_list(
-        project_name: str,
+        all_list_entities: Generator[dict[str, Any], None, None],
         list_label: str,
-        list_type: str | None = None,
+        list_type: str,
     ) -> dict | None:
-        all_lists = ayon_api.get_entity_lists(
-            project_name=project_name,
-        )
+
         # iterate via all lists and check if the label matches
-        for list_data in all_lists:
-            if list_type and list_data["entityListType"] != list_type:
+        for list_data in all_list_entities:
+            if list_data["entityListType"] != list_type:
                 continue
             if list_data["label"] != list_label:
                 continue
