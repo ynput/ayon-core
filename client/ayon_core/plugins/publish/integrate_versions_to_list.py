@@ -14,7 +14,7 @@ import pyblish.api
 from ayon_api.utils import create_entity_id
 
 if TYPE_CHECKING:
-    from ayon_core.plugins.publish.collect_version_to_list import ListConfig
+    from ayon_core.pipeline.structures import ListConfig
 
 
 class IntegrateVersionToList(pyblish.api.ContextPlugin):

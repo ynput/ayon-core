@@ -2,22 +2,14 @@ from __future__ import annotations
 
 import platform
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pyblish.api
 from ayon_core.lib import StringTemplate, filter_profiles
+from ayon_core.pipeline.structures import ListConfig
 
 if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
-
-
-@dataclass
-class ListConfig:
-    """Define a list."""
-    name: str
-    parent_folders: list[str] | None = None
-    is_review_list: bool = False
 
 
 class CollectVersionToList(pyblish.api.InstancePlugin):
