@@ -29,31 +29,43 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
     profiles = []
 
     def process(self, instance):
+        version_lists_templates = instance.data.get(
+            "versionListsTemplates", [])
         profile = self._get_config_from_profile(instance)
-        if not profile:
+        if not profile and not version_lists_templates:
             self.log.debug(f"No profile found for instance {instance}")
             return
 
+        processing_items = []
+        if version_lists_templates:
+            processing_items += version_lists_templates
+        if profile:
+            processing_items.append(profile)
+
         anatomy_data: dict[str, Any] = instance.data["anatomyData"]
         anatomy: Anatomy = instance.context.data["anatomy"]
-        name_template = profile["name_template"]
         template_data = deepcopy(anatomy_data)
         template_data.update({
             "root": anatomy.roots,
             "platform": platform.system().lower(),
         })
-
-        list_name = StringTemplate.format_strict_template(
-            name_template, template_data)
         version_lists: list[ListConfig] = instance.data.setdefault(
             "versionLists", [])
-        version_lists.append(
-            ListConfig(
-                name=list_name,
-                parent_folders=profile.get("parent_folders", None),
-                is_review_list=profile.get("is_review_list", False),
+        for item in processing_items:
+            name_template = item["name_template"]
+            data = item.get("data", {})
+            if data:
+                template_data.update(data)
+            list_name = StringTemplate.format_strict_template(
+                name_template, template_data)
+            version_lists.append(
+                ListConfig(
+                    name=list_name,
+                    parent_folders=item.get("parent_folders", None),
+                    is_review_list=item.get("is_review_list", False),
+                )
             )
-        )
+        self.log.debug(f"Collected version lists: {version_lists}")
 
     def _get_config_from_profile(
         self,

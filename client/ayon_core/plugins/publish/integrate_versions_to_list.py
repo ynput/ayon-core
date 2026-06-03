@@ -131,8 +131,8 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             **kwargs,
         )
         response.raise_for_status()
-        self.log.debug(f"List folder created: {response.json()}")
-        return response.json()["id"]
+        self.log.debug(f"List folder created: {response.data}")
+        return response.data["id"]
 
     def _get_list_folders_helper(
         self,
@@ -142,8 +142,8 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             f"projects/{project_name}/entityListFolders",
         )
         response.raise_for_status()
-        self.log.debug(f"List folders: {response.json()}")
-        return response.json()["folders"]
+        self.log.debug(f"List folders: {response.data}")
+        return response.data["folders"]
 
     def _update_entity_list(
         self,
@@ -192,8 +192,8 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             **kwargs
         )
         response.raise_for_status()
-        self.log.debug(f"Entity list created: {response.json()}")
-        return response.json()
+        self.log.debug(f"Entity list created: {response.data}")
+        return response.data
 
     @staticmethod
     def _existing_list(
