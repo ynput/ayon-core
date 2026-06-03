@@ -1,11 +1,19 @@
 import os
 import shutil
+
 from ayon_core.settings import get_project_settings
-from ayon_applications import PreLaunchHook, LaunchTypes
+
+from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.workfile import (
     get_custom_workfile_template,
-    get_custom_workfile_template_by_string_context
+    get_custom_workfile_template_by_string_context,
+    save_workfile_info,
+    find_workfile_rootless_path,
+    get_last_workfile_with_version_from_paths,
+    get_workfile_template_key,
 )
+
+from ayon_applications import PreLaunchHook, LaunchTypes
 
 
 class CopyTemplateWorkfile(PreLaunchHook):
@@ -111,4 +119,50 @@ class CopyTemplateWorkfile(PreLaunchHook):
         shutil.copy2(
             os.path.normpath(template_path),
             os.path.normpath(last_workfile)
+        )
+
+        # TODO Collect all the the information to hook data when last workfile
+        #   is being prepared
+        # NOTE Right now data needed to store workfile entity
+        #   (rootless path, version) are not available and has to be guessed
+        rootless_path = find_workfile_rootless_path(
+            last_workfile,
+            project_name,
+            folder_entity,
+            task_entity,
+            host_name,
+            project_entity=project_entity,
+            project_settings=project_settings,
+            anatomy=anatomy,
+        )
+        template_key = get_workfile_template_key(
+            project_name,
+            task_entity["taskType"],
+            host_name,
+            project_settings=project_settings,
+        )
+        # Find last workfile
+        file_template = anatomy.get_template_item(
+            "work", template_key, "file"
+        ).template
+        template_data = get_template_data(
+            project_entity,
+            folder_entity,
+            task_entity,
+            host_name,
+            settings=project_settings,
+        )
+        ext = os.path.splitext(last_workfile)[1]
+        _, version = get_last_workfile_with_version_from_paths(
+            [last_workfile],
+            file_template,
+            template_data,
+            {ext},
+        )
+        save_workfile_info(
+            project_name,
+            task_entity["id"],
+            rootless_path,
+            host_name,
+            version=version,
         )
