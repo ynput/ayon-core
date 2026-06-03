@@ -1678,10 +1678,17 @@ class PlaceholderLoadMixin(object):
         if not folder_ids:
             return []
 
+        filter_key = "product_base_types"
+        if ayon_api.get_server_version_tuple() < (1, 14, 0):
+            filter_key = "product_types"
+        filter_kwargs = {
+            filter_key: {product_base_type},
+        }
+
         products = list(get_products(
             project_name,
             folder_ids=folder_ids,
-            product_base_types={product_base_type},
+            **filter_kwargs,
             fields={"id", "name"}
         ))
         filtered_product_ids = set()
