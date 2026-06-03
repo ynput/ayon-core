@@ -74,7 +74,7 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
             label = f"{folder_path} > {product_name}"
 
             # If this has an explicit version, but there is also a non-explicit
-            # version instance than disallow it.
+            # version instance then disallow it.
             versionless_key = (folder_path, product_name, None)
             if (
                 version is not None
