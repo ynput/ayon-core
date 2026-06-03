@@ -147,29 +147,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
     label = "Extract Review"
     order = pyblish.api.ExtractorOrder + 0.02
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "blender",
-        "houdini",
-        "max",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "batchdelivery",
-        "photoshop",
-        "substancepainter",
-        "workflow",
-    ]
 
     settings_category = "core"
     # Supported extensions
@@ -190,11 +167,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if not instance.data.get("review", True):
             return
 
+        orig_representations = tuple(instance.data["representations"])
+
         # Run processing
         self.main_process(instance)
 
         # Make sure cleanup happens and pop representations with "delete" tag.
-        for repre in tuple(instance.data["representations"]):
+        for repre in orig_representations:
             tags = repre.get("tags") or []
             # Representation is not marked to be deleted
             if "delete" not in tags:
