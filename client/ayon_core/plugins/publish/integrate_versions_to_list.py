@@ -48,6 +48,10 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
 
         for list_label, list_data in list_name_mapping.items():
             version_ids = list_data["version_ids"]
+            if not version_ids:
+                self.log.debug(f"No version ids for list: {list_label}")
+                continue
+
             is_review_list = list_data["is_review_list"]
             parent_folders = list_data["parent_folders"]
             # check first if list exists
@@ -114,6 +118,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             )
         return parent_folder_id
 
+    # TODO: ayon_api future compatibility, remove once ayon_api supports it
     def _create_list_folder_helper(
         self,
         project_name: str,
@@ -134,6 +139,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         self.log.debug(f"List folder created: {response.data}")
         return response.data["id"]
 
+    # TODO: ayon_api future compatibility, remove once ayon_api supports it
     def _get_list_folders_helper(
         self,
         project_name: str,
@@ -155,7 +161,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             return
 
         for entity_id in version_ids:
-            item_id = ayon_api.create_entity_list_item(
+            item_id = create_entity_list_item(
                 project_name=project_name,
                 list_id=list_entity["id"],
                 entity_id=entity_id,
@@ -170,14 +176,15 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         project_name: str,
         entity_type: str,
         label: str,
+        items: list[dict],
         list_type: str | None = None,
         entity_list_folder_id: str | None = None,
-        items: list[dict] | None = None,
     ) -> dict:
         kwargs = {
             "id": create_entity_id(),
             "entityType": entity_type,
             "label": label,
+            "items": items,
         }
         for key, value in (
             ("entityListType", list_type),
@@ -212,3 +219,34 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                 continue
             return list_data
         return None
+
+
+# TODO: ayon_api future compatibility, remove once ayon_api supports it
+def create_entity_list_item(
+    project_name: str,
+    list_id: str,
+    entity_id: str,
+) -> str:
+    """Create entity list item.
+
+    Args:
+        project_name (str): Project name where entity list lives.
+        list_id (str): Entity list id where item will be added.
+        entity_id (str): Id of entity added to the list.
+
+    Returns:
+        str: Item id.
+
+    """
+    item_id = create_entity_id()
+    kwargs = {
+        "id": item_id,
+        "entityId": entity_id,
+    }
+
+    response = ayon_api.post(
+        f"projects/{project_name}/lists/{list_id}/items",
+        **kwargs
+    )
+    response.raise_for_status()
+    return item_id
