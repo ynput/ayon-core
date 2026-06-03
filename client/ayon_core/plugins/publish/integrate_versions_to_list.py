@@ -101,7 +101,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     )
                 # then create list under a parent folder
                 self._create_entity_list(
-                    list_type="review-session" if is_review_list else None,
+                    list_type=list_data["list_type"],
                     project_name=project_name,
                     entity_type="version",
                     label=list_label,
