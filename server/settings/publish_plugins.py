@@ -1501,15 +1501,7 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectVersionToList": {
         "enabled": True,
-        "profiles": [
-            {
-                "host_names": [],
-                "task_types": [],
-                "task_names": [],
-                "product_base_types": [],
-                "product_names": [],
-            }
-        ]
+        "profiles": []
     },
     "CollectExplicitResolution": {
         "enabled": True,

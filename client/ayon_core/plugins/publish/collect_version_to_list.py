@@ -45,7 +45,6 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
 
         list_name = StringTemplate.format_strict_template(
             name_template, template_data)
-
         version_lists: list[ListConfig] = instance.data.setdefault(
             "versionLists", [])
         version_lists.append(
