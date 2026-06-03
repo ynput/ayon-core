@@ -44,24 +44,21 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
             # Ignore instance without folder data
             folder_path = instance.data.get("folderPath")
             if folder_path is None:
-                self.log.warning("Instance found without `folderPath` data: "
-                                 "{}".format(instance.name))
+                self.log.warning(
+                    "Instance found without `folderPath` data: "
+                    f"{instance.name}"
+                )
                 continue
 
             # Ignore instance without product data
             product_name = instance.data.get("productName")
             if product_name is None:
-                self.log.warning((
-                    "Instance found without `productName` in data: {}"
-                ).format(instance.name))
+                self.log.warning(
+                    "Instance found without `productName` in data: "
+                    f"{instance.name}"
+                )
                 continue
 
-            # Note: version may be optionally set, but when set that will be
-            #  the resulting target version. If two instances target the same
-            #  product but a different version we will allow it.
-            # TODO: This may have the caveat where one instance *may* target
-            #  None (next version) and that next version matching exactly an
-            #  explicitly set version but that would really be an edge case.
             version = instance.data.get("version")
             key = (
                 folder_path,
@@ -74,11 +71,26 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
         for (folder_path, product_name, version), instances in (
             instance_per_folder_product.items()
         ):
+            label = f"{folder_path} > {product_name}"
+
+            # If this has an explicit version, but there is also a non-explicit
+            # version instance than disallow it.
+            versionless_key = (folder_path, product_name, None)
+            if (
+                version is not None
+                and versionless_key in instance_per_folder_product
+            ):
+                non_unique.append(label)
+                self.log.error(
+                    f"Instance with explicit version {version} found for "
+                    f"product {label}, but there is also an instance without "
+                    f"explicit version. This is not allowed."
+                )
+
             # A single instance per folder, product is fine
             if len(instances) < 2:
                 continue
 
-            label = f"{folder_path} > {product_name}"
             if version is not None:
                 label += f" (version {version})"
             non_unique.append(label)
