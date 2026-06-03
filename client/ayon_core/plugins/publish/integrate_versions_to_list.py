@@ -1,18 +1,24 @@
+"""Pyblish context plugin that adds published versions to AYON entity lists.
+
+For each instance with ``versionLists`` data, creates or updates the named
+lists (optionally typed as ``review-session``) and organises them under the
+requested folder hierarchy on the server.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import ayon_api
-from ayon_api.utils import create_entity_id
 import pyblish.api
+from ayon_api.utils import create_entity_id
 
 if TYPE_CHECKING:
     from ayon_core.plugins.publish.collect_version_to_list import ListConfig
 
 
-
 class IntegrateVersionToList(pyblish.api.ContextPlugin):
-    """Integrate published versions to a list
+    """Integrate published versions to a list.
 
     This plugin integrates published versions to a list in the server.
     """
@@ -23,14 +29,6 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
     def process(self, context):
         project_name = context.data["projectName"]
         list_name_mapping = {}
-        # TODO:
-        #    - check if list with the name already exists
-        #    - if exists:
-        #         - append version to the list
-        #         - parent folders are ignored
-        #    - if not exists:
-        #         - create a new list and create
-        #         - create parent folders if specified
         for instance in context:
             version_lists: list[ListConfig] = instance.data.get(
                 "versionLists", [])
