@@ -267,6 +267,7 @@ class CollectVersionToListModel(BaseSettingsModel):
         )
     )
 
+
 class ResolutionOptionsModel(BaseSettingsModel):
     _layout = "compact"
     width: int = SettingsField(
