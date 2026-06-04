@@ -245,9 +245,9 @@ class CollectVersionToListProfileModel(BaseSettingsModel):
         title="Product names",
         description="The product names to match this profile to.",
     )
-    name_template: str = SettingsField(
+    name: str = SettingsField(
         "",
-        title="Name template",
+        title="Name",
         description="Anatomy formattable template for the name.",
         section="List configuration",
     )
