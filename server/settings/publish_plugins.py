@@ -270,9 +270,6 @@ class CollectVersionToListModel(BaseSettingsModel):
     profiles: list[CollectVersionToListProfileModel] = SettingsField(
         default_factory=list,
         title="Profiles",
-        description=(
-            ""
-        )
     )
 
 
