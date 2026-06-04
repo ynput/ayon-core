@@ -25,10 +25,10 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
             self.log.debug(f"Version lists already collected: {version_lists}")
             return
 
-        name_template = profile["name_template"]
+        name = profile["name"]
         version_lists.append(
             ListConfig(
-                name=name_template,
+                name=name,
                 parent_folders=profile.get("parent_folders", None),
                 list_type=profile["list_type"],
             )
