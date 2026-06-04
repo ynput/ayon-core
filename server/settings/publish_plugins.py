@@ -208,7 +208,7 @@ def list_type_enum():
     ]
 
 class CollectVersionToListProfileModel(BaseSettingsModel):
-    """."""
+    """Collect version list profile model."""
     _layout = "expanded"
     host_names: list[str] = SettingsField(
         default_factory=list,
@@ -245,9 +245,9 @@ class CollectVersionToListProfileModel(BaseSettingsModel):
         title="Product names",
         description="The product names to match this profile to.",
     )
-    name: str = SettingsField(
-        "",
-        title="Name",
+    list_name: str = SettingsField(
+        "{folder[name]}",
+        title="List Name",
         description="Anatomy formattable template for the name.",
         section="List configuration",
     )

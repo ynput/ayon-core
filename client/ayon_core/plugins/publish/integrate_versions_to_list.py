@@ -8,18 +8,18 @@ requested folder hierarchy on the server.
 from __future__ import annotations
 
 import platform
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import ayon_api
 import pyblish.api
 from ayon_api.utils import create_entity_id
 from ayon_core.lib import StringTemplate
+from ayon_core.pipeline.structures import ListConfig
 
 if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
-    from ayon_core.pipeline.structures import ListConfig
 
 
 # TODO: ayon_api future compatibility, remove once ayon_api supports it
