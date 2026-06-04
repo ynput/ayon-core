@@ -544,7 +544,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_as_default": False,
+                "contribution_variant_is_default": False,
             }
 
         # Define defaults
