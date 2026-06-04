@@ -10,7 +10,7 @@ from __future__ import annotations
 import platform
 from copy import deepcopy
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING
 
 import ayon_api
 import pyblish.api
