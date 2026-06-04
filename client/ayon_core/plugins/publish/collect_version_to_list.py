@@ -10,6 +10,7 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.499
     label = "Collect Version to List"
+    settings_category = "core"
 
     profiles = []
 
