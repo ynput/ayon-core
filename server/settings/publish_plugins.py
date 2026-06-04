@@ -1506,7 +1506,7 @@ DEFAULT_PUBLISH_VALUES = {
         ]
     },
     "CollectVersionToList": {
-        "enabled": True,
+        "enabled": False,
         "profiles": []
     },
     "CollectExplicitResolution": {
