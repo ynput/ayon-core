@@ -150,6 +150,7 @@ class ReviewTable(AYContainer):
         self._expansion_phase: _ExpansionPhase = _ExpansionPhase.IDLE
         self._enqueued_thumb_keys: set[str] = set()
         self._scroll_catch_up_timer: QtCore.QTimer | None = None
+        self._resize_timer: QtCore.QTimer | None = None
 
         self._model.rowsInserted.connect(self._on_rows_inserted_expand)
         self._model.loading_changed.connect(
@@ -160,6 +161,69 @@ class ReviewTable(AYContainer):
             self._on_scroll_catch_up
         )
         self._model.page_fetched.connect(self._on_page_fetched)
+
+        # Install event filter to catch viewport resize events
+        self._table.viewport().installEventFilter(self)
+
+    # ------------------------------------------------------------------
+    # Event handling
+    # ------------------------------------------------------------------
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Handle viewport resize events to fetch thumbnails.
+
+        Debounces resize events via a 100 ms timer to avoid flooding the
+        thumbnail fetch queue during continuous resizing.
+
+        Args:
+            obj: The object receiving the event.
+            event: The event to filter.
+
+        Returns:
+            ``False`` to allow the event to propagate.
+        """
+        if (
+            obj is self._table.viewport()
+            and event.type() == QtCore.QEvent.Type.Resize
+        ):
+            # Debounce resize events similar to scroll events
+            self._on_viewport_resize()
+        return False
+
+    def _on_viewport_resize(self) -> None:
+        """Debounced handler for viewport resize events.
+
+        Uses a 100 ms single-shot timer to coalesce rapid resize events
+        into a single thumbnail refresh pass. Only triggers if the table
+        has been populated with data.
+        """
+        # Don't fetch thumbnails if the table hasn't been populated yet
+        if self._model.rowCount() == 0:
+            return
+
+        if self._resize_timer is None:
+            self._resize_timer = QtCore.QTimer(self)
+            self._resize_timer.setSingleShot(True)
+            self._resize_timer.setInterval(100)
+            self._resize_timer.timeout.connect(
+                self._on_viewport_resized
+            )
+        self._resize_timer.start()
+
+    def _on_viewport_resized(self) -> None:
+        """Refresh visible thumbnails after the viewport has settled.
+
+        Mirrors what ``_on_page_fetched`` does: first force-repaint the
+        viewport so that ``LazyThumbnailWidget.paintEvent`` fires for
+        rows whose thumbnails are already cached (they are skipped by
+        ``_eagerly_enqueue_visible_thumbnails``), then enqueue fetches
+        for any thumbnails not yet in the cache.
+        """
+        vp = self._table.viewport()
+        if not shiboken.isValid(vp):
+            return
+        vp.update()
+        self._eagerly_enqueue_visible_thumbnails()
 
     # ------------------------------------------------------------------
     # Public properties
