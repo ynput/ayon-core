@@ -5,6 +5,7 @@ from typing import Literal
 
 ListType = Literal["generic", "review-session"]
 
+
 @dataclass
 class ListConfig:
     """Define a list."""

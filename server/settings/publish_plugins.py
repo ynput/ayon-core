@@ -207,6 +207,7 @@ def list_type_enum():
         {"label": "Review Session", "value": "review-session"},
     ]
 
+
 class CollectVersionToListProfileModel(BaseSettingsModel):
     """Collect version list profile model."""
     _layout = "expanded"
