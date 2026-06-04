@@ -261,7 +261,6 @@ class CollectVersionToListProfileModel(BaseSettingsModel):
         title="List type",
         description="Define what type of list this profile represents.",
         enum_resolver=list_type_enum,
-
     )
 
 
