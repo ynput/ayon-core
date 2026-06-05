@@ -108,6 +108,7 @@ class ScrollMessageBox(QtWidgets.QDialog):
         main_layout.addWidget(btn_box, 1, 1)
         main_layout.setRowStretch(0, 1)
         main_layout.setRowStretch(1, 0)
+
     def _on_copy_click(self):
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText("\n".join(self._messages))
