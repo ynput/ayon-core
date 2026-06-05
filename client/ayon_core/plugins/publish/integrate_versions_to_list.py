@@ -310,6 +310,14 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     scope = existing_list_folder["data"].get("scope")
                     if scope and list_config.list_type not in scope:
                         scope.append(list_config.list_type)
+                        # --- Temporary bypass ---
+                        # TODO remove when fixed in frontend
+                        # There is an issue with list folder having both
+                        #   'generic' and 'review-session' in scope. The
+                        #   folder is not visible in Lists UI.
+                        scope = []
+                        existing_list_folder["data"]["scope"] = scope
+                        # ------------------------
                         update_entity_list_folder(
                             project_name,
                             existing_list_folder["id"],
