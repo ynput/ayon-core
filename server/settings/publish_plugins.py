@@ -225,7 +225,14 @@ class EntityListFolderModel(BaseSettingsModel):
 
     """
     _layout = "expanded"
-    label: str = SettingsField("", title="Folder label")
+    label: str = SettingsField(
+        "",
+        title="Folder label",
+        description=(
+            "The label of the folder to create. "
+            "Anatomy formattable template for the name."
+        ),
+    )
     # Don't use explicit scope enum, rather ask if the folder should be seen
     #   everywhere or just in the list type matching created list.
     scope_def: str = SettingsField(
