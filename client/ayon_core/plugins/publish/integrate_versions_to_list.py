@@ -177,6 +177,9 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     version_entity["id"]
                 )
 
+        if not list_config_by_list_name:
+            return
+
         # Get all list entities for the project from server
         project_name: str = context.data["projectName"]
         existing_list_entities_by_label: dict[str, dict] = {
