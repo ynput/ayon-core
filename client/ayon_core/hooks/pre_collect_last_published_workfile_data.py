@@ -11,7 +11,7 @@ class CollectLastPublishedWorkfileData(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        if self.data.get("workfile_path") or self.data.get(
+        if self.data.get("workfile_path") or not self.data.get(
             "start_last_workfile"
         ):
             return
