@@ -15,15 +15,17 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
     profiles = []
 
     def process(self, instance):
+        if "versionLists" in instance.data:
+            version_lists = instance.data["versionLists"]
+            self.log.debug(f"Version lists already collected: {version_lists}")
+            return
+
+        version_lists: list[ListConfig] = []
+        instance.data["versionLists"] = version_lists
+
         profile = self._get_profile_for_instance(instance)
         if not profile:
             self.log.debug(f"No profile found for instance {instance}")
-            return
-        version_lists: list[ListConfig] = instance.data.setdefault(
-            "versionLists", [])
-
-        if version_lists:
-            self.log.debug(f"Version lists already collected: {version_lists}")
             return
 
         name = profile["list_name"]
