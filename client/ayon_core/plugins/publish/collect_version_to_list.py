@@ -28,14 +28,24 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
             self.log.debug(f"No profile found for instance {instance}")
             return
 
+        list_folders = []
+        for item in profile["list_folders"]:
+            scope = []
+            if item["scope_def"] == "list_type":
+                scope.append(profile["list_type"])
+
+            list_folders.append(
+                ListConfigFolder(
+                    label=item["label"],
+                    scope=scope,
+                )
+            )
+
         version_lists.append(
             ListConfig(
                 name=profile["list_name"],
                 list_type=profile["list_type"],
-                list_folders=[
-                    ListConfigFolder(label=name)
-                    for name in profile["parent_folders"]
-                ],
+                list_folders=list_folders,
             )
         )
         self.log.debug(f"Collected version lists: {version_lists}")

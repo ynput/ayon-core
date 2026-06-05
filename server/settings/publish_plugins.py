@@ -208,6 +208,28 @@ def list_type_enum():
     ]
 
 
+def list_folder_scope_def():
+    return [
+        {"label": "Scope folder to all views", "value": "all"},
+        {"label": "Scope to the list type", "value": "list_type"},
+    ]
+
+
+class VersionListFolderModel(BaseSettingsModel):
+    """Folder must have label and can be scoped to views.
+
+    Scope of the folder can be defined for all views or use just the view
+        matching list type of created list.
+
+    """
+    label: str = SettingsField("", title="Folder label")
+    scope_def: str = SettingsField(
+        "all",
+        enum_resolver=list_folder_scope_def,
+        title="Scope",
+    )
+
+
 class CollectVersionToListProfileModel(BaseSettingsModel):
     """Collect version list profile model."""
     _layout = "expanded"
@@ -252,16 +274,16 @@ class CollectVersionToListProfileModel(BaseSettingsModel):
         description="Anatomy formattable template for the name.",
         section="List configuration",
     )
-    parent_folders: list[str] = SettingsField(
-        default_factory=list,
-        title="Parent folders",
-        description="Folder hierarchy formed from top to bottom.",
-    )
     list_type: str = SettingsField(
         "generic",
         title="List type",
         description="Define what type of list this profile represents.",
         enum_resolver=list_type_enum,
+    )
+    list_folders: list[VersionListFolderModel] = SettingsField(
+        default_factory=list,
+        title="List folders",
+        description="Folder hierarchy formed from top to bottom.",
     )
 
 
