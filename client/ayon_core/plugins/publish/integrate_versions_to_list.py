@@ -152,10 +152,15 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                             f"'{candidate_config.list_type}'. Skipping."
                         )
                         continue
-                    if (existing_config.parent_folders or None) != (candidate_config.parent_folders or None):
+                    if (
+                        existing_config.parent_folders or None
+                    ) != (
+                        candidate_config.parent_folders or None
+                    ):
                         self.log.warning(
-                            "Multiple parent_folders configured for entity list "
-                            f"'{list_name}'. Using the first: {existing_config.parent_folders}"
+                            "Multiple parent_folders configured for "
+                            f"entity list '{list_name}'. Using the "
+                            f"first: {existing_config.parent_folders}"
                         )
                 else:
                     list_config_by_list_name[list_name] = candidate_config
