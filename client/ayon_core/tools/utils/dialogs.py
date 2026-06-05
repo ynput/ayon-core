@@ -4,7 +4,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 log = logging.getLogger(__name__)
 
 
-def icon_widget(icon, size: int = 64) -> QtWidgets.QLabel:
+def icon_widget(parent, icon, size: int = 64) -> QtWidgets.QLabel:
     """Wrap an Icon into a QLabel with a fixed size.
 
     Args:
@@ -15,7 +15,7 @@ def icon_widget(icon, size: int = 64) -> QtWidgets.QLabel:
         QtWidgets.QLabel: Label with the icon.
 
     """
-    label = QtWidgets.QLabel()
+    label = QtWidgets.QLabel(parent)
     if isinstance(icon, QtGui.QIcon):
         label.setPixmap(icon.pixmap(size, size))
     else:
@@ -68,7 +68,7 @@ class ScrollMessageBox(QtWidgets.QDialog):
 
         self.setWindowFlags(QtCore.Qt.WindowTitleHint)
 
-        wrapped_icon = icon_widget(icon)
+        wrapped_icon = icon_widget(self, icon)
 
         scroll_widget = QtWidgets.QScrollArea(self)
         scroll_widget.setWidgetResizable(True)
@@ -106,7 +106,8 @@ class ScrollMessageBox(QtWidgets.QDialog):
         )
         main_layout.addWidget(scroll_widget, 0, 1)
         main_layout.addWidget(btn_box, 1, 1)
-
+        main_layout.setRowStretch(0, 1)
+        main_layout.setRowStretch(1, 0)
     def _on_copy_click(self):
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText("\n".join(self._messages))
