@@ -219,7 +219,9 @@ class EntityListFolderModel(BaseSettingsModel):
     """Folder must have label and can be scoped to views.
 
     Scope of the folder can be defined for all views or use just the view
-        matching list type of created list.
+        matching list type of created list. In case the list folder already
+        exists the settings are not used and we just make sure the list can
+        be seen under the folder.
 
     """
     _layout = "expanded"
@@ -232,7 +234,6 @@ class EntityListFolderModel(BaseSettingsModel):
 
 
 class CollectVersionToListProfileModel(BaseSettingsModel):
-    """Collect version list profile model."""
     _layout = "expanded"
     host_names: list[str] = SettingsField(
         default_factory=list,
