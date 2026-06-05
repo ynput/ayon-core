@@ -96,6 +96,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
     label = "Integrate Versions to List"
     order = pyblish.api.IntegratorOrder + 0.49
     settings_category = "core"
+
     def process(self, context):
         list_config_by_list_name: dict[str, ListConfig] = {}
         version_ids_by_list_name: dict[str, list[str]] = defaultdict(list)
