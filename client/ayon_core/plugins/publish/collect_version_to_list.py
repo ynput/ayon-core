@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pyblish.api
 from ayon_core.lib import filter_profiles
-from ayon_core.pipeline.structures import ListConfig
+from ayon_core.pipeline.structures import ListConfig, ListConfigFolder
 
 
 class CollectVersionToList(pyblish.api.InstancePlugin):
@@ -31,8 +31,11 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
         version_lists.append(
             ListConfig(
                 name=profile["list_name"],
-                parent_folders=profile["parent_folders"],
                 list_type=profile["list_type"],
+                list_folders=[
+                    ListConfigFolder(label=name)
+                    for name in profile["parent_folders"]
+                ],
             )
         )
         self.log.debug(f"Collected version lists: {version_lists}")
