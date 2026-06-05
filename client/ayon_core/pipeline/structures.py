@@ -18,6 +18,6 @@ class ListConfigFolder:
 @dataclass
 class ListConfig:
     """Define a list."""
-    name: str
+    label: str
     list_type: ListType = "generic"
     list_folders: list[ListConfigFolder] = field(default_factory=list)

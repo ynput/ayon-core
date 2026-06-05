@@ -123,8 +123,8 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
     settings_category = "core"
 
     def process(self, context):
-        list_config_by_list_name: dict[str, ListConfig] = {}
-        version_ids_by_list_name: dict[str, list[str]] = defaultdict(list)
+        list_config_by_list_label: dict[str, ListConfig] = {}
+        version_ids_by_list_label: dict[str, list[str]] = defaultdict(list)
 
         anatomy: Anatomy = context.data["anatomy"]
         for instance in context:
@@ -154,38 +154,39 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     "platform": platform.system().lower(),
                 })
                 try:
-                    list_name: str = str(
+                    list_label: str = str(
                         StringTemplate.format_strict_template(
-                            list_config.name, template_data
+                            list_config.label, template_data
                         )
                     )
                 except Exception:
                     self.log.error(
                         "Failed to fill entity list name template: "
-                        f"{list_config.name}",
+                        f"{list_config.label}",
                         exc_info=True,
                     )
                     continue
 
-                existing_config = list_config_by_list_name.get(list_name)
+                existing_config = list_config_by_list_label.get(list_label)
                 if (
                     existing_config
                     and existing_config.list_type != list_config.list_type
                 ):
                     self.log.error(
                         "Conflicting list_type for entity list label "
-                        f"'{list_name}': '{existing_config.list_type}' vs "
+                        f"'{list_label}': '{existing_config.list_type}' vs "
                         f"'{list_config.list_type}'. Skipping."
                     )
                     continue
 
                 # Add version to lists mapping
-                version_ids_by_list_name[list_name].append(
+                version_ids_by_list_label[list_label].append(
                     version_entity["id"]
                 )
 
                 # Fill label using template data
                 candidate_config = deepcopy(list_config)
+                candidate_config.label = list_label
                 for folder in list_config.list_folders:
                     folder.label = str(StringTemplate.format_template(
                         folder.label, template_data
@@ -193,7 +194,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
 
                 # Use candadate config
                 if existing_config is None:
-                    list_config_by_list_name[list_name] = candidate_config
+                    list_config_by_list_label[list_label] = candidate_config
                     continue
 
                 # Compare folders of the existing config and the candidate
@@ -210,12 +211,12 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                 if existing_labels != candidate_labels:
                     self.log.warning(
                         "Configuration does contain different folders from"
-                        f" existing list '{list_name}'. Keeping existing list"
+                        f" existing list '{list_label}'. Keeping existing list"
                         f" folders. Existing: {existing_labels}"
                         f" vs Candidate: {candidate_labels}"
                     )
 
-        if not list_config_by_list_name:
+        if not list_config_by_list_label:
             return
 
         # Get all list entities for the project from server
@@ -226,21 +227,23 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         }
         existing_list_folders = get_entity_list_folders(project_name)
 
-        for list_name, list_config in list_config_by_list_name.items():
-            version_ids = version_ids_by_list_name[list_name]
+        for list_config in list_config_by_list_label.values():
+            version_ids = version_ids_by_list_label[list_config.label]
             if not version_ids:
-                self.log.debug(f"No version ids for list: {list_name}")
+                self.log.debug(f"No version ids for list: {list_config.label}")
                 continue
 
             # If list exists, append to it but ensure it is of correct type
-            existing_list = existing_list_entities_by_label.get(list_name)
+            existing_list = existing_list_entities_by_label.get(
+                list_config.label
+            )
             if existing_list:
                 if existing_list["entityListType"] != list_config.list_type:
                     entity_list_type = existing_list["entityListType"]
                     self.log.error(
                         "Can't add versions to list because another entity"
                         f" list type '{entity_list_type}' with that label"
-                        f" already exists: {list_config.name}"
+                        f" already exists: {list_config.label}"
                     )
                     continue
 
@@ -249,7 +252,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     self.log.error(
                         f"Can't add versions to list because a '{entity_type}'"
                         " list type with that label already exists: "
-                        f"{list_config.name}"
+                        f"{list_config.label}"
                     )
                     continue
 
@@ -271,7 +274,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                 self._create_entity_list(
                     project_name=project_name,
                     entity_type="version",
-                    label=list_config.name,
+                    label=list_config.label,
                     list_type=list_config.list_type,
                     entity_list_folder_id=entity_list_folder_id,
                     items=[

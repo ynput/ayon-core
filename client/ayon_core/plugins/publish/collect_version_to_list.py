@@ -43,7 +43,7 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
 
         version_lists.append(
             ListConfig(
-                name=profile["list_name"],
+                label=profile["list_name"],
                 list_type=profile["list_type"],
                 list_folders=list_folders,
             )
