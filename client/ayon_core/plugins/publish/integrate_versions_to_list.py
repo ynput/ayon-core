@@ -102,7 +102,10 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         version_ids_by_list_name: dict[str, list[str]] = defaultdict(list)
         for instance in context:
             version_lists: list[ListConfig] = instance.data.get(
-                "versionLists", [])
+                "versionLists"
+            )
+            if not version_lists:
+                continue
             version_entity = instance.data.get("versionEntity")
             if not version_entity or not version_lists:
                 continue
@@ -110,15 +113,15 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                 # Construct the list config with the formatted name and parent
                 # folder names
                 anatomy: Anatomy = instance.context.data["anatomy"]
-                template_keys = deepcopy(instance.data["anatomyData"])
-                template_keys.update({
+                template_data = deepcopy(instance.data["anatomyData"])
+                template_data.update({
                     "root": anatomy.roots,
                     "platform": platform.system().lower(),
                 })
                 try:
                     list_name: str = str(
                         StringTemplate.format_strict_template(
-                            list_config.name, template_keys
+                            list_config.name, template_data
                         )
                     )
                 except Exception:
@@ -133,7 +136,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     parent_folders = [
                         str(StringTemplate.format_template(
                             folder,
-                            template_keys
+                            template_data
                         ))
                         for folder in parent_folders
                     ]
