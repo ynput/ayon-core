@@ -137,12 +137,28 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                         for folder in parent_folders
                     ]
 
-                # Define the list config, and add the version id to the list
-                list_config_by_list_name[list_name] = ListConfig(
+                candidate_config = ListConfig(
                     name=list_name,
                     parent_folders=parent_folders,
                     list_type=list_config.list_type,
                 )
+
+                existing_config = list_config_by_list_name.get(list_name)
+                if existing_config:
+                    if existing_config.list_type != candidate_config.list_type:
+                        self.log.error(
+                            "Conflicting list_type for entity list label "
+                            f"'{list_name}': '{existing_config.list_type}' vs "
+                            f"'{candidate_config.list_type}'. Skipping."
+                        )
+                        continue
+                    if (existing_config.parent_folders or None) != (candidate_config.parent_folders or None):
+                        self.log.warning(
+                            "Multiple parent_folders configured for entity list "
+                            f"'{list_name}'. Using the first: {existing_config.parent_folders}"
+                        )
+                else:
+                    list_config_by_list_name[list_name] = candidate_config
                 version_ids_by_list_name[list_name].append(
                     version_entity["id"]
                 )
