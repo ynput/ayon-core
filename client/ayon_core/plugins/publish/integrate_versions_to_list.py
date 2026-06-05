@@ -163,9 +163,8 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                         )
                         continue
                     if (
-                        existing_config.parent_folders or None
-                    ) != (
-                        candidate_config.parent_folders or None
+                        existing_config.parent_folders
+                        != candidate_config.parent_folders
                     ):
                         self.log.warning(
                             "Multiple parent_folders configured for "
