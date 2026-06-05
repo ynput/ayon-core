@@ -215,13 +215,14 @@ def list_folder_scope_def():
     ]
 
 
-class VersionListFolderModel(BaseSettingsModel):
+class EntityListFolderModel(BaseSettingsModel):
     """Folder must have label and can be scoped to views.
 
     Scope of the folder can be defined for all views or use just the view
         matching list type of created list.
 
     """
+    _layout = "expanded"
     label: str = SettingsField("", title="Folder label")
     scope_def: str = SettingsField(
         "all",
@@ -280,7 +281,7 @@ class CollectVersionToListProfileModel(BaseSettingsModel):
         description="Define what type of list this profile represents.",
         enum_resolver=list_type_enum,
     )
-    list_folders: list[VersionListFolderModel] = SettingsField(
+    list_folders: list[EntityListFolderModel] = SettingsField(
         default_factory=list,
         title="List folders",
         description="Folder hierarchy formed from top to bottom.",
