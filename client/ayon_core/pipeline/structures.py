@@ -9,7 +9,8 @@ ListType = Literal["generic", "review-session"]
 @dataclass
 class ListConfigFolder:
     label: str
-    scope: list[str] = field(default_factory=list)
+    # Empty list means the folder is visible for all list types
+    scope: list[ListType] = field(default_factory=list)
     color: str | None = None
     icon: str | None = None
 
