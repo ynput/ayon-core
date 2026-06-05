@@ -114,11 +114,19 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
                     "root": anatomy.roots,
                     "platform": platform.system().lower(),
                 })
-                list_name: str = str(
-                    StringTemplate.format_strict_template(
-                        list_config.name, template_keys
+                try:
+                    list_name: str = str(
+                        StringTemplate.format_strict_template(
+                            list_config.name, template_keys
+                        )
                     )
-                )
+                except Exception:
+                    self.log.error(
+                        "Failed to format entity list name template: "
+                        f"{list_config.name}",
+                        exc_info=True,
+                    )
+                    continue
                 parent_folders: list[str] | None
                 if parent_folders := list_config.parent_folders:
                     parent_folders = [
