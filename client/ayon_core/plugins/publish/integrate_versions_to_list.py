@@ -103,7 +103,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         for instance in context:
             has_webreview = instance.data.get("hasWebreview", False)
             version_lists: list[ListConfig] = instance.data.get(
-                "versionLists"
+                "versionLists", []
             )
             if not version_lists:
                 continue
