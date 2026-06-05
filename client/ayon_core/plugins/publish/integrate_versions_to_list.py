@@ -101,6 +101,7 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         list_config_by_list_name: dict[str, ListConfig] = {}
         version_ids_by_list_name: dict[str, list[str]] = defaultdict(list)
         for instance in context:
+            has_webreview = instance.data.get("hasWebreview", False)
             version_lists: list[ListConfig] = instance.data.get(
                 "versionLists"
             )
@@ -110,6 +111,11 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
             if not version_entity or not version_lists:
                 continue
             for list_config in version_lists:
+                if (
+                    list_config.list_type == "review-session"
+                    and has_webreview is False
+                ):
+                    continue
                 # Construct the list config with the formatted name and parent
                 # folder names
                 anatomy: Anatomy = instance.context.data["anatomy"]
