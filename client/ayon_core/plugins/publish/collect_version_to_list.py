@@ -28,10 +28,9 @@ class CollectVersionToList(pyblish.api.InstancePlugin):
             self.log.debug(f"No profile found for instance {instance}")
             return
 
-        name = profile["list_name"]
         version_lists.append(
             ListConfig(
-                name=name,
+                name=profile["list_name"],
                 parent_folders=profile["parent_folders"],
                 list_type=profile["list_type"],
             )
