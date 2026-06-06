@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon  # noqa: F401
+from qtmaterialsymbols import get_icon  # type: ignore
 
 from ..style import get_ayon_style
 from .buttons import AYButton

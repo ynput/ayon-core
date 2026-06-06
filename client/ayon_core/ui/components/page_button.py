@@ -25,10 +25,7 @@ from .buttons import AYButton
 
 logger = logging.getLogger(__name__)
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 
 class AYPageButton(AYButton):

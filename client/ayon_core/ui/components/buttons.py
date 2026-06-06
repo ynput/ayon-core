@@ -17,10 +17,7 @@ from .style_mixin import StyleMixin
 
 logger = logging.getLogger(__name__)
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 
 class AYButton(StyleMixin, QtWidgets.QPushButton):

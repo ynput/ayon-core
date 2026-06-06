@@ -13,9 +13,10 @@ from .label import AYLabel
 from .layouts import AYVBoxLayout
 from .line_edit import AYLineEdit
 from .scroll_area import AYScrollArea
+from .style_mixin import StyleMixin
 
 
-class FilterableList(QWidget):
+class FilterableList(StyleMixin, QWidget):
     """A widget with a search field and a scrollable, filterable list.
 
     Items are added as QWidget instances. Each item is matched against the

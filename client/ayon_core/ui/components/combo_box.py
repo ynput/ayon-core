@@ -44,10 +44,7 @@ import logging
 import os
 from typing import List, Optional
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtCore, QtWidgets
 from qtpy.QtGui import (
     QBrush,
@@ -552,6 +549,9 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         p = QPainter(self)
         option = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(option)
+
+        p.setFont(self.font())
+        option.fontMetrics = self.fontMetrics()
 
         if self._inverted:
             option.currentIcon = self._get_inverted_icon(option.currentIcon)

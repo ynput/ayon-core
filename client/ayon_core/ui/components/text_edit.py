@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from ..variants import QTextEditVariants
-
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QTextEdit
 
 from ..style import get_ayon_style
+from ..variants import QTextEditVariants
+from .style_mixin import StyleMixin
 
 
-class AYTextEdit(QTextEdit):
+class AYTextEdit(StyleMixin, QTextEdit):
     """AYON styled text edit widget.
 
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.

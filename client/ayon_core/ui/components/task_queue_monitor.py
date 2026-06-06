@@ -17,7 +17,7 @@ from qtpy.QtGui import QCloseEvent, QColor, QPainter, QPainterPath, QPen
 from qtpy.QtWidgets import QSizePolicy, QToolTip, QWidget
 
 from ..style import get_ayon_style_data
-
+from .style_mixin import StyleMixin
 from .task_queue import AsyncTaskQueue
 
 log = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def _priority_bucket(priority: int) -> str:
     return "low"
 
 
-class AsyncTaskQueueMonitor(QWidget):
+class AsyncTaskQueueMonitor(StyleMixin, QWidget):
     """Compact segmented progress bar that mirrors an :class:`AsyncTaskQueue`.
 
     Each task observed from the queue is rendered as a color-coded segment.

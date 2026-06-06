@@ -12,14 +12,12 @@ from qtpy.QtWidgets import (
 
 from ..style import get_ayon_style
 from ..variants import QLineEditVariants
+from .style_mixin import StyleMixin
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 
-class AYLineEdit(QLineEdit):
+class AYLineEdit(StyleMixin, QLineEdit):
     """Custom styled line edit component.
 
     Inherits from QLineEdit and uses the AYON style system for rendering.
@@ -176,6 +174,7 @@ class AYLineEdit(QLineEdit):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setOpacity(opacity)
+        painter.setFont(self.font())
 
         rect = QRectF(self.rect())
         half_bw = border_width / 2.0

@@ -636,6 +636,7 @@ class AsyncTaskQueue(QThread):
 # ---------------------------------------------------------------------------
 
 _shared_queue: AsyncTaskQueue | None = None
+_shutdown_connected: bool = False
 
 
 def get_task_queue() -> AsyncTaskQueue:
@@ -651,7 +652,7 @@ def get_task_queue() -> AsyncTaskQueue:
     Returns:
         The running shared :class:`AsyncTaskQueue` instance.
     """
-    global _shared_queue
+    global _shared_queue, _shutdown_connected
     if _shared_queue is None:
         from qtpy.QtWidgets import QApplication  # local import avoids circular
 
@@ -661,14 +662,9 @@ def get_task_queue() -> AsyncTaskQueue:
 
         app = QApplication.instance()
         if app is not None:
-            # Guard: connect at most once to avoid accumulating
-            # connections during test runs where the queue is
-            # repeatedly created and destroyed.
-            try:
-                app.aboutToQuit.disconnect(shutdown_task_queue)
-            except RuntimeError:
-                pass  # was not connected yet
-            app.aboutToQuit.connect(shutdown_task_queue)
+            if not _shutdown_connected:
+                app.aboutToQuit.connect(shutdown_task_queue)
+                _shutdown_connected = True
         else:
             log.warning(
                 "get_task_queue() called before QApplication exists; "

@@ -19,12 +19,13 @@ from qtpy.QtWidgets import (
 
 from ..style import get_ayon_style
 from .buttons import AYButton
-from .label import AYLabel
-from .layouts import AYHBoxLayout, AYVBoxLayout
-from .frame import AYFrame
 from .container import AYContainer
 from .dropdown import AYDropdownPopup
 from .filterable_list import FilterableList
+from .frame import AYFrame
+from .label import AYLabel
+from .layouts import AYHBoxLayout, AYVBoxLayout
+from .style_mixin import StyleMixin
 
 logger = logging.getLogger(__name__)
 
@@ -295,7 +296,7 @@ class TagDropdown(AYDropdownPopup):
         self._adjust_height()
 
 
-class AYTagSelector(QWidget):
+class AYTagSelector(StyleMixin, QWidget):
     """A tag selector widget with button and floating dropdown.
 
     Displays a button with a tag icon. When tags are selected, they appear

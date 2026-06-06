@@ -744,7 +744,7 @@ class AYImageAttachment(QLabel):
         # draw text on the right side
         painter.setPen(QColor("#eeeeee"))
         font = painter.font()
-        font.setPointSize(10)
+        font.setPointSizeF(10)
         painter.setFont(font)
         painter.drawText(
             lrect.adjusted(16 + 4, 0, 0, 0),
@@ -1273,11 +1273,12 @@ if __name__ == "__main__":
     from ..tester import Style, test
     from .container import AYContainer
     from .text_box import AYTextBox
+    from .. import _get_test_data_dir
 
     def build():
-        rsrc_dir = Path(__file__).parent.parent / "resources"
-        av1 = rsrc_dir / "avatar1.jpg"
-        av2 = rsrc_dir / "avatar2.jpg"
+        rsrc_dir = _get_test_data_dir()
+        av1 = rsrc_dir / "avatar1.jpg" if rsrc_dir else ""
+        av2 = rsrc_dir / "avatar2.jpg" if rsrc_dir else ""
 
         w = AYContainer(
             layout=AYContainer.Layout.VBox,

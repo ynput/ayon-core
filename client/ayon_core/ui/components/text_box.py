@@ -53,7 +53,6 @@ from .comment_completion import (
 )
 from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
-from .style_mixin import StyleMixin
 from .text_edit import AYTextEdit
 
 logger = logging.getLogger(__name__)
@@ -61,7 +60,7 @@ logger = logging.getLogger(__name__)
 MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
 
 
-class AYTextEditor(StyleMixin, AYTextEdit):
+class AYTextEditor(AYTextEdit):
     Variants = QTextEditVariants
 
     submitted = Signal()  # Signal emitted when Ctrl+Enter is pressed
@@ -387,7 +386,7 @@ class AYTextEditor(StyleMixin, AYTextEdit):
 
         elif style == "stl_h1":
             # Toggle heading size, preserving all other formatting
-            base_size = self.font().pointSize()
+            base_size = self.font().pointSizeF()
             current_size = cursor.charFormat().fontPointSize()
 
             fmt = QTextCharFormat()
@@ -609,10 +608,19 @@ def _dict_from_comment_category(
 class AttachmentWidget(QtWidgets.QWidget):
     """Widget to display a single attachment thumbnail with remove button."""
 
-    remove_clicked = Signal(int, str)  # Signal emits (index, type: 'screenshot' or 'file')
-    thumbnail_clicked = Signal(int, str)  # Signal emits (index, type) when thumbnail clicked
+    # Signal emits (index, type: 'screenshot' or 'file')
+    remove_clicked = Signal(int, str)
+    # Signal emits (index, type) when thumbnail clicked
+    thumbnail_clicked = Signal(int, str)
 
-    def __init__(self, parent=None, index=0, filename="", file_path="", attachment_type="file"):
+    def __init__(
+        self,
+        parent=None,
+        index=0,
+        filename="",
+        file_path="",
+        attachment_type="file",
+    ):
         super().__init__(parent)
         self.index = index
         self.filename = filename
@@ -637,8 +645,10 @@ class AttachmentWidget(QtWidgets.QWidget):
         )
 
         # Make thumbnail clickable
-        self.thumbnail_label.mousePressEvent = lambda e: self.thumbnail_clicked.emit(
-            self.index, self.attachment_type
+        self.thumbnail_label.mousePressEvent = (
+            lambda e: self.thumbnail_clicked.emit(
+                self.index, self.attachment_type
+            )
         )
 
         # Remove button overlaid on top-right corner
@@ -686,7 +696,11 @@ class AttachmentWidget(QtWidgets.QWidget):
     def update_display(self):
         """Update the display with current filename and image"""
         # Update filename label
-        display_name = self.filename[:10] + "..." if len(self.filename) > 10 else self.filename
+        display_name = (
+            self.filename[:10] + "..."
+            if len(self.filename) > 10
+            else self.filename
+        )
         self.filename_label.setText(display_name)
         self.load_image()
 
@@ -860,7 +874,7 @@ class AYTextBox(AYContainer):
         markdown_content = self.edit_field.as_markdown()
 
         # Get all attachment paths
-        all_attachment_paths = [att['path'] for att in self._attachments]
+        all_attachment_paths = [att["path"] for att in self._attachments]
 
         self.signals.comment_submitted.emit(
             markdown_content, self.category, all_attachment_paths
@@ -895,20 +909,22 @@ class AYTextBox(AYContainer):
 
         if file_paths:
             for file_path in file_paths:
-                self.add_attachment(file_path, 'file')
+                self.add_attachment(file_path, "file")
 
     def _on_attachment_removed(self, index: int, attachment_type: str) -> None:
         """Handle removal of an attachment."""
         if 0 <= index < len(self._attachments):
             attachment = self._attachments[index]
             # Optionally delete temp files (screenshots)
-            if attachment['type'] == 'screenshot':
-                file_path = attachment['path']
+            if attachment["type"] == "screenshot":
+                file_path = attachment["path"]
                 if os.path.exists(file_path):
                     try:
                         os.remove(file_path)
                     except Exception as e:
-                        logger.warning(f"Failed to remove temp file {file_path}: {e}")
+                        logger.warning(
+                            f"Failed to remove temp file {file_path}: {e}"
+                        )
 
             self._attachments.pop(index)
             self._refresh_attachment_display()
@@ -922,10 +938,7 @@ class AYTextBox(AYContainer):
         from .gallery_dialog import GalleryDialog
 
         # Prepare images list for GalleryDialog
-        images = [
-            (att['path'], att['filename'])
-            for att in self._attachments
-        ]
+        images = [(att["path"], att["filename"]) for att in self._attachments]
 
         dialog = GalleryDialog(images, current_index=index, parent=self)
         dialog.setWindowTitle("Attachments Preview")
@@ -946,9 +959,9 @@ class AYTextBox(AYContainer):
                 widget = AttachmentWidget(
                     parent=self.attachment_container,
                     index=idx,
-                    filename=attachment['filename'],
-                    file_path=attachment['path'],
-                    attachment_type=attachment['type']
+                    filename=attachment["filename"],
+                    file_path=attachment["path"],
+                    attachment_type=attachment["type"],
                 )
                 widget.remove_clicked.connect(self._on_attachment_removed)
                 widget.thumbnail_clicked.connect(self._on_thumbnail_clicked)
@@ -962,40 +975,50 @@ class AYTextBox(AYContainer):
         self.attachment_container.update()
         self.attachment_scroll.viewport().update()
 
-    def add_attachment(self, file_path: str, attachment_type: str = 'file') -> None:
+    def add_attachment(
+        self, file_path: str, attachment_type: str = "file"
+    ) -> None:
         """Add a single attachment (screenshot or file).
 
         Args:
             file_path: Path to the file
             attachment_type: 'screenshot' or 'file'
         """
-        if not file_path or file_path in [att['path'] for att in self._attachments]:
+        if not file_path or file_path in [
+            att["path"] for att in self._attachments
+        ]:
             return
 
         filename = os.path.basename(file_path)
-        if attachment_type == 'screenshot':
+        if attachment_type == "screenshot":
             # Generate screenshot number
-            screenshot_count = sum(1 for att in self._attachments if att['type'] == 'screenshot')
+            screenshot_count = sum(
+                1 for att in self._attachments if att["type"] == "screenshot"
+            )
             filename = f"Screenshot {screenshot_count + 1}"
 
-        self._attachments.append({
-            'type': attachment_type,
-            'path': file_path,
-            'filename': filename
-        })
+        self._attachments.append(
+            {"type": attachment_type, "path": file_path, "filename": filename}
+        )
 
         self._refresh_attachment_display()
         self._update_attachment_buttons()
 
     def _update_attachment_buttons(self) -> None:
         """Update button badges to show counts."""
-        screenshot_count = sum(1 for att in self._attachments if att['type'] == 'screenshot')
-        file_count = sum(1 for att in self._attachments if att['type'] == 'file')
+        screenshot_count = sum(
+            1 for att in self._attachments if att["type"] == "screenshot"
+        )
+        file_count = sum(
+            1 for att in self._attachments if att["type"] == "file"
+        )
 
         # Update screenshot button
         if screenshot_count > 0:
             self.screenshot_btn.setText(f"{screenshot_count}")
-            self.screenshot_btn.setStyleSheet("background-color: rgba(92, 173, 214, .4);")
+            self.screenshot_btn.setStyleSheet(
+                "background-color: rgba(92, 173, 214, .4);"
+            )
         else:
             self.screenshot_btn.setText("")
             self.screenshot_btn.setStyleSheet("")
@@ -1003,7 +1026,9 @@ class AYTextBox(AYContainer):
         # Update attach file button
         if file_count > 0:
             self.attach_file_btn.setText(f"{file_count}")
-            self.attach_file_btn.setStyleSheet("background-color: rgba(92, 173, 214, .4);")
+            self.attach_file_btn.setStyleSheet(
+                "background-color: rgba(92, 173, 214, .4);"
+            )
         else:
             self.attach_file_btn.setText("")
             self.attach_file_btn.setStyleSheet("")
@@ -1037,6 +1062,7 @@ class AYTextBox(AYContainer):
 
         # Initialize screenshot handler after screenshot_btn is created
         from .screenshot_capture import ScreenshotHandler
+
         self.screenshot_handler = ScreenshotHandler(self, self.screenshot_btn)
 
         # Click to capture, but if screenshots exist, show gallery

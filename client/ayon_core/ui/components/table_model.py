@@ -41,10 +41,7 @@ from qtpy.QtCore import (
 )
 from qtpy.QtGui import QBrush, QColor
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 from .task_queue import AsyncTask, get_task_queue
 

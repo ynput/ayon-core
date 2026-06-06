@@ -13,9 +13,10 @@ from qtpy.QtWidgets import (
 )
 
 from ..style import get_ayon_style
+from .style_mixin import StyleMixin
 
 
-class AYScrollBar(QScrollBar):
+class AYScrollBar(StyleMixin, QScrollBar):
     """AYON styled scroll bar widget.
 
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.
@@ -49,7 +50,7 @@ class AYScrollBar(QScrollBar):
         return
 
 
-class AYScrollArea(QScrollArea):
+class AYScrollArea(StyleMixin, QScrollArea):
     """AYON styled scroll area widget.
 
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.

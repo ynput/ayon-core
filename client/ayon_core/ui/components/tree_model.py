@@ -15,10 +15,7 @@ from qtpy.QtCore import (
     Signal,  # type: ignore[attr-defined]
 )
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 from .task_queue import AsyncTask, get_task_queue
 

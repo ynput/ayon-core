@@ -253,10 +253,11 @@ class GalleryDialog(QDialog):
 if __name__ == "__main__":
     from pathlib import Path
 
+    from .. import _get_test_data_dir
     from ..tester import Style, test
 
     def build():
-        rsrc_dir = Path(__file__).parent.parent / "resources"
+        rsrc_dir = _get_test_data_dir() or Path(__file__).parent.parent / "resources"
         images = []
 
         # Add any available test images

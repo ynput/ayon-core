@@ -117,10 +117,7 @@ class AYSlicer(AYContainer):
 if __name__ == "__main__":
     from functools import partial
 
-    try:
-        from qtmaterialsymbols import get_icon  # type: ignore
-    except ImportError:
-        from ..vendor.qtmaterialsymbols import get_icon  # noqa: F401
+    from qtmaterialsymbols import get_icon  # type: ignore  # noqa: F401
 
     from ..tester import Style, test
     from .tree_model import (

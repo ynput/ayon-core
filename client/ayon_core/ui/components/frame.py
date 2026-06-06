@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ..style import get_ayon_style
 from ..utils import color_blend
 from ..variants import QFrameVariants
+from .style_mixin import StyleMixin
 
 
-class AYFrame(QtWidgets.QFrame):
+class AYFrame(StyleMixin, QtWidgets.QFrame):
     Variants = QFrameVariants
 
     def __init__(
@@ -53,8 +53,8 @@ class AYFrame(QtWidgets.QFrame):
 
 
 if __name__ == "__main__":
+    from ..tester import Style, test
     from .layouts import AYVBoxLayout
-    from ..tester import test, Style
 
     def _build():
         """All frame variants."""

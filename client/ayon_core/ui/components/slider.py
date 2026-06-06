@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from qtpy.QtCore import QRectF, Qt, Signal
 from qtpy.QtGui import QBrush, QColor, QPainter, QPaintEvent, QPen, QPixmap
 from qtpy.QtWidgets import QSlider, QWidget
@@ -11,9 +10,10 @@ from ..style import StyleDict, get_ayon_style
 from ..variants import AYSliderVariants
 from .container import AYContainer
 from .label import AYLabel
+from .style_mixin import StyleMixin
 
 
-class AYSliderBar(QSlider):
+class AYSliderBar(StyleMixin, QSlider):
     """Custom-painted horizontal slider track and handle.
 
     Reads all visual properties (track height, handle size, colors, etc.)
@@ -416,7 +416,6 @@ if __name__ == "__main__":
             row.add_widget(s3)
 
             container.add_widget(row)
-
 
         return container
 

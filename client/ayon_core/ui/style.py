@@ -6,6 +6,9 @@ import logging
 from functools import cmp_to_key, partial
 from pathlib import Path
 from typing import Any
+from glob import glob
+import os
+import platform
 
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QRect, QRectF, QSize, Qt
@@ -46,10 +49,9 @@ from qtpy.QtWidgets import (
 )
 from qtpy.shiboken import isValid
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from .vendor.qtmaterialsymbols import get_icon
+from .components.style_mixin import StyleMixin
+
+from qtmaterialsymbols import get_icon  # type: ignore
 
 
 _ayon_style_instance: AYONStyle | None = None
@@ -75,18 +77,33 @@ def _debug_rect(p: QPainter, color: str, rect: QRect | QRectF):
     p.restore()
 
 
+# Override the platform key used for OS-specific font sizes.
+# Set the ``AYON_CORE_UI_FONT_OS`` env var to a fixed value (e.g. ``"linux"``)
+# to make font selection deterministic across machines — useful for visual
+# regression tests.
+
+
+def _font_platform() -> str:
+    """Return the platform key used to select OS-specific font sizes.
+
+    Resolution order:
+    1. ``AYON_CORE_UI_FONT_OS`` environment variable.
+    2. Live ``platform.system()`` result (normalised to lower-case).
+    """
+    env_val = os.environ.get("AYON_CORE_UI_FONT_OS")
+    if env_val:
+        return env_val.lower()
+    return platform.system().lower()
+
+
 def _style_font(style: dict, w: QWidget | None) -> QFont:
     font = QFont()
+    font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
     font.setFamily(style["font-family"])
-    px_size = style["font-size"]
-    font.setPixelSize(px_size)
+    os_name = _font_platform()
+    pt_size = style.get(f"font-size-{os_name}", style["font-size"])
+    font.setPointSizeF(pt_size)
     font.setWeight(QFont.Weight(style["font-weight"]))
-    # log.debug(
-    #     "FONT: %s, %g pts, w=%d",
-    #     font.family(),
-    #     font.pointSizeF(),
-    #     font.weight(),
-    # )
     return font
 
 
@@ -363,26 +380,30 @@ class StyleData:
             )
             if not self._base_font_checked:
                 self._check_font_availability(self._base_font)
-        return self._base_font
+        return QFont(self._base_font)
 
     def _check_font_availability(self, font: QFont):
         # check if the font is available and load it if need be.
         families = QFontDatabase.families()
         if font.family() not in families:
             # Attempt to load from resources
-            font_path = (
-                Path(__file__).parent
-                / "resources"
-                / (font.family().replace(" ", "") + ".ttf")
+            font_name = font.family().replace(" ", "")
+            glob_path = str(
+                Path(__file__).parent / "resources" / f"{font_name}*.ttf"
             )
-            if font_path.exists():
-                if QFontDatabase.addApplicationFont(str(font_path)) == -1:
-                    log.error(f"Failed to load base font from {font_path}")
-            else:
+            font_files = glob(glob_path)
+
+            if not font_files:
                 log.error(
-                    f"Base font '{font.family()}' not "
-                    f"found in resources/fonts. ({font_path})"
+                    f"Base font '{font.family()}' is not available and no font "
+                    f"files were found in '{glob_path}'"
                 )
+            else:
+                for font_path in font_files:
+                    if QFontDatabase.addApplicationFont(str(font_path)) == -1:
+                        log.error(f"Failed to load base font from {font_path}")
+                    else:
+                        log.debug(f"Loaded base font file {font_path}")
         self._base_font_checked = True
 
     def _build_palette(self) -> QPalette:
@@ -466,10 +487,14 @@ class StyleData:
         print(f"[StyleData]   >> {list(self._cache.keys())}")
 
     def widget_variants(self, widget_cls: str) -> list[str]:
-        return list(self.data["widgets"][widget_cls]["variants"].keys())
+        return list(
+            self.data["widgets"].get(widget_cls, {}).get("variants", {}).keys()
+        )
 
     def widget_states(self, widget_cls: str) -> list[str]:
-        states = list(self.data["widgets"][widget_cls].get("states", []))
+        states = list(
+            self.data["widgets"].get(widget_cls, {}).get("states", [])
+        )
         return states if "base" in states else ["base"] + states
 
     def widget_data(self, widget_cls: str) -> dict:
@@ -478,12 +503,13 @@ class StyleData:
     def widget_list(self) -> list[str]:
         return list(self.data["widgets"].keys())
 
-    def default_variant(self, widget_data):
+    def default_variant(self, widget_data) -> str:
+        variants = widget_data.get("variants", {})
         return widget_data.get(
-            "default-variant", next(iter(widget_data.get("variants", {})))
+            "default-variant", next(iter(variants.keys()), "default")
         )
 
-    def validate_variant(self, widget_data, variant):
+    def validate_variant(self, widget_data, variant) -> str:
         if variant not in widget_data.get("variants", {}):
             return self.default_variant(widget_data)
         return variant
@@ -859,7 +885,7 @@ class ButtonDrawer:
         painter.setPen(text_color)
 
         # Set up font
-        painter.setFont(_style_font(style, widget))
+        painter.setFont(widget.font())
 
         # Get content rectangle
         content_rect = self.style_inst.subElementRect(
@@ -951,7 +977,8 @@ class ButtonDrawer:
                     # Draw text
                     painter.drawText(
                         text_rect,
-                        Qt.AlignmentFlag.AlignCenter,
+                        Qt.AlignmentFlag.AlignLeft
+                        | Qt.AlignmentFlag.AlignVCenter,
                         option.text,  # type: ignore
                     )
             elif variant not in ("thumbnail", "entity-card"):
@@ -1036,7 +1063,7 @@ class ButtonDrawer:
 
         # Set up font for text measurement
         style, _ = self.get_button_style(widget, option.state)  # type: ignore
-        font = _style_font(style, widget)
+        font = widget.font() if widget else _style_font(style, widget)
 
         # Create font metrics for accurate text measurement
         font_metrics = QFontMetrics(font)
@@ -1447,7 +1474,7 @@ class CheckboxDrawer:
 # ----------------------------------------------------------------------------
 
 
-class ComboBoxItemDelegate(QtWidgets.QStyledItemDelegate):
+class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
     def __init__(
         self,
         parent=None,
@@ -1499,6 +1526,17 @@ class ComboBoxItemDelegate(QtWidgets.QStyledItemDelegate):
                 bg if invert else fg,
             )
         return self._icon_cache[key]
+
+    def initStyleOption(
+        self,
+        option: QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        """Initialize style option and apply any custom font from model."""
+        super().initStyleOption(option, index)
+        option.font = self.font()
+        option.fontMetrics = self.fontMetrics()
+        # print(f"PAINT: font = {option.font.family()}")
 
     def paint(
         self,
@@ -2462,7 +2500,7 @@ class ItemViewItemDrawer:
 # ----------------------------------------------------------------------------
 
 
-class TreeViewItemDelegate(QtWidgets.QStyledItemDelegate):
+class TreeViewItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
     """Item delegate for AYTreeView that paints directly, bypassing QSS.
 
     Reads style data from the QTreeView style entry to draw item
@@ -2496,6 +2534,22 @@ class TreeViewItemDelegate(QtWidgets.QStyledItemDelegate):
             self._variant_str,
             ["base", "hover", "selected"],
         )
+
+    def initStyleOption(
+        self,
+        option: QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        """Initialize the style option with the default implementation, then
+        override any properties needed for our custom painting.
+
+        Args:
+            option: The style option to initialize.
+            index: The model index of the item.
+        """
+        super().initStyleOption(option, index)
+        option.font = self.font()
+        option.fontMetrics = self.fontMetrics()
 
     def sizeHint(
         self,
@@ -2641,7 +2695,7 @@ class TreeViewItemDelegate(QtWidgets.QStyledItemDelegate):
 # ----------------------------------------------------------------------------
 
 
-class TableItemDelegate(QtWidgets.QStyledItemDelegate):
+class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
     """Item delegate for AYTableView that paints cells directly, bypassing QSS.
 
     Reads style data from the AYTableView style entry to draw cell
@@ -2933,7 +2987,7 @@ class TableItemDelegate(QtWidgets.QStyledItemDelegate):
             text_rect.setLeft(content_left)
             text_rect.setRight(content_rect.right())
             painter.setPen(text_color)
-            painter.setFont(opt.font)
+            painter.setFont(self.font())
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -3771,6 +3825,7 @@ class AYONStyle(QCommonStyle):
 if __name__ == "__main__":
     import time
 
+    from . import _get_test_data_dir
     from .components.buttons import AYButton
     from .components.check_box import AYCheckBox
     from .components.combo_box import ALL_STATUSES, AYComboBox
@@ -3942,7 +3997,9 @@ if __name__ == "__main__":
         usr_ly = AYHBoxLayout(spacing=8)
         usr_ly.addWidget(
             AYUserImage(
-                src=Path(__file__).parent.joinpath("resources", "avatar1.jpg")
+                src=_get_test_data_dir() / "avatar1.jpg"
+                if _get_test_data_dir()
+                else ""
             )
         )
         vblyt.addStretch()

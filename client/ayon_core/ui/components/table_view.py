@@ -42,15 +42,12 @@ from .scroll_area import AYScrollBar
 from .style_mixin import StyleMixin
 from .table_model import PaginatedTableModel
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 log = logging.getLogger(__name__)
 
 
-class AYTableHeader(QHeaderView):
+class AYTableHeader(StyleMixin, QHeaderView):
     """Custom QHeaderView that paints sections directly, bypassing QSS.
 
     Draws header sections using QPainter to avoid interference from
@@ -123,7 +120,7 @@ class AYTableHeader(QHeaderView):
         text_rect = rect.adjusted(h_pad, v_pad, -h_pad, -v_pad)
 
         painter.setPen(QColor(tbl_style.get("header-color", "#c1c7ce")))
-        font = painter.font()
+        font = self.font()
         font.setWeight(QFont.Weight.DemiBold)
         painter.setFont(font)
 
@@ -286,6 +283,7 @@ class AYTableView(StyleMixin, QTreeView):
             style_model=style.model,
             variant=self._variant_str,
         )
+        delegate.setFont(self.font())
         self.setItemDelegate(delegate)
 
         # Styled scrollbars.
@@ -788,6 +786,21 @@ class AYTableView(StyleMixin, QTreeView):
             if pmi.isValid() and pmi not in self._active_editor_pmis:
                 self.openPersistentEditor(pmi)
                 self._active_editor_pmis.add(pmi)
+
+    def resizeEvent(self, event: Any) -> None:  # type: ignore[override]
+        """Schedule an editor sync when the view is resized.
+
+        A viewport resize may reveal rows that have never been visible
+        before.  Those rows need ``openPersistentEditor`` called on them
+        before their thumbnail widgets can be created and painted.  The
+        regular scroll-driven sync misses this case because the scrollbar
+        value does not change on a pure resize.
+
+        Args:
+            event: The resize event.
+        """
+        super().resizeEvent(event)
+        self._schedule_editor_sync()
 
     def mousePressEvent(  # type: ignore[override]
         self, event: "QtGui.QMouseEvent"

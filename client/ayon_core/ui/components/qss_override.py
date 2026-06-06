@@ -1,3 +1,5 @@
+"""QSS override module. NOT CURRENTLY USED."""
+
 from __future__ import annotations
 
 from qtpy.QtCore import QEvent, QObject

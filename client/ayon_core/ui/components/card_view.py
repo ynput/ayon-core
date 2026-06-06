@@ -28,7 +28,6 @@ from qtpy.QtGui import (
     QBrush,
     QColor,
     QFont,
-    QFontInfo,
     QIcon,
     QPainter,
     QPaintEvent,
@@ -48,10 +47,7 @@ from .entity_card import CARD_RATIO, AYEntityCard
 from .scroll_area import AYScrollBar
 from .table_model import PaginatedTableModel
 
-try:
-    from qtmaterialsymbols import get_icon  # type: ignore
-except ImportError:
-    from ..vendor.qtmaterialsymbols import get_icon
+from qtmaterialsymbols import get_icon  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -786,6 +782,7 @@ class AYCardView(QAbstractItemView):
         super().resizeEvent(event)
         self._calculate_layout()
         self._reposition_visible_editors()
+        self._schedule_editor_sync()
 
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self.viewport())
@@ -817,7 +814,7 @@ class AYCardView(QAbstractItemView):
         # Set header font based on view font, but larger and bold.
         font = painter.font()
         header_font = QFont(font)
-        header_font.setPixelSize(QFontInfo(font).pixelSize() + 3)
+        header_font.setPointSizeF(font.pointSizeF() + 3)
         header_font.setBold(True)
         painter.setFont(header_font)
 
@@ -1178,13 +1175,13 @@ if __name__ == "__main__":
     from ..tester import Style, test
     from .check_box import AYCheckBox
     from .container import AYContainer
+    from .slider import AYSlider
     from .table_model import (
         HIERARCHICAL_TEST_DATA,
         PaginatedTableModel,
         TableColumn,
         make_hierarchical_test_fetch,
     )
-    from .slider import AYSlider
 
     def _make_card_mapper(
         row_data: dict,
