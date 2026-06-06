@@ -10,7 +10,7 @@ from ayon_core.lib.icon_definitions import (
     MaterialSymbolsIcon,
 )
 
-from ayon_ui_qt.components import AYTreeView
+from ayon_core.ui.components import AYTreeView
 
 from ayon_core.style import (
     get_disabled_entity_icon_color,

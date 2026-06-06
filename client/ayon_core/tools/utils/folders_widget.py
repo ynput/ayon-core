@@ -4,7 +4,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-from ayon_ui_qt.components import (
+from ayon_core.ui.components import (
     AYCheckBox,
     AYLineEdit,
     AYTreeView

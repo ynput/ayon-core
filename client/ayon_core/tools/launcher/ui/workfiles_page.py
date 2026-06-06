@@ -16,7 +16,7 @@ from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
-from ayon_ui_qt.components import (
+from ayon_core.ui.components import (
     AYContainer,
     AYTreeView
 )

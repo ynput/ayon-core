@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_ui_qt.components import (
+from ayon_core.ui.components import (
     AYButton,
     AYCheckBox,
     AYLabel,

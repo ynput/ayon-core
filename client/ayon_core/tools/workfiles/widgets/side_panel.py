@@ -3,7 +3,7 @@ from typing import Optional
 
 from qtpy import QtCore
 
-from ayon_ui_qt.components import (
+from ayon_core.ui.components import (
     AYContainer,
     AYButton,
     AYLabel,

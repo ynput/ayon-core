@@ -6,7 +6,7 @@ import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_ui_qt.components import AYContainer
+from ayon_core.ui.components import AYContainer
 
 from ayon_core.lib import Logger
 from ayon_core.lib.icon_definitions import (

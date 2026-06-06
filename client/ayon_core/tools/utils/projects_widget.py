@@ -6,7 +6,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_ui_qt.components import AYComboBox
+from ayon_core.ui.components import AYComboBox
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import (
     ProjectItem,

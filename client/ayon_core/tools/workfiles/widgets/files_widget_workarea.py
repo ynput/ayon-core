@@ -3,7 +3,7 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_ui_qt.components import AYContainer, AYTreeView
+from ayon_core.ui.components import AYContainer, AYTreeView
 
 from ayon_core.style import (
     get_default_entity_icon_color,
