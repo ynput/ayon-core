@@ -52,7 +52,7 @@ class SidePanelWidget(AYContainer):
             layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.Low,
             layout_margin=6,
-            layout_spacing=8,
+            layout_spacing=4,
         )
 
         # ── Details section ─────────────────────────────────────────
@@ -61,19 +61,14 @@ class SidePanelWidget(AYContainer):
         details_form = AYContainer(
             layout=AYContainer.Layout.Form,
             variant=AYContainer.Variants.Low_Framed_Thin,
-            layout_margin=6,
-            layout_spacing=(8, 12),
+            layout_margin=4,
+            layout_spacing=(6, 6),
             parent=self,
         )
         details_form.set_label_alignment(QtCore.Qt.AlignRight)
 
         size_val = AYLabel("-", flexible=True)
         details_form.add_row(AYLabel("Size:", dim=True), size_val)
-
-        comment_key = AYLabel("Comment:", dim=True)
-        comment_val = AYLabel("-", flexible=True)
-        comment_val.setWordWrap(True)
-        details_form.add_row(comment_key, comment_val)
 
         created_val = AYLabel("-", flexible=True)
         created_val.setWordWrap(True)
@@ -84,11 +79,13 @@ class SidePanelWidget(AYContainer):
         modified_val.setWordWrap(True)
         details_form.add_row(modified_key, modified_val)
 
-        self.add_widget(details_form, stretch=1)
+        self.add_widget(details_form, stretch=0)
 
-        # ── Artist Note section ──────────────────────────────────────
-        self.artist_note = AYLabel("Artist Note", rel_text_size=1, parent=self)
-        self.add_widget(self.artist_note)
+        # ── Note/Comment section reused for both ────────────
+        self._note_label = AYLabel(
+            "Artist Note", rel_text_size=1, parent=self
+        )
+        self.add_widget(self._note_label)
 
         note_frame = AYContainer(
             layout=AYContainer.Layout.VBox,
@@ -126,11 +123,11 @@ class SidePanelWidget(AYContainer):
         self._size_val = size_val
         self._created_val = created_val
         self._modified_val = modified_val
-        self._comment_val = comment_val
         self._note_frame = note_frame
         self._description_input = description_input
         self._btn_description_save = btn_description_save
 
+        self._published_mode = False
         self._folder_id = None
         self._task_id = None
         self._filepath = None
@@ -144,11 +141,20 @@ class SidePanelWidget(AYContainer):
     def set_published_mode(self, published_mode: bool) -> None:
         """Change published mode.
 
+        In published mode we replace  "Artist Note" with "Comment"
+        , make it not editable and hides save button. viceversa
+        when published mode false
+
         Args:
             published_mode (bool): Published mode enabled.
         """
-        self.artist_note.setVisible(not published_mode)
-        self._note_frame.setVisible(not published_mode)
+        self._published_mode = published_mode
+        self._note_label.setText(
+            "Comment" if published_mode else "Artist Note"
+        )
+        self._btn_description_save.setVisible(not published_mode)
+        self._description_input.setReadOnly(published_mode)
+
         # Clear the context when switching modes to avoid showing stale data
         if published_mode:
             self._set_publish_context(
@@ -248,6 +254,7 @@ class SidePanelWidget(AYContainer):
         comment = published_workfile_wrap.comment
         if info is None:
             self._set_context(False, folder_id, task_id)
+            self._description_input.setPlainText("")
             return
 
         self._set_context(
@@ -258,8 +265,10 @@ class SidePanelWidget(AYContainer):
             file_modified=info.file_modified,
             size_value=info.file_size,
             created_by=info.author,
-            comment=comment,
+            updated_by=info.author,
         )
+
+        self._description_input.setPlainText(comment or "")
 
     def _set_context(
         self,
@@ -272,7 +281,6 @@ class SidePanelWidget(AYContainer):
         size_value: Optional[int] = None,
         created_by: Optional[str] = None,
         updated_by: Optional[str] = None,
-        comment: Optional[str] = None,
     ) -> None:
         self._folder_id = folder_id
         self._task_id = task_id
@@ -285,7 +293,6 @@ class SidePanelWidget(AYContainer):
             self._size_val.setText("-")
             self._created_val.setText("-")
             self._modified_val.setText("-")
-            self._comment_val.setText("-")
             return
 
         datetime_format = "%b %d %Y %H:%M:%S"
@@ -324,5 +331,3 @@ class SidePanelWidget(AYContainer):
             )
         else:
             self._modified_val.setText("-")
-
-        self._comment_val.setText(comment if comment else "-")
