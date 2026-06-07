@@ -309,6 +309,7 @@ class WorkAreaFilesWidget(AYContainer):
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Smaller indentation
         view.setIndentation(0)
+        view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = WorkAreaFilesModel(controller)
         proxy_model = QtCore.QSortFilterProxyModel()
