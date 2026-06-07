@@ -45,6 +45,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         contrast_color: QColor | None = None,
         elide_mode: Qt.TextElideMode = Qt.TextElideMode.ElideNone,
         copy_text: bool = False,
+        flexible: bool = False,
         **kwargs,
     ):
         # style params
@@ -98,7 +99,8 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
 
         self.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Ignored if flexible
+            else QtWidgets.QSizePolicy.Policy.Minimum,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
 

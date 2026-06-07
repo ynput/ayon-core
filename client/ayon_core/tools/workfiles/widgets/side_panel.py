@@ -51,8 +51,8 @@ class SidePanelWidget(AYContainer):
             parent,
             layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.Low,
-            layout_margin=10,
-            layout_spacing=10,
+            layout_margin=6,
+            layout_spacing=8,
         )
 
         # ── Details section ─────────────────────────────────────────
@@ -61,26 +61,26 @@ class SidePanelWidget(AYContainer):
         details_form = AYContainer(
             layout=AYContainer.Layout.Form,
             variant=AYContainer.Variants.Low_Framed_Thin,
-            layout_margin=10,
-            layout_spacing=(20, 20),
+            layout_margin=6,
+            layout_spacing=(8, 12),
             parent=self,
         )
         details_form.set_label_alignment(QtCore.Qt.AlignRight)
 
-        size_val = AYLabel("-")
+        size_val = AYLabel("-", flexible=True)
         details_form.add_row(AYLabel("Size:", dim=True), size_val)
 
         comment_key = AYLabel("Comment:", dim=True)
-        comment_val = AYLabel("-")
+        comment_val = AYLabel("-", flexible=True)
         comment_val.setWordWrap(True)
         details_form.add_row(comment_key, comment_val)
 
-        created_val = AYLabel("-")
+        created_val = AYLabel("-", flexible=True)
         created_val.setWordWrap(True)
         details_form.add_row(AYLabel("Created:", dim=True), created_val)
 
         modified_key = AYLabel("Modified:", dim=True)
-        modified_val = AYLabel("-")
+        modified_val = AYLabel("-", flexible=True)
         modified_val.setWordWrap(True)
         details_form.add_row(modified_key, modified_val)
 
