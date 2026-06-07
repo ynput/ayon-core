@@ -412,11 +412,10 @@ class FoldersWidget(QtWidgets.QWidget):
         controller,
         parent,
         handle_expected_selection=False,
-        view_variant=AYTreeView.Variants.Default,
     ):
         super().__init__(parent)
 
-        folders_view = AYTreeView(self, variant=view_variant)
+        folders_view = AYTreeView(self)
         folders_view.setHeaderHidden(True)
         folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
