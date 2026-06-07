@@ -410,7 +410,7 @@ class TasksWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent, handle_expected_selection=False):
         super().__init__(parent)
 
-        tasks_view = AYTreeView(self)
+        tasks_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
         tasks_view.setIndentation(0)
         tasks_view.setHeaderHidden(False)
         tasks_view.setSelectionMode(

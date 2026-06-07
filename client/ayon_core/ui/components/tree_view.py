@@ -40,8 +40,12 @@ class AYTreeView(StyleMixin, QTreeView):
         self,
         parent: QWidget | None = None,
         variant: QTreeViewVariants = QTreeViewVariants.Default,
+        item_height: int | None = None,
+        item_padding: list[int] | None = None,
     ) -> None:
         self._variant_str: str = variant.value
+        self._item_height = item_height
+        self._item_padding = item_padding
 
         super().__init__(parent)
 
@@ -68,6 +72,8 @@ class AYTreeView(StyleMixin, QTreeView):
             parent=self,
             style_model=style.model,
             variant=self._variant_str,
+            item_height=item_height,
+            item_padding=item_padding,
         )
         self.setItemDelegate(delegate)
 
@@ -104,6 +110,8 @@ class AYTreeView(StyleMixin, QTreeView):
                 parent=self,
                 style_model=get_ayon_style().model,
                 variant=self._variant_str,
+                item_height=self._item_height,
+                item_padding=self._item_padding,
             )
         super().setItemDelegateForColumn(column, delegate)
 

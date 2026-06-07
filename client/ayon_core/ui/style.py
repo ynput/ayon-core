@@ -2519,11 +2519,15 @@ class TreeViewItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         parent: QWidget | None = None,
         style_model: StyleData | None = None,
         variant: str = "default",
+        item_height: int | None = None,
+        item_padding: list[int] | None = None,
     ) -> None:
         super().__init__(parent)
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
+        self._item_custom_height = item_height
+        self._item_custom_padding = item_padding
 
     def _tv_styles(self) -> dict[str, dict]:
         """Return *base*, *hover* and *selected* style dicts at once."""
@@ -2565,7 +2569,9 @@ class TreeViewItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._style_model:
+        if self._item_custom_height is not None:
+            h = self._item_custom_height
+        elif self._style_model:
             style = self._style_model.get_style("QTreeView", self._variant_str)
             h = int(style.get("item-height", 28))
         else:
@@ -2600,7 +2606,10 @@ class TreeViewItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         hover_style = styles["hover"]
         selected_style = styles["selected"]
 
-        item_padding = base_style.get("item-padding", [4, 8])
+        item_padding = (
+            self._item_custom_padding
+            or base_style.get("item-padding", [4, 8])
+        )
         icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
 
         # --- background ------------------------------------------------
