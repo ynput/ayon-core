@@ -31,7 +31,7 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             return
         attr_values = self.get_attr_values_from_data(instance.data)
         status_state = attr_values.get("status_state")
-        if status_state == "dont_use":
+        if not status_state or status_state == "dont_use":
             return
 
         if status_state == "use_status":
