@@ -94,10 +94,8 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         default_status = None
         artist_can_change = True
         if status_profile:
-            artist_can_change = status_profile.get(
-                "artist_can_change", True
-            )
-            default_status = status_profile.get("default_status", "")
+            artist_can_change = status_profile["artist_can_change"]
+            default_status = status_profile["default_status"]
             if not artist_can_change:
                 cls._set_instance_state(
                     instance, status_state_attr, f"status|{default_status}"
