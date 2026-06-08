@@ -462,7 +462,7 @@ class ExtractThumbnailFFmpegModel(BaseSettingsModel):
     )
     output: list[str] = SettingsField(
         default_factory=list,
-        title="FFmpeg input arguments"
+        title="FFmpeg output arguments"
     )
 
 
