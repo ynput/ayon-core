@@ -10,14 +10,15 @@ class StyleMixin:
     """Mixin class for overriding QWidget's font, fontMetrics, and palette
     methods.
 
-    This mixin provides reliable overrides for style-related methods that should
-    return the custom style values instead of the default QWidget values.
+    This mixin provides reliable overrides for style-related methods that
+    should return the custom style values instead of the default QWidget
+    values.
 
     Fonts:
     - `font()` method returns a QFont instance based on the AYON style.
     - `setFont()` does not set the font but propagates our style's font.
-    - NOTE: To actually change a widget's font, use / implement the `set_font()`
-    method.
+    - NOTE: To actually change a widget's font, use / implement the
+    `set_font()` method.
     - `fontMetrics()` method returns a QFontMetrics instance based the current
     style font.
 

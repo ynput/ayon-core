@@ -61,7 +61,9 @@ def test_loading_changed_signal_sequence(qtbot) -> None:
     model = LazyTreeModel(fetch_children=_simple_fetch)
 
     # Immediately after construction the model must be in-flight.
-    assert model.is_loading, "Model should be loading immediately after construction"
+    assert model.is_loading, (
+        "Model should be loading immediately after construction"
+    )
 
     # Wait for the False emission that signals completion.
     with qtbot.waitSignal(model.loading_changed, timeout=3000) as blocker:
@@ -124,8 +126,12 @@ def test_fetch_error_emits_signal_and_node_stays_retryable(
 
     # Root node must NOT be permanently locked as children_loaded.
     root = model._root  # type: ignore[attr-defined]
-    assert not root.children_loaded, "Root should remain retryable after a failed fetch"
-    assert not root.is_fetching, "is_fetching guard must be released after error"
+    assert not root.children_loaded, (
+        "Root should remain retryable after a failed fetch"
+    )
+    assert not root.is_fetching, (
+        "is_fetching guard must be released after error"
+    )
 
 
 def test_pending_count_changed_signal(qtbot) -> None:

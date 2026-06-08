@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
-import os
-import platform
 from functools import cmp_to_key
-from pathlib import Path
 
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QRect, QRectF, Qt
@@ -46,7 +43,6 @@ from .drawers import (
     TooltipDrawer,
     TreeViewDrawer,
     enum_to_str,
-    style_font,
 )
 from .style_types import (
     StyleData,

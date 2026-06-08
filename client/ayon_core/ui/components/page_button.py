@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 
+from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QFontMetrics
@@ -24,8 +25,6 @@ from ..variants import AYPageButtonVariants, QPushButtonVariants
 from .buttons import AYButton
 
 logger = logging.getLogger(__name__)
-
-from qtmaterialsymbols import get_icon  # type: ignore
 
 
 class AYPageButton(AYButton):
@@ -450,7 +449,10 @@ if __name__ == "__main__":
             ("Featured version", "Done", "star"),
             ("Settings", "", "settings"),
             (
-                "A very long label that should be elided when the window is narrow",
+                (
+                    "A very long label that should be elided when the window "
+                    "is narrow"
+                ),
                 "Value",
                 "info",
             ),

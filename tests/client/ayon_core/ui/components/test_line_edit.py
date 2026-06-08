@@ -10,7 +10,8 @@ from ayon_core.ui.components.container import AYContainer
 
 
 class LineEditTest(WidgetTest):
-    """Tests AYLineEdit across Default and Search_Field variants, plus disabled."""
+    """Tests AYLineEdit across Default and Search_Field variants, plus
+    disabled."""
 
     size = (500, 200)
     tolerance = 0.0

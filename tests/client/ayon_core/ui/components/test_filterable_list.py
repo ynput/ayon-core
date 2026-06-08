@@ -41,7 +41,9 @@ class FilterableListTest(WidgetTest):
             tag = AYTag(name=name, color=color)
             self._list.add_item(
                 tag,
-                match_fn=lambda text, n=name: n.lower().startswith(text.lower()),
+                match_fn=lambda text, n=name: n.lower().startswith(
+                    text.lower()
+                ),
             )
 
         self._list.add_stretch()

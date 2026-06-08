@@ -87,7 +87,8 @@ class GalleryDialog(QDialog):
             event: Show event.
         """
         super().showEvent(event)
-        # Activate window and set focus to the dialog so keyboard events work immediately
+        # Activate window and set focus to the dialog so keyboard events work
+        # immediately
         self.activateWindow()
         self.setFocus(Qt.FocusReason.OtherFocusReason)
 
@@ -227,7 +228,10 @@ class GalleryDialog(QDialog):
         if len(self.images) > 1:
             # Update info label
             display_name = Path(filename).stem if filename else "Unknown"
-            info_text = f"{self.current_index + 1} / {len(self.images)} - {display_name}"
+            info_text = (
+                f"{self.current_index + 1} / {len(self.images)} - "
+                f"{display_name}"
+            )
             self.info_label.setText(info_text)
 
             # Update button states

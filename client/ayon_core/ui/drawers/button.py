@@ -297,7 +297,8 @@ class ButtonDrawer:
             QStyle.SubElement.SE_PushButtonContents, option, widget
         )
 
-        # Optional per-widget alignment override (None → default centered layout)
+        # Optional per-widget alignment override (None → default centered
+        # layout)
         label_alignment = getattr(widget, "_label_alignment", None)
 
         # Draw icon if present

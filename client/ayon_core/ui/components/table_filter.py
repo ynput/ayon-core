@@ -190,7 +190,8 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
         return False
 
     def refresh_filter(self) -> None:
-        """Re-apply the current filter criteria (e.g. after source data changes)."""
+        """Re-apply the current filter criteria (e.g. after source data
+        changes)."""
         self.invalidateFilter()
 
 
@@ -468,7 +469,8 @@ class _FilterDropdown(AYDropdownPopup):
                     fixed_width=False,
                     checkable=True,
                     label_alignment=Qt.AlignmentFlag.AlignLeft,
-                    # TODO: support icons for enum columns (need to expose in model)
+                    # TODO: support icons for enum columns
+                    #       (need to expose in model)
                 )
                 btn.setSizePolicy(
                     QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -654,7 +656,8 @@ class AYTableFilter(AYContainer):
         self._dropdown = _FilterDropdown(model, self)
         self._dropdown.criterion_ready.connect(self._on_criterion_ready)
 
-        # search button - always visible, opens empty dropdown for new criterion
+        # search button - always visible, opens empty dropdown for new
+        # criterion
         self._search_btn = AYButton(
             icon="search",
             variant=AYButton.Variants.Nav_Small,

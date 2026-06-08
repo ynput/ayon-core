@@ -12,13 +12,13 @@ from ayon_core.ui.components.container import AYContainer
 
 # Representative tag configs: (name, color_hex, optional_label)
 _TAG_CONFIGS = [
-    ("feature",  "#3498db", None),
-    ("bug",      "#cb1a1a", None),
+    ("feature", "#3498db", None),
+    ("bug", "#cb1a1a", None),
     ("approved", "#00f0b4", None),
-    ("on-hold",  "#fa6e46", None),
-    ("wip",      "#bababa", "Work in progress"),
-    ("omitted",  "#434a56", None),
-    ("light",    "#f8f8f8", "Light bg"),
+    ("on-hold", "#fa6e46", None),
+    ("wip", "#bababa", "Work in progress"),
+    ("omitted", "#434a56", None),
+    ("light", "#f8f8f8", "Light bg"),
 ]
 
 

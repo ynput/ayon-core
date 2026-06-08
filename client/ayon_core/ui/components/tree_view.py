@@ -461,8 +461,10 @@ if __name__ == "__main__":
                 lambda selected, deselected, tv=tv: print(
                     "selection changed: "
                     f"Selected {[i.data() for i in selected.indexes()]} "
-                    f"and deselected {[i.data() for i in deselected.indexes()]}) "
-                    f"(full selection: {[i.data() for i in tv.selectedIndexes()]})"
+                    "and deselected "
+                    f"{[i.data() for i in deselected.indexes()]}) "
+                    "(full selection: "
+                    f"{[i.data() for i in tv.selectedIndexes()]})"
                 )
             )
 

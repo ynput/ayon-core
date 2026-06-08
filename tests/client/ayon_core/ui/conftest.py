@@ -36,7 +36,9 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--show-images",
         action="store_true",
         default=False,
-        help="After the run, open a Qt window showing failed image comparisons.",
+        help=(
+            "After the run, open a Qt window showing failed image comparisons."
+        ),
     )
 
 

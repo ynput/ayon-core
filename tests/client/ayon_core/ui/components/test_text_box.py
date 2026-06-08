@@ -138,7 +138,9 @@ class TextBoxTest(WidgetTest):
             "## Title\nSome **bold** and *italic* text.\n"
             "- [ ] Task one\n- [x] Task two\n"
         )
-        self._text_box_no_cat.set_markdown("Plain comment with `inline code`.\n")
+        self._text_box_no_cat.set_markdown(
+            "Plain comment with `inline code`.\n"
+        )
 
     def wait_loaded(self, qtbot) -> None:
         """Flush pending paint events."""
@@ -192,7 +194,8 @@ class TextEditorTest(WidgetTest):
             variant=AYTextEditor.Variants.Default,
         )
         self._editor_readonly.set_markdown(
-            "**Bold text** and *italic text*.\n```python\nprint('hello')\n```\n"
+            "**Bold text** and *italic text*.\n`"
+            "``python\nprint('hello')\n```\n"
         )
         row2.add_widget(self._editor_readonly, stretch=1)
         root.add_widget(row2, stretch=1)
@@ -202,7 +205,9 @@ class TextEditorTest(WidgetTest):
     def set_text(self) -> None:
         """Set text in the default editor."""
         self._editor_default.set_markdown(
-            "- [ ] Checklist item one\n- [ ] Checklist item two\n- [x] Completed item\n"
+            "- [ ] Checklist item one\n"
+            "- [ ] Checklist item two\n"
+            "- [x] Completed item\n"
         )
 
     def set_bold(self) -> None:

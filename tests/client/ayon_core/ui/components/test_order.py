@@ -167,7 +167,9 @@ class TestAYOrderReorder:
         order._reorder(2, 2)
         assert received == []
 
-    def test_reorder_layout_count_unchanged(self, order: AYOrder, qtbot) -> None:
+    def test_reorder_layout_count_unchanged(
+        self, order: AYOrder, qtbot
+    ) -> None:
         """The layout item count stays the same after a reorder.
 
         Widgets are temporarily detached during the slide animation and

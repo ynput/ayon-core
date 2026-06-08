@@ -365,7 +365,8 @@ class AYCommentField(AYTextEdit):
         on_completer_activated(self, text)
 
     def _adjust_height_to_content(self) -> None:
-        """Adjust widget height to fit document content (read-only mode only)."""
+        """Adjust widget height to fit document content
+        (read-only mode only)."""
         if not self._read_only:
             return
 
@@ -400,7 +401,8 @@ class AYCommentField(AYTextEdit):
         hit-testing in _is_checkbox_at_cursor.
 
         Returns:
-            QPointF offset where viewport origin corresponds to document coords.
+            QPointF offset where viewport origin corresponds to document
+            coords.
         """
         return QPointF(
             -self.horizontalScrollBar().value(),
@@ -570,7 +572,8 @@ class AYCommentField(AYTextEdit):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
-        """Change cursor to arrow when hovering over checkboxes, hand for links."""
+        """Change cursor to arrow when hovering over checkboxes, hand for
+        links."""
         cursor = self.cursorForPosition(event.pos())
         char_format = cursor.charFormat()
 
@@ -593,7 +596,8 @@ class AYCommentField(AYTextEdit):
 
 
 class AYImageAttachment(QLabel):
-    """Widget to display an image attachment with thumbnail and full-size preview.
+    """Widget to display an image attachment with thumbnail and full-size
+    preview.
 
     Supports gallery mode when multiple images are associated together.
     When gallery_images is set, clicking the thumbnail opens a GalleryDialog
@@ -711,7 +715,8 @@ class AYImageAttachment(QLabel):
         super().leaveEvent(event)
 
     def paintEvent(self, arg__1: QPaintEvent) -> None:
-        """Draw a semi-transparent overlay with a fullscreen icon when hovered."""
+        """Draw a semi-transparent overlay with a fullscreen icon when
+        hovered."""
         # draw image
         super().paintEvent(arg__1)
         # setup painter
@@ -771,7 +776,8 @@ class AYImageAttachment(QLabel):
         ):
             self._gallery_images = self._image_collector()
 
-        # Build gallery images list - use gallery_images if set, otherwise just this image
+        # Build gallery images list - use gallery_images if set, otherwise
+        # just this image
         if self._gallery_images:
             images = self._gallery_images
             current_index = self._gallery_index
@@ -1296,7 +1302,8 @@ if __name__ == "__main__":
                     comment=(
                         "Text Styling\n"
                         "------------\n"
-                        "regular, **bold**, *italic*, ***bold italic*** and `some code` text.\n\n"
+                        "regular, **bold**, *italic*, ***bold italic*** "
+                        "and `some code` text.\n\n"
                         "[A link](https://www.google.com)\n\n"
                         "```\n"
                         "# A code fragment\n"
@@ -1327,9 +1334,13 @@ if __name__ == "__main__":
                     user_full_name="Katniss Evergreen",
                     comment=(
                         "Please check "
-                        "[this link](https://doc.qt.io/qt-6/qtextdocument.html)\n\n"
-                        "or [that one](https://doc.qt.io/qt-6/qtextblock.html#details) if need be. "
-                        "maybe [a last URL](https://doc.qt.io/qt-6/qtextblock.html#details) ?"
+                        "[this link]"
+                        "(https://doc.qt.io/qt-6/qtextdocument.html)\n\n"
+                        "or [that one]"
+                        "(https://doc.qt.io/qt-6/qtextblock.html#details) "
+                        "if need be. "
+                        "maybe [a last URL]"
+                        "(https://doc.qt.io/qt-6/qtextblock.html#details) ?"
                     ),
                 )
             )
@@ -1363,7 +1374,8 @@ if __name__ == "__main__":
         w.add_widget(tb)
         tb.signals.comment_submitted.connect(
             lambda *args: print(
-                f"Comment submitted: {'=' * (80 - len('Comment submitted: '))}\n",
+                "Comment submitted: "
+                f"{'=' * (80 - len('Comment submitted: '))}\n",
                 f"{args[0]}",
                 f"{'-' * 80}\n",
                 f"   markdown: {args[0]!r}\n",

@@ -456,7 +456,7 @@ class StyleData:
         when you need styles for several states of the same widget/variant.
 
         Args:
-            widget_cls: The widget class name (e.g., ``"QStyledItemDelegate"``).
+            widget_cls: The widget class name, e.g. ``"QStyledItemDelegate"``.
             variant: The variant name (e.g., ``"default"``). Defaults to None.
             states: List of states to retrieve (e.g., ``["base", "hover",
                 "checked"]``). Defaults to all defined states.

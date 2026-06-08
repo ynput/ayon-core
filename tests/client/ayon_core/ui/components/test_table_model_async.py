@@ -32,7 +32,10 @@ def test_request_id_rotates_on_model_resets() -> None:
     request_id_after_set_page = model._request_id  # type: ignore[attr-defined]
     assert request_id_after_set_page != request_id_after_reset
 
-@pytest.mark.filterwarnings("ignore::RuntimeWarning")  # Suppress expected warnings from test
+
+@pytest.mark.filterwarnings(
+    "ignore::RuntimeWarning"
+)  # Suppress expected warnings from test
 def test_stale_results_discarded_after_reset(qtbot) -> None:
     """Results from a pre-reset fetch are discarded by request-id mismatch."""
 

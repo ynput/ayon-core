@@ -129,7 +129,8 @@ class TestStyleDictResolution:
         """Test that missing attributes are returned as @ reference."""
         ctx = MockContext()
         d = StyleDict({"color": "@missing_attribute"}, _context=ctx)
-        # getattr returns default if not found, so it returns "@missing_attribute"
+        # getattr returns default if not found, so it returns
+        # "@missing_attribute"
         assert d["color"] == "@missing_attribute"
 
     def test_resolve_attribute_with_none_value(self):

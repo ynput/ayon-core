@@ -362,7 +362,8 @@ class AYComboBoxModel(QStandardItemModel):
 
 
 class AYComboBox(StyleMixin, QtWidgets.QComboBox):
-    """AYON-styled combo-box with icon, short-text, and inverted-colour support.
+    """AYON-styled combo-box with icon, short-text, and inverted-colour
+    support.
 
     :class:`AYComboBox` wraps :class:`QComboBox` and adds:
 
@@ -533,7 +534,8 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
             icon = get_icon(
                 icon_name,
                 color=bg_color if inverted else fg_color,
-                # TODO: add fill support to get_icon and pass self._icon_fill here
+                # TODO: add fill support to get_icon and
+                #       pass self._icon_fill here
             )
         return icon
 
@@ -822,7 +824,8 @@ if __name__ == "__main__":
                         icon_name,
                         color_normal=bg_color,
                         color_selected=color,
-                        # TODO: add fill support to get_icon and pass self._icon_fill here
+                        # TODO: add fill support to get_icon and
+                        #       pass self._icon_fill here
                     )
                 )
                 item.setData(icon_name, self.IconNameRole)

@@ -4,6 +4,7 @@ import logging
 import os
 from typing import Callable
 
+from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QPalette
@@ -17,8 +18,6 @@ from .dropdown import AYDropdownPopup
 from .style_mixin import StyleMixin
 
 logger = logging.getLogger(__name__)
-
-from qtmaterialsymbols import get_icon  # type: ignore
 
 
 class AYButton(StyleMixin, QtWidgets.QPushButton):

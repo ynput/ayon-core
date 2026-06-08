@@ -172,11 +172,12 @@ def _parse_annotations(act_data, nothing):
 
 
 def clear_layout(layout):
-    """Recursively deletes child QWidgets in the initial QLayout and in sub-layouts.
+    """Recursively deletes child QWidgets in the initial QLayout and in
+    sub-layouts.
 
-    This function handles all types of QLayout subclasses (QVBoxLayout, QHBoxLayout,
-    QGridLayout, etc.) and safely deletes all child widgets while maintaining the
-    integrity of the parent layout structure.
+    This function handles all types of QLayout subclasses (QVBoxLayout,
+    QHBoxLayout, QGridLayout, etc.) and safely deletes all child widgets
+    while maintaining the integrity of the parent layout structure.
 
     Args:
         layout: QLayout instance to clear
@@ -186,7 +187,8 @@ def clear_layout(layout):
 
     # print(f"layout = {layout}")
 
-    # Work backwards through the layout to avoid index issues when removing items
+    # Work backwards through the layout to avoid index issues when removing
+    # items
     for i in reversed(range(layout.count())):
         item = layout.takeAt(i)
         if item is None:

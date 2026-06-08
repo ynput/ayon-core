@@ -23,7 +23,8 @@ from widget_test import WidgetTest
 
 
 def _collect_widget_test_classes() -> list[Type[WidgetTest]]:
-    """Import all test_*.py modules under tests/components/ and return WidgetTest subclasses."""
+    """Import all test_*.py modules under tests/components/ and return
+    WidgetTest subclasses."""
     components_dir = Path(__file__).parent / "components"
     classes: list[Type[WidgetTest]] = []
     for module_info in pkgutil.iter_modules([str(components_dir)]):
@@ -100,7 +101,8 @@ def test_steps(
     qtbot,
     image_regression,
 ):
-    """Snapshot the widget after applying all steps up to and including step_index."""
+    """Snapshot the widget after applying all steps up to and including
+    step_index."""
     from ayon_core.ui.style import get_ayon_style
 
     wt = widget_test_cls(qbot=qtbot)

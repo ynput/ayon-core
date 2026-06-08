@@ -57,7 +57,8 @@ class AYLineEdit(StyleMixin, QLineEdit):
         self.setFrame(False)
 
         # Neutralise any ancestor stylesheet that would intercept
-        # PE_PanelLineEdit via QStyleSheetStyle, making it visually transparent.
+        # PE_PanelLineEdit via QStyleSheetStyle, making it visually
+        # transparent.
         self.setStyleSheet(
             "AYLineEdit { background: transparent; border: none; "
             "padding: 0px; selection-background-color: none; "
@@ -137,7 +138,8 @@ class AYLineEdit(StyleMixin, QLineEdit):
         super().initStyleOption(option)
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        """Paint background, border, and focus ring, then delegate text rendering.
+        """Paint background, border, and focus ring, then delegate text
+        rendering.
 
         Draws the styled background rectangle and border first using QPainter
         directly (no style or stylesheet involvement), then calls

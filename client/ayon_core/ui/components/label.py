@@ -926,7 +926,8 @@ if __name__ == "__main__":
                 variant=AYLabel.Variants.Entity_Label_Filled,
             )
             # print(
-            #     f"Entity_Label_Filled: {json.dumps(l9._style_data, indent=4)}"
+            #     "Entity_Label_Filled: "
+            #     f"{json.dumps(l9._style_data, indent=4)}"
             # )
             row.add_widget(l9, stretch=0)
             row.addStretch()

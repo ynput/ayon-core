@@ -132,7 +132,8 @@ class AsyncTaskQueueMonitor(StyleMixin, QWidget):
         style_data.set_context(self)
         if not style_data:
             log.warning(
-                "AsyncTaskQueueMonitor: Style data not available, using defaults"
+                "AsyncTaskQueueMonitor: Style data not available, "
+                "using defaults"
             )
 
         # Colors
@@ -262,7 +263,8 @@ class AsyncTaskQueueMonitor(StyleMixin, QWidget):
     # ------------------------------------------------------------------
 
     def _transition(self, name: str, status: _TaskStatus) -> None:
-        """Move the first active (pending/running) task with *name* to *status*.
+        """Move the first active (pending/running) task with *name* to
+        *status*.
 
         Args:
             name: Task name to look up.
@@ -290,7 +292,8 @@ class AsyncTaskQueueMonitor(StyleMixin, QWidget):
         self._clear_timer.start(delay)
 
     def _on_debounced_update(self) -> None:
-        """Slot called by the debounce timer; triggers a repaint and tooltip."""
+        """Slot called by the debounce timer; triggers a repaint and
+        tooltip."""
         self.update()
 
     def _advance_pulse(self) -> None:

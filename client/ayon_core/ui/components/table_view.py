@@ -595,7 +595,8 @@ class AYTableView(StyleMixin, QTreeView):
         header.blockSignals(False)
 
     def _save_expansion_state(self) -> None:
-        """Snapshot the node IDs of all expanded rows into ``_expanded_node_ids``.
+        """Snapshot the node IDs of all expanded rows into
+        ``_expanded_node_ids``.
 
         Called just before the model resets when switching from tree to flat
         mode, while the tree is still fully populated.
@@ -672,7 +673,8 @@ class AYTableView(StyleMixin, QTreeView):
         first: int,
         last: int,
     ) -> None:
-        """Open persistent editors and restore expansion for newly inserted rows.
+        """Open persistent editors and restore expansion for newly inserted
+        rows.
 
         Args:
             parent: Parent index; supports non-root parents in tree mode.
@@ -712,7 +714,8 @@ class AYTableView(StyleMixin, QTreeView):
         self._schedule_editor_sync()
 
     def _get_visible_widget_indexes(self) -> list[QModelIndex]:
-        """Return display-model indexes for visible cells with widget factories.
+        """Return display-model indexes for visible cells with widget
+        factories.
 
         Uses :meth:`QTreeView.indexBelow` to walk visible rows from the
         topmost visible item downwards, stopping as soon as the visual rect

@@ -678,7 +678,8 @@ class PaginatedTableModel(QAbstractItemModel):
         return self.createIndex(row, 0, node)
 
     def _update_loading_state(self) -> None:
-        """Emit loading-progress signals based on current pending task count."""
+        """Emit loading-progress signals based on current pending task
+        count."""
         self.pending_count_changed.emit(self._pending_tasks)
         self.loading_changed.emit(self._pending_tasks > 0)
 
@@ -1138,7 +1139,8 @@ def _make_hierarchical_test_data(
     n: int,
     subfolders_per_root: int = 8,
 ) -> dict[str | None, list[dict[str, Any]]]:
-    """Generate hierarchical test data with a configurable number of leaf entries.
+    """Generate hierarchical test data with a configurable number of leaf
+    entries.
 
     Two root folders (Assets, Shots) are always present.  Under each,
     ``subfolders_per_root`` sub-folders are generated from a fixed name
@@ -1232,7 +1234,7 @@ def _make_hierarchical_test_data(
                     "author": rng.choice(_authors),
                     "version": f"v{rng.randint(1, 20):03d}",
                     "thumb": "",  # placeholder for thumbnail column
-                    "thumb__icon": "panorama",  # placeholder for thumbnail column
+                    "thumb__icon": "panorama",  # placeholder for thumbnail column  # noqa: E501
                 }
             )
         return entries

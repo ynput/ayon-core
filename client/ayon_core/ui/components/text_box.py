@@ -445,7 +445,8 @@ class AYTextEditor(AYTextEdit):
             fmt = QTextCharFormat()
 
             if is_code:
-                # Toggle off: revert code-specific properties to widget defaults
+                # Toggle off: revert code-specific properties to widget
+                # defaults
                 fmt.setFontFixedPitch(False)
                 fmt.setFontFamilies([self.font().family()])
                 fmt.setBackground(
@@ -765,7 +766,9 @@ class AYTextBox(AYContainer):
         self.category = self.comment_categories[0]["text"]
         self._user_list: list[User] = user_list or []
         # Store attachments - unified list for both screenshots and files
-        self._attachments = []  # List of dicts: {'type': 'screenshot'|'file', 'path': str, 'filename': str}
+        # List of dicts:
+        #   {'type': 'screenshot'|'file', 'path': str, 'filename': str}
+        self._attachments = []
         self.screenshot_handler = None  # Will be initialized in _build
         self._build(num_lines)
 
@@ -809,7 +812,8 @@ class AYTextBox(AYContainer):
         return lyt
 
     def _build_attachment_area(self):
-        """Build the unified scrollable attachment display area for both screenshots and files."""
+        """Build the unified scrollable attachment display area for both
+        screenshots and files."""
         # Container for attachments
         self.attachment_container = QtWidgets.QWidget(self)
         self.attachment_layout = AYHBoxLayout(
@@ -870,7 +874,8 @@ class AYTextBox(AYContainer):
         return lyt
 
     def _on_comment_clicked(self) -> None:
-        """Handle comment button click and emit signal with markdown content."""
+        """Handle comment button click and emit signal with markdown
+        content."""
         markdown_content = self.edit_field.as_markdown()
 
         # Get all attachment paths
