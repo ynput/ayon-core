@@ -41,17 +41,23 @@ class RootItem(FormatObject):
         #   as production safe. Some features may not work as expected, for
         #   example USD resolver or site sync.
         try:
-            self.value = lowered_platform_keys[current_platform].format_map(
-                os.environ
+            self.value = (
+                os.path.expandvars(
+                    os.path.expanduser(
+                        lowered_platform_keys[current_platform].format_map(
+                            os.environ
+                        )
+                    )
+                )
             )
-        except KeyError:
+        except KeyError as e:
             result = StringTemplate(self.value).format(os.environ.copy())
             is_are = "is" if len(result.missing_keys) == 1 else "are"
             missing_keys = ", ".join(result.missing_keys)
             raise RootMissingEnv(
                 f"Root \"{name}\" requires environment variable/s"
                 f" {missing_keys} which {is_are} not available."
-            )
+            ) from e
 
         self.clean_value = self._clean_root(self.value)
 
@@ -196,6 +202,13 @@ class RootItem(FormatObject):
 
         All platform values are checked for this replacement.
 
+        Both the input ``path`` and the stored root values are tried in their
+        original *and* expanded forms (via ``os.path.expandvars`` /
+        ``os.path.expanduser``) so that the following mismatches are handled:
+
+        - ``path`` is already expanded but the stored root still contains
+          ``~`` or ``%VAR%`` / ``$VAR`` tokens (or vice-versa).
+
         Args:
             path (str): Path where root value should be found.
 
@@ -224,20 +237,63 @@ class RootItem(FormatObject):
         output = str(path)
 
         mod_path = self._clean_path(path)
+        # Expanded version of the input path – used when the stored root value
+        # is already expanded while the caller passed an unexpanded path, or
+        # to normalise both sides consistently.
+        expanded_mod_path = self._clean_path(
+            os.path.expandvars(os.path.expanduser(path))
+        )
+
         for root_os, root_path in self.cleaned_data.items():
             # Skip empty paths
             if not root_path:
                 continue
 
-            _mod_path = mod_path  # reset to original cleaned value
-            if root_os == "windows":
-                root_path = root_path.lower()
-                _mod_path = _mod_path.lower()
+            # Expand variables in the stored root path so we can compare it
+            # against an already-expanded input path (and vice-versa).
+            expanded_root_path = self._clean_root(
+                os.path.expandvars(os.path.expanduser(root_path))
+            )
 
-            if _mod_path.startswith(root_path):
+            _mod_path = mod_path
+            _expanded_mod_path = expanded_mod_path
+            _root_path = root_path
+            _expanded_root_path = expanded_root_path
+            if root_os == "windows":
+                _mod_path = _mod_path.lower()
+                _expanded_mod_path = _expanded_mod_path.lower()
+                _root_path = _root_path.lower()
+                _expanded_root_path = _expanded_root_path.lower()
+
+            replacement = "{" + self.full_key + "}"
+
+            # 1) original path vs original root  (existing behaviour)
+            if _mod_path.startswith(_root_path):
                 result = True
-                replacement = "{" + self.full_key + "}"
                 output = replacement + mod_path[len(root_path):]
+                break
+
+            # 2) original path vs expanded root
+            #    (root stored with vars, path already expanded)
+            if _mod_path.startswith(_expanded_root_path):
+                result = True
+                output = replacement + mod_path[len(expanded_root_path):]
+                break
+
+            # 3) expanded path vs original root
+            #    (path stored with vars, root already expanded)
+            if _expanded_mod_path.startswith(_root_path):
+                result = True
+                output = replacement + expanded_mod_path[len(root_path):]
+                break
+
+            # 4) expanded path vs expanded root  (both sides have vars)
+            if _expanded_mod_path.startswith(_expanded_root_path):
+                result = True
+                output = (
+                    replacement
+                    + expanded_mod_path[len(expanded_root_path):]
+                )
                 break
 
         return (result, output)
