@@ -6,7 +6,7 @@ import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.ui.components import AYContainer
+from ayon_core.ui.components import AYContainer, AYLabel, AYFrame, AYGridLayout
 
 from ayon_core.lib import Logger
 from ayon_core.lib.icon_definitions import (
@@ -92,7 +92,7 @@ class ActionOverlayWidget(QtWidgets.QFrame):
         settings_icon.setToolTip("Right click for options")
         settings_icon.setVisible(False)
 
-        main_layout = QtWidgets.QGridLayout(self)
+        main_layout = AYGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
         main_layout.addWidget(settings_icon, 0, 0)
         main_layout.setColumnStretch(0, 1)
@@ -432,7 +432,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
 
-        group_label = QtWidgets.QLabel("|", self)
+        group_label = AYLabel("|", parent=self)
         group_label.setObjectName("GroupLabel")
 
         # View with actions
@@ -444,11 +444,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.stackUnder(group_label)
 
         # Background draw
-        bg_frame = QtWidgets.QFrame(self)
+        bg_frame = AYFrame(parent=self)
         bg_frame.setObjectName("ShadowFrame")
         bg_frame.stackUnder(view)
 
-        wrapper = QtWidgets.QFrame(self)
+        wrapper = AYFrame(parent=self)
         wrapper.setObjectName("Wrapper")
 
         effect = QtWidgets.QGraphicsBlurEffect(wrapper)

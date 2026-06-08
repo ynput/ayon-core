@@ -30,7 +30,7 @@ class LauncherWindow(AYContainer):
             parent,
             layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.High,
-            layout_margin=16,
+            layout_margin=10,
             layout_spacing=16,
         )
 

@@ -55,7 +55,7 @@ class HierarchyPage(QtWidgets.QWidget):
 
         btn_back = AYButton(
             icon="arrow_back",
-            variant=AYButton.Variants.Nav,
+            variant=AYButton.Variants.Surface,
             parent=header_widget,
         )
 

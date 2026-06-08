@@ -13,6 +13,7 @@ from .layouts import AYHBoxLayout, AYVBoxLayout, AYGridLayout
 from .line_edit import AYLineEdit
 from .text_edit import AYTextEdit
 from .tree_view import AYTreeView
+from .frame import AYFrame
 
 __all__ = (
     "AYButton",
@@ -26,4 +27,5 @@ __all__ = (
     "AYLineEdit",
     "AYTextEdit",
     "AYTreeView",
+    "AYFrame"
 )
