@@ -136,4 +136,3 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             return
 
         plugin_attributes["status_state"] = state
-        cls._set_instance_state(instance, status_state_attr, "dont_use")
