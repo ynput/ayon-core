@@ -225,7 +225,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         anatomy = instance.context.data["anatomy"]
         publish_template = anatomy.get_template_item("publish", template_name)
 
-        # Prepare prefered root to use for representation files
+        # Prepare preferred root to use for representation files
         path_template_obj: AnatomyStringTemplate = publish_template["path"]
         result: AnatomyTemplateResult = path_template_obj.format(
             {"root": anatomy.roots}
