@@ -6,8 +6,10 @@ from ayon_core.lib import EnumDef, TextDef, filter_profiles
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 if TYPE_CHECKING:
-    from ayon_core.create_context import CreateContext
-    from ayon_core.created_instance import CreatedInstance
+    from ayon_core.pipeline.create import (
+        CreateContext,
+        CreatedInstance,
+    )
 
 
 class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
