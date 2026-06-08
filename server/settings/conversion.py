@@ -286,11 +286,32 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
             }
 
 
+def _convert_usd_variant_default_mode(publish_overrides):
+    """Convert legacy USD variant default bool to the new three-state mode."""
+    plugin_settings = publish_overrides.get("CollectUSDLayerContributions")
+    if not plugin_settings:
+        return
+
+    profiles = plugin_settings.get("profiles")
+    if not profiles:
+        return
+
+    for profile in profiles:
+        is_default = profile.pop("contribution_variant_is_default", None)
+        if "contribution_variant_default_mode" in profile:
+            continue
+
+        profile["contribution_variant_default_mode"] = (
+            "always" if is_default is True else "if_not_set"
+        )
+
+
 def _convert_publish_plugins(overrides):
     if "publish" not in overrides:
         return
     _convert_validate_version_0_3_3(overrides["publish"])
     _convert_oiio_transcode_0_4_5(overrides["publish"])
+    _convert_usd_variant_default_mode(overrides["publish"])
 
 
 def _convert_extract_thumbnail(overrides):

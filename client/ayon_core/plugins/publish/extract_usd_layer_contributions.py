@@ -50,6 +50,28 @@ from ayon_core.pipeline import publish, KnownPublishError
 # all the time at the same time
 BUILD_INTO_LAST_VERSIONS = True
 
+VARIANT_DEFAULT_MODE_NEVER = "never"
+VARIANT_DEFAULT_MODE_IF_NOT_SET = "if_not_set"
+VARIANT_DEFAULT_MODE_ALWAYS = "always"
+
+VARIANT_DEFAULT_MODE_ITEMS = [
+    {
+        "value": VARIANT_DEFAULT_MODE_NEVER,
+        "label": "Do not set"
+    },
+    {
+        "value": VARIANT_DEFAULT_MODE_IF_NOT_SET,
+        "label": "Set if no current default"
+    },
+    {
+        "value": VARIANT_DEFAULT_MODE_ALWAYS,
+        "label": "Set as default"
+    },
+]
+
+VARIANT_DEFAULT_MODE_KEY = "contribution_variant_default_mode"
+LEGACY_VARIANT_IS_DEFAULT_KEY = "contribution_variant_is_default"
+
 
 @dataclasses.dataclass
 class _BaseContribution:
@@ -74,7 +96,41 @@ class VariantContribution(_BaseContribution):
     # Variant
     variant_set_name: str
     variant_name: str
-    variant_is_default: bool  # Whether to author variant selection opinion
+    variant_default_mode: str  # When to author variant selection opinion
+
+
+def _variant_default_mode_from_value(value):
+    """Return default-variant mode, including legacy bool values."""
+    if value is True:
+        return VARIANT_DEFAULT_MODE_ALWAYS
+    if value is False or value is None:
+        return VARIANT_DEFAULT_MODE_IF_NOT_SET
+    if value in {
+        VARIANT_DEFAULT_MODE_NEVER,
+        VARIANT_DEFAULT_MODE_IF_NOT_SET,
+        VARIANT_DEFAULT_MODE_ALWAYS,
+    }:
+        return value
+    return VARIANT_DEFAULT_MODE_IF_NOT_SET
+
+
+def _should_set_variant_default(mode, variant_set_name, variant_selections):
+    mode = _variant_default_mode_from_value(mode)
+    if mode == VARIANT_DEFAULT_MODE_ALWAYS:
+        return True
+    if mode == VARIANT_DEFAULT_MODE_NEVER:
+        return False
+    return variant_set_name not in variant_selections
+
+
+def _get_variant_default_mode(attr_values):
+    if VARIANT_DEFAULT_MODE_KEY in attr_values:
+        return _variant_default_mode_from_value(
+            attr_values[VARIANT_DEFAULT_MODE_KEY]
+        )
+    return _variant_default_mode_from_value(
+        attr_values.get(LEGACY_VARIANT_IS_DEFAULT_KEY)
+    )
 
 
 def get_representation_path_in_publish_context(
@@ -355,7 +411,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 target_product=attr_values["contribution_target_product"],
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
-                variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
+                variant_default_mode=_get_variant_default_mode(attr_values),
                 order=in_layer_order
             )
         else:
@@ -520,6 +576,34 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         return new_instance
 
     @classmethod
+    def convert_attribute_values(cls, create_context, instance):
+        if instance is None:
+            return
+
+        publish_attributes = instance.publish_attributes
+        plugin_values = publish_attributes.get(cls.__name__)
+        if not plugin_values:
+            return
+
+        if VARIANT_DEFAULT_MODE_KEY in plugin_values:
+            if LEGACY_VARIANT_IS_DEFAULT_KEY in plugin_values:
+                plugin_values = dict(plugin_values)
+                plugin_values.pop(LEGACY_VARIANT_IS_DEFAULT_KEY, None)
+                publish_attributes[cls.__name__] = plugin_values
+            return
+
+        legacy_value = plugin_values.get(LEGACY_VARIANT_IS_DEFAULT_KEY)
+        if legacy_value is None:
+            return
+
+        plugin_values = dict(plugin_values)
+        plugin_values.pop(LEGACY_VARIANT_IS_DEFAULT_KEY, None)
+        plugin_values[VARIANT_DEFAULT_MODE_KEY] = (
+            _variant_default_mode_from_value(legacy_value)
+        )
+        publish_attributes[cls.__name__] = plugin_values
+
+    @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):
         # Filtering of instance, if needed, can be customized
         if not cls.instance_matches_plugin_families(instance):
@@ -544,7 +628,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                VARIANT_DEFAULT_MODE_KEY: VARIANT_DEFAULT_MODE_IF_NOT_SET,
             }
 
         # Define defaults
@@ -654,17 +738,19 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     label="Variant Name",
                     default=profile["contribution_variant"],
                     visible=variant_visible),
-            BoolDef("contribution_variant_is_default",
-                    label="Set as default variant selection",
+            EnumDef(VARIANT_DEFAULT_MODE_KEY,
+                    label="Default variant selection",
                     tooltip=(
-                        "Whether to set this instance's variant name as the "
-                        "default selected variant name for the variant set.\n"
-                        "It is always expected to be enabled for only one "
-                        "variant name in the variant set.\n"
-                        "The behavior is unpredictable if multiple instances "
-                        "for the same variant set have this enabled."
+                        "Choose whether this instance's variant name should "
+                        "be authored as the default selected variant for the "
+                        "variant set.\n"
+                        "'Set if no current default' preserves the previous "
+                        "behavior.\n"
+                        "'Set as default' should be used for only one "
+                        "variant name in the variant set."
                     ),
-                    default=profile["contribution_variant_is_default"],
+                    items=VARIANT_DEFAULT_MODE_ITEMS,
+                    default=_get_variant_default_mode(profile),
                     visible=variant_visible),
             UISeparatorDef("usd_container_settings3"),
         ]
@@ -790,8 +876,11 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 # Set default variant selection
                 variant_set_name = contribution.variant_set_name
                 variant_name = contribution.variant_name
-                if contribution.variant_is_default or \
-                        variant_set_name not in prim_spec.variantSelections:
+                if _should_set_variant_default(
+                    contribution.variant_default_mode,
+                    variant_set_name,
+                    prim_spec.variantSelections
+                ):
                     prim_spec.variantSelections[variant_set_name] = variant_name  # noqa: E501
 
             elif isinstance(contribution, SublayerContribution):

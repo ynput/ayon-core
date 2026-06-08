@@ -88,6 +88,14 @@ def usd_contribution_layer_types():
     ]
 
 
+def usd_variant_default_modes():
+    return [
+        {"value": "never", "label": "Do not set"},
+        {"value": "if_not_set", "label": "Set if no current default"},
+        {"value": "always", "label": "Set as default"},
+    ]
+
+
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
     name: str = SettingsField(
@@ -189,16 +197,16 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             "The default variant name for instances matching this profile."
         ),
     )
-    contribution_variant_is_default: bool = SettingsField(
-        False,
-        title="Set as default variant selection",
+    contribution_variant_default_mode: str = SettingsField(
+        "if_not_set",
+        title="Default variant selection",
+        enum_resolver=usd_variant_default_modes,
         description=(
-            "Whether to set this instance's variant name as the "
-            "default selected variant name for the variant set.\n"
-            "It is always expected to be enabled for only one "
-            "variant name in the variant set.\n"
-            "The behavior is unpredictable if multiple instances "
-            "for the same variant set have this enabled."
+            "Choose whether this instance's variant name should be authored "
+            "as the default selected variant for the variant set.\n"
+            "'Set if no current default' preserves the previous behavior.\n"
+            "'Set as default' should be used for only one variant name in "
+            "the variant set."
         ),
     )
 
@@ -1527,7 +1535,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_mode": "if_not_set",
             },
             {
                 "product_base_types": ["look"],
@@ -1539,7 +1547,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_mode": "if_not_set",
             },
             {
                 "product_base_types": ["groom"],
@@ -1551,7 +1559,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_mode": "if_not_set",
             },
             {
                 "product_base_types": ["rig"],
@@ -1563,7 +1571,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_mode": "if_not_set",
             },
             {
                 "product_base_types": ["usd"],
@@ -1575,7 +1583,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_mode": "if_not_set",
             },
         ]
     },
