@@ -243,6 +243,7 @@ def process_test_project_data(project_data: dict) -> ProjectData:
 def get_test_project_data() -> ProjectData:
     # read project data
     from . import _get_test_data_dir
+
     file_dir = _get_test_data_dir() or Path(__file__).parent
     project_file = file_dir / "sample_project_data.json"
     project_data = read_json_file(project_file)
@@ -257,6 +258,7 @@ def process_test_version_data(version_data: dict) -> VersionData:
 
 def get_test_version_data() -> VersionData:
     from . import _get_test_data_dir
+
     file_dir = _get_test_data_dir() or Path(__file__).parent
     version_data_file = file_dir / "sample_version_data.json"
     version_data = read_json_file(version_data_file)
@@ -290,6 +292,7 @@ def process_test_activity_data(activity_data) -> ActivityData:
 
 def get_test_activity_data() -> ActivityData:
     from . import _get_test_data_dir
+
     file_dir = _get_test_data_dir() or Path(__file__).parent
     activity_file = file_dir / "sample_activities.json"
     activity_data = read_json_file(activity_file)

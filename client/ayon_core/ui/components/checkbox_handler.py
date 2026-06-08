@@ -546,8 +546,8 @@ class CheckboxHandler(QObject):
             if "\ufffc" in line and current_cb:
                 checked_char = "x" if current_cb.checked else " "
                 cb_idx = line.index("\ufffc")
-                raw_after = line[cb_idx + 1:]       # everything after \ufffc
-                raw_after = raw_after.lstrip(" ")    # drop the space Qt inserts
+                raw_after = line[cb_idx + 1 :]  # everything after \ufffc
+                raw_after = raw_after.lstrip(" ")  # drop the space Qt inserts
                 raw_after = _PH_RE.sub("", raw_after).rstrip()
                 line = f"{current_cb.prefix}[{checked_char}] {raw_after}"
                 current_cb = next(checkbox_iter, None)
