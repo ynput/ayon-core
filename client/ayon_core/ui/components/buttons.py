@@ -9,7 +9,8 @@ from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QPalette
 
 from ..color_utils import compute_color_for_contrast
-from ..style import StyleDict, get_ayon_style, get_ayon_style_data
+from ..style import get_ayon_style, get_ayon_style_data
+from ..style_types import StyleDict
 from ..variants import QPushButtonVariants
 from .container import AYContainer
 from .dropdown import AYDropdownPopup

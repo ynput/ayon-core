@@ -52,6 +52,10 @@ class QScrollBarVariants(Enum):
     Default = "default"
 
 
+class QScrollAreaVariants(Enum):
+    Default = "default"
+
+
 class QFrameVariants(Enum):
     Default = "default"
     Low = "low"
@@ -72,6 +76,10 @@ class QFrameVariants(Enum):
 
 
 class QToolTipVariants(Enum):
+    Default = "default"
+
+
+class QMenuVariants(Enum):
     Default = "default"
 
 

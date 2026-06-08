@@ -4,7 +4,8 @@ This module provides :class:`AYComboBox`, a styled :class:`QComboBox`
 subclass that supports per-item coloured icons, a short-text display mode,
 and an icon-only display mode via :class:`~ayon_core.ui.data_models.MenuSize`.
 A dropdown arrow is drawn using the Material Symbol ``arrow_drop_down``
-icon so the widget is visually recognizable as a dropdown when show_chevron is true.
+icon so the widget is visually recognizable as a dropdown when show_chevron
+is true.
 
 It also exposes :class:`AYComboBoxModel`, the default
 :class:`QStandardItemModel` subclass that adds two extra item-data roles:
@@ -46,6 +47,7 @@ from typing import List, Optional
 
 from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtCore, QtWidgets
+from qtpy.QtCore import QRect, Qt
 from qtpy.QtGui import (
     QBrush,
     QColor,
@@ -56,8 +58,10 @@ from qtpy.QtGui import (
     QStandardItem,
     QStandardItemModel,
 )
+from qtpy.QtWidgets import QStyle
 
 from ..data_models import MenuSize
+from ..style_types import StyleData
 from ..variants import QComboBoxVariants
 from .style_mixin import StyleMixin
 
@@ -120,6 +124,199 @@ Each entry is a :class:`dict` with the following keys:
 - ``"icon"``       - Material Symbol icon name passed to ``get_icon()``.
 - ``"color"``      - Hex colour string used as the item foreground.
 """
+
+
+class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
+    def __init__(
+        self,
+        parent=None,
+        padding: int = 4,
+        icon_size: int = 16,
+        style_model: StyleData | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._padding = padding
+        self._icon_size = icon_size
+        self._icon_text_spacing = 8
+        self._style_model = style_model
+        self._icon_cache: dict[str, QIcon] = {}
+
+    def sizeHint(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> QtCore.QSize:
+        """Calculate size hint including padding."""
+
+        # Calculate text dimensions
+        font_metrics = option.fontMetrics
+        text_size = font_metrics.size(0, option.text)
+
+        # Calculate content dimensions
+        content_width = text_size.width()
+        content_height = max(text_size.height(), self._icon_size)
+
+        # Add icon space if present
+        if option.icon:
+            content_width += self._icon_size + self._icon_text_spacing
+
+        # Add padding to get total size
+        total_width = content_width + self._padding + self._padding
+        total_height = content_height + self._padding + self._padding
+
+        # Ensure minimum height
+        total_height = max(total_height, 32)
+
+        return QtCore.QSize(total_width, total_height)
+
+    def _get_icon(
+        self, fg: QColor, bg: QColor, icon_name: str, invert: bool = True
+    ) -> QIcon:
+        """Get icon from cache or create new one."""
+        key = f"{icon_name}-{fg.name()}-{bg.name()}-{invert}"
+        if key not in self._icon_cache:
+            self._icon_cache[key] = get_icon(
+                icon_name,
+                bg if invert else fg,
+            )
+        return self._icon_cache[key]
+
+    def initStyleOption(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        """Initialize style option and apply any custom font from model."""
+        super().initStyleOption(option, index)
+        option.font = self.font()
+        option.fontMetrics = self.fontMetrics()
+
+    def paint(
+        self,
+        painter: QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        """Paint combo-box items directly, bypassing QStyle.
+
+        This avoids QStyleSheetStyle intercepting drawPrimitive /
+        drawControl calls when an app-level QSS is active.
+        """
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Build a copy of the option with text/palette configured
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+
+        # --- resolve colours -----------------------------------
+        fg_data = index.data(Qt.ItemDataRole.ForegroundRole)
+        bg_data = index.data(Qt.ItemDataRole.BackgroundRole)
+
+        cb = self.parent()
+
+        # Menu background from the AYON style JSON
+        if self._style_model:
+            cb_style = self._style_model.get_style("QComboBox")
+            cb_style.set_context(cb)
+            menu_bg = QColor(cb_style.get("menu-background-color", "#1c2026"))
+        else:
+            menu_bg = opt.palette.color(
+                QPalette.ColorGroup.Active,
+                QPalette.ColorRole.Window,
+            )
+
+        highlight_color = opt.palette.color(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.Dark
+        )
+
+        state = opt.state
+        is_selected = bool(state & QStyle.StateFlag.State_Selected)
+        is_hovered = (
+            bool(state & QStyle.StateFlag.State_MouseOver) and not is_selected
+        )
+
+        if fg_data and bg_data:
+            fg = fg_data.color()
+            bg = bg_data.color()
+
+            if is_hovered:
+                bg_color = highlight_color
+                text_color = fg
+            elif is_selected:
+                bg_color = fg
+                text_color = bg
+                # Regenerate icon with the swapped text_color
+                icon_name = (
+                    index.data(cb.model().IconNameRole)
+                    if hasattr(cb.model(), "IconNameRole")
+                    else None
+                )
+                if icon_name:
+                    opt.icon = self._get_icon(
+                        text_color, bg_color, icon_name, False
+                    )
+            else:
+                bg_color = menu_bg
+                text_color = fg
+        else:
+            # Fallback for items without FG/BG data
+            if is_hovered or is_selected:
+                bg_color = highlight_color
+                text_color = opt.palette.color(
+                    QPalette.ColorRole.HighlightedText
+                )
+            else:
+                bg_color = menu_bg
+                text_color = opt.palette.color(QPalette.ColorRole.Text)
+
+        # --- draw background -----------------------------------
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
+
+        # --- draw icon -----------------------------------------
+        content_left = opt.rect.left() + self._padding
+        if not opt.icon.isNull():
+            icon_rect = QRect(
+                content_left,
+                opt.rect.center().y() - self._icon_size // 2,
+                self._icon_size,
+                self._icon_size,
+            )
+            mode = (
+                QIcon.Mode.Normal
+                if opt.state & QStyle.StateFlag.State_Enabled
+                else QIcon.Mode.Disabled
+            )
+            icon_state = (
+                QIcon.State.On
+                if (is_hovered or is_selected)
+                else QIcon.State.Off
+            )
+            opt.icon.paint(
+                painter,
+                icon_rect,
+                Qt.AlignmentFlag.AlignCenter,
+                mode,
+                icon_state,
+            )
+            content_left = icon_rect.right() + self._icon_text_spacing
+
+        # --- draw text -----------------------------------------
+        if opt.text:
+            text_rect = QRect(opt.rect)
+            text_rect.setLeft(content_left)
+            text_rect.setRight(text_rect.right() - self._padding)
+            painter.setPen(text_color)
+            painter.setFont(opt.font)
+            painter.drawText(
+                text_rect,
+                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                opt.text,
+            )
+
+        painter.restore()
 
 
 def txt_color(bg_color: str | QColor) -> QColor:
