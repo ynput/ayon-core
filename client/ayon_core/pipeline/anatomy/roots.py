@@ -26,7 +26,7 @@ class RootItem(FormatObject):
         super().__init__()
         self._log = None
         lowered_platform_keys = {
-            key.lower(): value
+            key.lower(): self._expand_root_value(value)
             for key, value in root_raw_data.items()
         }
         self.raw_data = lowered_platform_keys
@@ -40,12 +40,15 @@ class RootItem(FormatObject):
         # WARNING: Using environment variables in roots is not considered
         #   as production safe. Some features may not work as expected, for
         #   example USD resolver or site sync.
+        current_root_value = lowered_platform_keys[current_platform]
         try:
-            self.value = lowered_platform_keys[current_platform].format_map(
-                os.environ
+            self.value = self._expand_root_value(
+                current_root_value.format_map(os.environ)
             )
         except KeyError:
-            result = StringTemplate(self.value).format(os.environ.copy())
+            result = StringTemplate(current_root_value).format(
+                os.environ.copy()
+            )
             is_are = "is" if len(result.missing_keys) == 1 else "are"
             missing_keys = ", ".join(result.missing_keys)
             raise RootMissingEnv(
@@ -110,6 +113,11 @@ class RootItem(FormatObject):
 
         """
         return str(path).replace("\\", "/")
+
+    @staticmethod
+    def _expand_root_value(value):
+        """Expand user home marker in configured root values."""
+        return os.path.expanduser(str(value))
 
     def _clean_root(self, root):
         """Clean root value.
