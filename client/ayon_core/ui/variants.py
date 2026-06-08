@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
     def check_variants_sync():
         """Check if the variants.py file is in sync with the style data."""
-        from .style import get_ayon_style
+        from .style_types import get_ayon_style
 
         # Runtime sync assertion at import
         style_data = get_ayon_style().model

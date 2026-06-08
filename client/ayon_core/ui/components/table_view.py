@@ -38,8 +38,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..style import enum_to_str, get_ayon_style
-from ..style_types import StyleData
+from ..drawers._utils import enum_to_str
+from ..style_types import StyleData, get_ayon_style
 from ..variants import AYTableViewVariants
 from .scroll_area import AYScrollBar
 from .style_mixin import StyleMixin

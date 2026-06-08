@@ -5,6 +5,8 @@ from typing import Sequence
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QFont, QFontMetrics, QPalette
 
+from ..style_types import get_ayon_style
+
 
 class StyleMixin:
     """Mixin class for overriding QWidget's font, fontMetrics, and palette
@@ -31,8 +33,6 @@ class StyleMixin:
     """
 
     def __init__(self, *args, **kwargs):
-        from ..style import get_ayon_style
-
         super().__init__(*args, **kwargs)
 
         # Initialize with our style's default font and palette.

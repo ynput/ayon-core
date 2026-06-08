@@ -52,7 +52,7 @@ def _cls_id(cls: Type[WidgetTest]) -> str:
 @pytest.mark.parametrize("widget_test_cls", _widget_test_classes, ids=_cls_id)
 def test_initial(widget_test_cls: Type[WidgetTest], qtbot, image_regression):
     """Snapshot the widget in its initial state (before any steps)."""
-    from ayon_core.ui.style import get_ayon_style
+    from ayon_core.ui.style_types import get_ayon_style
 
     wt = widget_test_cls(qbot=qtbot)
     widget = wt.build()
@@ -103,7 +103,7 @@ def test_steps(
 ):
     """Snapshot the widget after applying all steps up to and including
     step_index."""
-    from ayon_core.ui.style import get_ayon_style
+    from ayon_core.ui.style_types import get_ayon_style
 
     wt = widget_test_cls(qbot=qtbot)
     widget = wt.build()

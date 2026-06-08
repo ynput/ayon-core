@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.page_button import AYPageButton
-from ayon_core.ui.style import get_ayon_style
+from ayon_core.ui.style_types import get_ayon_style
 from qtpy import QtWidgets
 from qtpy.QtCore import QPoint
 from qtpy.QtWidgets import QWidget

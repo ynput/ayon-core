@@ -5,7 +5,7 @@ from __future__ import annotations
 from qtpy import QtGui, QtWidgets
 from qtpy.QtCore import QPoint, Qt, Signal
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import QFrameVariants
 from .frame import AYFrame
 

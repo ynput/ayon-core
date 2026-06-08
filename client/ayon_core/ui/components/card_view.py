@@ -41,7 +41,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import AYCardViewVariants
 from .entity_card import CARD_RATIO, AYEntityCard
 from .scroll_area import AYScrollBar

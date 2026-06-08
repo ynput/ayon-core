@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import logging
 from functools import cmp_to_key
 
@@ -47,7 +46,7 @@ from .drawers import (
 from .style_types import (
     StyleData,
     StyleDict,  # noqa: F401  (re-exported for backward compatibility)
-    get_ayon_style,
+    get_ayon_style,  # noqa: F401  (re-exported for backward compatibility)
     get_ayon_style_data,  # noqa: F401  (re-exported for backward compatibility)
     hsl_to_html_color,  # noqa: F401  (re-exported for backward compatibility)
 )
@@ -122,69 +121,6 @@ def _enum_values_dict(enum):
     }
     # print(f"=== enum = {meta_enum.scope()}.{meta_enum.enumName()} -> {keys}")
     return vals
-
-
-def style_widget_and_siblings(widget: QWidget, fix_app: bool = False) -> None:
-    """Apply AYON style to a widget and its siblings recursively.
-
-    Removes any existing stylesheets and applies the AYON QStyle
-    to the given widget and all its sibling widgets (widgets that
-    share the same parent), including all their nested children
-    even if they are in QLayouts.
-
-    Args:
-        widget: The widget whose siblings (and itself) will be styled.
-        fix_app: Whether to temporarily remove and restore app stylesheet.
-    """
-
-    def _collect_widgets(w: QWidget, seen: set[int]) -> None:
-        """Recursively collect all widgets including those in layouts."""
-        if id(w) in seen:
-            return
-
-        seen.add(id(w))
-        widgets_to_style.append(w)
-
-        # Collect direct widget children
-        for child in w.children():
-            if isinstance(child, QWidget):
-                _collect_widgets(child, seen)
-
-        # Collect widgets from layouts
-        if (layout := w.layout()) is not None:
-            for i in range(layout.count()):
-                if (item := layout.itemAt(i)) and (
-                    item_widget := item.widget()
-                ):
-                    _collect_widgets(item_widget, seen)
-
-    # Determine root widgets: siblings if parent exists, otherwise just widget
-    root_widgets = [widget]
-
-    # Collect all widgets recursively
-    seen_widgets: set[int] = set()
-    widgets_to_style: list[QWidget] = []
-    for w in root_widgets:
-        _collect_widgets(w, seen_widgets)
-
-    qss = None
-    app = QApplication.instance()
-    if fix_app and app and isinstance(app, QApplication):
-        qss = copy.copy(app.property("styleSheet"))
-
-    if fix_app and qss and isinstance(app, QApplication):
-        app.setStyleSheet("")
-
-    widget.setAttribute(Qt.WidgetAttribute.WA_WindowPropagation, False)
-
-    # Apply style to all collected widgets
-    style = get_ayon_style()
-    for w in widgets_to_style:
-        w.style().unpolish(w)
-        w.setStyle(style)
-
-    if fix_app and qss and isinstance(app, QApplication):
-        app.setStyleSheet(qss)
 
 
 # ----------------------------------------------------------------------------

@@ -5,7 +5,7 @@ from __future__ import annotations
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QTextEdit
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import QTextEditVariants
 from .style_mixin import StyleMixin
 

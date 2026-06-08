@@ -1,6 +1,5 @@
 """Tests for StyleDict class."""
 
-
 from ayon_core.ui.style import StyleDict
 
 
@@ -104,9 +103,7 @@ class TestStyleDictResolution:
     def test_resolve_multiple_references(self):
         """Test resolving multiple references."""
         ctx = MockContext()
-        d = StyleDict(
-            {"fg": "@fg_color", "bg": "@bg_color"}, _context=ctx
-        )
+        d = StyleDict({"fg": "@fg_color", "bg": "@bg_color"}, _context=ctx)
         assert d["fg"] == "#FFFFFF"
         assert d["bg"] == "#000000"
 
@@ -214,9 +211,7 @@ class TestStyleDictSetContext:
         ctx2 = MockContext()
         ctx2.fg_color = "#FF0000"
 
-        d = StyleDict(
-            {"nested": {"color": "@fg_color"}}, _context=ctx1
-        )
+        d = StyleDict({"nested": {"color": "@fg_color"}}, _context=ctx1)
         assert d["nested"]["color"] == "#FFFFFF"
 
         d.set_context(ctx2)
@@ -349,12 +344,14 @@ class TestStyleDictEdgeCases:
 
     def test_dict_with_numeric_values(self):
         """Test that numeric values are preserved."""
-        d = StyleDict({
-            "int": 42,
-            "float": 3.14,
-            "negative": -10,
-            "zero": 0,
-        })
+        d = StyleDict(
+            {
+                "int": 42,
+                "float": 3.14,
+                "negative": -10,
+                "zero": 0,
+            }
+        )
         assert d["int"] == 42
         assert d["float"] == 3.14
         assert d["negative"] == -10
@@ -362,10 +359,12 @@ class TestStyleDictEdgeCases:
 
     def test_dict_with_none_values(self):
         """Test handling of None values."""
-        d = StyleDict({
-            "explicit_none": None,
-            "implicit_none": None,
-        })
+        d = StyleDict(
+            {
+                "explicit_none": None,
+                "implicit_none": None,
+            }
+        )
         assert d["explicit_none"] is None
         assert d["implicit_none"] is None
 
@@ -376,11 +375,13 @@ class TestStyleDictEdgeCases:
 
     def test_special_string_values(self):
         """Test special string values."""
-        d = StyleDict({
-            "newline": "line1\nline2",
-            "tab": "col1\tcol2",
-            "quote": 'He said "hello"',
-        })
+        d = StyleDict(
+            {
+                "newline": "line1\nline2",
+                "tab": "col1\tcol2",
+                "quote": 'He said "hello"',
+            }
+        )
         assert d["newline"] == "line1\nline2"
         assert d["tab"] == "col1\tcol2"
         assert d["quote"] == 'He said "hello"'

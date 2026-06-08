@@ -20,7 +20,7 @@ from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QFontMetrics
 
 from ..color_utils import compute_color_for_contrast
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import AYPageButtonVariants, QPushButtonVariants
 from .buttons import AYButton
 

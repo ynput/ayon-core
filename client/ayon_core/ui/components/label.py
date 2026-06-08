@@ -20,8 +20,7 @@ from qtpy.QtGui import (
 )
 
 from ..color_utils import compute_color_for_contrast
-from ..style import get_ayon_style
-from ..style_types import StyleDict
+from ..style_types import StyleDict, get_ayon_style
 from ..variants import QLabelVariants
 from .style_mixin import StyleMixin
 

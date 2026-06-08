@@ -61,7 +61,7 @@ from qtpy.QtGui import (
 from qtpy.QtWidgets import QStyle
 
 from ..data_models import MenuSize
-from ..style_types import StyleData
+from ..style_types import StyleData, get_ayon_style
 from ..variants import QComboBoxVariants
 from .style_mixin import StyleMixin
 
@@ -443,7 +443,6 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self._uses_incompatible_model = False
         super().__init__(parent, **kwargs)
         self._variant_str = variant.value
-        from ..style import get_ayon_style
 
         self.setStyle(get_ayon_style())
         self.setMouseTracking(True)
@@ -689,7 +688,6 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         Returns:
             The preferred :class:`QSize` for this widget.
         """
-        from ..style import get_ayon_style
 
         option = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(option)
@@ -742,8 +740,6 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         Args:
             arg__1: The paint event delivered by Qt.
         """
-
-        from ..style import get_ayon_style
 
         p = QPainter(self)
         option = QtWidgets.QStyleOptionComboBox()

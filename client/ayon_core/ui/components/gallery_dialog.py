@@ -18,11 +18,11 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ayon_core.ui.style import get_ayon_style
-from ayon_core.ui.components.buttons import AYButton
-from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.components.label import AYLabel
-from ayon_core.ui.components.layouts import AYVBoxLayout
+from ..style_types import get_ayon_style
+from .buttons import AYButton
+from .container import AYContainer
+from .label import AYLabel
+from .layouts import AYVBoxLayout
 
 logger = logging.getLogger(__name__)
 

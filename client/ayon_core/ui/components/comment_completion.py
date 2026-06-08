@@ -22,7 +22,7 @@ from qtpy.QtWidgets import (
     QTextEdit,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..data_models import User
 from .user_image import AYUserImage
 

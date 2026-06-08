@@ -29,7 +29,7 @@ from qtpy.QtGui import (
 from qtpy.QtWidgets import QPushButton, QStyle, QStyleOptionButton
 
 from ..image_cache import ImageCache
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import QPushButtonVariants
 from .style_mixin import StyleMixin
 

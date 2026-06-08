@@ -6,7 +6,7 @@ from typing import Optional
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QWidget
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..utils import clear_layout
 from .label import AYLabel
 from .layouts import AYHBoxLayout

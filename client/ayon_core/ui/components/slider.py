@@ -6,8 +6,7 @@ from qtpy.QtCore import QRectF, Qt, Signal
 from qtpy.QtGui import QBrush, QColor, QPainter, QPaintEvent, QPen, QPixmap
 from qtpy.QtWidgets import QSlider, QWidget
 
-from ..style import get_ayon_style
-from ..style_types import StyleDict
+from ..style_types import StyleDict, get_ayon_style
 from ..variants import AYSliderVariants
 from .container import AYContainer
 from .label import AYLabel

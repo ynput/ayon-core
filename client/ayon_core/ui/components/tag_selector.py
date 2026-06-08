@@ -17,7 +17,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from .buttons import AYButton
 from .container import AYContainer
 from .dropdown import AYDropdownPopup

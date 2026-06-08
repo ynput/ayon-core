@@ -30,7 +30,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..data_models import CommentCategory, ProjectData, User
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import QFrameVariants, QTextEditVariants
 from .buttons import AYButton
 from .checkbox_handler import (

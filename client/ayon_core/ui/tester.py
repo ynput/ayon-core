@@ -5,7 +5,7 @@ from pathlib import Path
 from qtpy import QtWidgets
 
 # from .style import AYONStyle
-from .style import get_ayon_style
+from .style_types import get_ayon_style
 
 
 class Style(Enum):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..utils import color_blend
 from ..variants import QFrameVariants
 from .style_mixin import StyleMixin

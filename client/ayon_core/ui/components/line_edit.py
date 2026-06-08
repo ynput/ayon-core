@@ -10,7 +10,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import QLineEditVariants
 from .style_mixin import StyleMixin
 
