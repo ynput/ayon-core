@@ -218,6 +218,111 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
         return value
 
 
+def list_type_enum():
+    return [
+        {"label": "Generic", "value": "generic"},
+        {"label": "Review Session", "value": "review-session"},
+    ]
+
+
+def list_folder_scope_def():
+    return [
+        {"label": "Scope folder to all views", "value": "all"},
+        {"label": "Scope to the list type", "value": "list_type"},
+    ]
+
+
+class EntityListFolderModel(BaseSettingsModel):
+    """Folder must have label and can be scoped to views.
+
+    Scope of the folder can be defined for all views or use just the view
+        matching list type of created list. In case the list folder already
+        exists the settings are not used and we just make sure the list can
+        be seen under the folder.
+
+    """
+    _layout = "expanded"
+    label: str = SettingsField(
+        "",
+        title="Folder label",
+        description=(
+            "The label of the folder to create. "
+            "Anatomy formattable template for the name."
+        ),
+    )
+    # Don't use explicit scope enum, rather ask if the folder should be seen
+    #   everywhere or just in the list type matching created list.
+    scope_def: str = SettingsField(
+        "all",
+        enum_resolver=list_folder_scope_def,
+        title="Scope",
+    )
+
+
+class CollectVersionToListProfileModel(BaseSettingsModel):
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+        description="The host names to match this profile to.",
+        section="Filter",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+        description="The task names to match this profile to.",
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description=(
+            "The product base types to match this profile to. When matched,"
+            " the settings below would apply to the instance as default"
+            " attributes."
+        )
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names",
+        description="The product names to match this profile to.",
+    )
+    list_name: str = SettingsField(
+        "{folder[name]}",
+        title="List Name",
+        description="Anatomy formattable template for the name.",
+        section="List configuration",
+    )
+    list_type: str = SettingsField(
+        "generic",
+        title="List type",
+        description="Define what type of list this profile represents.",
+        enum_resolver=list_type_enum,
+    )
+    list_folders: list[EntityListFolderModel] = SettingsField(
+        default_factory=list,
+        title="List folders",
+        description="Folder hierarchy formed from top to bottom.",
+    )
+
+
+class CollectVersionToListModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    profiles: list[CollectVersionToListProfileModel] = SettingsField(
+        default_factory=list,
+        title="Profiles",
+    )
+
+
 class ResolutionOptionsModel(BaseSettingsModel):
     _layout = "compact"
     width: int = SettingsField(
@@ -1289,6 +1394,10 @@ class PublishPuginsModel(BaseSettingsModel):
             title="Collect USD Layer Contributions",
         )
     )
+    CollectVersionToList: CollectVersionToListModel = SettingsField(
+        default_factory=CollectVersionToListModel,
+        title="Collect Version to List",
+    )
     CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
         default_factory=CollectExplicitResolutionModel,
         title="Collect Explicit Resolution"
@@ -1495,6 +1604,10 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_target_product": "usdShot"
             },
         ]
+    },
+    "CollectVersionToList": {
+        "enabled": False,
+        "profiles": []
     },
     "CollectExplicitResolution": {
         "enabled": True,
