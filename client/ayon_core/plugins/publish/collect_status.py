@@ -69,19 +69,22 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         folder_path = instance.get("folderPath")
         folder_entity = create_context.get_folder_entity(folder_path)
         task_entity = None
+        task_name = None
+        task_type = None
         if folder_entity:
             task_name = instance.get("task")
             task_entity = create_context.get_task_entity(
                 folder_path, task_name
             )
+            if task_entity:
+                task_type = task_entity["taskType"]
+
         filter_data = {
             "host_names": create_context.host_name,
-            "task_types": task_entity["taskType"],
-            "task_names": instance.get("task"),
+            "task_types": task_type,
+            "task_names": task_name,
             "product_base_types": instance.product_base_type,
         }
-        if task_entity:
-            filter_data["task_types"] = task_entity["taskType"]
 
         status_profile = filter_profiles(
             cls.status_profiles,
