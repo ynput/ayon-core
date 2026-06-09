@@ -11,7 +11,6 @@ with and without option boxes:
 
 from __future__ import annotations
 
-from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtCore, QtWidgets
 from widget_test import WidgetTest
 
@@ -96,12 +95,6 @@ class OptionalMenuTest(WidgetTest):
         self._menu.show()
         QtWidgets.QApplication.processEvents()
 
-    def _clear_hover(self) -> None:
-        """Remove all hover highlights from every OptionalAction."""
-        for action in self._menu.actions():
-            if isinstance(action, OptionalAction):
-                action.set_highlight(False)
-
     # ------------------------------------------------------------------
     # Steps
     # ------------------------------------------------------------------
@@ -112,14 +105,19 @@ class OptionalMenuTest(WidgetTest):
 
     def hover_action_body(self) -> None:
         """Open the menu and highlight the first action's body."""
+        assert self._qbot is not None
         self._open_menu()
-        self._action_with_option.set_highlight(True, None)
+        self._qbot.mouseMove(self._menu.actions()[0].widget)
+        QtWidgets.QApplication.processEvents()
 
     def hover_option_box(self) -> None:
         """Open the menu and highlight the first action's option box."""
+        assert self._qbot is not None
         self._open_menu()
-        if self._action_with_option.widget is not None:
-            self._action_with_option.widget.set_hover_properties(True, True)
+        QtWidgets.QApplication.processEvents()
+        self._qbot.mouseMove(self._menu.actions()[0].widget)
+        self._qbot.mouseMove(self._menu.actions()[0].widget.option)
+        QtWidgets.QApplication.processEvents()
 
     def cleanup(self, step_name: str) -> None:
         """Hide the menu and clear hover state between steps.
@@ -128,7 +126,9 @@ class OptionalMenuTest(WidgetTest):
             step_name: Name of the completed step (unused).
         """
         self._menu.hide()
-        self._clear_hover()
+        QtWidgets.QApplication.processEvents()
+        self._qbot.mouseMove(self._root, QtCore.QPoint(0, 0))
+        QtWidgets.QApplication.processEvents()
 
     def steps(self) -> list:
         return [self.show_menu, self.hover_action_body, self.hover_option_box]
