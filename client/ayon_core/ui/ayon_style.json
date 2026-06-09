@@ -252,6 +252,14 @@
                     "pressed": {
                         "background-color": "--md-ref-palette-neutral20"
                     }
+                },
+                "optional-action": {
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "border-radius": 0,
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-dark"
+                    }
                 }
             }
         },
@@ -636,13 +644,23 @@
                     "border-radius": 4,
                     "border-width": 0,
                     "icon-text-spacing": 8,
-                    "padding": [8, 6],
+                    "padding": [0, 6],
                     "alignment": "left",
                     "disabled": {
                         "opacity": 0.5
                     },
                     "hover": {
                         "background-color": "--md-sys-color-background-dark"
+                    }
+                },
+                "optional-action": {
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "icon-size": 16,
+                    "padding": [10, 6],
+                    "icon-text-spacing": 8,
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-dark"
                     }
                 }
             }

@@ -518,6 +518,7 @@ if __name__ == "__main__":
     from .components.layouts import AYHBoxLayout, AYVBoxLayout
     from .components.text_box import AYTextBox
     from .components.user_image import AYUserImage
+    from .components.option_action import OptionalAction
     from .drawers import get_icon
     from .tester import Style, test
     from .variants import QPushButtonVariants
@@ -534,17 +535,21 @@ if __name__ == "__main__":
         two_icon = _make_icon("counter_2")
         pin_icon = _make_icon("pin")
         block_icon = _make_icon("block")
-        danger_icon = _make_icon("dangerous")
+        danger_icon = _make_icon("delete")
         # text only
         menu.addAction("Text only")
+
         # icon + shortcut
         a2 = QAction(copy_icon, "Icon + shortcut", parent=menu)
         a2.setShortcut("Ctrl+C")
         menu.addAction(a2)
+
         menu.addSeparator()
+
         # icon and sub-menu
         a3 = QMenu("Sub-menu", parent=menu)
         a3.setIcon(pin_icon)
+
         # radio group actions
         a3.addAction(one_icon, "Sub-action 1", "Ctrl+1")
         a3.addAction(two_icon, "Sub-action 2", "Ctrl+2")
@@ -554,20 +559,68 @@ if __name__ == "__main__":
         a3.addMenu(subsub)
         menu.addMenu(a3)
         menu.addSeparator()
+
         # checkable action
-        a4 = QAction("Action 4", menu)
+        a4 = QAction("Checkable action", menu)
         a4.setShortcut("Backspace")
         a4.setCheckable(True)
         menu.addAction(a4)
-        # disabled action
-        a5 = QAction(block_icon, "Disabled action", menu)
-        a5.setEnabled(False)
+
+        menu.addSeparator()
+
+        # optional action (with option box)
+        a5 = OptionalAction(
+            "Optional action",
+            parent=menu,
+        )
+        a5.option_clicked.connect(
+            lambda: print("'Optional action'' option clicked")
+        )
+        a5.triggered.connect(lambda: print("'Optional action'' clicked"))
         menu.addAction(a5)
-        # dangerous action
-        a6 = QAction(danger_icon, "Dangerous action", menu)
-        a6.setShortcut("Ctrl+D")
-        a6.setProperty("variant", "danger")
+
+        a5a = OptionalAction(
+            "Optional action with icon",
+            icon_name="save",
+            parent=menu,
+        )
+        a5a.option_clicked.connect(
+            lambda: print("'Optional action with icon'' option clicked")
+        )
+        a5a.triggered.connect(
+            lambda: print("'Optional action with icon'' clicked")
+        )
+        menu.addAction(a5a)
+
+        a5b = OptionalAction(
+            "Optional action with icon disabled",
+            icon_name="save",
+            parent=menu,
+        )
+        a5b.setEnabled(False)
+        a5b.option_clicked.connect(
+            lambda: print(
+                "'Optional action with icon disabled'' option clicked"
+            )
+        )
+        a5b.triggered.connect(
+            lambda: print("'Optional action with icon disabled'' clicked")
+        )
+        menu.addAction(a5b)
+
+        menu.addSeparator()
+
+        # disabled action
+        a6 = QAction(block_icon, "Disabled action", menu)
+        a6.setEnabled(False)
         menu.addAction(a6)
+
+        # dangerous action
+        a7 = QAction(danger_icon, "Dangerous action", menu)
+        a7.setShortcut("Ctrl+D")
+        a7.setProperty("variant", "danger")
+        menu.addAction(a7)
+
         # enable context menu on the widget
         widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         widget.customContextMenuRequested.connect(

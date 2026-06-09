@@ -12,7 +12,7 @@ from widget_test import WidgetTest
 class LabelTest(WidgetTest):
     """Tests AYLabel across all variants, dim/bold/icon states."""
 
-    size = (600, 400)
+    size = (600, 450)
     tolerance = 0.0
 
     def build(self) -> QWidget:

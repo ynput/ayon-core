@@ -196,7 +196,7 @@ class MenuDrawer:
         if shortcut and sc_w == 0 and fm:
             sc_w = fm.horizontalAdvance(shortcut)
 
-        icon_gutter = option.maxIconWidth or (icon_size + item_spacing)
+        icon_gutter = (option.maxIconWidth or icon_size) + item_spacing
         is_submenu = (
             option.menuItemType == QStyleOptionMenuItem.MenuItemType.SubMenu
         )

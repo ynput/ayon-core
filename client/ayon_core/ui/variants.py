@@ -19,6 +19,7 @@ class QPushButtonVariants(Enum):
     Tag = "tag"
     Tag_Menu = "tag-menu"
     Table_Filter = "table-filter"
+    Optional_Action = "optional-action"
 
 
 class QCheckBoxVariants(Enum):
@@ -81,6 +82,7 @@ class QToolTipVariants(Enum):
 
 class QMenuVariants(Enum):
     Default = "default"
+    Danger = "danger"
 
 
 class QLabelVariants(Enum):
@@ -91,6 +93,7 @@ class QLabelVariants(Enum):
     Entity_Label = "entity-label"
     Entity_Label_Filled = "entity-label-filled"
     Order_Option = "order-option"
+    Optional_Action = "optional-action"
 
 
 class QTreeViewVariants(Enum):
