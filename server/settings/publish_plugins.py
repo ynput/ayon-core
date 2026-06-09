@@ -174,6 +174,15 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " 'Department Layer Orders' list to get a sensible order."
         ),
     )
+    contribution_target_product: str = SettingsField(
+        "usdAsset",
+        title="Target Product",
+        description=(
+            "The default destination product name to apply the contribution to"
+            " when matching this profile."
+            " Usually e.g. 'usdAsset' or 'usdShot'."
+        ),
+    )
     contribution_apply_as_variant: bool = SettingsField(
         True,
         title="Apply as variant",
@@ -183,13 +192,30 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " for shot contributions."
         ),
     )
-    contribution_target_product: str = SettingsField(
-        "usdAsset",
-        title="Target Product",
+    contribution_variant_set_name: str = SettingsField(
+        "{layer}",
+        title="Variant Set name",
         description=(
-            "The default destination product name to apply the contribution to"
-            " when matching this profile."
-            " Usually e.g. 'usdAsset' or 'usdShot'."
+            "The default variant set name for instances matching this profile."
+        ),
+    )
+    contribution_variant: str = SettingsField(
+        "{variant}",
+        title="Variant Name",
+        description=(
+            "The default variant name for instances matching this profile."
+        ),
+    )
+    contribution_variant_is_default: bool = SettingsField(
+        False,
+        title="Set as default variant selection",
+        description=(
+            "Whether to set this instance's variant name as the "
+            "default selected variant name for the variant set.\n"
+            "It is always expected to be enabled for only one "
+            "variant name in the variant set.\n"
+            "The behavior is unpredictable if multiple instances "
+            "for the same variant set have this enabled."
         ),
     )
 
@@ -479,7 +505,7 @@ class ExtractThumbnailFFmpegModel(BaseSettingsModel):
     )
     output: list[str] = SettingsField(
         default_factory=list,
-        title="FFmpeg input arguments"
+        title="FFmpeg output arguments"
     )
 
 
@@ -1564,8 +1590,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "model",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["look"],
@@ -1573,8 +1602,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "look",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["groom"],
@@ -1582,8 +1614,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "groom",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["rig"],
@@ -1591,8 +1626,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "rig",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["usd"],
@@ -1600,8 +1638,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "assembly",
+                "contribution_target_product": "usdShot",
                 "contribution_apply_as_variant": False,
-                "contribution_target_product": "usdShot"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
         ]
     },
