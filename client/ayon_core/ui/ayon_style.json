@@ -546,6 +546,43 @@
                 }
             }
         },
+        "QMenu": {
+            "states": ["hover", "disabled"],
+            "default-variant": "default",
+            "variants": {
+                "default": {
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "shortcut-color": "--md-sys-color-on-surface-dark",
+                    "shortcut-background-color": "--md-sys-color-surface-container-dark",
+                    "shortcut-opacity": 0.6,
+                    "border-radius": 2,
+                    "border-width": 1,
+                    "border-color": "--md-sys-color-outline-variant-dark",
+                    "panel-padding": [0, 0],
+                    "item-padding": [10, 10],
+                    "item-radius": 0,
+                    "item-spacing": 4,
+                    "icon-size": 16,
+                    "separator-color": "--md-sys-color-outline-variant-dark",
+                    "separator-height": 1,
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-dark",
+                        "shortcut-background-color": "--md-sys-color-surface-container-high-dark"
+                    },
+                    "disabled": {
+                        "opacity": 0.5
+                    }
+                },
+                "danger": {
+                    "background-color": "--md-sys-color-error-container-dark",
+                    "color": "--md-sys-color-on-error-container-dark",
+                    "hover": {
+                        "background-color": "--md-ref-palette-error25"
+                    }
+                }
+            }
+        },
         "QLabel": {
             "states": ["disabled", "hover"],
             "default-variant": "default",

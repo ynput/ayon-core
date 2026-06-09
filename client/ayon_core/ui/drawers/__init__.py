@@ -15,6 +15,7 @@ from .frame import FrameDrawer
 from .item_view import ItemViewItemDrawer
 from .label import LabelDrawer
 from .lineedit import LineEditDrawer
+from .menu import MenuDrawer
 from .scroll_area import ScrollAreaDrawer
 from .scrollbar import ScrollBarDrawer
 from .table_header import TableHeaderDrawer
@@ -33,6 +34,7 @@ __all__ = [
     "ItemViewItemDrawer",
     "LabelDrawer",
     "LineEditDrawer",
+    "MenuDrawer",
     "ScrollAreaDrawer",
     "ScrollBarDrawer",
     "TableHeaderDrawer",

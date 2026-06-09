@@ -36,6 +36,7 @@ from .drawers import (
     ItemViewItemDrawer,
     LabelDrawer,
     LineEditDrawer,
+    MenuDrawer,
     ScrollAreaDrawer,
     ScrollBarDrawer,
     TableHeaderDrawer,
@@ -155,6 +156,7 @@ class AYONStyle(QCommonStyle):
             TableHeaderDrawer(self),
             ItemViewItemDrawer(self),
             ScrollAreaDrawer(self),
+            MenuDrawer(self),
         ]
         for obj in self.drawer_objs:
             self.base_classes.update(obj.base_class)
@@ -279,6 +281,25 @@ class AYONStyle(QCommonStyle):
                 widget.setAttribute(
                     Qt.WidgetAttribute.WA_TranslucentBackground, True
                 )
+            elif isinstance(widget, QtWidgets.QMenu):
+                widget.setAttribute(
+                    Qt.WidgetAttribute.WA_TranslucentBackground, True
+                )
+                widget.setWindowFlags(
+                    widget.windowFlags() | Qt.WindowType.NoDropShadowWindowHint
+                )
+
+                # make icons visible in menus (MacOS)
+                def _setup_actions(menu):
+                    for action in menu.actions():
+                        if action.isSeparator():
+                            continue
+                        action.setIconVisibleInMenu(True)
+                        action.setShortcutVisibleInContextMenu(True)
+                        if action.menu():
+                            _setup_actions(action.menu())
+
+                _setup_actions(widget)
 
     def polish(self, widget) -> None:
         """Polish widgets to enable hover tracking and custom palette."""
@@ -446,7 +467,6 @@ class AYONStyle(QCommonStyle):
             return 0
         elif hint == QStyle.StyleHint.SH_ComboBox_PopupFrameStyle:
             return QFrame.Shape.NoFrame
-
         # Fall back to parent implementation
         return super().styleHint(hint, opt, w, shret)
 
@@ -486,6 +506,9 @@ class AYONStyle(QCommonStyle):
 if __name__ == "__main__":
     import time
 
+    from qtpy.QtGui import QKeySequence
+    from qtpy.QtWidgets import QAction, QMenu
+
     from . import _get_test_data_dir
     from .components.buttons import AYButton
     from .components.check_box import AYCheckBox
@@ -495,8 +518,61 @@ if __name__ == "__main__":
     from .components.layouts import AYHBoxLayout, AYVBoxLayout
     from .components.text_box import AYTextBox
     from .components.user_image import AYUserImage
+    from .drawers import get_icon
     from .tester import Style, test
     from .variants import QPushButtonVariants
+
+    def _setup_context_menu(widget):
+        def _make_icon(name):
+            return get_icon(
+                name, color="#f2f2f3", color_disabled="#727273", fill=False
+            )
+
+        menu = QMenu(parent=widget)
+        copy_icon = _make_icon("content_copy")
+        one_icon = _make_icon("counter_1")
+        two_icon = _make_icon("counter_2")
+        pin_icon = _make_icon("pin")
+        block_icon = _make_icon("block")
+        danger_icon = _make_icon("dangerous")
+        # text only
+        menu.addAction("Text only")
+        # icon + shortcut
+        a2 = QAction(copy_icon, "Icon + shortcut", parent=menu)
+        a2.setShortcut("Ctrl+C")
+        menu.addAction(a2)
+        menu.addSeparator()
+        # icon and sub-menu
+        a3 = QMenu("Sub-menu", parent=menu)
+        a3.setIcon(pin_icon)
+        # radio group actions
+        a3.addAction(one_icon, "Sub-action 1", "Ctrl+1")
+        a3.addAction(two_icon, "Sub-action 2", "Ctrl+2")
+        subsub = QMenu("Sub-sub-menu", parent=a3)
+        subsub.addAction("Sub-sub-action 1")
+        subsub.addAction("Sub-sub-action 2")
+        a3.addMenu(subsub)
+        menu.addMenu(a3)
+        menu.addSeparator()
+        # checkable action
+        a4 = QAction("Action 4", menu)
+        a4.setShortcut("Backspace")
+        a4.setCheckable(True)
+        menu.addAction(a4)
+        # disabled action
+        a5 = QAction(block_icon, "Disabled action", menu)
+        a5.setEnabled(False)
+        menu.addAction(a5)
+        # dangerous action
+        a6 = QAction(danger_icon, "Dangerous action", menu)
+        a6.setShortcut("Ctrl+D")
+        a6.setProperty("variant", "danger")
+        menu.addAction(a6)
+        # enable context menu on the widget
+        widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        widget.customContextMenuRequested.connect(
+            lambda pos: menu.exec_(widget.mapToGlobal(pos))
+        )
 
     def time_it(func):
         i = time.time()
@@ -672,6 +748,16 @@ if __name__ == "__main__":
         usr_ly.addWidget(AYUserImage(full_name="John Doe"))
         col3_lyt.addLayout(usr_ly)
 
+        ctx_menu_label = AYLabel(
+            "Right-click here for a menu",
+            variant=AYLabel.Variants.Default,
+            rel_text_size=2,
+            icon="menu",
+        )
+        col3_lyt.addWidget(ctx_menu_label)
+        # add a context menu to the label
+        _setup_context_menu(ctx_menu_label)
+
         col3_lyt.addStretch()
         container_3.add_layout(col3_lyt)
 
@@ -680,4 +766,4 @@ if __name__ == "__main__":
 
         return widget
 
-    test(_ui_test, style=Style.AyonStyleOverCSS)
+    test(_ui_test, style=Style.AyonStyle)
