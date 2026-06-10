@@ -572,10 +572,8 @@ if __name__ == "__main__":
             "Optional action",
             parent=menu,
         )
-        a5.option_clicked.connect(
-            lambda: print("'Optional action'' option clicked")
-        )
-        a5.triggered.connect(lambda: print("'Optional action'' clicked"))
+        a5.option_clicked.connect(lambda: print("'Optional action' option clicked"))
+        a5.triggered.connect(lambda: print("'Optional action' clicked"))
         menu.addAction(a5)
 
         a5a = OptionalAction(
