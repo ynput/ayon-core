@@ -1,4 +1,3 @@
-import copy
 import inspect
 import logging
 import traceback
@@ -16,9 +15,7 @@ from ayon_core.pipeline import (
     KnownPublishError,
     OptionalPyblishPluginMixin,
 )
-from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import (
-    get_publish_instance_label,
     PublishError,
     filter_crashed_publish_paths,
     PublishReportMaker,

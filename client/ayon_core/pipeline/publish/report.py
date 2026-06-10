@@ -101,7 +101,7 @@ class PublishReportMaker:
                 report_maker.set_plugin_passed(plugin.id)
 
         report_data = report_maker.get_report(pyblish_context)
-        report_path = get_publish_report_path_from_env() or get_publish_reports_dir()
+        report_path = get_publish_report_path_from_env()
         write_publish_report(report_data, report_path)
     """
 
@@ -178,11 +178,13 @@ class PublishReportMaker:
         if instance is not None:
             instance_id = instance.id
         plugin_data = self._plugin_data_by_id[plugin_id]
-        plugin_data["instances_data"].append({
-            "id": instance_id,
-            "logs": self._extract_instance_log_items(result),
-            "process_time": result["duration"]
-        })
+        plugin_data["instances_data"].append(
+            {
+                "id": instance_id,
+                "logs": self._extract_instance_log_items(result),
+                "process_time": result["duration"],
+            }
+        )
 
     def add_action_result(
         self, action: pyblish.api.Action, result: Dict[str, Any]
@@ -195,12 +197,14 @@ class PublishReportMaker:
         action_name = action.__name__
         action_label = action.label or action_name
         log_items = self._extract_log_items(result)
-        store_item["actions_data"].append({
-            "success": result["success"],
-            "name": action_name,
-            "label": action_label,
-            "logs": log_items
-        })
+        store_item["actions_data"].append(
+            {
+                "success": result["success"],
+                "name": action_name,
+                "label": action_label,
+                "logs": log_items,
+            }
+        )
 
     def get_report(
         self, publish_context: pyblish.api.Context
@@ -215,9 +219,7 @@ class PublishReportMaker:
             for instance in self._all_instances_by_id.values()
         }
 
-        plugins_data_by_id = copy.deepcopy(
-            self._plugin_data_by_id
-        )
+        plugins_data_by_id = copy.deepcopy(self._plugin_data_by_id)
 
         # Ensure the current plug-in is marked as `passed` in the result
         # so that it shows on reports for paused publishes
@@ -264,7 +266,8 @@ class PublishReportMaker:
             #   - plugin class is imported into multiple files
             #       - this can happen even with base classes from 'pyblish'
             raise ValueError(
-                "Plugin '{}' is already stored".format(str(plugin)))
+                "Plugin '{}' is already stored".format(str(plugin))
+            )
 
         plugin_data_item = self._create_plugin_data_item(plugin)
         self._plugin_data_by_id[plugin.id] = plugin_data_item
@@ -296,7 +299,7 @@ class PublishReportMaker:
             "instances_data": [],
             "actions_data": [],
             "skipped": False,
-            "passed": False
+            "passed": False,
         }
 
     def _extract_context_data(
@@ -305,9 +308,7 @@ class PublishReportMaker:
         context_label = "Context"
         if context is not None:
             context_label = context.data.get("label")
-        return {
-            "label": context_label
-        }
+        return {"label": context_label}
 
     def _extract_instance_data(
         self, instance: pyblish.api.Instance, exists: bool
@@ -337,7 +338,9 @@ class PublishReportMaker:
             item["instance_id"] = instance_id
         return log_items
 
-    def _extract_log_items(self, result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _extract_log_items(
+        self, result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         output = []
         records = result.get("records") or []
         for record in records:
@@ -352,19 +355,21 @@ class PublishReportMaker:
             except Exception:
                 msg = str(record.msg)
 
-            output.append({
-                "type": "record",
-                "msg": msg,
-                "name": record.name,
-                "lineno": record.lineno,
-                "levelno": record.levelno,
-                "levelname": record.levelname,
-                "threadName": record.threadName,
-                "filename": record.filename,
-                "pathname": record.pathname,
-                "msecs": record.msecs,
-                "exc_info": record_exc_info
-            })
+            output.append(
+                {
+                    "type": "record",
+                    "msg": msg,
+                    "name": record.name,
+                    "lineno": record.lineno,
+                    "levelno": record.levelno,
+                    "levelname": record.levelname,
+                    "threadName": record.threadName,
+                    "filename": record.filename,
+                    "pathname": record.pathname,
+                    "msecs": record.msecs,
+                    "exc_info": record_exc_info,
+                }
+            )
 
         exception = result.get("error")
         if exception:
@@ -380,14 +385,16 @@ class PublishReportMaker:
 
             # Action result does not have 'is_validation_error'
             is_validation_error = result.get("is_validation_error", False)
-            output.append({
-                "type": "error",
-                "is_validation_error": is_validation_error,
-                "msg": msg,
-                "filename": str(fname),
-                "lineno": str(line_no),
-                "func": str(func),
-                "traceback": exception.formatted_traceback
-            })
+            output.append(
+                {
+                    "type": "error",
+                    "is_validation_error": is_validation_error,
+                    "msg": msg,
+                    "filename": str(fname),
+                    "lineno": str(line_no),
+                    "func": str(func),
+                    "traceback": exception.formatted_traceback,
+                }
+            )
 
         return output
