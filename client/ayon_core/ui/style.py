@@ -597,11 +597,11 @@ if __name__ == "__main__":
         a5b.setEnabled(False)
         a5b.option_clicked.connect(
             lambda: print(
-                "'Optional action with icon disabled'' option clicked"
+                "'Optional action with icon disabled' option clicked"
             )
         )
         a5b.triggered.connect(
-            lambda: print("'Optional action with icon disabled'' clicked")
+            lambda: print("'Optional action with icon disabled' clicked")
         )
         menu.addAction(a5b)
 
