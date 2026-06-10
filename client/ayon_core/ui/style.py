@@ -506,7 +506,6 @@ class AYONStyle(QCommonStyle):
 if __name__ == "__main__":
     import time
 
-    from qtpy.QtGui import QKeySequence
     from qtpy.QtWidgets import QAction, QMenu
 
     from . import _get_test_data_dir
