@@ -60,7 +60,7 @@ from .report import (
     PublishReportMaker,
     get_publish_reports_dir,
     get_publish_report_path_from_env,
-    save_publish_report,
+    write_publish_report,
 )
 
 from .abstract_expected_files import ExpectedFiles
@@ -119,7 +119,7 @@ __all__ = (
     "PublishReportMaker",
     "get_publish_reports_dir",
     "get_publish_report_path_from_env",
-    "save_publish_report",
+    "write_publish_report",
 
     "ExpectedFiles",
 

@@ -23,7 +23,7 @@ from ayon_core.pipeline.publish import (
     filter_crashed_publish_paths,
     PublishReportMaker,
     get_publish_report_path_from_env,
-    save_publish_report,
+    write_publish_report,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
@@ -922,7 +922,7 @@ class PublishModel:
 
         if self._publish_has_started:
             if report_path := get_publish_report_path_from_env():
-                save_publish_report(
+                write_publish_report(
                     self.get_publish_report(), report_path
                 )
 

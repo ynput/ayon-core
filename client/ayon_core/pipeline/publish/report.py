@@ -7,7 +7,7 @@ Environment variable ``AYON_PUBLISH_REPORT_PATH`` can point to either:
 - a file path  → the report JSON is written to that exact file
 - a directory  → the report JSON is written as ``<dir>/<report_id>.json``
 
-When the env var is not set, :func:`save_publish_report` falls back to the
+When the env var is not set, :func:`write_publish_report` falls back to the
 default launcher-local reports directory so the report shows up in the
 Publish report viewer.
 """
@@ -52,35 +52,30 @@ def get_publish_report_path_from_env() -> Optional[str]:
     return os.getenv("AYON_PUBLISH_REPORT_PATH")
 
 
-def save_publish_report(
+def write_publish_report(
     report_data: Dict[str, Any],
-    report_path: Optional[str] = None,
-) -> str:
+    report_path: str,
+) -> Path:
     """Write *report_data* to disk as JSON.
 
     Args:
         report_data: The report dict as returned by
             :meth:`PublishReportMaker.get_report`.
-        report_path: Destination path.  May be an existing directory (the
-            file is placed inside it as ``<report_id>.json``), an explicit
-            file path, or ``None``.  When ``None`` the report is written to
-            the default :func:`get_publish_reports_dir` so it appears in the
-            Publish report viewer.
+        report_path: Destination path. May be an existing directory (the file
+            is placed inside it as ``<report_id>.json``), or an explicit file
+            path.
 
     Returns:
-        str: Absolute path of the written JSON file.
+        Path: Path to the written JSON file.
     """
-    if report_path is None:
-        dest = Path(get_publish_reports_dir()) / f"{report_data['id']}.json"
-    else:
-        dest = Path(report_path)
-        if dest.is_dir():
-            dest = dest / f"{report_data['id']}.json"
+    dest = Path(report_path)
+    if dest.is_dir():
+        dest = dest / f"{report_data['id']}.json"
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     with open(dest, "w") as fh:
         json.dump(report_data, fh)
-    return str(dest)
+    return dest
 
 
 class PublishReportMaker:
@@ -106,7 +101,8 @@ class PublishReportMaker:
                 report_maker.set_plugin_passed(plugin.id)
 
         report_data = report_maker.get_report(pyblish_context)
-        save_publish_report(report_data)
+        report_path = get_publish_report_path_from_env() or get_publish_reports_dir()
+        write_publish_report(report_data, report_path)
     """
 
     def __init__(
