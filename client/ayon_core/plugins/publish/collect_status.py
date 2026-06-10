@@ -17,7 +17,7 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     based on profiles defined in settings."""
 
     order = pyblish.api.CollectorOrder + 0.499
-    label = "Collect Status"
+    label = "Collect Version Status"
 
     enabled = False
     status_profiles: list[dict] = []
