@@ -96,18 +96,7 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         if status_profile:
             artist_can_change = status_profile["artist_can_change"]
             default_status = status_profile["default_status"]
-            if not artist_can_change:
-                cls._set_instance_state(
-                    instance, status_state_attr, f"status|{default_status}"
-                )
-                cls.log.debug(
-                    "Artist cannot change status based on profile settings."
-                )
-                return output
 
-            default_status = status_profile["default_status"]
-
-        cls._set_instance_state(instance, status_state_attr, "use_status")
         if default_status not in statuses:
             cls.log.warning(
                 f"Default status '{default_status}' is not available"
@@ -115,6 +104,18 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
                 f"Using '{statuses[0]}' instead."
             )
             default_status = statuses[0]
+
+        if not artist_can_change:
+            cls._set_instance_state(
+                instance, status_state_attr, f"status|{default_status}"
+            )
+            cls.log.debug(
+                "Artist cannot change status based on profile settings."
+            )
+            return output
+
+        cls._set_instance_state(instance, status_state_attr, "use_status")
+
         output.append(EnumDef(
            "status",
             label="Version status",
