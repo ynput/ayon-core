@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     """Allow to define version status for published version.
-    
     It is possible to change setttings so user can set status in publisher UI.
     """
 
