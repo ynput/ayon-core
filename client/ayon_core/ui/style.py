@@ -582,10 +582,10 @@ if __name__ == "__main__":
             parent=menu,
         )
         a5a.option_clicked.connect(
-            lambda: print("'Optional action with icon'' option clicked")
+            lambda: print("'Optional action with icon' option clicked")
         )
         a5a.triggered.connect(
-            lambda: print("'Optional action with icon'' clicked")
+            lambda: print("'Optional action with icon' clicked")
         )
         menu.addAction(a5a)
 
