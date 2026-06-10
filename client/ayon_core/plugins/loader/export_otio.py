@@ -11,6 +11,7 @@ from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_oiio_info_for_input,
 )
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.lib import (
     get_ffprobe_data,
     is_oiio_supported,
@@ -41,11 +42,7 @@ class ExportOTIO(LoaderSimpleActionPlugin):
     label = "Export OTIO"
     group_label = None
     order = 35
-    icon = {
-        "type": "material-symbols",
-        "name": "save",
-        "color": "#d8d8d8",
-    }
+    icon = MaterialSymbolsIcon("save", "#d8d8d8")
 
     def is_compatible(
         self, selection: LoaderActionSelection

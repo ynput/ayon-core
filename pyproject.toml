@@ -5,7 +5,7 @@
 
 [project]
 name = "ayon-core"
-version = "1.9.4+dev"
+version = "1.9.6+dev"
 description = "AYON core provides the base building blocks for all other AYON addons and integrations and is responsible for discovery and initialization of other addons."
 authors = [
     {name = "Ynput s.r.o.", email = "info@ynput.io"}
@@ -37,6 +37,9 @@ dependencies = [
     "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
 ]
 
+[project.optional-dependencies]
+test = ["pytest", "pytest-qt", "pytest-regressions[image]"]
+
 [tool.codespell]
 # Ignore words that are not in the dictionary.
 ignore-words-list = "ayon,ynput,parms,parm,hda,developpement"
@@ -57,7 +60,12 @@ log_cli = true
 log_cli_level = "INFO"
 addopts = "-ra -q"
 testpaths = [
-    "client/ayon_core/tests"
+    "client/ayon_core/tests",
+    "tests/client/ayon_core/ui",
+]
+pythonpath = [
+    "client",
+    "tests/client/ayon_core/ui",
 ]
 markers = [
     "unit: Unit tests",
