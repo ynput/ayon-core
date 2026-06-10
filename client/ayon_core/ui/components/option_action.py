@@ -1,21 +1,22 @@
 """Menu action with an option box button (Maya-style option box pattern).
 
-Provides four classes that together implement a menu item composed of a
-standard action area (icon + label) and a small option button on the far
-right.  Clicking the main area fires the normal ``triggered`` signal;
-clicking the option button emits ``OptionBox.clicked`` instead.
+Provides three classes that together implement a menu item composed of
+a standard action area (icon + label) and a small option button on the
+far right.  Clicking the main area fires the normal ``triggered``
+signal; clicking the option button emits ``OptionalAction.option_clicked``
+instead.
 
 Typical usage::
 
-    menu = OptionalMenu("My Menu", parent)
+    menu = QMenu("My Menu", parent)
     action = OptionalAction(
         label="Run Process",
-        icon=some_icon,
+        icon_name="play_arrow",
         use_option=True,
         parent=menu,
     )
     action.triggered.connect(lambda: run_process())
-    action.widget.option.clicked.connect(lambda: open_options_dialog())
+    action.option_clicked.connect(lambda: open_options_dialog())
     menu.addAction(action)
 """
 
@@ -37,8 +38,9 @@ logger = logging.getLogger(__name__)
 class OptionBox(AYButton):
     """Option box widget used as the right-hand button in an action row.
 
-    Emits :attr:`clicked` when the user releases the mouse over this
-    widget (the click is detected by the parent :class:`OptionalMenu`).
+    Emits :attr:`clicked` when the user presses this button.  It is a
+    standard :class:`AYButton` styled with the ``Optional_Action``
+    variant.
     """
 
     def __init__(
@@ -59,12 +61,13 @@ class OptionBox(AYButton):
 class OptionalActionWidget(QtWidgets.QWidget):
     """Row widget that combines a body area and an :class:`OptionBox`.
 
-    The body contains an icon label and a text label.  The option box is
-    pinned to the far right.  Both sections respond to hover state via
-    :meth:`set_hover_properties`.
+    The body contains an icon label and a text label.  The option box
+    is pinned to the far right.  Both sections respond to hover state
+    via :meth:`_set_row_hover` and :meth:`_sync_row_hover`.
 
     Args:
         label: Display text for the action.
+        icon_name: Material symbol icon name for the label.
         parent: Optional parent widget.
     """
 
@@ -102,7 +105,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
         option_box.setFixedSize(30, 30)
 
         body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
-        body_layout.addWidget(label_wdgt)
+        body_layout.addWidget(label_wdgt, stretch=1)
 
         layout = AYHBoxLayout(self, spacing=0, margin=0)
         layout.addWidget(body_widget)
@@ -160,11 +163,11 @@ class OptionalAction(QtWidgets.QWidgetAction):
     :class:`OptionalActionWidget` inside a standard ``QMenu``.
 
     Set ``use_option=True`` to show the option box and connect to
-    ``widget.option.clicked`` for the secondary action.
+    :attr:`option_clicked` for the secondary action.
 
     Args:
         label: Display text.
-        icon: Optional action icon.
+        icon_name: Material symbol icon name (or ``"none"``).
         use_option: Whether to show the option box button.
         parent: Parent widget (typically the owning menu).
     """
