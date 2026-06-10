@@ -56,6 +56,13 @@ from .lib import (
     get_default_reviewable_layers,
 )
 
+from .report import (
+    PublishReportMaker,
+    get_publish_reports_dir,
+    get_publish_report_path_from_env,
+    save_publish_report,
+)
+
 from .abstract_expected_files import ExpectedFiles
 from .abstract_collect_render import (
     RenderInstance,
@@ -108,6 +115,11 @@ __all__ = (
     "get_publish_instance_families",
 
     "main_cli_publish",
+
+    "PublishReportMaker",
+    "get_publish_reports_dir",
+    "get_publish_report_path_from_env",
+    "save_publish_report",
 
     "ExpectedFiles",
 

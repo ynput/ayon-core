@@ -6,7 +6,7 @@ import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
-from ayon_core.lib import get_launcher_local_dir
+from ayon_core.pipeline.publish import get_publish_reports_dir
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools import resources
 from ayon_core.tools.utils import (
@@ -34,10 +34,7 @@ def get_reports_dir():
     Returns:
         str: Path to directory where reports are stored.
     """
-
-    report_dir = get_launcher_local_dir("publish_report_viewer")
-    os.makedirs(report_dir, exist_ok=True)
-    return report_dir
+    return get_publish_reports_dir()
 
 
 class PublishReportItem:
