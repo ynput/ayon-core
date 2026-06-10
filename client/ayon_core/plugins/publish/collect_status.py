@@ -13,8 +13,10 @@ if TYPE_CHECKING:
 
 
 class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
-    """Allow user to set status for the published version
-    based on profiles defined in settings."""
+    """Allow to define version status for published version.
+    
+    It is possible to change setttings so user can set status in publisher UI.
+    """
 
     order = pyblish.api.CollectorOrder + 0.499
     label = "Collect Version Status"
