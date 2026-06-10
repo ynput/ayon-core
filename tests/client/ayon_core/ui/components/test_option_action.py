@@ -1,6 +1,6 @@
-"""Visual regression tests for OptionalAction and OptionalMenu.
+"""Visual regression tests for OptionalAction.
 
-Snapshots capture three states of an ``OptionalMenu`` containing actions
+Snapshots capture three states of a ``QMenu`` containing actions
 with and without option boxes:
 
   - ``00_initial``:          host button only (menu closed).
