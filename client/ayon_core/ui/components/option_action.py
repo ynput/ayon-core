@@ -205,7 +205,16 @@ class OptionalAction(QtWidgets.QWidgetAction):
 
         if self._use_option:
             widget.option.clicked.connect(self.option_clicked.emit)
+            widget.option.clicked.connect(self._close_menu_chain)
         else:
             widget.option.setVisible(False)
 
         return widget
+
+    def _close_menu_chain(self) -> None:
+        """Close the menu (and any parent menus) hosting this action."""
+        w = self.widget
+        while w is not None:
+            if isinstance(w, QtWidgets.QMenu):
+                w.close()
+            w = w.parentWidget()
