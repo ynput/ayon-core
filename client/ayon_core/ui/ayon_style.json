@@ -259,6 +259,10 @@
                     "border-radius": 0,
                     "hover": {
                         "background-color": "--md-sys-color-surface-container-dark"
+                    },
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-lowest-dark",
+                        "opacity": 0.5
                     }
                 }
             }
