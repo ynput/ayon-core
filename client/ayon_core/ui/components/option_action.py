@@ -25,8 +25,10 @@ import logging
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from .label import AYLabel
+from ..style_types import get_ayon_style
 from .buttons import AYButton
+from .frame import AYFrame
+from .label import AYLabel
 from .layouts import AYHBoxLayout
 
 logger = logging.getLogger(__name__)
@@ -42,13 +44,14 @@ class OptionBox(AYButton):
     def __init__(
         self,
         icon_name: str = "check_box_outline_blank",
+        icon_size: int = 16,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(
             parent,
             variant=AYButton.Variants.Optional_Action,
             icon=icon_name,
-            icon_size=16,
+            icon_size=icon_size,
             fixed_width=False,
         )
 
@@ -73,14 +76,19 @@ class OptionalActionWidget(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
 
-        body_widget = QtWidgets.QWidget(self)
+        _style = get_ayon_style().model.get_style(
+            "QLabel", variant=AYLabel.Variants.Optional_Action.value
+        )
+        icon_size = _style.get("icon-size", 16)
+
+        body_widget = AYFrame(self, variant=AYFrame.Variants.Contextual_Menu)
         body_widget.setObjectName("OptionalActionBody")
 
         label_wdgt = AYLabel(
             label,
             variant=AYLabel.Variants.Optional_Action,
             icon=icon_name,
-            icon_size=16,
+            icon_size=icon_size,
             icon_fill=False,
             parent=body_widget,
         )
@@ -89,7 +97,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
         )
 
-        option_box = OptionBox(parent=body_widget)
+        option_box = OptionBox(icon_size=icon_size, parent=body_widget)
         option_box.setObjectName("OptionalActionOption")
         option_box.setFixedSize(30, 30)
 

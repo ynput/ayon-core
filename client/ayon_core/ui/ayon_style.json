@@ -531,6 +531,15 @@
                 "surface": {
                     "background-color": "--md-sys-color-surface-container-highest-dark"
                 },
+                "contextual-menu": {
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "border-width": 0,
+                    "border-radius": 0,
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-dark",
+                        "shortcut-background-color": "--md-sys-color-surface-container-high-dark"
+                    }
+                },
                 "debug-r": {
                     "background-color": "#664444"
                 },

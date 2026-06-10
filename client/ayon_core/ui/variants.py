@@ -71,6 +71,7 @@ class QFrameVariants(Enum):
     Entity_Card = "entity-card"
     Entity_Card_Tag = "entity-card-tag"
     Surface = "surface"
+    Contextual_Menu = "contextual-menu"
     Debug_R = "debug-r"
     Debug_G = "debug-g"
     Debug_B = "debug-b"
