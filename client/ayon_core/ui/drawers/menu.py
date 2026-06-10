@@ -327,10 +327,10 @@ class MenuDrawer:
         is_enabled = bool(option.state & QStyle.StateFlag.State_Enabled)
         is_selected = bool(option.state & QStyle.StateFlag.State_Selected)
         state = (
-            "hover"
-            if is_selected and is_enabled
-            else "disabled"
+            "disabled"
             if not is_enabled
+            else "hover"
+            if is_selected and is_enabled
             else "base"
         )
 
@@ -357,9 +357,7 @@ class MenuDrawer:
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(rect, item_radius, item_radius)
 
-        opacity = 1.0
-        if not is_enabled:
-            opacity = float(style.get("opacity", 0.5))
+        opacity = float(style.get("opacity", 1.0))
         painter.setOpacity(opacity)
 
         # --- Left gutter (icon or check mark) ---
