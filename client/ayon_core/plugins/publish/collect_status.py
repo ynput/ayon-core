@@ -98,11 +98,12 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             default_status = status_profile["default_status"]
 
         if default_status not in statuses:
-            cls.log.warning(
-                f"Default status '{default_status}' is not available"
-                f" on project: {project_entity['name']}"
-                f"Using '{statuses[0]}' instead."
-            )
+            if status_profile:
+                cls.log.warning(
+                    f"Default status '{default_status}' is not available"
+                    f" on project: {project_entity['name']}"
+                    f"Using '{statuses[0]}' instead."
+                )
             default_status = statuses[0]
 
         if not artist_can_change:
