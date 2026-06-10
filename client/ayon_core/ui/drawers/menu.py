@@ -110,7 +110,12 @@ class MenuDrawer:
     # ------------------------------------------------------------------
 
     def _base_style(self, widget: QWidget | None = None):
-        """Return the base style dict, context-bound to *widget*."""
+        """Return the base style dict, context-bound to *widget*.
+
+        This is used for general operations like metrics calculation and
+        panel/frame painting, where the state/variant-specific styles are
+        not relevant.
+        """
         style = self.model.get_style(self._WIDGET_CLS, "default", "base")
         style.set_context(widget)
         return style
@@ -330,6 +335,8 @@ class MenuDrawer:
         )
 
         # Resolve variant from action property, if available
+        # NOTE: This is a bit of a hack. I could have created a QAction section
+        # in ayon_style.json and fetched the variant from there.
         action = None
         if isinstance(widget, QMenu):
             action = widget.actionAt(option.rect.center())
