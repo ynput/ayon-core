@@ -116,6 +116,42 @@ class OptionalActionWidget(QtWidgets.QWidget):
         self.option: OptionBox = option_box
         self.body: QtWidgets.QWidget = body_widget
 
+        # Watch the children's hover transitions so we can keep them in sync
+        # while the cursor moves between them.
+        self.label.installEventFilter(self)
+        self.option.installEventFilter(self)
+
+    # -- hover propagation ------------------------------------------------
+
+    def _set_row_hover(self, hovered: bool) -> None:
+        for child in (self.body, self.label, self.option):
+            child.setAttribute(QtCore.Qt.WA_UnderMouse, hovered)
+            child.update()
+
+    def _sync_row_hover(self) -> None:
+        # ``underMouse()`` on the parent stays True as long as the cursor is
+        # anywhere inside this row, even while crossing child borders.
+        self._set_row_hover(self.underMouse())
+
+    def enterEvent(self, event: QtCore.QEvent) -> None:
+        self._set_row_hover(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QtCore.QEvent) -> None:
+        self._set_row_hover(False)
+        super().leaveEvent(event)
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if obj in (self.body, self.label, self.option) and event.type() in (
+            QtCore.QEvent.Type.Enter,
+            QtCore.QEvent.Type.Leave,
+        ):
+            # Qt is about to flip WA_UnderMouse on this child.  Defer to
+            # the next event-loop tick so Qt's own handling has finished,
+            # then re-assert hover state based on the parent.
+            QtCore.QTimer.singleShot(0, self._sync_row_hover)
+        return super().eventFilter(obj, event)
+
 
 class OptionalAction(QtWidgets.QWidgetAction):
     """Menu action with an optional right-hand option box button.

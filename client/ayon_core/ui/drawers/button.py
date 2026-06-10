@@ -173,8 +173,8 @@ class ButtonDrawer:
             wstate = "disabled"
         elif state & QStyle.StateFlag.State_Sunken:
             wstate = "pressed"
-        elif state & QStyle.StateFlag.State_MouseOver and not (
-            state & QStyle.StateFlag.State_On
+        elif (state & QStyle.StateFlag.State_MouseOver and not (
+            state & QStyle.StateFlag.State_On) or widget.underMouse()
         ):
             wstate = "hover"
         elif state & QStyle.StateFlag.State_On:
