@@ -42,6 +42,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+@pytest.fixture
+def tmp_path(tmp_path_factory, request):
+    return tmp_path_factory.mktemp(request.node.name)
+
+
 @pytest.fixture(autouse=True)
 def _reset_task_queue_between_tests():
     """Shut down the AsyncTaskQueue singleton after every test.
