@@ -1,0 +1,49 @@
+{
+    "id": "view_abc123",
+    "label": "My Approved Versions",
+    "viewType": "versions",
+    "owner": "alice",
+    "scope": "project",
+    "visibility": "shared",
+    "working": false,
+    "position": 2,
+    "accessLevel": 30,
+    "access": {
+        "users": ["alice", "bob"],
+        "groups": ["leads"]
+    },
+    "settings": {
+        "columns": [
+            {"name": "__row_selection__", "visible": true, "pinned": true},
+            {"name": "thumbnail", "visible": true, "pinned": true, "width": 80},
+            {"name": "name", "visible": true, "pinned": false, "width": 200},
+            {"name": "status", "visible": true, "pinned": false, "width": 120},
+            {"name": "attrib_fps", "visible": false, "pinned": false},
+            {"name": "version", "visible": true, "pinned": false}
+        ],
+        "sortBy": "version",
+        "sortDesc": true,
+        "rowHeight": 48,
+        "groupBy": "status",
+        "groupSortByDesc": false,
+        "showEmptyGroups": true,
+        "filter": {
+            "operator": "and",
+            "conditions": [
+                {
+                    "key": "status",
+                    "values": ["Approved", "Pending review"],
+                    "useSubstring": false,
+                    "exclude": false
+                }
+            ]
+        },
+        "showProducts": true,
+        "gridHeight": 220,
+        "featuredVersionOrder": "latest",
+        "slicerType": "folders"
+    },
+    "metadata": {
+        "createdAt": "2026-01-15T10:00:00Z"
+    }
+}
