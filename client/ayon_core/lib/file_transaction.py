@@ -113,22 +113,22 @@ class FileTransaction:
             queued_src = self._transfers[dst][0]
             if src == queued_src:
                 self.log.debug(
-                    "File transfer was already in queue: {} -> {}".format(
-                        src, dst))
+                    f"File transfer was already in queue: {src} -> {dst}"
+                )
                 return
-            else:
-                if not self._allow_queue_replacements:
-                    raise DuplicateDestinationError(
-                        "Transfer to destination is already in queue: "
-                        "{} -> {}. It's not allowed to be replaced by "
-                        "a new transfer from {}".format(
-                            queued_src, dst, src
-                        ))
 
-                self.log.warning("File transfer in queue replaced..")
-                self.log.debug(
-                    "Removed from queue: {} -> {} replaced by {} -> {}".format(
-                        queued_src, dst, src, dst))
+            if not self._allow_queue_replacements:
+                raise DuplicateDestinationError(
+                    "Transfer to destination is already in queue: "
+                    f"{queued_src} -> {dst}. It's not allowed to be"
+                    f" replaced by a new transfer from {src}"
+                )
+
+            self.log.warning("File transfer in queue replaced..")
+            self.log.debug(
+                f"Removed from queue: {queued_src} -> {dst}"
+                f" replaced by {src} -> {dst}"
+            )
 
         self._transfers[dst] = (src, opts)
 
@@ -187,7 +187,7 @@ class FileTransaction:
                 os.remove(backup)
             except OSError:
                 self.log.error(
-                    "Failed to remove backup file: {}".format(backup),
+                    f"Failed to remove backup file: {backup}",
                     exc_info=True)
 
     def rollback(self):
@@ -201,7 +201,7 @@ class FileTransaction:
                 last_exc = exc
                 errors += 1
                 self.log.error(
-                    "Failed to rollback created file: {}".format(path),
+                    f"Failed to rollback created file: {path}",
                     exc_info=True)
 
         # Rollback the backups
@@ -212,13 +212,12 @@ class FileTransaction:
                 last_exc = exc
                 errors += 1
                 self.log.error(
-                    "Failed to restore original file: {} -> {}".format(
-                        backup, original),
+                    f"Failed to restore original file: {backup} -> {original}",
                     exc_info=True)
 
         if errors:
             self.log.error(
-                "{} errors occurred during rollback.".format(errors),
+                f"{errors} errors occurred during rollback.",
                 exc_info=True)
             raise last_exc
 
