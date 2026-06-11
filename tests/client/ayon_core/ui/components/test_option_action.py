@@ -11,13 +11,10 @@ with and without option boxes:
 
 from __future__ import annotations
 
+from ayon_core.ui.components import AYButton, AYMenu, AYOptionalAction
 from qtpy import QtCore, QtWidgets
-from widget_test import WidgetTest
-
-from ayon_core.ui.components.option_action import (
-    OptionalAction,
-)
 from utils.composite_widget import CompositeWidget
+from widget_test import WidgetTest
 
 
 class OptionalMenuTest(WidgetTest):
@@ -40,21 +37,21 @@ class OptionalMenuTest(WidgetTest):
         Returns:
             The root ``CompositeWidget`` for snapshot comparison.
         """
-        self._menu = QtWidgets.QMenu()
+        self._menu = AYMenu()
 
-        self._action_with_option = OptionalAction(
+        self._action_with_option = AYOptionalAction(
             "Open File",
             icon_name="folder_open",
             use_option=True,
             parent=self._menu,
         )
-        action_no_option = OptionalAction(
+        action_no_option = AYOptionalAction(
             "Export",
             icon_name=None,
             use_option=False,
             parent=self._menu,
         )
-        action_with_option2 = OptionalAction(
+        action_with_option2 = AYOptionalAction(
             "Run Process",
             icon_name=None,
             use_option=True,
@@ -64,7 +61,7 @@ class OptionalMenuTest(WidgetTest):
         self._menu.addAction(action_no_option)
         self._menu.addAction(action_with_option2)
 
-        self._trigger_btn = QtWidgets.QPushButton("Open Menu")
+        self._trigger_btn = AYButton("Test Menu Options")
         self._root: CompositeWidget | None = None
 
         def _menu_pos() -> QtCore.QPoint:

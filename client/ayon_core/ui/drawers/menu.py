@@ -183,7 +183,8 @@ class MenuDrawer:
         if text_h <= 0:
             text_h = 16
 
-        row_h = max(text_h + pad_v * 2, icon_size + pad_v * 2)
+        min_h = int(style.get("min-item-height", 0))
+        row_h = max(text_h + pad_v * 2, icon_size + pad_v * 2, min_h)
 
         text = option.text or ""
         label, _, shortcut = text.partition("\t")

@@ -572,6 +572,7 @@
             "default-variant": "default",
             "variants": {
                 "default": {
+                    "min-item-height": 28,
                     "background-color": "--md-sys-color-surface-container-lowest-dark",
                     "color": "--md-sys-color-on-surface-dark",
                     "shortcut-color": "--md-sys-color-on-surface-dark",
@@ -581,7 +582,7 @@
                     "border-width": 1,
                     "border-color": "--md-sys-color-outline-variant-dark",
                     "panel-padding": [0, 0],
-                    "item-padding": [10, 10],
+                    "item-padding": [14, 10],
                     "item-radius": 0,
                     "item-spacing": 4,
                     "icon-size": 16,

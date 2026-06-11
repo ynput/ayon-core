@@ -515,9 +515,9 @@ if __name__ == "__main__":
     from .components.container import AYContainer
     from .components.label import AYLabel
     from .components.layouts import AYHBoxLayout, AYVBoxLayout
+    from .components.option_action import AYMenu, AYOptionalAction
     from .components.text_box import AYTextBox
     from .components.user_image import AYUserImage
-    from .components.option_action import OptionalAction
     from .drawers import get_icon
     from .tester import Style, test
     from .variants import QPushButtonVariants
@@ -528,7 +528,7 @@ if __name__ == "__main__":
                 name, color="#f2f2f3", color_disabled="#727273", fill=False
             )
 
-        menu = QMenu(parent=widget)
+        menu = AYMenu(parent=widget)
         copy_icon = _make_icon("content_copy")
         one_icon = _make_icon("counter_1")
         two_icon = _make_icon("counter_2")
@@ -546,13 +546,13 @@ if __name__ == "__main__":
         menu.addSeparator()
 
         # icon and sub-menu
-        a3 = QMenu("Sub-menu", parent=menu)
+        a3 = AYMenu("Sub-menu", parent=menu)
         a3.setIcon(pin_icon)
 
         # radio group actions
         a3.addAction(one_icon, "Sub-action 1", "Ctrl+1")
         a3.addAction(two_icon, "Sub-action 2", "Ctrl+2")
-        subsub = QMenu("Sub-sub-menu", parent=a3)
+        subsub = AYMenu("Sub-sub-menu", parent=a3)
         subsub.addAction("Sub-sub-action 1")
         subsub.addAction("Sub-sub-action 2")
         a3.addMenu(subsub)
@@ -568,15 +568,17 @@ if __name__ == "__main__":
         menu.addSeparator()
 
         # optional action (with option box)
-        a5 = OptionalAction(
+        a5 = AYOptionalAction(
             "Optional action",
             parent=menu,
         )
-        a5.option_clicked.connect(lambda: print("'Optional action' option clicked"))
+        a5.option_clicked.connect(
+            lambda: print("'Optional action' option clicked")
+        )
         a5.triggered.connect(lambda: print("'Optional action' clicked"))
         menu.addAction(a5)
 
-        a5a = OptionalAction(
+        a5a = AYOptionalAction(
             "Optional action with icon",
             icon_name="save",
             parent=menu,
@@ -589,7 +591,7 @@ if __name__ == "__main__":
         )
         menu.addAction(a5a)
 
-        a5b = OptionalAction(
+        a5b = AYOptionalAction(
             "Optional action with icon disabled",
             icon_name="save",
             parent=menu,

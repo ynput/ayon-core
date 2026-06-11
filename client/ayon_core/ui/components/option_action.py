@@ -35,7 +35,7 @@ from .layouts import AYHBoxLayout
 logger = logging.getLogger(__name__)
 
 
-class OptionBox(AYButton):
+class AYOptionBox(AYButton):
     """Option box widget used as the right-hand button in an action row.
 
     Emits :attr:`clicked` when the user presses this button.  It is a
@@ -58,8 +58,8 @@ class OptionBox(AYButton):
         )
 
 
-class OptionalActionWidget(QtWidgets.QWidget):
-    """Row widget that combines a body area and an :class:`OptionBox`.
+class AYOptionalActionWidget(QtWidgets.QWidget):
+    """Row widget that combines a body area and an :class:`AYOptionBox`.
 
     The body contains an icon label and a text label.  The option box
     is pinned to the far right.  Both sections respond to hover state
@@ -95,14 +95,13 @@ class OptionalActionWidget(QtWidgets.QWidget):
             icon_fill=False,
             parent=body_widget,
         )
-        label_wdgt.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+        min_h = int(
+            get_ayon_style().model.get_style("QMenu").get("min-item-height", 0)
         )
+        self.setMinimumHeight(min_h)
 
-        option_box = OptionBox(icon_size=icon_size, parent=body_widget)
+        option_box = AYOptionBox(icon_size=icon_size, parent=body_widget)
         option_box.setObjectName("OptionalActionOption")
-        option_box.setFixedSize(30, 30)
 
         body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
         body_layout.addWidget(label_wdgt, stretch=1)
@@ -116,7 +115,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
 
         self.icon: QtGui.QIcon = QtGui.QIcon()
         self.label: AYLabel = label_wdgt
-        self.option: OptionBox = option_box
+        self.option: AYOptionBox = option_box
         self.body: QtWidgets.QWidget = body_widget
 
         # Watch the children's hover transitions so we can keep them in sync
@@ -156,11 +155,11 @@ class OptionalActionWidget(QtWidgets.QWidget):
         return super().eventFilter(obj, event)
 
 
-class OptionalAction(QtWidgets.QWidgetAction):
+class AYOptionalAction(QtWidgets.QWidgetAction):
     """Menu action with an optional right-hand option box button.
 
     Subclasses :class:`QtWidgets.QWidgetAction` to embed a custom
-    :class:`OptionalActionWidget` inside a standard ``QMenu``.
+    :class:`AYOptionalActionWidget` inside a standard ``QMenu``.
 
     Set ``use_option=True`` to show the option box and connect to
     :attr:`option_clicked` for the secondary action.
@@ -185,7 +184,7 @@ class OptionalAction(QtWidgets.QWidgetAction):
         self._label = label
         self._icon_name = icon_name or "none"
         self._use_option = use_option
-        self.widget: OptionalActionWidget | None = None
+        self.widget: AYOptionalActionWidget | None = None
 
     def createWidget(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """Instantiate and configure the custom action row widget.
@@ -196,9 +195,9 @@ class OptionalAction(QtWidgets.QWidgetAction):
             parent: The menu widget that will own the row widget.
 
         Returns:
-            The newly created :class:`OptionalActionWidget`.
+            The newly created :class:`AYOptionalActionWidget`.
         """
-        widget = OptionalActionWidget(
+        widget = AYOptionalActionWidget(
             self._label,
             icon_name=self._icon_name,
             parent=parent,
@@ -221,3 +220,93 @@ class OptionalAction(QtWidgets.QWidgetAction):
             if isinstance(w, QtWidgets.QMenu):
                 w.close()
             w = w.parentWidget()
+
+
+class AYMenu(QtWidgets.QMenu):
+    """QMenu that paints itself using the AYON style.
+
+    Replicates :meth:`QMenu.paintEvent` but routes every primitive and
+    control draw call through :func:`get_ayon_style`, so the menu is
+    painted consistently with the rest of the AYON UI even when the
+    application style isn't AYONStyle.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.setStyle(get_ayon_style())
+
+    def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
+        """Paint the menu using AYON's QStyle implementation.
+
+        Mirrors Qt's own ``QMenu::paintEvent`` order:
+        1. Draw the menu panel background (``PE_PanelMenu``).
+        2. Draw each visible action row (``CE_MenuItem``).
+        3. Draw the menu frame on top (``PE_FrameMenu``).
+
+        Args:
+            arg__1: The paint event delivered by Qt.
+        """
+        style = get_ayon_style()
+        painter = QtGui.QPainter(self)
+
+        # --- Shared base option (used for panel + frame) ---
+        menu_opt = QtWidgets.QStyleOptionMenuItem()
+        menu_opt.initFrom(self)
+        menu_opt.state = QtWidgets.QStyle.StateFlag.State_None
+        menu_opt.checkType = (
+            QtWidgets.QStyleOptionMenuItem.CheckType.NotCheckable
+        )
+        menu_opt.maxIconWidth = 0
+        try:
+            menu_opt.reservedShortcutWidth = 0
+        except AttributeError:
+            # Older Qt versions expose tabWidth instead.
+            menu_opt.tabWidth = 0
+        menu_opt.rect = self.rect()
+        menu_opt.menuRect = self.rect()
+
+        # --- 1. Panel background ---
+        style.drawPrimitive(
+            QtWidgets.QStyle.PrimitiveElement.PE_PanelMenu,
+            menu_opt,
+            painter,
+            self,
+        )
+
+        # --- 2. Action rows ---
+        event_region = arg__1.region()
+        for action in self.actions():
+            action_rect = self.actionGeometry(action)
+            if not event_region.intersects(action_rect):
+                continue
+
+            opt = QtWidgets.QStyleOptionMenuItem()
+            self.initStyleOption(opt, action)
+            opt.rect = action_rect
+
+            style.drawControl(
+                QtWidgets.QStyle.ControlElement.CE_MenuItem,
+                opt,
+                painter,
+                self,
+            )
+
+        # --- 3. Frame on top ---
+        frame_width = style.pixelMetric(
+            QtWidgets.QStyle.PixelMetric.PM_MenuPanelWidth, menu_opt, self
+        )
+        if frame_width > 0:
+            frame_opt = QtWidgets.QStyleOptionFrame()
+            frame_opt.initFrom(self)
+            frame_opt.rect = self.rect()
+            frame_opt.state = QtWidgets.QStyle.StateFlag.State_None
+            frame_opt.lineWidth = frame_width
+            frame_opt.midLineWidth = 0
+            style.drawPrimitive(
+                QtWidgets.QStyle.PrimitiveElement.PE_FrameMenu,
+                frame_opt,
+                painter,
+                self,
+            )
+
+        painter.end()
