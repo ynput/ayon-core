@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import concurrent.futures
 import os
 import logging
@@ -5,7 +7,7 @@ import errno
 import platform
 import shutil
 from concurrent.futures import ThreadPoolExecutor, Future
-from typing import List, Optional
+from typing import Any
 
 from ayon_core.lib import create_hard_link
 
@@ -15,7 +17,7 @@ import speedcopy.version
 _IS_MACOS = platform.system().lower() == "darwin"
 
 
-def copyfile(src, dst):
+def copyfile(src: str, dst: str) -> None:
     """Copy a file from src to dst.
 
     Defaults to using `speedcopy` but on certain infrastructure the fstats
@@ -25,6 +27,7 @@ def copyfile(src, dst):
     Args:
         src (str): Source path.
         dst (str): Destination path.
+
     """
     # NOTE speedcopy has a bug that causes failure on macOS, fixed in 2.2.0
     # TODO find out if speedcopy is still needed and remove if not.
@@ -77,25 +80,29 @@ class FileTransaction:
     MODE_COPY = 0
     MODE_HARDLINK = 1
 
-    def __init__(self, log=None, allow_queue_replacements=False):
+    def __init__(
+        self,
+        log: logging.Logger | None = None,
+        allow_queue_replacements: bool = False,
+    ) -> None:
         if log is None:
             log = logging.getLogger("FileTransaction")
 
-        self.log = log
+        self.log: logging.Logger = log
 
         # The transfer queue
         # todo: make this an actual FIFO queue?
-        self._transfers = {}
+        self._transfers: dict[str, tuple[str, dict[str, Any]]] = {}
 
         # Destination file paths that a file was transferred to
-        self._transferred = []
+        self._transferred: list[str] = []
 
         # Backup file location mapping to original locations
-        self._backup_to_original = {}
+        self._backup_to_original: dict[str, str] = {}
 
-        self._allow_queue_replacements = allow_queue_replacements
+        self._allow_queue_replacements: bool = allow_queue_replacements
 
-    def add(self, src, dst, mode=MODE_COPY):
+    def add(self, src: str, dst: str, mode: int = MODE_COPY) -> None:
         """Add a new file to transfer queue.
 
         Args:
@@ -132,7 +139,7 @@ class FileTransaction:
 
         self._transfers[dst] = (src, opts)
 
-    def process(self):
+    def process(self) -> None:
         with ThreadPoolExecutor(max_workers=8) as executor:
             # Submit backup tasks
             backup_futures = [
@@ -140,7 +147,8 @@ class FileTransaction:
                 for dst, (src, _) in self._transfers.items()
             ]
             wait_for_future_errors(
-                executor, backup_futures, logger=self.log)
+                executor, backup_futures, logger=self.log
+            )
 
             # Submit transfer tasks
             transfer_futures = [
@@ -148,9 +156,10 @@ class FileTransaction:
                 for dst, (src, opts) in self._transfers.items()
             ]
             wait_for_future_errors(
-                executor, transfer_futures, logger=self.log)
+                executor, transfer_futures, logger=self.log
+            )
 
-    def _backup_file(self, dst, src):
+    def _backup_file(self, dst: str, src: str) -> None:
         self.log.debug(f"Checking file destination ... {src} -> {dst}")
         path_same = self._same_paths(src, dst)
         if path_same or not os.path.exists(dst):
@@ -162,7 +171,9 @@ class FileTransaction:
         self.log.debug(f"Backup existing file: {dst} -> {backup}")
         os.rename(dst, backup)
 
-    def _transfer_file(self, dst, src, opts):
+    def _transfer_file(
+        self, dst: str, src: str, opts: dict[str, Any]
+    ) -> None:
         path_same = self._same_paths(src, dst)
         if path_same:
             self.log.debug(
@@ -180,7 +191,7 @@ class FileTransaction:
 
         self._transferred.append(dst)
 
-    def finalize(self):
+    def finalize(self) -> None:
         # Delete any backed up files
         for backup in self._backup_to_original.keys():
             try:
@@ -190,7 +201,7 @@ class FileTransaction:
                     f"Failed to remove backup file: {backup}",
                     exc_info=True)
 
-    def rollback(self):
+    def rollback(self) -> Exception | None:
         errors = 0
         last_exc = None
         # Rollback any transferred files
@@ -222,16 +233,16 @@ class FileTransaction:
             raise last_exc
 
     @property
-    def transferred(self):
+    def transferred(self) -> list[str]:
         """Return the processed transfers destination paths"""
         return list(self._transferred)
 
     @property
-    def backups(self):
+    def backups(self) -> list[str]:
         """Return the backup file paths"""
         return list(self._backup_to_original.keys())
 
-    def _create_folder_for_file(self, path):
+    def _create_folder_for_file(self, path: str) -> None:
         dirname = os.path.dirname(path)
         try:
             os.makedirs(dirname)
@@ -240,7 +251,7 @@ class FileTransaction:
                 self.log.critical("An unexpected error occurred.")
                 raise e
 
-    def _same_paths(self, src, dst):
+    def _same_paths(self, src: str, dst: str) -> bool:
         # handles same paths but with C:/project vs c:/project
         if os.path.exists(src) and os.path.exists(dst):
             return os.stat(src) == os.stat(dst)
@@ -249,9 +260,10 @@ class FileTransaction:
 
 
 def wait_for_future_errors(
-        executor: ThreadPoolExecutor,
-        futures: List[Future],
-        logger: Optional[logging.Logger] = None):
+    executor: ThreadPoolExecutor,
+    futures: list[Future],
+    logger: logging.Logger | None = None
+) -> Exception | None:
     """For the ThreadPoolExecutor shutdown and cancel futures as soon one of
     the workers raises an error as they complete.
 
@@ -272,7 +284,7 @@ def wait_for_future_errors(
             break
     else:
         # Futures are completed, no exceptions occurred
-        return
+        return None
 
     # An exception occurred in at least one future. Get exceptions from
     # all futures that are done and ended up failing until that point.
