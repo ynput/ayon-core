@@ -95,14 +95,13 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
             icon_fill=False,
             parent=body_widget,
         )
-        label_wdgt.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+        min_h = int(
+            get_ayon_style().model.get_style("QMenu").get("min-item-height", 0)
         )
+        self.setMinimumHeight(min_h)
 
         option_box = AYOptionBox(icon_size=icon_size, parent=body_widget)
         option_box.setObjectName("OptionalActionOption")
-        option_box.setFixedSize(30, 30)
 
         body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
         body_layout.addWidget(label_wdgt, stretch=1)
@@ -234,6 +233,7 @@ class AYMenu(QtWidgets.QMenu):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.setStyle(get_ayon_style())
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         """Paint the menu using AYON's QStyle implementation.
