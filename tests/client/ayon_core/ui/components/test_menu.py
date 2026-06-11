@@ -155,7 +155,10 @@ class MenuTest(WidgetTest):
         self._root = root
 
         layout = QtWidgets.QVBoxLayout(root)
-        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
+        layout.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignTop
+            | QtCore.Qt.AlignmentFlag.AlignLeft
+        )
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(8)
         layout.addWidget(self._trigger_btn, stretch=0)
