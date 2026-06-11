@@ -681,7 +681,7 @@ def get_last_workfile_info(
         anatomy = Anatomy(project_name, project_entity=project_entity)
 
     if project_settings is None:
-        project_settings= get_project_settings(project_name)
+        project_settings = get_project_settings(project_name)
 
     if template_data is None:
         template_data = get_template_data(
