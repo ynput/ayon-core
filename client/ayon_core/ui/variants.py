@@ -19,6 +19,7 @@ class QPushButtonVariants(Enum):
     Tag = "tag"
     Tag_Menu = "tag-menu"
     Table_Filter = "table-filter"
+    Optional_Action = "optional-action"
 
 
 class QCheckBoxVariants(Enum):
@@ -70,6 +71,7 @@ class QFrameVariants(Enum):
     Entity_Card = "entity-card"
     Entity_Card_Tag = "entity-card-tag"
     Surface = "surface"
+    Contextual_Menu = "contextual-menu"
     Debug_R = "debug-r"
     Debug_G = "debug-g"
     Debug_B = "debug-b"
@@ -81,6 +83,7 @@ class QToolTipVariants(Enum):
 
 class QMenuVariants(Enum):
     Default = "default"
+    Danger = "danger"
 
 
 class QLabelVariants(Enum):
@@ -91,6 +94,7 @@ class QLabelVariants(Enum):
     Entity_Label = "entity-label"
     Entity_Label_Filled = "entity-label-filled"
     Order_Option = "order-option"
+    Optional_Action = "optional-action"
 
 
 class QTreeViewVariants(Enum):

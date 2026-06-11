@@ -172,11 +172,17 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
             elif same_as_bg:
                 icon_color = self._style_data["base"].get("color")
 
-            icn: QIcon = get_icon(
-                self._icon,
-                color=icon_color,
-                fill=self._icon_fill,
-            )
+            if self._icon == "none":
+                icn = QIcon()  # empty icon for spacing
+                pxm = QPixmap(self._icon_size, self._icon_size)
+                pxm.fill(Qt.GlobalColor.transparent)
+                icn.addPixmap(pxm)
+            else:
+                icn: QIcon = get_icon(
+                    self._icon,
+                    color=icon_color,
+                    fill=self._icon_fill,
+                )
             self.setPixmap(icn.pixmap(QSize(self._icon_size, self._icon_size)))
 
     def _configure_font(self, font: QFont) -> QFont:
@@ -387,6 +393,14 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
 
         # Position the group using the current alignment
         widget_rect = self.contentsRect().normalized()
+        explicit_padding = self._style_data[state].get(
+            "padding",
+            self._style_data["base"].get("padding", [0, 0]),
+        )
+        pad_h = int(explicit_padding[0])
+        pad_v = int(explicit_padding[1])
+        widget_rect = widget_rect.adjusted(pad_h, pad_v, -pad_h, -pad_v)
+
         alignment = self.alignment()
 
         if alignment & Qt.AlignmentFlag.AlignLeft:
