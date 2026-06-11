@@ -233,6 +233,8 @@ class AYMenu(QtWidgets.QMenu):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        # Force the menu to use AYONStyle for drawing, even if the app's style
+        # is something else.
         self.setStyle(get_ayon_style())
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
