@@ -540,8 +540,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             profile = {
                 "contribution_enabled": True,
                 "contribution_layer": None,
-                "contribution_apply_as_variant": False,
                 "contribution_target_product": "usdAsset",
+                "contribution_apply_as_variant": False,
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             }
 
         # Define defaults
@@ -645,11 +648,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
-                    default="{layer}",
+                    default=profile["contribution_variant_set_name"],
                     visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
-                    default="{variant}",
+                    default=profile["contribution_variant"],
                     visible=variant_visible),
             BoolDef("contribution_variant_is_default",
                     label="Set as default variant selection",
@@ -661,7 +664,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "The behavior is unpredictable if multiple instances "
                         "for the same variant set have this enabled."
                     ),
-                    default=False,
+                    default=profile["contribution_variant_is_default"],
                     visible=variant_visible),
             UISeparatorDef("usd_container_settings3"),
         ]
