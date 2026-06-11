@@ -72,8 +72,8 @@ class FileTransaction:
 
     Warning:
         Any folders created during the transfer will not be removed.
-    """
 
+    """
     MODE_COPY = 0
     MODE_HARDLINK = 1
 
@@ -102,8 +102,8 @@ class FileTransaction:
             src (str): Source path.
             dst (str): Destination path.
             mode (MODE_COPY, MODE_HARDLINK): Transfer mode.
-        """
 
+        """
         opts = {"mode": mode}
 
         src = os.path.normpath(os.path.abspath(src))
