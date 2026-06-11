@@ -344,6 +344,33 @@ class PublishReportMaker:
 
         self._prepare_publish_plugin_items(publish_plugins)
 
+    def reset_with_discover_results(
+        self,
+        creator_discover_result: DiscoverResult,
+        convertor_discover_result: DiscoverResult,
+        publish_discover_result: DiscoverResult,
+        blocking_crashed_paths: set[str],
+    ) -> None:
+        """Reset report and set discover results."""
+
+        crashed_file_paths = {}
+        for report in (
+            creator_discover_result,
+            convertor_discover_result,
+            publish_discover_result,
+        ):
+            items = report.crashed_file_paths.items()
+            for filepath, exc_info in items:
+                crashed_file_paths[filepath] = "".join(
+                    traceback.format_exception(*exc_info)
+                )
+
+        self.reset(
+            publish_discover_result.plugins,
+            crashed_file_paths,
+            blocking_crashed_paths,
+        )
+
     def add_plugin_iter(
         self, plugin_id: str, context: pyblish.api.Context
     ) -> None:

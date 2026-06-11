@@ -674,7 +674,7 @@ class PublishModel:
             set(create_context.publish_discover_result.crashed_file_paths),
             project_settings=create_context.get_current_project_settings(),
         )
-        self._publish_report.reset(
+        self._publish_report.reset_with_discover_results(
             create_context.creator_discover_result,
             create_context.convertor_discover_result,
             create_context.publish_discover_result,
