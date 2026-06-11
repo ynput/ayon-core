@@ -506,7 +506,7 @@ class AYONStyle(QCommonStyle):
 if __name__ == "__main__":
     import time
 
-    from qtpy.QtWidgets import QAction, QMenu
+    from qtpy.QtWidgets import QAction
 
     from . import _get_test_data_dir
     from .components.buttons import AYButton
