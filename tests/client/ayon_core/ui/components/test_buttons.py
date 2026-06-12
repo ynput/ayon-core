@@ -13,7 +13,8 @@ from utils.composite_widget import CompositeWidget
 
 
 class _HoverButton(AYButton):
-    """AYButton subclass that can force the hover appearance for snapshot tests."""
+    """AYButton subclass that can force the hover appearance for snapshot
+    tests."""
 
     def __init__(self, *args, **kwargs):
         self._force_hover: bool = (
@@ -32,7 +33,8 @@ class _HoverButton(AYButton):
 
 
 class ButtonTest(WidgetTest):
-    """Tests all AYButton variants: text-only, icon+text, icon-only, checkable."""
+    """Tests all AYButton variants: text-only, icon+text, icon-only,
+    checkable."""
 
     size = (900, 400)
     tolerance = 0.0
@@ -48,7 +50,8 @@ class ButtonTest(WidgetTest):
         self._checkable_buttons: list[AYButton] = []
         self._row1_buttons: list[_HoverButton] = []
 
-        # Row 1: text-only buttons (use _HoverButton so hover can be forced in steps)
+        # Row 1: text-only buttons (use _HoverButton so hover can be forced
+        # in steps)
         row1 = AYContainer(
             layout=AYContainer.Layout.HBox,
             layout_margin=0,
@@ -317,7 +320,8 @@ def test_aybuttonmenu_populate_callback_widgets_in_dropdown(qtbot) -> None:
     # Collect all QPushButton children from the dropdown
     child_buttons = dropdown.findChildren(QtWidgets.QPushButton)
     assert len(child_buttons) == 1, (
-        "Dropdown must contain exactly one QPushButton (added by populate_callback)"
+        "Dropdown must contain exactly one QPushButton (added by "
+        "populate_callback)"
     )
     assert child_buttons[0].text() == "Option A", (
         "The QPushButton text must match what the populate_callback set"

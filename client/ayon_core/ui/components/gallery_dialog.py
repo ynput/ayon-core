@@ -18,11 +18,11 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ayon_core.ui.style import get_ayon_style
-from ayon_core.ui.components.buttons import AYButton
-from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.components.label import AYLabel
-from ayon_core.ui.components.layouts import AYVBoxLayout
+from ..style_types import get_ayon_style
+from .buttons import AYButton
+from .container import AYContainer
+from .label import AYLabel
+from .layouts import AYVBoxLayout
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,8 @@ class GalleryDialog(QDialog):
             event: Show event.
         """
         super().showEvent(event)
-        # Activate window and set focus to the dialog so keyboard events work immediately
+        # Activate window and set focus to the dialog so keyboard events work
+        # immediately
         self.activateWindow()
         self.setFocus(Qt.FocusReason.OtherFocusReason)
 
@@ -227,7 +228,10 @@ class GalleryDialog(QDialog):
         if len(self.images) > 1:
             # Update info label
             display_name = Path(filename).stem if filename else "Unknown"
-            info_text = f"{self.current_index + 1} / {len(self.images)} - {display_name}"
+            info_text = (
+                f"{self.current_index + 1} / {len(self.images)} - "
+                f"{display_name}"
+            )
             self.info_label.setText(info_text)
 
             # Update button states
@@ -257,7 +261,9 @@ if __name__ == "__main__":
     from ..tester import Style, test
 
     def build():
-        rsrc_dir = _get_test_data_dir() or Path(__file__).parent.parent / "resources"
+        rsrc_dir = (
+            _get_test_data_dir() or Path(__file__).parent.parent / "resources"
+        )
         images = []
 
         # Add any available test images

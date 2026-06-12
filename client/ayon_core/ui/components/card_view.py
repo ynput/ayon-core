@@ -41,7 +41,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import AYCardViewVariants
 from .entity_card import CARD_RATIO, AYEntityCard
 from .scroll_area import AYScrollBar
@@ -233,7 +233,9 @@ class AYCardView(QAbstractItemView):
 
         self._hovered_pmi: QPersistentModelIndex | None = None
 
-        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         self.setFrameShape(QAbstractItemView.Shape.NoFrame)
 
     def set_card_width(self, width: int) -> None:
@@ -589,7 +591,9 @@ class AYCardView(QAbstractItemView):
     def scrollTo(
         self,
         index: QModelIndex | QPersistentModelIndex,
-        hint: QAbstractItemView.ScrollHint = QAbstractItemView.ScrollHint.EnsureVisible,
+        hint: QAbstractItemView.ScrollHint = (
+            QAbstractItemView.ScrollHint.EnsureVisible
+        ),
     ) -> None:
         if not index.isValid():
             return

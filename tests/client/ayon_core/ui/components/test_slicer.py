@@ -10,7 +10,10 @@ from ayon_core.ui.components.combo_box import ALL_STATUSES
 from ayon_core.ui.components.container import AYContainer
 
 
-_CATEGORIES = [{"text": s["text"], "icon": s["icon"], "color": s["color"]} for s in ALL_STATUSES]
+_CATEGORIES = [
+    {"text": s["text"], "icon": s["icon"], "color": s["color"]}
+    for s in ALL_STATUSES
+]
 
 
 class SlicerTest(WidgetTest):

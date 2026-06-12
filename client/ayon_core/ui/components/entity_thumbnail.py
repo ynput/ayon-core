@@ -29,7 +29,7 @@ from qtpy.QtGui import (
 from qtpy.QtWidgets import QPushButton, QStyle, QStyleOptionButton
 
 from ..image_cache import ImageCache
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..variants import QPushButtonVariants
 from .style_mixin import StyleMixin
 
@@ -178,7 +178,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
 
     @property
     def max_slices(self) -> int:
-        """Return the maximum number of slices that fit within the widget width.
+        """Return the maximum number of slices that fit within the widget
+        width.
 
         Calculated based on :attr:`_MIN_SLICE_WIDTH` to ensure each slice
         is at least the minimum readable width.
@@ -585,7 +586,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             self._async_file_cacher(parts[idx], _make_slot_callback(idx))
 
     def paintEvent(self, arg__1: QPaintEvent) -> None:
-        """Override the default paint event to render the thumbnail with effects.
+        """Override the default paint event to render the thumbnail with
+        effects.
 
         Draws the styled button base using the AYON style model, then
         overlays the incoming pixmap with the current fade opacity for

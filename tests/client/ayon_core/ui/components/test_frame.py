@@ -33,6 +33,7 @@ class FrameTest(WidgetTest):
             lbl = AYLabel(variant.value, parent=frame)
             lbl.setContentsMargins(8, 0, 0, 0)
             from ayon_core.ui.components.layouts import AYHBoxLayout
+
             lyt = AYHBoxLayout(frame, margin=4)
             lyt.addWidget(lbl)
 

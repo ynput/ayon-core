@@ -191,7 +191,9 @@ if __name__ == "__main__":
         assert isinstance(last_widget, AYContainer)
         last_widget.set_label_alignment(Qt.AlignRight)
         last_widget.add_row(AYLabel("Label:", dim=True), AYLabel("Value"))
-        last_widget.add_row(AYLabel("Another Label:", dim=True), AYLabel("Another Value"))
+        last_widget.add_row(
+            AYLabel("Another Label:", dim=True), AYLabel("Another Value")
+        )
         w.setMinimumWidth(200)
         w.setMinimumHeight(400)
         return w

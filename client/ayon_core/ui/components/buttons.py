@@ -4,20 +4,19 @@ import logging
 import os
 from typing import Callable
 
+from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QPalette
 
 from ..color_utils import compute_color_for_contrast
-from ..style import StyleDict, get_ayon_style, get_ayon_style_data
+from ..style_types import StyleDict, get_ayon_style, get_ayon_style_data
 from ..variants import QPushButtonVariants
 from .container import AYContainer
 from .dropdown import AYDropdownPopup
 from .style_mixin import StyleMixin
 
 logger = logging.getLogger(__name__)
-
-from qtmaterialsymbols import get_icon  # type: ignore
 
 
 class AYButton(StyleMixin, QtWidgets.QPushButton):
@@ -81,6 +80,11 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
                 self._icon_color.toTuple(),
                 min_contrast_ratio=7,
             )
+
+        # get the disabled opacity
+        self._disabled_opacity = self._style_data.get("disabled", {}).get(
+            "opacity", 0.5
+        )
 
         if self._icon:
             self.set_icon(self._icon)
@@ -186,12 +190,16 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         #   State.Off: checkable off
         #   State.On: checkable on
         #   State.Active: hover
+        disabled_color = QColor(self._icon_color)
+        disabled_color.setAlphaF(self._disabled_opacity)
         if self.isCheckable():
             icn = get_icon(
                 icon_name_off=self._icon,
                 color_off=self._icon_color,
                 icon_name_on=self._icon_on,
                 color_on=self._icon_color,
+                color_on_disabled=disabled_color,
+                color_off_disabled=disabled_color,
                 fill=self._icon_fill,
             )
         else:
@@ -200,6 +208,8 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
                 color_off=self._icon_color,
                 icon_name_on=self._icon,
                 color_on=self._icon_hover_color,
+                color_on_disabled=disabled_color,
+                color_off_disabled=disabled_color,
                 fill=self._icon_fill,
             )
         self.setIcon(icn)

@@ -11,10 +11,10 @@ TEST_DATA_DIR = Path(__file__).parent
 
 
 def test_data_file_cacher(key: str) -> "Path | str":
-    """Resolve a key to a test_data image path. Used as file_cacher callback."""
+    """Resolve a key to a test_data image path. Used as file_cacher
+    callback."""
     for ext in ("jpg", "png"):
         p = TEST_DATA_DIR / f"{key}.{ext}"
         if p.exists():
             return p
     return ""
-

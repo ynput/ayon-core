@@ -36,8 +36,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--show-images",
         action="store_true",
         default=False,
-        help="After the run, open a Qt window showing failed image comparisons.",
+        help=(
+            "After the run, open a Qt window showing failed image comparisons."
+        ),
     )
+
+
+@pytest.fixture
+def tmp_path(tmp_path_factory, request):
+    return tmp_path_factory.mktemp(request.node.name)
 
 
 @pytest.fixture(autouse=True)

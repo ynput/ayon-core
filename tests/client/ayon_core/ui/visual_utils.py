@@ -154,7 +154,7 @@ def show_images(*images: tuple[str, str, str]) -> None:
     from ayon_core.ui.components.container import AYContainer
     from ayon_core.ui.components.line_edit import AYLineEdit
     from ayon_core.ui.components.scroll_area import AYScrollArea
-    from ayon_core.ui.style import get_ayon_style
+    from ayon_core.ui.style_types import get_ayon_style
     from qtpy.QtCore import QSize
     from qtpy.QtWidgets import QApplication
 
@@ -198,7 +198,6 @@ def show_images(*images: tuple[str, str, str]) -> None:
     cards: list[tuple[str, QWidget]] = []
 
     def _apply_filters() -> None:
-        print("Applying filters...")
         query = search_field.text().strip().lower()
         hide_accepted = hide_accepted_cb.isChecked()
         for card_name, card in cards:
@@ -234,7 +233,14 @@ if __name__ == "__main__":
         if sys.argv[1] == "--show-refs" and len(sys.argv) == 2:
             # show all reference images in the refs directory for manual
             # inspection
-            ref_dir = os.path.join(os.getcwd(), "tests", "test_visual")
+            ref_dir = os.path.join(
+                os.getcwd(),
+                "tests",
+                "client",
+                "ayon_core",
+                "ui",
+                "test_visual",
+            )
             ref_images = glob.glob(os.path.join(ref_dir, "*.png"))
             images = [(os.path.basename(img), img, img) for img in ref_images]
             show_images(*images)
@@ -244,8 +250,10 @@ if __name__ == "__main__":
         imgs = [
             (
                 "checkbox initial",
-                "./tests/foo/CheckBoxTest_00_initial.obtained.png",
-                "./tests/foo/CheckBoxTest_00_initial.png",
+                "./tests/client/ayon_core/ui/test_visual/"
+                "CheckBoxTest_00_initial.obtained.png",
+                "./tests/client/ayon_core/ui/test_visual/"
+                "CheckBoxTest_00_initial.png",
             ),
         ]
         show_images(*imgs)

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from qtmaterialsymbols import get_icon  # type: ignore
 from qtpy import QtWidgets
 from qtpy.QtCore import QEvent, QPoint, QRect, QSize, Qt, QTimer
 from qtpy.QtGui import (
     QBrush,
     QColor,
+    QEnterEvent,
     QFont,
     QFontInfo,
     QFontMetrics,
@@ -17,10 +19,8 @@ from qtpy.QtGui import (
     QPixmap,
 )
 
-from qtmaterialsymbols import get_icon  # type: ignore
-
 from ..color_utils import compute_color_for_contrast
-from ..style import StyleDict, get_ayon_style
+from ..style_types import StyleDict, get_ayon_style
 from ..variants import QLabelVariants
 from .style_mixin import StyleMixin
 
@@ -174,11 +174,17 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
             elif same_as_bg:
                 icon_color = self._style_data["base"].get("color")
 
-            icn: QIcon = get_icon(
-                self._icon,
-                color=icon_color,
-                fill=self._icon_fill,
-            )
+            if self._icon == "none":
+                icn = QIcon()  # empty icon for spacing
+                pxm = QPixmap(self._icon_size, self._icon_size)
+                pxm.fill(Qt.GlobalColor.transparent)
+                icn.addPixmap(pxm)
+            else:
+                icn: QIcon = get_icon(
+                    self._icon,
+                    color=icon_color,
+                    fill=self._icon_fill,
+                )
             self.setPixmap(icn.pixmap(QSize(self._icon_size, self._icon_size)))
 
     def _configure_font(self, font: QFont) -> QFont:
@@ -389,6 +395,14 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
 
         # Position the group using the current alignment
         widget_rect = self.contentsRect().normalized()
+        explicit_padding = self._style_data[state].get(
+            "padding",
+            self._style_data["base"].get("padding", [0, 0]),
+        )
+        pad_h = int(explicit_padding[0])
+        pad_v = int(explicit_padding[1])
+        widget_rect = widget_rect.adjusted(pad_h, pad_v, -pad_h, -pad_v)
+
         alignment = self.alignment()
 
         if alignment & Qt.AlignmentFlag.AlignLeft:
@@ -603,7 +617,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
 
     # QLabel overrides ----------------------------------------------------
 
-    def enterEvent(self, event: QEvent) -> None:
+    def enterEvent(self, event: QEnterEvent) -> None:
         super().enterEvent(event)
         if self._copy_text:
             self.update()
@@ -723,7 +737,10 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
             )
             content_w = icon_w + spacing + text_w
             content_h = max(text_h, icon_h)
-            # print(f"{self._text!r}: {content_w + 2 * pad_h} x {content_h + 2 * pad_v}")
+            # print(
+            #     f"{self._text!r}: {content_w + 2 * pad_h} x "
+            #     f"{content_h + 2 * pad_v}"
+            # )
         elif icon_w:
             content_w = icon_w
             content_h = icon_h
@@ -814,8 +831,10 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self._icon_color = color
         self._contrast_color = None  # reset so contrast is recalculated
         self._configure_palette()
-        self.set_icon(color=color)   # repaints icon pixmap with new color
-        self._copy_pix_normal = self._copy_pix_hover = self._copy_pix_done = None
+        self.set_icon(color=color)  # repaints icon pixmap with new color
+        self._copy_pix_normal = self._copy_pix_hover = self._copy_pix_done = (
+            None
+        )
         self.update()
 
 
@@ -921,7 +940,10 @@ if __name__ == "__main__":
                 icon_size=16,
                 variant=AYLabel.Variants.Entity_Label_Filled,
             )
-            # print(f"Entity_Label_Filled: {json.dumps(l9._style_data, indent=4)}")
+            # print(
+            #     "Entity_Label_Filled: "
+            #     f"{json.dumps(l9._style_data, indent=4)}"
+            # )
             row.add_widget(l9, stretch=0)
             row.addStretch()
 
@@ -936,12 +958,8 @@ if __name__ == "__main__":
         )
         row_font.layout().setAlignment(Qt.AlignmentFlag.AlignLeft)
         row_font.add_widget(AYLabel("Default font"), stretch=0)
-        row_font.add_widget(
-            AYLabel("Default font bold", bold=True), stretch=0
-        )
-        row_font.add_widget(
-            AYLabel("Default font dim", dim=True), stretch=0
-        )
+        row_font.add_widget(AYLabel("Default font bold", bold=True), stretch=0)
+        row_font.add_widget(AYLabel("Default font dim", dim=True), stretch=0)
         row_font.add_widget(
             AYLabel("Default font +2", rel_text_size=2), stretch=0
         )

@@ -172,11 +172,12 @@ def _parse_annotations(act_data, nothing):
 
 
 def clear_layout(layout):
-    """Recursively deletes child QWidgets in the initial QLayout and in sub-layouts.
+    """Recursively deletes child QWidgets in the initial QLayout and in
+    sub-layouts.
 
-    This function handles all types of QLayout subclasses (QVBoxLayout, QHBoxLayout,
-    QGridLayout, etc.) and safely deletes all child widgets while maintaining the
-    integrity of the parent layout structure.
+    This function handles all types of QLayout subclasses (QVBoxLayout,
+    QHBoxLayout, QGridLayout, etc.) and safely deletes all child widgets
+    while maintaining the integrity of the parent layout structure.
 
     Args:
         layout: QLayout instance to clear
@@ -186,7 +187,8 @@ def clear_layout(layout):
 
     # print(f"layout = {layout}")
 
-    # Work backwards through the layout to avoid index issues when removing items
+    # Work backwards through the layout to avoid index issues when removing
+    # items
     for i in reversed(range(layout.count())):
         item = layout.takeAt(i)
         if item is None:
@@ -243,6 +245,7 @@ def process_test_project_data(project_data: dict) -> ProjectData:
 def get_test_project_data() -> ProjectData:
     # read project data
     from . import _get_test_data_dir
+
     file_dir = _get_test_data_dir() or Path(__file__).parent
     project_file = file_dir / "sample_project_data.json"
     project_data = read_json_file(project_file)
@@ -257,6 +260,7 @@ def process_test_version_data(version_data: dict) -> VersionData:
 
 def get_test_version_data() -> VersionData:
     from . import _get_test_data_dir
+
     file_dir = _get_test_data_dir() or Path(__file__).parent
     version_data_file = file_dir / "sample_version_data.json"
     version_data = read_json_file(version_data_file)
@@ -290,6 +294,7 @@ def process_test_activity_data(activity_data) -> ActivityData:
 
 def get_test_activity_data() -> ActivityData:
     from . import _get_test_data_dir
+
     file_dir = _get_test_data_dir() or Path(__file__).parent
     activity_file = file_dir / "sample_activities.json"
     activity_data = read_json_file(activity_file)

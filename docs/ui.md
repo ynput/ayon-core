@@ -23,7 +23,7 @@ language while staying native to Qt. It includes:
 ```python
 from qtpy.QtWidgets import QApplication
 
-from ayon_core.ui.style import get_ayon_style, style_widget_and_siblings
+from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.label import AYLabel
@@ -194,11 +194,11 @@ imports have moved:
 ```python
 # Before (standalone addon)
 from ayon_core.ui.components.buttons import AYButton
-from ayon_core.ui.style import get_ayon_style
+from ayon_core.ui.style_types import get_ayon_style
 
 # After (integrated into core)
 from ayon_core.ui.components.buttons import AYButton
-from ayon_core.ui.style import get_ayon_style
+from ayon_core.ui.style_types import get_ayon_style
 ```
 
 ## License

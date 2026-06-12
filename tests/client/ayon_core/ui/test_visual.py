@@ -23,7 +23,8 @@ from widget_test import WidgetTest
 
 
 def _collect_widget_test_classes() -> list[Type[WidgetTest]]:
-    """Import all test_*.py modules under tests/components/ and return WidgetTest subclasses."""
+    """Import all test_*.py modules under tests/components/ and return
+    WidgetTest subclasses."""
     components_dir = Path(__file__).parent / "components"
     classes: list[Type[WidgetTest]] = []
     for module_info in pkgutil.iter_modules([str(components_dir)]):
@@ -51,7 +52,7 @@ def _cls_id(cls: Type[WidgetTest]) -> str:
 @pytest.mark.parametrize("widget_test_cls", _widget_test_classes, ids=_cls_id)
 def test_initial(widget_test_cls: Type[WidgetTest], qtbot, image_regression):
     """Snapshot the widget in its initial state (before any steps)."""
-    from ayon_core.ui.style import get_ayon_style
+    from ayon_core.ui.style_types import get_ayon_style
 
     wt = widget_test_cls(qbot=qtbot)
     widget = wt.build()
@@ -100,8 +101,9 @@ def test_steps(
     qtbot,
     image_regression,
 ):
-    """Snapshot the widget after applying all steps up to and including step_index."""
-    from ayon_core.ui.style import get_ayon_style
+    """Snapshot the widget after applying all steps up to and including
+    step_index."""
+    from ayon_core.ui.style_types import get_ayon_style
 
     wt = widget_test_cls(qbot=qtbot)
     widget = wt.build()

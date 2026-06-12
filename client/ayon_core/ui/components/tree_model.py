@@ -129,7 +129,8 @@ class LazyTreeModel(QAbstractItemModel):
         self._fetch_children_async(self._root)
 
     def _update_loading_state(self) -> None:
-        """Emit loading-progress signals based on current pending task count."""
+        """Emit loading-progress signals based on current pending task
+        count."""
         self.pending_count_changed.emit(self._pending_tasks)
         self.loading_changed.emit(self._pending_tasks > 0)
 

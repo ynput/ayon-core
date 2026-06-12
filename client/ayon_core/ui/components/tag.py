@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from qtmaterialsymbols import get_icon  # type: ignore
-
-from ..style import get_ayon_style
+from ..color_utils import compute_color_for_contrast
+from ..style_types import get_ayon_style
+from ..variants import QFrameVariants
 from .buttons import AYButton
 from .frame import AYFrame
 from .label import AYLabel
-from ..variants import QFrameVariants
-from ..color_utils import compute_color_for_contrast
 
 
 class AYTag(AYFrame):

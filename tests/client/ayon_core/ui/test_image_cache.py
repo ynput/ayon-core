@@ -274,7 +274,8 @@ def test_atomic_file_write(cache: ImageCache, src_dir: Path) -> None:
 
 
 def test_concurrent_threads(cache: ImageCache, src_dir: Path) -> None:
-    """Multiple threads calling get() simultaneously must not corrupt the DB."""
+    """Multiple threads calling get() simultaneously must not corrupt
+    the DB."""
     src = _make_source_file(src_dir)
     results: list[str] = []
     errors: list[Exception] = []
@@ -370,7 +371,8 @@ def test_concurrent_processes(cache_dir: Path, src_dir: Path) -> None:
 
 
 def test_clear_on_startup(cache_dir: Path, src_dir: Path) -> None:
-    """If AYON_IMG_CACHE_CLEAR_ON_STARTUP is set, cache files are deleted on init."""
+    """If AYON_IMG_CACHE_CLEAR_ON_STARTUP is set, cache files are deleted
+    on init."""
     # Create some dummy cache files
     for i in range(5):
         _make_source_file(src_dir, name=f"src_{i}.png")

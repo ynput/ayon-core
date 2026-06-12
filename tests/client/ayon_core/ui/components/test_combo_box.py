@@ -141,7 +141,6 @@ class ComboBoxTest(WidgetTest):
         self._default_full.showPopup()
         QApplication.processEvents()
 
-
     def open_menu_default_hover(self) -> None:
         self._default_full.showPopup()
         QApplication.processEvents()

@@ -12,7 +12,7 @@ from widget_test import WidgetTest
 class LabelTest(WidgetTest):
     """Tests AYLabel across all variants, dim/bold/icon states."""
 
-    size = (600, 400)
+    size = (600, 450)
     tolerance = 0.0
 
     def build(self) -> QWidget:
@@ -125,7 +125,9 @@ class LabelTest(WidgetTest):
             layout_margin=8,
             layout_spacing=8,
         )
-        self._w["tag_on_dark"] = AYLabel("Tag on dark", variant=AYLabel.Variants.Tag)
+        self._w["tag_on_dark"] = AYLabel(
+            "Tag on dark", variant=AYLabel.Variants.Tag
+        )
         colored_row.add_widget(self._w["tag_on_dark"])
         colored_row.addStretch(1)
         root.add_widget(colored_row)

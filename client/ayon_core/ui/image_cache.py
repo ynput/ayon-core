@@ -141,7 +141,8 @@ class ImageCache:
         min_version = (3, 7, 0)
         if sqlite3.sqlite_version_info < min_version:
             raise RuntimeError(
-                f"ImageCache requires SQLite >= {'.'.join(map(str, min_version))};"
+                "ImageCache requires SQLite >= "
+                f"{'.'.join(map(str, min_version))};"
                 f" found {sqlite3.sqlite_version}"
             )
 
@@ -602,7 +603,8 @@ class ImageCache:
         )
 
         rows = conn.execute(
-            "SELECT key, file_path, size_bytes FROM cache ORDER BY last_accessed ASC"
+            "SELECT key, file_path, size_bytes FROM cache ORDER BY "
+            "last_accessed ASC"
         ).fetchall()
 
         keys_to_delete: list[str] = []

@@ -44,7 +44,9 @@ class CompositeWidget(AYFrame):
         super().__init__(variant=variant, parent=parent)
         self._widgets = widgets
         style = self.style().model.get_style("QFrame", variant.value)
-        self.bg_color = style.get("background-color", QColor(Qt.GlobalColor.transparent))
+        self.bg_color = style.get(
+            "background-color", QColor(Qt.GlobalColor.transparent)
+        )
 
     def grab(  # type: ignore[override]
         self,

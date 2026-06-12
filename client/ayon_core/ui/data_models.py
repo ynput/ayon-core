@@ -297,14 +297,16 @@ if __name__ == "__main__":
         f"ch == ActivityCategory.COMMENT -> {ch == ActivityCategory.COMMENT}"
     )
     print(
-        f"ch == ActivityCategory.CHECKLIST -> {ch == ActivityCategory.CHECKLIST}"
+        "ch == ActivityCategory.CHECKLIST -> "
+        f"{ch == ActivityCategory.CHECKLIST}"
     )
     print(
         f"ch & ActivityCategory.CHECKLIST -> {ch & ActivityCategory.CHECKLIST}"
     )
     print(f"ch & ActivityCategory.COMMENT -> {ch & ActivityCategory.COMMENT}")
     print(
-        f"ch & ActivityCategory.VERSION_PUBLISH -> {ch & ActivityCategory.VERSION_PUBLISH}"
+        f"ch & ActivityCategory.VERSION_PUBLISH -> "
+        f"{ch & ActivityCategory.VERSION_PUBLISH}"
     )
     print()
     for filter in list(ActivityCategory) + [
@@ -314,4 +316,7 @@ if __name__ == "__main__":
         for cat in ActivityCategory:
             # print(f"{cat.name} -> {cat.value}")
             print(f"bool({cat.name} & filter) -> {bool(cat & filter)}")
-            # print(f"filter & {cat.name}  == {cat.name} -> {filter & cat == cat}")
+            # print(
+            #     f"filter & {cat.name}  == {cat.name} -> "
+            #     f"{filter & cat == cat}"
+            # )

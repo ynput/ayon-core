@@ -22,7 +22,7 @@ from qtpy.QtWidgets import (
     QTextEdit,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from ..data_models import User
 from .user_image import AYUserImage
 
@@ -322,9 +322,9 @@ class MentionHighlighter(QSyntaxHighlighter):
 
     Patterns highlighted:
 
-    - Fenced code blocks (```\\`\\`\\` ... \\`\\`\\```) spanning multiple lines —
-      black background, white monospace text.  Block state ``1`` tracks
-      whether the current block is inside a fence.
+    - Fenced code blocks (```\\`\\`\\` ... \\`\\`\\```) spanning multiple
+      lines - black background, white monospace text.
+      Block state ``1`` tracks whether the current block is inside a fence.
     - Qt-rendered code blocks (from ``setMarkdown()``) — detected via
       ``nonBreakableLines`` on the block format.
     - Qt-rendered inline code spans (from ``setMarkdown()``) — detected via

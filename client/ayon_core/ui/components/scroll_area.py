@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (
     QStyleOptionSlider,
 )
 
-from ..style import get_ayon_style
+from ..style_types import get_ayon_style
 from .style_mixin import StyleMixin
 
 
