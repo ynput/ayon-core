@@ -74,7 +74,27 @@ class AYTableHeader(StyleMixin, QHeaderView):
         self._style_model = style_model
         self._variant_str = variant
         self._toggle_btn: QToolButton | None = None
+        # Keys of columns the user has flagged as *pinned* (kept at the
+        # left in the visual order).  Phase 1 only roundtrips this set;
+        # visual freeze rendering is added in Phase 3.
+        self._pinned_keys: set[str] = set()
         # self.setSortIndicatorShown(True)
+
+    def pinned_keys(self) -> set[str]:
+        """Return a copy of the set of pinned column keys.
+
+        Returns:
+            A new ``set[str]`` so callers can mutate the result freely.
+        """
+        return set(self._pinned_keys)
+
+    def set_pinned_keys(self, keys: set[str]) -> None:
+        """Replace the set of pinned column keys.
+
+        Args:
+            keys: New set of pinned keys.  A defensive copy is taken.
+        """
+        self._pinned_keys = set(keys)
 
     def paintSection(
         self,
@@ -248,6 +268,10 @@ class AYTableView(StyleMixin, QTreeView):
 
     Variants = AYTableViewVariants
     selection_changed = Signal(QItemSelection, QItemSelection)
+    # Emitted whenever the user moves, resizes, hides, shows or pins a
+    # column.  Carries no payload — listeners should re-query
+    # :meth:`get_column_state` if they need the new snapshot.
+    column_state_changed = Signal()
 
     def __init__(
         self,
@@ -357,10 +381,28 @@ class AYTableView(StyleMixin, QTreeView):
         # tree mode.  Restored row-by-row as data is (re-)loaded in tree mode.
         self._expanded_node_ids: set[str] = set()
 
+        # Explicit per-row height in pixels, or ``None`` to fall back to
+        # the style default.  Set via :meth:`set_row_height` (consumed by
+        # the :class:`TableItemDelegate.sizeHint`).
+        self._row_height_override: int | None = None
+
         # Open persistent editors for already-loaded children when a tree node
         # is expanded.  Complements _on_rows_inserted, which handles the case
         # where data is loaded after the node is already expanded (async mode).
         self.expanded.connect(self._schedule_editor_sync)
+
+        # Forward header geometry changes to the public
+        # ``column_state_changed`` signal so listeners (e.g. a view
+        # manager) can persist the user's tweaks without polling.
+        # ``sectionMoved`` and ``sectionResized`` carry section indexes
+        # in their payload; we discard them via the lambda since the
+        # signal is parameter-less by design.
+        header.sectionMoved.connect(
+            lambda *_args: self.column_state_changed.emit()
+        )
+        header.sectionResized.connect(
+            lambda *_args: self.column_state_changed.emit()
+        )
 
     def _sync_viewport_palette(self) -> None:
         """Apply the variant background colour to the viewport."""
@@ -913,6 +955,134 @@ class AYTableView(StyleMixin, QTreeView):
 
         self.selection_changed.emit(selected, deselected)
 
+    # ------------------------------------------------------------------
+    # Column-state API (used by ViewBindings / AYViewSelector)
+    # ------------------------------------------------------------------
+
+    def set_row_height(self, height: int | None) -> None:
+        """Override the row height in pixels.
+
+        Args:
+            height: Row height in pixels, or ``None`` to clear the
+                override and fall back to the style default.  Values
+                <= 0 are treated as "no override".
+        """
+        if height is None or height <= 0:
+            self._row_height_override = None
+        else:
+            self._row_height_override = int(height)
+        # Force the view to remeasure rows on the next paint.
+        self.scheduleDelayedItemsLayout()
+        self.viewport().update()
+
+    def get_column_state(self) -> list:
+        """Return the current column state as a list of ColumnState.
+
+        Walks header visual indexes to capture the user-facing order,
+        then reads hidden/width/pinned status for each column.
+
+        Returns:
+            List of :class:`ColumnState`, in visual (left-to-right)
+            order.  Empty when no :class:`PaginatedTableModel` is set.
+        """
+        # Lazy import to keep the views subpackage optional and avoid a
+        # hard dependency cycle with table_model.py.
+        from .views.data_models import ColumnState
+
+        source = self._source_model()
+        if not isinstance(source, PaginatedTableModel):
+            return []
+
+        header = self.header()
+        if header is None:
+            return []
+
+        cols = source.columns
+        pinned = self._table_header_pinned_keys()
+
+        states: list[ColumnState] = []
+        for visual in range(header.count()):
+            logical = header.logicalIndex(visual)
+            if logical < 0 or logical >= len(cols):
+                continue
+            key = cols[logical].key
+            width_px = header.sectionSize(logical)
+            states.append(
+                ColumnState(
+                    name=key,
+                    visible=not header.isSectionHidden(logical),
+                    pinned=key in pinned,
+                    width=width_px if width_px > 0 else None,
+                )
+            )
+        return states
+
+    def set_column_state(self, states: list) -> None:
+        """Apply a list of ColumnState to the header.
+
+        Reorders sections, sets hidden state and resizes columns to
+        match *states*.  Columns whose key is not present in *states*
+        keep their current order and visibility.
+
+        Args:
+            states: List of :class:`ColumnState` instances.
+        """
+        source = self._source_model()
+        if not isinstance(source, PaginatedTableModel):
+            return
+
+        header = self.header()
+        if header is None:
+            return
+
+        cols = source.columns
+        key_to_logical: dict[str, int] = {c.key: i for i, c in enumerate(cols)}
+
+        # Block signals while we mass-rearrange to avoid emitting
+        # ``column_state_changed`` once per moved/resized section.
+        header.blockSignals(True)
+        try:
+            for target_visual, state in enumerate(states):
+                logical = key_to_logical.get(state.name)
+                if logical is None:
+                    continue
+                current_visual = header.visualIndex(logical)
+                if current_visual != target_visual:
+                    header.moveSection(current_visual, target_visual)
+                header.setSectionHidden(logical, not state.visible)
+                if state.width is not None and state.width > 0:
+                    header.resizeSection(logical, state.width)
+
+            pinned = {s.name for s in states if s.pinned}
+            self._table_header_set_pinned_keys(pinned)
+        finally:
+            header.blockSignals(False)
+
+        # Emit a single coalesced signal for the whole batch.
+        self.column_state_changed.emit()
+
+    def _table_header_pinned_keys(self) -> set[str]:
+        """Return pinned keys from the header, or an empty set.
+
+        Returns:
+            A set of pinned column keys; empty when the header is not
+            an :class:`AYTableHeader`.
+        """
+        header = self.header()
+        if isinstance(header, AYTableHeader):
+            return header.pinned_keys()
+        return set()
+
+    def _table_header_set_pinned_keys(self, keys: set[str]) -> None:
+        """Set pinned keys on the header when it is an AYTableHeader.
+
+        Args:
+            keys: Pinned column keys.
+        """
+        header = self.header()
+        if isinstance(header, AYTableHeader):
+            header.set_pinned_keys(keys)
+
     def drawBranches(self, painter, rect, index):
         """Draw branch indicators with AYONStyle directly.
 
@@ -1004,8 +1174,17 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         option: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
-        """Return a fixed row height from the style data."""
-        if self._style_model:
+        """Return a fixed row height from the style data.
+
+        An explicit ``row_height`` set on the parent :class:`AYTableView`
+        (via :meth:`AYTableView.set_row_height`) overrides the style
+        default so saved Views can drive row size at runtime.
+        """
+        view = self.parent()
+        override = getattr(view, "_row_height_override", None)
+        if isinstance(override, int) and override > 0:
+            h = override
+        elif self._style_model:
             style = self._style_model.get_style(
                 "AYTableView", self._variant_str
             )

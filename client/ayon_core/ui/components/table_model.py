@@ -263,6 +263,11 @@ class PaginatedTableModel(QAbstractItemModel):
         self._pending_batch_nodes: list[_TableNode] = []
         self._batch_scheduled: bool = False
 
+        # Column states received by apply_settings that do not match any
+        # column in the current data source.  Preserved so a subsequent
+        # capture_settings() can emit them losslessly.
+        self._unknown_column_states: list[Any] = []
+
         self._fetch_next_page(self._root)
 
     # Properties --------------------------------------------------------------
@@ -612,6 +617,138 @@ class PaginatedTableModel(QAbstractItemModel):
         # connected to loading_changed observes a consistent model state.
         self._update_loading_state()
         self._fetch_next_page(self._root)
+
+    def apply_settings(self, settings: Any) -> None:
+        """Apply a :class:`ViewSettings` to this model.
+
+        Reorders, hides and resizes columns by *key* (matching against
+        ``TableColumn.key``), then sets the active sort.  All changes
+        are batched into a single :meth:`reset_data` call so the model
+        only refetches page 0 once.
+
+        Hidden columns are kept in the model so the header can toggle
+        their visibility cheaply; only the column *order* changes here.
+        Width semantics: a :attr:`ColumnState.width` of ``None`` leaves
+        the current column width untouched; an explicit integer
+        overrides :attr:`TableColumn.width`.  ``0`` is treated as *auto*
+        for compatibility with :class:`TableColumn`.
+
+        Unknown column keys are tracked internally so a subsequent
+        :meth:`capture_settings` can re-emit them losslessly even
+        though they do not exist in the current data source.
+
+        Args:
+            settings: A :class:`ViewSettings` instance.  Imported lazily
+                to avoid a circular import between ``views`` and
+                ``table_model``.
+        """
+        from .views.data_models import ColumnState, ViewSettings
+
+        if not isinstance(settings, ViewSettings):
+            raise TypeError(
+                f"apply_settings expected ViewSettings, got "
+                f"{type(settings).__name__}"
+            )
+
+        # Reorder the catalog (_explicit_columns) according to the
+        # incoming ColumnState order.  Columns not mentioned in the
+        # settings keep their relative order and are appended at the
+        # end so newly-added data-source columns are not lost.
+        #
+        # ``TableColumn`` instances may be shared across multiple models
+        # / views (the consumer typically constructs them once at
+        # startup).  We therefore clone every column we hand back via
+        # ``dataclasses.replace`` before mutating ``width`` so that
+        # different views cannot leak widths into one another.
+        import dataclasses as _dc
+
+        catalog: list[TableColumn] = list(self._explicit_columns or [])
+        cloned_catalog: list[TableColumn] = [_dc.replace(c) for c in catalog]
+        by_key: dict[str, TableColumn] = {
+            c.key: c for c in cloned_catalog
+        }
+
+        reordered: list[TableColumn] = []
+        seen_keys: set[str] = set()
+        unknown_states: list[ColumnState] = []
+
+        for state in settings.columns:
+            col = by_key.get(state.name)
+            if col is None:
+                unknown_states.append(state)
+                continue
+            if state.width is not None:
+                # 0 means auto (matches TableColumn semantics); any other
+                # value overrides the column's default width.
+                col.width = max(0, int(state.width))
+            reordered.append(col)
+            seen_keys.add(state.name)
+
+        for col in cloned_catalog:
+            if col.key not in seen_keys:
+                reordered.append(col)
+
+        # Match the sort column by key against the new column order.
+        sort_column = -1
+        if settings.sort_by:
+            for i, col in enumerate(reordered):
+                if col.key == settings.sort_by:
+                    sort_column = i
+                    break
+
+        sort_order = (
+            Qt.SortOrder.DescendingOrder
+            if settings.sort_desc
+            else Qt.SortOrder.AscendingOrder
+        )
+
+        self._explicit_columns = reordered
+        self._sort_column = sort_column
+        self._sort_order = sort_order
+        self._tree_position = -1  # force recomputation on next read
+        self._unknown_column_states = list(unknown_states)
+
+        self.reset_data()
+
+    def capture_settings(self) -> Any:
+        """Capture the current model state as a :class:`ViewSettings`.
+
+        The returned settings contain the column order/widths and sort
+        configuration only — visibility, pinning, filter and grouping
+        are owned by the view widgets and are filled in by
+        :class:`ViewBindings` (Phase 2).
+
+        Any unknown column states preserved by the most recent
+        :meth:`apply_settings` call are appended verbatim so a
+        roundtrip stays lossless.
+
+        Returns:
+            A new :class:`ViewSettings` instance.
+        """
+        from .views.data_models import ColumnState, ViewSettings
+
+        cols: list[ColumnState] = [
+            ColumnState(
+                name=c.key,
+                visible=True,
+                width=c.width if c.width > 0 else None,
+            )
+            for c in self._columns
+        ]
+        # Re-emit unknown column states that were preserved on apply so
+        # roundtripping through a model that doesn't recognise them
+        # still produces the original payload.
+        cols.extend(getattr(self, "_unknown_column_states", []))
+
+        sort_by: str | None = None
+        if 0 <= self._sort_column < len(self._columns):
+            sort_by = self._columns[self._sort_column].key
+
+        return ViewSettings(
+            columns=cols,
+            sort_by=sort_by,
+            sort_desc=(self._sort_order == Qt.SortOrder.DescendingOrder),
+        )
 
     def get_distinct_values(self, key: str) -> list[str]:
         """Return sorted distinct non-empty string values for a column.

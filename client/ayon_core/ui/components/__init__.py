@@ -19,6 +19,20 @@ from .option_action import (
 )
 from .text_edit import AYTextEdit
 from .tree_view import AYTreeView
+from .views import (
+    AYViewEditor,
+    AYViewSelector,
+    ColumnState,
+    FilterDef,
+    GroupingDef,
+    InMemoryViewManager,
+    Scope,
+    View,
+    ViewBindings,
+    ViewManager,
+    ViewSettings,
+    Visibility,
+)
 
 __all__ = (
     "AYButton",
@@ -36,4 +50,16 @@ __all__ = (
     "AYOptionalAction",
     "AYOptionalActionWidget",
     "AYMenu",
+    "AYViewEditor",
+    "AYViewSelector",
+    "ColumnState",
+    "FilterDef",
+    "GroupingDef",
+    "InMemoryViewManager",
+    "Scope",
+    "View",
+    "ViewBindings",
+    "ViewManager",
+    "ViewSettings",
+    "Visibility",
 )
