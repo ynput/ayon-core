@@ -76,7 +76,7 @@ class Customize(AYButtonMenu):
             )
             return
 
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(15)
 
         self.featured_version_btn = AYPageButton(
