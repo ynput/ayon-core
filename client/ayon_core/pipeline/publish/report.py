@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 import inspect
-from typing import Any, Literal
+import logging
+from typing import Any, Literal, Iterable, Generator
 import traceback
 import uuid
 
@@ -17,7 +19,6 @@ from .lib import get_publish_instance_label
 @dataclass
 class ReportLog:
     type: Literal["record", "error"]
-    instance_id: str | None
     message: str
     filename: str
     lineno: int
@@ -65,7 +66,7 @@ class ReportLog:
 
     @classmethod
     def log_items_from_result(
-        cls, result: dict[str, Any], instance_id: str | None = None
+        cls, result: dict[str, Any]
     ) -> list[ReportLog]:
         output = []
         records = result.get("records") or []
@@ -83,7 +84,6 @@ class ReportLog:
 
             output.append(ReportLog(
                 type="record",
-                instance_id=instance_id,
                 message=msg,
                 name=record.name,
                 lineno=record.lineno,
@@ -112,7 +112,6 @@ class ReportLog:
             # Action result does not have 'is_validation_error'
             output.append(ReportLog(
                 type="error",
-                instance_id=instance_id,
                 message=msg,
                 lineno=line_no,
                 filename= str(fname),
@@ -131,94 +130,39 @@ class PublishPluginActionReport:
     label: str
     logs: list[ReportLog]
 
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "name": self.name,
+            "label": self.label,
+            "logs": [log.to_data() for log in self.logs],
+        }
+
 
 @dataclass
-class PublishInstanceReportInfo:
-    id: str | None
+class PublishProcessReport:
+    instance_id: str | None
     logs: list[ReportLog]
     process_time: float
 
     def to_data(self) -> dict[str, Any]:
         return {
-            "id": self.id,
+            "id": self.instance_id,
             "logs": [log.to_data() for log in self.logs],
             "process_time": self.process_time,
         }
 
     @classmethod
-    def from_result(cls, result: dict[str, Any]) -> PublishInstanceReportInfo:
+    def from_result(cls, result: dict[str, Any]) -> PublishProcessReport:
         instance = result["instance"]
         instance_id = None
         if instance is not None:
             instance_id = instance.id
         return cls(
-            id=instance_id,
+            instance_id=instance_id,
             logs=ReportLog.log_items_from_result(result),
-            process_time=result["duration"]
+            process_time=result["duration"],
         )
-
-    @classmethod
-    def _extract_log_items(cls, result: dict[str, Any]) -> list[ReportLog]:
-        instance = result["instance"]
-        instance_id = None
-        if instance:
-            instance_id = instance.id
-
-        output = []
-        records = result.get("records") or []
-        for record in records:
-            record_exc_info = record.exc_info
-            if record_exc_info is not None:
-                record_exc_info = "".join(
-                    traceback.format_exception(*record_exc_info)
-                )
-
-            try:
-                msg = record.getMessage()
-            except Exception:
-                msg = str(record.msg)
-
-            output.append(ReportLog(
-                type="record",
-                instance_id=instance_id,
-                message=msg,
-                name=record.name,
-                lineno=record.lineno,
-                levelno=record.levelno,
-                levelname=record.levelname,
-                thread_name=record.threadName,
-                filename=record.filename,
-                pathname=record.pathname,
-                msecs=record.msecs,
-                exc_info=record_exc_info,
-            ))
-
-        exception = result.get("error")
-        if exception:
-            fname, line_no, func, _ = exception.traceback
-
-            # Conversion of exception into string may crash
-            try:
-                msg = str(exception)
-            except BaseException:
-                msg = (
-                    "Publisher Controller: ERROR"
-                    " - Failed to get exception message"
-                )
-
-            # Action result does not have 'is_validation_error'
-            output.append(ReportLog(
-                type="error",
-                instance_id=instance_id,
-                message=msg,
-                lineno=line_no,
-                filename= str(fname),
-                func=str(func),
-                traceback=exception.formatted_traceback,
-                is_validation_error=result.get("is_validation_error", False),
-            ))
-
-        return output
 
 
 @dataclass
@@ -235,14 +179,17 @@ class PublishPluginReportInfo:
     targets: list[str]
     skipped: bool = False
     passed: bool = False
-    instances_data: list[PublishInstanceReportInfo] = field(
+    process_reports: list[PublishProcessReport] = field(
         default_factory=list
     )
-    actions_data: list[PublishPluginActionReport] = field(
+    actions_reports: list[PublishPluginActionReport] = field(
         default_factory=list
     )
 
-    def to_data(self) -> dict[str, Any]:
+    def to_data(self, current_plugin_id: str | None = None) -> dict[str, Any]:
+        passed = self.passed
+        if current_plugin_id == self.id:
+            passed = True
         return {
             "id": self.id,
             "name": self.name,
@@ -253,10 +200,10 @@ class PublishPluginReportInfo:
             "plugin_type": self.plugin_type,
             "families": self.families,
             "targets": self.targets,
-            "instances_data": self.instances_data,
-            "actions_data": self.actions_data,
+            "instances_data": [r.to_data() for r in self.process_reports],
+            "actions_data": [r.to_data() for r in self.actions_reports],
             "skipped": self.skipped,
-            "passed": self.passed,
+            "passed": passed,
         }
 
     @classmethod
@@ -286,61 +233,250 @@ class PublishPluginReportInfo:
         )
 
 
+@dataclass
+class PublishContextInfo:
+    label: str
+
+    @classmethod
+    def new(cls):
+        return PublishContextInfo("Context")
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "label": self.label,
+        }
+
+
+@dataclass
+class PublishInstanceInfo:
+    id: str
+    name: str | None
+    label: str | None
+    product_type: str | None
+    product_base_type: str | None
+    family: str | None
+    families: list[str]
+    creator_identifier: str | None
+    create_instance_id: str | None
+    exists: bool
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "label": self.label,
+            "product_type": self.product_type,
+            "product_base_type": self.product_base_type,
+            "family": self.family,
+            "families": list(self.families),
+            "creator_identifier": self.creator_identifier,
+            "instance_id": self.create_instance_id,
+            "exists": self.exists,
+        }
+
+    @classmethod
+    def from_instance(
+        cls, instance: pyblish.api.Instance
+    ) -> PublishInstanceInfo:
+        return cls(
+            id=instance.id,
+            name=instance.data.get("name"),
+            label=get_publish_instance_label(instance),
+            product_type=instance.data.get("productType"),
+            product_base_type=instance.data.get("productBaseType"),
+            family=instance.data.get("family"),
+            families=instance.data.get("families") or [],
+            creator_identifier=instance.data.get("creator_identifier"),
+            create_instance_id=instance.data.get("instance_id"),
+            exists=instance in instance.context,
+        )
+
+
+def _new_id() -> str:
+    return uuid.uuid4().hex
+
+
+def _new_created_at() -> str:
+    return arrow.utcnow().to("local").isoformat()
+
+
+@dataclass
+class LogsSummary:
+    warned_instance_ids: set[str]
+    errored_instance_ids: set[str]
+    errored_plugin_ids: set[str]
+
+
+@dataclass
+class PublishReport:
+    # TODO add conversions from older versions
+    version: str = "1.1.1"
+    id: str = field(default_factory=_new_id)
+    created_at: str = field(default_factory=_new_created_at)
+    crashed_filepaths: dict[str, str] = field(default_factory=dict)
+    blocking_crashed_paths: list[str] = field(default_factory=list)
+    plugins_info: list[PublishPluginReportInfo] = field(default_factory=list)
+    instances_by_id: dict[str, PublishInstanceInfo] = field(
+        default_factory=dict
+    )
+    context: PublishContextInfo = field(
+        default_factory=PublishContextInfo.new
+    )
+
+    def to_data(self, current_plugin_id: str | None = None) -> dict[str, Any]:
+        return {
+            "plugins_data": [
+                p.to_data(current_plugin_id) for p in self.plugins_info
+            ],
+            "instances": {
+                instance_id: instance_info.to_data()
+                for instance_id, instance_info in self.instances_by_id.items()
+            },
+            "context": self.context.to_data(),
+            "crashed_file_paths": deepcopy(self.crashed_filepaths),
+            "blocking_crashed_paths": list(self.blocking_crashed_paths),
+            "created_at": self.created_at,
+            "report_version": self.version,
+            "id": self.id,
+        }
+
+    def update_created_at(self) -> None:
+        self.created_at = _new_created_at()
+
+    def set_publish_instances(
+        self, instances: Iterable[pyblish.api.Instance]
+    ) -> None:
+        instances_by_id = {
+            instance.id: PublishInstanceInfo.from_instance(instance)
+            for instance in instances
+        }
+        self.instances_by_id = instances_by_id
+
+    def get_logs_summary(self) -> LogsSummary:
+        warned_instance_ids = set()
+        errored_instance_ids = set()
+        errored_plugin_ids = set()
+        for plugin_info in self.plugins_info:
+            for process_report in plugin_info.process_reports:
+                for log in process_report.logs:
+                    if log.type == "error":
+                        errored_instance_ids.add(process_report.instance_id)
+                        errored_plugin_ids.add(plugin_info.id)
+                    elif (
+                        log.type == "record"
+                        and log.levelno
+                        and log.levelno >= logging.WARNING
+                    ):
+                        warned_instance_ids.add(process_report.instance_id)
+
+        return LogsSummary(
+            warned_instance_ids=warned_instance_ids,
+            errored_instance_ids=errored_instance_ids,
+            errored_plugin_ids=errored_plugin_ids,
+        )
+
+    def iter_logs(
+        self,
+        plugin_ids_filter: set[str | None] | None = None,
+        instance_ids_filter: set[str | None] | None = None,
+    ) -> Generator[tuple[str, str | None, ReportLog]]:
+        if plugin_ids_filter is not None and not plugin_ids_filter:
+            return
+
+        if instance_ids_filter is not None and not instance_ids_filter:
+            return
+
+        for plugin_info in self.plugins_info:
+            if (
+                plugin_ids_filter is not None
+                and plugin_info.id not in plugin_ids_filter
+            ):
+                continue
+
+            for process_report in plugin_info.process_reports:
+                if (
+                    instance_ids_filter is not None
+                    and process_report.instance_id not in instance_ids_filter
+                ):
+                    continue
+
+                for log in process_report.logs:
+                    yield plugin_info.id, process_report.instance_id, log
+
+
 class PublishReportMaker:
     """Report for single publishing process.
 
     Report keeps current state of publishing and currently processed plugin.
     """
-    report_version = "1.1.1"
-
     def __init__(
         self,
         publish_plugins: list[pyblish.api.Plugin] | None = None,
-        crashed_file_paths: dict[str, str] | None = None,
+        crashed_filepaths: dict[str, str] | None = None,
         blocking_crashed_paths: set[str] | None = None,
     ) -> None:
         if publish_plugins is None:
             publish_plugins = []
 
-        if crashed_file_paths is None:
-            crashed_file_paths = {}
+        if crashed_filepaths is None:
+            crashed_filepaths = {}
 
         if blocking_crashed_paths is None:
             blocking_crashed_paths = set()
 
+        # Make sure plugins are sorted
+        # TODO try to comment this to find out if it is necessary...
+        publish_plugins.sort(key=lambda p: p.order)
+
+        # Track information if instances have been updated since
+        #   last report generation.
+        self._instances_updated: bool = False
+
+        # Current plugin id which is being processed.
         self._current_plugin_id: str | None = None
 
-        self._crashed_file_paths: dict[str, str] = crashed_file_paths
-        self._blocking_crashed_paths: set[str] = blocking_crashed_paths
-
-        self._all_instances_by_id: dict[str, pyblish.api.Instance] = {}
         self._plugin_info_by_id: dict[str, PublishPluginReportInfo] = {}
-
+        self._all_instances_by_id: dict[str, pyblish.api.Instance] = {}
+        self._report = PublishReport(
+            crashed_filepaths=crashed_filepaths,
+            blocking_crashed_paths=list(blocking_crashed_paths),
+        )
         self._prepare_publish_plugin_items(publish_plugins)
+
+    @property
+    def report_version(self) -> str:
+        return self._report.version
+
+    def get_current_plugin_id(self) -> str | None:
+        return self._current_plugin_id
+
+    current_plugin_id = property(get_current_plugin_id)
 
     def reset(
         self,
         publish_plugins: list[pyblish.api.Plugin] | None = None,
-        crashed_file_paths: dict[str, str] | None = None,
+        crashed_filepaths: dict[str, str] | None = None,
         blocking_crashed_paths: set[str] | None = None,
     ) -> None:
         """Reset report and clear all data."""
         if publish_plugins is None:
             publish_plugins = []
 
-        if crashed_file_paths is None:
-            crashed_file_paths = {}
+        if crashed_filepaths is None:
+            crashed_filepaths = {}
 
         if blocking_crashed_paths is None:
             blocking_crashed_paths = set()
 
+        self._instances_updated = False
         self._current_plugin_id = None
-
-        self._crashed_file_paths = crashed_file_paths
-        self._blocking_crashed_paths = blocking_crashed_paths
-
-        self._all_instances_by_id = {}
         self._plugin_info_by_id = {}
+        self._all_instances_by_id = {}
+
+        self._report = PublishReport(
+            crashed_filepaths=crashed_filepaths,
+            blocking_crashed_paths=list(blocking_crashed_paths),
+        )
 
         self._prepare_publish_plugin_items(publish_plugins)
 
@@ -353,7 +489,7 @@ class PublishReportMaker:
     ) -> None:
         """Reset report and set discover results."""
 
-        crashed_file_paths = {}
+        crashed_filepaths = {}
         for report in (
             creator_discover_result,
             convertor_discover_result,
@@ -361,13 +497,13 @@ class PublishReportMaker:
         ):
             items = report.crashed_file_paths.items()
             for filepath, exc_info in items:
-                crashed_file_paths[filepath] = "".join(
+                crashed_filepaths[filepath] = "".join(
                     traceback.format_exception(*exc_info)
                 )
 
         self.reset(
             publish_discover_result.plugins,
-            crashed_file_paths,
+            crashed_filepaths,
             blocking_crashed_paths,
         )
 
@@ -375,8 +511,7 @@ class PublishReportMaker:
         self, plugin_id: str, context: pyblish.api.Context
     ) -> None:
         """Add report about single iteration of plugin."""
-        for instance in context:
-            self._all_instances_by_id[instance.id] = instance
+        self.update_publish_instances(context)
 
         self._current_plugin_id = plugin_id
 
@@ -392,8 +527,8 @@ class PublishReportMaker:
     def add_result(self, plugin_id: str, result: dict[str, Any]) -> None:
         """Handle result of one plugin and it's instance."""
         plugin_info = self._plugin_info_by_id[plugin_id]
-        plugin_info.instances_data.append(
-            PublishInstanceReportInfo.from_result(result)
+        plugin_info.process_reports.append(
+            PublishProcessReport.from_result(result)
         )
 
     def add_action_result(
@@ -406,47 +541,40 @@ class PublishReportMaker:
 
         action_name = action.__name__
         action_label = action.label or action_name
-        plugin_info.actions_data.append(PublishPluginActionReport(
+        plugin_info.actions_reports.append(PublishPluginActionReport(
             success=result["success"],
             name=action_name,
             label=action_label,
             logs=ReportLog.log_items_from_result(result),
         ))
 
-    def get_report(
+    def get_report(self) -> PublishReport:
+        self._update_instances()
+        return self._report
+
+    def get_report_data(self) -> dict[str, Any]:
+        self._update_instances()
+        return self._report.to_data(
+            current_plugin_id=self._current_plugin_id,
+        )
+
+    def update_publish_instances(
         self, publish_context: pyblish.api.Context
-    ) -> dict[str, Any]:
+    ) -> None:
         """Report data with all details of current state."""
+        for instance in publish_context:
+            if instance.id not in self._all_instances_by_id:
+                self._instances_updated = False
+                self._all_instances_by_id[instance.id] = instance
 
-        now = arrow.utcnow().to("local")
-        instances_details = {
-            instance.id: self._extract_instance_data(
-                instance, instance in publish_context
-            )
-            for instance in self._all_instances_by_id.values()
-        }
+    def _update_instances(self) -> None:
+        if self._instances_updated:
+            return
 
-        plugins_data = []
-        current_item = self._plugin_info_by_id.get(self._current_plugin_id)
-        for plugin_info in self._plugin_info_by_id.values():
-            plugin_data = plugin_info.to_data()
-
-            # Ensure the current plug-in is marked as `passed` in the result
-            # so that it shows on reports for paused publishes
-            if plugin_info is current_item:
-                plugin_data["passed"] = True
-            plugins_data.append(plugin_data)
-
-        return {
-            "plugins_data": plugins_data,
-            "instances": instances_details,
-            "context": self._extract_context_data(publish_context),
-            "crashed_file_paths": dict(self._crashed_file_paths),
-            "blocking_crashed_paths": list(self._blocking_crashed_paths),
-            "id": uuid.uuid4().hex,
-            "created_at": now.isoformat(),
-            "report_version": self.report_version,
-        }
+        self._report.set_publish_instances(
+            self._all_instances_by_id.values()
+        )
+        self._instances_updated = True
 
     def _prepare_publish_plugin_items(
         self, publish_plugins: list[pyblish.api.Plugin]
@@ -461,31 +589,7 @@ class PublishReportMaker:
                     f"Plugin '{plugin}' is already stored"
                 )
 
-            self._plugin_info_by_id[plugin.id] = (
-                PublishPluginReportInfo.from_plugin(plugin)
-            )
+            plugin_info = PublishPluginReportInfo.from_plugin(plugin)
+            self._plugin_info_by_id[plugin.id] = plugin_info
+            self._report.plugins_info.append(plugin_info)
 
-    def _extract_context_data(
-        self, context: pyblish.api.Context
-    ) -> dict[str, Any]:
-        context_label = "Context"
-        if context is not None:
-            context_label = context.data.get("label")
-        return {
-            "label": context_label
-        }
-
-    def _extract_instance_data(
-        self, instance: pyblish.api.Instance, exists: bool
-    ) -> dict[str, Any]:
-        return {
-            "name": instance.data.get("name"),
-            "label": get_publish_instance_label(instance),
-            "product_type": instance.data.get("productType"),
-            "product_base_type": instance.data.get("productBaseType"),
-            "family": instance.data.get("family"),
-            "families": instance.data.get("families") or [],
-            "exists": exists,
-            "creator_identifier": instance.data.get("creator_identifier"),
-            "instance_id": instance.data.get("instance_id"),
-        }

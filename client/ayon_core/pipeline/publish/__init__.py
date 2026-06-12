@@ -55,6 +55,7 @@ from .lib import (
 
     get_default_reviewable_layers,
 )
+from .report import PublishReport
 
 from .abstract_expected_files import ExpectedFiles
 from .abstract_collect_render import (
@@ -108,6 +109,8 @@ __all__ = (
     "get_publish_instance_families",
 
     "main_cli_publish",
+
+    "PublishReport",
 
     "ExpectedFiles",
 
