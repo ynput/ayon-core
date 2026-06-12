@@ -269,11 +269,15 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         parent: QWidget | None = None,
         style_model: StyleData | None = None,
         variant: str = "default",
+        item_height: int | None = None,
+        item_padding: list[int] | None = None,
     ) -> None:
         super().__init__(parent)
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
+        self._item_custom_height = item_height
+        self._item_custom_padding = item_padding
 
     def _tv_styles(self) -> dict[str, dict]:
         """Return *base*, *hover* and *selected* style dicts at once."""
@@ -315,7 +319,9 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._style_model:
+        if self._item_custom_height is not None:
+            h = self._item_custom_height
+        elif self._style_model:
             style = self._style_model.get_style("QTreeView", self._variant_str)
             h = int(style.get("item-height", 28))
         else:
@@ -440,6 +446,17 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         painter.restore()
+
+class _ColumnDelegateWrapper(TreeViewItemDelegate):
+    """Wraps an external delegate so it paints with TreeViewItemDelegate
+    style but uses the wrapped delegate text formatting."""
+
+    def __init__(self, wrapped, **kwargs):
+        super().__init__(**kwargs)
+        self._wrapped = wrapped
+
+    def displayText(self, value, locale):
+        return self._wrapped.displayText(value, locale)
 
 
 # =============================================================================
