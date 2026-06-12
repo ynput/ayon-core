@@ -7,7 +7,12 @@ from typing import Optional
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.ui.components import AYComboBox, AYTreeView
-from ayon_core.ui.style import TreeViewItemDelegate, get_ayon_style
+from ayon_core.ui.style import (
+    TreeViewItemDelegate,
+    get_ayon_style,
+    ComboBoxItemDelegate,
+)
+
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import (
     ProjectItem,
@@ -491,28 +496,40 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self._sort_by_type = enabled
         self.invalidate()
 
+#TODO: Need to cross verify with philippe is this right approach
+class ProjectsDelegate:
+    """Unified delegate factory for projects widgets that adds pin icons.
 
-class ProjectsTreeDelegate(TreeViewItemDelegate):
-    """Tree view item delegate for projects that adds a pin icon.
-    extends TreeViewItemDelegate to paint pin icon
+    This class creates appropriate delegates based on the widget type,
+    adding pin icon functionality to both tree view and combobox.
     """
+
+    @staticmethod
+    def create_tree_delegate(*args, **kwargs):
+        """Create a tree view delegate with pin icon support."""
+        return _ProjectsTreeDelegate(*args, **kwargs)
+
+    @staticmethod
+    def create_combobox_delegate(*args, **kwargs):
+        """Create a combobox delegate with pin icon support."""
+        return _ProjectsComboBoxDelegate(*args, **kwargs)
+
+
+class _ProjectsPinMixin:
+    """Mixin class that provides pin icon painting functionality."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._pin_icon = None
 
-    def paint(self, painter, option, index):
-        """paint the item with pin icon for pinned projects"""
-        super().paint(painter, option, index)
-
+    def _paint_pin_icon(self, painter, option, index):
+        """Paint pin icon for pinned projects."""
         is_pinned = index.data(PROJECT_IS_PINNED_ROLE)
         if not is_pinned:
             return
 
         painter.save()
-        painter.setRenderHint(
-            QtGui.QPainter.RenderHint.Antialiasing
-        )
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         pin_icon = self._get_pin_icon()
         icon_size = option.decorationSize
@@ -542,6 +559,24 @@ class ProjectsTreeDelegate(TreeViewItemDelegate):
         return self._pin_icon
 
 
+class _ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
+    """Tree view delegate with pin icon support."""
+
+    def paint(self, painter, option, index):
+        """Paint tree item with pin icon for pinned projects."""
+        super().paint(painter, option, index)
+        self._paint_pin_icon(painter, option, index)
+
+
+class _ProjectsComboBoxDelegate(_ProjectsPinMixin, ComboBoxItemDelegate):
+    """Combobox delegate with pin icon support."""
+
+    def paint(self, painter, option, index):
+        """Paint combobox item with pin icon for pinned projects."""
+        super().paint(painter, option, index)
+        self._paint_pin_icon(painter, option, index)
+
+
 class ProjectsCombobox(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal(str)
@@ -554,11 +589,19 @@ class ProjectsCombobox(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        #TODO: Need to update component to support to show project pin with Delegate
         projects_combobox = AYComboBox(self)
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
         projects_proxy_model.setSourceModel(projects_model)
+
+        # Set custom delegate using the unified delegate factory
+        ayon_style = get_ayon_style()
+        combobox_delegate = ProjectsDelegate.create_combobox_delegate(
+            parent=projects_combobox.view(),
+            style_model=ayon_style.model
+        )
+        projects_combobox.set_custom_delegate(combobox_delegate)
+
         projects_combobox.setModel(projects_proxy_model)
 
         main_layout = QtWidgets.QHBoxLayout(self)
@@ -769,9 +812,9 @@ class ProjectsWidget(QtWidgets.QWidget):
             AYTreeView.SelectionMode.SingleSelection
         )
 
-        # Set custom delegate to paint pin icons for pinned projects
+        # Set custom delegate using the unified delegate factory
         ayon_style = get_ayon_style()
-        projects_delegate = ProjectsTreeDelegate(
+        projects_delegate = ProjectsDelegate.create_tree_delegate(
             parent=projects_view,
             style_model=ayon_style.model,
             variant=projects_view._variant_str,

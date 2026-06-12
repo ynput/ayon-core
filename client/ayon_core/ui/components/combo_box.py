@@ -260,6 +260,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self._icon_size: int = icon_size
         self._inverted_icons: dict[str, QIcon] = {}
         self.show_chevron: bool = show_chevron
+        self._custom_delegate = None
 
         if placeholder:
             self.setPlaceholderText(placeholder)
@@ -269,6 +270,19 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self.setModel(model)
 
         self.update_items(items)
+
+    def set_custom_delegate(self, delegate):
+        """Set a custom item delegate for the dropdown view.
+
+        This should be called to set a custom delegate that extends
+        ComboBoxItemDelegate. The delegate will be preserved even after
+        polish() is called.
+
+        Args:
+            delegate: Custom delegate instance that extends ComboBoxItemDelegate.
+        """
+        self._custom_delegate = delegate
+        self.view().setItemDelegate(delegate)
 
     def _assert_compatible_model(self) -> None:
         """Raise :exc:`RuntimeError` when an incompatible model is active.
