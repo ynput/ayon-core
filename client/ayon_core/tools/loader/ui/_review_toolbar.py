@@ -213,6 +213,7 @@ class DisplayType(AYContainer):
             variant=AYButton.Variants.Surface,
             icon_size=16,
             checkable=True,
+            tooltip="Table",
         )
         self._table_btn.setObjectName("table")
         self._button_grp.addButton(self._table_btn)
@@ -224,6 +225,7 @@ class DisplayType(AYContainer):
             variant=AYButton.Variants.Surface,
             icon_size=16,
             checkable=True,
+            tooltip="Cards",
         )
         self._grid_btn.setObjectName("grid")
         self._button_grp.addButton(self._grid_btn)
