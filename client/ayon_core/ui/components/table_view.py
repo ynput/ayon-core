@@ -381,6 +381,11 @@ class AYTableView(StyleMixin, QTreeView):
         # tree mode.  Restored row-by-row as data is (re-)loaded in tree mode.
         self._expanded_node_ids: set[str] = set()
 
+        # Explicit per-row height in pixels, or ``None`` to fall back to
+        # the style default.  Set via :meth:`set_row_height` (consumed by
+        # the :class:`TableItemDelegate.sizeHint`).
+        self._row_height_override: int | None = None
+
         # Open persistent editors for already-loaded children when a tree node
         # is expanded.  Complements _on_rows_inserted, which handles the case
         # where data is loaded after the node is already expanded (async mode).
@@ -954,6 +959,22 @@ class AYTableView(StyleMixin, QTreeView):
     # Column-state API (used by ViewBindings / AYViewSelector)
     # ------------------------------------------------------------------
 
+    def set_row_height(self, height: int | None) -> None:
+        """Override the row height in pixels.
+
+        Args:
+            height: Row height in pixels, or ``None`` to clear the
+                override and fall back to the style default.  Values
+                <= 0 are treated as "no override".
+        """
+        if height is None or height <= 0:
+            self._row_height_override = None
+        else:
+            self._row_height_override = int(height)
+        # Force the view to remeasure rows on the next paint.
+        self.scheduleDelayedItemsLayout()
+        self.viewport().update()
+
     def get_column_state(self) -> list:
         """Return the current column state as a list of ColumnState.
 
@@ -1153,8 +1174,17 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         option: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
-        """Return a fixed row height from the style data."""
-        if self._style_model:
+        """Return a fixed row height from the style data.
+
+        An explicit ``row_height`` set on the parent :class:`AYTableView`
+        (via :meth:`AYTableView.set_row_height`) overrides the style
+        default so saved Views can drive row size at runtime.
+        """
+        view = self.parent()
+        override = getattr(view, "_row_height_override", None)
+        if isinstance(override, int) and override > 0:
+            h = override
+        elif self._style_model:
             style = self._style_model.get_style(
                 "AYTableView", self._variant_str
             )

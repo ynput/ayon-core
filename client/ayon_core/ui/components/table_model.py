@@ -654,8 +654,19 @@ class PaginatedTableModel(QAbstractItemModel):
         # incoming ColumnState order.  Columns not mentioned in the
         # settings keep their relative order and are appended at the
         # end so newly-added data-source columns are not lost.
+        #
+        # ``TableColumn`` instances may be shared across multiple models
+        # / views (the consumer typically constructs them once at
+        # startup).  We therefore clone every column we hand back via
+        # ``dataclasses.replace`` before mutating ``width`` so that
+        # different views cannot leak widths into one another.
+        import dataclasses as _dc
+
         catalog: list[TableColumn] = list(self._explicit_columns or [])
-        by_key: dict[str, TableColumn] = {c.key: c for c in catalog}
+        cloned_catalog: list[TableColumn] = [_dc.replace(c) for c in catalog]
+        by_key: dict[str, TableColumn] = {
+            c.key: c for c in cloned_catalog
+        }
 
         reordered: list[TableColumn] = []
         seen_keys: set[str] = set()
@@ -673,7 +684,7 @@ class PaginatedTableModel(QAbstractItemModel):
             reordered.append(col)
             seen_keys.add(state.name)
 
-        for col in catalog:
+        for col in cloned_catalog:
             if col.key not in seen_keys:
                 reordered.append(col)
 

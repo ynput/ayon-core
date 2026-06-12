@@ -85,7 +85,9 @@ class Visibility(str, Enum):
         Returns:
             The matching enum member, or ``PRIVATE`` if unknown.
         """
-        log.debug("Unknown Visibility value %r, defaulting to PRIVATE", value)
+        log.warning(
+            "Unknown Visibility value %r, defaulting to PRIVATE", value
+        )
         return cls.PRIVATE
 
 
@@ -105,7 +107,7 @@ class Scope(str, Enum):
         Returns:
             The matching enum member, or ``PROJECT`` if unknown.
         """
-        log.debug("Unknown Scope value %r, defaulting to PROJECT", value)
+        log.warning("Unknown Scope value %r, defaulting to PROJECT", value)
         return cls.PROJECT
 
 

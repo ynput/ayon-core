@@ -4,9 +4,9 @@ Saved configurations (columns, sort, filter, grouping…) that can be
 applied to a :class:`PaginatedTableModel` + :class:`AYTableView` /
 :class:`AYCardView` setup.
 
-Phase 1 ships the data model and storage backend only.  The
-:class:`AYViewSelector` / :class:`AYViewEditor` widgets are added in
-Phase 2.
+Phase 1 ships the data model and storage backend.  Phase 2 adds the
+:class:`ViewBindings` adapter and the :class:`AYViewSelector` /
+:class:`AYViewEditor` widgets.
 """
 
 from __future__ import annotations
@@ -21,9 +21,14 @@ from .data_models import (
     ViewSettings,
     Visibility,
 )
+from .view_bindings import ViewBindings
+from .view_editor import AYViewEditor
 from .view_manager import InMemoryViewManager, ViewManager
+from .view_selector import AYViewSelector
 
 __all__ = (
+    "AYViewEditor",
+    "AYViewSelector",
     "ColumnState",
     "DEFAULT_ACCESS_LEVEL",
     "FilterDef",
@@ -31,6 +36,7 @@ __all__ = (
     "InMemoryViewManager",
     "Scope",
     "View",
+    "ViewBindings",
     "ViewManager",
     "ViewSettings",
     "Visibility",

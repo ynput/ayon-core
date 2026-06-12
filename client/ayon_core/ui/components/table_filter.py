@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from qtpy.QtCore import (
     QModelIndex,
@@ -51,6 +52,42 @@ class FilterCriterion:
     values: list[str] = field(default_factory=list)
     use_substring: bool = False
     exclude: bool = False
+
+    def to_def(self) -> dict[str, Any]:
+        """Serialise this criterion to the View payload condition format.
+
+        Returns:
+            A plain ``dict`` suitable for embedding under
+            ``settings.filter.conditions``.
+        """
+        return {
+            "key": self.key,
+            "label": self.attribute_label,
+            "values": list(self.values),
+            "useSubstring": self.use_substring,
+            "exclude": self.exclude,
+        }
+
+    @classmethod
+    def from_def(cls, payload: dict[str, Any]) -> "FilterCriterion":
+        """Build a :class:`FilterCriterion` from a payload condition dict.
+
+        Args:
+            payload: Condition dict (as produced by :meth:`to_def`).
+                Unknown keys are ignored so newer payloads roundtrip
+                gracefully.
+
+        Returns:
+            A new :class:`FilterCriterion`.
+        """
+        raw_values = payload.get("values") or []
+        return cls(
+            key=str(payload.get("key", "")),
+            attribute_label=str(payload.get("label", payload.get("key", ""))),
+            values=[str(v) for v in raw_values],
+            use_substring=bool(payload.get("useSubstring", False)),
+            exclude=bool(payload.get("exclude", False)),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -681,6 +718,32 @@ class AYTableFilter(AYContainer):
     def filter_model(self) -> AYTableFilterProxyModel:
         """Return the proxy model to set on the view."""
         return self._proxy
+
+    def get_criteria(self) -> list[FilterCriterion]:
+        """Return a copy of the currently active filter criteria.
+
+        Returns:
+            A new list of :class:`FilterCriterion` instances.
+        """
+        return list(self._criteria)
+
+    def set_active_criteria(self, criteria: list[FilterCriterion]) -> None:
+        """Replace the active filter criteria and refresh the bar/proxy.
+
+        Distinct from :meth:`AYTableFilterProxyModel.set_criteria` —
+        the proxy method takes ``(criteria, columns)`` and lives on the
+        proxy instance returned by :attr:`filter_model`.  Calling that
+        proxy method directly bypasses the bar's badge rendering and is
+        unsupported for external callers.
+
+        Args:
+            criteria: New criteria to apply.  An empty list clears the
+                filter bar.
+        """
+        self._criteria = list(criteria)
+        self._editing_criterion = None
+        self._rebuild_bar()
+        self._update_proxy()
 
     # ------------------------------------------------------------------
     # Bar management
