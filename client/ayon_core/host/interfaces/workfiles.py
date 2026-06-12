@@ -108,6 +108,7 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
         project_settings: Optional[dict[str, Any]] = None,
         template_key: Optional[str] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
+        project_workfile_entities: Optional[list[dict[str, Any]]] = None,
         **kwargs
     ):
         super().__init__(
@@ -118,6 +119,7 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
         )
         self.template_key = template_key
         self.workfile_entities = workfile_entities
+        self.project_workfile_entities = project_workfile_entities
 
     def get_template_key(
         self,
@@ -147,6 +149,14 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
         return list(ayon_api.get_workfiles_info(
             project_name, task_ids=[task_id]
         ))
+
+    def get_project_workfile_entities(
+        self, project_name: str
+    ) -> list[dict[str, Any]]:
+        """Fill project workfile entities if not provided."""
+        if self.project_workfile_entities is not None:
+            return self.project_workfile_entities
+        return list(ayon_api.get_workfile_entities(project_name))
 
 
 class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
@@ -360,6 +370,7 @@ class ListWorkfilesContext:
     project_settings: dict[str, Any]
     template_key: str
     workfile_entities: list[dict[str, Any]]
+    project_workfile_entities: list[dict[str, Any]]
 
 
 @dataclass
@@ -451,6 +462,9 @@ def get_list_workfiles_context(
     workfile_entities = prepared_data.get_workfile_entities(
         project_name, task_entity["id"]
     )
+    project_workfile_entities = prepared_data.get_project_workfile_entities(
+        project_name,
+    )
     return ListWorkfilesContext(
         data_version=prepared_data.data_version,
         project_entity=project_entity,
@@ -461,6 +475,7 @@ def get_list_workfiles_context(
         project_settings=project_settings,
         template_key=template_key,
         workfile_entities=workfile_entities,
+        project_workfile_entities=project_workfile_entities,
     )
 
 
@@ -1075,6 +1090,14 @@ class IWorkfileHost(AbstractHost):
             prepared_data=prepared_data,
         )
 
+        project_workfile_entities_by_path = {}
+        for workfile_entity in list_workfiles_context.project_workfile_entities:
+            rootless_path = workfile_entity["path"]
+            path = os.path.normpath(
+                list_workfiles_context.anatomy.fill_root(rootless_path)
+            )
+            project_workfile_entities_by_path[path] = workfile_entity
+
         workfile_entities_by_path = {}
         for workfile_entity in list_workfiles_context.workfile_entities:
             rootless_path = workfile_entity["path"]
@@ -1127,6 +1150,10 @@ class IWorkfileHost(AbstractHost):
                 _data = workfile_entity["data"]
                 version = _data.get("version")
                 comment = _data.get("comment")
+            elif filepath in project_workfile_entities_by_path:
+                # Skip files whose path is already associated
+                # with another task in the database.
+                continue
 
             if version is None:
                 parsed_data = data_parser.parse_data(filename)
