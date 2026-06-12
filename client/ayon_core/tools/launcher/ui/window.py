@@ -45,7 +45,7 @@ class LauncherWindow(AYContainer):
 
         #TODO: Find right place and logic to handle this
         #launcher-specific styles
-        launcher_css_path = Path(__file__).parent / "luncher_style.css"
+        launcher_css_path = Path(__file__).parent / "launcher_style.css"
         with open(launcher_css_path, "r") as f:
             launcher_stylesheet = f.read()
         self.setStyleSheet(launcher_stylesheet)

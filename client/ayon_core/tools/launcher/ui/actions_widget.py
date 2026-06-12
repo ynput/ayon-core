@@ -18,6 +18,7 @@ from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
+from ayon_core.ui.components.scroll_area import AYScrollBar
 
 ANIMATION_LEN = 7
 SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
@@ -859,8 +860,9 @@ class ActionsView(QtWidgets.QListView):
         self.setWordWrap(True)
         self.setMouseTracking(True)
 
-        vertical_scroll = self.verticalScrollBar()
-        vertical_scroll.setSingleStep(8)
+        vsb = AYScrollBar(self)
+        self.setVerticalScrollBar(vsb)
+        vsb.setSingleStep(8)
 
         delegate = ActionDelegate(self)
         self.setItemDelegate(delegate)
