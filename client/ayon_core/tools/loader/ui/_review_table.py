@@ -5,14 +5,21 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Iterator
 
-from ayon_ui_qt.components.card_view import AYCardView
-from ayon_ui_qt.components.container import AYContainer, AYHBoxLayout
-from ayon_ui_qt.components.table_filter import AYTableFilter
-from ayon_ui_qt.components.table_model import TableColumn
-from ayon_ui_qt.components.table_view import AYTableView
-from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
-from ayon_ui_qt.image_cache import ImageCache
-from ayon_ui_qt.style import get_ayon_style_data
+import ayon_api
+from ayon_core.ui.components.card_view import AYCardView
+from ayon_core.ui.components.container import AYContainer, AYHBoxLayout
+from ayon_core.ui.components.table_filter import AYTableFilter
+from ayon_core.ui.components.table_model import TableColumn
+from ayon_core.ui.components.table_view import AYTableView
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.views import (
+    AYViewSelector,
+    ServerViewManager,
+    View,
+    ViewBindings,
+)
+from ayon_core.ui.image_cache import ImageCache
+from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger
@@ -35,6 +42,36 @@ from ._review_thumbnails import (
 from ._review_toolbar import Customize, DisplayType, GroupByMenu
 
 log = Logger.get_logger(__name__)
+
+VIEW_TYPE_VERSIONS = "versions"
+
+# ---------------------------------------------------------------------------
+# Module-level helpers
+# ---------------------------------------------------------------------------
+
+_CACHED_CURRENT_USER: str = ""
+_CACHED_CURRENT_USER_FETCHED: bool = False
+
+
+def _get_current_user() -> str:
+    """Return the current user name, fetching once and caching thereafter.
+
+    The AYON user does not change during a session, so a single network
+    call is sufficient.  Returns an empty string when the call fails or
+    the user is not authenticated.
+
+    Returns:
+        The authenticated user's name, or ``""`` on failure.
+    """
+    global _CACHED_CURRENT_USER, _CACHED_CURRENT_USER_FETCHED  # noqa: PLW0603
+    if not _CACHED_CURRENT_USER_FETCHED:
+        _CACHED_CURRENT_USER_FETCHED = True
+        try:
+            info = ayon_api.get_user() or {}
+            _CACHED_CURRENT_USER = str(info.get("name", "") or "")
+        except Exception:  # noqa: BLE001
+            log.debug("Could not fetch current user name", exc_info=True)
+    return _CACHED_CURRENT_USER
 
 
 class _ExpansionPhase(Enum):
@@ -130,10 +167,43 @@ class ReviewTable(AYContainer):
             self._on_featured_version_order_changed
         )
 
+        self._view_manager = ServerViewManager(
+            project_name=self._controller.current_project or "",
+            parent=self,
+        )
+        self._controller.project_changed.connect(
+            self._view_manager.set_project
+        )
+
+        self._view_bindings = ViewBindings(
+            model=self._model,
+            table_view=self._table,
+            card_view=self._card_view,
+            filter_bar=self._table_filter,
+            on_extra_apply=self._apply_view_extras,
+            on_extra_capture=self._capture_view_extras,
+            on_error=self._on_view_binding_error,
+        )
+
+        self._view_selector = AYViewSelector(
+            bindings=self._view_bindings,
+            manager=self._view_manager,
+            view_type=VIEW_TYPE_VERSIONS,
+            current_user=_get_current_user(),
+            user_access_level=50,
+            allow_studio_scope=False,
+            parent=self,
+        )
+        self._view_selector.view_applied.connect(self._on_view_applied)
+        self._view_selector.binding_error.connect(
+            self._on_view_selector_error
+        )
+
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
         toolbar_lyt.addWidget(self._group_by_menu, stretch=0)
         toolbar_lyt.addWidget(self._display_type, stretch=0)
+        toolbar_lyt.addWidget(self._view_selector, stretch=0)
         toolbar_lyt.addWidget(self._customize, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
 
@@ -357,11 +427,148 @@ class ReviewTable(AYContainer):
         self._model.set_tree_mode(tree_mode)
         self._reset_expansion_state()
         self._model.reset_data()
+        # Keep bindings' grouping state in sync so capture() round-trips
+        # the live value even when no view has been applied yet.
+        self._view_bindings._last_grouping.group_by = (
+            None if group_by_key == "none" else group_by_key
+        )
 
     def _on_show_empty_groups_changed(self, show_empty: bool) -> None:
         self._controller.set_hide_empty_groups(not show_empty)
         self._reset_expansion_state()
         self._model.reset_data()
+        # Mirror the live state into the bindings for accurate capture.
+        self._view_bindings._last_grouping.show_empty_groups = show_empty
+
+    # ------------------------------------------------------------------
+    # View selector integration
+    # ------------------------------------------------------------------
+
+    def _apply_view_extras(self, extra: dict[str, Any]) -> None:
+        """Apply loader-specific extras from ``ViewSettings.extra``.
+
+        Handles only keys that are **not** first-class ``ViewSettings``
+        fields (i.e. not in ``_KNOWN_SETTINGS_KEYS``).  ``showEmptyGroups``
+        and ``groupBy`` are first-class fields and therefore never appear
+        in ``extra`` after a server round-trip — they are applied from
+        ``view.settings.grouping`` inside :meth:`_on_view_applied`.
+
+        Args:
+            extra: The settings ``extra`` dict from the applied view.
+        """
+        if "gridHeight" in extra:
+            try:
+                self._card_view.card_width = int(extra["gridHeight"])
+            except (TypeError, ValueError):
+                log.debug(
+                    "Invalid gridHeight in view extras: %r",
+                    extra["gridHeight"],
+                )
+        if "featuredVersionOrder" in extra:
+            order = extra["featuredVersionOrder"]
+            if isinstance(order, list):
+                # Use the controller directly rather than the full
+                # _on_featured_version_order_changed handler, which also
+                # calls reset_data.  bindings.apply() already called
+                # apply_settings → reset_data, so we only need the
+                # controller state update here; the product-grouping path
+                # will re-fetch correctly in the _on_view_applied phase.
+                try:
+                    self._controller.set_featured_version_order(
+                        [str(item) for item in order]
+                    )
+                except Exception:  # noqa: BLE001
+                    log.debug(
+                        "Failed to set featuredVersionOrder: %r", order
+                    )
+
+    def _capture_view_extras(self) -> dict[str, Any]:
+        """Capture loader-specific extras for inclusion in a saved view.
+
+        Only truly loader-specific keys that are NOT first-class
+        ``ViewSettings`` fields should be written here.
+        ``showEmptyGroups`` and ``groupBy`` are first-class fields on
+        ``ViewSettings.grouping`` — they are captured automatically by
+        :class:`ViewBindings` via ``_last_grouping`` and must not be
+        duplicated in ``extra`` (``ViewSettings.to_payload`` silently
+        drops known keys from ``extra``).
+
+        Returns:
+            A dict merged into :attr:`ViewSettings.extra`.
+        """
+        extra: dict[str, Any] = {
+            "gridHeight": int(self._card_view.card_width),
+        }
+        order = self._controller.featured_version_order
+        if order:
+            extra["featuredVersionOrder"] = order
+        return extra
+
+    def _on_view_applied(self, view: object) -> None:
+        """Propagate first-class grouping settings to toolbar/controller.
+
+        :class:`ViewBindings` handles columns, sort, filter, and row
+        height.  Grouping (``groupBy`` + ``showEmptyGroups``) lives on
+        ``view.settings.grouping`` and is applied here because no
+        grouping widget is wired into the bindings yet.
+
+        Args:
+            view: The applied :class:`View` instance (typed as
+                ``object`` because the signal is declared with ``object``
+                for Qt compatibility).
+        """
+        if not isinstance(view, View):
+            log.debug("Applied view: %r", view)
+            return
+        log.debug("Applied view: %s (%s)", view.label, view.id)
+        grouping = view.settings.grouping
+
+        # --- showEmptyGroups -----------------------------------------------
+        show_empty = grouping.show_empty_groups
+        # Update UI widget directly (no signal, so no reset_data loop).
+        self._customize.set_show_empty_groups(show_empty)
+        # Sync controller state; bindings.apply already reset the model.
+        self._controller.set_hide_empty_groups(not show_empty)
+        self._view_bindings._last_grouping.show_empty_groups = show_empty
+
+        # --- groupBy -------------------------------------------------------
+        group_by = grouping.group_by or "none"
+        if group_by != self._controller.group_by_key:
+            # Update the menu widget first (silent, no signal emission).
+            self._group_by_menu.set_options(
+                self._controller.get_group_by_options(),
+                group_by,
+            )
+            # Update controller + model tree mode and trigger a fresh
+            # fetch with the new grouping key.  This is a second
+            # reset_data after bindings.apply's reset, but is necessary
+            # so the pagination uses the correct group_by key.
+            self._on_group_by_changed(group_by)
+        else:
+            # groupBy unchanged — still keep last_grouping current.
+            self._view_bindings._last_grouping.group_by = (
+                None if group_by == "none" else group_by
+            )
+
+    def _on_view_binding_error(
+        self, stage: str, exc: BaseException
+    ) -> None:
+        """Forward ViewBindings errors to the log.
+
+        Args:
+            stage: Identifier of the failing binding stage.
+            exc: The caught exception.
+        """
+        log.warning("View binding %s failed: %s", stage, exc)
+
+    def _on_view_selector_error(self, stage: str, message: str) -> None:
+        """Log selector-surfaced binding errors.
+
+        Args:
+            stage: Identifier of the failing stage.
+            message: Human-readable message from the bindings.
+        """
+        log.warning("View selector %s error: %s", stage, message)
 
     def _on_featured_version_order_changed(self, order: list[str]) -> None:
         """Propagate a new featured-version priority to the controller.

@@ -1,4 +1,4 @@
-from ayon_ui_qt.components.table_model import BatchFetchRequest
+from ayon_core.ui.components.table_model import BatchFetchRequest
 
 from ayon_core.tools.loader.ui.review_controller import ReviewController
 from ayon_core.tools.loader.control import LoaderController

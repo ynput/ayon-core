@@ -375,8 +375,13 @@ class AYViewSelector(AYButtonMenu):
         self._close_menu()
 
     def _on_manager_changed(self, view_type: str) -> None:
-        """Refresh when the manager signals a change for our type."""
-        if view_type == self._view_type:
+        """Refresh when the manager signals a change for our type.
+
+        An empty *view_type* is treated as a sentinel meaning "all types
+        changed" (emitted by :class:`ServerViewManager` when it switches
+        project before any view type has been listed).
+        """
+        if not view_type or view_type == self._view_type:
             self.refresh()
 
     # ------------------------------------------------------------------

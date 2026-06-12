@@ -621,13 +621,12 @@ class PaginatedTableModel(QAbstractItemModel):
     def apply_settings(self, settings: Any) -> None:
         """Apply a :class:`ViewSettings` to this model.
 
-        Reorders, hides and resizes columns by *key* (matching against
-        ``TableColumn.key``), then sets the active sort.  All changes
+        Hides and resizes columns then sets the active sort. All changes
         are batched into a single :meth:`reset_data` call so the model
-        only refetches page 0 once.
+        only refetches page 0 once.  Column order is left unchanged
+        because the incoming settings already carry columns in the
+        correct display order.
 
-        Hidden columns are kept in the model so the header can toggle
-        their visibility cheaply; only the column *order* changes here.
         Width semantics: a :attr:`ColumnState.width` of ``None`` leaves
         the current column width untouched; an explicit integer
         overrides :attr:`TableColumn.width`.  ``0`` is treated as *auto*
@@ -650,16 +649,8 @@ class PaginatedTableModel(QAbstractItemModel):
                 f"{type(settings).__name__}"
             )
 
-        # Reorder the catalog (_explicit_columns) according to the
-        # incoming ColumnState order.  Columns not mentioned in the
-        # settings keep their relative order and are appended at the
-        # end so newly-added data-source columns are not lost.
-        #
-        # ``TableColumn`` instances may be shared across multiple models
-        # / views (the consumer typically constructs them once at
-        # startup).  We therefore clone every column we hand back via
-        # ``dataclasses.replace`` before mutating ``width`` so that
-        # different views cannot leak widths into one another.
+        # Clone every column so different views sharing the same
+        # TableColumn catalog cannot leak widths into one another.
         import dataclasses as _dc
 
         catalog: list[TableColumn] = list(self._explicit_columns or [])
@@ -668,10 +659,9 @@ class PaginatedTableModel(QAbstractItemModel):
             c.key: c for c in cloned_catalog
         }
 
-        reordered: list[TableColumn] = []
-        seen_keys: set[str] = set()
+        # Apply width overrides; collect states for unknown keys so a
+        # subsequent capture_settings round-trips them losslessly.
         unknown_states: list[ColumnState] = []
-
         for state in settings.columns:
             col = by_key.get(state.name)
             if col is None:
@@ -681,17 +671,11 @@ class PaginatedTableModel(QAbstractItemModel):
                 # 0 means auto (matches TableColumn semantics); any other
                 # value overrides the column's default width.
                 col.width = max(0, int(state.width))
-            reordered.append(col)
-            seen_keys.add(state.name)
 
-        for col in cloned_catalog:
-            if col.key not in seen_keys:
-                reordered.append(col)
-
-        # Match the sort column by key against the new column order.
+        # Match the sort column by key against the (unchanged) column order.
         sort_column = -1
         if settings.sort_by:
-            for i, col in enumerate(reordered):
+            for i, col in enumerate(cloned_catalog):
                 if col.key == settings.sort_by:
                     sort_column = i
                     break
@@ -702,7 +686,7 @@ class PaginatedTableModel(QAbstractItemModel):
             else Qt.SortOrder.AscendingOrder
         )
 
-        self._explicit_columns = reordered
+        self._explicit_columns = cloned_catalog
         self._sort_column = sort_column
         self._sort_order = sort_order
         self._tree_position = -1  # force recomputation on next read

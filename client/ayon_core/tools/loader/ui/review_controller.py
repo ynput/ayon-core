@@ -11,8 +11,8 @@ from typing import Any
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
-from ayon_ui_qt.components.table_model import BatchFetchRequest
-from ayon_ui_qt.components.tree_model import TreeNode
+from ayon_core.ui.components.table_model import BatchFetchRequest
+from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
@@ -160,6 +160,16 @@ class ReviewController(QtCore.QObject):
     def hide_empty_groups(self) -> bool:
         """Return whether empty group headers should be hidden."""
         return self._hide_empty_groups
+
+    @property
+    def featured_version_order(self) -> list[str]:
+        """Return the current featured-version priority order.
+
+        Returns:
+            A copy of the ordered list of GraphQL featured-version type
+            keys (e.g. ``["latestDone", "latest", "hero"]``).
+        """
+        return list(self._featured_version_order)
 
     # ------------------------------------------------------------------
     # Public methods

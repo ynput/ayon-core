@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ayon_ui_qt.components.combo_box import AYComboBox
-from ayon_ui_qt.style import get_ayon_style_data
+from ayon_core.ui.components.combo_box import AYComboBox
+from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui
 
 from ayon_core.lib import Logger

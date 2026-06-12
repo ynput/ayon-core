@@ -2,24 +2,24 @@
 
 from __future__ import annotations
 
-from ayon_ui_qt.components.buttons import (
+from ayon_core.ui.components.buttons import (
     AYButton,
     AYButtonMenu,
     ButtonMenuDropdown,
 )
-from ayon_ui_qt.components.check_box import AYCheckBox
-from ayon_ui_qt.components.container import (
+from ayon_core.ui.components.check_box import AYCheckBox
+from ayon_core.ui.components.container import (
     AYContainer,
     AYHBoxLayout,
     AYVBoxLayout,
 )
-from ayon_ui_qt.components.dropdown import AYDropdownPopup
-from ayon_ui_qt.components.filter import AYFilter, FilterItem
-from ayon_ui_qt.components.filterable_list import FilterableList
-from ayon_ui_qt.components.label import AYLabel
-from ayon_ui_qt.components.order import AYOrder
-from ayon_ui_qt.components.page_button import AYPageButton
-from ayon_ui_qt.components.slider import AYSlider
+from ayon_core.ui.components.dropdown import AYDropdownPopup
+from ayon_core.ui.components.filter import AYFilter, FilterItem
+from ayon_core.ui.components.filterable_list import FilterableList
+from ayon_core.ui.components.label import AYLabel
+from ayon_core.ui.components.order import AYOrder
+from ayon_core.ui.components.page_button import AYPageButton
+from ayon_core.ui.components.slider import AYSlider
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger

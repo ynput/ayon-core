@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ayon_ui_qt.components.table_model import PaginatedTableModel
-from ayon_ui_qt.components.table_view import AYTableView
+from ayon_core.ui.components.table_model import PaginatedTableModel
+from ayon_core.ui.components.table_view import AYTableView
 from qtpy import QtCore
 
 from ayon_core.lib import Logger

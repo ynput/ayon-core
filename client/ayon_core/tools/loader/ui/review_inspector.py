@@ -3,14 +3,14 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 
-from ayon_ui_qt.components.buttons import AYButton
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.entity_thumbnail import AYEntityThumbnail
-from ayon_ui_qt.components.label import AYLabel
-from ayon_ui_qt.components.layouts import AYHBoxLayout
-from ayon_ui_qt.components.table_view import AYTableView
-from ayon_ui_qt.components.task_queue import AsyncTask, get_task_queue
-from ayon_ui_qt.image_cache import ImageCache
+from ayon_core.ui.components.buttons import AYButton
+from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
+from ayon_core.ui.components.label import AYLabel
+from ayon_core.ui.components.layouts import AYHBoxLayout
+from ayon_core.ui.components.table_view import AYTableView
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.tools.loader.abstract import RepreItem

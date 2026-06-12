@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.slicer import AYSlicer
-from ayon_ui_qt.components.task_queue import get_task_queue
-from ayon_ui_qt.components.task_queue_monitor import AsyncTaskQueueMonitor
-from ayon_ui_qt.components.tree_model import LazyTreeModel
-from ayon_ui_qt.components.tree_view import AYTreeView, QItemSelection
+from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.components.slicer import AYSlicer
+from ayon_core.ui.components.task_queue import get_task_queue
+from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
+from ayon_core.ui.components.tree_model import LazyTreeModel
+from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ayon_ui_qt.components.container import AYContainer
-from ayon_ui_qt.components.tree_model import LazyTreeModel
+from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.components.tree_model import LazyTreeModel
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger

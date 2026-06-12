@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ayon_ui_qt.components.container import AYContainer
+from ayon_core.ui.components.container import AYContainer
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon

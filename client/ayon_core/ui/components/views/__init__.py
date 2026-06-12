@@ -23,6 +23,7 @@ from .data_models import (
 )
 from .view_bindings import ViewBindings
 from .view_editor import AYViewEditor
+from .server_view_manager import ServerViewManager
 from .view_manager import InMemoryViewManager, ViewManager
 from .view_selector import AYViewSelector
 
@@ -35,6 +36,7 @@ __all__ = (
     "GroupingDef",
     "InMemoryViewManager",
     "Scope",
+    "ServerViewManager",
     "View",
     "ViewBindings",
     "ViewManager",
