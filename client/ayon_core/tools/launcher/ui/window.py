@@ -1,3 +1,4 @@
+from pathlib import Path
 from ayon_core.ui.components import (
     AYContainer,
     AYHBoxLayout,
@@ -7,7 +8,7 @@ from ayon_core.ui.components import (
 )
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import style, resources
+from ayon_core import resources
 
 from ayon_core.tools.launcher.control import BaseLauncherController
 from ayon_core.tools.utils import (
@@ -29,7 +30,6 @@ class LauncherWindow(AYContainer):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.High,
             layout_margin=10,
             layout_spacing=16,
         )
@@ -43,7 +43,12 @@ class LauncherWindow(AYContainer):
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
 
-        self.setStyleSheet(style.load_stylesheet())
+        #TODO: Find right place and logic to handle this
+        #launcher-specific styles
+        launcher_css_path = Path(__file__).parent / "luncher_style.css"
+        with open(launcher_css_path, "r") as f:
+            launcher_stylesheet = f.read()
+        self.setStyleSheet(launcher_stylesheet)
 
         # Allow minimize
         self.setWindowFlags(
