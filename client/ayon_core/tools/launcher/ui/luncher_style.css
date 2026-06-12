@@ -666,6 +666,7 @@ background: rgba(168, 175, 189, .3);
     border: 0px;
     padding: 0px;
     margin: 0px;
+    background: #1c2026;
 }
 
 ActionsView::item {
