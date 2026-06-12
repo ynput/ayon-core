@@ -259,13 +259,10 @@ class WorkfilesPage(AYContainer):
         self,
         controller: AbstractLauncherFrontEnd,
         parent: QtWidgets.QWidget,
-        view_variant=AYTreeView.Variants.Default,
-
     ) -> None:
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
             layout_margin=0,
             layout_spacing=0,
         )

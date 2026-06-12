@@ -918,7 +918,6 @@ class ActionsWidget(AYContainer):
         super().__init__(
             parent,
             layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
             layout_margin=0,
             layout_spacing=0,
         )
