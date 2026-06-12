@@ -157,12 +157,12 @@ class AYViewSelector(AYButtonMenu):
         shared = [v for v in self._views if v.visibility == Visibility.SHARED]
 
         if private:
-            layout.addWidget(self._make_header("Private"))
+            layout.addWidget(self._make_header("My views"))
             for view in private:
                 layout.addWidget(self._make_row(view))
 
         if shared:
-            layout.addWidget(self._make_header("Shared"))
+            layout.addWidget(self._make_header("Shared views"))
             for view in shared:
                 layout.addWidget(self._make_row(view))
 
@@ -194,7 +194,7 @@ class AYViewSelector(AYButtonMenu):
 
     def _make_header(self, text: str) -> AYLabel:
         """Return a section header label."""
-        label = AYLabel(text.upper(), dim=True)
+        label = AYLabel(text, dim=True)
         label.setContentsMargins(6, 4, 6, 2)
         return label
 
