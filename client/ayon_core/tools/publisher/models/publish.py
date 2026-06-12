@@ -770,10 +770,9 @@ class PublishModel:
     def get_max_progress(self) -> int:
         return self._publish_max_progress
 
-    def get_publish_report(self) -> Dict[str, Any]:
-        return self._publish_report.get_report(
-            self._publish_context
-        )
+    def get_publish_report(self) -> PublishReport:
+        self._publish_report.update_publish_instances(self._publish_context)
+        return self._publish_report.get_report()
 
     def get_publish_errors_report(self) -> PublishErrorsReport:
         return self._publish_errors.create_report()

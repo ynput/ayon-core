@@ -16,6 +16,7 @@ from typing import (
 
 from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import AbstractHost
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.pipeline.create import (
     CreateContext,
     ConvertorItem,
@@ -675,7 +676,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_report(self) -> Dict[str, Any]:
+    def get_publish_report(self) -> PublishReport:
         pass
 
     @abstractmethod
