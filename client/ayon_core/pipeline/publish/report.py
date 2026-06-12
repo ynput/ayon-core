@@ -251,7 +251,7 @@ class PublishContextInfo:
 class PublishInstanceInfo:
     id: str
     name: str | None
-    label: str | None
+    label: str
     product_type: str | None
     product_base_type: str | None
     family: str | None
@@ -512,6 +512,9 @@ class PublishReportMaker:
     ) -> None:
         """Add report about single iteration of plugin."""
         self.update_publish_instances(context)
+        context_label = context.data.get("label")
+        if context_label:
+            self._report.context.label = context_label
 
         self._current_plugin_id = plugin_id
 
@@ -559,10 +562,10 @@ class PublishReportMaker:
         )
 
     def update_publish_instances(
-        self, publish_context: pyblish.api.Context
+        self, context: pyblish.api.Context
     ) -> None:
         """Report data with all details of current state."""
-        for instance in publish_context:
+        for instance in context:
             if instance.id not in self._all_instances_by_id:
                 self._instances_updated = False
                 self._all_instances_by_id[instance.id] = instance
