@@ -1016,7 +1016,7 @@
         "qt-active-button-text": "--md-sys-color-on-surface-dark",
         "qt-active-placeholder-text": "--md-ref-palette-neutral-variant50",
         "qt-active-highlight": "--md-sys-color-primary-dark",
-        "qt-active-highlight-text": "--md-sys-color-on-primary-dark",
+        "qt-active-highlight-text": "--md-sys-color-on-surface-dark",
         "qt-active-light": "--md-sys-color-surface-container-highest-dark",
         "qt-active-midlight": "--md-sys-color-surface-container-high-dark",
         "qt-active-dark": "--md-sys-color-surface-container-dark",
