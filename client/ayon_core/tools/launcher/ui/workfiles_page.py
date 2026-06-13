@@ -18,7 +18,8 @@ from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 from ayon_core.ui.components import (
     AYContainer,
-    AYTreeView
+    AYTreeView,
+    AYMenu,
 )
 
 
@@ -387,6 +388,8 @@ class WorkfilesPage(AYContainer):
         if action_title is None:
             return
 
+        #TODO: using AYMenu breaking the tool need to figure out the issue
+        # menu = AYMenu(self._workfiles_view)
         menu = QtWidgets.QMenu(self._workfiles_view)
         menu.addAction(action_title)
 
