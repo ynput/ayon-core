@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.ui.components import (
@@ -48,7 +50,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
 
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
-
+#TODO: Headers style need to match with launcher ones
 class WorkfilesToolWindow(AYContainer):
     """WorkFiles Window.
 
@@ -316,7 +318,13 @@ class WorkfilesToolWindow(AYContainer):
         self._show_timer.start()
         if self._first_show:
             self._first_show = False
-            self.setStyleSheet(style.load_stylesheet())
+            # TODO: Find right place and logic to handle this
+            # launcher-specific styles
+            launcher_css_path = Path(__file__).parent / "workfiles_style.css"
+            with open(launcher_css_path, "r") as f:
+                launcher_stylesheet = f.read()
+            self.setStyleSheet(launcher_stylesheet)
+
 
     def keyPressEvent(self, event):
         """Custom keyPressEvent.

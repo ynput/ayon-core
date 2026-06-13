@@ -820,7 +820,8 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-
+        #TODO: fix the focus/unfoucs text color when click out of window
+        # text changing to black which looking odd fix this at all AYLineEdit
         folders_filter_input = AYLineEdit(
             placeholder="Folder name filter...",
             variant=AYLineEdit.Variants.Search_Field,
