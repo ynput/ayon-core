@@ -34,10 +34,12 @@ class FolderItem:
         path (str): Folder path.
         folder_type (str): Type of folder.
         label (str | None): Folder label.
+        status (str | None): Folder status name.
     """
 
     def __init__(
-        self, entity_id, parent_id, name, path, folder_type, label
+        self, entity_id, parent_id, name, path, folder_type, label,
+        status
     ):
         self.entity_id = entity_id
         self.parent_id = parent_id
@@ -45,6 +47,7 @@ class FolderItem:
         self.path = path
         self.folder_type = folder_type
         self.label = label or name
+        self.status = status
 
     def to_data(self):
         """Converts folder item to data.
@@ -60,6 +63,7 @@ class FolderItem:
             "path": self.path,
             "folder_type": self.folder_type,
             "label": self.label,
+            "status": self.status,
         }
 
     @classmethod
@@ -207,7 +211,8 @@ def _get_folder_item_from_hierarchy_item(item):
         name,
         path,
         item["folderType"],
-        item["label"]
+        item["label"],
+        item["status"],
     )
 
 
@@ -219,7 +224,8 @@ def _get_folder_item_from_entity(entity):
         name,
         entity["path"],
         entity["folderType"],
-        entity["label"] or name
+        entity["label"] or name,
+        entity["status"],
     )
 
 

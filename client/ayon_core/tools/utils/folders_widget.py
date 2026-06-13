@@ -16,6 +16,7 @@ from ayon_core.lib.icon_definitions import (
     MaterialSymbolsIcon,
 )
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.ui.style import TreeViewItemDelegate, get_ayon_style
 from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
@@ -31,6 +32,63 @@ FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
 FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
+FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 5
+
+
+class FolderStatusColorDelegate(TreeViewItemDelegate):
+    """Paints folder items as ``FolderName / Status`` where the folder
+    name is rendered in the default style color and the status suffix
+    is rendered in the status color.
+
+    The base class handles all background, icon, hover and selection
+    painting unchanged.  We only append the colored status suffix after
+    the base has finished.
+    """
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+
+        fg = index.data(QtCore.Qt.ForegroundRole)
+        if not (isinstance(fg, QtGui.QColor) and fg.isValid()):
+            return
+
+        status_name = index.data(FOLDER_STATUS_ROLE)
+        if not status_name:
+            return
+
+        # Pull style values once
+        styles = self._tv_styles()
+        base_style = styles["base"]
+        item_padding = base_style.get("item-padding", [4, 8])
+        icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
+
+        # Use index data directly — no need for a second initStyleOption
+        folder_name = index.data(QtCore.Qt.DisplayRole) or ""
+        icon = index.data(QtCore.Qt.DecorationRole)
+
+        content_left = option.rect.left() + item_padding[1]
+        if icon and not icon.isNull():
+            # decoration size is in option already
+            content_left += option.decorationSize.width() + icon_text_spacing
+
+        fm = QtGui.QFontMetrics(option.font)  # option.font is already set by base
+        name_width = fm.horizontalAdvance(folder_name)
+
+        suffix = f"  /  {status_name}"
+        suffix_x = content_left + name_width
+        avail_w = option.rect.right() - item_padding[1] - suffix_x
+        if avail_w <= 0:
+            return
+
+        painter.save()
+        painter.setFont(option.font)
+        painter.setPen(fg)
+        painter.drawText(
+            QtCore.QRect(suffix_x, option.rect.top(), avail_w, option.rect.height()),
+            QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft,
+            suffix,
+        )
+        painter.restore()
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
@@ -43,7 +101,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     _default_folder_icon = None
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller):
+    def __init__(self, controller, apply_status_color=False):
         super().__init__()
 
         self.setColumnCount(1)
@@ -56,6 +114,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._refresh_threads = {}
         self._current_refresh_thread = None
         self._last_project_name = None
+
+        self._apply_status_color = apply_status_color
+        self._last_project_statuses = {}
+        self._can_fetch_status = (
+                apply_status_color
+                and hasattr(controller, "get_project_status_items")
+        )
 
         self._has_content = False
         self._is_refreshing = False
@@ -169,6 +234,18 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             )
         return cls._default_folder_icon
 
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if (
+            self._apply_status_color
+            and role == QtCore.Qt.ForegroundRole
+            and index.isValid()
+        ):
+            status_name = super().data(index, FOLDER_STATUS_ROLE)
+            status_item = self._last_project_statuses.get(status_name)
+            if status_item is not None:
+                return QtGui.QColor(status_item.color)
+        return super().data(index, role)
+
     def _clear_items(self):
         self._items_by_id = {}
         self._parent_id_by_id = {}
@@ -185,7 +262,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             folder_type_items = self._controller.get_folder_type_items(
                 project_name, FOLDERS_MODEL_SENDER_NAME
             )
-        return folder_items, folder_type_items
+
+        status_items = (
+            self._controller.get_project_status_items(project_name)
+            if self._can_fetch_status else []
+        )
+        return folder_items, folder_type_items, status_items
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -209,9 +291,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             return
         if thread.failed:
             # TODO visualize that refresh failed
-            folder_items, folder_type_items = {}, []
+            folder_items, folder_type_items, status_items = {}, [], []
         else:
-            folder_items, folder_type_items = thread.get_result()
+            folder_items, folder_type_items, status_items = thread.get_result()
+        self._last_project_statuses = {
+            status_item.name: status_item
+            for status_item in status_items
+        }
         self._fill_items(folder_items, folder_type_items)
         self._current_refresh_thread = None
 
@@ -265,6 +351,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
         item.setData(icon, QtCore.Qt.DecorationRole)
+        item.setData(folder_item.status, FOLDER_STATUS_ROLE)
 
     def _fill_items(self, folder_items_by_id, folder_type_items):
         if not folder_items_by_id:
@@ -401,6 +488,9 @@ class FoldersWidget(QtWidgets.QWidget):
         parent (QtWidgets.QWidget): The parent widget.
         handle_expected_selection (bool): If True, the widget will handle
             the expected selection. Defaults to False.
+        apply_status_color (bool): If True, folder names will be colored
+            using the folder's status color fetched from
+            ``controller.get_project_status_items``.
     """
 
     double_clicked = QtCore.Signal(QtGui.QMouseEvent)
@@ -412,19 +502,35 @@ class FoldersWidget(QtWidgets.QWidget):
         controller,
         parent,
         handle_expected_selection=False,
+        apply_status_color=False,
     ):
+        _FOLDER_VIEW_HEIGHT = 23
+        _FOLDER_VIEW_PADDING = [1, 6]
+
         super().__init__(parent)
 
-        folders_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        folders_view = AYTreeView(self, item_height=_FOLDER_VIEW_HEIGHT,
+                                  item_padding=_FOLDER_VIEW_PADDING)
         folders_view.setHeaderHidden(True)
         folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
-        folders_model = FoldersQtModel(controller)
+        folders_model = FoldersQtModel(controller, apply_status_color=apply_status_color)
         folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         folders_view.setModel(folders_proxy_model)
+
+        if apply_status_color:
+            ayon_style = get_ayon_style()
+            status_delegate = FolderStatusColorDelegate(
+                parent=folders_view,
+                style_model=ayon_style.model,
+                variant=folders_view._variant_str,
+                item_height=_FOLDER_VIEW_HEIGHT,
+                item_padding=_FOLDER_VIEW_PADDING,
+            )
+            folders_view.setItemDelegate(status_delegate)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
