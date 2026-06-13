@@ -94,8 +94,6 @@ class SubversionLineEdit(QtWidgets.QWidget):
 
         group.triggered.connect(self._on_action_clicked)
 
-#TODO: After removed global style for workfiles window it impacted
-# here need to bring right style
 class SaveAsDialog(QtWidgets.QDialog):
     """Save as dialog to define a unique filename inside workdir.
 

@@ -390,6 +390,8 @@ class WorkfilesPage(AYContainer):
 
         #TODO: using AYMenu breaking the tool need to figure out the issue
         # menu = AYMenu(self._workfiles_view)
+        # Found that in AYMenu Forcing the menu to use AYONStyle for drawing
+        # it causing the application collapse
         menu = QtWidgets.QMenu(self._workfiles_view)
         menu.addAction(action_title)
 
