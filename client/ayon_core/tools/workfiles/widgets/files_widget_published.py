@@ -3,11 +3,18 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.ui.components import (
+    AYContainer,
+    AYLabel,
+    AYHBoxLayout,
+    AYTreeView
+)
+
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.tools.utils import TreeView
+
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 from .utils import BaseOverlayFrame
@@ -279,20 +286,20 @@ class SelectContextOverlay(BaseOverlayFrame):
     def __init__(self, parent):
         super(SelectContextOverlay, self).__init__(parent)
 
-        label_widget = QtWidgets.QLabel(
+        label_widget = AYLabel(
             "Please choose context on the left<br/>&lt",
             self
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
         label_widget.setObjectName("OverlayFrameLabel")
 
-        layout = QtWidgets.QHBoxLayout(self)
+        layout = AYHBoxLayout(self)
         layout.addWidget(label_widget, 1, QtCore.Qt.AlignCenter)
 
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
 
-class PublishedFilesWidget(QtWidgets.QWidget):
+class PublishedFilesWidget(AYContainer):
     """Published workfiles widget.
 
     Args:
@@ -304,13 +311,21 @@ class PublishedFilesWidget(QtWidgets.QWidget):
     save_as_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(PublishedFilesWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
-        view = TreeView(self)
+        view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Smaller indentation
         view.setIndentation(0)
+        view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = PublishedFilesModel(controller)
         proxy_model = QtCore.QSortFilterProxyModel()
@@ -330,9 +345,7 @@ class PublishedFilesWidget(QtWidgets.QWidget):
         select_overlay = SelectContextOverlay(view)
         select_overlay.setVisible(False)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(view, 1)
+        self.add_widget(view, stretch=1)
 
         selection_model = view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)

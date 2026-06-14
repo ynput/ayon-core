@@ -1,14 +1,22 @@
 from __future__ import annotations
+
 from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
+
+from ayon_core.lib import Logger
+from ayon_core.lib.icon_definitions import (
+    AwesomeFontIcon,
+    MaterialSymbolsIcon,
+)
+
+from ayon_core.ui.components import AYTreeView
 
 from ayon_core.style import (
     get_disabled_entity_icon_color,
     get_default_entity_icon_color,
 )
 
-from .views import DeselectableTreeView
 from .lib import RefreshThread, get_qt_icon
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
@@ -16,6 +24,7 @@ ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 PARENT_ID_ROLE = QtCore.Qt.UserRole + 2
 ITEM_NAME_ROLE = QtCore.Qt.UserRole + 3
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
+TASK_TYPE_ORDER_ROLE = QtCore.Qt.UserRole + 5
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
@@ -117,11 +126,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
         if self._invalid_selection_item is None:
             item = QtGui.QStandardItem("Select a folder")
             item.setFlags(QtCore.Qt.NoItemFlags)
-            icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.times",
-                "color": get_disabled_entity_icon_color(),
-            })
+            icon = get_qt_icon(AwesomeFontIcon(
+                "fa.times",
+                color=get_disabled_entity_icon_color(),
+            ))
             item.setData(icon, QtCore.Qt.DecorationRole)
             self._invalid_selection_item = item
         return self._invalid_selection_item
@@ -129,11 +137,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
     def _get_empty_task_item(self):
         if self._empty_tasks_item is None:
             item = QtGui.QStandardItem("No task")
-            icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.exclamation-circle",
-                "color": get_disabled_entity_icon_color(),
-            })
+            icon = get_qt_icon(AwesomeFontIcon(
+                "fa.exclamation-circle",
+                color=get_disabled_entity_icon_color(),
+            ))
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setFlags(QtCore.Qt.NoItemFlags)
             self._empty_tasks_item = item
@@ -212,11 +219,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
     @classmethod
     def _get_default_task_icon(cls):
         if cls._default_task_icon is None:
-            cls._default_task_icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.male",
-                "color": get_default_entity_icon_color()
-            })
+            cls._default_task_icon = get_qt_icon(AwesomeFontIcon(
+                "fa.male",
+                color=get_default_entity_icon_color()
+            ))
         return cls._default_task_icon
 
     def _get_task_item_icon(
@@ -235,11 +241,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
         icon = None
         if task_type_item is not None:
             color = task_type_item.color or get_default_entity_icon_color()
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": task_type_item.icon,
-                "color": color,
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                task_type_item.icon,
+                color=color,
+            ))
 
         if icon is None:
             icon = self._get_default_task_icon()
@@ -285,6 +290,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
             item.setData(task_item.parent_id, PARENT_ID_ROLE)
+            item.setData(task_item.task_type_order, TASK_TYPE_ORDER_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
         root_item = self.invisibleRootItem()
@@ -309,7 +315,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
         Args:
             thread_id (str): Thread id.
         """
-
         # Make sure to remove thread from '_refresh_threads' dict
         thread = self._refresh_threads.pop(thread_id)
         if (
@@ -352,12 +357,29 @@ class TasksProxyModel(QtCore.QSortFilterProxyModel):
         super().__init__()
 
         self._task_ids_filter: Optional[set[str]] = None
+        self._task_type_sorting_enabled = False
 
     def set_task_ids_filter(self, task_ids: Optional[set[str]]):
         if self._task_ids_filter == task_ids:
             return
         self._task_ids_filter = task_ids
         self.invalidateFilter()
+
+    def set_task_type_sorting_enabled(self, enabled: bool):
+        if self._task_type_sorting_enabled is not enabled:
+            self._task_type_sorting_enabled = enabled
+
+    def lessThan(self, source_left, source_right):
+        if self._task_type_sorting_enabled:
+            left_sort = source_left.data(TASK_TYPE_ORDER_ROLE)
+            right_sort = source_right.data(TASK_TYPE_ORDER_ROLE)
+            if (
+                left_sort is not None
+                and right_sort is not None
+                and left_sort != right_sort
+            ):
+                return left_sort < right_sort
+        return super().lessThan(source_left, source_right)
 
     def filterAcceptsRow(self, row, parent_index):
         if self._task_ids_filter is not None:
@@ -380,6 +402,7 @@ class TasksWidget(QtWidgets.QWidget):
         parent (QtWidgets.QWidget): Parent widget.
         handle_expected_selection (Optional[bool]): Handle expected selection.
     """
+    log = Logger.get_logger("TasksWidget")
 
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal()
@@ -387,8 +410,12 @@ class TasksWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent, handle_expected_selection=False):
         super().__init__(parent)
 
-        tasks_view = DeselectableTreeView(self)
+        tasks_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
         tasks_view.setIndentation(0)
+        tasks_view.setHeaderHidden(False)
+        tasks_view.setSelectionMode(
+            AYTreeView.SelectionMode.SingleSelection
+        )
 
         tasks_model = TasksQtModel(controller)
         tasks_proxy_model = TasksProxyModel()
@@ -429,13 +456,17 @@ class TasksWidget(QtWidgets.QWidget):
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection_data = None
 
+        self._use_task_type_sorting = None
+
     def refresh(self):
         """Refresh folders for last selected project.
 
         Force to update folders model from controller. This may or may not
         trigger query from server, that's based on controller's cache.
         """
-
+        self._use_task_type_sorting = None
+        self._update_task_type_sorting()
+        self._tasks_proxy_model.sort(0)
         self._tasks_model.refresh()
 
     def get_selected_task_info(self):
@@ -542,6 +573,7 @@ class TasksWidget(QtWidgets.QWidget):
             or event["folder_id"] != self._selected_folder_id
         ):
             return
+
         self._tasks_model.set_context(
             event["project_name"], self._selected_folder_id
         )
@@ -555,6 +587,9 @@ class TasksWidget(QtWidgets.QWidget):
     def _on_tasks_model_refresh(self):
         if not self._set_expected_selection():
             self._on_selection_change()
+
+        self._update_task_type_sorting()
+
         self._tasks_proxy_model.sort(0)
         self.refreshed.emit()
 
@@ -603,6 +638,32 @@ class TasksWidget(QtWidgets.QWidget):
                 self._tasks_view.setCurrentIndex(proxy_index)
         self._controller.expected_task_selected(folder_id, task_name)
         return True
+
+    def _update_task_type_sorting(self):
+        if self._use_task_type_sorting is not None:
+            return
+
+        project_name = self._tasks_model.get_last_project_name()
+        if project_name is None:
+            return
+
+        use_task_type_sorting = False
+        if hasattr(self._controller, "get_project_settings"):
+            settings = self._controller.get_project_settings(project_name)
+            use_task_type_sorting = (
+                settings["core"]["tools"]["general"]["use_task_type_sorting"]
+            )
+        else:
+            self.log.warning(
+                f"Controller '{self._controller}' doesn't have"
+                " 'get_project_settings' method, task type"
+                " sorting will be disabled."
+            )
+
+        self._use_task_type_sorting = use_task_type_sorting
+        self._tasks_proxy_model.set_task_type_sorting_enabled(
+            self._use_task_type_sorting
+        )
 
     def _update_expected_selection(self, expected_data=None):
         if not self._handle_expected_selection:

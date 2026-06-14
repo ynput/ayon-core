@@ -34,7 +34,10 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_instance_label,
 )
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers,
+)
 
 
 class TempData:
@@ -144,29 +147,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
     label = "Extract Review"
     order = pyblish.api.ExtractorOrder + 0.02
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "blender",
-        "houdini",
-        "max",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "batchdelivery",
-        "photoshop",
-        "substancepainter",
-        "workflow",
-    ]
 
     settings_category = "core"
     # Supported extensions
@@ -187,11 +167,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if not instance.data.get("review", True):
             return
 
+        orig_representations = tuple(instance.data["representations"])
+
         # Run processing
         self.main_process(instance)
 
         # Make sure cleanup happens and pop representations with "delete" tag.
-        for repre in tuple(instance.data["representations"]):
+        for repre in orig_representations:
             tags = repre.get("tags") or []
             # Representation is not marked to be deleted
             if "delete" not in tags:
@@ -343,6 +325,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             instance, profile_outputs
         )
 
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for repre, output_defs in outputs_per_repres:
             # Check if input should be preconverted before processing
             # Store original staging dir (it's value may change)
@@ -382,7 +366,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, review_layers=review_layers
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -392,7 +378,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 ))
                 continue
 
-            layer_name = get_review_layer_name(first_input_path)
+            layer_name = get_review_layer_name(
+                first_input_path, review_layers=review_layers
+            )
 
             # Do conversion if needed
             #   - change staging dir of source representation
@@ -407,7 +395,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
                     new_staging_dir,
-                    self.log
+                    review_layers=review_layers,
+                    logger=self.log,
                 )
                 # The OIIO conversion will remap the RGBA channels just to
                 # `R,G,B,A` so we will pass the intermediate file to FFMPEG

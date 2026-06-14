@@ -530,25 +530,30 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         product_base_type = instance.data.get("productBaseType")
         if not product_base_type:
             product_base_type = instance.data["productType"]
-        profile = filter_profiles(cls.profiles, {
+        filtering_criteria = {
             "product_base_types": product_base_type,
-            "task_types": current_context_task_type
-        })
+            "task_types": current_context_task_type,
+            "task_names": create_context.get_current_task_name()
+        }
+        profile = filter_profiles(cls.profiles, filtering_criteria)
         if not profile:
-            profile = {}
+            profile = {
+                "contribution_enabled": True,
+                "contribution_layer": None,
+                "contribution_target_product": "usdAsset",
+                "contribution_apply_as_variant": False,
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
+            }
 
         # Define defaults
-        default_enabled: bool = profile.get("contribution_enabled", True)
-        default_contribution_layer = profile.get(
-            "contribution_layer", None)
-        default_apply_as_variant: bool = profile.get(
-            "contribution_apply_as_variant", False)
-        default_target_product: str = profile.get(
-            "contribution_target_product", "usdAsset")
+        default_target_product: str = profile["contribution_target_product"]
         default_init_as: str = (
             "asset"
-            if profile.get("contribution_target_product") == "usdAsset"
-            else "shot")
+            if default_target_product == "usdAsset"
+            else "shot"
+        )
         init_as_visible = True
 
         # Attributes logic
@@ -579,7 +584,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "In both cases the USD data itself is free to have "
                         "references and sublayers of its own."
                     ),
-                    default=default_enabled),
+                    default=profile["contribution_enabled"]),
             TextDef("contribution_target_product",
                     label="Target product",
                     tooltip=(
@@ -614,7 +619,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(contribution_layers.keys()),
-                    default=default_contribution_layer,
+                    default=profile["contribution_layer"],
                     visible=visible),
             # TODO: We may want to make the visibility of this optional
             #  based on studio preference, to avoid complexity when not needed
@@ -639,15 +644,15 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=default_apply_as_variant,
+                    default=profile["contribution_apply_as_variant"],
                     visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
-                    default="{layer}",
+                    default=profile["contribution_variant_set_name"],
                     visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
-                    default="{variant}",
+                    default=profile["contribution_variant"],
                     visible=variant_visible),
             BoolDef("contribution_variant_is_default",
                     label="Set as default variant selection",
@@ -659,7 +664,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "The behavior is unpredictable if multiple instances "
                         "for the same variant set have this enabled."
                     ),
-                    default=False,
+                    default=profile["contribution_variant_is_default"],
                     visible=variant_visible),
             UISeparatorDef("usd_container_settings3"),
         ]

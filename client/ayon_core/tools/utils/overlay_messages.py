@@ -64,7 +64,7 @@ class CloseButton(QtWidgets.QFrame):
             right, top
         )
 
-
+#TODO: Use ayon_core/ui/components and match it with style
 class OverlayMessageWidget(QtWidgets.QFrame):
     """Message widget showed as overlay.
 

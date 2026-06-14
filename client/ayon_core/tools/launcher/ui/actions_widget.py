@@ -1,15 +1,24 @@
+from __future__ import annotations
+
 import time
 import collections
 import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.ui.components import AYContainer, AYLabel, AYFrame, AYGridLayout
+
 from ayon_core.lib import Logger
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    TransparentIcon,
+)
 from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
+from ayon_core.ui.components.scroll_area import AYScrollBar
 
 ANIMATION_LEN = 7
 SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
@@ -19,12 +28,13 @@ ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
 ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
 ACTION_HAS_CONFIGS_ROLE = QtCore.Qt.UserRole + 4
-ACTION_SORT_ROLE = QtCore.Qt.UserRole + 5
-ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 6
-ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 7
-PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 8
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 9
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 10
+ACTION_ORDER_ROLE = QtCore.Qt.UserRole + 5
+ACTION_SUBORDER_ROLE = QtCore.Qt.UserRole + 6
+ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 7
+ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 8
+PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 9
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 10
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 11
 
 
 def _variant_label_sort_getter(action_item):
@@ -49,10 +59,9 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
     @classmethod
     def _get_settings_icon(cls):
         if cls._settings_icon is None:
-            cls._settings_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "settings",
-            })
+            cls._settings_icon = get_qt_icon(
+                MaterialSymbolsIcon("settings")
+            )
         return cls._settings_icon
 
     def paintEvent(self, event):
@@ -84,7 +93,7 @@ class ActionOverlayWidget(QtWidgets.QFrame):
         settings_icon.setToolTip("Right click for options")
         settings_icon.setVisible(False)
 
-        main_layout = QtWidgets.QGridLayout(self)
+        main_layout = AYGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
         main_layout.addWidget(settings_icon, 0, 0)
         main_layout.setColumnStretch(0, 1)
@@ -220,14 +229,14 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             all_action_items_info.append((first_item, len(action_items) > 1))
             groups_by_id[first_item.identifier] = action_items
 
-        transparent_icon = {"type": "transparent", "size": 256}
+        transparent_icon = TransparentIcon(256)
         new_items = []
         items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = transparent_icon.copy()
+                icon_def = transparent_icon
 
             try:
                 icon = get_qt_icon(icon_def)
@@ -236,7 +245,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
                     "Failed to parse icon definition", exc_info=True
                 )
                 # Use empty icon if failed to parse definition
-                icon = get_qt_icon(transparent_icon.copy())
+                icon = get_qt_icon(transparent_icon)
 
             if is_group:
                 has_configs = False
@@ -260,7 +269,8 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             item.setData(action_item.action_type, ACTION_TYPE_ROLE)
             item.setData(action_item.addon_name, ACTION_ADDON_NAME_ROLE)
             item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
-            item.setData(action_item.order, ACTION_SORT_ROLE)
+            item.setData(action_item.order, ACTION_ORDER_ROLE)
+            item.setData(action_item.suborder, ACTION_SUBORDER_ROLE)
             items_by_id[action_item.identifier] = item
 
         if new_items:
@@ -318,12 +328,12 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-        transparent_icon = {"type": "transparent", "size": 256}
+        transparent_icon = TransparentIcon(256)
         new_items = []
         for action_item in action_items:
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = transparent_icon.copy()
+                icon_def = transparent_icon
 
             try:
                 icon = get_qt_icon(icon_def)
@@ -332,7 +342,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                     "Failed to parse icon definition", exc_info=True
                 )
                 # Use empty icon if failed to parse definition
-                icon = get_qt_icon(transparent_icon.copy())
+                icon = get_qt_icon(transparent_icon)
 
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
@@ -344,7 +354,8 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                 bool(action_item.config_fields),
                 ACTION_HAS_CONFIGS_ROLE
             )
-            item.setData(action_item.order, ACTION_SORT_ROLE)
+            item.setData(action_item.order, ACTION_ORDER_ROLE)
+            item.setData(action_item.suborder, ACTION_SUBORDER_ROLE)
 
             new_items.append(item)
 
@@ -422,7 +433,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
 
-        group_label = QtWidgets.QLabel("|", self)
+        group_label = AYLabel("|", parent=self)
         group_label.setObjectName("GroupLabel")
 
         # View with actions
@@ -434,11 +445,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.stackUnder(group_label)
 
         # Background draw
-        bg_frame = QtWidgets.QFrame(self)
+        bg_frame = AYFrame(parent=self)
         bg_frame.setObjectName("ShadowFrame")
         bg_frame.stackUnder(view)
 
-        wrapper = QtWidgets.QFrame(self)
+        wrapper = AYFrame(parent=self)
         wrapper.setObjectName("Wrapper")
 
         effect = QtWidgets.QGraphicsBlurEffect(wrapper)
@@ -775,10 +786,9 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
     @classmethod
     def _get_extender_pixmap(cls):
         if cls._extender_icon is None:
-            cls._extender_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "more_horiz",
-            })
+            cls._extender_icon = get_qt_icon(
+                MaterialSymbolsIcon("more_horiz")
+            )
         return cls._extender_icon
 
     def paint(self, painter, option, index):
@@ -820,24 +830,16 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
         if right.data(PLACEHOLDER_ITEM_ROLE):
             return False
 
-        left_value = left.data(ACTION_SORT_ROLE)
-        right_value = right.data(ACTION_SORT_ROLE)
+        left_order_value: int = left.data(ACTION_ORDER_ROLE) or 0
+        right_order_value: int = right.data(ACTION_ORDER_ROLE) or 0
+        if left_order_value != right_order_value:
+            return left_order_value < right_order_value
 
-        # Values are same -> use super sorting
-        if left_value == right_value:
-            # Default behavior is using DisplayRole
-            return super().lessThan(left, right)
-
-        # Validate 'None' values
-        if right_value is None:
-            return True
-        if left_value is None:
-            return False
-        # Sort values and handle incompatible types
-        try:
-            return left_value < right_value
-        except TypeError:
-            return True
+        left_suborder_value: int = left.data(ACTION_SUBORDER_ROLE) or 0
+        right_suborder_value: int = right.data(ACTION_SUBORDER_ROLE) or 0
+        if left_suborder_value != right_suborder_value:
+            return left_suborder_value < right_suborder_value
+        return super().lessThan(left, right)
 
 
 class ActionsView(QtWidgets.QListView):
@@ -858,8 +860,9 @@ class ActionsView(QtWidgets.QListView):
         self.setWordWrap(True)
         self.setMouseTracking(True)
 
-        vertical_scroll = self.verticalScrollBar()
-        vertical_scroll.setSingleStep(8)
+        vsb = AYScrollBar(self)
+        self.setVerticalScrollBar(vsb)
+        vsb.setSingleStep(8)
 
         delegate = ActionDelegate(self)
         self.setItemDelegate(delegate)
@@ -912,9 +915,14 @@ class ActionsView(QtWidgets.QListView):
         self._overlay_widgets = overlay_widgets
 
 
-class ActionsWidget(QtWidgets.QWidget):
+class ActionsWidget(AYContainer):
     def __init__(self, controller, parent):
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         self._controller = controller
 
@@ -928,9 +936,7 @@ class ActionsWidget(QtWidgets.QWidget):
         proxy_model.setSourceModel(model)
         view.setModel(proxy_model)
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(view)
+        self.add_widget(view)
 
         animation_timer = QtCore.QTimer()
         animation_timer.setInterval(40)

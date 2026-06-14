@@ -4,6 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Iterable, Any, Optional, Union
 
+from ayon_core.lib.icon_definitions import IconBase, AwesomeFontIcon
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     deserialize_attr_defs,
@@ -42,7 +43,7 @@ class ProductTypeItem:
 class ProductBaseTypeItem:
     """Item representing the product base type."""
 
-    def __init__(self, name: str, icon: dict[str, Any]):
+    def __init__(self, name: str, icon: AwesomeFontIcon):
         """Initialize product base type item."""
         self.name = name
         self.icon = icon
@@ -56,12 +57,16 @@ class ProductBaseTypeItem:
         """
         return {
             "name": self.name,
-            "icon": self.icon,
+            "icon": {
+                "name": self.icon.name,
+                "color": self.icon.color,
+            },
         }
 
     @classmethod
     def from_data(
-            cls, data: dict[str, Any]) -> ProductBaseTypeItem:
+        cls, data: dict[str, Any]
+    ) -> ProductBaseTypeItem:
         """Create item from data dictionary.
 
         Args:
@@ -71,6 +76,8 @@ class ProductBaseTypeItem:
             ProductBaseTypeItem: Item created from the provided data.
 
         """
+        icon = data["icon"]
+        data["icon"] = AwesomeFontIcon(icon["name"], color=icon["color"])
         return cls(**data)
 
 
@@ -317,7 +324,7 @@ class ActionItem:
         identifier (str): Action identifier.
         label (str): Action label.
         group_label (Optional[str]): Group label.
-        icon (Optional[dict[str, Any]]): Action icon definition.
+        icon (IconBase | dict[str, Any] | None): Action icon definition.
         tooltip (Optional[str]): Action tooltip.
         order (int): Action order.
         data (Optional[dict[str, Any]]): Additional action data.
@@ -330,7 +337,7 @@ class ActionItem:
         identifier: str,
         label: str,
         group_label: Optional[str],
-        icon: Optional[dict[str, Any]],
+        icon: IconBase | dict[str, Any] | None,
         tooltip: Optional[str],
         order: int,
         data: Optional[dict[str, Any]],
@@ -495,6 +502,10 @@ class BackendLoaderController(_BaseLoaderController):
             set[str]: Set of loaded product ids.
 
         """
+        pass
+
+    @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
         pass
 
     @abstractmethod
@@ -1164,6 +1175,33 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             Union[dict[str, Any], None]: Icon definition or None if site sync
                 is not enabled for the project.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_active_site(self, project_name: str) -> str | None:
+        """Active site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_remote_site(self, project_name: str) -> str | None:
+        """Remote site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
         """
 
         pass

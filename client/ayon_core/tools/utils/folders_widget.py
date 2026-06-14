@@ -4,7 +4,17 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
+from ayon_core.ui.components import (
+    AYCheckBox,
+    AYLineEdit,
+    AYTreeView
+)
+
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.lib.icon_definitions import (
+    AwesomeFontIcon,
+    MaterialSymbolsIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
     ProjectsModel,
@@ -13,10 +23,7 @@ from ayon_core.tools.common_models import (
 )
 
 from .models import RecursiveSortFilterProxyModel
-from .views import TreeView
 from .lib import RefreshThread, get_qt_icon
-from .widgets import PlaceholderLineEdit
-from .nice_checkbox import NiceCheckbox
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -154,11 +161,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     @classmethod
     def _get_default_folder_icon(cls):
         if cls._default_folder_icon is None:
-            cls._default_folder_icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.folder",
-                "color": get_default_entity_icon_color()
-            })
+            cls._default_folder_icon = get_qt_icon(
+                AwesomeFontIcon(
+                    "fa.folder",
+                    color=get_default_entity_icon_color(),
+                )
+            )
         return cls._default_folder_icon
 
     def _clear_items(self):
@@ -222,11 +230,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         )
         icon = None
         if folder_type_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": folder_type_item.icon,
-                "color": get_default_entity_icon_color()
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                folder_type_item.icon,
+                color=get_default_entity_icon_color(),
+            ))
 
         if icon is None:
             icon = self._get_default_folder_icon()
@@ -400,11 +407,17 @@ class FoldersWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, parent, handle_expected_selection=False):
+    def __init__(
+        self,
+        controller,
+        parent,
+        handle_expected_selection=False,
+    ):
         super().__init__(parent)
 
-        folders_view = TreeView(self)
+        folders_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
         folders_view.setHeaderHidden(True)
+        folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         folders_model = FoldersQtModel(controller)
         folders_proxy_model = FoldersProxyModel()
@@ -807,17 +820,18 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-
-        folders_filter_input = PlaceholderLineEdit(self)
-        folders_filter_input.setPlaceholderText("Folder name filter...")
+        #TODO: fix the focus/unfoucs text color when click out of window
+        # text changing to black which looking odd fix this at all AYLineEdit
+        folders_filter_input = AYLineEdit(
+            placeholder="Folder name filter...",
+            variant=AYLineEdit.Variants.Search_Field,
+            parent=self,
+        )
 
         my_tasks_tooltip = (
             "Filter folders and task to only those you are assigned to."
         )
-        my_tasks_label = QtWidgets.QLabel("My tasks", self)
-        my_tasks_label.setToolTip(my_tasks_tooltip)
-
-        my_tasks_checkbox = NiceCheckbox(self)
+        my_tasks_checkbox = AYCheckBox("My tasks", parent=self)
         my_tasks_checkbox.setChecked(False)
         my_tasks_checkbox.setToolTip(my_tasks_tooltip)
 
@@ -825,7 +839,6 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
         layout.addWidget(folders_filter_input, 1)
-        layout.addWidget(my_tasks_label, 0)
         layout.addWidget(my_tasks_checkbox, 0)
 
         folders_filter_input.textChanged.connect(self.text_changed)
