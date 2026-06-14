@@ -31,6 +31,190 @@ FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
 FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
+FOLDER_THUMBNAIL_PATH_ROLE = QtCore.Qt.UserRole + 5
+
+# Width of the thumbnail column painted by FolderThumbnailDelegate (px)
+THUMBNAIL_WIDTH = 90
+# Row height used when thumbnails are enabled (px)
+THUMBNAIL_ROW_HEIGHT = 52
+
+
+class FolderThumbnailDelegate(QtWidgets.QStyledItemDelegate):
+    """Item delegate that draws a thumbnail on the left of each folder row.
+
+    Replicates the AYONStyle background (hover / selected states) so it
+    stays visually consistent with the rest of the tree, then draws the
+    folder thumbnail (or fallback icon) followed by the label text.
+
+    When a folder has no thumbnail the fallback folder-type icon is drawn
+    in the same rect so the layout stays consistent.
+
+    Args:
+        parent: The view that owns this delegate.
+        thumbnail_width (int): Width of the thumbnail rect in pixels.
+            Defaults to :data:`THUMBNAIL_WIDTH`.
+    """
+
+    def __init__(self, parent=None, thumbnail_width=THUMBNAIL_WIDTH):
+        super().__init__(parent)
+        self._thumbnail_width = thumbnail_width
+        # In-memory pixmap cache keyed by local file path
+        self._pixmap_cache: dict[str, QtGui.QPixmap | None] = {}
+
+    def _get_pixmap(
+        self, path: str, cell_w: int, cell_h: int
+    ) -> QtGui.QPixmap | None:
+        """Return a scaled pixmap for *path*, cached after first load.
+
+        The pixmap is scaled to fill the cell height while keeping the
+        aspect ratio, and then clamped to ``cell_w`` wide if necessary.
+        """
+        if path in self._pixmap_cache:
+            return self._pixmap_cache[path]
+
+        pix = QtGui.QPixmap(path)
+        if pix.isNull():
+            self._pixmap_cache[path] = None
+            return None
+
+        pix = pix.scaledToHeight(cell_h, QtCore.Qt.SmoothTransformation)
+        if pix.width() > cell_w:
+            pix = pix.scaledToWidth(cell_w, QtCore.Qt.SmoothTransformation)
+        self._pixmap_cache[path] = pix
+        return pix
+
+    def invalidate_cache(self):
+        """Clear the in-memory pixmap cache (call on project change)."""
+        self._pixmap_cache.clear()
+
+    def sizeHint(self, option, index):
+        hint = super().sizeHint(option, index)
+        hint.setHeight(max(hint.height(), THUMBNAIL_ROW_HEIGHT))
+        return hint
+
+    def paint(self, painter, option, index):
+        painter.save()
+
+        rect = option.rect
+        is_selected = bool(option.state & QtWidgets.QStyle.State_Selected)
+        is_hovered = bool(option.state & QtWidgets.QStyle.State_MouseOver)
+
+        # ------------------------------------------------------------------
+        # Background — AYONStyle colours with palette fallback
+        # ------------------------------------------------------------------
+        try:
+            from ayon_core.ui.style_types import get_ayon_style
+            style = get_ayon_style()
+            tv_styles = style.model.get_styles(
+                "QTreeView", "default",
+                ["base", "hover", "selected"],
+            )
+            if is_selected:
+                bg_hex = tv_styles["selected"].get(
+                    "background-color",
+                    tv_styles["base"].get("background-color", "transparent"),
+                )
+            elif is_hovered:
+                bg_hex = tv_styles["hover"].get(
+                    "background-color",
+                    tv_styles["base"].get("background-color", "transparent"),
+                )
+            else:
+                bg_hex = tv_styles["base"].get(
+                    "background-color", "transparent"
+                )
+            text_hex = (
+                tv_styles["selected"].get(
+                    "color", tv_styles["base"].get("color", "#f4f5f5")
+                )
+                if is_selected
+                else tv_styles["base"].get("color", "#f4f5f5")
+            )
+            bg_color = QtGui.QColor(bg_hex)
+            text_color = QtGui.QColor(text_hex)
+        except Exception:
+            palette = option.palette
+            bg_color = palette.color(
+                QtGui.QPalette.Highlight
+                if is_selected
+                else QtGui.QPalette.Base
+            )
+            text_color = palette.color(
+                QtGui.QPalette.HighlightedText
+                if is_selected
+                else QtGui.QPalette.Text
+            )
+
+        painter.setBrush(QtGui.QBrush(bg_color))
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawRect(rect)
+
+        padding = 3
+        # Use the same icon size Qt would use in the standard delegate
+        # (decorationSize is set by Qt from PM_SmallIconSize, typically 16px)
+        icon_w = option.decorationSize.width()
+        icon_h = option.decorationSize.height()
+        cursor_x = rect.left() + padding
+
+        # ------------------------------------------------------------------
+        # Thumbnail — only drawn when the folder actually has one.
+        # Layout: [ thumbnail ] [ icon ] [ label ]
+        # Without thumbnail: [ icon ] [ label ]  (normal row, same as before)
+        # ------------------------------------------------------------------
+        thumb_path = index.data(FOLDER_THUMBNAIL_PATH_ROLE)
+        if thumb_path:
+            thumb_rect = QtCore.QRect(
+                cursor_x,
+                rect.top() + padding,
+                self._thumbnail_width,
+                rect.height() - padding * 2,
+            )
+            pix = self._get_pixmap(
+                thumb_path, thumb_rect.width(), thumb_rect.height()
+            )
+            if pix and not pix.isNull():
+                x_off = (thumb_rect.width() - pix.width()) // 2
+                y_off = (thumb_rect.height() - pix.height()) // 2
+                painter.drawPixmap(
+                    thumb_rect.left() + x_off,
+                    thumb_rect.top() + y_off,
+                    pix,
+                )
+                cursor_x += self._thumbnail_width + padding
+
+        # ------------------------------------------------------------------
+        # Folder-type icon — always drawn, same size as the standard row
+        # ------------------------------------------------------------------
+        icon = index.data(QtCore.Qt.DecorationRole)
+        if icon and isinstance(icon, QtGui.QIcon):
+            icon_rect = QtCore.QRect(
+                cursor_x,
+                rect.top() + (rect.height() - icon_h) // 2,
+                icon_w,
+                icon_h,
+            )
+            icon.paint(painter, icon_rect, QtCore.Qt.AlignCenter)
+            cursor_x += icon_w + padding
+
+        # ------------------------------------------------------------------
+        # Label text
+        # ------------------------------------------------------------------
+        text_rect = QtCore.QRect(
+            cursor_x,
+            rect.top(),
+            rect.right() - cursor_x - padding,
+            rect.height(),
+        )
+        text = index.data(QtCore.Qt.DisplayRole) or ""
+        painter.setPen(text_color)
+        painter.setFont(option.font)
+        painter.drawText(
+            text_rect,
+            QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
+            text,
+        )
+
+        painter.restore()
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
@@ -57,6 +241,11 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._current_refresh_thread = None
         self._last_project_name = None
 
+        # Thumbnail fetch state
+        self._thumbnail_threads: dict[str, RefreshThread] = {}
+        self._current_thumbnail_thread: RefreshThread | None = None
+        self._thumbnails_enabled: bool = False
+
         self._has_content = False
         self._is_refreshing = False
 
@@ -78,6 +267,17 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         """
 
         return self._has_content
+
+    def set_thumbnails_enabled(self, enabled: bool):
+        """Enable or disable thumbnail fetching for this model.
+
+        When disabled (the default) thumbnails are never queried and the
+        folder-type icon is used as the row decoration instead.
+
+        Args:
+            enabled (bool): Pass ``True`` to activate thumbnail loading.
+        """
+        self._thumbnails_enabled = enabled
 
     def refresh(self):
         """Refresh folders for last selected project.
@@ -173,6 +373,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._items_by_id = {}
         self._parent_id_by_id = {}
         self._has_content = False
+        # Discard any in-flight thumbnail thread for this model
+        self._current_thumbnail_thread = None
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
@@ -347,6 +549,134 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._is_refreshing = False
         self.refreshed.emit()
 
+        # Kick off thumbnail fetch if enabled
+        if self._thumbnails_enabled and self._items_by_id:
+            self._start_thumbnail_fetch(
+                self._last_project_name,
+                list(self._items_by_id.keys()),
+            )
+
+    # ------------------------------------------------------------------
+    # Thumbnail fetching
+    # ------------------------------------------------------------------
+
+    def _start_thumbnail_fetch(self, project_name, folder_ids):
+        """Spawn a background thread that fetches thumbnail paths.
+
+        Uses the same :class:`RefreshThread` pattern as the main folder
+        refresh so results arrive on the main thread via a Qt signal.
+
+        Args:
+            project_name (str): Current project name.
+            folder_ids (list[str]): All folder ids currently in the model.
+        """
+        if not project_name or not folder_ids:
+            return
+
+        thread_id = f"{project_name}_thumbnails"
+        # Reuse an already-running thread for the same project
+        existing = self._thumbnail_threads.get(thread_id)
+        if existing is not None:
+            self._current_thumbnail_thread = existing
+            return
+
+        thread = RefreshThread(
+            thread_id,
+            self._fetch_thumbnails,
+            project_name,
+            folder_ids,
+        )
+        self._current_thumbnail_thread = thread
+        self._thumbnail_threads[thread.id] = thread
+        thread.refresh_finished.connect(self._on_thumbnail_thread)
+        thread.start()
+
+    def _fetch_thumbnails(self, project_name, folder_ids):
+        """Worker executed in a background thread.
+
+        Calls :class:`~ayon_core.tools.common_models.ThumbnailsModel`
+        (or ``controller.get_thumbnail_paths`` when available) to resolve
+        folder thumbnail paths.  Returns a mapping of
+        ``{folder_id: path_or_None}``.
+
+        Args:
+            project_name (str): Project name.
+            folder_ids (list[str]): Folder ids to fetch thumbnails for.
+
+        Returns:
+            dict[str, str | None]: Thumbnail path per folder id.
+        """
+        # Prefer the controller's own thumbnail method if available
+        if hasattr(self._controller, "get_thumbnail_paths"):
+            return self._controller.get_thumbnail_paths(
+                project_name, "folder", folder_ids
+            )
+
+        # Fallback: use ThumbnailsModel directly
+        from ayon_core.tools.common_models import ThumbnailsModel
+        model = ThumbnailsModel()
+        return model.get_thumbnail_paths(project_name, "folder", folder_ids)
+
+    def _on_thumbnail_thread(self, thread_id):
+        """Called on the main thread when the thumbnail fetch finishes.
+
+        Writes :data:`FOLDER_THUMBNAIL_PATH_ROLE` onto each item that has
+        a resolved path and emits ``dataChanged`` so the view repaints.
+
+        Args:
+            thread_id (str): The finished thread's id.
+        """
+        thread = self._thumbnail_threads.pop(thread_id, None)
+        if thread is None:
+            return
+        # Ignore stale results from a superseded refresh
+        if (
+            self._current_thumbnail_thread is None
+            or thread_id != self._current_thumbnail_thread.id
+        ):
+            return
+
+        self._current_thumbnail_thread = None
+
+        if thread.failed:
+            return
+
+        paths_by_id = thread.get_result() or {}
+        changed_top_left = None
+        changed_bottom_right = None
+
+        for folder_id, path in paths_by_id.items():
+            if not path:
+                continue
+            item = self._items_by_id.get(folder_id)
+            if item is None:
+                continue
+            item.setData(path, FOLDER_THUMBNAIL_PATH_ROLE)
+            idx = self.indexFromItem(item)
+            if idx.isValid():
+                if changed_top_left is None:
+                    changed_top_left = idx
+                    changed_bottom_right = idx
+                else:
+                    # Expand the dirty region to cover all changed rows
+                    changed_top_left = self.index(
+                        min(changed_top_left.row(), idx.row()),
+                        0,
+                        idx.parent(),
+                    )
+                    changed_bottom_right = self.index(
+                        max(changed_bottom_right.row(), idx.row()),
+                        0,
+                        idx.parent(),
+                    )
+
+        if changed_top_left is not None:
+            self.dataChanged.emit(
+                changed_top_left,
+                changed_bottom_right,
+                [FOLDER_THUMBNAIL_PATH_ROLE],
+            )
+
 
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self):
@@ -412,10 +742,15 @@ class FoldersWidget(QtWidgets.QWidget):
         controller,
         parent,
         handle_expected_selection=False,
+        show_thumbnails=False,
     ):
         super().__init__(parent)
 
-        folders_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        # Choose row height based on whether thumbnails are requested
+        row_height = THUMBNAIL_ROW_HEIGHT if show_thumbnails else 23
+        folders_view = AYTreeView(
+            self, item_height=row_height, item_padding=[1, 6]
+        )
         folders_view.setHeaderHidden(True)
         folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
@@ -425,6 +760,13 @@ class FoldersWidget(QtWidgets.QWidget):
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         folders_view.setModel(folders_proxy_model)
+
+        # Thumbnail delegate — installed when show_thumbnails is True
+        thumbnail_delegate = None
+        if show_thumbnails:
+            thumbnail_delegate = FolderThumbnailDelegate(folders_view)
+            folders_view.setItemDelegate(thumbnail_delegate)
+            folders_model.set_thumbnails_enabled(True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -456,6 +798,7 @@ class FoldersWidget(QtWidgets.QWidget):
         self._folders_view = folders_view
         self._folders_model = folders_model
         self._folders_proxy_model = folders_proxy_model
+        self._thumbnail_delegate = thumbnail_delegate
 
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection = None
@@ -503,6 +846,40 @@ class FoldersWidget(QtWidgets.QWidget):
     def set_header_visible(self, visible: bool):
         self._folders_view.setHeaderHidden(not visible)
 
+    def set_thumbnails_visible(self, visible: bool):
+        """Show or hide folder thumbnails at runtime.
+
+        Installs (or removes) :class:`FolderThumbnailDelegate` and
+        adjusts the row height.  When enabling thumbnails for the first
+        time the model will start fetching them on the next refresh.
+
+        Args:
+            visible (bool): ``True`` to show thumbnails.
+        """
+        if visible:
+            if self._thumbnail_delegate is None:
+                self._thumbnail_delegate = FolderThumbnailDelegate(
+                    self._folders_view
+                )
+            self._folders_view.setItemDelegate(self._thumbnail_delegate)
+            self._folders_model.set_thumbnails_enabled(True)
+            # Trigger a re-fetch so thumbnails appear on the current project
+            self._folders_model.refresh()
+        else:
+            # Reset to the AYTreeView built-in delegate
+            from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+            from ayon_core.ui.style_types import get_ayon_style
+            default_delegate = TreeViewItemDelegate(
+                parent=self._folders_view,
+                style_model=get_ayon_style().model,
+                variant="default",
+                item_height=23,
+            )
+            self._folders_view.setItemDelegate(default_delegate)
+            self._folders_model.set_thumbnails_enabled(False)
+            if self._thumbnail_delegate is not None:
+                self._thumbnail_delegate.invalidate_cache()
+
     def refresh(self):
         """Refresh folders model.
 
@@ -529,7 +906,9 @@ class FoldersWidget(QtWidgets.QWidget):
         Args:
             project_name (str): Project name.
         """
-
+        # Invalidate cached pixmaps from the previous project
+        if self._thumbnail_delegate is not None:
+            self._thumbnail_delegate.invalidate_cache()
         self._folders_model.set_project_name(project_name)
 
     def get_selected_folder_id(self):

@@ -74,7 +74,9 @@ from .projects_widget import (
 from .folders_widget import (
     FoldersWidget,
     FoldersQtModel,
+    FolderThumbnailDelegate,
     FOLDERS_MODEL_SENDER_NAME,
+    FOLDER_THUMBNAIL_PATH_ROLE,
     SimpleFoldersWidget,
     FoldersFiltersWidget,
 )
@@ -159,7 +161,9 @@ __all__ = (
 
     "FoldersWidget",
     "FoldersQtModel",
+    "FolderThumbnailDelegate",
     "FOLDERS_MODEL_SENDER_NAME",
+    "FOLDER_THUMBNAIL_PATH_ROLE",
     "SimpleFoldersWidget",
     "FoldersFiltersWidget",
 
