@@ -137,7 +137,7 @@ class ReportLog:
                 type="error",
                 message=msg,
                 lineno=line_no,
-                filename= str(fname),
+                filename=str(fname),
                 func=str(func),
                 traceback=exception.formatted_traceback,
                 is_validation_error=result.get(
@@ -844,4 +844,3 @@ class PublishReportMaker:
             plugin_info = PublishPluginReportInfo.from_plugin(plugin)
             self._plugin_info_by_id[plugin.id] = plugin_info
             self._report.plugins_info.append(plugin_info)
-

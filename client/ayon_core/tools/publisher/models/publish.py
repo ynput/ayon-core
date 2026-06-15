@@ -823,7 +823,7 @@ class PublishModel:
 
         self._controller.emit_card_message("Action finished.")
 
-    def _emit_event(self, topic: str, data: dict[str, Any] | NOne = None):
+    def _emit_event(self, topic: str, data: dict[str, Any] | None = None):
         self._controller.emit_event(topic, data, PUBLISH_EVENT_SOURCE)
 
     def _set_finished(self, value: bool):

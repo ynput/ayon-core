@@ -662,7 +662,6 @@ class _SortHelper:
         yield self.instance.label, other.instance.label
         yield self.instance.name, other.instance.name
 
-
     def __ge__(self, other):
         if self == other:
             return True
