@@ -51,7 +51,6 @@ class FilterCriterion:
     attribute_label: str
     values: list[str] = field(default_factory=list)
     use_substring: bool = False
-    exclude: bool = False
 
     def to_def(self) -> dict[str, Any]:
         """Serialise this criterion to the View payload condition format.
@@ -65,7 +64,6 @@ class FilterCriterion:
             "label": self.attribute_label,
             "values": list(self.values),
             "useSubstring": self.use_substring,
-            "exclude": self.exclude,
         }
 
     @classmethod
@@ -86,7 +84,6 @@ class FilterCriterion:
             attribute_label=str(payload.get("label", payload.get("key", ""))),
             values=[str(v) for v in raw_values],
             use_substring=bool(payload.get("useSubstring", False)),
-            exclude=bool(payload.get("exclude", False)),
         )
 
 
@@ -245,14 +242,12 @@ class _FilterDropdown(AYDropdownPopup):
 
     Signals:
         criterion_ready: Emitted when the user clicks Apply.
-                         Passes (key, values, use_substring, excludes).
+                         Passes (key, values, use_substring).
         popup_closed: Inherited from ``AYDropdownPopup``. Emitted when
             the popup is dismissed.
     """
 
-    criterion_ready = Signal(
-        str, list, bool, bool
-    )  # key, values, use_substring
+    criterion_ready = Signal(str, list, bool)  # key, values, use_substring
 
     def __init__(
         self,
@@ -351,11 +346,6 @@ class _FilterDropdown(AYDropdownPopup):
         self._back_btn.clicked.connect(self._go_to_attribute_page)
         footer.add_widget(self._back_btn)
         footer.addStretch()
-        self._exclude_checkbox = AYCheckBox(
-            "Excludes",
-            variant=AYCheckBox.Variants.Button,
-        )
-        footer.add_widget(self._exclude_checkbox)
         self._apply_btn = AYButton(
             "Confirm",
             variant=AYButton.Variants.Filled,
@@ -544,10 +534,8 @@ class _FilterDropdown(AYDropdownPopup):
             ]
             use_substring = False
 
-        excludes = self._exclude_checkbox.isChecked()
-
         self.criterion_ready.emit(
-            self._current_key, values, use_substring, excludes
+            self._current_key, values, use_substring
         )
         self.close()
 
@@ -607,10 +595,8 @@ class _CriterionBadge(AYContainer):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         front_icon = AYLabel(
-            icon="check_small"
-            if not criterion.exclude
-            else "do_not_disturb_on",
-            icon_size=16 if not criterion.exclude else 12,
+            icon="check_small",
+            icon_size=16,
         )
         self.add_widget(front_icon)
 
@@ -793,7 +779,7 @@ class AYTableFilter(AYContainer):
     # ------------------------------------------------------------------
 
     def _on_criterion_ready(
-        self, key: str, values: list[str], use_substring: bool, excludes: bool
+        self, key: str, values: list[str], use_substring: bool
     ) -> None:
         if not values:
             # Empty apply — remove existing criterion for this key if any
@@ -819,7 +805,6 @@ class AYTableFilter(AYContainer):
                         attribute_label=label,
                         values=values,
                         use_substring=use_substring,
-                        exclude=excludes,
                     )
                 )
 

@@ -520,7 +520,6 @@ if __name__ == "__main__":  # pragma: no cover
                             "label": "Status",
                             "values": ["Approved"],
                             "useSubstring": False,
-                            "exclude": False,
                         }
                     ],
                     operator="and",
