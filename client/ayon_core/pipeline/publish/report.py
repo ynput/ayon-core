@@ -140,7 +140,9 @@ class ReportLog:
                 filename= str(fname),
                 func=str(func),
                 traceback=exception.formatted_traceback,
-                is_validation_error=result.get("is_validation_error", False),
+                is_validation_error=result.get(
+                    "is_validation_error", False
+                ),
             ))
 
         return output
@@ -271,7 +273,9 @@ class PublishPluginReportInfo:
         )
 
     @classmethod
-    def from_plugin(cls, plugin: pyblish.api.Plugin) -> PublishPluginReportInfo:
+    def from_plugin(
+        cls, plugin: pyblish.api.Plugin
+    ) -> PublishPluginReportInfo:
         label = None
         if hasattr(plugin, "label"):
             label = plugin.label
@@ -827,10 +831,12 @@ class PublishReportMaker:
     ) -> None:
         for plugin in publish_plugins:
             if plugin.id in self._plugin_info_by_id:
-                # A plugin would be processed more than once. What can cause it:
-                #   - there is a bug in controller
+                # A plugin would be processed more than once.
+                #   What can cause it:
+                #   - there is a bug in iteration logic
                 #   - plugin class is imported into multiple files
-                #       - this can happen even with base classes from 'pyblish'
+                #       - this can happen even with base classes from
+                #            'pyblish'
                 raise ValueError(
                     f"Plugin '{plugin}' is already stored"
                 )

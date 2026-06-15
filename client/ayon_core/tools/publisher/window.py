@@ -5,7 +5,7 @@ import json
 import time
 import collections
 import copy
-from typing import Optional, Any
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
