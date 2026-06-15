@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 import inspect
@@ -342,9 +343,11 @@ class PublishInstanceInfo:
         }
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]) -> PublishInstanceInfo:
+    def from_data(
+        cls, data: dict[str, Any], instance_id: str
+    ) -> PublishInstanceInfo:
         return cls(
-            id=data["id"],
+            id=instance_id,
             name=data.get("name"),
             label=data["label"],
             product_type=data.get("product_type"),
@@ -389,10 +392,117 @@ class LogsSummary:
     errored_plugin_ids: set[str]
 
 
+class _PublishReportDataUpdate:
+    """Update report data from older versions of reports.
+
+    The object is working with report data in dictionary form
+        and updates it in place.
+
+    If you trigger 'process' the data object you pass in might be modified.
+
+    """
+    def __init__(
+        self,
+        data: dict[str, Any],
+        filepath: str | None = None,
+    ) -> None:
+        self.data: dict[str, Any] = data
+        self.filepath: str | None = filepath
+        self.changed: bool = False
+        self.version: tuple[int, int, int] = self._parse_version()
+
+    def process(self) -> None:
+        """Trigger the conversion of data."""
+        self._fix_version()
+        self._fill_id()
+        self._fix_created_at()
+        self._update_instances()
+
+    def _parse_version(self) -> tuple[int, int, int]:
+        version_str = self.data.get("report_version") or "0.0.1"
+        parts = version_str.split(".")
+        if len(parts) >= 3:
+            maj, minor, patch = parts[:3]
+            return int(maj), int(minor), int(patch)
+        return 0, 0, 1
+
+    def _fill_id(self) -> None:
+        item_id = self.data.get("id")
+        if not item_id:
+            item_id = uuid.uuid4().hex
+            self.changed = True
+            self.data["id"] = item_id
+
+    def _fix_version(self) -> None:
+        # Key 'report_version' was added in report version 1.0.0
+        version = self.data.get("report_version")
+        if version:
+            return
+
+        self.data["report_version"] = ".".join(str(p) for p in self.version)
+        self.changed = True
+
+    def _fix_created_at(self) -> None:
+        # Key 'create_at' was added in report version 1.0.1
+        created_at = self.data.get("created_at")
+        if created_at:
+            return
+
+        file_modified = None
+        if self.filepath:
+            file_modified = os.path.getmtime(self.filepath)
+
+        # Auto fix 'created_at', use file modification time if it is not set
+        #   or current time if modification could not be received.
+        if file_modified is not None:
+            created_at_obj = arrow.Arrow.fromtimestamp(file_modified)
+        else:
+            created_at_obj = arrow.utcnow()
+        self.data["created_at"] = created_at_obj.to("local").isoformat()
+        self.changed = True
+
+    def _update_instances(self) -> None:
+        instances = self.data.get("instances")
+        if not instances or not isinstance(instances, dict):
+            return
+
+        has_family = fill_id = fill_pt = fill_pbt = False
+        for first_instance in instances.values():
+            fill_id = "id" not in first_instance
+            fill_pt = "product_type" not in first_instance
+            fill_pbt = "product_base_type" not in first_instance
+            has_family = "family" in first_instance
+            break
+
+        changed = fill_id or fill_pt or fill_pbt
+        if not changed:
+            return
+
+        # Something is terribly wrong
+        if not has_family:
+            return
+
+        self.changed = True
+        for instance_id, instance in instances.items():
+            if fill_id:
+                instance["id"] = instance_id
+
+            if fill_pbt and fill_pt:
+                product_base_type = instance["family"]
+                instance["product_type"] = product_base_type
+                instance["product_base_type"] = product_base_type
+            elif fill_pbt:
+                product_base_type = instance["product_type"]
+                instance["product_base_type"] = product_base_type
+            elif fill_pt:
+                product_type = instance["product_base_type"]
+                instance["product_type"] = product_type
+
+
 @dataclass
 class PublishReport:
-    # TODO add conversions from older versions
     version: str = "1.1.1"
+    label: str = ""
     id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=_new_created_at)
     crashed_filepaths: dict[str, str] = field(default_factory=dict)
@@ -406,7 +516,11 @@ class PublishReport:
     )
 
     def to_data(self, current_plugin_id: str | None = None) -> dict[str, Any]:
+        label = self.label
+        if not label:
+            label = self.created_at
         return {
+            "label": label,
             "plugins_data": [
                 p.to_data(current_plugin_id) for p in self.plugins_info
             ],
@@ -424,15 +538,6 @@ class PublishReport:
 
     def update_created_at(self) -> None:
         self.created_at = _new_created_at()
-
-    def set_publish_instances(
-        self, instances: Iterable[pyblish.api.Instance]
-    ) -> None:
-        instances_by_id = {
-            instance.id: PublishInstanceInfo.from_instance(instance)
-            for instance in instances
-        }
-        self.instances_by_id = instances_by_id
 
     def get_logs_summary(self) -> LogsSummary:
         warned_instance_ids = set()
@@ -488,30 +593,52 @@ class PublishReport:
     @classmethod
     def from_filepath(cls, filepath: str) -> PublishReport:
         with open(filepath, "r") as stream:
-            data = stream.read()
+            content = stream.read()
 
-        cls.from_data(json.loads(data))
+        data = json.loads(content)
+        updater = _PublishReportDataUpdate(data, filepath)
+        updater.process()
+        if updater.changed:
+            with open(filepath, "w") as stream:
+                json.dump(data, stream)
+
+        return cls.from_data(data, skip_data_update=True)
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]) -> PublishReport:
+    def from_data(
+        cls,
+        data: dict[str, Any],
+        *,
+        skip_data_update: bool = False,
+    ) -> PublishReport:
+        if not skip_data_update:
+            updater = _PublishReportDataUpdate(data)
+            updater.process()
         return cls(
             id=data["id"],
+            label=data["label"],
             version=data["report_version"],
             created_at=data["created_at"],
-            crashed_filepaths=data["crashed_file_paths"],
-            blocking_crashed_paths=data["blocking_crashed_paths"],
+            crashed_filepaths=data.get("crashed_file_paths", {}),
+            blocking_crashed_paths=data.get("blocking_crashed_paths", []),
             context=data["context"],
             plugins_info=[
                 PublishPluginReportInfo.from_data(plugin_info)
                 for plugin_info in data["plugins_data"]
             ],
             instances_by_id={
-                instance_id: PublishInstanceInfo.from_data(instance_info)
+                instance_id: PublishInstanceInfo.from_data(
+                    instance_info, instance_id
+                )
                 for (
                     instance_id, instance_info
                 ) in data["instances"].items()
             },
         )
+
+    def store_to_file(self, filepath: str) -> None:
+        with open(filepath, "w") as stream:
+            json.dump(self.to_data(), stream)
 
 
 class PublishReportMaker:
@@ -684,9 +811,10 @@ class PublishReportMaker:
         if self._instances_updated:
             return
 
-        self._report.set_publish_instances(
-            self._all_instances_by_id.values()
-        )
+        self._report.instances_by_id = {
+            instance.id: PublishInstanceInfo.from_instance(instance)
+            for instance in self._all_instances_by_id.values()
+        }
         self._instances_updated = True
 
     def _prepare_publish_plugin_items(
