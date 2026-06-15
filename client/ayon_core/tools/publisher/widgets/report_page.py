@@ -16,6 +16,7 @@ from ayon_core.pipeline.publish.report import (
     PublishInstanceInfo,
     ReportLog,
     LogsSummary,
+    CONTEXT_ID,
 )
 from ayon_core.tools.utils import (
     BaseClickableFrame,
@@ -29,7 +30,6 @@ from ayon_core.tools.utils import (
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
-    CONTEXT_ID,
     CONTEXT_LABEL,
 )
 
@@ -51,7 +51,7 @@ INFO_VISIBLE = 1 << 6
 @dataclass
 class ReportLogWrap:
     log: ReportLog
-    instance_id: str | None
+    instance_id: str
     plugin_id: str
 
 
@@ -705,9 +705,10 @@ class PublishInstanceCardWidget(BaseClickableFrame):
 
     def __init__(
         self,
-        instance: PublishInstanceInfo,
-        logs_summary: LogsSummary,
+        instance_id: str,
+        label: str,
         icon,
+        logs_summary: LogsSummary,
         publish_can_continue: bool,
         parent: QtWidgets.QWidget,
     ):
@@ -718,9 +719,8 @@ class PublishInstanceCardWidget(BaseClickableFrame):
         icon_widget = IconValuePixmapLabel(icon, self)
         icon_widget.setObjectName("ProductTypeIconLabel")
 
-        label_widget = QtWidgets.QLabel(instance.label, self)
+        label_widget = QtWidgets.QLabel(label, self)
 
-        instance_id = instance.id
         if instance_id in logs_summary.errored_instance_ids:
             state_pix = self.get_error_pix()
         elif instance_id in logs_summary.warned_instance_ids:
@@ -742,7 +742,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
         #   left side
         self.setLayoutDirection(QtCore.Qt.LeftToRight)
 
-        self._id = instance.id
+        self._id = instance_id
 
         self._selected = False
 
@@ -933,6 +933,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
             instance_info.creator_identifier
             for instance_info in report.instances_by_id.values()
         }
+        identifiers.add(CONTEXT_ID)
         identifier_icons = {
             identifier: self._controller.get_creator_icon(identifier)
             for identifier in identifiers
@@ -949,6 +950,20 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
                 continue
             instances_by_family[instance_info.family].append(instance_info)
 
+        context_widget = PublishInstanceCardWidget(
+            CONTEXT_ID,
+            report.context.label,
+            identifier_icons[CONTEXT_ID],
+            logs_summary,
+            publish_can_continue,
+            self._instance_view
+        )
+        context_widget.selection_requested.connect(self._on_selection_request)
+        self._instance_layout.addWidget(context_widget, 0)
+
+        widgets.append(context_widget)
+        self._widgets_by_instance_id[context_widget.id] = context_widget
+
         sorted_by_family = sorted(
             instances_by_family.items(), key=lambda i: i[0]
         )
@@ -964,9 +979,10 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
                 icon = identifier_icons[instance_info.creator_identifier]
 
                 widget = PublishInstanceCardWidget(
-                    instance_info,
-                    logs_summary,
+                    instance_info.id,
+                    instance_info.label,
                     icon,
+                    logs_summary,
                     publish_can_continue,
                     self._instance_view
                 )
@@ -1444,6 +1460,14 @@ class InstancesLogsView(QtWidgets.QFrame):
             )
             for instance in instances
         ]
+        instance_logs.insert(
+            0,
+            (
+                CONTEXT_ID,
+                report.context.label,
+                logs_by_instance_id[CONTEXT_ID]
+            )
+        )
 
         self._instance_logs = instance_logs
         self._update_needed: bool = True

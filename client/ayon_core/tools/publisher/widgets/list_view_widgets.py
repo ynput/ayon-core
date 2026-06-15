@@ -35,6 +35,8 @@ from ayon_core.pipeline.create import (
     InstanceContextInfo,
     ParentFlags,
 )
+from ayon_core.pipeline.publish.report import CONTEXT_ID
+
 
 from ayon_core.tools.utils import NiceCheckbox, BaseClickableFrame
 from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
@@ -46,7 +48,6 @@ from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     SORT_VALUE_ROLE,
     IS_GROUP_ROLE,
-    CONTEXT_ID,
     CONTEXT_LABEL,
     GROUP_ROLE,
     CONVERTER_IDENTIFIER_ROLE,

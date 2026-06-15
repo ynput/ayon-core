@@ -10,6 +10,7 @@ from ayon_core.pipeline.publish.report import (
     PublishReport,
     PublishInstanceInfo,
     PublishPluginReportInfo,
+    CONTEXT_ID,
 )
 from ayon_core.tools.utils.lib import html_escape
 from .constants import (
@@ -28,7 +29,7 @@ class InstancesModel(QtGui.QStandardItemModel):
         super().__init__(*args, **kwargs)
 
         self._items_by_id = {}
-        self._plugin_items_by_id = {}
+        self._instance_items_by_id = {}
 
     def get_items_by_id(self):
         return self._items_by_id
@@ -42,7 +43,7 @@ class InstancesModel(QtGui.QStandardItemModel):
         if root_item.rowCount() > 0:
             root_item.removeRows(0, root_item.rowCount())
         self._items_by_id.clear()
-        self._plugin_items_by_id.clear()
+        self._instance_items_by_id.clear()
         if report is None:
             return
 
@@ -55,9 +56,19 @@ class InstancesModel(QtGui.QStandardItemModel):
         families = set(instance_items_by_family)
         families.discard(None)
         all_families = list(sorted(families))
-        all_families.insert(0, None)
 
-        family_items = []
+        context_label = html_escape(report.context.label)
+        context_item = QtGui.QStandardItem(context_label)
+        context_item.setData(context_label, ITEM_LABEL_ROLE)
+        context_item.setData(
+            CONTEXT_ID in errored_instance_ids, ITEM_ERRORED_ROLE
+        )
+        context_item.setData(CONTEXT_ID, ITEM_ID_ROLE)
+        context_item.setData(False, ITEM_IS_GROUP_ROLE)
+        context_item.setData(False, INSTANCE_REMOVED_ROLE)
+        self._instance_items_by_id[CONTEXT_ID] = context_item
+
+        family_items = [context_item]
         for family in all_families:
             items = []
             instance_items = instance_items_by_family[family]
@@ -81,7 +92,7 @@ class InstancesModel(QtGui.QStandardItemModel):
                 item.setData(False, ITEM_IS_GROUP_ROLE)
                 items.append(item)
                 self._items_by_id[instance_id] = item
-                self._plugin_items_by_id[instance_id] = item
+                self._instance_items_by_id[instance_id] = item
 
             if family is None:
                 family_items.extend(items)

@@ -6,7 +6,7 @@ from dataclasses import InitVar, dataclass, field
 import inspect
 import json
 import logging
-from typing import Any, Literal, Iterable, Generator
+from typing import Any, Literal, Generator
 import traceback
 import uuid
 
@@ -16,6 +16,8 @@ import pyblish.api
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
 from .lib import get_publish_instance_label
+
+CONTEXT_ID = "context"
 
 
 @dataclass
@@ -171,7 +173,7 @@ class PublishPluginActionReport:
 
 @dataclass
 class PublishProcessReport:
-    instance_id: str | None
+    instance_id: str
     logs: list[ReportLog]
     process_time: float
 
@@ -185,7 +187,7 @@ class PublishProcessReport:
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> PublishProcessReport:
         return cls(
-            instance_id=data["id"],
+            instance_id=data["id"] or CONTEXT_ID,
             logs=[ReportLog.from_data(log_data) for log_data in data["logs"]],
             process_time=data["process_time"],
         )
@@ -193,7 +195,7 @@ class PublishProcessReport:
     @classmethod
     def from_result(cls, result: dict[str, Any]) -> PublishProcessReport:
         instance = result["instance"]
-        instance_id = None
+        instance_id = CONTEXT_ID
         if instance is not None:
             instance_id = instance.id
         return cls(
@@ -566,7 +568,7 @@ class PublishReport:
         self,
         plugin_ids_filter: set[str | None] | None = None,
         instance_ids_filter: set[str | None] | None = None,
-    ) -> Generator[tuple[str, str | None, ReportLog]]:
+    ) -> Generator[tuple[str, str, ReportLog]]:
         if plugin_ids_filter is not None and not plugin_ids_filter:
             return
 
