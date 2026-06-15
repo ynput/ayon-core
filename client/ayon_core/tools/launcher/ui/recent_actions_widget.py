@@ -1,27 +1,15 @@
-import html
+from qtpy import QtWidgets, QtCore
 
-import qtawesome
-from qtpy import QtWidgets, QtCore, QtGui
-
-from ayon_core.tools.utils import (
-    ElideLabel,
-    SquareButton,
-    get_qt_icon,
-)
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import pretty_timestamp
-
-RECORD_ID_ROLE = QtCore.Qt.UserRole + 1
-_QWIDGETSIZE_MAX = (1 << 24) - 1
+from ayon_core.ui.components import AYButton, AYFrame, AYLabel
+from ayon_core.ui.components.dropdown import AYDropdownPopup
+from ayon_core.ui.components.layouts import AYVBoxLayout, AYHBoxLayout
+from ayon_core.ui.components.scroll_area import AYScrollArea
 
 _TRANSPARENT_ICON_DEF = {"type": "transparent", "size": 256}
-_PLAY_ICON_DEF = {
-    "type": "material-symbols",
-    "name": "play_arrow",
-}
-
-
-def _get_play_icon():
-    return get_qt_icon(_PLAY_ICON_DEF)
+RECORD_ID_ROLE = QtCore.Qt.UserRole + 1
+_QWIDGETSIZE_MAX = (1 << 24) - 1
 
 
 def _build_breadcrumb(action_item, controller=None) -> str:
@@ -126,62 +114,16 @@ def _get_recent_action_icon(action_item, controller, fallback_icon):
     return fallback_icon
 
 
-class _RecentActionBreadcrumbLabel(ElideLabel):
-    """Breadcrumbs, but elide text when too long"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.set_elide_mode(QtCore.Qt.ElideMiddle)
-
-    def sizeHint(self):
-        hint = super().sizeHint()
-        text = getattr(self, "_text", "")
-        if text:
-            width = self.fontMetrics().horizontalAdvance(text)
-            hint.setWidth(width)
-        return hint
-
-    def minimumSizeHint(self):
-        hint = super().minimumSizeHint()
-        hint.setWidth(0)
-        return hint
-
-
 class _RecentActionRow(QtWidgets.QWidget):
-    """Single row in the recent-actions popup.
-
-    Emits navigate_requested / replay_requested with the record_id.
-    Row click navigates to the stored context; the side button re-runs the
-    action.  Highlights the entire row on hover so it behaves like a menu
-    entry.
-    """
+    """Single row: icon + label/breadcrumb + timestamp + replay button."""
 
     navigate_requested = QtCore.Signal(str)
     replay_requested = QtCore.Signal(str)
 
-    _play_icon = None
-
-    @classmethod
-    def _get_play_icon(cls):
-        if cls._play_icon is None:
-            cls._play_icon = _get_play_icon()
-        return cls._play_icon
-
-    def __init__(
-        self,
-        record_id,
-        icon,
-        label,
-        breadcrumb,
-        timestamp_label,
-        parent=None,
-    ):
+    def __init__(self, record_id, icon, label, breadcrumb, timestamp_label, parent=None):
         super().__init__(parent)
         self._record_id = record_id
-        self._hovered = False
-
-        self.setMouseTracking(True)
         self.setCursor(QtCore.Qt.PointingHandCursor)
-        self.setAttribute(QtCore.Qt.WA_Hover, True)
 
         tooltip_lines = []
         if breadcrumb:
@@ -193,342 +135,162 @@ class _RecentActionRow(QtWidgets.QWidget):
 
         icon_label = QtWidgets.QLabel(self)
         icon_label.setFixedSize(32, 32)
-        icon_label.setAlignment(
-            QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter
-        )
+        icon_label.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         if icon is not None:
-            pixmap = icon.pixmap(28, 28)
-            icon_label.setPixmap(pixmap)
+            icon_label.setPixmap(icon.pixmap(28, 28))
 
-        text_label = QtWidgets.QLabel(self)
-        text_label.setTextFormat(QtCore.Qt.RichText)
-        text_label.setText(f"<b>{html.escape(label)}</b>")
+        text_label = AYLabel(label, bold=True, parent=self)
         text_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        # Breadcrumb line – shown only when context is available
-        breadcrumb_label = _RecentActionBreadcrumbLabel(self)
-        breadcrumb_label.setText(breadcrumb)
-        breadcrumb_label.setAlignment(
-            QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        breadcrumb_label = AYLabel(
+            breadcrumb, dim=True, rel_text_size=-2,
+            elide_mode=QtCore.Qt.ElideMiddle, parent=self,
         )
+        breadcrumb_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         breadcrumb_label.setObjectName("RecentActionBreadcrumb")
-        breadcrumb_font = breadcrumb_label.font()
-        breadcrumb_font.setPointSizeF(breadcrumb_font.pointSizeF() * 0.82)
-        breadcrumb_label.setFont(breadcrumb_font)
         breadcrumb_label.setVisible(bool(breadcrumb))
 
-        timestamp_widget = QtWidgets.QLabel(timestamp_label, self)
-        timestamp_widget.setAlignment(
-            QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        timestamp_widget = AYLabel(
+            timestamp_label, dim=True, rel_text_size=-2, parent=self,
         )
+        timestamp_widget.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         timestamp_widget.setObjectName("RecentActionTimestamp")
         timestamp_widget.setVisible(bool(timestamp_label))
-        timestamp_widget.setAlignment(
-            QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
-        )
-        font_info = QtGui.QFontInfo(timestamp_widget.font())
-        pixel_size = font_info.pixelSize()
-        if pixel_size <= 0:
-            pixel_size = max(9, int(font_info.pointSizeF() * 96 / 72))
-        timestamp_font_size = max(9, int(round(pixel_size * 0.82)))
-        timestamp_color = timestamp_widget.palette().color(
-            QtGui.QPalette.WindowText
-        )
 
-        print((
-                "color: rgba({0}, {1}, {2}, {3});"
-                " font-size: {4}px;"
-            ).format(
-                timestamp_color.red(),
-                timestamp_color.green(),
-                timestamp_color.blue(),
-                timestamp_color.alpha(),
-                timestamp_font_size,
-            ))
-
-        # Dimmed, and sligthly smaller
-        timestamp_widget.setStyleSheet(
-            "color: rgba(211, 216, 222, 255); font-size: 11px;"
-        )
-
-        top_row_layout = QtWidgets.QHBoxLayout()
-        top_row_layout.setContentsMargins(0, 0, 0, 0)
-        top_row_layout.setSpacing(8)
-        top_row_layout.addWidget(text_label, 1)
-        top_row_layout.addWidget(timestamp_widget, 0, QtCore.Qt.AlignVCenter)
-
-        text_layout = QtWidgets.QVBoxLayout()
-        text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.setSpacing(1)
-        text_layout.addLayout(top_row_layout)
-        text_layout.addWidget(breadcrumb_label)
-
-        play_btn = QtWidgets.QPushButton(self)
-        play_btn.setIcon(self._get_play_icon())
-        play_btn.setIconSize(QtCore.QSize(18, 18))
-        play_btn.setToolTip(
-            f"Re-run action: {label}"
-        )
-        play_btn.setFlat(True)
-        play_btn.setSizePolicy(
-            QtWidgets.QSizePolicy.Fixed,
-            QtWidgets.QSizePolicy.Expanding,
+        play_btn = AYButton(
+            variant=AYButton.Variants.Surface,
+            icon="play_arrow", icon_size=18,
+            tooltip=f"Re-run action: {label}",
+            parent=self,
         )
         play_btn.setCursor(QtCore.Qt.PointingHandCursor)
         play_btn.setObjectName("RecentPlayBtn")
 
-        row_layout = QtWidgets.QHBoxLayout(self)
-        row_layout.setContentsMargins(6, 3, 4, 3)
-        row_layout.setSpacing(4)
+        top_row = AYHBoxLayout(margin=0, spacing=8)
+        top_row.addWidget(text_label, 1)
+        top_row.addWidget(timestamp_widget, 0, QtCore.Qt.AlignVCenter)
+
+        text_col = AYVBoxLayout(margin=0, spacing=1)
+        text_col.addLayout(top_row)
+        text_col.addWidget(breadcrumb_label)
+
+        row_layout = AYHBoxLayout(self, margin=4, spacing=4)
         row_layout.addWidget(icon_label, 0, QtCore.Qt.AlignVCenter)
-        row_layout.addLayout(text_layout, 1)
-        row_layout.addSpacing(6)
+        row_layout.addLayout(text_col, 1)
         row_layout.addWidget(play_btn, 0)
 
-        self._icon_label = icon_label
-        self._text_label = text_label
-        self._breadcrumb_label = breadcrumb_label
-        self._timestamp_label = timestamp_widget
         self._play_btn = play_btn
-        self._row_layout = row_layout
-
-        play_btn.clicked.connect(self._on_play_clicked)
-
+        play_btn.clicked.connect(lambda: self.replay_requested.emit(self._record_id))
         self.setObjectName("RecentActionRow")
-        self._update_play_button_size()
-
-    # ------------------------------------------------------------------
-    # Hover highlight – paint a subtle selection background on hover
-
-    def enterEvent(self, event):
-        self._hovered = True
-        self.update()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        self._hovered = False
-        self.update()
-        super().leaveEvent(event)
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        if self._hovered:
-            painter = QtGui.QPainter(self)
-            painter.setRenderHint(QtGui.QPainter.Antialiasing, False)
-            color = self.palette().color(QtGui.QPalette.Highlight)
-            color.setAlpha(60)
-            painter.fillRect(self.rect(), color)
-            painter.end()
-
-    def resizeEvent(self, event):
-        self._update_play_button_size()
-        super().resizeEvent(event)
-
-    # ------------------------------------------------------------------
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             child = self.childAt(event.pos())
-            if child is not self._play_btn and not isinstance(
-                child, QtWidgets.QPushButton
-            ):
+            if not isinstance(child, QtWidgets.QPushButton):
                 self.navigate_requested.emit(self._record_id)
         super().mousePressEvent(event)
 
-    def _on_play_clicked(self):
-        self.replay_requested.emit(self._record_id)
 
-    def _update_play_button_size(self):
-        # Ensure play button matches full size of row
-        margins = self._row_layout.contentsMargins()
-        side = max(
-            28,
-            self.height() - margins.top() - margins.bottom(),
-        )
-        self._play_btn.setFixedSize(side, side)
-        icon_side = max(16, side - 10)
-        self._play_btn.setIconSize(QtCore.QSize(icon_side, icon_side))
-
-
-class RecentActionsPopup(QtWidgets.QFrame):
-    """Popup window listing recent actions.
-
-    Appears as a floating panel positioned near the trigger button.
-    Closes automatically when focus is lost (Qt.Popup behaviour).
-    """
+class RecentActionsPopup(AYDropdownPopup):
+    """Popup listing recent actions, anchored below the trigger button."""
 
     def __init__(self, controller, parent=None):
-        super().__init__(
-            parent,
-            QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint,
-        )
-        self.setObjectName("RecentActionsPopup")
-        self.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.setFrameShadow(QtWidgets.QFrame.Raised)
-
+        super().__init__(parent, variant=AYDropdownPopup.Variants.Low_Framed_Thin)
         self._controller = controller
         self._rows = []
 
-        # Title bar
-        title_label = QtWidgets.QLabel("Recent Actions", self)
+        title_label = AYLabel("Recent Actions", bold=True, parent=self)
         title_label.setObjectName("RecentActionsTitle")
-        font = title_label.font()
-        font.setBold(True)
-        title_label.setFont(font)
         title_label.setContentsMargins(8, 6, 8, 4)
 
-        separator = QtWidgets.QFrame(self)
+        separator = AYFrame(self)
         separator.setFrameShape(QtWidgets.QFrame.HLine)
         separator.setFrameShadow(QtWidgets.QFrame.Sunken)
-        separator.setObjectName("RecentActionsSeparator")
 
-        # Scroll area for rows
-        scroll_area = QtWidgets.QScrollArea(self)
-        scroll_area.setObjectName("RecentActionsScroll")
+        scroll_area = AYScrollArea(self)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAlwaysOff
-        )
-        scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         rows_container = QtWidgets.QWidget(scroll_area)
         rows_container.setObjectName("RecentActionsContainer")
-        rows_layout = QtWidgets.QVBoxLayout(rows_container)
-        rows_layout.setContentsMargins(4, 4, 4, 4)
-        rows_layout.setSpacing(2)
+        self._rows_layout = AYVBoxLayout(rows_container, margin=4, spacing=2)
 
-        empty_label = QtWidgets.QLabel(
-            "No recent actions yet.", rows_container
+        self._empty_label = AYLabel(
+            "No recent actions yet.", dim=True, parent=rows_container
         )
-        empty_label.setObjectName("RecentActionsEmpty")
-        empty_label.setAlignment(QtCore.Qt.AlignCenter)
-        empty_label.setContentsMargins(12, 8, 12, 8)
-        rows_layout.addWidget(empty_label)
-        rows_layout.addStretch(1)
+        self._empty_label.setAlignment(QtCore.Qt.AlignCenter)
+        self._empty_label.setContentsMargins(12, 8, 12, 8)
+        self._rows_layout.addWidget(self._empty_label)
+        self._rows_layout.addStretch(1)
 
         scroll_area.setWidget(rows_container)
+        self._scroll_area = scroll_area
+        self._rows_container = rows_container
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        main_layout = AYVBoxLayout(self, margin=0, spacing=0)
         main_layout.addWidget(title_label, 0)
         main_layout.addWidget(separator, 0)
         main_layout.addWidget(scroll_area, 1)
 
-        self._scroll_area = scroll_area
-        self._rows_container = rows_container
-        self._rows_layout = rows_layout
-        self._empty_label = empty_label
-
         controller.register_event_callback(
-            "recent_actions.changed",
-            self._on_recent_actions_changed,
+            "recent_actions.changed", self._on_recent_actions_changed
         )
 
-    # ------------------------------------------------------------------
-    # Public API
-
     def refresh(self):
-        """Re-fetch recent items from the controller and rebuild rows."""
         items = self._controller.get_recent_action_items()
         self._rebuild_rows(items)
 
     def show_near(self, widget):
-        """Position the popup near *widget* and show it.
-
-        The right edge of the popup aligns with the right edge of *widget*.
-        The popup expands to fit all rows when space allows, and scrolls when
-        content exceeds available vertical screen space.
-        """
         self.refresh()
-
         min_width = max(widget.topLevelWidget().width() // 2, 320)
-        btn_bottom_right = widget.mapToGlobal(
-            QtCore.QPoint(widget.width(), widget.height())
-        )
-        screen = (
-            QtWidgets.QApplication.screenAt(btn_bottom_right)
-            or QtWidgets.QApplication.primaryScreen()
-        )
+        btn_br = widget.mapToGlobal(QtCore.QPoint(widget.width(), widget.height()))
+        screen = QtWidgets.QApplication.screenAt(btn_br) or QtWidgets.QApplication.primaryScreen()
         preferred_width = self.sizeHint().width()
         if screen is not None:
             avail = screen.availableGeometry()
-            max_width = max(min_width, btn_bottom_right.x() - avail.left() - 2)
-            available_h = avail.bottom() - btn_bottom_right.y() - 2
-            self._scroll_area.setMaximumHeight(max(50, available_h))
+            max_width = max(min_width, btn_br.x() - avail.left() - 2)
+            self._scroll_area.setMaximumHeight(max(50, avail.bottom() - btn_br.y() - 2))
         else:
             avail = None
             max_width = max(min_width, preferred_width)
-
-        target_width = min(max(preferred_width, min_width), max_width)
-        self.setMinimumWidth(target_width)
+        target_w = min(max(preferred_width, min_width), max_width)
+        self.setMinimumWidth(target_w)
         self.setMaximumWidth(max_width)
-
         self.adjustSize()
-
-        popup_w = target_width
-        popup_h = self.height()
-        x = btn_bottom_right.x() - popup_w
-        y = btn_bottom_right.y() + 2
-
-        # Clamp horizontal position to keep popup on screen.
+        x = btn_br.x() - target_w
+        y = btn_br.y() + 2
         if avail is not None:
-            x = max(avail.left(), min(x, avail.right() - popup_w))
-            y = max(avail.top(), min(y, avail.bottom() - popup_h))
-
+            x = max(avail.left(), min(x, avail.right() - target_w))
+            y = max(avail.top(), min(y, avail.bottom() - self.height()))
         self.move(x, y)
-        self.resize(popup_w, popup_h)
+        self.resize(target_w, self.height())
         self.show()
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-
     def _rebuild_rows(self, items):
-        # Remove existing rows
         for row in self._rows:
             self._rows_layout.removeWidget(row)
-            row.setVisible(False)
             row.deleteLater()
         self._rows = []
-
-        # Remove stretch placeholder if present
         while self._rows_layout.count() > 1:
             item = self._rows_layout.takeAt(1)
             if item and item.widget():
                 item.widget().deleteLater()
 
-        has_items = bool(items)
-        self._empty_label.setVisible(not has_items)
-
-        transparent_icon = get_qt_icon(_TRANSPARENT_ICON_DEF)
+        self._empty_label.setVisible(not bool(items))
+        fallback = get_qt_icon(_TRANSPARENT_ICON_DEF)
         for action_item in items:
-            icon = _get_recent_action_icon(
-                action_item,
-                self._controller,
-                transparent_icon,
-            )
-            breadcrumb = _build_breadcrumb(action_item, self._controller)
-            timestamp_label = pretty_timestamp(action_item.timestamp) or ""
+            icon = _get_recent_action_icon(action_item, self._controller, fallback)
             row = _RecentActionRow(
-                action_item.record_id,
-                icon,
-                action_item.label,
-                breadcrumb,
-                timestamp_label,
+                action_item.record_id, icon, action_item.label,
+                _build_breadcrumb(action_item, self._controller),
+                pretty_timestamp(action_item.timestamp) or "",
                 self._rows_container,
             )
             row.navigate_requested.connect(self._on_navigate)
             row.replay_requested.connect(self._on_replay)
             self._rows_layout.addWidget(row)
             self._rows.append(row)
-
-        # Keep stretch at bottom
         self._rows_layout.addStretch(1)
-
-        # Reset any previously applied height cap so show_near() can size
-        # the popup against actual available screen space instead of a fixed
-        # row-height estimate.
-        self._scroll_area.setMinimumHeight(0)
         self._scroll_area.setMaximumHeight(_QWIDGETSIZE_MAX)
 
     def _on_navigate(self, record_id):
@@ -544,19 +306,18 @@ class RecentActionsPopup(QtWidgets.QFrame):
             self.refresh()
 
 
-class RecentActionsButton(SquareButton):
+class RecentActionsButton(AYButton):
     """Icon-only button that shows/hides the recent-actions popup."""
 
     def __init__(self, controller, parent=None):
-        super().__init__(parent)
-
-        icon = qtawesome.icon("fa.history", color="white")
-        self.setIcon(icon)
-        self.setToolTip("Recent Actions")
+        super().__init__(
+            icon="history",
+            variant=AYButton.Variants.Surface,
+            tooltip="Recent Actions",
+            parent=parent,
+        )
         self.setObjectName("RecentActionsButton")
-
         self._popup = RecentActionsPopup(controller, self)
-
         self.clicked.connect(self._on_clicked)
 
     def _on_clicked(self):

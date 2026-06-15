@@ -87,6 +87,8 @@ class LauncherWindow(AYContainer):
             parent=projects_header_widget,
         )
 
+        recent_actions_btn = RecentActionsButton(controller, projects_header_widget)
+
         projects_header_layout = AYHBoxLayout(projects_header_widget, margin=0, spacing=4)
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)

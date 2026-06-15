@@ -68,6 +68,7 @@ class HierarchyPage(QtWidgets.QWidget):
             parent=header_widget,
         )
 
+        recent_actions_btn = RecentActionsButton(controller, header_widget)
 
         header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(btn_back, 0)
