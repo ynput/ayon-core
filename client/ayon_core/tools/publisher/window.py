@@ -13,6 +13,7 @@ from ayon_core import (
     resources,
     style
 )
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.tools.utils import (
     ErrorMessageBox,
     PlaceholderLineEdit,
@@ -691,18 +692,19 @@ class PublisherWindow(QtWidgets.QDialog):
     def _update_publish_details_widget(
         self,
         force: bool = False,
-        report_data: Optional[dict[str, Any]] = None,
+        report: PublishReport | None = None,
     ) -> None:
         if (
-            report_data is None
+            report is None
             and not force
             and not self._is_on_details_tab()
         ):
             return
 
-        if report_data is None:
-            report_data = self._controller.get_publish_report()
-        self._publish_details_widget.set_report_data(report_data)
+        if report is None:
+            report = self._controller.get_publish_report()
+
+        self._publish_details_widget.set_report(report)
 
     def _on_help_click(self):
         if self._help_dialog.isVisible():
@@ -928,10 +930,10 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_overlay_visibility(False)
         self._set_publish_visibility(False)
 
-        report_data = self._controller.get_publish_report()
-        blocked = bool(report_data["blocking_crashed_paths"])
+        report = self._controller.get_publish_report()
+        blocked = bool(report.blocking_crashed_paths)
         self._set_blocked(blocked)
-        self._update_publish_details_widget(report_data=report_data)
+        self._update_publish_details_widget(report=report)
 
     def _on_controller_reset(self):
         self._update_publish_details_widget(force=True)

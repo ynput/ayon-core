@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 import inspect
 import logging
@@ -5,7 +7,7 @@ import traceback
 import collections
 from contextlib import contextmanager
 from functools import partial
-from typing import Optional, Dict, List, Union, Any, Iterable
+from typing import Any, Iterable, Generator
 
 import pyblish.plugin
 
@@ -19,7 +21,10 @@ from ayon_core.pipeline.publish import (
     PublishError,
     filter_crashed_publish_paths,
 )
-from ayon_core.pipeline.publish.report import PublishReportMaker
+from ayon_core.pipeline.publish.report import (
+    PublishReportMaker,
+    PublishReport,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
@@ -51,15 +56,15 @@ class PublishErrorInfo:
         self,
         message: str,
         is_unknown_error: bool,
-        description: Optional[str] = None,
-        title: Optional[str] = None,
-        detail: Optional[str] = None,
+        description: str | None = None,
+        title: str | None = None,
+        detail: str | None = None,
     ):
         self.message: str = message
         self.is_unknown_error = is_unknown_error
         self.description: str = description or message
-        self.title: Optional[str] = title or "Unknown error"
-        self.detail: Optional[str] = detail
+        self.title: str = title or "Unknown error"
+        self.detail: str | None = detail
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, PublishErrorInfo):
@@ -108,7 +113,7 @@ class PublishPluginActionItem:
             attribute which define  when can be action triggered
             (e.g. 'all', 'failed', ...).
         label (str): Action's label.
-        icon (Optional[str]) Action's icon.
+        icon (str | None) Action's icon.
     """
 
     def __init__(
@@ -118,22 +123,22 @@ class PublishPluginActionItem:
         active: bool,
         on_filter: str,
         label: str,
-        icon: Optional[str],
+        icon: str | None,
     ):
         self.action_id: str = action_id
         self.plugin_id: str = plugin_id
         self.active: bool = active
         self.on_filter: str = on_filter
         self.label: str = label
-        self.icon: Optional[str] = icon
+        self.icon: str | None = icon
 
-    def to_data(self) -> Dict[str, Any]:
+    def to_data(self) -> dict[str, str | bool | None]:
         """Serialize object to dictionary.
 
         Returns:
-            Dict[str, Union[str,bool,None]]: Serialized object.
-        """
+            dict[str, str | bool | None]: Serialized object.
 
+        """
         return {
             "action_id": self.action_id,
             "plugin_id": self.plugin_id,
@@ -144,11 +149,13 @@ class PublishPluginActionItem:
         }
 
     @classmethod
-    def from_data(cls, data: Dict[str, Any]) -> "PublishPluginActionItem":
+    def from_data(
+        cls, data: dict[str, str | bool | None]
+    ) -> "PublishPluginActionItem":
         """Create object from data.
 
         Args:
-            data (Dict[str, Union[str,bool,None]]): Data used to recreate
+            data (dict[str, str | bool | None]): Data used to recreate
                 object.
 
         Returns:
@@ -172,14 +179,14 @@ class PublishPluginsProxy:
             to run an action is needed combination of plugin and action.
 
     Args:
-        plugins [List[pyblish.api.Plugin]]: Discovered plugins that will be
+        plugins [list[pyblish.api.Plugin]]: Discovered plugins that will be
             processed.
     """
 
-    def __init__(self, plugins: List[pyblish.api.Plugin]):
-        plugins_by_id: Dict[str, pyblish.api.Plugin] = {}
-        actions_by_plugin_id: Dict[str, Dict[str, pyblish.api.Action]] = {}
-        action_ids_by_plugin_id: Dict[str, List[str]] = {}
+    def __init__(self, plugins: list[pyblish.api.Plugin]):
+        plugins_by_id: dict[str, pyblish.api.Plugin] = {}
+        actions_by_plugin_id: dict[str, dict[str, pyblish.api.Action]] = {}
+        action_ids_by_plugin_id: dict[str, list[str]] = {}
         for plugin in plugins:
             plugin_id = plugin.id
             plugins_by_id[plugin_id] = plugin
@@ -195,11 +202,11 @@ class PublishPluginsProxy:
                 action_ids.append(action_id)
                 actions_by_id[action_id] = action
 
-        self._plugins_by_id: Dict[str, pyblish.api.Plugin] = plugins_by_id
-        self._actions_by_plugin_id: Dict[
-            str, Dict[str, pyblish.api.Action]
+        self._plugins_by_id: dict[str, pyblish.api.Plugin] = plugins_by_id
+        self._actions_by_plugin_id: dict[
+            str, dict[str, pyblish.api.Action]
         ] = actions_by_plugin_id
-        self._action_ids_by_plugin_id: Dict[str, List[str]] = (
+        self._action_ids_by_plugin_id: dict[str, list[str]] = (
             action_ids_by_plugin_id
         )
 
@@ -228,14 +235,14 @@ class PublishPluginsProxy:
 
     def get_plugin_action_items(
         self, plugin_id: str
-    ) -> List[PublishPluginActionItem]:
+    ) -> list[PublishPluginActionItem]:
         """Get plugin action items for plugin by its id.
 
         Args:
             plugin_id (str): Publish plugin id.
 
         Returns:
-            List[PublishPluginActionItem]: Items with information about publish
+            list[PublishPluginActionItem]: Items with information about publish
                 plugin actions.
         """
 
@@ -271,9 +278,9 @@ class PublishErrorItem:
     and UI connection.
 
     Args:
-        instance_id (Optional[str]): Pyblish instance id to which is
+        instance_id (str | None): Pyblish instance id to which is
             publish error connected.
-        instance_label (Optional[str]): Prepared instance label.
+        instance_label (str | None): Prepared instance label.
         plugin_id (str): Pyblish plugin id which triggered the publish
             error. Id is generated using 'PublishPluginsProxy'.
         is_context_plugin (bool): Error happened on context.
@@ -284,8 +291,8 @@ class PublishErrorItem:
     """
     def __init__(
         self,
-        instance_id: Optional[str],
-        instance_label: Optional[str],
+        instance_id: str | None,
+        instance_label: str | None,
         plugin_id: str,
         is_context_plugin: bool,
         is_validation_error: bool,
@@ -293,8 +300,8 @@ class PublishErrorItem:
         description: str,
         detail: str
     ):
-        self.instance_id: Optional[str] = instance_id
-        self.instance_label: Optional[str] = instance_label
+        self.instance_id: str | None = instance_id
+        self.instance_label: str | None = instance_label
         self.plugin_id: str = plugin_id
         self.is_context_plugin: bool = is_context_plugin
         self.is_validation_error: bool = is_validation_error
@@ -302,13 +309,13 @@ class PublishErrorItem:
         self.description: str = description
         self.detail: str = detail
 
-    def to_data(self) -> Dict[str, Any]:
+    def to_data(self) -> dict[str, str | bool | None]:
         """Serialize object to dictionary.
 
         Returns:
-            Dict[str, Union[str, bool, None]]: Serialized object data.
-        """
+            dict[str, str | bool | None]: Serialized object data.
 
+        """
         return {
             "instance_id": self.instance_id,
             "instance_label": self.instance_label,
@@ -325,7 +332,7 @@ class PublishErrorItem:
         cls,
         plugin_id: str,
         error: PublishError,
-        instance: Union[pyblish.api.Instance, None]
+        instance: pyblish.api.Instance | None
     ):
         """Create new object based on resukt from controller.
 
@@ -361,8 +368,8 @@ class PublishErrorsReport:
     """Publish errors report that can be parsed to raw data.
 
     Args:
-        error_items (List[PublishErrorItem]): List of publish errors.
-        plugin_action_items (Dict[str, List[PublishPluginActionItem]]): Action
+        error_items (list[PublishErrorItem]): List of publish errors.
+        plugin_action_items (dict[str, list[PublishPluginActionItem]]): Action
             items by plugin id.
 
     """
@@ -374,14 +381,14 @@ class PublishErrorsReport:
         for item in self._error_items:
             yield item
 
-    def group_items_by_title(self) -> List[Dict[str, Any]]:
+    def group_items_by_title(self) -> list[dict[str, Any]]:
         """Group errors by plugin and their titles.
 
         Items are grouped by plugin and title -> same title from different
         plugin is different item. Items are ordered by plugin order.
 
         Returns:
-            List[Dict[str, Any]]: List where each item title, instance
+            list[dict[str, Any]]: List where each item title, instance
                 information related to title and possible plugin actions.
         """
 
@@ -420,7 +427,7 @@ class PublishErrorsReport:
         """Serialize object to dictionary.
 
         Returns:
-            Dict[str, Any]: Serialized data.
+            dict[str, Any]: Serialized data.
         """
 
         error_items = [
@@ -443,7 +450,7 @@ class PublishErrorsReport:
 
     @classmethod
     def from_data(
-        cls, data: Dict[str, Any]
+        cls, data: dict[str, Any]
     ) -> "PublishErrorsReport":
         """Recreate object from data.
 
@@ -472,10 +479,10 @@ class PublishErrors:
     """Object to keep track about publish errors by plugin."""
 
     def __init__(self):
-        self._plugins_proxy: Union[PublishPluginsProxy, None] = None
-        self._error_items: List[PublishErrorItem] = []
-        self._plugin_action_items: Dict[
-            str, List[PublishPluginActionItem]
+        self._plugins_proxy: PublishPluginsProxy | None = None
+        self._error_items: list[PublishErrorItem] = []
+        self._plugin_action_items: dict[
+            str, list[PublishPluginActionItem]
         ] = {}
 
     def __bool__(self):
@@ -515,14 +522,14 @@ class PublishErrors:
         self,
         plugin: pyblish.api.Plugin,
         error: PublishError,
-        instance: Union[pyblish.api.Instance, None]
+        instance: pyblish.api.Instance | None
     ):
         """Add error from pyblish result.
 
         Args:
             plugin (pyblish.api.Plugin): Plugin which triggered error.
             error (PublishError): Publish error.
-            instance (Union[pyblish.api.Instance, None]): Instance on which was
+            instance (pyblish.api.Instance | None): Instance on which was
                 error raised or None if was raised on context.
         """
 
@@ -548,9 +555,9 @@ class PublishErrors:
 
 
 def collect_families_from_instances(
-    instances: List[pyblish.api.Instance],
-    only_active: Optional[bool] = False
-) -> List[str]:
+    instances: list[pyblish.api.Instance],
+    only_active: bool = False,
+) -> list[str]:
     """Collect all families for passed publish instances.
 
     Args:
@@ -591,7 +598,7 @@ class PublishModel:
         self._publish_comment_is_set: bool = False
 
         # Any other exception that happened during publishing
-        self._publish_error_info: Optional[PublishErrorInfo] = None
+        self._publish_error_info: PublishErrorInfo | None = None
         # Publishing is in progress
         self._publish_is_running: bool = False
         # Publishing is over validation order
@@ -605,7 +612,7 @@ class PublishModel:
         self._publish_max_progress: int = 0
         self._publish_progress: int = 0
 
-        self._publish_plugins: List[pyblish.api.Plugin] = []
+        self._publish_plugins: list[pyblish.api.Plugin] = []
         self._publish_plugins_proxy: PublishPluginsProxy = (
             PublishPluginsProxy([])
         )
@@ -629,9 +636,7 @@ class PublishModel:
         )
 
         # Plugin iterator
-        self._main_thread_iter: collections.abc.Generator[partial] = (
-            self._default_iterator()
-        )
+        self._main_thread_iter: Generator[partial] = self._default_iterator()
 
         self._log_handler: MessageHandler = MessageHandler()
 
@@ -691,7 +696,7 @@ class PublishModel:
     def set_publish_up_validation(self, value: bool):
         self._publish_up_validation = value
 
-    def start_publish(self, wait: Optional[bool] = True):
+    def start_publish(self, wait: bool = True):
         """Run publishing.
 
         Make sure all changes are saved before method is called (Call
@@ -777,7 +782,7 @@ class PublishModel:
     def get_publish_errors_report(self) -> PublishErrorsReport:
         return self._publish_errors.create_report()
 
-    def get_error_info(self) -> Optional[PublishErrorInfo]:
+    def get_error_info(self) -> PublishErrorInfo | None:
         return self._publish_error_info
 
     def set_comment(self, comment: str):
@@ -818,7 +823,7 @@ class PublishModel:
 
         self._controller.emit_card_message("Action finished.")
 
-    def _emit_event(self, topic: str, data: Optional[Dict[str, Any]] = None):
+    def _emit_event(self, topic: str, data: dict[str, Any] | NOne = None):
         self._controller.emit_event(topic, data, PUBLISH_EVENT_SOURCE)
 
     def _set_finished(self, value: bool):
@@ -877,7 +882,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_publish_error_info(self, value: Optional[PublishErrorInfo]):
+    def _set_publish_error_info(self, value: PublishErrorInfo | None):
         if self._publish_error_info != value:
             self._publish_error_info = value
             self._emit_event(
@@ -1081,11 +1086,11 @@ class PublishModel:
 
         self._publish_report.add_result(plugin.id, result)
 
-    def _add_validation_error(self, result: Dict[str, Any]):
+    def _add_validation_error(self, result: dict[str, Any]):
         self._set_has_validation_errors(True)
         self._add_publish_error_to_report(result)
 
-    def _add_publish_error_to_report(self, result: Dict[str, Any]):
+    def _add_publish_error_to_report(self, result: dict[str, Any]):
         self._publish_errors.add_error(
             result["plugin"],
             result["error"],

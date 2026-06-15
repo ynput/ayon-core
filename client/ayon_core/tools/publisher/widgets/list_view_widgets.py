@@ -411,7 +411,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
         )
         self.viewport().setMouseTracking(True)
 
-    def get_selected_instance_ids(self):
+    def get_selected_instance_ids(self) -> set[str]:
         """Ids of selected instances."""
         instance_ids = set()
         for index in self.selectionModel().selectedIndexes():

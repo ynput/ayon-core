@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 import inspect
+import json
 import logging
 from typing import Any, Literal, Iterable, Generator
 import traceback
@@ -53,16 +54,35 @@ class ReportLog:
         return {
             "type": "record",
             "msg": self.message,
-            "name": self.name,
+            "filename": self.filename,
             "lineno": self.lineno,
+            "name": self.name,
             "levelno": self.levelno,
             "levelname": self.levelname,
             "threadName": self.thread_name,
-            "filename": self.filename,
             "pathname": self.pathname,
             "msecs": self.msecs,
             "exc_info": self.exc_info,
         }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ReportLog:
+        return cls(
+            type=data["type"],
+            message=data["msg"],
+            filename=data["filename"],
+            lineno=data["lineno"],
+            name=data.get("name"),
+            levelno=data.get("levelno"),
+            levelname=data.get("levelname"),
+            thread_name=data.get("thread_name"),
+            pathname=data.get("pathname"),
+            msecs=data.get("msecs"),
+            exc_info=data.get("exc_info"),
+            func=data.get("func"),
+            traceback=data.get("traceback"),
+            is_validation_error=data.get("is_validation_error"),
+        )
 
     @classmethod
     def log_items_from_result(
@@ -138,6 +158,15 @@ class PublishPluginActionReport:
             "logs": [log.to_data() for log in self.logs],
         }
 
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishPluginActionReport:
+        return cls(
+            success=data["success"],
+            name=data["name"],
+            label=data["label"],
+            logs=[ReportLog.from_data(log_data) for log_data in data["logs"]],
+        )
+
 
 @dataclass
 class PublishProcessReport:
@@ -151,6 +180,14 @@ class PublishProcessReport:
             "logs": [log.to_data() for log in self.logs],
             "process_time": self.process_time,
         }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishProcessReport:
+        return cls(
+            instance_id=data["id"],
+            logs=[ReportLog.from_data(log_data) for log_data in data["logs"]],
+            process_time=data["process_time"],
+        )
 
     @classmethod
     def from_result(cls, result: dict[str, Any]) -> PublishProcessReport:
@@ -207,6 +244,30 @@ class PublishPluginReportInfo:
         }
 
     @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishPluginReportInfo:
+        return cls(
+            id=data["id"],
+            name=data["name"],
+            label=data["label"],
+            order=data["order"],
+            filepath=data["filepath"],
+            docstring=data.get("docstring"),
+            plugin_type=data["plugin_type"],
+            families=data["families"],
+            targets=data["targets"],
+            skipped=data.get("skipped", False),
+            passed=data.get("passed", False),
+            process_reports=[
+                PublishProcessReport.from_data(r)
+                for r in data.get("instances_data", [])
+            ],
+            actions_reports=[
+                PublishPluginActionReport.from_data(action_data)
+                for action_data in data["actions_data"]
+            ],
+        )
+
+    @classmethod
     def from_plugin(cls, plugin: pyblish.api.Plugin) -> PublishPluginReportInfo:
         label = None
         if hasattr(plugin, "label"):
@@ -246,6 +307,12 @@ class PublishContextInfo:
             "label": self.label,
         }
 
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishContextInfo:
+        return cls(
+            label=data["label"],
+        )
+
 
 @dataclass
 class PublishInstanceInfo:
@@ -273,6 +340,21 @@ class PublishInstanceInfo:
             "instance_id": self.create_instance_id,
             "exists": self.exists,
         }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishInstanceInfo:
+        return cls(
+            id=data["id"],
+            name=data.get("name"),
+            label=data["label"],
+            product_type=data.get("product_type"),
+            product_base_type=data.get("product_base_type"),
+            family=data.get("family"),
+            families=data.get("families", []),
+            creator_identifier=data.get("creator_identifier"),
+            create_instance_id=data.get("instance_id"),
+            exists=data.get("exists", False),
+        )
 
     @classmethod
     def from_instance(
@@ -402,6 +484,34 @@ class PublishReport:
 
                 for log in process_report.logs:
                     yield plugin_info.id, process_report.instance_id, log
+
+    @classmethod
+    def from_filepath(cls, filepath: str) -> PublishReport:
+        with open(filepath, "r") as stream:
+            data = stream.read()
+
+        cls.from_data(json.loads(data))
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishReport:
+        return cls(
+            id=data["id"],
+            version=data["report_version"],
+            created_at=data["created_at"],
+            crashed_filepaths=data["crashed_file_paths"],
+            blocking_crashed_paths=data["blocking_crashed_paths"],
+            context=data["context"],
+            plugins_info=[
+                PublishPluginReportInfo.from_data(plugin_info)
+                for plugin_info in data["plugins_data"]
+            ],
+            instances_by_id={
+                instance_id: PublishInstanceInfo.from_data(instance_info)
+                for (
+                    instance_id, instance_info
+                ) in data["instances"].items()
+            },
+        )
 
 
 class PublishReportMaker:

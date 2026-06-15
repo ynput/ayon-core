@@ -7,6 +7,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.lib import get_launcher_local_dir
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools import resources
 from ayon_core.tools.utils import (
@@ -18,10 +19,8 @@ from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 if __package__:
     from .widgets import PublishReportViewerWidget
-    from .report_items import PublishReport
 else:
     from widgets import PublishReportViewerWidget
-    from report_items import PublishReport
 
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -266,7 +265,7 @@ class PublisherReportHandler:
             if ext == ".json":
                 continue
             filepath = os.path.join(report_dir, filename)
-            item = PublishReportItem.from_filepath(filepath)
+            item = PublishReport.from_filepath(filepath)
             if item is not None:
                 reports.append(item)
                 reports_by_id[item.id] = item
