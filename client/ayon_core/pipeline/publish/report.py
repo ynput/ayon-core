@@ -276,6 +276,9 @@ class PublishPluginReportInfo:
         if hasattr(plugin, "label"):
             label = plugin.label
 
+        if not label:
+            label = plugin.__name__
+
         plugin_type = "instance" if plugin.__instanceEnabled__ else "context"
         # Get docstring
         # NOTE we do care only about docstring from the plugin so we can't
