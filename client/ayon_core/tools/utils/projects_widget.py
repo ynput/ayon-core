@@ -496,24 +496,6 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self._sort_by_type = enabled
         self.invalidate()
 
-#TODO: Need to cross verify with philippe is this right approach
-class ProjectsDelegate:
-    """Unified delegate factory for projects widgets that adds pin icons.
-
-    This class creates appropriate delegates based on the widget type,
-    adding pin icon functionality to both tree view and combobox.
-    """
-
-    @staticmethod
-    def create_tree_delegate(*args, **kwargs):
-        """Create a tree view delegate with pin icon support."""
-        return _ProjectsTreeDelegate(*args, **kwargs)
-
-    @staticmethod
-    def create_combobox_delegate(*args, **kwargs):
-        """Create a combobox delegate with pin icon support."""
-        return _ProjectsComboBoxDelegate(*args, **kwargs)
-
 
 class _ProjectsPinMixin:
     """Mixin class that provides pin icon painting functionality."""
@@ -559,7 +541,7 @@ class _ProjectsPinMixin:
         return self._pin_icon
 
 
-class _ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
+class ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
     """Tree view delegate with pin icon support."""
 
     def paint(self, painter, option, index):
@@ -568,7 +550,7 @@ class _ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
         self._paint_pin_icon(painter, option, index)
 
 
-class _ProjectsComboBoxDelegate(_ProjectsPinMixin, ComboBoxItemDelegate):
+class ProjectsComboBoxDelegate(_ProjectsPinMixin, ComboBoxItemDelegate):
     """Combobox delegate with pin icon support."""
 
     def paint(self, painter, option, index):
@@ -594,9 +576,9 @@ class ProjectsCombobox(QtWidgets.QWidget):
         projects_proxy_model = ProjectSortFilterProxy()
         projects_proxy_model.setSourceModel(projects_model)
 
-        # Set custom delegate using the unified delegate factory
+        # Set custom delegate for combobox items
         ayon_style = get_ayon_style()
-        combobox_delegate = ProjectsDelegate.create_combobox_delegate(
+        combobox_delegate = ProjectsComboBoxDelegate(
             parent=projects_combobox.view(),
             style_model=ayon_style.model
         )
@@ -812,9 +794,9 @@ class ProjectsWidget(QtWidgets.QWidget):
             AYTreeView.SelectionMode.SingleSelection
         )
 
-        # Set custom delegate using the unified delegate factory
+        # Set custom delegate for tree view items
         ayon_style = get_ayon_style()
-        projects_delegate = ProjectsDelegate.create_tree_delegate(
+        projects_delegate = ProjectsTreeDelegate(
             parent=projects_view,
             style_model=ayon_style.model,
             variant=projects_view._variant_str,
