@@ -44,7 +44,7 @@ class LauncherWindow(AYContainer):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
 
         #TODO: Find right place and logic to handle this
-        #launcher-specific styles
+        #  launcher-specific styles
         launcher_css_path = Path(__file__).parent / "launcher_style.css"
         with open(launcher_css_path, "r") as f:
             launcher_stylesheet = f.read()
