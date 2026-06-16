@@ -119,22 +119,6 @@ class AYTreeView(StyleMixin, QTreeView):
         # No default frame — drawn manually in paintEvent.
         self.setFrameShape(QTreeView.Shape.NoFrame)
 
-    def setItemDelegateForColumn(self, column, delegate):
-        """When external delegates used it overriding the TreeViewItemDelegate
-        style to avoid that and maintain visual consistency
-        """
-
-        if not isinstance(delegate, TreeViewItemDelegate):
-            delegate = _ColumnDelegateWrapper(
-                wrapped=delegate,
-                parent=self,
-                style_model=get_ayon_style().model,
-                variant=self._variant_str,
-                item_height=self._item_height,
-                item_padding=self._item_padding,
-            )
-        super().setItemDelegateForColumn(column, delegate)
-
     def _sync_viewport_palette(self) -> None:
         """Apply the variant background colour to the viewport palette."""
         style = get_ayon_style()
@@ -446,18 +430,6 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         painter.restore()
-
-class _ColumnDelegateWrapper(TreeViewItemDelegate):
-    """Wraps an external delegate so it paints with TreeViewItemDelegate
-    style but uses the wrapped delegate text formatting."""
-
-    def __init__(self, wrapped, **kwargs):
-        super().__init__(**kwargs)
-        self._wrapped = wrapped
-
-    def displayText(self, value, locale):
-        return self._wrapped.displayText(value, locale)
-
 
 # =============================================================================
 # __main__ - visual test harness
