@@ -399,7 +399,7 @@ class WorkfilesPage(AYContainer):
         if action_title is None:
             return
 
-        #TODO: using AYMenu breaking the tool need to figure out the issue
+        # TODO: using AYMenu breaking the tool need to figure out the issue
         # menu = AYMenu(self._workfiles_view)
         # Found that in AYMenu Forcing the menu to use AYONStyle for drawing
         # it causing the application collapse
