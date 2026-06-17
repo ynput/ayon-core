@@ -1,4 +1,5 @@
-/* Enabled vs Disabled logic in most of stylesheets - global font color Enabled - should be same globalle except placeholders Disabled - font color is greyed out - global active/hover Enabled - color motive of borders and bg color - combobox, slider, views, buttons, checkbox, radiobox, inputs - QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox Enabled - bg has lighter or darked color Disabled - bg has same color as background - QComboBox, QPushButton Enabled - slightly lighter color Disabled - even lighter color */ * {
+/* Enabled vs Disabled logic in most of stylesheets - global font color Enabled - should be same globalle except placeholders Disabled - font color is greyed out - global active/hover Enabled - color motive of borders and bg color - combobox, slider, views, buttons, checkbox, radiobox, inputs - QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox Enabled - bg has lighter or darked color Disabled - bg has same color as background - QComboBox, QPushButton Enabled - slightly lighter color Disabled - even lighter color */
+* {
 font-size: 10pt;
     font-family: "Nunito Sans";
     font-weight: 450;
@@ -122,7 +123,6 @@ ActionsView::item:hover {
 color: #F0F2F5;
     background: #424A57;
 }
-
 
 ActionMenuPopup ActionsView {
 background: transparent;
