@@ -481,8 +481,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Check if tags is an iteratable.
             if not isinstance(tags, (list, tuple, set)):
                 raise PublishError(
-                    "Tags must be an itertable."
-                    f"Instead got type {type(tags)}"
+                    "Tags must be an iterable."
+                    f" Instead got type {type(tags)}"
                 )
             # Error if not all are string.
             if not all(isinstance(tag, str) for tag in tags):
