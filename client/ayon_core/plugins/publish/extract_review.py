@@ -147,29 +147,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
     label = "Extract Review"
     order = pyblish.api.ExtractorOrder + 0.02
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "blender",
-        "houdini",
-        "max",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "batchdelivery",
-        "photoshop",
-        "substancepainter",
-        "workflow",
-    ]
 
     settings_category = "core"
     # Supported extensions
