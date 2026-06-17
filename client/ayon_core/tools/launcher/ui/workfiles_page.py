@@ -22,6 +22,7 @@ from ayon_core.ui.components import (
     AYMenu,
 )
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.ui.style_types import get_ayon_style
 
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
@@ -297,7 +298,12 @@ class WorkfilesPage(AYContainer):
 
         workfiles_view.setModel(workfiles_proxy)
 
-        workfiles_delegate = WorkfilesDelegate(parent=workfiles_view)
+        workfiles_delegate = WorkfilesDelegate(
+            parent=workfiles_view,
+            style_model=get_ayon_style().model,
+            item_height=23,
+            item_padding=[1, 6]
+        )
         workfiles_view.setItemDelegate(workfiles_delegate)
 
         self.add_widget(workfiles_view, stretch=1)
