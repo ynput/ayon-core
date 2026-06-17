@@ -74,7 +74,9 @@ image: url(:/openpype/images/up_arrow.png);
     subcontrol-position: center right;
 }
 
-
+/* TODO: Bring below full style match to
+/* ayon-core/client/ayon_core/ui/components/spin_box.py
+/* then eliminate QAbstractSpinBox style from here.
 /* Inputs */ QAbstractSpinBox{
 border: 1px solid #373D48;
     border-radius: 0.2em;

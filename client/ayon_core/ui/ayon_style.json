@@ -397,6 +397,42 @@
                 }
             }
         },
+        "QSpinBox": {
+            "states": [
+                "hover",
+                "disabled"
+            ],
+            "default-variant": "default",
+            "variants": {
+                "default": {
+                    "background-color": "--md-sys-color-surface-container-dark",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "selection-background-color": "--md-sys-color-secondary-container-dark",
+                    "selection-color": "--md-sys-color-on-secondary-container-dark",
+                    "border-color": "--md-sys-color-outline-variant-dark",
+                    "border-width": 1,
+                    "border-radius": 4,
+                    "focus-outline-width": 1,
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "padding": [
+                        4,
+                        4
+                    ],
+                    "button-width": 18,
+                    "button-background-color": "transparent",
+                    "button-border-color": "--md-sys-color-outline-variant-dark",
+                    "button-hover-background-color": "--md-ref-palette-neutral-variant35",
+                    "arrow-color": "--md-sys-color-on-surface-dark",
+                    "hover": {
+                        "border-color": "--md-sys-color-outline-dark"
+                    },
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-dark",
+                        "opacity": 0.5
+                    }
+                }
+            }
+        },
         "QComboBox": {
             "default-variant": "default",
             "variants": {
