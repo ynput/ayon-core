@@ -380,14 +380,18 @@ class WorkfilesPage(AYContainer):
         view_header.setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Interactive
         )
+        view_header.setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
 
         # Resize workfiles column
         view_size = self._workfiles_view.size()
-        col_1_width = view_size.width() - 160
-        if col_1_width < 120:
-            col_1_width = 120
-        view_header = self._workfiles_view.header()
-        view_header.resizeSection(view_header.logicalIndex(0), col_1_width)
+        col_0_width = view_size.width() - 240
+        if col_0_width < 120:
+            col_0_width = 120
+        view_header.resizeSection(0, col_0_width)
+        view_header.resizeSection(1, 160)
+        view_header.resizeSection(2, 80)
 
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
