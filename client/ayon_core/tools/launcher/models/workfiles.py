@@ -66,8 +66,9 @@ class WorkfilesModel:
             mod_time = None
             if path and exists:
                 mod_time = os.path.getmtime(path)
-
+                file_size = os.path.getsize(path)
             else:
+                file_size = None
                 updated_at = workfile_entity["updatedAt"]
                 if updated_at:
                     mod_time = float(
@@ -86,6 +87,7 @@ class WorkfilesModel:
                 icon=self._get_host_icon(host_name),
                 version=version,
                 updated_at_time=mod_time,
+                file_size=file_size,
             ))
         cache.update_data(items)
         return items

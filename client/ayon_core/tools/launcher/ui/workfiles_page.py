@@ -28,6 +28,7 @@ ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
+FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -36,9 +37,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
     def __init__(self, controller: AbstractLauncherFrontEnd) -> None:
         super().__init__()
 
-        self.setColumnCount(2)
+        self.setColumnCount(3)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Workfiles")
         self.setHeaderData(1, QtCore.Qt.Horizontal, "Modified")
+        self.setHeaderData(2, QtCore.Qt.Horizontal, "Size")
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -87,8 +89,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
+            item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
-            item.setColumnCount(2)
+            item.setColumnCount(3)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -111,7 +114,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_item.setData(host_name, HOST_NAME_ROLE)
             host_item.setData(1, ITEM_TYPE_ROLE)
             host_item.setFlags(QtCore.Qt.ItemIsEnabled)
-            host_item.setColumnCount(2)
+            host_item.setColumnCount(3)
             host_items_by_name[host_name] = host_item
             if host_name in self._group_host_names:
                 new_items.append(host_item)
@@ -185,7 +188,20 @@ class WorkfilesModel(QtGui.QStandardItemModel):
                 ITEM_TYPE_ROLE,
             ):
                 return None
-
+            index = self.index(index.row(), 0, index.parent())
+        elif index.column() == 2:
+            if role == QtCore.Qt.DisplayRole:
+                file_size = self.data(index, FILE_SIZE_ROLE)
+                if file_size is not None:
+                    return self._format_file_size(file_size)
+                return "N/A"
+            elif role not in (
+                WORKFILE_ID_ROLE,
+                HOST_NAME_ROLE,
+                ITEM_TYPE_ROLE,
+                FILE_SIZE_ROLE,
+            ):
+                return None
             index = self.index(index.row(), 0, index.parent())
         return super().data(index, role)
 
@@ -233,6 +249,14 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             icon = self._get_transparent_icon()
         self._cached_icons[icon_url] = icon
         return icon
+
+    def _format_file_size(self, size_bytes: int) -> str:
+        """Format file size in human-readable format."""
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024.0:
+                return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024.0
+        return f"{size_bytes:.1f} GB"
 
 
 class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
