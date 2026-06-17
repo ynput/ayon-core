@@ -24,7 +24,7 @@ class CollectVersionTags(
     def process(self, instance):
 
         attr_values = self.get_attr_values_from_data(instance.data)
-        version_tags: list[str] = attr_values.get("version_tags", [])
+        version_tags = attr_values.get("version_tags", [])
 
         if not version_tags:
             return
