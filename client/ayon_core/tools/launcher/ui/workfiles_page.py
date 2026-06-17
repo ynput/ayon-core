@@ -384,11 +384,11 @@ class WorkfilesPage(AYContainer):
 
         # Resize workfiles column
         view_size = self._workfiles_view.size()
-        col_0_width = view_size.width() - 240
+        col_0_width = view_size.width() - 220
         if col_0_width < 120:
             col_0_width = 120
         view_header.resizeSection(0, col_0_width)
-        view_header.resizeSection(1, 160)
+        view_header.resizeSection(1, 140)
         view_header.resizeSection(2, 80)
 
     def _on_selection_changed(self, selected, _deselected) -> None:
