@@ -13,7 +13,7 @@ from ayon_core.lib.icon_definitions import (
     TransparentIcon,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.delegates import pretty_timestamp
+from ayon_core.tools.utils.delegates import pretty_timestamp, format_file_size
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 from ayon_core.ui.components import (
@@ -191,10 +191,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             index = self.index(index.row(), 0, index.parent())
         elif index.column() == 2:
             if role == QtCore.Qt.DisplayRole:
-                file_size = self.data(index, FILE_SIZE_ROLE)
-                if file_size is not None:
-                    return self._format_file_size(file_size)
-                return "N/A"
+                return self.data(index, FILE_SIZE_ROLE)
             elif role not in (
                 WORKFILE_ID_ROLE,
                 HOST_NAME_ROLE,
@@ -250,14 +247,6 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._cached_icons[icon_url] = icon
         return icon
 
-    def _format_file_size(self, size_bytes: int) -> str:
-        """Format file size in human-readable format."""
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_bytes < 1024.0:
-                return f"{size_bytes:.1f} {unit}"
-            size_bytes /= 1024.0
-        return f"{size_bytes:.1f} GB"
-
 
 class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
     def lessThan(self, source_left, source_right):
@@ -279,6 +268,7 @@ class WorkfilesDelegate(TreeViewItemDelegate):
 
     Column 0: workfile name with middle-elide.
     Column 1: pretty-printed timestamp (falls back to ``"N/A"``).
+    Column 2: file size in human-readable format (falls back to ``"N/A"``).
     """
 
     def initStyleOption(self, option, index):
@@ -294,6 +284,12 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                     option.text = pretty
                     return
             option.text = "N/A"
+        elif index.column() == 2:
+            raw = index.data(QtCore.Qt.DisplayRole)
+            if raw is not None:
+                option.text = format_file_size(raw)
+            else:
+                option.text = "N/A"
 
 
 class WorkfilesPage(AYContainer):
