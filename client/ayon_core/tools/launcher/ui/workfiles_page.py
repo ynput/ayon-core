@@ -289,7 +289,7 @@ class WorkfilesDelegate(TreeViewItemDelegate):
             if raw is not None:
                 option.text = format_file_size(raw)
             else:
-                option.text = "N/A"
+                option.text = ""
 
 
 class WorkfilesPage(AYContainer):
