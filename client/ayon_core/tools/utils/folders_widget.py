@@ -318,7 +318,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(icon, QtCore.Qt.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
 
-        # status col: icon + tooltip 
+        # Status column: icon + tooltip
         if status_col_item is not None:
             status_name = folder_item.status or ""
             status_col_item.setData(
