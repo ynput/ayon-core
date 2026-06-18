@@ -318,7 +318,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(icon, QtCore.Qt.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
 
-        # status col: icon + tooltip 
+        # Status column: icon + tooltip
         if status_col_item is not None:
             status_name = folder_item.status or ""
             status_col_item.setData(
@@ -513,7 +513,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         folders_view.setModel(folders_proxy_model)
 
-        # For better visuality, when intended to show status column,
+        # For better visual clarity when showing the status column:
         if add_status_column:
             header = folders_view.header()
             header.setStretchLastSection(False)
