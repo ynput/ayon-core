@@ -25,6 +25,8 @@ PARENT_ID_ROLE = QtCore.Qt.UserRole + 2
 ITEM_NAME_ROLE = QtCore.Qt.UserRole + 3
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
 TASK_TYPE_ORDER_ROLE = QtCore.Qt.UserRole + 5
+TASK_STATUS_ROLE = QtCore.Qt.UserRole + 6
+
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
@@ -36,18 +38,20 @@ class TasksQtModel(QtGui.QStandardItemModel):
     """
     _default_task_icon = None
     refreshed = QtCore.Signal()
-    column_labels = ["Tasks"]
 
-    def __init__(self, controller):
+    def __init__(self, controller, add_status_column=False):
         super().__init__()
 
-        self.setColumnCount(len(self.column_labels))
-        for idx, label in enumerate(self.column_labels):
-            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
+        col_count = 2 if add_status_column else 1
+        self.setColumnCount(col_count)
+        self.setHeaderData(0, QtCore.Qt.Horizontal, "Tasks")
+        if add_status_column:
+            self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
 
         self._controller = controller
 
         self._items_by_name = {}
+        self._status_col_items_by_name = {}
         self._has_content = False
         self._is_refreshing = False
 
@@ -62,11 +66,17 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._refresh_threads = {}
         self._current_refresh_thread = None
 
+        self._add_status_column = add_status_column
+        self._last_project_statuses = {}
+        self._status_icon_cache = {}
+
         # Initial state
         self._add_invalid_selection_item()
 
     def _clear_items(self):
         self._items_by_name = {}
+        self._status_col_items_by_name = {}
+        self._status_icon_cache = {}
         self._has_content = False
         self._remove_invalid_items()
         root_item = self.invisibleRootItem()
@@ -214,7 +224,13 @@ class TasksQtModel(QtGui.QStandardItemModel):
             task_type_items = self._controller.get_task_type_items(
                 project_name, sender=TASKS_MODEL_SENDER_NAME
             )
-        return task_items, task_type_items
+
+        status_col_items = (
+            self._controller.get_project_status_items(project_name)
+            if self._add_status_column else []
+        )
+
+        return task_items, task_type_items, status_col_items
 
     @classmethod
     def _get_default_task_icon(cls):
@@ -251,8 +267,21 @@ class TasksQtModel(QtGui.QStandardItemModel):
         task_type_icon_cache[task_item.task_type] = icon
         return icon
 
+    def _get_status_icon(self, status_name):
+        """Return a cached QIcon for *status_name*, or None."""
+        if status_name in self._status_icon_cache:
+            return self._status_icon_cache[status_name]
+        status = self._last_project_statuses.get(status_name)
+        icon = None
+        if status is not None and status.icon:
+            icon = get_qt_icon(
+                MaterialSymbolsIcon(status.icon, color=status.color)
+            )
+        self._status_icon_cache[status_name] = icon
+        return icon
+
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items = thread.get_result()
+        task_items, task_type_items, status_col_items = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -262,6 +291,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
             self._add_empty_task_item()
             return
         self._remove_invalid_items()
+
+        self._last_project_statuses = {
+            status_col_item.name: status_col_item
+            for status_col_item in status_col_items
+        }
+        self._status_icon_cache = {}
 
         task_type_item_by_name = {
             task_type_item.name: task_type_item
@@ -274,10 +309,16 @@ class TasksQtModel(QtGui.QStandardItemModel):
             name = task_item.name
             new_names.add(name)
             item = self._items_by_name.get(name)
+            status_col_item = self._status_col_items_by_name.get(name)
             if item is None:
                 item = QtGui.QStandardItem()
                 item.setEditable(False)
-                new_items.append(item)
+                if self._add_status_column:
+                    status_col_item = QtGui.QStandardItem()
+                    status_col_item.setEditable(False)
+                    new_items.append([item, status_col_item])
+                else:
+                    new_items.append(item)
                 self._items_by_name[name] = item
 
             icon = self._get_task_item_icon(
@@ -291,16 +332,32 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
             item.setData(task_item.parent_id, PARENT_ID_ROLE)
             item.setData(task_item.task_type_order, TASK_TYPE_ORDER_ROLE)
+            item.setData(task_item.status, TASK_STATUS_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
+
+            # Status column: icon + tooltip
+            if status_col_item is not None:
+                status_name = task_item.status or ""
+                status_col_item.setData(
+                    self._get_status_icon(status_name),
+                    QtCore.Qt.DecorationRole,
+                )
+                status_col_item.setData(status_name, QtCore.Qt.ToolTipRole)
+                self._status_col_items_by_name[name] = status_col_item
 
         root_item = self.invisibleRootItem()
 
         for name in set(self._items_by_name) - new_names:
             item = self._items_by_name.pop(name)
+            self._status_col_items_by_name.pop(name, None)
             root_item.removeRow(item.row())
 
         if new_items:
-            root_item.appendRows(new_items)
+            if self._add_status_column:
+                for row in new_items:
+                    root_item.appendRow(row)
+            else:
+                root_item.appendRows(new_items)
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -401,13 +458,16 @@ class TasksWidget(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Workfiles controller.
         parent (QtWidgets.QWidget): Parent widget.
         handle_expected_selection (Optional[bool]): Handle expected selection.
+        add_status_column (bool): When True a narrow **Status** column is
+            added. Status col stores the status icon (``DecorationRole``) and
+            tooltip (``ToolTipRole``)
     """
     log = Logger.get_logger("TasksWidget")
 
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent, handle_expected_selection=False):
+    def __init__(self, controller, parent, handle_expected_selection=False, add_status_column=False):
         super().__init__(parent)
 
         tasks_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
@@ -417,12 +477,24 @@ class TasksWidget(QtWidgets.QWidget):
             AYTreeView.SelectionMode.SingleSelection
         )
 
-        tasks_model = TasksQtModel(controller)
+        tasks_model = TasksQtModel(controller, add_status_column=add_status_column)
         tasks_proxy_model = TasksProxyModel()
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         tasks_view.setModel(tasks_proxy_model)
+
+        # For better visual clarity when showing the status column:
+        if add_status_column:
+            header = tasks_view.header()
+            header.setStretchLastSection(False)
+            header.setSectionResizeMode(
+                0, QtWidgets.QHeaderView.ResizeMode.Stretch
+            )
+            header.setSectionResizeMode(
+                1, QtWidgets.QHeaderView.ResizeMode.Fixed
+            )
+            header.resizeSection(1, 50)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -542,6 +614,7 @@ class TasksWidget(QtWidgets.QWidget):
         if not proxy_index.isValid():
             return False
 
+        #TODO: is this internally kept with _folders_view
         selection_model = self._folders_view.selectionModel()
         selection_model.setCurrentIndex(
             proxy_index, QtCore.QItemSelectionModel.SelectCurrent

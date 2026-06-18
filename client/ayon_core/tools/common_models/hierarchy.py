@@ -94,6 +94,8 @@ class TaskItem:
         name (str | None): Task label.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
+        status (str | None): Task status name.
+
     """
 
     def __init__(
@@ -105,6 +107,7 @@ class TaskItem:
         task_type_order: int,
         parent_id: str,
         tags: list[str],
+        status:str
     ):
         self.task_id = task_id
         self.name = name
@@ -113,6 +116,7 @@ class TaskItem:
         self.task_type_order = task_type_order
         self.parent_id = parent_id
         self.tags = tags
+        self.status = status
 
         self._full_label = None
 
@@ -154,6 +158,7 @@ class TaskItem:
             "task_type": self.task_type,
             "task_type_order": self.task_type_order,
             "tags": self.tags,
+            "status": self.status,
         }
 
     @classmethod
@@ -196,6 +201,7 @@ def _get_task_items_from_tasks(
             task_type_order,
             folder_id,
             task["tags"],
+            task["status"],
         ))
     return output
 
@@ -666,7 +672,7 @@ class HierarchyModel(object):
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type", "tags"}
+            fields={"id", "name", "label", "folderId", "type", "tags", "status"}
         ))
         task_type_items = self._controller.get_task_type_items(project_name)
         return _get_task_items_from_tasks(task_type_items, tasks)

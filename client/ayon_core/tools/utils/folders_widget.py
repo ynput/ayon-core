@@ -179,18 +179,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             )
         return cls._default_folder_icon
 
-    def data(self, index, role=QtCore.Qt.DisplayRole):
-        if (
-            self._add_status_column
-            and role == QtCore.Qt.ForegroundRole
-            and index.isValid()
-        ):
-            status_name = super().data(index, FOLDER_STATUS_ROLE)
-            status_col_item = self._last_project_statuses.get(status_name)
-            if status_col_item is not None:
-                return QtGui.QColor(status_col_item.color)
-        return super().data(index, role)
-
     def _clear_items(self):
         self._items_by_id = {}
         self._status_col_items_by_id = {}
