@@ -68,7 +68,6 @@ class WorkfilesModel:
                 mod_time = os.path.getmtime(path)
                 file_size = os.path.getsize(path)
             else:
-                file_size = None
                 updated_at = workfile_entity["updatedAt"]
                 if updated_at:
                     mod_time = float(
