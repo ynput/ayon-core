@@ -285,7 +285,7 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                     return
             option.text = "N/A"
         elif index.column() == 2:
-            raw = index.data(QtCore.Qt.DisplayRole)
+            raw = index.data(FILE_SIZE_ROLE)
             if raw is not None:
                 option.text = format_file_size(raw)
             else:
