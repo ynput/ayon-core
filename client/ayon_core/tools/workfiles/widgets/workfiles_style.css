@@ -1,6 +1,6 @@
 /* Enabled vs Disabled logic in most of stylesheets - global font color Enabled - should be same globalle except placeholders Disabled - font color is greyed out - global active/hover Enabled - color motive of borders and bg color - combobox, slider, views, buttons, checkbox, radiobox, inputs - QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox Enabled - bg has lighter or darked color Disabled - bg has same color as background - QComboBox, QPushButton Enabled - slightly lighter color Disabled - even lighter color */
 * {
-font-size: 10pt;
+    font-size: 10.5pt;
     font-family: "Nunito Sans";
     font-weight: 450;
     outline: none;
@@ -74,7 +74,9 @@ image: url(:/openpype/images/up_arrow.png);
     subcontrol-position: center right;
 }
 
-
+/* TODO: Bring below full style match to
+/* ayon-core/client/ayon_core/ui/components/spin_box.py
+/* then eliminate QAbstractSpinBox style from here.
 /* Inputs */ QAbstractSpinBox{
 border: 1px solid #373D48;
     border-radius: 0.2em;

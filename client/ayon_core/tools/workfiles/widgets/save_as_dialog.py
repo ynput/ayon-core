@@ -9,6 +9,7 @@ from ayon_core.ui.components import (
     AYVBoxLayout,
     AYGridLayout,
     AYLineEdit,
+    AYSpinBox,
 )
 from ayon_core.tools.utils import PlaceholderPlainTextEdit
 
@@ -147,9 +148,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         version_widget = QtWidgets.QWidget(inputs_widget)
 
         # Version number input
-        version_input = QtWidgets.QSpinBox(version_widget)
-        version_input.setMinimum(1)
-        version_input.setMaximum(9999)
+        version_input = AYSpinBox(
+            parent=version_widget,
+            minimum=1,
+            maximum=9999,
+        )
 
         # Last version checkbox
         last_version_check = AYCheckBox(

@@ -582,7 +582,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
             parent=projects_combobox.view(),
             style_model=ayon_style.model
         )
-        projects_combobox.set_custom_delegate(combobox_delegate)
+        projects_combobox.setItemDelegate(combobox_delegate)
 
         projects_combobox.setModel(projects_proxy_model)
 
