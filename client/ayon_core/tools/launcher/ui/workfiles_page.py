@@ -13,7 +13,7 @@ from ayon_core.lib.icon_definitions import (
     TransparentIcon,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.delegates import pretty_timestamp, format_file_size
+from ayon_core.tools.utils.delegates import pretty_timestamp, file_size_to_string
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 from ayon_core.ui.components import (
@@ -287,7 +287,7 @@ class WorkfilesDelegate(TreeViewItemDelegate):
         elif index.column() == 2:
             raw = index.data(FILE_SIZE_ROLE)
             if raw is not None:
-                option.text = format_file_size(raw)
+                option.text = file_size_to_string(raw)
             else:
                 option.text = ""
 

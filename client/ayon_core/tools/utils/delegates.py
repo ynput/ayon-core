@@ -56,13 +56,22 @@ def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
     return t.strftime(strftime)
 
 
-def format_file_size(size_bytes: int) -> str:
-    """Format file size in human-readable format."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} GB"
+def file_size_to_string(file_size):
+    if not file_size:
+        return "N/A"
+    size = 0
+    size_ending_mapping = {
+        "KB": 1024 ** 1,
+        "MB": 1024 ** 2,
+        "GB": 1024 ** 3,
+    }
+    ending = "B"
+    for _ending, _size in size_ending_mapping.items():
+        if file_size < _size:
+            break
+        size = file_size / _size
+        ending = _ending
+    return "{:.2f} {}".format(size, ending)
 
 
 def pretty_timestamp(t, now=None):
