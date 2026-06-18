@@ -268,7 +268,7 @@ class WorkfilesDelegate(TreeViewItemDelegate):
 
     Column 0: workfile name with middle-elide.
     Column 1: pretty-printed timestamp (falls back to ``"N/A"``).
-    Column 2: file size in human-readable format (falls back to ``"N/A"``).
+    Column 2: file size in human-readable format (falls back to ``""``).
     """
 
     def initStyleOption(self, option, index):
