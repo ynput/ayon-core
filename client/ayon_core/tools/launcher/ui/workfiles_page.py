@@ -185,7 +185,8 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             ITEM_TYPE_ROLE,
             FILE_SIZE_ROLE
         }:
-            index = self.index(index.row(), 0, index.parent())
+            if index.column() != 0:
+                index = self.index(index.row(), 0, index.parent())
             return super().data(index, role)
         
         if index.column() == 1:
