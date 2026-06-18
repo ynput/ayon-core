@@ -318,7 +318,7 @@ class HierarchyModel(object):
         folders = ayon_api.get_folders(
             project_name,
             folder_ids=folder_ids,
-            fields=["id", "name", "label", "parentId", "path", "folderType"]
+            fields=["id", "name", "label", "parentId", "path", "folderType", "status"]
         )
         # Make sure all folder ids are in output
         output = {folder_id: None for folder_id in folder_ids}
@@ -356,7 +356,7 @@ class HierarchyModel(object):
         folders = ayon_api.get_folders(
             project_name,
             folder_paths=folder_paths,
-            fields=["id", "name", "label", "parentId", "path", "folderType"]
+            fields=["id", "name", "label", "parentId", "path", "folderType", "status"]
         )
         # Make sure all folder ids are in output
         for folder in folders:
