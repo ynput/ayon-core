@@ -172,10 +172,13 @@ def _load_font():
     if _Cache.font_ids is None:
         _Cache.font_ids = []
         fonts_dirpath = os.path.join(current_dir, "fonts")
+        ui_resources_path = os.path.join(
+            os.path.dirname(current_dir), "ui", "resources"
+        )
         font_dirs = [
             os.path.join(fonts_dirpath, "Noto_Sans"),
             os.path.join(fonts_dirpath, "Noto_Sans_Mono"),
-            os.path.join(fonts_dirpath, "Nunito_Sans"),
+            ui_resources_path,
         ]
 
         loaded_fonts = []
