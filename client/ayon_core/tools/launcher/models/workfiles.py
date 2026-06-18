@@ -64,6 +64,7 @@ class WorkfilesModel:
                 )
 
             mod_time = None
+            file_size = None
             if path and exists:
                 mod_time = os.path.getmtime(path)
                 file_size = os.path.getsize(path)
