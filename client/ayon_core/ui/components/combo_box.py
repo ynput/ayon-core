@@ -468,19 +468,6 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
 
         self.update_items(items)
 
-    def set_custom_delegate(self, delegate):
-        """Set a custom item delegate for the dropdown view.
-
-        This should be called to set a custom delegate that extends
-        ComboBoxItemDelegate. The delegate will be preserved even after
-        polish() is called.
-
-        Args:
-            delegate: Custom delegate instance that extends ComboBoxItemDelegate.
-        """
-        self._custom_delegate = delegate
-        self.view().setItemDelegate(delegate)
-
     def _assert_compatible_model(self) -> None:
         """Raise :exc:`RuntimeError` when an incompatible model is active.
 
