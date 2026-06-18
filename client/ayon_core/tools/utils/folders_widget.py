@@ -513,7 +513,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         folders_view.setModel(folders_proxy_model)
 
-        # For better visuality, when intended to show status column,
+        # For better visual clarity when showing the status column:
         if add_status_column:
             header = folders_view.header()
             header.setStretchLastSection(False)
