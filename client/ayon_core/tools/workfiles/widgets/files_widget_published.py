@@ -15,9 +15,9 @@ from ayon_core.style import (
     get_disabled_entity_icon_color,
 )
 
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.ui.style_types import get_ayon_style
 
-from .utils import BaseOverlayFrame
+from .utils import BaseOverlayFrame, WorkfilesDelegate
 
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -335,8 +335,13 @@ class PublishedFilesWidget(AYContainer):
 
         view.setModel(proxy_model)
 
-        time_delegate = PrettyTimeDelegate()
-        view.setItemDelegateForColumn(model.date_modified_col, time_delegate)
+        work_files_delegate = WorkfilesDelegate(
+            parent=view,
+            style_model=get_ayon_style().model,
+            item_height=23,
+            item_padding=[1, 6]
+        )
+        view.setItemDelegate(work_files_delegate)
 
         # Default to a wider first filename column it is what we mostly care
         # about and the date modified is relatively small anyway.
@@ -360,7 +365,7 @@ class PublishedFilesWidget(AYContainer):
         self._select_overlay = select_overlay
         self._model = model
         self._proxy_model = proxy_model
-        self._time_delegate = time_delegate
+        self._work_files_delegate = work_files_delegate
         self._controller = controller
 
     def set_published_mode(self, published_mode):

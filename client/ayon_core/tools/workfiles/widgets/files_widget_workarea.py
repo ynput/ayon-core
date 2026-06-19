@@ -9,8 +9,8 @@ from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.tools.utils import TreeView
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from .utils import WorkfilesDelegate
+from ayon_core.ui.style_types import get_ayon_style
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -319,8 +319,13 @@ class WorkAreaFilesWidget(AYContainer):
 
         view.setModel(proxy_model)
 
-        time_delegate = PrettyTimeDelegate()
-        view.setItemDelegateForColumn(model.date_modified_col, time_delegate)
+        work_files_delegate = WorkfilesDelegate(
+            parent=view,
+            style_model=get_ayon_style().model,
+            item_height=23,
+            item_padding=[1, 6]
+        )
+        view.setItemDelegate(work_files_delegate)
 
         # Default to a wider first filename column it is what we mostly care
         # about and the date modified is relatively small anyway.
@@ -342,7 +347,7 @@ class WorkAreaFilesWidget(AYContainer):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
-        self._time_delegate = time_delegate
+        self._work_files_delegate = work_files_delegate
         self._controller = controller
 
         self._published_mode = False
