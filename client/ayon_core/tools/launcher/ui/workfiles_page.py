@@ -188,18 +188,17 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             if index.column() != 0:
                 index = self.index(index.row(), 0, index.parent())
             return super().data(index, role)
-        
-        if index.column() == 1:
-            if role == QtCore.Qt.DisplayRole:
+
+        col = index.column()
+        if col != 0:
+            if role != QtCore.Qt.DisplayRole:
+                return None
+            if col == 1:
                 role = UPDATED_AT_ROLE
-                index = self.index(index.row(), 0, index.parent())
             else:
-                return None
-        elif index.column() == 2:
-            if role == QtCore.Qt.DisplayRole:
-                return self.data(index, FILE_SIZE_ROLE)
-            else:
-                return None
+                role = FILE_SIZE_ROLE
+            index = self.index(index.row(), 0, index.parent())
+
         return super().data(index, role)
 
     def _on_selection_project_changed(self, event) -> None:
