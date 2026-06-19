@@ -282,7 +282,7 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 if pretty is not None:
                     option.text = pretty
                     return
-            option.text = "N/A"
+            option.text = ""
         elif index.column() == 2:
             raw = index.data(FILE_SIZE_ROLE)
             if raw is not None:
