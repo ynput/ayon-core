@@ -2,6 +2,7 @@ import os
 import re
 import copy
 import itertools
+import shutil
 import sys
 import tempfile
 import traceback
@@ -442,6 +443,7 @@ class ProjectPushItemProcess:
         self._src_folder_entity = None
         self._src_product_entity = None
         self._src_version_entity = None
+        self._src_reviewable_files = None
         self._src_repre_items = None
 
         self._project_entity = None
@@ -494,6 +496,8 @@ class ProjectPushItemProcess:
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
             self._integrate_representations()
+            self._log_info("Representations created")
+            self._reupload_reviewables()
             self._log_info("Integration finished")
 
         except PushToProjectError as exc:
@@ -604,7 +608,7 @@ class ProjectPushItemProcess:
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        anatomy = Anatomy(src_project_name)
+        anatomy = Anatomy(src_project_name, project_entity=project_entity)
 
         repre_entities = ayon_api.get_representations(
             src_project_name,
@@ -625,9 +629,23 @@ class ProjectPushItemProcess:
             )
             raise PushToProjectError(self._status.fail_reason)
 
+        reviewable_files = []
+        for activity in ayon_api.get_activities(
+            src_project_name,
+            entity_ids={src_version_id},
+            activity_types={"reviewable"},
+            fields={
+                "files.id",
+                "files.name",
+                "files.mime",
+            },
+        ):
+            reviewable_files.extend(activity["files"])
+
         self._src_folder_entity = folder_entity
         self._src_product_entity = product_entity
         self._src_version_entity = version_entity
+        self._src_reviewable_files = reviewable_files
         self._src_repre_items = repre_items
 
     def _fill_destination_project(self):
@@ -1092,11 +1110,11 @@ class ProjectPushItemProcess:
     ) -> dict[str, Any]:
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
-        found_task_type = False
+        found_task_type = None
         src_task_type = task_info["taskType"]
         for task_type in self._project_entity["taskTypes"]:
             if task_type["name"].lower() == src_task_type.lower():
-                found_task_type = True
+                found_task_type = task_type["name"]
                 break
 
         if not found_task_type:
@@ -1111,7 +1129,7 @@ class ProjectPushItemProcess:
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
-            task_type=src_task_type,
+            task_type=found_task_type,
             attrib=task_info["attrib"],
         )
         self._task_info = task_info.data
@@ -1417,6 +1435,34 @@ class ProjectPushItemProcess:
         )
 
         return description
+
+    def _reupload_reviewables(self):
+        tmp_dir = tempfile.mkdtemp(prefix="ayon_push_")
+        try:
+            for file_item in self._src_reviewable_files:
+                dst_path = os.path.join(tmp_dir, file_item["name"])
+                progress = ayon_api.download_project_file(
+                    self._item.src_project_name,
+                    file_item["id"],
+                    dst_path,
+                )
+                if progress.failed:
+                    reason = progress.get_fail_reason()
+                    raise PushToProjectError(
+                        f"Failed to download reviewable file: '{reason}'"
+                    )
+
+                ayon_api.upload_reviewable(
+                    self._item.dst_project_name,
+                    self._version_entity["id"],
+                    dst_path,
+                    content_type=file_item["mime"],
+                    # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
+                    headers={},
+                )
+
+        finally:
+            shutil.rmtree(tmp_dir)
 
 
 class IntegrateModel:
