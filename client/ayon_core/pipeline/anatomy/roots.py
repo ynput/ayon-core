@@ -1,6 +1,7 @@
 import os
 import platform
 import numbers
+import warnings
 
 from ayon_core.lib import Logger, StringTemplate
 from ayon_core.lib.path_templates import FormatObject
@@ -244,8 +245,18 @@ class AnatomyRoot(FormatObject):
 
 
 # TODO remove
-# Backwards compatibility added 2026/05/21
-RootItem = AnatomyRoot  # DEPRECATED
+class RootItem(AnatomyRoot):
+    """DEPRECATED: Use 'AnatomyRoot' instead.
+
+    Backwards compatibility added 2026/05/21.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn(
+            "RootItem is deprecated. Use AnatomyRoot instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
 
 class AnatomyRoots:
