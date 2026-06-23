@@ -28,7 +28,6 @@ TASK_TYPE_ORDER_ROLE = QtCore.Qt.UserRole + 5
 TASK_STATUS_ROLE = QtCore.Qt.UserRole + 6
 
 
-
 class TasksQtModel(QtGui.QStandardItemModel):
     """Tasks model which cares about refresh of tasks by folder id.
 
