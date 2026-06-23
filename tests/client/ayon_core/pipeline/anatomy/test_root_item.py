@@ -5,9 +5,10 @@ so they can run without any network connection or AYON credentials.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
 import os
 import pytest
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
 
 from ayon_core.pipeline.anatomy import Anatomy
@@ -15,6 +16,12 @@ from ayon_core.pipeline.anatomy.roots import AnatomyRoot, AnatomyRoots
 
 if TYPE_CHECKING:
     from ayon_api.typing import ProjectDict
+
+
+@contextmanager
+def multi_patch(*patches: list[Callable]):
+    with ExitStack() as stack:
+        yield [stack.enter_context(_patch) for _patch in patches]
 
 
 @pytest.fixture
@@ -28,13 +35,24 @@ def anatomy_roots() -> AnatomyRoots:
         "taskTypes": {},
         "attrib": {},
     }
-    with patch(
-        (
-            "ayon_core.pipeline.anatomy.anatomy.Anatomy."
-            "_get_studio_roots_overrides"
+    patches = [
+        patch(
+            (
+                "ayon_core.pipeline.anatomy.anatomy.Anatomy."
+                "_get_studio_roots_overrides"
+            ),
+            return_value={},
         ),
-        return_value={},
-    ):
+        patch(
+            (
+                "ayon_core.pipeline.anatomy.anatomy.Anatomy."
+                "_get_site_root_overrides"
+            ),
+            return_value={},
+        )
+    ]
+
+    with multi_patch(*patches) as _mp:
         return AnatomyRoots(Anatomy(
             project_name="Test",
             project_entity=project_entity))
@@ -70,18 +88,34 @@ def make_root_item(
         "taskTypes": {},
         "attrib": {},
     }
+    target_platform = platform_override or "linux"
 
-    with patch((
-            "ayon_core.pipeline.anatomy.anatomy.Anatomy."
-            "_get_studio_roots_overrides"), return_value={}):
+    patches = [
+        patch(
+            (
+                "ayon_core.pipeline.anatomy.anatomy.Anatomy."
+                "_get_studio_roots_overrides"
+            ),
+            return_value={},
+        ),
+        patch(
+            (
+                "ayon_core.pipeline.anatomy.anatomy.Anatomy."
+                "_get_site_root_overrides"
+            ),
+            return_value={},
+        ),
+        patch("platform.system", return_value=target_platform),
+    ]
+
+    with multi_patch(*patches) as _:
         parent = AnatomyRoots(Anatomy(
             project_name="Test",
             project_entity=project_entity))
         raw_data = {"windows": windows, "linux": linux, "darwin": darwin}
         target_platform = platform_override or "linux"
-        with patch("platform.system", return_value=target_platform):
-            return AnatomyRoot(
-                parent=parent, root_raw_data=raw_data, name=name)
+        return AnatomyRoot(
+            parent=parent, root_raw_data=raw_data, name=name)
 
 
 @pytest.fixture
