@@ -123,112 +123,118 @@ class AYONStyle(QCommonStyle):
         )
 
     def widget_key(self, w: QWidget | None) -> str:
-        if self._in_widget_key or w is None or not isValid(w):
+        if self._in_widget_key or not w or not isValid(w):
             return ""
 
-        if w:
-            # Handle item view widgets - check parent for delegate and exclude
-            # ComboBoxItemDelegate
-            if hasattr(w, "itemDelegate") and not isinstance(
-                w, (QComboBox, QHeaderView)
-            ):
-                # Calling itemDelegate() is not a simple getter - it can
-                # trigger Qt's internal operations that call back into the
-                # custom style methods (subElementRect, drawPrimitive,
-                # pixelMetric, etc.), each of which calls widget_key() again,
-                # creating infinite recursion.
-                self._in_widget_key = True
-                try:
-                    delegate = w.itemDelegate()
-                    cbd = delegate and isinstance(
-                        delegate, ComboBoxItemDelegate
+        # Handle item view widgets - check parent for delegate and exclude
+        # ComboBoxItemDelegate
+        if (
+            hasattr(w, "itemDelegate")
+            and not isinstance(w, (QComboBox, QHeaderView))
+        ):
+            # Calling itemDelegate() is not a simple getter - it can
+            # trigger Qt's internal operations that call back into the
+            # custom style methods (subElementRect, drawPrimitive,
+            # pixelMetric, etc.), each of which calls widget_key() again,
+            # creating infinite recursion.
+            self._in_widget_key = True
+            try:
+                delegate = w.itemDelegate()
+                if not isinstance(
+                    delegate,
+                    (
+                        TreeViewItemDelegate,
+                        TableItemDelegate,
+                        ComboBoxItemDelegate
                     )
-                    tvd = delegate and isinstance(
-                        delegate, (TreeViewItemDelegate, TableItemDelegate)
-                    )
-                    if not cbd and not tvd:
-                        return "QStyledItemDelegate"
-                finally:
-                    self._in_widget_key = False
-            for name, wtype in self.base_classes.items():
-                if issubclass(type(w), wtype):
-                    if w.objectName() == "qtooltip_label":
-                        return "QToolTip"
-                    if isinstance(w, QLabel):
-                        p = w.parent()
-                        # NOTE: Qt does not use QToolTip but a QLabel (a
-                        # private QLabelTip class) !!
-                        # if the parent is a widget and it doesn't have a
-                        # layout, it could be a tooltip.
-                        # Sometimes, objectName() == "qtooltip_label" but the
-                        # object name is set when the rect requests are made.
-                        if p and isinstance(p, QWidget) and not p.layout():
-                            return "QToolTip"
-                    return name
+                ):
+                    return "QStyledItemDelegate"
+            finally:
+                self._in_widget_key = False
+
+        for name, wtype in self.base_classes.items():
+            if not issubclass(type(w), wtype):
+                continue
+
+            if w.objectName() == "qtooltip_label":
+                return "QToolTip"
+
+            if isinstance(w, QLabel):
+                p = w.parent()
+                # NOTE: Qt does not use QToolTip but a QLabel (a
+                # private QLabelTip class) !!
+                # if the parent is a widget and it doesn't have a
+                # layout, it could be a tooltip.
+                # Sometimes, objectName() == "qtooltip_label" but the
+                # object name is set when the rect requests are made.
+                if p and isinstance(p, QWidget) and not p.layout():
+                    return "QToolTip"
+            return name
         return ""
 
     def style_widget(self, widget: QWidget) -> None:
         """Apply AYON style to a widget (palette, font, hover tracking)."""
-        if isinstance(widget, QWidget):
-            variant = getattr(widget, "_variant_str", "default")
-            if hasattr(widget, "_style_data"):
-                if not widget._style_data:
-                    widget._style_data = self.model.get_style(
-                        self.widget_key(widget),
-                        variant,
-                    )
-                    widget._style_data.set_context(widget)
+        if not isinstance(widget, QWidget):
+            return
 
-            if hasattr(widget, "set_palette"):
-                widget.set_palette(
-                    self.model.get_style_palette(
-                        widget, self.widget_key(widget)
-                    )
-                )
-            else:
-                widget.setPalette(QtGui.QPalette(self.model.base_palette))
+        variant = getattr(widget, "_variant_str", "default")
+        if hasattr(widget, "_style_data") and not widget._style_data:
+            widget._style_data = self.model.get_style(
+                self.widget_key(widget),
+                variant,
+            )
+            widget._style_data.set_context(widget)
 
-            if hasattr(widget, "set_font"):
-                widget.set_font(QFont(self.model.base_font))
-            else:
-                widget.setFont(QFont(self.model.base_font))
+        if hasattr(widget, "set_palette"):
+            widget.set_palette(
+                self.model.get_style_palette(
+                    widget, self.widget_key(widget)
+                )
+            )
+        else:
+            widget.setPalette(QtGui.QPalette(self.model.base_palette))
 
-            # Enable mouse tracking for buttons to receive hover events
-            widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-            widget.setMouseTracking(True)
+        if hasattr(widget, "set_font"):
+            widget.set_font(QFont(self.model.base_font))
+        else:
+            widget.setFont(QFont(self.model.base_font))
 
-            if isinstance(widget, QComboBox):
-                widget.setMinimumContentsLength(1)
-                widget.setItemDelegate(
-                    ComboBoxItemDelegate(parent=widget, style_model=self.model)
-                )
-                widget.setSizeAdjustPolicy(
-                    QComboBox.SizeAdjustPolicy.AdjustToContents
-                )
-            elif isinstance(widget, QLabel):
-                # rounded corner no background.
-                widget.setAttribute(
-                    Qt.WidgetAttribute.WA_TranslucentBackground, True
-                )
-            elif isinstance(widget, QtWidgets.QMenu):
-                widget.setAttribute(
-                    Qt.WidgetAttribute.WA_TranslucentBackground, True
-                )
-                widget.setWindowFlags(
-                    widget.windowFlags() | Qt.WindowType.NoDropShadowWindowHint
-                )
+        # Enable mouse tracking for buttons to receive hover events
+        widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        widget.setMouseTracking(True)
 
-                # make icons visible in menus (MacOS)
-                def _setup_actions(menu):
-                    for action in menu.actions():
-                        if action.isSeparator():
-                            continue
-                        action.setIconVisibleInMenu(True)
-                        action.setShortcutVisibleInContextMenu(True)
-                        if action.menu():
-                            _setup_actions(action.menu())
+        if isinstance(widget, QComboBox):
+            widget.setMinimumContentsLength(1)
+            widget.setItemDelegate(
+                ComboBoxItemDelegate(parent=widget, style_model=self.model)
+            )
+            widget.setSizeAdjustPolicy(
+                QComboBox.SizeAdjustPolicy.AdjustToContents
+            )
+        elif isinstance(widget, QLabel):
+            # rounded corner no background.
+            widget.setAttribute(
+                Qt.WidgetAttribute.WA_TranslucentBackground, True
+            )
+        elif isinstance(widget, QtWidgets.QMenu):
+            widget.setAttribute(
+                Qt.WidgetAttribute.WA_TranslucentBackground, True
+            )
+            widget.setWindowFlags(
+                widget.windowFlags() | Qt.WindowType.NoDropShadowWindowHint
+            )
 
-                _setup_actions(widget)
+            # make icons visible in menus (MacOS)
+            def _setup_actions(menu):
+                for action in menu.actions():
+                    if action.isSeparator():
+                        continue
+                    action.setIconVisibleInMenu(True)
+                    action.setShortcutVisibleInContextMenu(True)
+                    if action.menu():
+                        _setup_actions(action.menu())
+
+            _setup_actions(widget)
 
     def polish(self, widget) -> None:
         """Polish widgets to enable hover tracking and custom palette."""
@@ -236,8 +242,6 @@ class AYONStyle(QCommonStyle):
             super().polish(widget)
             self.style_widget(widget)
 
-        elif isinstance(widget, QApplication):
-            super().polish(widget)
         else:
             super().polish(widget)
 
@@ -254,19 +258,16 @@ class AYONStyle(QCommonStyle):
         if type(w).__name__ in W_T:
             log.info("  >>  drawControl %s %s", type(w), key)
 
-        try:
-            draw_ce_calls = self.drawers[key]
-        except KeyError:
-            # no custom drawer fallback
+        draw_ce_calls = self.drawers.get(key)
+        if draw_ce_calls is None:
             super().drawControl(element, option, painter, w)
             return
-        else:
-            if isinstance(draw_ce_calls, list):
-                for draw_ce in draw_ce_calls:
-                    draw_ce(option, painter, w)
-            elif callable(draw_ce_calls):
-                draw_ce_calls(option, painter, w)
-            return
+
+        if isinstance(draw_ce_calls, list):
+            for draw_ce in draw_ce_calls:
+                draw_ce(option, painter, w)
+        elif callable(draw_ce_calls):
+            draw_ce_calls(option, painter, w)
 
     def drawComplexControl(
         self,
@@ -279,9 +280,8 @@ class AYONStyle(QCommonStyle):
         if type(w).__name__ in W_T:
             log.info("  >>  drawComplexControl %s %s", type(w), key)
 
-        try:
-            draw_cc = self.drawers[key]
-        except KeyError:
+        draw_cc = self.drawers.get(key)
+        if draw_cc is None:
             # no custom drawer fallback
             return super().drawComplexControl(cc, opt, p, w)
 
@@ -300,9 +300,8 @@ class AYONStyle(QCommonStyle):
         if type(w).__name__ in W_T:
             log.info("  >>  drawPrimitive %s %s", type(w), key)
 
-        try:
-            draw_prim = self.drawers[key]
-        except KeyError:
+        draw_prim = self.drawers.get(key)
+        if draw_prim is None:
             # Fall back to parent implementation
             super().drawPrimitive(element, option, painter, w)
             return
@@ -321,17 +320,15 @@ class AYONStyle(QCommonStyle):
         if isinstance(widget, QLabel):
             log.debug("%s %s", type(widget).__name__, key)
 
-        try:
-            sizer = self.sizers[key]
-        except KeyError:
+        sizer = self.sizers.get(key)
+        if sizer is None:
             # Fall back to parent implementation
             # Catch RuntimeError in case widget's C++ object was already
             # deleted
             try:
                 if widget is not None:
                     return super().subElementRect(element, option, widget)
-                else:
-                    return super().subElementRect(element, option)
+                return super().subElementRect(element, option)
             except RuntimeError:
                 # Widget was deleted, call without it
                 return super().subElementRect(element, option)
@@ -350,9 +347,8 @@ class AYONStyle(QCommonStyle):
         if isinstance(w, QLabel):
             log.debug("%s %s", type(w).__name__, key)
 
-        try:
-            sizer = self.sizers[key]
-        except KeyError:
+        sizer = self.sizers.get(key)
+        if sizer is None:
             # Fall back to parent implementation
             return super().subControlRect(cc, opt, sc, w)
 
@@ -373,9 +369,8 @@ class AYONStyle(QCommonStyle):
         if isinstance(widget, QLabel):
             log.debug("%s %s", type(widget), key)
 
-        try:
-            metric_func = self.metrics[key]
-        except KeyError:
+        metric_func = self.metrics.get(key)
+        if metric_func is None:
             # Fall back to parent implementation
             return super().pixelMetric(metric, opt, widget)
 
@@ -415,18 +410,17 @@ class AYONStyle(QCommonStyle):
         if isinstance(widget, QLabel):
             log.debug("%s", widget)
 
-        try:
-            sizer = self.sizers[key]
-        except KeyError:
-            if option:
-                return super().sizeFromContents(
-                    contents_type, option, contents_size, widget
-                )
-            else:
-                # Create a default size if no option is provided
-                return QtCore.QSize(100, 32)  # reasonable default
-        else:
+        sizer = self.sizers.get(key)
+        if sizer is not None:
             return sizer(contents_type, option, contents_size, widget)
+
+        if option:
+            return super().sizeFromContents(
+                contents_type, option, contents_size, widget
+            )
+
+        # Create a reasonable default size if no option is provided
+        return QtCore.QSize(100, 32)
 
 
 # TEST ========================================================================
