@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 import json
 from pathlib import Path
+
+from qtpy.QtGui import QColor
+
 from .data_models import (
     CommentModel,
     VersionPublishModel,
@@ -16,7 +19,6 @@ from .data_models import (
     AnnotationModel,
     FileModel,
 )
-from qtpy.QtGui import QColor
 
 logger = logging.getLogger(__name__)
 
