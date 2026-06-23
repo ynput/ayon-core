@@ -56,7 +56,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="[%(levelname)s]:   %(funcName)16s:  %(message)s",
 )
-log = logging.getLogger("Ayon Style")
+log = logging.getLogger("AYON Style")
 
 
 # DEBUG -----------------------------------------------------------------------
@@ -818,4 +818,4 @@ if __name__ == "__main__":
 
         return widget
 
-    test(_ui_test, style=Style.AyonStyle)
+    test(_ui_test, style=Style.AYONStyle)

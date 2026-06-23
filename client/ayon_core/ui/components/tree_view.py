@@ -471,4 +471,4 @@ if __name__ == "__main__":
         container.setMinimumWidth(360)
         return container
 
-    test(_build, style=Style.AyonStyleOverCSS)
+    test(_build, style=Style.AYONStyleOverCSS)

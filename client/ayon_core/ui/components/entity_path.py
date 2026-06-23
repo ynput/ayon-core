@@ -102,4 +102,4 @@ if __name__ == "__main__":
         w.add_widget(AYEntityPath("project/asset/shot/comp", simple=True))
         return w
 
-    test(_build, style=Style.AyonStyleOverCSS)
+    test(_build, style=Style.AYONStyleOverCSS)

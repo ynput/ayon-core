@@ -1133,4 +1133,4 @@ if __name__ == "__main__":
 
         return w
 
-    test(build, style=Style.AyonStyle)
+    test(build, style=Style.AYONStyle)

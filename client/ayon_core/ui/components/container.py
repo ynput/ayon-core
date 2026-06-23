@@ -198,4 +198,4 @@ if __name__ == "__main__":
         w.setMinimumHeight(400)
         return w
 
-    test(build, style=Style.AyonStyleOverCSS)
+    test(build, style=Style.AYONStyleOverCSS)

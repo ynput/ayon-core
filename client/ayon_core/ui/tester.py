@@ -11,8 +11,8 @@ from .style_types import get_ayon_style
 class Style(Enum):
     Base = 0
     CSS = 1
-    AyonStyle = 2
-    AyonStyleOverCSS = 3
+    AYONStyle = 2
+    AYONStyleOverCSS = 3
 
 
 AWFUL_CSS = """
@@ -43,22 +43,22 @@ def load_rv_stylesheet(old=True):
         return fr.read()
 
 
-def test(test_widget, style: Style = Style.AyonStyleOverCSS):
+def test(test_widget, style: Style = Style.AYONStyleOverCSS):
     """Main function to run the Qt test."""
     app = QtWidgets.QApplication(sys.argv)
 
     if style == Style.CSS:
         # Set old RV dark theme for the application
         app.setStyleSheet(load_rv_stylesheet())
-    elif style == Style.AyonStyle:
+    elif style == Style.AYONStyle:
         app.setStyle(get_ayon_style())
-    elif style == Style.AyonStyleOverCSS:
+    elif style == Style.AYONStyleOverCSS:
         app.setStyleSheet(load_rv_stylesheet())
 
     # Create and show the test widget
     widget = test_widget()
 
-    if style == Style.AyonStyleOverCSS:
+    if style == Style.AYONStyleOverCSS:
         widget.setStyle(get_ayon_style())
 
     widget.show()

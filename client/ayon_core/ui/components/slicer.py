@@ -190,4 +190,4 @@ if __name__ == "__main__":
 
         return w
 
-    test(_build, Style.AyonStyleOverCSS)
+    test(_build, Style.AYONStyleOverCSS)

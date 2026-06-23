@@ -601,4 +601,4 @@ if __name__ == "__main__":
         format="[%(levelname)s] %(name)s: %(message)s",
     )
 
-    test(_build, style=Style.AyonStyleOverCSS)
+    test(_build, style=Style.AYONStyleOverCSS)

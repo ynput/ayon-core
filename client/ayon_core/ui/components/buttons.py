@@ -437,4 +437,4 @@ if __name__ == "__main__":
         return widget
 
     os.environ["QT_SCALE_FACTOR"] = "1"
-    test(_build_test, style=Style.AyonStyleOverCSS)
+    test(_build_test, style=Style.AYONStyleOverCSS)

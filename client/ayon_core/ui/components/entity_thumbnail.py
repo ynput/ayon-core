@@ -732,4 +732,4 @@ if __name__ == "__main__":
         QTimer.singleShot(1500, lambda: delayed.set_thumbnail("avatar3"))
         return w
 
-    test(build, style=Style.AyonStyleOverCSS)
+    test(build, style=Style.AYONStyleOverCSS)

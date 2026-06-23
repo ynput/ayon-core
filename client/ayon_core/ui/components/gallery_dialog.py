@@ -282,4 +282,4 @@ if __name__ == "__main__":
         dialog = GalleryDialog(images, current_index=0)
         return dialog
 
-    test(build, style=Style.AyonStyleOverCSS)
+    test(build, style=Style.AYONStyleOverCSS)

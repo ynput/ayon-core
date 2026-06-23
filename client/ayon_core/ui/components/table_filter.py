@@ -979,4 +979,4 @@ if __name__ == "__main__":
         outer.setMinimumWidth(900)
         return outer
 
-    test(_build, style=Style.AyonStyleOverCSS)
+    test(_build, style=Style.AYONStyleOverCSS)
