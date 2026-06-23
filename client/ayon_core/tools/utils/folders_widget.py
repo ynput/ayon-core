@@ -485,7 +485,6 @@ class FoldersWidget(QtWidgets.QWidget):
         folders_view = AYTreeView(
             self, item_height=23, item_padding=[1, 6]
         )
-        folders_view.setHeaderHidden(True)
         folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         folders_model = FoldersQtModel(
