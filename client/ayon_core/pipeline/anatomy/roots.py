@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import platform
 import numbers
@@ -17,13 +18,15 @@ class AnatomyRoot(FormatObject):
     is used for formatting of template.
 
     Args:
-        parent (AnatomyRoots): Parent object.
+        parent (AnatomyRoots | None): Parent object.
         root_raw_data (dict): Dictionary containing root values by platform
             names. ["windows", "linux" and "darwin"]
         name (str): Root name which is representing. Used with
             multi root setup otherwise None value is expected.
     """
-    def __init__(self, parent, root_raw_data, name):
+    def __init__(
+            self, parent: AnatomyRoots | None,
+            root_raw_data: dict, name: str):
         super().__init__()
         self._log = None
         lowered_platform_keys = {
@@ -45,12 +48,13 @@ class AnatomyRoot(FormatObject):
             self.value = (
                 os.path.expandvars(
                     os.path.expanduser(
-                        lowered_platform_keys[current_platform].format_map(
-                            os.environ
-                        )
-                    )
-                )
-            )
+                        lowered_platform_keys[current_platform])))
+        except AttributeError as e:
+            msg = f"Missing root definition for platform {current_platform}."
+            raise RootMissingEnv(msg) from e
+
+        try:
+            self.value = self.value.format_map(os.environ)
         except KeyError as e:
             result = StringTemplate(self.value).format(os.environ.copy())
             is_are = "is" if len(result.missing_keys) == 1 else "are"
@@ -208,7 +212,7 @@ class AnatomyRoot(FormatObject):
         ``os.path.expanduser``) so that the following mismatches are handled:
 
         - ``path`` is already expanded but the stored root still contains
-          ``~`` or ``%VAR%`` / ``$VAR`` tokens (or vice-versa).
+          ``~` / ``$VAR`` tokens (or vice-versa).
 
         Args:
             path (str): Path where root value should be found.

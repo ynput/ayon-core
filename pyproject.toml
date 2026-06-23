@@ -57,7 +57,8 @@ log_cli = true
 log_cli_level = "INFO"
 addopts = "-ra -q"
 testpaths = [
-    "client/ayon_core/tests"
+    "client/ayon_core/tests",
+    "tests"
 ]
 markers = [
     "unit: Unit tests",

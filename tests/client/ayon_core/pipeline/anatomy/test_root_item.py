@@ -1,4 +1,4 @@
-"""Tests for RootItem and its find_root_template_from_path logic.
+"""Tests for AnatomyRoot and its find_root_template_from_path logic.
 
 These tests are intentionally isolated from the rest of Anatomy / AYON server
 so they can run without any network connection or AYON credentials.
@@ -9,7 +9,7 @@ import os
 import pytest
 from unittest.mock import patch
 
-from ayon_core.pipeline.anatomy.roots import RootItem
+from ayon_core.pipeline.anatomy.roots import AnatomyRoot
 
 
 def make_root_item(
@@ -18,8 +18,8 @@ def make_root_item(
     darwin: str = "/Volumes/projects",
     name: str = "work",
     platform_override: str | None = None,
-) -> RootItem:
-    """Create a RootItem, optionally forcing the *current* platform.
+) -> AnatomyRoot:
+    """Create a AnatomyRoot, optionally forcing the *current* platform.
 
     Helper function for testing.
 
@@ -31,30 +31,30 @@ def make_root_item(
         platform_override (str, optional): Platform override. Defaults to None.
 
     Returns:
-        RootItem: Root Item.
+        AnatomyRoot: Root Item.
 
     """
     raw_data = {"windows": windows, "linux": linux, "darwin": darwin}
     target_platform = platform_override or "linux"
     with patch("platform.system", return_value=target_platform):
-        return RootItem(parent=None, root_raw_data=raw_data, name=name)
+        return AnatomyRoot(parent=None, root_raw_data=raw_data, name=name)
 
 
 @pytest.fixture
 def linux_root():
-    """RootItem configured for Linux."""
+    """AnatomyRoot configured for Linux."""
     return make_root_item(linux="/mnt/projects", platform_override="linux")
 
 
 @pytest.fixture
 def windows_root():
-    """RootItem configured for Windows."""
+    """AnatomyRoot configured for Windows."""
     return make_root_item(windows="C:/projects", platform_override="windows")
 
 
 @pytest.fixture
 def darwin_root():
-    """RootItem configured for macOS (Darwin)."""
+    """AnatomyRoot configured for macOS (Darwin)."""
     return make_root_item(
         darwin="/Volumes/projects", platform_override="darwin"
     )
@@ -62,7 +62,7 @@ def darwin_root():
 
 @pytest.fixture
 def multi_platform_root():
-    """RootItem with all platforms set, current platform Linux."""
+    """AnatomyRoot with all platforms set, current platform Linux."""
     return make_root_item(
         windows="C:/projects",
         linux="/mnt/projects",
@@ -73,7 +73,7 @@ def multi_platform_root():
 
 @pytest.fixture
 def cross_platform_root():
-    """RootItem with Linux and Windows paths, running on Linux."""
+    """AnatomyRoot with Linux and Windows paths, running on Linux."""
     return make_root_item(
         windows="C:/projects",
         linux="/mnt/projects",
@@ -119,7 +119,7 @@ def test_full_key_with_name():
 def test_value_expands_env_var():
     with patch.dict(os.environ, {"MY_ROOT": "/env/root"}, clear=False):
         with patch("platform.system", return_value="linux"):
-            item = RootItem(
+            item = AnatomyRoot(
                 parent=None,
                 root_raw_data={"linux": "$MY_ROOT/projects"},
                 name="work",
@@ -132,7 +132,7 @@ def test_value_expands_user_home():
     expand = lambda p: p.replace("~", fake_home)  # noqa: E731
     with patch("os.path.expanduser", side_effect=expand):
         with patch("platform.system", return_value="linux"):
-            item = RootItem(
+            item = AnatomyRoot(
                 parent=None,
                 root_raw_data={"linux": "~/projects"},
                 name="work",
@@ -205,7 +205,7 @@ def test_expanded_path_matches_unexpanded_root_with_envvar():
     fake_env = {"MY_ROOT": "/mnt"}
     with patch.dict(os.environ, fake_env, clear=False):
         with patch("platform.system", return_value="linux"):
-            item = RootItem(
+            item = AnatomyRoot(
                 parent=None,
                 root_raw_data={
                     "linux": "$MY_ROOT/projects",
@@ -226,7 +226,7 @@ def test_expanded_path_matches_unexpanded_root_with_tilde():
     expand = lambda p: p.replace("~", fake_home)  # noqa: E731
     with patch("os.path.expanduser", side_effect=expand):
         with patch("platform.system", return_value="linux"):
-            item = RootItem(
+            item = AnatomyRoot(
                 parent=None,
                 root_raw_data={"linux": "~/projects"},
                 name="work",
@@ -244,7 +244,7 @@ def test_unexpanded_path_matches_expanded_root():
     fake_home = "/home/user"
     expand = lambda p: p.replace("~", fake_home)  # noqa: E731
     with patch("platform.system", return_value="linux"):
-        item = RootItem(
+        item = AnatomyRoot(
             parent=None,
             root_raw_data={"linux": "/home/user/projects"},
             name="work",
@@ -261,7 +261,7 @@ def test_unexpanded_envvar_path_matches_expanded_root():
     """Root already expanded, path contains ``$MY_ROOT``."""
     fake_env = {"MY_ROOT": "/mnt"}
     with patch("platform.system", return_value="linux"):
-        item = RootItem(
+        item = AnatomyRoot(
             parent=None,
             root_raw_data={"linux": "/mnt/projects"},
             name="work",
@@ -280,7 +280,7 @@ def test_both_sides_need_expanding():
     expand = lambda p: p.replace("~", fake_home)  # noqa: E731
     with patch("os.path.expanduser", side_effect=expand):
         with patch("platform.system", return_value="linux"):
-            item = RootItem(
+            item = AnatomyRoot(
                 parent=None,
                 root_raw_data={"linux": "~/projects"},
                 name="work",
@@ -297,7 +297,7 @@ def test_no_match_with_expansion_returns_false():
     fake_env = {"MY_ROOT": "/mnt"}
     with patch.dict(os.environ, fake_env, clear=False):
         with patch("platform.system", return_value="linux"):
-            item = RootItem(
+            item = AnatomyRoot(
                 parent=None,
                 root_raw_data={"linux": "$MY_ROOT/projects"},
                 name="work",
@@ -310,7 +310,7 @@ def test_no_match_with_expansion_returns_false():
 
 
 # ---------------------------------------------------------------------------
-# RootItem.path_remapper
+# AnatomyRoot.path_remapper
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("input_path,dst_platform,src_platform,expected", [
@@ -350,7 +350,3 @@ def test_path_remapper_success(
 def test_path_remapper_returns_none(linux_root, input_path, remap_kwargs):
     result = linux_root.path_remapper(input_path, **remap_kwargs)
     assert result is None
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
