@@ -18,15 +18,13 @@ class AnatomyRoot(FormatObject):
     is used for formatting of template.
 
     Args:
-        parent (AnatomyRoots | None): Parent object.
+        parent (AnatomyRoots): Parent object.
         root_raw_data (dict): Dictionary containing root values by platform
             names. ["windows", "linux" and "darwin"]
         name (str): Root name which is representing. Used with
             multi root setup otherwise None value is expected.
     """
-    def __init__(
-            self, parent: AnatomyRoots | None,
-            root_raw_data: dict, name: str):
+    def __init__(self, parent, root_raw_data, name):
         super().__init__()
         self._log = None
         lowered_platform_keys = {

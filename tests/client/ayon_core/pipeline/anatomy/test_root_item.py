@@ -7,9 +7,14 @@ from __future__ import annotations
 
 import os
 import pytest
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from ayon_core.pipeline.anatomy.roots import AnatomyRoot
+from ayon_core.pipeline.anatomy import Anatomy
+from ayon_core.pipeline.anatomy.roots import AnatomyRoot, AnatomyRoots
+
+if TYPE_CHECKING:
+    from ayon_api.typing import ProjectDict
 
 
 def make_root_item(
@@ -34,10 +39,26 @@ def make_root_item(
         AnatomyRoot: Root Item.
 
     """
-    raw_data = {"windows": windows, "linux": linux, "darwin": darwin}
-    target_platform = platform_override or "linux"
-    with patch("platform.system", return_value=target_platform):
-        return AnatomyRoot(parent=None, root_raw_data=raw_data, name=name)
+    project_entity: ProjectDict = {
+        "name": "Test",
+        "code": "test",
+        "type": "project",
+        "config": {},
+        "taskTypes": {},
+        "attrib": {},
+    }
+
+    with patch((
+            "ayon_core.pipeline.anatomy.anatomy.Anatomy."
+            "_get_studio_roots_overrides"), return_value={}):
+        parent = AnatomyRoots(Anatomy(
+            project_name="Test",
+            project_entity=project_entity))
+        raw_data = {"windows": windows, "linux": linux, "darwin": darwin}
+        target_platform = platform_override or "linux"
+        with patch("platform.system", return_value=target_platform):
+            return AnatomyRoot(
+                parent=parent, root_raw_data=raw_data, name=name)
 
 
 @pytest.fixture
