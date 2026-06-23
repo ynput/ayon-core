@@ -54,73 +54,6 @@ from .style_types import (
 
 log = logging.getLogger("AYON Style")
 
-
-# DEBUG -----------------------------------------------------------------------
-
-
-def _debug_rect(p: QPainter, color: str, rect: QRect | QRectF):
-    p.save()
-    pen = QPen(QColor(color))
-    brush = QBrush(Qt.BrushStyle.NoBrush)
-    p.setPen(pen)
-    p.setBrush(brush)
-    p.drawRect(rect)
-    p.restore()
-
-
-def _all_enums(t):
-    meta_object: QtCore.QMetaObject = t.staticMetaObject
-    enums = [
-        meta_object.enumerator(v) for v in range(meta_object.enumeratorCount())
-    ]
-    for enum in enums:
-        # enum.isFlag() is always False
-        non_empty_indices = [i for i in range(17) if enum.valueToKey(i)]
-        is_flag = non_empty_indices == [0, 1, 2, 4, 8, 16]
-
-        print(
-            f"  === {enum.scope()}.{enum.enumName()}[{enum.keyCount()}]"
-            f" -- {'Flag' if is_flag else ''}"
-        )
-
-        if is_flag:
-            for i in range(enum.keyCount()):
-                flag_idx = 2**i if i > 0 else 0
-                v = enum.valueToKey(flag_idx)
-                if v:
-                    print(f"    {flag_idx}: {v}")
-        else:
-            for i in range(enum.keyCount()):
-                print(f"    {i}: {enum.valueToKey(i)}")
-
-
-def _enum_values(enum):
-    # qmeta = QtCore.QMetaEnum(enum)
-    meta_object: QtCore.QMetaObject = QStyle.staticMetaObject  # type: ignore
-    enum_index = meta_object.indexOfEnumerator(enum.__name__)
-    meta_enum: QtCore.QMetaEnum = meta_object.enumerator(enum_index)
-    num_keys = meta_enum.keyCount()
-    vals = [meta_enum.value(v) for v in range(num_keys) if meta_enum.key(v)]
-    # print(f"=== enum = {meta_enum.scope()}.{meta_enum.enumName()} -> {keys}")
-    return vals
-
-
-def _enum_values_dict(enum):
-    # qmeta = QtCore.QMetaEnum(enum)
-    meta_object: QtCore.QMetaObject = QStyle.staticMetaObject  # type: ignore
-    enum_index = meta_object.indexOfEnumerator(enum.__name__)
-    meta_enum: QtCore.QMetaEnum = meta_object.enumerator(enum_index)
-    num_keys = meta_enum.keyCount()
-    vals = {
-        meta_enum.key(i): meta_enum.value(i)
-        for i in range(num_keys)
-        if meta_enum.key(i)
-    }
-    # print(f"=== enum = {meta_enum.scope()}.{meta_enum.enumName()} -> {keys}")
-    return vals
-
-
-# ----------------------------------------------------------------------------
 W_T = {}
 
 
@@ -517,6 +450,19 @@ if __name__ == "__main__":
     from .drawers import get_icon
     from .tester import Style, test
     from .variants import QPushButtonVariants
+
+
+    def _enum_values(enum):
+        # qmeta = QtCore.QMetaEnum(enum)
+        meta_object: QtCore.QMetaObject = QStyle.staticMetaObject  # type: ignore
+        enum_index = meta_object.indexOfEnumerator(enum.__name__)
+        meta_enum: QtCore.QMetaEnum = meta_object.enumerator(enum_index)
+        num_keys = meta_enum.keyCount()
+        vals = [meta_enum.value(v) for v in range(num_keys) if
+                meta_enum.key(v)]
+        # print(f"=== enum = {meta_enum.scope()}.{meta_enum.enumName()} -> {keys}")
+        return vals
+
 
     def _setup_context_menu(widget):
         def _make_icon(name):
