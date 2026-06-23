@@ -38,8 +38,14 @@ class FolderItem:
     """
 
     def __init__(
-        self, entity_id, parent_id, name, path, folder_type, label,
-        status
+        self,
+        entity_id,
+        parent_id,
+        name,
+        path,
+        folder_type,
+        label,
+        status,
     ):
         self.entity_id = entity_id
         self.parent_id = parent_id
