@@ -52,10 +52,6 @@ from .style_types import (
     hsl_to_html_color,  # noqa: F401  (re-exported for backward compatibility)
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(levelname)s]:   %(funcName)16s:  %(message)s",
-)
 log = logging.getLogger("AYON Style")
 
 

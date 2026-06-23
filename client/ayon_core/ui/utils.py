@@ -18,7 +18,6 @@ from .data_models import (
 )
 from qtpy.QtGui import QColor
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
