@@ -88,7 +88,7 @@ class HierarchyPage(QtWidgets.QWidget):
         folders_widget = LauncherFoldersWidget(
             controller,
             content_body,
-            add_status_column=True,
+            show_status_column=True,
         )
         folders_widget.set_header_visible(True)
 
@@ -96,7 +96,7 @@ class HierarchyPage(QtWidgets.QWidget):
         tasks_widget = LauncherTasksWidget(
             controller,
             content_body,
-            add_status_column=True,
+            show_status_column=True,
         )
 
         # - Third page - Workfiles

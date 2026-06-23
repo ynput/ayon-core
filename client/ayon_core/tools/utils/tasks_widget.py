@@ -39,13 +39,13 @@ class TasksQtModel(QtGui.QStandardItemModel):
     _default_task_icon = None
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, add_status_column=False):
+    def __init__(self, controller, show_status_column=False):
         super().__init__()
 
-        col_count = 2 if add_status_column else 1
+        col_count = 2 if show_status_column else 1
         self.setColumnCount(col_count)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Tasks")
-        if add_status_column:
+        if show_status_column:
             self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
 
         self._controller = controller
@@ -66,7 +66,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._refresh_threads = {}
         self._current_refresh_thread = None
 
-        self._add_status_column = add_status_column
+        self._show_status_column = show_status_column
         self._last_project_statuses = {}
         self._status_icon_cache = {}
 
@@ -227,7 +227,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         status_col_items = (
             self._controller.get_project_status_items(project_name)
-            if self._add_status_column else []
+            if self._show_status_column else []
         )
 
         return task_items, task_type_items, status_col_items
@@ -313,7 +313,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             if item is None:
                 item = QtGui.QStandardItem()
                 item.setEditable(False)
-                if self._add_status_column:
+                if self._show_status_column:
                     status_col_item = QtGui.QStandardItem()
                     status_col_item.setEditable(False)
                     new_items.append([item, status_col_item])
@@ -353,7 +353,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             root_item.removeRow(item.row())
 
         if new_items:
-            if self._add_status_column:
+            if self._show_status_column:
                 for row in new_items:
                     root_item.appendRow(row)
             else:
@@ -458,7 +458,7 @@ class TasksWidget(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Workfiles controller.
         parent (QtWidgets.QWidget): Parent widget.
         handle_expected_selection (Optional[bool]): Handle expected selection.
-        add_status_column (bool): When True a narrow **Status** column is
+        show_status_column (bool): When True a narrow **Status** column is
             added. Status col stores the status icon (``DecorationRole``) and
             tooltip (``ToolTipRole``)
     """
@@ -467,7 +467,7 @@ class TasksWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent, handle_expected_selection=False, add_status_column=False):
+    def __init__(self, controller, parent, handle_expected_selection=False, show_status_column=False):
         super().__init__(parent)
 
         tasks_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
@@ -477,7 +477,7 @@ class TasksWidget(QtWidgets.QWidget):
             AYTreeView.SelectionMode.SingleSelection
         )
 
-        tasks_model = TasksQtModel(controller, add_status_column=add_status_column)
+        tasks_model = TasksQtModel(controller, show_status_column=show_status_column)
         tasks_proxy_model = TasksProxyModel()
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
@@ -485,7 +485,7 @@ class TasksWidget(QtWidgets.QWidget):
         tasks_view.setModel(tasks_proxy_model)
 
         # For better visual clarity when showing the status column:
-        if add_status_column:
+        if show_status_column:
             header = tasks_view.header()
             header.setStretchLastSection(False)
             header.setSectionResizeMode(

@@ -38,20 +38,20 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        add_status_column (bool): When True the model gains a second
+        show_status_column (bool): When True the model gains a second
             column that carries the status icon (``DecorationRole``) and
             the status name as a tooltip (``ToolTipRole``).
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, add_status_column=False):
+    def __init__(self, controller, show_status_column=False):
         super().__init__()
 
-        col_count = 2 if add_status_column else 1
+        col_count = 2 if show_status_column else 1
         self.setColumnCount(col_count)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
-        if add_status_column:
+        if show_status_column:
             self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
 
         self._controller = controller
@@ -63,7 +63,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._current_refresh_thread = None
         self._last_project_name = None
 
-        self._add_status_column = add_status_column
+        self._show_status_column = show_status_column
         self._last_project_statuses = {}
         self._status_icon_cache = {}
 
@@ -200,7 +200,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         status_col_items = (
             self._controller.get_project_status_items(project_name)
-            if self._add_status_column else []
+            if self._show_status_column else []
         )
         return folder_items, folder_type_items, status_col_items
 
@@ -371,7 +371,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     is_new = True
                     item = QtGui.QStandardItem()
                     item.setEditable(False)
-                    if self._add_status_column:
+                    if self._show_status_column:
                         status_col_item = QtGui.QStandardItem()
                         status_col_item.setEditable(False)
                 else:
@@ -385,7 +385,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     status_col_item,
                 )
                 if is_new:
-                    if self._add_status_column:
+                    if self._show_status_column:
                         new_items.append([item, status_col_item])
                     else:
                         new_items.append(item)
@@ -397,7 +397,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 hierarchy_queue.append((item, item_id))
 
             if new_items:
-                if self._add_status_column:
+                if self._show_status_column:
                     for row in new_items:
                         parent_item.appendRow(row)
                 else:
@@ -465,9 +465,8 @@ class FoldersWidget(QtWidgets.QWidget):
         parent (QtWidgets.QWidget): The parent widget.
         handle_expected_selection (bool): If True, the widget will handle
             the expected selection. Defaults to False.
-        add_status_column (bool): When True a narrow **Status** column is
-            added. Status col stores the status icon (``DecorationRole``) and
-            tooltip (``ToolTipRole``)
+        show_status_column (bool): When True a narrow **Status** column is
+            shown in the view.
     """
 
     double_clicked = QtCore.Signal(QtGui.QMouseEvent)
@@ -479,7 +478,7 @@ class FoldersWidget(QtWidgets.QWidget):
         controller,
         parent,
         handle_expected_selection=False,
-        add_status_column=False,
+        show_status_column=False,
     ):
         _FOLDER_VIEW_HEIGHT = 23
         _FOLDER_VIEW_PADDING = [1, 6]
@@ -493,7 +492,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         folders_model = FoldersQtModel(
             controller,
-            add_status_column=add_status_column
+            show_status_column=show_status_column
         )
         folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
@@ -502,7 +501,7 @@ class FoldersWidget(QtWidgets.QWidget):
         folders_view.setModel(folders_proxy_model)
 
         # For better visual clarity when showing the status column:
-        if add_status_column:
+        if show_status_column:
             header = folders_view.header()
             header.setStretchLastSection(False)
             header.setSectionResizeMode(
