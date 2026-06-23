@@ -94,7 +94,7 @@ class TaskItem:
         name (str | None): Task label.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
-        status (str | None): Task status name.
+        status (str): Task status name.
 
     """
 
