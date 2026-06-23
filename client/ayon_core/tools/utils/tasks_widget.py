@@ -636,10 +636,11 @@ class TasksWidget(QtWidgets.QWidget):
     def _update_task_type_sorting(self):
         if self._use_task_type_sorting is not None:
             return
-
-        project_name = self._tasks_model.get_last_project_name()
+        project_name = self._controller.get_current_project_name()
         if project_name is None:
-            return
+            project_name = self._tasks_model.get_last_project_name()
+            if project_name is None:
+                return
 
         use_task_type_sorting = False
         if hasattr(self._controller, "get_project_settings"):
