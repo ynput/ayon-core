@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from os.path import normpath
 from typing import Optional
 
 from qtpy.QtCore import Qt
@@ -67,7 +66,7 @@ class AYEntityPath(QWidget):
     def entity_path(self, value):
         self._path = value
         if not self._simple:
-            self._path_segments = normpath(value).split("/")
+            self._path_segments = value.split("/")
             self._build()
         else:
             self._label.setText(self._path.replace("/", " / "))
