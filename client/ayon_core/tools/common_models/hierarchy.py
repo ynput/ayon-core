@@ -107,7 +107,7 @@ class TaskItem:
         task_type_order: int,
         parent_id: str,
         tags: list[str],
-        status:str
+        status: str
     ):
         self.task_id = task_id
         self.name = name
