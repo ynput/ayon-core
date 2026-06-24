@@ -565,10 +565,6 @@ class AbstractTemplateBuilder(ABC):
                 keep_placeholders: bool = preset["keep_placeholder"]
             if create_first_version is None:
                 create_first_version: bool = preset["create_first_version"]
-            if apply_to_empty_scene is None:
-                apply_to_empty_scene: bool = preset["apply_to_empty_scene"]
-            if apply_on_app_launch is None:
-                apply_on_app_launch: bool = preset["apply_on_app_launch"]
 
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
