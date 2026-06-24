@@ -511,8 +511,6 @@ class AbstractTemplateBuilder(ABC):
         level_limit=None,
         keep_placeholders=None,
         create_first_version=None,
-        apply_to_empty_scene=None,
-        apply_on_app_launch=None,
         workfile_creation_enabled=False
     ):
         """Main callback for building workfile from template path.
@@ -534,10 +532,6 @@ class AbstractTemplateBuilder(ABC):
                  When set to True, this option initiates the saving of the
                  workfile for an initial version. It will skip saving if
                  a version already exists.
-            apply_to_empty_scene (bool): Whether to apply the template
-                to an empty scene(Act as 'new file' template).
-            apply_on_app_launch (bool): Whether to apply the template on
-                application launch if no workfile exists yet.
             workfile_creation_enabled (bool): Whether the call is part of
                 creating a new workfile.
                 When True, we only build if the current file is not
