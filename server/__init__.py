@@ -25,7 +25,7 @@ class CleanupFolderThumbnailsRequestModel(OPModel):
 
 
 class CleanupFolderThumbnailsResponseModel(OPModel):
-    folder_ids: list[str]
+    count: int
 
 
 class CoreAddon(BaseServerAddon):
@@ -154,7 +154,7 @@ class CoreAddon(BaseServerAddon):
                 fildered_folder_ids,
             )
         return CleanupFolderThumbnailsResponseModel(
-            folder_ids=fildered_folder_ids
+            count=len(fildered_folder_ids)
         )
 
 
