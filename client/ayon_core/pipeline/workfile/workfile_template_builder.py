@@ -584,7 +584,7 @@ class AbstractTemplateBuilder(ABC):
 
         # Do not consider saving a first workfile version, if this is not set
         # to be a "workfile creation" or `create_first_version` is disabled.
-        if explicit_build_requested or not create_first_version:
+        if not create_first_version:
             return
 
         # If there is no existing workfile, save the first version
@@ -876,9 +876,6 @@ class AbstractTemplateBuilder(ABC):
             filter_data,
             logger=self.log
         )
-        if not profile.get("enabled", True):
-            self.log.info("Template profile is disabled for current context.")
-            return
 
         if not profile:
             raise TemplateProfileNotFound((
@@ -907,8 +904,6 @@ class AbstractTemplateBuilder(ABC):
         # switch to remove placeholders after they are used
         keep_placeholder = profile.get("keep_placeholder")
         create_first_version = profile.get("create_first_version")
-        apply_to_empty_scene = profile.get("apply_to_empty_scene", True)
-        apply_on_app_launch = profile.get("apply_on_app_launch", True)
 
         # backward compatibility, since default is True
         if keep_placeholder is None:
@@ -918,8 +913,7 @@ class AbstractTemplateBuilder(ABC):
             "path": resolved_path,
             "keep_placeholder": keep_placeholder,
             "create_first_version": create_first_version,
-            "apply_to_empty_scene": apply_to_empty_scene,
-            "apply_on_app_launch": apply_on_app_launch,
+            "profile": profile,
         }
 
     def resolve_template_path(self, path, fill_data=None) -> str:
