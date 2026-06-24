@@ -566,7 +566,8 @@ class AbstractTemplateBuilder(ABC):
         if is_new_file or explicit_build_requested:
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
-            self.populate_scene_placeholders(level_limit, keep_placeholders)
+            self.populate_scene_placeholders(
+                level_limit, keep_placeholders)
 
         # Do not consider saving a first workfile version, if this is not set
         # to be a "workfile creation" or `create_first_version` is disabled.
@@ -862,7 +863,6 @@ class AbstractTemplateBuilder(ABC):
             filter_data,
             logger=self.log
         )
-
         if not profile:
             raise TemplateProfileNotFound((
                 "No matching profile found for task '{}' of type '{}' "
