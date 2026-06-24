@@ -563,11 +563,7 @@ class AbstractTemplateBuilder(ABC):
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
         is_new_file = not self.host.get_current_workfile()
-        if (
-            apply_to_empty_scene
-            or explicit_build_requested
-            or (apply_on_app_launch and is_new_file)
-        ):
+        if is_new_file or explicit_build_requested:
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(level_limit, keep_placeholders)
