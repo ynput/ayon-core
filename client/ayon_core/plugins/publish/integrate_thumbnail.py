@@ -33,6 +33,8 @@ import pyblish.api
 from ayon_core.lib import format_file_size
 from ayon_core.pipeline.publish import PublishXmlValidationError
 
+from ayon_core import __version__
+
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
@@ -211,8 +213,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
     ):
         # Make sure each entity id has defined only one thumbnail id
         folder_ids = set()
-        version_ids = set()
-        thumbnail_id_by_entity_id = {}
+        op_session = OperationsSession()
         for instance_item in filtered_instance_items:
             instance, thumbnail_path, version_id = instance_item
             instance_label = self._get_instance_label(instance)
@@ -224,13 +225,19 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 )
                 continue
 
+            folder_id = instance.data["folderEntity"]["id"]
+            folder_ids.add(folder_id)
             thumbnail_id = self._create_thumbnail(
                 project_name, thumbnail_path
             )
 
             # Set thumbnail id for version
-            version_ids.add(version_id)
-            thumbnail_id_by_entity_id[version_id] = thumbnail_id
+            op_session.update_entity(
+                project_name,
+                "version",
+                version_id,
+                {"thumbnailId": thumbnail_id}
+            )
             version_name = version_entity["version"]
             if version_name < 0:
                 version_name = "Hero"
@@ -239,31 +246,16 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 f" <{version_id}>"
             )
 
-            folder_id = instance.data["folderEntity"]["id"]
-            folder_path = instance.data["folderPath"]
-            folder_ids.add(folder_id)
-            thumbnail_id_by_entity_id[folder_id] = thumbnail_id
-            self.log.debug(
-                f"Setting thumbnail for folder \"{folder_path}\""
-                f" <{folder_id}>"
-            )
-
-        op_session = OperationsSession()
-        # First update folder and then version
-        for entity_type, entity_ids in (
-            ("folder", folder_ids),
-            ("version", version_ids),
-        ):
-            for entity_id in entity_ids:
-                thumbnail_id = thumbnail_id_by_entity_id[entity_id]
-                op_session.update_entity(
-                    project_name,
-                    entity_type,
-                    entity_id,
-                    {"thumbnailId": thumbnail_id}
-                )
-
         op_session.commit()
+
+        if folder_ids:
+            endpoint = ayon_api.get_addon_endpoint(
+                "core",
+                __version__,
+                "cleanupFolderThumbnails",
+                project_name,
+            )
+            ayon_api.post(endpoint, folder_ids=list(folder_ids))
 
     def _get_instance_label(self, instance):
         return (
