@@ -246,8 +246,6 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 f" <{version_id}>"
             )
 
-        op_session.commit()
-
         if folder_ids:
             endpoint = ayon_api.get_addon_endpoint(
                 "core",
@@ -256,6 +254,8 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 project_name,
             )
             ayon_api.post(endpoint, folder_ids=list(folder_ids))
+
+        op_session.commit()
 
     def _get_instance_label(self, instance):
         return (
