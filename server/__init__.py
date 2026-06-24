@@ -159,30 +159,29 @@ class CoreAddon(BaseServerAddon):
 
 
 FIND_THUMBNAILS_QUERY = """
-    SELECT 
-        f.id AS id,
-        f.thumbnail_id AS thumbnail_id
-    FROM project_{project_name}.folders f
-    WHERE f.thumbnail_id IS NOT NULL
-        AND EXISTS (
-            SELECT 1
-            FROM project_{project_name}.versions v
-            WHERE v.thumbnail_id = f.thumbnail_id
-        );
+SELECT
+    f.id AS id,
+    f.thumbnail_id AS thumbnail_id
+FROM project_{project_name}.folders f
+WHERE f.thumbnail_id IS NOT NULL
+    AND EXISTS (
+        SELECT 1
+        FROM project_{project_name}.versions v
+        WHERE v.thumbnail_id = f.thumbnail_id
+    );
 """
 
 
 FIND_THUMBNAILS_BY_IDS_QUERY = """
-    SELECT 
-        f.id AS id,
-        f.thumbnail_id AS thumbnail_id
-    FROM project_{project_name}.folders f
-    WHERE f.thumbnail_id IS NOT NULL
-        AND f.id = ANY($1)
-        AND EXISTS (
-            SELECT 1
-            FROM project_{project_name}.versions v
-            WHERE v.thumbnail_id = f.thumbnail_id
-        );
+SELECT
+    f.id AS id,
+    f.thumbnail_id AS thumbnail_id
+FROM project_{project_name}.folders f
+WHERE f.thumbnail_id IS NOT NULL
+    AND f.id = ANY($1)
+    AND EXISTS (
+        SELECT 1
+        FROM project_{project_name}.versions v
+        WHERE v.thumbnail_id = f.thumbnail_id
+    );
 """
-
