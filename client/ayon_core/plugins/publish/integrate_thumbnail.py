@@ -251,13 +251,21 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         #   to have explicitly set thumbnail id, but we need to auto-fix
         #   existing folders that already did set the thumbnail.
         if folder_ids:
-            endpoint = ayon_api.get_addon_endpoint(
-                "core",
-                __version__,
-                "cleanupFolderThumbnails",
-                project_name,
+            # There is a bug in public version of 'get_addon_endpoint'
+            # - did not support subpaths correctly
+            endpoint = ayon_api.get_addon_endpoint("core", __version__)
+            response = ayon_api.post(
+                f"{endpoint}/cleanupFolderThumbnails/{project_name}",
+                folder_ids=list(folder_ids)
             )
-            ayon_api.post(endpoint, folder_ids=list(folder_ids))
+            # NOTE we don't care if it failed
+            try:
+                response.raise_for_status()
+            except Exception:
+                self.log.warning(
+                    f"Failed to cleanup folder thumbnails",
+                    exc_info=True,
+                )
 
         op_session.commit()
 
