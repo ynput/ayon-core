@@ -21,7 +21,7 @@ from .settings import (
 
 
 class CleanupFolderThumbnailsRequestModel(OPModel):
-    folder_ids: list[str]
+    folder_ids: list[str] | None = None
 
 
 class CleanupFolderThumbnailsResponseModel(OPModel):
@@ -121,14 +121,27 @@ class CoreAddon(BaseServerAddon):
         self,
         project_name: str,
         payload: CleanupFolderThumbnailsRequestModel,
-    ):
+    ) -> CleanupFolderThumbnailsResponseModel:
+        """Remove thumbnail ids from folders sharing thumbnail with a version.
+
+        Args:
+            project_name (str): Name of the project.
+            payload (CleanupFolderThumbnailsRequestModel): Request payload
+                containing folder ids.
+
+        """
         async with Postgres.transaction():
-            res = await Postgres.fetch(
-                FIND_THUMBNAILS_QUERY_BY_IDS.format(
-                    project_name=project_name
-                ),
-                payload.folder_ids,
-            )
+            if payload.folder_ids is None:
+                res = await Postgres.fetch(
+                    FIND_THUMBNAILS_QUERY.format(project_name=project_name),
+                )
+            else:
+                res = await Postgres.fetch(
+                    FIND_THUMBNAILS_BY_IDS_QUERY.format(
+                        project_name=project_name
+                    ),
+                    payload.folder_ids,
+                )
 
         fildered_folder_ids = [row["id"] for row in res]
         if fildered_folder_ids:
@@ -145,17 +158,31 @@ class CoreAddon(BaseServerAddon):
         )
 
 
-FIND_THUMBNAILS_QUERY_BY_IDS = """
+FIND_THUMBNAILS_QUERY = """
     SELECT 
         f.id AS id,
         f.thumbnail_id AS thumbnail_id
     FROM project_{project_name}.folders f
     WHERE f.thumbnail_id IS NOT NULL
-        AND f.id = ANY($1);
         AND EXISTS (
             SELECT 1
             FROM project_{project_name}.versions v
             WHERE v.thumbnail_id = f.thumbnail_id
-        )
+        );
+"""
+
+
+FIND_THUMBNAILS_BY_IDS_QUERY = """
+    SELECT 
+        f.id AS id,
+        f.thumbnail_id AS thumbnail_id
+    FROM project_{project_name}.folders f
+    WHERE f.thumbnail_id IS NOT NULL
+        AND f.id = ANY($1)
+        AND EXISTS (
+            SELECT 1
+            FROM project_{project_name}.versions v
+            WHERE v.thumbnail_id = f.thumbnail_id
+        );
 """
 

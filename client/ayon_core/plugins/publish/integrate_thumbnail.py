@@ -246,6 +246,10 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 f" <{version_id}>"
             )
 
+        # Trigger thumbnail cleanup for the folders that did use thumbnail
+        #   id of a version. We changed the logic, folders don't need
+        #   to have explicitly set thumbnail id, but we need to auto-fix
+        #   existing folders that already did set the thumbnail.
         if folder_ids:
             endpoint = ayon_api.get_addon_endpoint(
                 "core",
