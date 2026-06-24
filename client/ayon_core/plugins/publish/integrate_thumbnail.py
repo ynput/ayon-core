@@ -263,7 +263,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 response.raise_for_status()
             except Exception:
                 self.log.warning(
-                    f"Failed to cleanup folder thumbnails",
+                    "Failed to cleanup folder thumbnails",
                     exc_info=True,
                 )
 
