@@ -584,7 +584,7 @@ class AbstractTemplateBuilder(ABC):
 
         # Do not consider saving a first workfile version, if this is not set
         # to be a "workfile creation" or `create_first_version` is disabled.
-        if not create_first_version:
+        if explicit_build_requested or not create_first_version:
             return
 
         # If there is no existing workfile, save the first version
