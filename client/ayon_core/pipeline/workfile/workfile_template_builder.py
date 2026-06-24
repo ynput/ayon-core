@@ -511,6 +511,8 @@ class AbstractTemplateBuilder(ABC):
         level_limit=None,
         keep_placeholders=None,
         create_first_version=None,
+        apply_to_empty_scene=None,
+        apply_on_app_launch=None,
         workfile_creation_enabled=False
     ):
         """Main callback for building workfile from template path.
@@ -532,6 +534,10 @@ class AbstractTemplateBuilder(ABC):
                  When set to True, this option initiates the saving of the
                  workfile for an initial version. It will skip saving if
                  a version already exists.
+            apply_to_empty_scene (bool): Whether to apply the template
+                to an empty scene(Act as 'new file' template).
+            apply_on_app_launch (bool): Whether to apply the template on
+                application launch if no workfile exists yet.
             workfile_creation_enabled (bool): Whether the call is part of
                 creating a new workfile.
                 When True, we only build if the current file is not
@@ -559,15 +565,21 @@ class AbstractTemplateBuilder(ABC):
                 keep_placeholders: bool = preset["keep_placeholder"]
             if create_first_version is None:
                 create_first_version: bool = preset["create_first_version"]
+            if apply_to_empty_scene is None:
+                apply_to_empty_scene: bool = preset["apply_to_empty_scene"]
+            if apply_on_app_launch is None:
+                apply_on_app_launch: bool = preset["apply_on_app_launch"]
 
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
-        is_new_file = not self.host.get_current_workfile()
-        if is_new_file or explicit_build_requested:
+        is_new_file = (
+            not self.host.get_current_workfile()
+            and apply_on_app_launch
+        )
+        if is_new_file or apply_to_empty_scene or explicit_build_requested:
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
-            self.populate_scene_placeholders(
-                level_limit, keep_placeholders)
+            self.populate_scene_placeholders(level_limit, keep_placeholders)
 
         # Do not consider saving a first workfile version, if this is not set
         # to be a "workfile creation" or `create_first_version` is disabled.
@@ -863,6 +875,10 @@ class AbstractTemplateBuilder(ABC):
             filter_data,
             logger=self.log
         )
+        if not profile.get("enabled", True):
+            self.log.info("Template profile is disabled for current context.")
+            return
+
         if not profile:
             raise TemplateProfileNotFound((
                 "No matching profile found for task '{}' of type '{}' "
@@ -890,6 +906,8 @@ class AbstractTemplateBuilder(ABC):
         # switch to remove placeholders after they are used
         keep_placeholder = profile.get("keep_placeholder")
         create_first_version = profile.get("create_first_version")
+        apply_to_empty_scene = profile.get("apply_to_empty_scene", True)
+        apply_on_app_launch = profile.get("apply_on_app_launch", True)
 
         # backward compatibility, since default is True
         if keep_placeholder is None:
@@ -898,7 +916,9 @@ class AbstractTemplateBuilder(ABC):
         return {
             "path": resolved_path,
             "keep_placeholder": keep_placeholder,
-            "create_first_version": create_first_version
+            "create_first_version": create_first_version,
+            "apply_to_empty_scene": apply_to_empty_scene,
+            "apply_on_app_launch": apply_on_app_launch,
         }
 
     def resolve_template_path(self, path, fill_data=None) -> str:
