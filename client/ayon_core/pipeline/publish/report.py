@@ -525,11 +525,8 @@ class PublishReport:
     )
 
     def to_data(self, current_plugin_id: str | None = None) -> dict[str, Any]:
-        label = self.label
-        if not label:
-            label = self.created_at
         return {
-            "label": label,
+            "label": self.label,
             "plugins_data": [
                 p.to_data(current_plugin_id) for p in self.plugins_info
             ],
@@ -630,7 +627,7 @@ class PublishReport:
             created_at=data["created_at"],
             crashed_filepaths=data.get("crashed_file_paths", {}),
             blocking_crashed_paths=data.get("blocking_crashed_paths", []),
-            context=data["context"],
+            context=PublishContextInfo.from_data(data["context"]),
             plugins_info=[
                 PublishPluginReportInfo.from_data(plugin_info)
                 for plugin_info in data["plugins_data"]
