@@ -50,7 +50,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._controller = controller
 
         self._items_by_name = {}
-        self._status_col_items_by_name = {}
         self._has_content = False
         self._is_refreshing = False
 
@@ -71,7 +70,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
     def _clear_items(self):
         self._items_by_name = {}
-        self._status_col_items_by_name = {}
         self._has_content = False
         self._remove_invalid_items()
         root_item = self.invisibleRootItem()
@@ -295,13 +293,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
             for task_type_item in task_type_items
         }
         task_type_icon_cache = {}
+        root_item = self.invisibleRootItem()
         new_items = []
         new_names = set()
         for task_item in task_items:
             name = task_item.name
             new_names.add(name)
             item = self._items_by_name.get(name)
-            status_col_item = self._status_col_items_by_name.get(name)
+            status_col_item = None
             if item is None:
                 item = QtGui.QStandardItem()
                 item.setEditable(False)
@@ -312,6 +311,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 else:
                     new_items.append(item)
                 self._items_by_name[name] = item
+            elif self._show_status_column:
+                status_col_item = root_item.child(item.row(), 1)
+                if status_col_item is None:
+                    status_col_item = QtGui.QStandardItem()
+                    status_col_item.setEditable(False)
+                    root_item.setChild(item.row(), 1, status_col_item)
 
             icon = self._get_task_item_icon(
                 task_item,
@@ -335,13 +340,9 @@ class TasksQtModel(QtGui.QStandardItemModel):
                     QtCore.Qt.DecorationRole,
                 )
                 status_col_item.setData(status_name, QtCore.Qt.ToolTipRole)
-                self._status_col_items_by_name[name] = status_col_item
-
-        root_item = self.invisibleRootItem()
 
         for name in set(self._items_by_name) - new_names:
             item = self._items_by_name.pop(name)
-            self._status_col_items_by_name.pop(name, None)
             root_item.removeRow(item.row())
 
         if new_items:
@@ -660,6 +661,8 @@ class TasksWidget(QtWidgets.QWidget):
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
         for index in selection_model.selectedIndexes():
+            if index.column() != 0:
+                index = index.sibling(index.row(), 0)
             task_id = index.data(ITEM_ID_ROLE)
             task_name = index.data(ITEM_NAME_ROLE)
             task_type = index.data(TASK_TYPE_ROLE)

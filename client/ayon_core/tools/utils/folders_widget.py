@@ -55,7 +55,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         self._controller = controller
         self._items_by_id = {}
-        self._status_col_items_by_id = {}
         self._parent_id_by_id = {}
 
         self._refresh_threads = {}
@@ -178,7 +177,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     def _clear_items(self):
         self._items_by_id = {}
-        self._status_col_items_by_id = {}
         self._parent_id_by_id = {}
         self._has_content = False
         root_item = self.invisibleRootItem()
@@ -363,7 +361,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             for item_id in folder_ids_to_add:
                 folder_item = folder_items[item_id]
                 item = items_by_id.get(item_id)
-                status_col_item = self._status_col_items_by_id.get(item_id)
+                status_col_item = None
                 if item is None:
                     is_new = True
                     item = QtGui.QStandardItem()
@@ -373,6 +371,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                         status_col_item.setEditable(False)
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
+                    if self._show_status_column:
+                        status_col_item = parent_item.child(item.row(), 1)
+                        if status_col_item is None:
+                            status_col_item = QtGui.QStandardItem()
+                            status_col_item.setEditable(False)
+                            parent_item.setChild(item.row(), 1, status_col_item)
 
                 self._fill_item_data(
                     item,
@@ -388,8 +392,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     else:
                         new_items.append(item)
                 self._items_by_id[item_id] = item
-                if status_col_item is not None:
-                    self._status_col_items_by_id[item_id] = status_col_item
                 self._parent_id_by_id[item_id] = parent_id
 
                 hierarchy_queue.append((item, item_id))
@@ -404,7 +406,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         for item_id in ids_to_remove:
             self._items_by_id.pop(item_id)
             self._parent_id_by_id.pop(item_id)
-            self._status_col_items_by_id.pop(item_id, None)
 
         self._is_refreshing = False
         self.refreshed.emit()
@@ -740,6 +741,8 @@ class FoldersWidget(QtWidgets.QWidget):
     def _get_selected_item_value(self, role):
         selection_model = self._folders_view.selectionModel()
         for index in selection_model.selectedIndexes():
+            if index.column() != 0:
+                index = index.sibling(index.row(), 0)
             item_id = index.data(role)
             if item_id is not None:
                 return item_id
