@@ -66,16 +66,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._current_refresh_thread = None
 
         self._show_status_column = show_status_column
-        self._last_project_statuses = {}
-        self._status_icon_cache = {}
-
         # Initial state
         self._add_invalid_selection_item()
 
     def _clear_items(self):
         self._items_by_name = {}
         self._status_col_items_by_name = {}
-        self._status_icon_cache = {}
         self._has_content = False
         self._remove_invalid_items()
         root_item = self.invisibleRootItem()
@@ -266,18 +262,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
         task_type_icon_cache[task_item.task_type] = icon
         return icon
 
-    def _get_status_icon(self, status_name):
-        """Return a cached QIcon for *status_name*, or None."""
-        if status_name in self._status_icon_cache:
-            return self._status_icon_cache[status_name]
-        status = self._last_project_statuses.get(status_name)
-        icon = None
-        if status is not None and status.icon:
-            icon = get_qt_icon(
-                MaterialSymbolsIcon(status.icon, color=status.color)
-            )
-        self._status_icon_cache[status_name] = icon
-        return icon
 
     def _fill_data_from_thread(self, thread):
         task_items, task_type_items, status_col_items = thread.get_result()
@@ -291,11 +275,20 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         self._remove_invalid_items()
 
-        self._last_project_statuses = {
+        project_statuses = {
             status_col_item.name: status_col_item
             for status_col_item in status_col_items
         }
-        self._status_icon_cache = {}
+        statuses_used = {task_item.status for task_item in task_items}
+        status_icon_by_name = {}
+        for status_name in statuses_used:
+            status = project_statuses.get(status_name)
+            icon = None
+            if status is not None and status.icon:
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(status.icon, color=status.color)
+                )
+            status_icon_by_name[status_name] = icon
 
         task_type_item_by_name = {
             task_type_item.name: task_type_item
@@ -338,7 +331,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             if status_col_item is not None:
                 status_name = task_item.status or ""
                 status_col_item.setData(
-                    self._get_status_icon(status_name),
+                    status_icon_by_name.get(status_name),
                     QtCore.Qt.DecorationRole,
                 )
                 status_col_item.setData(status_name, QtCore.Qt.ToolTipRole)

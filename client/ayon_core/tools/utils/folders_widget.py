@@ -38,9 +38,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        show_status_column (bool): When True the model gains a second
-            column that carries the status icon (``DecorationRole``) and
-            the status name as a tooltip (``ToolTipRole``).
+        show_status_column (bool): When True a narrow **Status** column is
+            shown in the view.
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
@@ -64,8 +63,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._last_project_name = None
 
         self._show_status_column = show_status_column
-        self._last_project_statuses = {}
-        self._status_icon_cache = {}
 
         self._has_content = False
         self._is_refreshing = False
@@ -183,7 +180,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._items_by_id = {}
         self._status_col_items_by_id = {}
         self._parent_id_by_id = {}
-        self._status_icon_cache = {}
         self._has_content = False
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
@@ -229,12 +225,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             folder_items, folder_type_items, status_col_items = {}, [], []
         else:
             folder_items, folder_type_items, status_col_items = thread.get_result()
-        self._last_project_statuses = {
-            status_col_item.name: status_col_item
-            for status_col_item in status_col_items
-        }
-        self._status_icon_cache = {}
-        self._fill_items(folder_items, folder_type_items)
+        self._fill_items(folder_items, folder_type_items, status_col_items)
         self._current_refresh_thread = None
 
     def _get_folder_item_icon(
@@ -262,19 +253,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_type_icon_cache[folder_item.folder_type] = icon
         return icon
 
-    def _get_status_icon(self, status_name):
-        """Return a cached QIcon for *status_name*, or None."""
-        if status_name in self._status_icon_cache:
-            return self._status_icon_cache[status_name]
-        status = self._last_project_statuses.get(status_name)
-        icon = None
-        if status is not None and status.icon:
-            icon = get_qt_icon(
-                MaterialSymbolsIcon(status.icon, color=status.color)
-            )
-        self._status_icon_cache[status_name] = icon
-        return icon
-
     def _fill_item_data(
         self,
         item,
@@ -282,16 +260,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_type_item_by_name,
         folder_type_icon_cache,
         status_col_item=None,
+        status_icon_by_name=None,
     ):
         """
-
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
             folder_type_item_by_name: Mapping of folder type names to items.
             folder_type_icon_cache: Cache for folder type icons.
             status_col_item: Optional status item for the folder.
-
+            status_icon_by_name: Mapping of status name to QIcon (or None).
         """
         icon = self._get_folder_item_icon(
             folder_item,
@@ -309,13 +287,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         # Status column: icon + tooltip
         if status_col_item is not None:
             status_name = folder_item.status or ""
-            status_col_item.setData(
-                self._get_status_icon(status_name),
-                QtCore.Qt.DecorationRole,
-            )
+            icon = None
+            if status_icon_by_name is not None:
+                icon = status_icon_by_name.get(status_name)
+            status_col_item.setData(icon, QtCore.Qt.DecorationRole)
             status_col_item.setData(status_name, QtCore.Qt.ToolTipRole)
 
-    def _fill_items(self, folder_items_by_id, folder_type_items):
+    def _fill_items(self, folder_items_by_id, folder_type_items, status_col_items=None):
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
@@ -328,6 +306,25 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             for folder_type in folder_type_items
         }
         folder_type_icon_cache = {}
+
+        # Build a local status-icon lookup for this fill operation
+        project_statuses = {
+            s.name: s for s in (status_col_items or [])
+        }
+        statuses_used = {
+            folder_item.status
+            for folder_item in folder_items_by_id.values()
+        }
+        status_icon_by_name = {}
+        for status_name in statuses_used:
+            status = project_statuses.get(status_name)
+            icon = None
+            if status is not None and status.icon:
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(status.icon, color=status.color)
+                )
+            status_icon_by_name[status_name] = icon
+
         self._has_content = True
 
         folder_ids = set(folder_items_by_id)
@@ -383,6 +380,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     folder_type_item_by_name,
                     folder_type_icon_cache,
                     status_col_item,
+                    status_icon_by_name,
                 )
                 if is_new:
                     if self._show_status_column:
