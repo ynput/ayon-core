@@ -444,7 +444,7 @@ class AnatomyTemplates:
         """Anatomy roots object.
 
         Returns:
-            RootItem: Anatomy roots data.
+            dict[str, AnatomyRoot]: Anatomy roots data.
 
         """
         return self._anatomy.roots
