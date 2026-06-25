@@ -451,8 +451,7 @@ class TasksWidget(QtWidgets.QWidget):
         parent (QtWidgets.QWidget): Parent widget.
         handle_expected_selection (Optional[bool]): Handle expected selection.
         show_status_column (bool): When True a narrow **Status** column is
-            added. Status col stores the status icon (``DecorationRole``) and
-            tooltip (``ToolTipRole``)
+            shown in the view.
     """
     log = Logger.get_logger("TasksWidget")
 
