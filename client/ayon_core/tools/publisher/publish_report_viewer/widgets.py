@@ -584,7 +584,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._plugin_filter = plugin_filter
         for plugin_id, widget in self._widgets_by_plugin_id.items():
             widget.setVisible(
-                self._plugin_filter is None
+                not self._plugin_filter
                 or plugin_id in self._plugin_filter
             )
 
