@@ -680,7 +680,15 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_publish_report_data(self) -> dict[str, Any]:
+        pass
+
+    @abstractmethod
     def get_publish_errors_report(self):
+        pass
+
+    @abstractmethod
+    def store_publish_report(self, filepath: str) -> None:
         pass
 
     @abstractmethod

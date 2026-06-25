@@ -779,11 +779,19 @@ class PublishModel:
         self._publish_report.update_publish_instances(self._publish_context)
         return self._publish_report.get_report()
 
+    def get_publish_report_data(self) -> dict[str, Any]:
+        report: PublishReport = self.get_publish_report()
+        return report.to_data(self._publish_report.current_plugin_id)
+
     def get_publish_errors_report(self) -> PublishErrorsReport:
         return self._publish_errors.create_report()
 
     def get_error_info(self) -> PublishErrorInfo | None:
         return self._publish_error_info
+
+    def store_publish_report(self, filepath: str) -> None:
+        report: PublishReport = self.get_publish_report()
+        report.store_to_file(filepath)
 
     def set_comment(self, comment: str):
         # Ignore change of comment when publishing started
