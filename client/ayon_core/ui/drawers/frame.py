@@ -48,13 +48,10 @@ class FrameDrawer:
         state = "base"
         row_state = w.property("row_state") if w is not None else None
         if row_state:
-            state = (
-                "selected"
-                if row_state & QStyle.StateFlag.State_Selected
-                else "hover"
-                if row_state & QStyle.StateFlag.State_MouseOver
-                else "base"
-            )
+            if row_state & QStyle.StateFlag.State_Selected:
+                state = "selected"
+            elif row_state & QStyle.StateFlag.State_MouseOver
+                state = "hover"
         style = self.model.get_style("QFrame", variant, state)
         style.set_context(w)
 
