@@ -574,19 +574,11 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._update_widgets()
 
     def set_plugin_filter(self, plugin_filter: set[str]) -> None:
-        # TODO validate what is passed to this method
-        if plugin_filter is not None:
-            plugin_filter = set(plugin_filter)
-
         if plugin_filter == self._plugin_filter:
             return
 
         self._plugin_filter = plugin_filter
-        for plugin_id, widget in self._widgets_by_plugin_id.items():
-            widget.setVisible(
-                not self._plugin_filter
-                or plugin_id in self._plugin_filter
-            )
+        self._invalidate_filters()
 
     def set_report(self, report):
         self._plugin_filter = set()
@@ -616,27 +608,30 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._content_widget.setVisible(False)
 
         self._clear_widgets()
+        if self._report_item is None:
+            return
 
-        any_visible = False
         for plugin_info in self._report_item.plugins_info:
             process_time = 0.0
             for process_report in plugin_info.process_reports:
                 process_time += process_report.process_time
-            is_visible = (
-                self._plugin_filter is None
-                or plugin_info.id in self._plugin_filter
-            )
-            if is_visible:
-                any_visible = True
-
             widget = PluginDetailsWidget(
                 plugin_info,
                 process_time,
                 self._content_widget
             )
-            widget.setVisible(is_visible)
             self._widgets_by_plugin_id[plugin_info.id] = widget
             self._content_layout.addWidget(widget, 0)
+
+        self._invalidate_filters()
+
+    def _invalidate_filters(self) -> None:
+        any_visible = False
+        for plugin_id, widget in self._widgets_by_plugin_id.items():
+            visible = plugin_id in self._plugin_filter
+            widget.setVisible(visible)
+            if visible:
+                any_visible = True
 
         self._content_widget.setVisible(any_visible)
         self._empty_label.setVisible(not any_visible)

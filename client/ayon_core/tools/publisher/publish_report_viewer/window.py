@@ -258,14 +258,16 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
         if root_item.rowCount() > 0:
             root_item.removeRows(0, root_item.rowCount())
         self._items_by_id = {}
+        self._report_items_by_id = {}
 
         self._handler.reset()
 
         new_items = []
         for report_item in self._handler.iter_reports():
             item = self._create_item(report_item)
-            self._items_by_id[report_item.id] = item
             new_items.append(item)
+            self._items_by_id[report_item.id] = item
+            self._report_items_by_id[report_item.id] = report_item
 
         if new_items:
             root_item = self.invisibleRootItem()
@@ -307,7 +309,9 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             return QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
         return super().flags(index)
 
-    def _create_item(self, report_item):
+    def _create_item(
+        self, report_item: PublishReportItem
+    ) -> QtGui.QStandardItem | None:
         if report_item.id in self._items_by_id:
             return None
 
@@ -355,6 +359,7 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             new_items.append(item)
             report_item.save()
             self._items_by_id[report_item.id] = item
+            self._report_items_by_id[report_item.id] = report_item
 
         if new_items:
             root_item = self.invisibleRootItem()
@@ -363,16 +368,17 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
     def remove_item_by_id(self, item_id):
         self._handler.remove_report_item(item_id)
 
+        self._report_items_by_id.pop(item_id, None)
         item = self._items_by_id.pop(item_id, None)
         if item is not None:
             parent = self.invisibleRootItem()
             parent.removeRow(item.row())
 
-    def get_report_by_id(self, item_id):
-        report_item = self._report_items_by_id.get(item_id)
-        if report_item:
-            return report_item
-        return None
+    def get_report_by_id(self, item_id: str) -> PublishReport | None:
+        item: PublishReportItem | None = self._report_items_by_id.get(item_id)
+        if item is None:
+            return None
+        return item.report
 
 
 class LoadedFilesView(QtWidgets.QTreeView):
@@ -436,7 +442,7 @@ class LoadedFilesView(QtWidgets.QTreeView):
         self._model.remove_item_by_id(item_id)
         self._fill_selection()
 
-    def get_current_report(self):
+    def get_current_report(self) -> PublishReport | None:
         index = self.currentIndex()
         item_id = index.data(ITEM_ID_ROLE)
         return self._model.get_report_by_id(item_id)
@@ -517,7 +523,7 @@ class LoadedFilesWidget(QtWidgets.QWidget):
     def refresh(self):
         self._view.refresh()
 
-    def get_current_report(self):
+    def get_current_report(self) -> PublishReport | None:
         return self._view.get_current_report()
 
     def _on_report_change(self):
@@ -567,9 +573,11 @@ class PublishReportViewerWindow(QtWidgets.QWidget):
     def refresh(self):
         self._loaded_files_widget.refresh()
 
-    def set_report(self, report_data):
-        self._main_widget.set_report(report_data)
+    def set_report(self, report: PublishReport | None) -> None:
+        self._main_widget.set_report(report)
 
-    def _on_report_change(self):
-        report = self._loaded_files_widget.get_current_report()
+    def _on_report_change(self) -> None:
+        report: PublishReport | None = (
+            self._loaded_files_widget.get_current_report()
+        )
         self.set_report(report)
