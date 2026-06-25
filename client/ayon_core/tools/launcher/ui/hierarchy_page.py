@@ -87,17 +87,17 @@ class HierarchyPage(QtWidgets.QWidget):
         # - Folders widget
         folders_widget = LauncherFoldersWidget(
             controller,
-            content_body,
-            show_status_column=True,
+            content_body
         )
         folders_widget.set_header_visible(True)
+        folders_widget.set_status_column_visible(True)
 
         # - Tasks widget
         tasks_widget = LauncherTasksWidget(
             controller,
-            content_body,
-            show_status_column=True,
+            content_body
         )
+        tasks_widget.set_status_column_visible(True)
 
         # - Third page - Workfiles
         workfiles_page = WorkfilesPage(controller, content_body)

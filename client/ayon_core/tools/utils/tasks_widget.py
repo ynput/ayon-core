@@ -38,14 +38,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
     _default_task_icon = None
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, show_status_column=False):
+    def __init__(self, controller):
         super().__init__()
 
-        col_count = 2 if show_status_column else 1
-        self.setColumnCount(col_count)
+        self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Tasks")
-        if show_status_column:
-            self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
+        self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
 
         self._controller = controller
 
@@ -64,7 +62,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._refresh_threads = {}
         self._current_refresh_thread = None
 
-        self._show_status_column = show_status_column
         # Initial state
         self._add_invalid_selection_item()
 
@@ -220,9 +217,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         status_col_items = (
             self._controller.get_project_status_items(project_name)
-            if self._show_status_column else []
         )
-
         return task_items, task_type_items, status_col_items
 
     @classmethod
@@ -300,18 +295,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
             name = task_item.name
             new_names.add(name)
             item = self._items_by_name.get(name)
-            status_col_item = None
             if item is None:
                 item = QtGui.QStandardItem()
                 item.setEditable(False)
-                if self._show_status_column:
-                    status_col_item = QtGui.QStandardItem()
-                    status_col_item.setEditable(False)
-                    new_items.append([item, status_col_item])
-                else:
-                    new_items.append(item)
+                status_col_item = QtGui.QStandardItem()
+                status_col_item.setEditable(False)
+                new_items.append([item, status_col_item])
                 self._items_by_name[name] = item
-            elif self._show_status_column:
+            else:
                 status_col_item = root_item.child(item.row(), 1)
                 if status_col_item is None:
                     status_col_item = QtGui.QStandardItem()
@@ -346,11 +337,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
             root_item.removeRow(item.row())
 
         if new_items:
-            if self._show_status_column:
-                for row in new_items:
-                    root_item.appendRow(row)
-            else:
-                root_item.appendRows(new_items)
+            for row in new_items:
+                root_item.appendRow(row)
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -451,15 +439,13 @@ class TasksWidget(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Workfiles controller.
         parent (QtWidgets.QWidget): Parent widget.
         handle_expected_selection (Optional[bool]): Handle expected selection.
-        show_status_column (bool): When True a narrow **Status** column is
-            shown in the view.
     """
     log = Logger.get_logger("TasksWidget")
 
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent, handle_expected_selection=False, show_status_column=False):
+    def __init__(self, controller, parent, handle_expected_selection=False):
         super().__init__(parent)
 
         tasks_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
@@ -469,24 +455,23 @@ class TasksWidget(QtWidgets.QWidget):
             AYTreeView.SelectionMode.SingleSelection
         )
 
-        tasks_model = TasksQtModel(controller, show_status_column=show_status_column)
+        tasks_model = TasksQtModel(controller)
         tasks_proxy_model = TasksProxyModel()
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         tasks_view.setModel(tasks_proxy_model)
 
-        # For better visual clarity when showing the status column:
-        if show_status_column:
-            header = tasks_view.header()
-            header.setStretchLastSection(False)
-            header.setSectionResizeMode(
-                0, QtWidgets.QHeaderView.ResizeMode.Stretch
-            )
-            header.setSectionResizeMode(
-                1, QtWidgets.QHeaderView.ResizeMode.Fixed
-            )
-            header.resizeSection(1, 50)
+        header = tasks_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+        header.resizeSection(1, 50)
+        tasks_view.setColumnHidden(1, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -621,6 +606,9 @@ class TasksWidget(QtWidgets.QWidget):
 
         """
         self._tasks_proxy_model.set_task_ids_filter(task_ids)
+
+    def set_status_column_visible(self, visible: bool):
+        self._tasks_view.setColumnHidden(1, not visible)
 
     def _on_tasks_refresh_finished(self, event):
         """Tasks were refreshed in controller.

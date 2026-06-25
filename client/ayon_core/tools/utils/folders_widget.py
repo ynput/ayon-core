@@ -38,20 +38,18 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        show_status_column (bool): When True a narrow **Status** column is
-            shown in the view.
+        The model contains both **Folders** and **Status** columns.
+        Visibility of the status column is controlled by the view.
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, show_status_column=False):
+    def __init__(self, controller):
         super().__init__()
 
-        col_count = 2 if show_status_column else 1
-        self.setColumnCount(col_count)
+        self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
-        if show_status_column:
-            self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
+        self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
 
         self._controller = controller
         self._items_by_id = {}
@@ -60,8 +58,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._refresh_threads = {}
         self._current_refresh_thread = None
         self._last_project_name = None
-
-        self._show_status_column = show_status_column
 
         self._has_content = False
         self._is_refreshing = False
@@ -194,7 +190,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         status_col_items = (
             self._controller.get_project_status_items(project_name)
-            if self._show_status_column else []
         )
         return folder_items, folder_type_items, status_col_items
 
@@ -361,22 +356,19 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             for item_id in folder_ids_to_add:
                 folder_item = folder_items[item_id]
                 item = items_by_id.get(item_id)
-                status_col_item = None
                 if item is None:
                     is_new = True
                     item = QtGui.QStandardItem()
                     item.setEditable(False)
-                    if self._show_status_column:
-                        status_col_item = QtGui.QStandardItem()
-                        status_col_item.setEditable(False)
+                    status_col_item = QtGui.QStandardItem()
+                    status_col_item.setEditable(False)
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
-                    if self._show_status_column:
-                        status_col_item = parent_item.child(item.row(), 1)
-                        if status_col_item is None:
-                            status_col_item = QtGui.QStandardItem()
-                            status_col_item.setEditable(False)
-                            parent_item.setChild(item.row(), 1, status_col_item)
+                    status_col_item = parent_item.child(item.row(), 1)
+                    if status_col_item is None:
+                        status_col_item = QtGui.QStandardItem()
+                        status_col_item.setEditable(False)
+                        parent_item.setChild(item.row(), 1, status_col_item)
 
                 self._fill_item_data(
                     item,
@@ -387,21 +379,15 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     status_icon_by_name,
                 )
                 if is_new:
-                    if self._show_status_column:
-                        new_items.append([item, status_col_item])
-                    else:
-                        new_items.append(item)
+                    new_items.append([item, status_col_item])
                 self._items_by_id[item_id] = item
                 self._parent_id_by_id[item_id] = parent_id
 
                 hierarchy_queue.append((item, item_id))
 
             if new_items:
-                if self._show_status_column:
-                    for row in new_items:
-                        parent_item.appendRow(row)
-                else:
-                    parent_item.appendRows(new_items)
+                for row in new_items:
+                    parent_item.appendRow(row)
 
         for item_id in ids_to_remove:
             self._items_by_id.pop(item_id)
@@ -464,8 +450,6 @@ class FoldersWidget(QtWidgets.QWidget):
         parent (QtWidgets.QWidget): The parent widget.
         handle_expected_selection (bool): If True, the widget will handle
             the expected selection. Defaults to False.
-        show_status_column (bool): When True a narrow **Status** column is
-            shown in the view.
     """
 
     double_clicked = QtCore.Signal(QtGui.QMouseEvent)
@@ -477,7 +461,6 @@ class FoldersWidget(QtWidgets.QWidget):
         controller,
         parent,
         handle_expected_selection=False,
-        show_status_column=False,
     ):
         super().__init__(parent)
 
@@ -486,27 +469,23 @@ class FoldersWidget(QtWidgets.QWidget):
         )
         folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
-        folders_model = FoldersQtModel(
-            controller,
-            show_status_column=show_status_column
-        )
+        folders_model = FoldersQtModel(controller)
         folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         folders_view.setModel(folders_proxy_model)
 
-        # For better visual clarity when showing the status column:
-        if show_status_column:
-            header = folders_view.header()
-            header.setStretchLastSection(False)
-            header.setSectionResizeMode(
-                0, QtWidgets.QHeaderView.ResizeMode.Stretch
-            )
-            header.setSectionResizeMode(
-                1, QtWidgets.QHeaderView.ResizeMode.Fixed
-            )
-            header.resizeSection(1, 50)
+        header = folders_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+        header.resizeSection(1, 50)
+        folders_view.setColumnHidden(1, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -584,6 +563,9 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def set_header_visible(self, visible: bool):
         self._folders_view.setHeaderHidden(not visible)
+
+    def set_status_column_visible(self, visible: bool):
+        self._folders_view.setColumnHidden(1, not visible)
 
     def refresh(self):
         """Refresh folders model.
