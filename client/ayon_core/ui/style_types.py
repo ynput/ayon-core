@@ -172,7 +172,6 @@ class StyleData:
         # base palette
         self.base_palette: QPalette = self._build_palette()
         self._base_font: QFont | None = None
-        self._base_font_checked: bool = False
 
     @property
     def base_font(self) -> QFont:
@@ -186,33 +185,8 @@ class StyleData:
             self._base_font = style_font(
                 self.data.get("global", {}), QWidget()
             )
-            if not self._base_font_checked:
-                self._check_font_availability(self._base_font)
+            _load_fonts()
         return QFont(self._base_font)
-
-    def _check_font_availability(self, font: QFont) -> None:
-        # check if the font is available and load it if need be.
-        families = QFontDatabase.families()
-        if font.family() not in families:
-            # Attempt to load from resources
-            font_name = font.family().replace(" ", "")
-            glob_path = str(
-                Path(__file__).parent / "resources" / f"{font_name}*.ttf"
-            )
-            font_files = glob(glob_path)
-
-            if not font_files:
-                log.error(
-                    f"Base font '{font.family()}' is not available and no "
-                    f"font files were found in '{glob_path}'"
-                )
-            else:
-                for font_path in font_files:
-                    if QFontDatabase.addApplicationFont(str(font_path)) == -1:
-                        log.error(f"Failed to load base font from {font_path}")
-                    else:
-                        log.debug(f"Loaded base font file {font_path}")
-        self._base_font_checked = True
 
     def _build_palette(self) -> QPalette:
         bp = {
@@ -517,7 +491,37 @@ class StyleData:
 # Singleton accessor
 # ---------------------------------------------------------------------------
 
-_ayon_style_instance: AYONStyle | None = None
+class _LocalContext:
+    ayon_style_instance: AYONStyle | None = None
+    font_ids: list[int] | None = None
+
+
+def _load_fonts() -> None:
+    """Load and register fonts into Qt application."""
+
+    # Check if font ids are still loaded
+    if _LocalContext.font_ids is not None:
+        for font_id in tuple(_LocalContext.font_ids):
+            font_families = QFontDatabase.applicationFontFamilies(
+                font_id
+            )
+            # Reset font if font id is not available
+            if not font_families:
+                _LocalContext.font_ids = None
+                break
+
+    if _LocalContext.font_ids is None:
+        _LocalContext.font_ids = []
+        path = Path(__file__).parent / "resources" / "NunitoSans.ttf"
+
+        font_path = str(path)
+        font_id = QFontDatabase.addApplicationFont(font_path)
+        if font_id == -1:
+            log.error(f"Failed to load base font from {font_path}")
+        else:
+            _LocalContext.font_ids.append(font_id)
+            family = QFontDatabase.applicationFontFamilies(font_id)
+            log.debug(f"Loaded base font file {font_path} ('{family}')")
 
 
 def get_ayon_style() -> AYONStyle:
@@ -529,12 +533,14 @@ def get_ayon_style() -> AYONStyle:
     Returns:
         The singleton ``AYONStyle`` instance.
     """
-    global _ayon_style_instance
-    if _ayon_style_instance is None:
-        from .style import AYONStyle
+    if _LocalContext.ayon_style_instance is not None:
+        return _LocalContext.ayon_style_instance
 
-        _ayon_style_instance = AYONStyle()
-    return _ayon_style_instance
+    from .style import AYONStyle
+
+    instance = AYONStyle()
+    _LocalContext.ayon_style_instance = instance
+    return instance
 
 
 def get_ayon_style_data(
