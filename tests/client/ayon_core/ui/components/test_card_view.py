@@ -9,10 +9,12 @@ from ayon_core.ui.components.card_view import AYCardView
 from ayon_core.ui.components.table_model import (
     PaginatedTableModel,
     TableColumn,
+)
+from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )
-from ayon_core.ui.components.container import AYContainer
 
 
 def _make_card_mapper(row_data: dict) -> dict:

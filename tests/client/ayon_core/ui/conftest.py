@@ -20,6 +20,11 @@ os.environ.setdefault("AYON_CORE_UI_FONT_OS", "linux")
 
 import pytest
 
+CURRENT_DIR = Path(__file__).parent
+REPO_ROOT = CURRENT_DIR.parent.parent.parent.parent
+
+sys.path.append(str(REPO_ROOT / "client"/ "ayon_core" / "vendor" / "python"))
+
 # Accumulated (test_name, obtained_path, ref_path) tuples for --show-images.
 _failed_image_tests: list[tuple[str, str, str]] = []
 
