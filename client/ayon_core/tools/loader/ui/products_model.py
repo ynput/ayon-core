@@ -3,6 +3,10 @@ import collections
 import qtawesome
 from qtpy import QtGui, QtCore
 
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 
@@ -17,7 +21,6 @@ PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 6
 PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 7
 PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 8
 PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 9
-PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 10
 PRODUCT_IN_SCENE_ROLE = QtCore.Qt.UserRole + 11
 VERSION_ID_ROLE = QtCore.Qt.UserRole + 12
 VERSION_HERO_ROLE = QtCore.Qt.UserRole + 13
@@ -40,6 +43,8 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 29
 REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 30
 SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
 SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 32
+ACTIVE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 33
+REMOTE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 34
 
 STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
 TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
@@ -228,10 +233,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             return super().data(index, role)
 
         if role == QtCore.Qt.DecorationRole:
-            if col == 1:
-                role = PRODUCT_TYPE_ICON_ROLE
-            else:
-                return None
+            return None
 
         if (
             role == VERSION_NAME_EDIT_ROLE
@@ -310,11 +312,10 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         status_item = self._last_project_statuses.get(status_name)
         if status_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": status_item.icon,
-                "color": status_item.color,
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                status_item.icon,
+                color=status_item.color,
+            ))
 
         if icon is None:
             icon = QtGui.QIcon()
@@ -334,10 +335,10 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     def _get_group_icon(self):
         if self._group_icon is None:
-            self._group_icon = qtawesome.icon(
+            self._group_icon = get_qt_icon(AwesomeFontIcon(
                 "fa.object-group",
                 color=get_default_entity_icon_color()
-            )
+            ))
         return self._group_icon
 
     def _get_group_model_item(self, group_name):
@@ -429,6 +430,8 @@ class ProductsModel(QtGui.QStandardItemModel):
         product_item,
         active_site_icon,
         remote_site_icon,
+        active_site_name,
+        remote_site_name,
         repre_count_by_version_id,
         sync_availability_by_version_id,
         last_version_by_product_id,
@@ -455,7 +458,6 @@ class ProductsModel(QtGui.QStandardItemModel):
             model_item = QtGui.QStandardItem(product_item.product_name)
             model_item.setEditable(False)
             icon = get_qt_icon(product_item.product_icon)
-            product_type_icon = get_qt_icon(product_item.product_type_icon)
             model_item.setColumnCount(self.columnCount())
             model_item.setData(icon, QtCore.Qt.DecorationRole)
             model_item.setData(product_id, PRODUCT_ID_ROLE)
@@ -464,7 +466,6 @@ class ProductsModel(QtGui.QStandardItemModel):
                 product_item.product_base_type, PRODUCT_BASE_TYPE_ROLE
             )
             model_item.setData(product_item.product_type, PRODUCT_TYPE_ROLE)
-            model_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
             model_item.setData(product_item.folder_id, FOLDER_ID_ROLE)
 
             self._product_items_by_id[product_id] = product_item
@@ -479,6 +480,8 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         model_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
         model_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
+        model_item.setData(active_site_name, ACTIVE_SITE_NAME_ROLE)
+        model_item.setData(remote_site_name, REMOTE_SITE_NAME_ROLE)
 
         self._set_version_data_to_product_item(
             model_item,
@@ -517,6 +520,8 @@ class ProductsModel(QtGui.QStandardItemModel):
         remote_site_icon_def = self._controller.get_remote_site_icon_def(
             project_name
         )
+        active_site_name = self._controller.get_active_site(project_name)
+        remote_site_name = self._controller.get_remote_site(project_name)
         active_site_icon = get_qt_icon(active_site_icon_def)
         remote_site_icon = get_qt_icon(remote_site_icon_def)
 
@@ -620,6 +625,8 @@ class ProductsModel(QtGui.QStandardItemModel):
                     product_item,
                     active_site_icon,
                     remote_site_icon,
+                    active_site_name,
+                    remote_site_name,
                     repre_count_by_version_id,
                     sync_availability_by_version_id,
                     last_version_by_product_id,
@@ -645,6 +652,8 @@ class ProductsModel(QtGui.QStandardItemModel):
                         product_item,
                         active_site_icon,
                         remote_site_icon,
+                        active_site_name,
+                        remote_site_name,
                         repre_count_by_version_id,
                         sync_availability_by_version_id,
                         last_version_by_product_id,

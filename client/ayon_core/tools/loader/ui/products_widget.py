@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import collections
 from typing import Optional
 
@@ -195,7 +196,7 @@ class ProductsWidget(QtWidgets.QWidget):
         products_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
-        products_view.setAllColumnsShowFocus(True)
+        products_view.setAllColumnsShowFocus(False)
         # TODO - add context menu
         products_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         products_view.setSortingEnabled(True)
@@ -419,8 +420,9 @@ class ProductsWidget(QtWidgets.QWidget):
             if version_id is not None:
                 version_ids.add(version_id)
 
-        action_items = self._controller.get_versions_action_items(
-            project_name, version_ids)
+        action_items = self._controller.get_action_items(
+            project_name, version_ids, "version"
+        )
 
         # Prepare global point where to show the menu
         global_point = self._products_view.mapToGlobal(point)
@@ -436,11 +438,13 @@ class ProductsWidget(QtWidgets.QWidget):
             return
 
         self._controller.trigger_action_item(
-            action_item.identifier,
-            options,
-            action_item.project_name,
-            version_ids=action_item.version_ids,
-            representation_ids=action_item.representation_ids,
+            identifier=action_item.identifier,
+            project_name=project_name,
+            selected_ids=version_ids,
+            selected_entity_type="version",
+            data=action_item.data,
+            options=options,
+            form_values={},
         )
 
     def _on_selection_change(self):

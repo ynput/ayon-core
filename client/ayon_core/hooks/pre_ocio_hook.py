@@ -14,16 +14,18 @@ class OCIOEnvHook(PreLaunchHook):
         "fusion",
         "blender",
         "aftereffects",
-        "3dsmax",
+        "max",
         "houdini",
         "maya",
         "nuke",
         "hiero",
+        "photoshop",
         "resolve",
         "openrv",
         "cinema4d",
         "silhouette",
         "gaffer",
+        "loki",
     }
     launch_types = set()
 
@@ -54,6 +56,7 @@ class OCIOEnvHook(PreLaunchHook):
             self.data["folder_path"],
             self.data["task_name"],
             self.host_name,
+            self.app_name,
             anatomy=self.data["anatomy"],
             project_settings=self.data["project_settings"],
             template_data=template_data,

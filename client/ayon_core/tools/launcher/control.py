@@ -1,10 +1,28 @@
-from ayon_core.lib import Logger, get_ayon_username
-from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.settings import get_project_settings, get_studio_settings
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from __future__ import annotations
 
-from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
-from .models import LauncherSelectionModel, ActionsModel
+import json
+from typing import Optional
+
+from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.addon import AddonsManager
+from ayon_core.tools.common_models import (
+    SettingsModel,
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+)
+
+from .abstract import (
+    AbstractLauncherFrontEnd,
+    AbstractLauncherBackend,
+    WorkfileItem,
+)
+from .models import (
+    LauncherSelectionModel,
+    ActionsModel,
+    WorkfilesModel,
+)
 
 NOT_SET = object()
 
@@ -13,16 +31,23 @@ class BaseLauncherController(
     AbstractLauncherFrontEnd, AbstractLauncherBackend
 ):
     def __init__(self):
-        self._project_settings = {}
         self._event_system = None
         self._log = None
 
-        self._username = NOT_SET
+        self._launcher_registry = JSONSettingRegistry(
+            "launcher",
+            get_launcher_local_dir("tools")
+        )
 
+        self._addons_manager = None
+
+        self._settings_model = SettingsModel()
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._actions_model = ActionsModel(self)
+        self._workfiles_model = WorkfilesModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -59,6 +84,26 @@ class BaseLauncherController(
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
 
+    def get_addons_manager(self) -> AddonsManager:
+        if self._addons_manager is None:
+            self._addons_manager = AddonsManager()
+        return self._addons_manager
+
+    def get_grouped_host_names(self) -> list[str | None]:
+        try:
+            value = self._launcher_registry.get_item(
+                "grouped_hosts", default="[]"
+            )
+            return json.loads(value)
+        except Exception:
+            # NOTE This is future-guarding in case we'd change the stored data
+            self.log.warning("Failed to get grouped hosts", exc_info=True)
+            return []
+
+    def set_grouped_host_names(self, host_names: list[str | None]):
+        value = json.dumps(host_names)
+        self._launcher_registry.set_item("grouped_hosts", value)
+
     # Entity items for UI
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
@@ -83,14 +128,7 @@ class BaseLauncherController(
 
     # Project settings for applications actions
     def get_project_settings(self, project_name):
-        if project_name in self._project_settings:
-            return self._project_settings[project_name]
-        if project_name:
-            settings = get_project_settings(project_name)
-        else:
-            settings = get_studio_settings()
-        self._project_settings[project_name] = settings
-        return settings
+        return self._settings_model.get_settings(project_name)
 
     # Entity for backend
     def get_project_entity(self, project_name):
@@ -125,6 +163,9 @@ class BaseLauncherController(
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
+    def set_selected_workfile(self, workfile_id):
+        self._selection_model.set_selected_workfile(workfile_id)
+
     def get_selected_context(self):
         return {
             "project_name": self.get_selected_project_name(),
@@ -133,10 +174,24 @@ class BaseLauncherController(
             "task_name": self.get_selected_task_name(),
         }
 
+    # Workfiles
+    def get_workfile_items(
+        self,
+        project_name: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        return self._workfiles_model.get_workfile_items(
+            project_name,
+            task_id,
+        )
+
     # Actions
-    def get_action_items(self, project_name, folder_id, task_id):
+    def get_action_items(
+        self, project_name, folder_id, task_id, workfile_id
+    ):
         return self._actions_model.get_action_items(
-            project_name, folder_id, task_id)
+            project_name, folder_id, task_id, workfile_id
+        )
 
     def trigger_action(
         self,
@@ -144,12 +199,14 @@ class BaseLauncherController(
         project_name,
         folder_id,
         task_id,
+        workfile_id,
     ):
         self._actions_model.trigger_action(
             identifier,
             project_name,
             folder_id,
             task_id,
+            workfile_id,
         )
 
     def trigger_webaction(self, context, action_label, form_data=None):
@@ -167,10 +224,10 @@ class BaseLauncherController(
     def refresh(self):
         self._emit_event("controller.refresh.started")
 
-        self._project_settings = {}
-
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._users_model.reset()
 
         self._actions_model.refresh()
         self._projects_model.refresh()
@@ -181,27 +238,26 @@ class BaseLauncherController(
         self._emit_event("controller.refresh.actions.started")
 
         # Refresh project settings (used for actions discovery)
-        self._project_settings = {}
+        self._settings_model.reset()
         # Refresh projects - they define applications
         self._projects_model.reset()
         # Refresh actions
         self._actions_model.refresh()
+        # Reset workfiles model
+        self._workfiles_model.reset()
 
         self._emit_event("controller.refresh.actions.finished")
 
-    def get_my_tasks_entity_ids(self, project_name: str):
-        username = self._get_my_username()
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
         assignees = []
         if username:
             assignees.append(username)
         return self._hierarchy_model.get_entity_ids_for_assignees(
             project_name, assignees
         )
-
-    def _get_my_username(self):
-        if self._username is NOT_SET:
-            self._username = get_ayon_username()
-        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")

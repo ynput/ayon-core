@@ -1,6 +1,7 @@
 """Backend models that can be used in controllers."""
 
 from .cache import CacheItem, NestedCacheItem
+from .settings import SettingsModel
 from .projects import (
     TagItem,
     StatusItem,
@@ -10,6 +11,7 @@ from .projects import (
     PROJECTS_MODEL_SENDER,
     FolderTypeItem,
     TaskTypeItem,
+    ProductTypeIconMapping,
 )
 from .hierarchy import (
     FolderItem,
@@ -26,6 +28,8 @@ __all__ = (
     "CacheItem",
     "NestedCacheItem",
 
+    "SettingsModel",
+
     "TagItem",
     "StatusItem",
     "StatusStates",
@@ -34,6 +38,7 @@ __all__ = (
     "PROJECTS_MODEL_SENDER",
     "FolderTypeItem",
     "TaskTypeItem",
+    "ProductTypeIconMapping",
 
     "FolderItem",
     "TaskItem",

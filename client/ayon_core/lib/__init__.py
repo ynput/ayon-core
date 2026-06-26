@@ -2,6 +2,9 @@
 # flake8: noqa E402
 """AYON lib functions."""
 
+from .terminal import Terminal
+from .log import Logger
+from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
     JSONSettingRegistry,
@@ -11,6 +14,7 @@ from .local_settings import (
     get_launcher_storage_dir,
     get_addons_resources_dir,
     get_local_site_id,
+    get_ayon_user_entity,
     get_ayon_username,
 )
 from .ayon_connection import initialize_ayon_connection
@@ -31,6 +35,17 @@ from .vendor_bin_utils import (
     get_ffmpeg_tool_path,
     get_ffmpeg_tool_args,
     is_oiio_supported,
+)
+
+from .icon_definitions import (
+    IconBase,
+    PathIcon,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    UrlIcon,
+    AYONUrlIcon,
+    TransparentIcon,
+    get_icon_def_from_data,
 )
 
 from .attribute_definitions import (
@@ -56,7 +71,6 @@ from .env_tools import (
     merge_env_variables,
 )
 
-from .terminal import Terminal
 from .execute import (
     get_ayon_launcher_args,
     get_linux_launcher_args,
@@ -68,11 +82,9 @@ from .execute import (
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
-from .log import (
-    Logger,
-)
 
 from .path_templates import (
+    DefaultKeysDict,
     TemplateUnsolved,
     StringTemplate,
     FormatObject,
@@ -140,6 +152,10 @@ from .ayon_info import (
 terminal = Terminal
 
 __all__ = [
+    "Logger",
+
+    "StrEnum",
+
     "IniSettingRegistry",
     "JSONSettingRegistry",
     "AYONSecureRegistry",
@@ -148,6 +164,7 @@ __all__ = [
     "get_launcher_storage_dir",
     "get_addons_resources_dir",
     "get_local_site_id",
+    "get_ayon_user_entity",
     "get_ayon_username",
 
     "initialize_ayon_connection",
@@ -180,6 +197,15 @@ __all__ = [
     "get_ffmpeg_tool_path",
     "get_ffmpeg_tool_args",
     "is_oiio_supported",
+
+    "IconBase",
+    "PathIcon",
+    "MaterialSymbolsIcon",
+    "AwesomeFontIcon",
+    "UrlIcon",
+    "AYONUrlIcon",
+    "TransparentIcon",
+    "get_icon_def_from_data",
 
     "AbstractAttrDef",
 
@@ -228,6 +254,7 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
+    "DefaultKeysDict",
     "TemplateUnsolved",
     "StringTemplate",
     "FormatObject",
@@ -237,8 +264,6 @@ __all__ = [
     "get_datetime_data",
     "get_timestamp",
     "get_formatted_current_time",
-
-    "Logger",
 
     "is_in_ayon_launcher_process",
     "is_running_from_build",

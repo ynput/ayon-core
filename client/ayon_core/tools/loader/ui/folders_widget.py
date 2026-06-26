@@ -1,22 +1,16 @@
-import qtpy
+from typing import Optional
+
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.utils import (
-    RecursiveSortFilterProxyModel,
-    DeselectableTreeView,
-)
 from ayon_core.style import get_objected_colors
+from ayon_core.tools.utils import DeselectableTreeView
+from ayon_core.tools.utils.folders_widget import FoldersProxyModel
 
 from ayon_core.tools.utils import (
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
 )
 from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
-
-if qtpy.API == "pyside":
-    from PySide.QtGui import QStyleOptionViewItemV4
-elif qtpy.API == "pyqt4":
-    from PyQt4.QtGui import QStyleOptionViewItemV4
 
 UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 50
 
@@ -47,9 +41,6 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
     def paint(self, painter, option, index):
         """Replicate painting of an item and draw color bars if needed."""
-        # Qt4 compat
-        if qtpy.API in ("pyside", "pyqt4"):
-            option = QStyleOptionViewItemV4(option)
 
         painter.save()
 
@@ -260,7 +251,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
             QtWidgets.QAbstractItemView.ExtendedSelection)
 
         folders_model = LoaderFoldersModel(controller)
-        folders_proxy_model = RecursiveSortFilterProxyModel()
+        folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -313,6 +304,15 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         self._folders_proxy_model.setFilterFixedString(name)
         if name:
             self._folders_view.expandAll()
+
+    def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            folder_ids (list[str]): The list of folder ids.
+
+        """
+        self._folders_proxy_model.set_folder_ids_filter(folder_ids)
 
     def set_merged_products_selection(self, items):
         """

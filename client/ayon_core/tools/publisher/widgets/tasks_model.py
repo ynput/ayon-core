@@ -2,6 +2,7 @@ from typing import Optional
 
 from qtpy import QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon, AwesomeFontIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
@@ -134,11 +135,10 @@ class TasksModel(QtGui.QStandardItemModel):
                 item = self._items_by_name.pop(task_name)
                 root_item.removeRow(item.row())
 
-        default_icon = get_qt_icon({
-            "type": "awesome-font",
-            "name": "fa.male",
-            "color": get_default_entity_icon_color(),
-        })
+        default_icon = get_qt_icon(AwesomeFontIcon(
+            "fa.male",
+            color=get_default_entity_icon_color(),
+        ))
         new_items = []
         task_type_items = {
             task_type_item.name: task_type_item
@@ -146,19 +146,19 @@ class TasksModel(QtGui.QStandardItemModel):
                 self._controller.get_current_project_name()
             )
         }
-        icon_name_by_task_name = {}
+        type_item_by_task_name = {}
         for task_items in task_items_by_folder_path.values():
             for task_item in task_items:
                 task_name = task_item.name
                 if (
                     task_name not in new_task_names
-                    or task_name in icon_name_by_task_name
+                    or task_name in type_item_by_task_name
                 ):
                     continue
                 task_type_name = task_item.task_type
                 task_type_item = task_type_items.get(task_type_name)
                 if task_type_item:
-                    icon_name_by_task_name[task_name] = task_type_item.icon
+                    type_item_by_task_name[task_name] = task_type_item
 
         for task_name in new_task_names:
             item = self._items_by_name.get(task_name)
@@ -171,14 +171,17 @@ class TasksModel(QtGui.QStandardItemModel):
             if not task_name:
                 continue
 
-            icon_name = icon_name_by_task_name.get(task_name)
-            icon = None
+            icon = icon_name = icon_color = None
+            task_type_item = type_item_by_task_name.get(task_name)
+            if task_type_item is not None:
+                icon_name = task_type_item.icon
+                icon_color = task_type_item.color
             if icon_name:
-                icon = get_qt_icon({
-                    "type": "material-symbols",
-                    "name": icon_name,
-                    "color": get_default_entity_icon_color(),
-                })
+                if not icon_color:
+                    icon_color = get_default_entity_icon_color()
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(icon_name, color=icon_color)
+                )
             if icon is None:
                 icon = default_icon
             item.setData(icon, QtCore.Qt.DecorationRole)

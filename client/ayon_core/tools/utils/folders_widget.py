@@ -5,6 +5,10 @@ from typing import Optional
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.lib.icon_definitions import (
+    AwesomeFontIcon,
+    MaterialSymbolsIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
     ProjectsModel,
@@ -17,6 +21,8 @@ import ayon_api
 from .models import RecursiveSortFilterProxyModel
 from .views import TreeView
 from .lib import RefreshThread, get_qt_icon
+from .widgets import PlaceholderLineEdit
+from .nice_checkbox import NiceCheckbox
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -240,11 +246,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     @classmethod
     def _get_default_folder_icon(cls):
         if cls._default_folder_icon is None:
-            cls._default_folder_icon = get_qt_icon({
-                "type": "awesome-font",
-                "name": "fa.folder",
-                "color": get_default_entity_icon_color()
-            })
+            cls._default_folder_icon = get_qt_icon(
+                AwesomeFontIcon(
+                    "fa.folder",
+                    color=get_default_entity_icon_color(),
+                )
+            )
         return cls._default_folder_icon
 
     def _clear_items(self):
@@ -308,11 +315,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         )
         icon = None
         if folder_type_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": folder_type_item.icon,
-                "color": get_default_entity_icon_color()
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                folder_type_item.icon,
+                color=get_default_entity_icon_color(),
+            ))
 
         if icon is None:
             icon = self._get_default_folder_icon()
@@ -453,6 +459,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self):
         super().__init__()
+
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         self._folder_ids_filter = None
 
@@ -905,3 +913,53 @@ class SimpleFoldersWidget(FoldersWidget):
             event (Event): Triggered event.
         """
         pass
+
+
+class FoldersFiltersWidget(QtWidgets.QWidget):
+    """Helper widget for most commonly used filters in context selection."""
+    text_changed = QtCore.Signal(str)
+    my_tasks_changed = QtCore.Signal(bool)
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+
+        folders_filter_input = PlaceholderLineEdit(self)
+        folders_filter_input.setPlaceholderText("Folder name filter...")
+
+        my_tasks_tooltip = (
+            "Filter folders and task to only those you are assigned to."
+        )
+        my_tasks_label = QtWidgets.QLabel("My tasks", self)
+        my_tasks_label.setToolTip(my_tasks_tooltip)
+
+        my_tasks_checkbox = NiceCheckbox(self)
+        my_tasks_checkbox.setChecked(False)
+        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        layout.addWidget(folders_filter_input, 1)
+        layout.addWidget(my_tasks_label, 0)
+        layout.addWidget(my_tasks_checkbox, 0)
+
+        folders_filter_input.textChanged.connect(self.text_changed)
+        my_tasks_checkbox.stateChanged.connect(self._on_my_tasks_change)
+
+        self._folders_filter_input = folders_filter_input
+        self._my_tasks_checkbox = my_tasks_checkbox
+
+    def is_my_tasks_checked(self) -> bool:
+        return self._my_tasks_checkbox.isChecked()
+
+    def text(self) -> str:
+        return self._folders_filter_input.text()
+
+    def set_text(self, text: str) -> None:
+        self._folders_filter_input.setText(text)
+
+    def set_my_tasks_checked(self, checked: bool) -> None:
+        self._my_tasks_checkbox.setChecked(checked)
+
+    def _on_my_tasks_change(self, _state: int) -> None:
+        self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())

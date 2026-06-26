@@ -1,38 +1,37 @@
+from __future__ import annotations
+
 import time
-import uuid
 import collections
+import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import Logger
-from ayon_core.lib.attribute_definitions import (
-    UILabelDef,
-    EnumDef,
-    TextDef,
-    BoolDef,
-    NumberDef,
-    HiddenDef,
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    TransparentIcon,
 )
+from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import (
-    get_qt_icon,
-)
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
 ANIMATION_LEN = 7
 SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
+IS_MACOS = platform.system().lower() == "darwin"
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
 ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
 ACTION_HAS_CONFIGS_ROLE = QtCore.Qt.UserRole + 4
-ACTION_SORT_ROLE = QtCore.Qt.UserRole + 5
-ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 6
-ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 7
-PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 8
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 9
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 10
+ACTION_ORDER_ROLE = QtCore.Qt.UserRole + 5
+ACTION_SUBORDER_ROLE = QtCore.Qt.UserRole + 6
+ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 7
+ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 8
+PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 9
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 10
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 11
 
 
 def _variant_label_sort_getter(action_item):
@@ -57,10 +56,9 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
     @classmethod
     def _get_settings_icon(cls):
         if cls._settings_icon is None:
-            cls._settings_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "settings",
-            })
+            cls._settings_icon = get_qt_icon(
+                MaterialSymbolsIcon("settings")
+            )
         return cls._settings_icon
 
     def paintEvent(self, event):
@@ -136,6 +134,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             "selection.task.changed",
             self._on_selection_task_changed,
         )
+        controller.register_event_callback(
+            "selection.workfile.changed",
+            self._on_selection_workfile_changed,
+        )
 
         self._controller = controller
 
@@ -146,6 +148,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._selected_project_name = None
         self._selected_folder_id = None
         self._selected_task_id = None
+        self._selected_workfile_id = None
 
     def get_selected_project_name(self):
         return self._selected_project_name
@@ -155,6 +158,9 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
     def get_selected_task_id(self):
         return self._selected_task_id
+
+    def get_selected_workfile_id(self):
+        return self._selected_workfile_id
 
     def get_group_items(self, action_id):
         return self._groups_by_id[action_id]
@@ -194,6 +200,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             self._selected_project_name,
             self._selected_folder_id,
             self._selected_task_id,
+            self._selected_workfile_id,
         )
         if not items:
             self._clear_items()
@@ -219,14 +226,14 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             all_action_items_info.append((first_item, len(action_items) > 1))
             groups_by_id[first_item.identifier] = action_items
 
-        transparent_icon = {"type": "transparent", "size": 256}
+        transparent_icon = TransparentIcon(256)
         new_items = []
         items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = transparent_icon.copy()
+                icon_def = transparent_icon
 
             try:
                 icon = get_qt_icon(icon_def)
@@ -235,7 +242,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
                     "Failed to parse icon definition", exc_info=True
                 )
                 # Use empty icon if failed to parse definition
-                icon = get_qt_icon(transparent_icon.copy())
+                icon = get_qt_icon(transparent_icon)
 
             if is_group:
                 has_configs = False
@@ -259,7 +266,8 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             item.setData(action_item.action_type, ACTION_TYPE_ROLE)
             item.setData(action_item.addon_name, ACTION_ADDON_NAME_ROLE)
             item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
-            item.setData(action_item.order, ACTION_SORT_ROLE)
+            item.setData(action_item.order, ACTION_ORDER_ROLE)
+            item.setData(action_item.suborder, ACTION_SUBORDER_ROLE)
             items_by_id[action_item.identifier] = item
 
         if new_items:
@@ -286,18 +294,28 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
+        self._selected_workfile_id = None
         self.refresh()
 
     def _on_selection_folder_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
+        self._selected_workfile_id = None
         self.refresh()
 
     def _on_selection_task_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
+        self._selected_workfile_id = None
+        self.refresh()
+
+    def _on_selection_workfile_changed(self, event):
+        self._selected_project_name = event["project_name"]
+        self._selected_folder_id = event["folder_id"]
+        self._selected_task_id = event["task_id"]
+        self._selected_workfile_id = event["workfile_id"]
         self.refresh()
 
 
@@ -307,12 +325,12 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-        transparent_icon = {"type": "transparent", "size": 256}
+        transparent_icon = TransparentIcon(256)
         new_items = []
         for action_item in action_items:
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = transparent_icon.copy()
+                icon_def = transparent_icon
 
             try:
                 icon = get_qt_icon(icon_def)
@@ -321,7 +339,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                     "Failed to parse icon definition", exc_info=True
                 )
                 # Use empty icon if failed to parse definition
-                icon = get_qt_icon(transparent_icon.copy())
+                icon = get_qt_icon(transparent_icon)
 
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
@@ -333,7 +351,8 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                 bool(action_item.config_fields),
                 ACTION_HAS_CONFIGS_ROLE
             )
-            item.setData(action_item.order, ACTION_SORT_ROLE)
+            item.setData(action_item.order, ACTION_ORDER_ROLE)
+            item.setData(action_item.suborder, ACTION_SUBORDER_ROLE)
 
             new_items.append(item)
 
@@ -481,6 +500,13 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
+        # On macOs the popup does not get focus on show so leave
+        #   event is triggered when the animation is still running.
+        if (
+            IS_MACOS
+            and self._expand_anim.state() == QtCore.QAbstractAnimation.Running
+        ):
+            return
         self._close_timer.start()
 
     def show_items(self, group_label, action_id, action_items, pos):
@@ -578,9 +604,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         if not index or not index.isValid():
             return
 
-        if not index.data(ACTION_HAS_CONFIGS_ROLE):
-            return
-
         action_id = index.data(ACTION_ID_ROLE)
         self.action_triggered.emit(action_id)
 
@@ -621,6 +644,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._group_label.move(label_pos_x, sh_t)
         self._bg_frame.setGeometry(bg_geo)
         self.setUpdatesEnabled(True)
+        self.update()
 
     def _on_expand_finish(self):
         # Make sure that size is recalculated if src and targe size is same
@@ -759,10 +783,9 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
     @classmethod
     def _get_extender_pixmap(cls):
         if cls._extender_icon is None:
-            cls._extender_icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "more_horiz",
-            })
+            cls._extender_icon = get_qt_icon(
+                MaterialSymbolsIcon("more_horiz")
+            )
         return cls._extender_icon
 
     def paint(self, painter, option, index):
@@ -804,24 +827,16 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
         if right.data(PLACEHOLDER_ITEM_ROLE):
             return False
 
-        left_value = left.data(ACTION_SORT_ROLE)
-        right_value = right.data(ACTION_SORT_ROLE)
+        left_order_value: int = left.data(ACTION_ORDER_ROLE) or 0
+        right_order_value: int = right.data(ACTION_ORDER_ROLE) or 0
+        if left_order_value != right_order_value:
+            return left_order_value < right_order_value
 
-        # Values are same -> use super sorting
-        if left_value == right_value:
-            # Default behavior is using DisplayRole
-            return super().lessThan(left, right)
-
-        # Validate 'None' values
-        if right_value is None:
-            return True
-        if left_value is None:
-            return False
-        # Sort values and handle incompatible types
-        try:
-            return left_value < right_value
-        except TypeError:
-            return True
+        left_suborder_value: int = left.data(ACTION_SUBORDER_ROLE) or 0
+        right_suborder_value: int = right.data(ACTION_SUBORDER_ROLE) or 0
+        if left_suborder_value != right_suborder_value:
+            return left_suborder_value < right_suborder_value
+        return super().lessThan(left, right)
 
 
 class ActionsView(QtWidgets.QListView):
@@ -970,10 +985,11 @@ class ActionsWidget(QtWidgets.QWidget):
                 event["project_name"],
                 event["folder_id"],
                 event["task_id"],
+                event["workfile_id"],
                 event["addon_name"],
                 event["addon_version"],
             ),
-            event["action_label"],
+            event["full_label"],
             form_data,
         )
 
@@ -1050,24 +1066,26 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        workfile_id = self._model.get_selected_workfile_id()
         action_item = self._model.get_action_item_by_id(action_id)
 
         if action_item.action_type == "webaction":
             action_item = self._model.get_action_item_by_id(action_id)
             context = WebactionContext(
-                action_id,
-                project_name,
-                folder_id,
-                task_id,
-                action_item.addon_name,
-                action_item.addon_version
+                identifier=action_id,
+                project_name=project_name,
+                folder_id=folder_id,
+                task_id=task_id,
+                workfile_id=workfile_id,
+                addon_name=action_item.addon_name,
+                addon_version=action_item.addon_version,
             )
             self._controller.trigger_webaction(
                 context, action_item.full_label
             )
         else:
             self._controller.trigger_action(
-                action_id, project_name, folder_id, task_id
+                action_id, project_name, folder_id, task_id, workfile_id
             )
 
         if index is None:
@@ -1087,11 +1105,13 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        workfile_id = self._model.get_selected_workfile_id()
         context = WebactionContext(
-            action_id,
+            identifier=action_id,
             project_name=project_name,
             folder_id=folder_id,
             task_id=task_id,
+            workfile_id=workfile_id,
             addon_name=action_item.addon_name,
             addon_version=action_item.addon_version,
         )
@@ -1152,74 +1172,7 @@ class ActionsWidget(QtWidgets.QWidget):
             float - 'label', 'value', 'placeholder', 'min', 'max'
 
         """
-        attr_defs = []
-        for config_field in config_fields:
-            field_type = config_field["type"]
-            attr_def = None
-            if field_type == "label":
-                label = config_field.get("value")
-                if label is None:
-                    label = config_field.get("text")
-                attr_def = UILabelDef(
-                    label, key=uuid.uuid4().hex
-                )
-            elif field_type == "boolean":
-                value = config_field["value"]
-                if isinstance(value, str):
-                    value = value.lower() == "true"
-
-                attr_def = BoolDef(
-                    config_field["name"],
-                    default=value,
-                    label=config_field.get("label"),
-                )
-            elif field_type == "text":
-                attr_def = TextDef(
-                    config_field["name"],
-                    default=config_field.get("value"),
-                    label=config_field.get("label"),
-                    placeholder=config_field.get("placeholder"),
-                    multiline=config_field.get("multiline", False),
-                    regex=config_field.get("regex"),
-                    # syntax=config_field["syntax"],
-                )
-            elif field_type in ("integer", "float"):
-                value = config_field.get("value")
-                if isinstance(value, str):
-                    if field_type == "integer":
-                        value = int(value)
-                    else:
-                        value = float(value)
-                attr_def = NumberDef(
-                    config_field["name"],
-                    default=value,
-                    label=config_field.get("label"),
-                    decimals=0 if field_type == "integer" else 5,
-                    # placeholder=config_field.get("placeholder"),
-                    minimum=config_field.get("min"),
-                    maximum=config_field.get("max"),
-                )
-            elif field_type in ("select", "multiselect"):
-                attr_def = EnumDef(
-                    config_field["name"],
-                    items=config_field["options"],
-                    default=config_field.get("value"),
-                    label=config_field.get("label"),
-                    multiselection=field_type == "multiselect",
-                )
-            elif field_type == "hidden":
-                attr_def = HiddenDef(
-                    config_field["name"],
-                    default=config_field.get("value"),
-                )
-
-            if attr_def is None:
-                print(f"Unknown config field type: {field_type}")
-                attr_def = UILabelDef(
-                    f"Unknown field type '{field_type}",
-                    key=uuid.uuid4().hex
-                )
-            attr_defs.append(attr_def)
+        attr_defs = webaction_fields_to_attribute_defs(config_fields)
 
         dialog = AttributeDefinitionsDialog(
             attr_defs,

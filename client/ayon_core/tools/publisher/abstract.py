@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from typing import (
@@ -13,7 +15,7 @@ from typing import (
 )
 
 from ayon_core.lib import AbstractAttrDef
-from ayon_core.host import HostBase
+from ayon_core.host import AbstractHost
 from ayon_core.pipeline.create import (
     CreateContext,
     ConvertorItem,
@@ -176,7 +178,7 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_host(self) -> HostBase:
+    def get_host(self) -> AbstractHost:
         pass
 
     @abstractmethod
@@ -191,6 +193,10 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         task_name: str,
         sender: Optional[str] = None
     ) -> Union[TaskItem, None]:
+        pass
+
+    @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
         pass
 
     @abstractmethod
@@ -219,6 +225,15 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
 
 
 class AbstractPublisherFrontend(AbstractPublisherCommon):
+    @abstractmethod
+    def get_window_subtitle(self) -> Optional[str]:
+        """Get window subtitle.
+
+        Returns:
+            Optional[str]: Window subtitle.
+
+        """
+
     @abstractmethod
     def register_event_callback(self, topic: str, callback: Callable):
         pass
@@ -293,6 +308,21 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
         """Get folder id from folder path."""
+        pass
+
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
         pass
 
     # --- Create ---
@@ -443,9 +473,10 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     def get_product_name(
         self,
         creator_identifier: str,
+        product_type: str,
         variant: str,
-        task_name: Union[str, None],
         folder_path: Union[str, None],
+        task_name: Union[str, None],
         instance_id: Optional[str] = None
     ):
         """Get product name based on passed data.
@@ -453,9 +484,10 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         Args:
             creator_identifier (str): Identifier of creator which should be
                 responsible for product name creation.
+            product_type (str): Product type.
             variant (str): Variant value from user's input.
-            task_name (str): Name of task for which is instance created.
             folder_path (str): Folder path for which is instance created.
+            task_name (str): Name of task for which is instance created.
             instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
@@ -476,6 +508,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
+            product_type (str): Product type.
             product_name (str): Calculated product name.
             instance_data (Dict[str, Any]): Base instance data with variant,
                 folder path and task name.

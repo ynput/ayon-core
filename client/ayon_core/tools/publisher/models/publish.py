@@ -21,6 +21,7 @@ from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import (
     get_publish_instance_label,
     PublishError,
+    filter_crashed_publish_paths,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
@@ -107,10 +108,13 @@ class PublishReportMaker:
         creator_discover_result: Optional[DiscoverResult] = None,
         convertor_discover_result: Optional[DiscoverResult] = None,
         publish_discover_result: Optional[DiscoverResult] = None,
+        blocking_crashed_paths: Optional[list[str]] = None,
     ):
         self._create_discover_result: Union[DiscoverResult, None] = None
         self._convert_discover_result: Union[DiscoverResult, None] = None
         self._publish_discover_result: Union[DiscoverResult, None] = None
+
+        self._blocking_crashed_paths: list[str] = []
 
         self._all_instances_by_id: Dict[str, pyblish.api.Instance] = {}
         self._plugin_data_by_id: Dict[str, Any] = {}
@@ -120,6 +124,7 @@ class PublishReportMaker:
             creator_discover_result,
             convertor_discover_result,
             publish_discover_result,
+            blocking_crashed_paths,
         )
 
     def reset(
@@ -127,12 +132,14 @@ class PublishReportMaker:
         creator_discover_result: Union[DiscoverResult, None],
         convertor_discover_result: Union[DiscoverResult, None],
         publish_discover_result: Union[DiscoverResult, None],
+        blocking_crashed_paths: list[str],
     ):
         """Reset report and clear all data."""
 
         self._create_discover_result = creator_discover_result
         self._convert_discover_result = convertor_discover_result
         self._publish_discover_result = publish_discover_result
+        self._blocking_crashed_paths = blocking_crashed_paths
 
         self._all_instances_by_id = {}
         self._plugin_data_by_id = {}
@@ -242,9 +249,10 @@ class PublishReportMaker:
             "instances": instances_details,
             "context": self._extract_context_data(publish_context),
             "crashed_file_paths": crashed_file_paths,
+            "blocking_crashed_paths": list(self._blocking_crashed_paths),
             "id": uuid.uuid4().hex,
             "created_at": now.isoformat(),
-            "report_version": "1.1.0",
+            "report_version": "1.1.1",
         }
 
     def _add_plugin_data_item(self, plugin: pyblish.api.Plugin):
@@ -307,6 +315,7 @@ class PublishReportMaker:
             "name": instance.data.get("name"),
             "label": get_publish_instance_label(instance),
             "product_type": instance.data.get("productType"),
+            "product_base_type": instance.data.get("productBaseType"),
             "family": instance.data.get("family"),
             "families": instance.data.get("families") or [],
             "exists": exists,
@@ -959,11 +968,16 @@ class PublishModel:
         self._publish_plugins_proxy = PublishPluginsProxy(
             publish_plugins
         )
-
+        blocking_crashed_paths = filter_crashed_publish_paths(
+            create_context.get_current_project_name(),
+            set(create_context.publish_discover_result.crashed_file_paths),
+            project_settings=create_context.get_current_project_settings(),
+        )
         self._publish_report.reset(
             create_context.creator_discover_result,
             create_context.convertor_discover_result,
             create_context.publish_discover_result,
+            blocking_crashed_paths,
         )
         for plugin in create_context.publish_plugins_mismatch_targets:
             self._publish_report.set_plugin_skipped(plugin.id)

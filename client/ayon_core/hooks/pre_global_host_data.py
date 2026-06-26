@@ -85,6 +85,12 @@ class GlobalHostDataHook(PreLaunchHook):
             return
 
         folder_entity = get_folder_by_path(project_name, folder_path)
+        if not folder_entity:
+            raise ApplicationLaunchFailed(
+                f"Folder '{folder_path}' not found"
+                f" in project '{project_name}'."
+            )
+
         self.data["folder_entity"] = folder_entity
 
         task_name = self.data.get("task_name")
@@ -100,4 +106,10 @@ class GlobalHostDataHook(PreLaunchHook):
         task_entity = get_task_by_name(
             project_name, folder_entity["id"], task_name
         )
+        if not task_entity:
+            raise ApplicationLaunchFailed(
+                f"Task '{task_name}' not found"
+                f" in '{project_name}' > '{folder_path}'."
+            )
+
         self.data["task_entity"] = task_entity

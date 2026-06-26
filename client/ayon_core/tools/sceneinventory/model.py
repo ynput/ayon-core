@@ -6,6 +6,7 @@ import collections
 from qtpy import QtCore, QtGui
 import qtawesome
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import format_version
@@ -37,6 +38,7 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 #     containers inbetween refresh.
 ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 25
+CONTAINER_VERSION_LOCKED_ROLE = QtCore.Qt.UserRole + 26
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -214,9 +216,6 @@ class InventoryModel(QtGui.QStandardItemModel):
         group_icon = qtawesome.icon(
             "fa.object-group", color=self._default_icon_color
         )
-        product_type_icon = qtawesome.icon(
-            "fa.folder", color="#0091B2"
-        )
         group_item_font = QtGui.QFont()
         group_item_font.setBold(True)
 
@@ -294,6 +293,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(container_item.object_name, OBJECT_NAME_ROLE)
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
+                    item.setData(
+                        container_item.version_locked,
+                        CONTAINER_VERSION_LOCKED_ROLE
+                    )
                     container_model_items.append(item)
 
                 progress = progress_by_id[repre_id]
@@ -303,7 +306,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 remote_site_progress = "{}%".format(
                     max(progress["remote_site"], 0) * 100
                 )
-
+                product_type_icon = get_qt_icon(repre_info.product_type_icon)
                 group_item = QtGui.QStandardItem()
                 group_item.setColumnCount(root_item.columnCount())
                 group_item.setData(group_name, QtCore.Qt.DisplayRole)
@@ -424,11 +427,12 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         icon = None
         if status_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": status_item.icon,
-                "color": status_item.color,
-            })
+            icon = get_qt_icon(
+                MaterialSymbolsIcon(
+                    status_item.icon,
+                    color=status_item.color
+                )
+            )
         if icon is None:
             icon = QtGui.QIcon()
         self._last_status_icons_by_name[project_name][status_name] = icon
