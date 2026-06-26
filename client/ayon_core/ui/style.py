@@ -4,16 +4,12 @@ import logging
 from functools import cmp_to_key
 
 from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import QRect, QRectF, Qt
+from qtpy.QtCore import QRect, Qt
 from qtpy.QtGui import (
-    QBrush,
-    QColor,
     QFont,
     QPainter,
-    QPen,
 )
 from qtpy.QtWidgets import (
-    QApplication,
     QComboBox,
     QCommonStyle,
     QFrame,
