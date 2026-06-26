@@ -1111,20 +1111,20 @@ def _is_valid_representation_id(repre_id: Any) -> bool:
     return True
 
 
-def get_library_projects() -> Generator[ProjectDict, None, None]:
+def _get_library_projects() -> Generator[ProjectDict, None, None]:
     """Get library projects."""
     return ayon_api.get_projects(library=True, fields={"id", "name"})
 
 
 @functools.cache
-def get_library_project_names() -> list[str]:
+def _get_library_project_names() -> list[str]:
     """Get library project names."""
-    return [project["name"] for project in get_library_projects()]
+    return [project["name"] for project in _get_library_projects()]
 
 
-def is_library_project(project_name: str) -> bool:
+def _is_library_project(project_name: str) -> bool:
     """Check if project is library project."""
-    return project_name in get_library_project_names()
+    return project_name in _get_library_project_names()
 
 
 def filter_containers(containers, project_name):
@@ -1234,7 +1234,7 @@ def filter_containers(containers, project_name):
     for container in containers:
 
         project_name = container.get("project_name")
-        if project_name and is_library_project(project_name):
+        if project_name and _is_library_project(project_name):
             library_containers.append(container)
             continue
 
