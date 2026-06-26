@@ -562,18 +562,16 @@ class AbstractTemplateBuilder(ABC):
 
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
-        is_new_file = not self.host.get_current_workfile()
-        if is_new_file or explicit_build_requested:
-            self.log.info(f"Building the workfile template: {template_path}")
-            self.import_template(template_path)
-            self.populate_scene_placeholders(
-                level_limit, keep_placeholders)
-
-        # Do not consider saving a first workfile version, if this is not set
-        # to be a "workfile creation" or `create_first_version` is disabled.
-        if explicit_build_requested or not create_first_version:
+        if not explicit_build_requested:
             return
 
+        self.log.info(f"Building the workfile template: {template_path}")
+        self.import_template(template_path)
+        self.populate_scene_placeholders(
+            level_limit, keep_placeholders)
+        # Do not consider saving a first workfile version if disabled.
+        if not create_first_version:
+            return
         # If there is no existing workfile, save the first version
         workfile_path = self.get_workfile_path()
         if not os.path.exists(workfile_path):
