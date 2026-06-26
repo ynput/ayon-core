@@ -1111,12 +1111,12 @@ def _is_valid_representation_id(repre_id: Any) -> bool:
     return True
 
 
-@functools.cache
 def get_library_projects() -> Generator[ProjectDict, None, None]:
     """Get library projects."""
     return ayon_api.get_projects(library=True, fields={"id", "name"})
 
 
+@functools.cache
 def get_library_project_names() -> list[str]:
     """Get library project names."""
     return [project["name"] for project in get_library_projects()]
