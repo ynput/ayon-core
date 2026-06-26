@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import os
 import uuid
 import warnings
@@ -9,7 +10,7 @@ import collections
 import numbers
 import copy
 from functools import wraps
-from typing import Optional, Union, Any, overload
+from typing import Optional, Union, Any, overload, TYPE_CHECKING
 
 import ayon_api
 
@@ -21,11 +22,18 @@ from ayon_core.lib import (
 from ayon_core.lib.path_templates import TemplateResult
 from ayon_core.pipeline import Anatomy
 
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from ayon_api.typing import ProjectDict
+
+
 log = logging.getLogger(__name__)
 
 ContainersFilterResult = collections.namedtuple(
     "ContainersFilterResult",
-    ["latest", "outdated", "not_found", "invalid"]
+    ["latest", "outdated", "not_found", "invalid", "library"]
 )
 
 
@@ -1103,25 +1111,43 @@ def _is_valid_representation_id(repre_id: Any) -> bool:
     return True
 
 
-def filter_containers(containers, project_name):
-    """Filter containers and split them into 4 categories.
+@functools.cache
+def get_library_projects() -> Generator[ProjectDict, None, None]:
+    """Get library projects."""
+    return ayon_api.get_projects(library=True, fields={"id", "name"})
 
-    Categories are 'latest', 'outdated', 'invalid' and 'not_found'.
-    The 'lastest' containers are from last version, 'outdated' are not,
-    'invalid' are invalid containers (invalid content) and 'not_found' has
-    some missing entity in database.
+
+def get_library_project_names() -> list[str]:
+    """Get library project names."""
+    return [project["name"] for project in get_library_projects()]
+
+
+def is_library_project(project_name: str) -> bool:
+    """Check if project is library project."""
+    return project_name in get_library_project_names()
+
+
+def filter_containers(containers, project_name):
+    """Filter containers and split them into 5 categories.
+
+    Categories:
+    - 'latest': containers from latest version.
+    - 'outdated': containers from outdated versions.
+    - 'invalid': containers with invalid content.
+    - 'not_found': containers with missing entity in database.
+    - 'library': containers from library projects.
 
     Todos:
         Respect 'project_name' on containers if is available.
 
     Args:
         containers (Iterable[dict]): List of containers referenced into scene.
-        project_name (str): Name of project in which context shoud look for
+        project_name (str): Name of project in which context should look for
             versions.
 
     Returns:
         ContainersFilterResult: Named tuple with 'latest', 'outdated',
-            'invalid' and 'not_found' containers.
+            'invalid', 'not_found' and 'library' containers.
 
     """
     # Make sure containers is list that won't change
@@ -1131,11 +1157,13 @@ def filter_containers(containers, project_name):
     uptodate_containers = []
     not_found_containers = []
     invalid_containers = []
+    library_containers = []
     output = ContainersFilterResult(
         uptodate_containers,
         outdated_containers,
         not_found_containers,
-        invalid_containers
+        invalid_containers,
+        library_containers,
     )
     # Query representation docs to get it's version ids
     repre_ids = {
@@ -1204,6 +1232,12 @@ def filter_containers(containers, project_name):
     # Based on all collected data figure out which containers are outdated
     #   - log out if there are missing representation or version documents
     for container in containers:
+
+        project_name = container.get("project_name")
+        if project_name and is_library_project(project_name):
+            library_containers.append(container)
+            continue
+
         container_name = container["objectName"]
         repre_id = container["representation"]
         if not _is_valid_representation_id(repre_id):
