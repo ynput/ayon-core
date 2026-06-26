@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from qtpy import QtCore, QtGui
-from qtpy.QtCore import QMimeData, QPoint, QRectF, QSize, Qt, Signal  # type: ignore
+from qtpy.QtCore import QMimeData, QPoint, QRectF, QSize, Qt, Signal
 from qtpy.QtGui import (
     QBrush,
     QColor,
@@ -46,7 +46,6 @@ from qtpy.QtWidgets import (
 
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
 from ayon_core.ui.components.label import AYLabel
-
 
 from ..image_cache import ImageCache
 from ..style_types import get_ayon_style, get_ayon_style_data
@@ -856,84 +855,3 @@ class AYEntityCard(AYContainer):
         self.is_dragging = True
         drag.exec(Qt.DropAction.CopyAction | Qt.DropAction.MoveAction)
         self.is_dragging = False
-
-
-# ---------------------------------------------------------------------------
-# __main__ — manual visual test
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-
-    _USERS = [
-        {"name": "jd", "full_name": "John Doe"},
-        {"name": "ab", "full_name": "Alice Brown"},
-        {"name": "cm", "full_name": "Charlie Moss"},
-    ]
-    _STATUS = {
-        "name": "In Progress",
-        "icon": "play_circle",
-        "color": "#3498db",
-        "short_name": "PRG",
-    }
-    _PRIORITY = {
-        "label": "Medium",
-        "color": "rgb(52, 152, 219)",
-        "icon": "check_indeterminate_small",
-        "value": "medium",
-    }
-
-    def _build():
-        w = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            layout_margin=32,
-            layout_spacing=16,
-        )
-
-        card1 = AYEntityCard(
-            header="ep103sq002",
-            path=["sequences", "ep103", "shots"],
-            project="com",
-            title="Lighting",
-            title_icon="lightbulb",
-            title_color="#ffd700",
-            is_playable=True,
-            users=_USERS,
-            status=_STATUS,
-            priority=_PRIORITY,
-        )
-        w.add_widget(card1)
-
-        card2 = AYEntityCard(
-            header="Loading…",
-            title="Animation",
-            title_icon="run_circle",
-            is_loading=True,
-        )
-        w.add_widget(card2)
-
-        card3 = AYEntityCard(
-            header="No image",
-            title="Compositing",
-            title_icon="layers",
-            users=_USERS[:1],
-            status=_STATUS,
-            version="v003",
-        )
-        w.add_widget(card3)
-
-        card4 = AYEntityCard(
-            header="Active",
-            title="Rigging",
-            title_icon="account_tree",
-            status=_STATUS,
-            priority=_PRIORITY,
-            is_active=True,
-            is_draggable=True,
-        )
-        w.add_widget(card4)
-
-        return w
-
-    test(_build, style=Style.AYONStyleOverCSS)

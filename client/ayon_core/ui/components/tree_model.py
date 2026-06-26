@@ -12,7 +12,7 @@ from qtpy.QtCore import (
     QObject,
     QPersistentModelIndex,
     Qt,
-    Signal,  # type: ignore[attr-defined]
+    Signal,
 )
 
 from qtmaterialsymbols import get_icon  # type: ignore
@@ -470,51 +470,3 @@ class LazyTreeModel(QAbstractItemModel):
         # connected to loading_changed observes a consistent model state.
         self._update_loading_state()
         self._fetch_children_async(self._root)
-
-
-# --------------- fake data for testing --------------------------------
-
-PRODUCTS_TEST_DATA: dict[str | None, list[TreeNode]] = {
-    None: [
-        TreeNode("assets", "Assets", has_children=True, icon="category"),
-        TreeNode("shots", "Shots", has_children=True, icon="theaters"),
-        TreeNode("refs", "References", has_children=False, icon="menu_book"),
-    ],
-    "assets": [
-        TreeNode("char", "Characters", has_children=True, icon="folder"),
-        TreeNode("props", "Props", has_children=True, icon="folder"),
-    ],
-    "char": [
-        TreeNode("char_pi", "pigeon", icon="smart_toy"),
-        TreeNode("char_ro", "robot", icon="smart_toy"),
-    ],
-    "props": [
-        TreeNode("props_p", "Peace", icon="self_improvement"),
-        TreeNode("props_l", "Love", icon="favorite"),
-    ],
-    "shots": [
-        TreeNode("sh010", "SH010", has_children=True, icon="folder"),
-        TreeNode("sh020", "SH020", has_children=True, icon="folder"),
-        TreeNode("sh030", "SH030", has_children=True, icon="folder"),
-    ],
-    "sh010": [
-        TreeNode("sh010_anim", "Animation", icon="directions_run"),
-        TreeNode("sh010_lgt", "Lighting", icon="highlight"),
-    ],
-    "sh020": [
-        TreeNode("sh020_anim", "Animation", icon="directions_run"),
-        TreeNode("sh020_comp", "Compositing", icon="layers"),
-    ],
-    "sh030": [
-        TreeNode("sh030_fx", "FX", icon="fireplace"),
-        TreeNode("sh030_lgt", "Lighting", icon="highlight"),
-    ],
-}
-
-REVIEWS_TEST_DATA: dict[str | None, list[TreeNode]] = {
-    None: [
-        TreeNode("rev1", "Review 1", has_children=False, icon="subscriptions"),
-        TreeNode("rev2", "Review 2", has_children=False, icon="subscriptions"),
-        TreeNode("rev3", "Review 3", has_children=False, icon="subscriptions"),
-    ]
-}

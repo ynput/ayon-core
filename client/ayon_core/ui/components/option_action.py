@@ -22,8 +22,6 @@ Typical usage::
 
 from __future__ import annotations
 
-import logging
-
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ..style_types import get_ayon_style
@@ -31,8 +29,6 @@ from .buttons import AYButton
 from .frame import AYFrame
 from .label import AYLabel
 from .layouts import AYHBoxLayout
-
-logger = logging.getLogger(__name__)
 
 
 class AYOptionBox(AYButton):

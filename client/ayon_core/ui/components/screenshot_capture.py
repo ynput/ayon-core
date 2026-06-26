@@ -22,7 +22,6 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import QApplication, QWidget
 
-
 logger = logging.getLogger(__name__)
 
 

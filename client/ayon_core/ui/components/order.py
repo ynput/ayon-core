@@ -7,7 +7,6 @@ so they are automatically clipped to its boundaries.
 
 from __future__ import annotations
 
-import logging
 from typing import Optional
 
 from qtpy.QtCore import (
@@ -34,8 +33,6 @@ from qtpy.QtWidgets import (
 from ..variants import QFrameVariants
 from .container import AYContainer
 from .label import AYLabel
-
-_log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -515,40 +512,3 @@ class AYOrder(AYContainer):
         self.setMinimumHeight(0)
         self.setMaximumHeight(16777215)
         self._anim_group = None
-
-
-if __name__ == "__main__":
-    from ayon_core.ui.tester import Style, test
-
-    def _build() -> QWidget:
-        root = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
-            layout_margin=20,
-            layout_spacing=20,
-        )
-        root.setMinimumWidth(400)
-
-        def _on_order(new_order: list[str]) -> None:
-            print("order_changed:", new_order)
-
-        # Default variant – drag_indicator icons
-        order_default = AYOrder(
-            options=["Alpha", "Beta", "Gamma", "Delta"],
-            variant=AYOrder.Variant.Low,
-        )
-        order_default.order_changed.connect(_on_order)
-        root.add_widget(order_default)
-
-        # High variant – custom icons
-        order_high = AYOrder(
-            options=["Compositing", "Lighting", "Rigging", "Modeling"],
-            icons=["layers", "light_mode", "account_tree", "deployed_code"],
-            variant=AYOrder.Variant.High,
-        )
-        order_high.order_changed.connect(_on_order)
-        root.add_widget(order_high)
-
-        return root
-
-    test(_build, style=Style.AYONStyleOverCSS)

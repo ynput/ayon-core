@@ -11,10 +11,7 @@ between them.  Default size policy is ``Expanding × Fixed``.
 
 from __future__ import annotations
 
-import logging
-import os
-
-from qtmaterialsymbols import get_icon  # type: ignore
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QFontMetrics
@@ -23,8 +20,6 @@ from ..color_utils import compute_color_for_contrast
 from ..style_types import get_ayon_style
 from ..variants import AYPageButtonVariants, QPushButtonVariants
 from .buttons import AYButton
-
-logger = logging.getLogger(__name__)
 
 
 class AYPageButton(AYButton):
@@ -427,59 +422,3 @@ class AYPageButton(AYButton):
             )
 
         p.end()
-
-
-# TEST =======================================================================
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def _build_test():
-        container = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.High,
-            layout_spacing=2,
-            layout_margin=12,
-        )
-
-        rows = [
-            # (label, value, icon)
-            ("Featured version", "Done", "star"),
-            ("Settings", "", "settings"),
-            (
-                (
-                    "A very long label that should be elided when the window "
-                    "is narrow"
-                ),
-                "Value",
-                "info",
-            ),
-            ("No icon, with value", "Some text", None),
-            ("No value, no icon", "", None),
-        ]
-
-        for label, value, icon in rows:
-            btn = AYPageButton(
-                label=label,
-                value=value,
-                icon=icon,
-                tooltip=f"{label!r} button",
-            )
-            container.add_widget(btn)
-
-        # Disabled example
-        disabled_btn = AYPageButton(
-            label="Disabled entry",
-            value="N/A",
-            icon="block",
-        )
-        disabled_btn.setEnabled(False)
-        container.add_widget(disabled_btn)
-
-        container.addStretch(1)
-        return container
-
-    os.environ["QT_SCALE_FACTOR"] = "1"
-    test(_build_test, style=Style.AYONStyleOverCSS)

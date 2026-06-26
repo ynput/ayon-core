@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from qtpy.QtCore import (
     QEvent,
     Qt,
-    Signal,  # type: ignore
+    Signal,
 )
 from qtpy.QtGui import QPixmap, QShowEvent
 from qtpy.QtWidgets import (
@@ -252,34 +251,3 @@ class GalleryDialog(QDialog):
         if self.current_index < len(self.images) - 1:
             self.current_index += 1
             self._show_current_image()
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-
-    from .. import _get_test_data_dir
-    from ..tester import Style, test
-
-    def build():
-        rsrc_dir = (
-            _get_test_data_dir() or Path(__file__).parent.parent / "resources"
-        )
-        images = []
-
-        # Add any available test images
-        for img_file in rsrc_dir.glob("*.jpg"):
-            images.append((str(img_file), img_file.name))
-        for img_file in rsrc_dir.glob("*.png"):
-            images.append((str(img_file), img_file.name))
-
-        if not images:
-            # Create dummy entries for testing
-            images = [
-                ("test1.png", "Test Image 1"),
-                ("test2.png", "Test Image 2"),
-            ]
-
-        dialog = GalleryDialog(images, current_index=0)
-        return dialog
-
-    test(build, style=Style.AYONStyleOverCSS)

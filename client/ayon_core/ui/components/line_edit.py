@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from qtmaterialsymbols import get_icon
 from qtpy.QtCore import QRectF, QSize, Qt
 from qtpy.QtGui import QBrush, QColor, QPainter, QPaintEvent, QPalette, QPen
 from qtpy.QtWidgets import (
@@ -13,8 +14,6 @@ from qtpy.QtWidgets import (
 from ..style_types import get_ayon_style
 from ..variants import QLineEditVariants
 from .style_mixin import StyleMixin
-
-from qtmaterialsymbols import get_icon  # type: ignore
 
 
 class AYLineEdit(StyleMixin, QLineEdit):
@@ -231,34 +230,3 @@ class AYLineEdit(StyleMixin, QLineEdit):
         size.setWidth(size.width() + padding[0] * 2)
         size.setHeight(size.height() + padding[1] * 2)
         return size
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def _build() -> QWidget:
-        container = AYContainer(
-            variant=AYContainer.Variants.Low,
-            layout=AYContainer.Layout.HBox,
-            layout_margin=20,
-            layout_spacing=20,
-        )
-        container.setMinimumWidth(300)
-
-        disabled_edit = AYLineEdit(
-            placeholder="Disabled",
-        )
-        disabled_edit.setEnabled(False)
-        container.add_widget(disabled_edit)
-
-        for variant in QLineEditVariants:
-            line_edit = AYLineEdit(
-                placeholder="Enter text here",
-                variant=variant,
-            )
-            container.add_widget(line_edit)
-
-        return container
-
-    test(_build, style=Style.AYONStyleOverCSS)

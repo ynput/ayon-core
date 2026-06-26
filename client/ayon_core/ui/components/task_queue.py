@@ -37,9 +37,10 @@ from qtpy.QtCore import (
     Qt,
     QThread,
     QTimer,
-    Signal,  # type: ignore
-    Slot,  # type: ignore
+    Signal,
+    Slot,
 )
+from qtpy.QtWidgets import QApplication
 
 log = logging.getLogger(__name__)
 
@@ -635,8 +636,24 @@ class AsyncTaskQueue(QThread):
 # Module-level shared singleton
 # ---------------------------------------------------------------------------
 
-_shared_queue: AsyncTaskQueue | None = None
-_shutdown_connected: bool = False
+class _LocalContext:
+    shared_queue: AsyncTaskQueue | None = None
+    shutdown_connected: bool = False
+
+
+def _register_shutdown_hook() -> bool:
+    """Connect the shared queue to QApplication.aboutToQuit for clean shutdown.
+
+    Called automatically on first access to get_task_queue().
+    """
+    if _LocalContext.shutdown_connected:
+        return True
+    app = QApplication.instance()
+    if app is not None:
+        app.aboutToQuit.connect(shutdown_task_queue)
+        _LocalContext.shutdown_connected = True
+        return True
+    return False
 
 
 def get_task_queue() -> AsyncTaskQueue:
@@ -652,26 +669,23 @@ def get_task_queue() -> AsyncTaskQueue:
     Returns:
         The running shared :class:`AsyncTaskQueue` instance.
     """
-    global _shared_queue, _shutdown_connected
-    if _shared_queue is None:
-        from qtpy.QtWidgets import QApplication  # local import avoids circular
+    if _LocalContext.shared_queue is not None:
+        if not _LocalContext.shutdown_connected:
+            _register_shutdown_hook()
+        return _LocalContext.shared_queue
 
-        _shared_queue = AsyncTaskQueue()
-        _shared_queue.start()
-        log.debug("Shared task queue started")
+    shared_queue = AsyncTaskQueue()
+    _LocalContext.shared_queue = shared_queue
+    shared_queue.start()
+    log.debug("Shared task queue started")
 
-        app = QApplication.instance()
-        if app is not None:
-            if not _shutdown_connected:
-                app.aboutToQuit.connect(shutdown_task_queue)
-                _shutdown_connected = True
-        else:
-            log.warning(
-                "get_task_queue() called before QApplication exists; "
-                "automatic shutdown will not be registered."
-            )
+    if not _register_shutdown_hook():
+        log.warning(
+            "get_task_queue() called before QApplication exists; "
+            "automatic shutdown will not be registered."
+        )
 
-    return _shared_queue
+    return shared_queue
 
 
 def shutdown_task_queue() -> None:
@@ -683,8 +697,8 @@ def shutdown_task_queue() -> None:
     are no-ops.  After this call :func:`get_task_queue` will create a
     fresh queue on next access.
     """
-    global _shared_queue
-    if _shared_queue is not None:
-        _shared_queue.stop()
-        _shared_queue = None
+    if _LocalContext.shared_queue is not None:
+        if _LocalContext.shared_queue.isRunning():
+            _LocalContext.shared_queue.stop()
+        _LocalContext.shared_queue = None
         log.debug("Shared task queue stopped")

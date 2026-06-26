@@ -11,7 +11,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtmaterialsymbols import get_icon
+from qtpy import QtCore, QtGui
 from qtpy.QtCore import (
     QItemSelection,
     QItemSelectionModel,
@@ -22,7 +23,7 @@ from qtpy.QtCore import (
     QSize,
     QSortFilterProxyModel,
     Qt,
-    Signal,  # type: ignore
+    Signal,
 )
 from qtpy.QtGui import (
     QBrush,
@@ -46,8 +47,6 @@ from ..variants import AYCardViewVariants
 from .entity_card import CARD_RATIO, AYEntityCard
 from .scroll_area import AYScrollBar
 from .table_model import PaginatedTableModel
-
-from qtmaterialsymbols import get_icon  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -1167,147 +1166,3 @@ class AYCardView(QAbstractItemView):
         self._delegate._card_data_mapper = value or (lambda r: {})
         self._active_editor_pmis.clear()
         self._schedule_layout_update()
-
-
-# =============================================================================
-# __main__ - visual test harness
-# =============================================================================
-
-if __name__ == "__main__":
-    from qtpy import QtWidgets
-
-    from ..tester import Style, test
-    from .check_box import AYCheckBox
-    from .container import AYContainer
-    from .slider import AYSlider
-    from .table_model import (
-        HIERARCHICAL_TEST_DATA,
-        PaginatedTableModel,
-        TableColumn,
-        make_hierarchical_test_fetch,
-    )
-
-    def _make_card_mapper(
-        row_data: dict,
-    ) -> dict:
-        status_dict = None
-        if row_data.get("status"):
-            status_dict = {
-                "name": row_data["status"],
-                "icon": row_data.get("status__icon", ""),
-                "color": row_data.get("status__color", ""),
-            }
-        return {
-            "header": row_data.get("name", ""),
-            "title": row_data.get("type", ""),
-            "title_icon": row_data.get("name__icon", ""),
-            "image_icon": row_data.get("thumb__icon", "image"),
-            "status": status_dict,
-            "version": row_data.get("version", ""),
-        }
-
-    def _build() -> QtWidgets.QWidget:
-        container = AYContainer(
-            variant=AYContainer.Variants.High,
-            layout=AYContainer.Layout.VBox,
-            layout_margin=20,
-            layout_spacing=10,
-        )
-
-        top_bar = AYContainer(
-            variant=AYContainer.Variants.High,
-            layout=AYContainer.Layout.HBox,
-            layout_spacing=10,
-        )
-        label = QtWidgets.QLabel("AYCardView — card width slider + tree mode")
-        switch = AYCheckBox(
-            "Show Hierarchy", variant=AYCheckBox.Variants.Button
-        )
-
-        width_slider = AYSlider(
-            label="Card Width",
-            variant=AYSlider.Variants.Default,
-            value=200,
-            minimum=120,
-            maximum=300,
-            step=10,
-        )
-        width_slider.setFixedWidth(160)
-
-        top_bar.add_widget(label)
-        top_bar.add_widget(width_slider)
-        top_bar.add_widget(switch)
-        container.add_widget(top_bar)
-
-        columns = [
-            TableColumn("name", "Name", width=160, sortable=True),
-            TableColumn("status", "Status", width=100, sortable=True),
-            TableColumn("type", "Type", width=100, sortable=True),
-            TableColumn("version", "Version", width=70, sortable=True),
-        ]
-
-        _tree_mode: list[bool] = [False]
-        _all_leaf_rows: list[dict] = [
-            row
-            for rows in HIERARCHICAL_TEST_DATA.values()
-            for row in rows
-            if not row.get("has_children", False)
-        ]
-        _hier_fetch = make_hierarchical_test_fetch(HIERARCHICAL_TEST_DATA)
-
-        def _fetch(
-            page: int,
-            page_size: int,
-            sort_key: str | None = None,
-            descending: bool = False,
-            parent_id: str | None = None,
-        ) -> list[dict]:
-            if parent_id is not None:
-                return _hier_fetch(
-                    page, page_size, sort_key, descending, parent_id
-                )
-            if _tree_mode[0]:
-                return _hier_fetch(page, page_size, sort_key, descending, None)
-            rows = list(_all_leaf_rows)
-            if sort_key:
-                rows = sorted(
-                    rows,
-                    key=lambda r: (
-                        r.get(sort_key) is None,
-                        str(r.get(sort_key, "")),
-                    ),
-                    reverse=descending,
-                )
-            start = page * page_size
-            return rows[start : start + page_size]
-
-        model = PaginatedTableModel(
-            fetch_page=_fetch,
-            columns=columns,
-            page_size=50,
-        )
-        model.set_tree_mode(False)
-
-        card_view = AYCardView(
-            variant=AYCardView.Variants.Low,
-            card_width=200,
-            card_spacing=8,
-            card_data_mapper=_make_card_mapper,
-        )
-        card_view.setModel(model)
-        card_view.setMinimumHeight(400)
-        container.add_widget(card_view)
-
-        def _on_tree_mode_toggle(enabled: bool) -> None:
-            _tree_mode[0] = enabled
-            model.set_tree_mode(enabled)
-
-        switch.toggled.connect(_on_tree_mode_toggle)
-        width_slider.value_changed.connect(
-            lambda v: card_view.set_card_width(v)
-        )
-
-        container.setMinimumWidth(800)
-        return container
-
-    test(_build, style=Style.AYONStyleOverCSS)
