@@ -345,6 +345,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         self._project_name = self._controller.get_current_project_name()
         self._folders_widget.set_project_name(self._project_name)
+        self._tasks_widget.set_project_name(self._project_name)
         self._tasks_widget.refresh()
 
         # Update my tasks
