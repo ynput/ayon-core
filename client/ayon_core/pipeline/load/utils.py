@@ -1147,13 +1147,13 @@ def filter_containers(containers, project_name):
 
     # Fetch entities to be able to filter the containers
     # - entities can be fetched per project only
-    for project_name, p_containers in containers_by_project_name.items():
+    for l_project_name, l_containers in containers_by_project_name.items():
         repre_ids = {
             container["representaiton"]
-            for container in p_containers
+            for container in l_containers
         }
         repre_entities = ayon_api.get_representations(
-            project_name,
+            l_project_name,
             representation_ids=repre_ids,
             fields={"id", "versionId"}
         )
@@ -1169,7 +1169,7 @@ def filter_containers(containers, project_name):
         # - also query hero version to be able identify if representation
         #   belongs to existing version
         version_entities = ayon_api.get_versions(
-            project_name,
+            l_project_name,
             version_ids=version_ids,
             hero=True,
             fields={"id", "productId", "version"}
@@ -1190,7 +1190,7 @@ def filter_containers(containers, project_name):
             versions_by_product_id[product_id].append(version_entity)
 
         last_versions = ayon_api.get_last_versions(
-            project_name,
+            l_project_name,
             versions_by_product_id.keys(),
             fields={"id"}
         )
@@ -1207,7 +1207,7 @@ def filter_containers(containers, project_name):
 
         # Based on all collected data figure out which containers are outdated
         #   - log out if there are missing representation or version entities
-        for container in p_containers:
+        for container in l_containers:
             container_name = container["objectName"]
             repre_id = container["representation"]
             repre_entity = repre_entities_by_id.get(repre_id)
