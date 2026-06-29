@@ -1130,7 +1130,11 @@ def filter_containers(containers, project_name):
         not_found_containers,
         invalid_containers
     )
-    # Query representation docs to get it's version ids
+
+    # Iterate over containers and group them by project name
+    # - filter out containers with invalid representation id
+    # - because 'containers' variable is iterable, this is the only place
+    #   where it should be used.
     containers_by_project_name = collections.defaultdict(list)
     for container in containers:
         if not _is_valid_representation_id(container["representation"]):
@@ -1141,9 +1145,8 @@ def filter_containers(containers, project_name):
             container_project = project_name
         containers_by_project_name[container_project].append(container)
 
-    if not containers_by_project_name:
-        return output
-
+    # Fetch entities to be able to filter the containers
+    # - entities can be fetched per project only
     for project_name, p_containers in containers_by_project_name.items():
         repre_ids = {
             container["representaiton"]
@@ -1203,7 +1206,7 @@ def filter_containers(containers, project_name):
                     outdated_version_ids.add(version_id)
 
         # Based on all collected data figure out which containers are outdated
-        #   - log out if there are missing representation or version documents
+        #   - log out if there are missing representation or version entities
         for container in p_containers:
             container_name = container["objectName"]
             repre_id = container["representation"]
