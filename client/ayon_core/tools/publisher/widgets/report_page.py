@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import collections
-import logging
+from dataclasses import dataclass
 
 try:
     import commonmark
@@ -10,6 +11,13 @@ except Exception:
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_objected_colors
+from ayon_core.pipeline.publish.report import (
+    PublishReport,
+    PublishInstanceInfo,
+    ReportLog,
+    LogsSummary,
+    CONTEXT_ID,
+)
 from ayon_core.tools.utils import (
     BaseClickableFrame,
     ClickableFrame,
@@ -22,7 +30,6 @@ from ayon_core.tools.utils import (
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
-    CONTEXT_ID,
     CONTEXT_LABEL,
 )
 
@@ -39,6 +46,13 @@ LOG_ERROR_VISIBLE = 1 << 3
 LOG_CRITICAL_VISIBLE = 1 << 4
 ERROR_VISIBLE = 1 << 5
 INFO_VISIBLE = 1 << 6
+
+
+@dataclass
+class ReportLogWrap:
+    log: ReportLog
+    instance_id: str
+    plugin_id: str
 
 
 class VerticalScrollArea(QtWidgets.QScrollArea):
@@ -600,47 +614,13 @@ class PublishErrorsView(QtWidgets.QWidget):
         return title_id, instance_ids
 
 
-# ----- Publish instance report -----
-class _InstanceItem:
-    """Publish instance item for report UI.
-
-    Contains only data related to an instance in publishing. Has implemented
-    sorting methods and prepares information, e.g. if contains error or
-    warnings.
-    """
-
-    _attrs = (
-        "creator_identifier",
-        "family",
-        "label",
-        "name",
-    )
-
-    def __init__(
-        self,
-        instance_id,
-        creator_identifier,
-        family,
-        name,
-        label,
-        exists,
-        logs,
-        errored,
-        warned
-    ):
-        self.id = instance_id
-        self.creator_identifier = creator_identifier
-        self.family = family
-        self.name = name
-        self.label = label
-        self.exists = exists
-        self.logs = logs
-        self.errored = errored
-        self.warned = warned
+class _SortHelper:
+    def __init__(self, instance: PublishInstanceInfo) -> None:
+        self.instance = instance
 
     def __eq__(self, other):
-        for attr in self._attrs:
-            if getattr(self, attr) != getattr(other, attr):
+        for s_v, o_v in self._o_iter(other):
+            if s_v != o_v:
                 return False
         return True
 
@@ -648,30 +628,39 @@ class _InstanceItem:
         return not self.__eq__(other)
 
     def __gt__(self, other):
-        for attr in self._attrs:
-            self_value = getattr(self, attr)
-            other_value = getattr(other, attr)
-            if self_value == other_value:
+        for s_v, o_v in self._o_iter(other):
+            if s_v == o_v:
                 continue
-            values = [self_value, other_value]
+            if s_v is None:
+                return False
+            if o_v is None:
+                return True
+            values = [s_v, o_v]
             values.sort()
-            return values[0] == other_value
+            return values[0] == o_v
         return None
 
     def __lt__(self, other):
-        for attr in self._attrs:
-            self_value = getattr(self, attr)
-            other_value = getattr(other, attr)
-            if self_value == other_value:
+        for s_v, o_v in self._o_iter(other):
+            if s_v == o_v:
                 continue
-            if self_value is None:
-                return False
-            if other_value is None:
+            if s_v is None:
                 return True
-            values = [self_value, other_value]
+            if o_v is None:
+                return False
+            values = [s_v, o_v]
             values.sort()
-            return values[0] == self_value
+            return values[0] == s_v
         return None
+
+    def _o_iter(self, other):
+        yield (
+            self.instance.creator_identifier,
+            other.instance.creator_identifier
+        )
+        yield self.instance.family, other.instance.family
+        yield self.instance.label, other.instance.label
+        yield self.instance.name, other.instance.name
 
     def __ge__(self, other):
         if self == other:
@@ -682,53 +671,6 @@ class _InstanceItem:
         if self == other:
             return True
         return self.__lt__(other)
-
-    @classmethod
-    def from_report(cls, instance_id, instance_data, logs):
-        errored, warned = cls.extract_basic_log_info(logs)
-
-        return cls(
-            instance_id,
-            instance_data["creator_identifier"],
-            instance_data["family"],
-            instance_data["name"],
-            instance_data["label"],
-            instance_data["exists"],
-            logs,
-            errored,
-            warned,
-        )
-
-    @classmethod
-    def create_context_item(cls, context_label, logs):
-        errored, warned = cls.extract_basic_log_info(logs)
-        return cls(
-            CONTEXT_ID,
-            None,
-            "",
-            CONTEXT_LABEL,
-            context_label,
-            True,
-            logs,
-            errored,
-            warned
-        )
-
-    @staticmethod
-    def extract_basic_log_info(logs):
-        warned = False
-        errored = False
-        for log in logs:
-            if log["type"] == "error":
-                errored = True
-            elif log["type"] == "record":
-                level_no = log["levelno"]
-                if level_no and level_no >= logging.WARNING:
-                    warned = True
-
-            if warned and errored:
-                break
-        return errored, warned
 
 
 class FamilyGroupLabel(QtWidgets.QWidget):
@@ -760,7 +702,15 @@ class PublishInstanceCardWidget(BaseClickableFrame):
     _success_pix = None
     _in_progress_pix = None
 
-    def __init__(self, instance, icon, publish_can_continue, parent):
+    def __init__(
+        self,
+        instance_id: str,
+        label: str,
+        icon,
+        logs_summary: LogsSummary,
+        publish_can_continue: bool,
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
 
         self.setObjectName("CardViewWidget")
@@ -768,11 +718,11 @@ class PublishInstanceCardWidget(BaseClickableFrame):
         icon_widget = IconValuePixmapLabel(icon, self)
         icon_widget.setObjectName("ProductTypeIconLabel")
 
-        label_widget = QtWidgets.QLabel(instance.label, self)
+        label_widget = QtWidgets.QLabel(label, self)
 
-        if instance.errored:
+        if instance_id in logs_summary.errored_instance_ids:
             state_pix = self.get_error_pix()
-        elif instance.warned:
+        elif instance_id in logs_summary.warned_instance_ids:
             state_pix = self.get_warning_pix()
         elif publish_can_continue:
             state_pix = self.get_in_progress_pix()
@@ -791,7 +741,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
         #   left side
         self.setLayoutDirection(QtCore.Qt.LeftToRight)
 
-        self._id = instance.id
+        self._id = instance_id
 
         self._selected = False
 
@@ -958,11 +908,11 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
             if widget.is_selected
         ]
 
-    def get_selected_instance_ids(self):
-        return [
+    def get_selected_instance_ids(self) -> set[str]:
+        return {
             widget.id
             for widget in self._get_selected_widgets()
-        ]
+        }
 
     def clear(self):
         """Remove actions from widget."""
@@ -976,44 +926,62 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         self._group_widgets = []
         self._widgets_by_instance_id = {}
 
-    def update_instances(self, instance_items):
+    def set_report(self, report: PublishReport):
         self.clear()
         identifiers = {
-            instance_item.creator_identifier
-            for instance_item in instance_items
+            instance_info.creator_identifier
+            for instance_info in report.instances_by_id.values()
         }
+        identifiers.add(CONTEXT_ID)
         identifier_icons = {
             identifier: self._controller.get_creator_icon(identifier)
             for identifier in identifiers
         }
 
-        widgets = []
-        group_widgets = []
+        widgets: list[PublishInstanceCardWidget] = []
+        group_widgets: list[FamilyGroupLabel] = []
+        logs_summary: LogsSummary = report.get_logs_summary()
 
-        publish_can_continue = self._controller.publish_can_continue()
+        publish_can_continue: bool = self._controller.publish_can_continue()
         instances_by_family = collections.defaultdict(list)
-        for instance_item in instance_items:
-            if not instance_item.exists:
+        for instance_info in report.instances_by_id.values():
+            if not instance_info.exists:
                 continue
-            instances_by_family[instance_item.family].append(instance_item)
+            instances_by_family[instance_info.family].append(instance_info)
+
+        context_widget = PublishInstanceCardWidget(
+            CONTEXT_ID,
+            report.context.label,
+            identifier_icons[CONTEXT_ID],
+            logs_summary,
+            publish_can_continue,
+            self._instance_view
+        )
+        context_widget.selection_requested.connect(self._on_selection_request)
+        self._instance_layout.addWidget(context_widget, 0)
+
+        widgets.append(context_widget)
+        self._widgets_by_instance_id[context_widget.id] = context_widget
 
         sorted_by_family = sorted(
             instances_by_family.items(), key=lambda i: i[0]
         )
-        for family, instance_items in sorted_by_family:
+        for family, instance_infos in sorted_by_family:
             # Only instance without family is context
             if family:
                 group_widget = FamilyGroupLabel(family, self._instance_view)
                 self._instance_layout.addWidget(group_widget, 0)
                 group_widgets.append(group_widget)
 
-            sorted_items = sorted(instance_items, key=lambda i: i.label)
-            for instance_item in sorted_items:
-                icon = identifier_icons[instance_item.creator_identifier]
+            instance_infos.sort(key=lambda i: i.label)
+            for instance_info in instance_infos:
+                icon = identifier_icons[instance_info.creator_identifier]
 
                 widget = PublishInstanceCardWidget(
-                    instance_item,
+                    instance_info.id,
+                    instance_info.label,
                     icon,
+                    logs_summary,
                     publish_can_continue,
                     self._instance_view
                 )
@@ -1181,15 +1149,23 @@ class LogItemWidget(QtWidgets.QWidget):
         50: LOG_CRITICAL_VISIBLE,
     }
 
-    def __init__(self, log, parent):
+    def __init__(
+        self,
+        log_wrap: ReportLogWrap,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-
+        log = log_wrap.log
         type_flag, level_n = self._get_log_info(log)
         icon_label = LogIconFrame(
-            self, log["type"], level_n, log.get("is_validation_error"))
-        message_label = LogItemMessage(log["msg"].rstrip(), self)
+            self,
+            log.type,
+            level_n,
+            log.is_validation_error
+        )
+        message_label = LogItemMessage(log.message.rstrip(), self)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -1197,28 +1173,25 @@ class LogItemWidget(QtWidgets.QWidget):
         main_layout.addWidget(icon_label, 0)
         main_layout.addWidget(message_label, 1)
 
-        self._type_flag = type_flag
-        self._plugin_id = log["plugin_id"]
+        self.type_flag = type_flag
+        self.plugin_id = log_wrap.plugin_id
         self._log_type_filtered = False
         self._plugin_filtered = False
 
-    @property
-    def type_flag(self):
-        return self._type_flag
-
-    @property
-    def plugin_id(self):
-        return self._plugin_id
-
-    def _get_log_info(self, log):
-        log_type = log["type"]
+    def _get_log_info(
+        self, log: ReportLog
+    ) -> tuple[int, int | None]:
+        log_type = log.type
         if log_type == "error":
             return ERROR_VISIBLE, None
 
         if log_type != "record":
             return INFO_VISIBLE, None
 
-        level_n = log["levelno"]
+        level_n = log.levelno
+        if level_n is None:
+            return ERROR_VISIBLE, None
+
         if level_n < 10:
             level_n = 10
         elif level_n % 10 != 0:
@@ -1227,19 +1200,19 @@ class LogItemWidget(QtWidgets.QWidget):
         flag = self.log_level_to_flag.get(level_n, LOG_CRITICAL_VISIBLE)
         return flag, level_n
 
-    def _update_visibility(self):
+    def _update_visibility(self) -> None:
         self.setVisible(
             not self._log_type_filtered
             and not self._plugin_filtered
         )
 
-    def set_log_type_filtered(self, filtered):
+    def set_log_type_filtered(self, filtered: bool) -> None:
         if filtered is self._log_type_filtered:
             return
         self._log_type_filtered = filtered
         self._update_visibility()
 
-    def set_plugin_filtered(self, filtered):
+    def set_plugin_filtered(self, filtered: bool) -> None:
         if filtered is self._plugin_filtered:
             return
         self._plugin_filtered = filtered
@@ -1255,7 +1228,11 @@ class LogsWithIconsView(QtWidgets.QWidget):
         Add filtering by type (exception, debug, info, etc.).
     """
 
-    def __init__(self, logs, parent):
+    def __init__(
+        self,
+        log_wraps: list[ReportLogWrap],
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -1266,14 +1243,18 @@ class LogsWithIconsView(QtWidgets.QWidget):
         widgets_by_flag = collections.defaultdict(list)
         widgets_by_plugins_id = collections.defaultdict(list)
 
-        for log in logs:
-            widget = LogItemWidget(log, self)
+        for log_wrap in log_wraps:
+            widget = LogItemWidget(log_wrap, self)
             widgets_by_flag[widget.type_flag].append(widget)
             widgets_by_plugins_id[widget.plugin_id].append(widget)
             logs_layout.addWidget(widget, 0)
 
-        self._widgets_by_flag = widgets_by_flag
-        self._widgets_by_plugins_id = widgets_by_plugins_id
+        self._widgets_by_flag: dict[str, list[LogItemWidget]] = (
+            widgets_by_flag
+        )
+        self._widgets_by_plugins_id: dict[str, list[LogItemWidget]] = (
+            widgets_by_plugins_id
+        )
 
         self._visibility_by_flags = {
             LOG_DEBUG_VISIBLE: True,
@@ -1284,8 +1265,19 @@ class LogsWithIconsView(QtWidgets.QWidget):
             ERROR_VISIBLE: True,
             INFO_VISIBLE: True,
         }
-        self._flags_filter = sum(self._visibility_by_flags.keys())
-        self._plugin_ids_filter = None
+        self._flags_filter: int = sum(self._visibility_by_flags.keys())
+        self._plugin_ids_filter: set[str] = set()
+
+    def set_log_filters(
+        self, visibility_filter: int, plugin_ids: set[str]
+    ) -> None:
+        if self._flags_filter != visibility_filter:
+            self._flags_filter = visibility_filter
+            self._update_flags_filtering()
+
+        if self._plugin_ids_filter != plugin_ids:
+            self._plugin_ids_filter = plugin_ids
+            self._update_plugin_filtering()
 
     def _update_flags_filtering(self):
         for flag in (
@@ -1304,7 +1296,7 @@ class LogsWithIconsView(QtWidgets.QWidget):
                     widget.set_log_type_filtered(not visible)
 
     def _update_plugin_filtering(self):
-        if self._plugin_ids_filter is None:
+        if not self._plugin_ids_filter:
             for widgets in self._widgets_by_plugins_id.values():
                 for widget in widgets:
                     widget.set_plugin_filtered(False)
@@ -1315,35 +1307,30 @@ class LogsWithIconsView(QtWidgets.QWidget):
                 for widget in widgets:
                     widget.set_plugin_filtered(filtered)
 
-    def set_log_filters(self, visibility_filter, plugin_ids):
-        if self._flags_filter != visibility_filter:
-            self._flags_filter = visibility_filter
-            self._update_flags_filtering()
-
-        if self._plugin_ids_filter != plugin_ids:
-            if plugin_ids is not None:
-                plugin_ids = set(plugin_ids)
-            self._plugin_ids_filter = plugin_ids
-            self._update_plugin_filtering()
-
 
 class InstanceLogsWidget(QtWidgets.QWidget):
     """Widget showing logs of one publish instance.
 
     Args:
-        instance (_InstanceItem): Item of instance used as data source.
+        label (str): Instance label.
+        logs (list[ReportLogWrap]): Logs to show.
         parent (QtWidgets.QWidget): Parent widget.
     """
 
-    def __init__(self, instance, parent):
+    def __init__(
+        self,
+        label: str,
+        logs: list[ReportLogWrap],
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
-        label_widget = QtWidgets.QLabel(instance.label, self)
+        label_widget = QtWidgets.QLabel(label, self)
         label_widget.setObjectName("PublishInstanceLogsLabel")
         label_widget.setWordWrap(True)
-        logs_grid = LogsWithIconsView(instance.logs, self)
+        logs_grid = LogsWithIconsView(logs, self)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1351,16 +1338,21 @@ class InstanceLogsWidget(QtWidgets.QWidget):
         layout.addWidget(logs_grid, 0)
 
         self._logs_grid = logs_grid
+        self._label_widget = label_widget
 
-    def set_log_filters(self, visibility_filter, plugin_ids):
+    def set_log_filters(
+        self,
+        visibility_filter: int,
+        plugin_ids: set[str],
+    ) -> None:
         """Change logs filter.
 
         Args:
             visibility_filter (int): Number contained of flags for each log
                 type and level.
-            plugin_ids (Iterable[str]): Plugin ids to which are logs filtered.
-        """
+            plugin_ids (set[str]): Plugin ids to which are logs filtered.
 
+        """
         self._logs_grid.set_log_filters(visibility_filter, plugin_ids)
 
 
@@ -1415,14 +1407,12 @@ class InstancesLogsView(QtWidgets.QFrame):
         self._content_widget = content_widget
         self._content_layout = content_layout
 
-        self._instances_order = []
-        self._instances_by_id = {}
-        self._views_by_instance_id = {}
-        self._is_showed = False
-        self._clear_needed = False
-        self._update_needed = False
-        self._instance_ids_filter = []
-        self._plugin_ids_filter = None
+        self._instance_logs: list[tuple[str, str, list[ReportLogWrap]]] = []
+        self._views_by_instance_id: dict[str, InstanceLogsWidget] = {}
+        self._is_showed: bool = False
+        self._update_needed: bool = False
+        self._instance_ids_filter: set[str] = set()
+        self._plugin_ids_filter: set[str] = set()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -1437,42 +1427,101 @@ class InstancesLogsView(QtWidgets.QFrame):
         super().closeEvent(event)
         self._is_showed = False
 
-    def _update_instances(self):
-        if not self._is_showed:
+    def update_report(self, report: PublishReport):
+        """Update publish instance from report.
+
+        Args:
+            report (PublishReport): Instance data from report.
+
+        """
+        instances_h = [
+            _SortHelper(i)
+            for i in report.instances_by_id.values()
+        ]
+        instances_h.sort()
+        instances = [i.instance for i in instances_h]
+
+        logs_by_instance_id = collections.defaultdict(list)
+        for plugin_id, instance_id, log in report.iter_logs():
+            logs_by_instance_id[instance_id].append(
+                ReportLogWrap(
+                    log=log,
+                    instance_id=instance_id,
+                    plugin_id=plugin_id,
+                )
+            )
+
+        instance_logs: list[tuple[str, str, list[ReportLogWrap]]] = [
+            (
+                instance.id,
+                instance.label,
+                logs_by_instance_id[instance.id]
+            )
+            for instance in instances
+        ]
+        instance_logs.insert(
+            0,
+            (
+                CONTEXT_ID,
+                report.context.label,
+                logs_by_instance_id[CONTEXT_ID]
+            )
+        )
+
+        self._instance_logs = instance_logs
+        self._update_needed: bool = True
+        self._instance_ids_filter: set[str] = set()
+        self._plugin_ids_filter: set[str] = set()
+        self._update_instances()
+
+    def set_instances_filter(self, instance_ids: set[str]) -> None:
+        """Set instance filter.
+
+        Args:
+            instance_ids (set[str] | None): Set of instance ids to keep
+                visible. Pass empty set to hide all items.
+        """
+        if self._instance_ids_filter == instance_ids:
             return
 
-        if self._clear_needed:
-            self._clear_widgets()
-            self._clear_needed = False
-
-        if not self._update_needed:
-            return
-        self._update_needed = False
-
-        instance_ids = self._instance_ids_filter
-        to_hide = set()
+        self._instance_ids_filter = instance_ids
         if not instance_ids:
-            instance_ids = self._instances_by_id
+            for widget in self._views_by_instance_id.values():
+                widget.setVisible(True)
         else:
-            to_hide = set(self._instances_by_id) - set(instance_ids)
+            for instance_id, widget in self._views_by_instance_id.items():
+                widget.setVisible(instance_id in self._instance_ids_filter)
 
-        for instance_id in instance_ids:
-            widget = self._views_by_instance_id.get(instance_id)
-            if widget is None:
-                instance = self._instances_by_id[instance_id]
-                widget = InstanceLogsWidget(instance, self._content_widget)
-                self._views_by_instance_id[instance_id] = widget
-                self._content_layout.addWidget(widget, 0)
-
-            widget.setVisible(True)
+    def set_plugins_filter(self, plugin_ids: set[str]) -> None:
+        if self._plugin_ids_filter == plugin_ids:
+            return
+        self._plugin_ids_filter = plugin_ids
+        for widget in self._views_by_instance_id.values():
             widget.set_log_filters(
                 self._visible_filters, self._plugin_ids_filter
             )
 
-        for instance_id in to_hide:
-            widget = self._views_by_instance_id.get(instance_id)
-            if widget is not None:
+    def _update_instances(self) -> None:
+        if not self._is_showed or not self._update_needed:
+            return
+
+        self._clear_widgets()
+
+        for instance_id, instance_label, logs in self._instance_logs:
+            widget = InstanceLogsWidget(
+                instance_label, logs, self._content_widget
+            )
+            if (
+                self._instance_ids_filter
+                and instance_id not in self._instance_ids_filter
+            ):
                 widget.setVisible(False)
+            widget.set_log_filters(
+                self._visible_filters, self._plugin_ids_filter
+            )
+
+            self._views_by_instance_id[instance_id] = widget
+            self._content_layout.addWidget(widget, 0)
 
     def _clear_widgets(self):
         """Remove all widgets from layout and from cache."""
@@ -1484,45 +1533,6 @@ class InstancesLogsView(QtWidgets.QFrame):
                 widget.setVisible(False)
                 widget.deleteLater()
         self._views_by_instance_id = {}
-
-    def update_instances(self, instances):
-        """Update publish instance from report.
-
-        Args:
-            instances (list[_InstanceItem]): Instance data from report.
-        """
-
-        self._instances_order = [
-            instance.id for instance in instances
-        ]
-        self._instances_by_id = {
-            instance.id: instance
-            for instance in instances
-        }
-        self._instance_ids_filter = []
-        self._plugin_ids_filter = None
-        self._clear_needed = True
-        self._update_needed = True
-        self._update_instances()
-
-    def set_instances_filter(self, instance_ids=None):
-        """Set instance filter.
-
-        Args:
-            instance_ids (Optional[list[str]]): List of instances to keep
-                visible. Pass empty list to hide all items.
-        """
-
-        self._instance_ids_filter = instance_ids
-        self._update_needed = True
-        self._update_instances()
-
-    def set_plugins_filter(self, plugin_ids=None):
-        if self._plugin_ids_filter == plugin_ids:
-            return
-        self._plugin_ids_filter = plugin_ids
-        self._update_needed = True
-        self._update_instances()
 
 
 class ErrorDetailWidget(QtWidgets.QWidget):
@@ -1825,33 +1835,6 @@ class ReportsWidget(QtWidgets.QWidget):
 
         self._publish_errors_by_id = {}
 
-    def _get_instance_items(self):
-        report = self._controller.get_publish_report()
-        context_label = report["context"]["label"] or CONTEXT_LABEL
-        instances_by_id = report["instances"]
-        plugins_info = report["plugins_data"]
-        logs_by_instance_id = collections.defaultdict(list)
-        for plugin_info in plugins_info:
-            plugin_id = plugin_info["id"]
-            for instance_info in plugin_info["instances_data"]:
-                instance_id = instance_info["id"] or CONTEXT_ID
-                for log in instance_info["logs"]:
-                    log["plugin_id"] = plugin_id
-                logs_by_instance_id[instance_id].extend(instance_info["logs"])
-
-        context_item = _InstanceItem.create_context_item(
-            context_label, logs_by_instance_id[CONTEXT_ID])
-        instance_items = [
-            _InstanceItem.from_report(
-                instance_id, instance, logs_by_instance_id[instance_id]
-            )
-            for instance_id, instance in instances_by_id.items()
-            if instance["exists"]
-        ]
-        instance_items.sort()
-        instance_items.insert(0, context_item)
-        return instance_items
-
     def update_data(self):
         has_validation_error = self._controller.publish_has_validation_errors()
         has_finished = self._controller.publish_has_finished()
@@ -1882,9 +1865,9 @@ class ReportsWidget(QtWidgets.QWidget):
         self._crash_widget.setVisible(not logs_visible)
 
         # Instance view & logs update
-        instance_items = self._get_instance_items()
-        self._instances_view.update_instances(instance_items)
-        self._logs_view.update_instances(instance_items)
+        report = self._controller.get_publish_report()
+        self._instances_view.set_report(report)
+        self._logs_view.update_report(report)
 
         # Publish errors
         publish_errors_report = self._controller.get_publish_errors_report()
@@ -1912,7 +1895,7 @@ class ReportsWidget(QtWidgets.QWidget):
             return
 
         self._logs_view.set_instances_filter(instance_ids)
-        self._logs_view.set_plugins_filter([error_info["plugin_id"]])
+        self._logs_view.set_plugins_filter({error_info["plugin_id"]})
 
         match_error_item = None
         for error_item in error_info["error_items"]:

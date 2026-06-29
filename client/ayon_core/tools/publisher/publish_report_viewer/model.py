@@ -1,8 +1,17 @@
+from __future__ import annotations
+
+import collections
 import uuid
 from qtpy import QtCore, QtGui
 
 import pyblish.api
 
+from ayon_core.pipeline.publish.report import (
+    PublishReport,
+    PublishInstanceInfo,
+    PublishPluginReportInfo,
+    CONTEXT_ID,
+)
 from ayon_core.tools.utils.lib import html_escape
 from .constants import (
     ITEM_ID_ROLE,
@@ -20,31 +29,53 @@ class InstancesModel(QtGui.QStandardItemModel):
         super().__init__(*args, **kwargs)
 
         self._items_by_id = {}
-        self._plugin_items_by_id = {}
+        self._instance_items_by_id = {}
 
     def get_items_by_id(self):
         return self._items_by_id
 
-    def set_report(self, report_item):
+    def set_report(
+        self,
+        report: PublishReport | None,
+        errored_instance_ids: set[str],
+    ) -> None:
         root_item = self.invisibleRootItem()
         if root_item.rowCount() > 0:
             root_item.removeRows(0, root_item.rowCount())
         self._items_by_id.clear()
-        self._plugin_items_by_id.clear()
-        if not report_item:
+        self._instance_items_by_id.clear()
+        if report is None:
             return
 
-        families = set(report_item.instance_items_by_family.keys())
-        families.remove(None)
-        all_families = list(sorted(families))
-        all_families.insert(0, None)
+        instance_items_by_family: dict[
+            str | None, list[PublishInstanceInfo]
+        ] = collections.defaultdict(list)
+        for instance in report.instances_by_id.values():
+            instance_items_by_family[instance.family].append(instance)
 
-        family_items = []
+        families = set(instance_items_by_family)
+        families.discard(None)
+        all_families = list(sorted(families))
+
+        context_label = html_escape(report.context.label)
+        context_item = QtGui.QStandardItem(context_label)
+        context_item.setData(context_label, ITEM_LABEL_ROLE)
+        context_item.setData(
+            CONTEXT_ID in errored_instance_ids, ITEM_ERRORED_ROLE
+        )
+        context_item.setData(CONTEXT_ID, ITEM_ID_ROLE)
+        context_item.setData(False, ITEM_IS_GROUP_ROLE)
+        context_item.setData(False, INSTANCE_REMOVED_ROLE)
+        self._instance_items_by_id[CONTEXT_ID] = context_item
+
+        family_items = [context_item]
         for family in all_families:
             items = []
-            instance_items = report_item.instance_items_by_family[family]
+            instance_items = instance_items_by_family[family]
             all_removed = True
             for instance_item in instance_items:
+                instance_id = instance_item.id
+                errored = instance_id in errored_instance_ids
                 src_instance_label = instance_item.label
                 if src_instance_label is None:
                     # Do not cause UI crash if label is 'None'
@@ -53,15 +84,15 @@ class InstancesModel(QtGui.QStandardItemModel):
 
                 item = QtGui.QStandardItem(src_instance_label)
                 item.setData(instance_label, ITEM_LABEL_ROLE)
-                item.setData(instance_item.errored, ITEM_ERRORED_ROLE)
-                item.setData(instance_item.id, ITEM_ID_ROLE)
-                item.setData(instance_item.removed, INSTANCE_REMOVED_ROLE)
-                if all_removed and not instance_item.removed:
+                item.setData(errored, ITEM_ERRORED_ROLE)
+                item.setData(instance_id, ITEM_ID_ROLE)
+                item.setData(not instance_item.exists, INSTANCE_REMOVED_ROLE)
+                if all_removed and instance_item.exists:
                     all_removed = False
                 item.setData(False, ITEM_IS_GROUP_ROLE)
                 items.append(item)
-                self._items_by_id[instance_item.id] = item
-                self._plugin_items_by_id[instance_item.id] = item
+                self._items_by_id[instance_id] = item
+                self._instance_items_by_id[instance_id] = item
 
             if family is None:
                 family_items.extend(items)
@@ -85,13 +116,13 @@ class InstanceProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._ignore_removed = True
+        self._ignore_removed: bool = True
 
     @property
-    def ignore_removed(self):
+    def ignore_removed(self) -> bool:
         return self._ignore_removed
 
-    def set_ignore_removed(self, value):
+    def set_ignore_removed(self, value: bool) -> None:
         if value == self._ignore_removed:
             return
         self._ignore_removed = value
@@ -124,31 +155,36 @@ class PluginsModel(QtGui.QStandardItemModel):
     def get_items_by_id(self):
         return self._items_by_id
 
-    def set_report(self, report_item):
+    def set_report(
+        self,
+        report_item: PublishReport | None,
+        errored_plugin_ids: set[str],
+    ):
         root_item = self.invisibleRootItem()
         if root_item.rowCount() > 0:
             root_item.removeRows(0, root_item.rowCount())
         self._items_by_id.clear()
         self._plugin_items_by_id.clear()
-        if not report_item:
+        if report_item is None:
             return
 
         labels_iter = iter(self.order_label_mapping)
         cur_order, cur_label = next(labels_iter)
-        cur_plugin_items = []
+        cur_plugin_items: list[PublishPluginReportInfo] = []
 
-        plugin_items_by_group_labels = []
+        plugin_items_by_group_labels: list[
+            tuple[str, list[PublishPluginReportInfo]]
+        ] = []
         plugin_items_by_group_labels.append((cur_label, cur_plugin_items))
-        for plugin_id in report_item.plugins_id_order:
-            plugin_item = report_item.plugins_items_by_id[plugin_id]
-            if cur_order is not None and plugin_item.order >= cur_order:
+        for plugin_info in report_item.plugins_info:
+            if cur_order is not None and plugin_info.order >= cur_order:
                 cur_order, cur_label = next(labels_iter)
                 cur_plugin_items = []
                 plugin_items_by_group_labels.append(
                     (cur_label, cur_plugin_items)
                 )
 
-            cur_plugin_items.append(plugin_item)
+            cur_plugin_items.append(plugin_info)
 
         group_items = []
         for group_label, plugin_items in plugin_items_by_group_labels:
@@ -167,6 +203,7 @@ class PluginsModel(QtGui.QStandardItemModel):
 
             items = []
             for plugin_item in plugin_items:
+                errored = plugin_item.id in errored_plugin_ids
                 label = plugin_item.label or plugin_item.name
                 item = QtGui.QStandardItem(label)
                 item.setData(False, ITEM_IS_GROUP_ROLE)
@@ -174,7 +211,7 @@ class PluginsModel(QtGui.QStandardItemModel):
                 item.setData(plugin_item.id, ITEM_ID_ROLE)
                 item.setData(plugin_item.skipped, PLUGIN_SKIPPED_ROLE)
                 item.setData(plugin_item.passed, PLUGIN_PASSED_ROLE)
-                item.setData(plugin_item.errored, ITEM_ERRORED_ROLE)
+                item.setData(errored, ITEM_ERRORED_ROLE)
                 items.append(item)
                 self._items_by_id[plugin_item.id] = item
                 self._plugin_items_by_id[plugin_item.id] = item
@@ -187,13 +224,13 @@ class PluginProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._ignore_skipped = True
+        self._ignore_skipped: bool = True
 
     @property
-    def ignore_skipped(self):
+    def ignore_skipped(self) -> bool:
         return self._ignore_skipped
 
-    def set_ignore_skipped(self, value):
+    def set_ignore_skipped(self, value: bool) -> None:
         if value == self._ignore_skipped:
             return
         self._ignore_skipped = value

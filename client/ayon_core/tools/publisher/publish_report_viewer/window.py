@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import os
-import json
 import uuid
+from typing import Generator
 
 import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.lib import get_launcher_local_dir
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools import resources
 from ayon_core.tools.utils import (
@@ -18,10 +21,8 @@ from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 if __package__:
     from .widgets import PublishReportViewerWidget
-    from .report_items import PublishReport
 else:
     from widgets import PublishReportViewerWidget
-    from report_items import PublishReport
 
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -43,33 +44,63 @@ def get_reports_dir():
 class PublishReportItem:
     """Report item representing one file in report directory."""
 
-    def __init__(self, content):
-        changed = self._fix_content(content)
+    def __init__(
+        self,
+        report: PublishReport | None,
+        report_path: str | None,
+    ) -> str:
+        label_changed = False
+        if report is None:
+            created_at_obj = arrow.utcnow()
+            report_id = uuid.uuid4().hex
+        else:
+            created_at_obj = arrow.get(report.created_at).to("local")
+            label = report.label
+            if not label:
+                date_str = created_at_obj.strftime("%Y-%m-%d %H:%M:%S")
+                report.label = date_str
+                label_changed = True
+            report_id = report.id
 
-        report_path = os.path.join(get_reports_dir(), content["id"])
-        file_modified = None
-        if os.path.exists(report_path):
-            file_modified = os.path.getmtime(report_path)
-
-        created_at_obj = arrow.get(content["created_at"]).to("local")
-        created_at = created_at_obj.float_timestamp
-
-        self.content = content
+        self.report_id = report_id
         self.report_path = report_path
-        self.file_modified = file_modified
-        self.created_at = float(created_at)
-        self._loaded_label = content.get("label")
-        self._changed = changed
-        self.publish_report = PublishReport(content)
+        self.report = report
+        self.created_at = float(created_at_obj.float_timestamp)
 
-    @property
-    def version(self):
-        """Publish report version.
+        self._label_changed = label_changed
 
-        Returns:
-            str: Publish report version.
+    @classmethod
+    def from_filepath(
+        cls, filepath: str, report_path: str | None = None
+    ) -> "PublishReportItem":
+        """Create report item from file path.
+
+        Args:
+            filepath (str): Path to report file.
+
         """
-        return self.content["report_version"]
+        report = None
+        new_label = None
+        try:
+            report = PublishReport.from_filepath(filepath)
+            if report_path is None:
+                report_path = os.path.join(
+                    get_reports_dir(), f"{report.id}.json"
+                )
+            label = report.label
+            if not label:
+                new_label = os.path.splitext(os.path.basename(filepath))[0]
+
+        except Exception as exc:
+            import traceback
+            import sys
+            traceback.print_exception(*sys.exc_info())
+            print(f"Failed to load report from file: {filepath}. {exc}")
+
+        obj = cls(report, report_path)
+        if new_label:
+            obj.label = new_label
+        return obj
 
     @property
     def id(self):
@@ -77,205 +108,96 @@ class PublishReportItem:
 
         Returns:
             str: Publish report id.
+
         """
+        return self.report_id
 
-        return self.content["id"]
-
-    def get_label(self):
+    def get_label(self) -> str:
         """Publish report label.
 
         Returns:
             str: Publish report label showed in UI.
+
         """
+        if self.report is None:
+            return "!!! Failed to load !!!"
+        return self.report.label
 
-        return self.content.get("label") or "Unfilled label"
-
-    def set_label(self, label):
+    def set_label(self, label: str) -> None:
         """Set publish report label.
 
         Args:
             label (str): New publish report label.
-        """
 
-        if not label:
-            self.content.pop("label", None)
-        self.content["label"] = label
+        """
+        if self.report is None:
+            return
+
+        if self.report.label == label:
+            return
+
+        self.report.label = label
+        self._label_changed = True
 
     label = property(get_label, set_label)
 
-    @property
-    def loaded_label(self):
-        return self._loaded_label
-
-    def mark_as_changed(self):
-        """Mark report as changed."""
-
-        self._changed = True
-
     def save(self):
         """Save publish report to file."""
+        if self.report_path is None or self.report is None:
+            return
 
         save = False
         if (
-            self._changed
-            or self._loaded_label != self.label
+            self._label_changed
             or not os.path.exists(self.report_path)
-            or self.file_modified != os.path.getmtime(self.report_path)
         ):
             save = True
 
         if not save:
             return
 
-        with open(self.report_path, "w") as stream:
-            json.dump(self.content, stream)
+        self.report.store_to_file(self.report_path)
 
-        self._loaded_label = self.content.get("label")
-        self._changed = False
-        self.file_modified = os.path.getmtime(self.report_path)
+        self._label_changed = False
 
-    @classmethod
-    def from_filepath(cls, filepath):
-        """Create report item from file.
-
-        Args:
-            filepath (str): Path to report file. Content must be json.
-
-        Returns:
-            PublishReportItem: Report item.
-        """
-
-        if not os.path.exists(filepath):
-            return None
-
-        try:
-            with open(filepath, "r") as stream:
-                content = json.load(stream)
-
-            file_modified = os.path.getmtime(filepath)
-            changed = cls._fix_content(content, file_modified=file_modified)
-            obj = cls(content)
-            if changed:
-                obj.mark_as_changed()
-            return obj
-
-        except Exception:
-            return None
-
-    def remove_file(self):
+    def remove_file(self) -> None:
         """Remove report file."""
+        if self.report_path is None:
+            return
 
         if os.path.exists(self.report_path):
             os.remove(self.report_path)
-
-    def update_file_content(self):
-        """Update report content in file."""
-
-        if not os.path.exists(self.report_path):
-            return
-
-        file_modified = os.path.getmtime(self.report_path)
-        if file_modified == self.file_modified:
-            return
-
-        with open(self.report_path, "r") as stream:
-            content = json.load(self.content, stream)
-
-        item_id = content.get("id")
-        version = content.get("report_version")
-        if not item_id:
-            item_id = str(uuid.uuid4())
-            content["id"] = item_id
-
-        if not version:
-            version = "0.0.1"
-            content["report_version"] = version
-
-        self.content = content
-        self.file_modified = file_modified
-
-    @classmethod
-    def _fix_content(cls, content, file_modified=None):
-        """Fix content for backward compatibility of older report items.
-
-        Args:
-            content (dict[str, Any]): Report content.
-            file_modified (Optional[float]): File modification time.
-
-        Returns:
-            bool: True if content was changed, False otherwise.
-        """
-
-        # Fix created_at key
-        changed = cls._fix_created_at(content, file_modified)
-
-        # NOTE backward compatibility for 'id' and 'report_version' is from
-        #    28.10.2022 https://github.com/ynput/OpenPype/pull/4040
-        # We can probably safely remove it
-
-        # Fix missing 'id'
-        item_id = content.get("id")
-        if not item_id:
-            item_id = str(uuid.uuid4())
-            changed = True
-            content["id"] = item_id
-
-        # Fix missing 'report_version'
-        if not content.get("report_version"):
-            changed = True
-            content["report_version"] = "0.0.1"
-        return changed
-
-    @classmethod
-    def _fix_created_at(cls, content, file_modified):
-        # Key 'create_at' was added in report version 1.0.1
-        created_at = content.get("created_at")
-        if created_at:
-            return False
-
-        # Auto fix 'created_at', use file modification time if it is not set
-        #   or current time if modification could not be received.
-        if file_modified is not None:
-            created_at_obj = arrow.Arrow.fromtimestamp(file_modified)
-        else:
-            created_at_obj = arrow.utcnow()
-        content["created_at"] = created_at_obj.to("local").isoformat()
-        return True
 
 
 class PublisherReportHandler:
     """Class handling storing publish report items."""
 
     def __init__(self):
-        self._reports = None
-        self._reports_by_id = {}
+        self._reports_loaded = False
+        self._reports_by_id: dict[str, PublishReportItem] = {}
 
     def reset(self):
-        self._reports = None
+        self._reports_loaded = False
         self._reports_by_id = {}
 
-    def list_reports(self):
-        if self._reports is not None:
-            return self._reports
+    def iter_reports(self) -> Generator[PublishReportItem, None, None]:
+        self._load_reports()
+        for report in self._reports_by_id.values():
+            yield report
 
-        reports = []
-        reports_by_id = {}
-        report_dir = get_reports_dir()
-        for filename in os.listdir(report_dir):
-            ext = os.path.splitext(filename)[-1]
-            if ext == ".json":
-                continue
-            filepath = os.path.join(report_dir, filename)
-            item = PublishReportItem.from_filepath(filepath)
-            if item is not None:
-                reports.append(item)
-                reports_by_id[item.id] = item
+    def get_item_by_id(self, item_id: str) -> PublishReportItem | None:
+        """Get report item by id.
 
-        self._reports = reports
-        self._reports_by_id = reports_by_id
-        return reports
+        Args:
+            item_id (str): Report item id.
 
-    def remove_report_item(self, item_id):
+        Returns:
+            PublishReportItem | None: Report item or None if not found.
+        """
+        self._load_reports()
+        return self._reports_by_id.get(item_id)
+
+    def remove_report_item(self, item_id: str) -> None:
         """Remove report item by id.
 
         Remove from cache and also remove the file with the content.
@@ -284,13 +206,33 @@ class PublisherReportHandler:
             item_id (str): Report item id.
         """
 
-        item = self._reports_by_id.get(item_id)
-        if item:
-            try:
-                item.remove_file()
-                self._reports_by_id.get(item_id)
-            except Exception:
-                pass
+        item = self._reports_by_id.pop(item_id, None)
+        if item is None:
+            return
+
+        try:
+            item.remove_file()
+        except Exception:
+            pass
+
+    def _load_reports(self) -> None:
+        if self._reports_loaded:
+            return
+
+        reports_by_id = {}
+        report_dir = get_reports_dir()
+        for filename in os.listdir(report_dir):
+            ext = os.path.splitext(filename)[-1]
+            if ext == ".json":
+                continue
+            filepath = os.path.join(report_dir, filename)
+            item = PublishReportItem.from_filepath(
+                filepath, report_path=filepath
+            )
+            reports_by_id[item.id] = item
+
+        self._reports_loaded = True
+        self._reports_by_id = reports_by_id
 
 
 class LoadedFilesModel(QtGui.QStandardItemModel):
@@ -321,11 +263,11 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
         self._handler.reset()
 
         new_items = []
-        for report_item in self._handler.list_reports():
+        for report_item in self._handler.iter_reports():
             item = self._create_item(report_item)
-            self._report_items_by_id[report_item.id] = report_item
-            self._items_by_id[report_item.id] = item
             new_items.append(item)
+            self._items_by_id[report_item.id] = item
+            self._report_items_by_id[report_item.id] = report_item
 
         if new_items:
             root_item = self.invisibleRootItem()
@@ -353,9 +295,9 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
 
         if role == QtCore.Qt.EditRole:
             item_id = index.data(ITEM_ID_ROLE)
-            report_item = self._report_items_by_id.get(item_id)
+            report_item = self._handler.get_item_by_id(item_id)
             if report_item is not None:
-                report_item.label = value
+                report_item.set_label(value)
                 report_item.save()
                 value = report_item.label
 
@@ -367,7 +309,9 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             return QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
         return super().flags(index)
 
-    def _create_item(self, report_item):
+    def _create_item(
+        self, report_item: PublishReportItem
+    ) -> QtGui.QStandardItem | None:
         if report_item.id in self._items_by_id:
             return None
 
@@ -408,11 +352,6 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             if report_item.id in self._items_by_id:
                 continue
 
-            if not report_item.loaded_label:
-                report_item.label = (
-                    os.path.splitext(os.path.basename(filepath))[0]
-                )
-
             item = self._create_item(report_item)
             if item is None:
                 continue
@@ -435,11 +374,11 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             parent = self.invisibleRootItem()
             parent.removeRow(item.row())
 
-    def get_report_by_id(self, item_id):
-        report_item = self._report_items_by_id.get(item_id)
-        if report_item:
-            return report_item.publish_report
-        return None
+    def get_report_by_id(self, item_id: str) -> PublishReport | None:
+        item: PublishReportItem | None = self._report_items_by_id.get(item_id)
+        if item is None:
+            return None
+        return item.report
 
 
 class LoadedFilesView(QtWidgets.QTreeView):
@@ -503,7 +442,7 @@ class LoadedFilesView(QtWidgets.QTreeView):
         self._model.remove_item_by_id(item_id)
         self._fill_selection()
 
-    def get_current_report(self):
+    def get_current_report(self) -> PublishReport | None:
         index = self.currentIndex()
         item_id = index.data(ITEM_ID_ROLE)
         return self._model.get_report_by_id(item_id)
@@ -584,7 +523,7 @@ class LoadedFilesWidget(QtWidgets.QWidget):
     def refresh(self):
         self._view.refresh()
 
-    def get_current_report(self):
+    def get_current_report(self) -> PublishReport | None:
         return self._view.get_current_report()
 
     def _on_report_change(self):
@@ -634,9 +573,11 @@ class PublishReportViewerWindow(QtWidgets.QWidget):
     def refresh(self):
         self._loaded_files_widget.refresh()
 
-    def set_report(self, report_data):
-        self._main_widget.set_report(report_data)
+    def set_report(self, report: PublishReport | None) -> None:
+        self._main_widget.set_report(report)
 
-    def _on_report_change(self):
-        report = self._loaded_files_widget.get_current_report()
+    def _on_report_change(self) -> None:
+        report: PublishReport | None = (
+            self._loaded_files_widget.get_current_report()
+        )
         self.set_report(report)
