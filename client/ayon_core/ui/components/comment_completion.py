@@ -491,9 +491,7 @@ class MentionHighlighter(QSyntaxHighlighter):
 
         fmt = QTextCharFormat()
         fmt.setFontFixedPitch(True)
-        font = QFont()
-        font.setFamily("Noto Sans Mono")
-        fmt.setFont(font)
+        fmt.setFontFamilies(["Noto Sans Mono"])
         fmt.setBackground(CODE_BG)
         fmt.setForeground(CODE_FG)
         self._code_fmt = fmt

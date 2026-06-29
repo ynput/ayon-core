@@ -457,9 +457,7 @@ class AYTextEditor(AYTextEdit):
             else:
                 # Toggle on: apply code style
                 fmt.setFontFixedPitch(True)
-                fmt.setFontFamilies(
-                    ["Courier New", "Menlo", "Monaco", "monospace"]
-                )
+                fmt.setFontFamilies(["Noto Sans Mono"])
                 fmt.setBackground(CODE_BG)
                 fmt.setForeground(CODE_FG)
 
