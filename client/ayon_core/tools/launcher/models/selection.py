@@ -36,6 +36,10 @@ class LauncherSelectionModel:
             return
 
         self._project_name = project_name
+        self._folder_id = None
+        self._task_name = None
+        self._task_id = None
+        self._workfile_id = None
         self._controller.emit_event(
             "selection.project.changed",
             {"project_name": project_name},
@@ -50,6 +54,9 @@ class LauncherSelectionModel:
             return
 
         self._folder_id = folder_id
+        self._task_name = None
+        self._task_id = None
+        self._workfile_id = None
         self._controller.emit_event(
             "selection.folder.changed",
             {
@@ -73,6 +80,7 @@ class LauncherSelectionModel:
 
         self._task_name = task_name
         self._task_id = task_id
+        self._workfile_id = None
         self._controller.emit_event(
             "selection.task.changed",
             {

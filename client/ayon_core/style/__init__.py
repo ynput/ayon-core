@@ -175,6 +175,7 @@ def _load_font():
         font_dirs = [
             os.path.join(fonts_dirpath, "Noto_Sans"),
             os.path.join(fonts_dirpath, "Noto_Sans_Mono"),
+            os.path.join(fonts_dirpath, "Nunito_Sans"),
         ]
 
         loaded_fonts = []

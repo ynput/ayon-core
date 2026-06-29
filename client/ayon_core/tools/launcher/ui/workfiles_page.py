@@ -12,9 +12,16 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
+
+from ayon_core.ui.components import (
+    AYContainer,
+    AYTreeView,
+    AYMenu,
+)
+
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
@@ -52,7 +59,6 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._selected_folder_id = None
         self._selected_task_id = None
 
-        # Cache
         self._transparent_icon = None
         self._cached_icons = {}
         self._host_items_by_name = {}
@@ -242,26 +248,27 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
         return super().lessThan(source_left, source_right)
 
 
-class WorkfilesView(DeselectableTreeView):
-    def drawBranches(self, painter, rect, index):
-        return
-
-
 class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         option.textElideMode = QtCore.Qt.ElideMiddle
         super().paint(painter, option, index)
 
 
-class WorkfilesPage(QtWidgets.QWidget):
+class WorkfilesPage(AYContainer):
     def __init__(
         self,
         controller: AbstractLauncherFrontEnd,
         parent: QtWidgets.QWidget,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
-        workfiles_view = WorkfilesView(self)
+        workfiles_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        workfiles_view.setHeaderHidden(False)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -280,9 +287,7 @@ class WorkfilesPage(QtWidgets.QWidget):
         workfiles_view.setItemDelegateForColumn(0, workfiles_delegate)
         workfiles_view.setItemDelegateForColumn(1, updated_at_delegate)
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(workfiles_view, 1)
+        self.add_widget(workfiles_view, stretch=1)
 
         resize_timer = QtCore.QTimer()
 
@@ -303,14 +308,46 @@ class WorkfilesPage(QtWidgets.QWidget):
         self._workfiles_proxy = workfiles_proxy
         self._resize_timer = resize_timer
         self._resize_counter = 0
+        self._pending_locate_workfile_id = None
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
 
         self._resize_timer.start()
 
+    def select_workfile(self, workfile_id: Optional[str]) -> None:
+        """Visibly select a workfile row by its id.
+
+        If the row is not yet present (model still loading), the selection is
+        deferred and applied automatically after the next model refresh.
+
+        Args:
+            workfile_id: Workfile id to select, or ``None`` to clear any
+                pending deferred selection.
+        """
+        if workfile_id is None:
+            self._pending_locate_workfile_id = None
+            return
+        self._pending_locate_workfile_id = workfile_id
+        self._apply_pending_workfile_selection()
+
+    def _apply_pending_workfile_selection(self) -> None:
+        workfile_id = self._pending_locate_workfile_id
+        if workfile_id is None:
+            return
+        model = self._workfiles_model
+        for row in range(model.rowCount()):
+            index = model.index(row, 0)
+            if index.data(WORKFILE_ID_ROLE) == workfile_id:
+                proxy_index = self._workfiles_proxy.mapFromSource(index)
+                if proxy_index.isValid():
+                    self._workfiles_view.setCurrentIndex(proxy_index)
+                    self._pending_locate_workfile_id = None
+                    return
+
     def refresh(self) -> None:
         self._workfiles_model.refresh()
+        self._apply_pending_workfile_selection()
 
     def deselect(self):
         sel_model = self._workfiles_view.selectionModel()
@@ -382,6 +419,10 @@ class WorkfilesPage(QtWidgets.QWidget):
         if action_title is None:
             return
 
+        #TODO: using AYMenu breaking the tool need to figure out the issue
+        # menu = AYMenu(self._workfiles_view)
+        # Found that in AYMenu Forcing the menu to use AYONStyle for drawing
+        # it causing the application collapse
         menu = QtWidgets.QMenu(self._workfiles_view)
         menu.addAction(action_title)
 
