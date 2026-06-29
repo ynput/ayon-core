@@ -1210,8 +1210,8 @@ def filter_containers(containers, project_name):
             repre_entity = repre_entities_by_id.get(repre_id)
             if not repre_entity:
                 log.debug(
-                    f"Container '{container_name}' has an invalid representation."
-                    " It is missing in the database."
+                    f"Container '{container_name}' has an invalid"
+                    " representation. It is missing in the database."
                 )
                 not_found_containers.append(container)
                 continue
