@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from qtpy.QtCore import (
     QEvent,
     QItemSelection,
@@ -32,7 +31,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..drawers._utils import enum_to_str
+from ..drawers import enum_to_str
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QTreeViewVariants
 from .scroll_area import AYScrollBar
@@ -430,7 +429,6 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         painter.restore()
-
 # =============================================================================
 # __main__ - visual test harness
 # =============================================================================

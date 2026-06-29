@@ -10,7 +10,6 @@ This module provides:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import List
 
@@ -29,8 +28,6 @@ from .frame import AYFrame
 from .label import AYLabel
 from .layouts import AYVBoxLayout
 from .tag import AYTag
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -728,28 +725,3 @@ class AYFilterByCategory(AYFilter):
             selected: New selection state.
         """
         self.set_filter_selected(key, selected)
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def _build() -> QtWidgets.QWidget:
-        """Build test widget."""
-        w = AYContainer(variant=AYContainer.Variants.High, layout_margin=10)
-        w.add_widget(
-            AYFilterByCategory(
-                label="Sort by",
-                items=[
-                    FilterItem("task", "Task"),
-                    FilterItem("folder", "Folder", selected=True),
-                    FilterItem("status", "Status", selected=True),
-                    FilterItem("priority", "Priority"),
-                    FilterItem("due_date", "Due Date"),
-                ],
-            )
-        )
-        w.addStretch(10)
-        return w
-
-    test(_build, style=Style.AyonStyleOverCSS)

@@ -129,21 +129,3 @@ class AYCheckBox(StyleMixin, QCheckBox):
             size.setWidth(ind_w + spacing + text_w)
 
         return size
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def _build():
-        container = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            layout_margin=20,
-            layout_spacing=20,
-        )
-        for variant in AYCheckBox.Variants:
-            cb1 = AYCheckBox(f"{variant.name} Checkbox", variant=variant)
-            container.add_widget(cb1)
-        return container
-
-    test(_build, style=Style.AyonStyleOverCSS)

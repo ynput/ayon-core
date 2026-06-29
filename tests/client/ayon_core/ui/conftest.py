@@ -12,13 +12,18 @@ import sys
 from pathlib import Path
 
 # Must be set before any Qt import. pytest-qt respects this too.
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 # Pin the font-size platform key so visual regression images are
 # identical regardless of the OS running the test suite.
-os.environ.setdefault("AYON_CORE_UI_FONT_OS", "linux")
+os.environ["AYON_CORE_UI_FONT_OS"] = "linux"
 
 import pytest
+
+CURRENT_DIR = Path(__file__).parent
+REPO_ROOT = CURRENT_DIR.parent.parent.parent.parent
+VENDOR_ROOT = REPO_ROOT / "client" / "ayon_core" / "vendor" / "python"
+sys.path.append(str(VENDOR_ROOT))
 
 # Accumulated (test_name, obtained_path, ref_path) tuples for --show-images.
 _failed_image_tests: list[tuple[str, str, str]] = []

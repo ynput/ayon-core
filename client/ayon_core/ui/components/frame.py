@@ -50,24 +50,3 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
             else:
                 return base_color
         return self._bg_color
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .layouts import AYVBoxLayout
-
-    def _build():
-        """All frame variants."""
-        w = QtWidgets.QWidget()
-        w.setMinimumWidth(300)
-        lyt = AYVBoxLayout(w, margin=8, spacing=8)
-
-        for variant in AYFrame.Variants:
-            frame = AYFrame(variant=variant)
-            frame.setFixedHeight(40)
-            frame.setToolTip(variant.value)
-            lyt.addWidget(frame)
-
-        return w
-
-    test(_build, style=Style.AyonStyleOverCSS)
