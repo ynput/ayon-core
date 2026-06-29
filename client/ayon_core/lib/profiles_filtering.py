@@ -193,7 +193,7 @@ def get_highest_score_profiles(
     key_values: dict[str, typing.Any],
     logger: logging.Logger,
 ) -> list[dict[str, typing.Any]]:
-    """Return all profiles that have the highest match score.
+    """Return all profiles that have the highest number of matches and score.
 
     Args:
         profiles (list[dict[str, typing.Any]]): List of profiles to rank.
@@ -208,7 +208,16 @@ def get_highest_score_profiles(
     if not ranked_profiles:
         return []
 
-    # get highest score
+    # filter based on number of matches
+    num_matches = [bin(score).count("1") for _, score in ranked_profiles]
+    max_num_matches = max(num_matches)
+    ranked_profiles = [
+        profile
+        for profile, num_matches in zip(ranked_profiles, num_matches)
+        if num_matches == max_num_matches
+    ]
+
+    # filter based on score
     scores = [score for _, score in ranked_profiles]
     highest_profile_points = max(scores)
 
