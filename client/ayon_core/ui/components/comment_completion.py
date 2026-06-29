@@ -6,7 +6,6 @@ import logging
 from qtpy.QtCore import QSize, Qt
 from qtpy.QtGui import (
     QColor,
-    QFont,
     QPainter,
     QStandardItem,
     QStandardItemModel,
