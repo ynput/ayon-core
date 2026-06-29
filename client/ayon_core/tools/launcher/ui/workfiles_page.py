@@ -266,8 +266,8 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     """Unified delegate for the workfiles tree view.
 
     Column 0: workfile name with middle-elide.
-    Column 1: pretty-printed timestamp (falls back to ``"N/A"``).
-    Column 2: file size in human-readable format (falls back to ``""``).
+    Column 1: pretty-printed timestamp.
+    Column 2: file size in human-readable format.
     """
 
     def initStyleOption(self, option, index):
