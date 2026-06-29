@@ -498,6 +498,10 @@ class _LocalContext:
 
 def _load_fonts() -> None:
     """Load and register fonts into Qt application."""
+    from ayon_core.style import _load_font
+
+    # Load fonts from old ayon stylesheets too (monospaced font).
+    _load_font()
 
     # Check if font ids are still loaded
     if _LocalContext.font_ids is not None:
