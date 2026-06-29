@@ -132,6 +132,7 @@ def process_test_version_data(version_data: dict) -> VersionData:
     vd = VersionData(**version_data)
     return vd
 
+
 def process_test_activity_data(activity_data) -> ActivityData:
     # convert activities
     for act in list(activity_data["activity_list"]):

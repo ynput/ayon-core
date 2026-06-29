@@ -44,6 +44,7 @@ from ..style_types import StyleData, get_ayon_style
 from ..variants import AYTableViewVariants
 from .scroll_area import AYScrollBar
 from .style_mixin import StyleMixin
+from .table_model import PaginatedTableModel
 
 log = logging.getLogger(__name__)
 

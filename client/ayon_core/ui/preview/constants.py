@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 
-
 """Sample status definitions for prototyping and tests.
 
 Each entry is a :class:`dict` with the following keys:

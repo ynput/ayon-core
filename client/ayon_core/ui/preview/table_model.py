@@ -348,7 +348,7 @@ def make_hierarchical_test_fetch_batch(
 
 
 def main():
-    app = QApplication(sys.argv)
+    _app = QApplication(sys.argv)
     fetch = make_test_fetch(TABLE_TEST_DATA)
     model = PaginatedTableModel(fetch_page=fetch, page_size=25)
     print(f"[test]  Rows: {model.rowCount()}, Columns: {model.columnCount()}")
