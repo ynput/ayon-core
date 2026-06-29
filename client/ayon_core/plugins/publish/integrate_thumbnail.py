@@ -33,6 +33,8 @@ import pyblish.api
 from ayon_core.lib import format_file_size
 from ayon_core.pipeline.publish import PublishXmlValidationError
 
+from ayon_core import __version__
+
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
@@ -95,10 +97,10 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             # - there is no place where to put the thumbnail
             published_repres = instance.data.get("published_representations")
             if not published_repres:
-                self.log.debug((
+                self.log.debug(
                     "There are no published representations"
-                    " on the instance {}."
-                ).format(instance_label))
+                    f" on the instance {instance_label}."
+                )
                 continue
 
             # Find thumbnail path on instance
@@ -109,24 +111,24 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 )
             )
             if thumbnail_path:
-                self.log.debug((
-                    "Found thumbnail path for instance \"{}\"."
+                self.log.debug(
+                    f"Found thumbnail path for instance \"{instance_label}\"."
                     " Thumbnail path: {}"
-                ).format(instance_label, thumbnail_path))
+                )
 
             elif valid_context_thumbnail:
                 # Use context thumbnail path if is available
                 thumbnail_path = context_thumbnail_path
-                self.log.debug((
-                    "Using context thumbnail path for instance \"{}\"."
-                    " Thumbnail path: {}"
-                ).format(instance_label, thumbnail_path))
+                self.log.debug(
+                    "Using context thumbnail path for instance"
+                    f" \"{instance_label}\". Thumbnail path: {thumbnail_path}"
+                )
 
             # Skip instance if thumbnail path is not available for it
             if not thumbnail_path:
                 self.log.debug((
-                    "Skipping thumbnail integration for instance \"{}\"."
-                    " Instance and context"
+                    f"Skipping thumbnail integration for instance"
+                    f" \"{instance_label}\". Instance and context"
                     " thumbnail paths are not available."
                 ).format(instance_label))
                 continue
@@ -161,7 +163,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         filled_path = anatomy.fill_root(path)
         if not os.path.exists(filled_path):
             self.log.warning(
-                "Thumbnail file cannot be found. Path: {}".format(filled_path)
+                f"Thumbnail file cannot be found. Path: {filled_path}"
             )
             return None
         return os.path.normpath(filled_path)
@@ -178,13 +180,13 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             thubmnail_id = ayon_api.create_thumbnail(
                 project_name, src_filepath
             )
-            self.log.debug(f"Uploaded in {time.time() - start}s.")
+            self.log.debug(f"Uploaded in {time.time() - start:.2f}s.")
             return thubmnail_id
 
         except Exception as exc:
             last_error = exc
             self.log.warning(
-                f"Review upload failed after {time.time() - start}s.",
+                f"Thumbnail upload failed after {time.time() - start:.2f}s.",
                 exc_info=True,
             )
 
@@ -210,52 +212,61 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         project_name
     ):
         # Make sure each entity id has defined only one thumbnail id
-        thumbnail_info_by_entity_id = {}
+        folder_ids = set()
+        op_session = OperationsSession()
         for instance_item in filtered_instance_items:
             instance, thumbnail_path, version_id = instance_item
             instance_label = self._get_instance_label(instance)
             version_entity = version_entities_by_id.get(version_id)
             if not version_entity:
-                self.log.warning((
-                    "Version entity for instance \"{}\" was not found."
-                ).format(instance_label))
+                self.log.warning(
+                    f"Version entity for instance \"{instance_label}\""
+                    f" was not found."
+                )
                 continue
 
+            folder_id = instance.data["folderEntity"]["id"]
+            folder_ids.add(folder_id)
             thumbnail_id = self._create_thumbnail(
                 project_name, thumbnail_path
             )
 
             # Set thumbnail id for version
-            thumbnail_info_by_entity_id[version_id] = {
-                "thumbnail_id": thumbnail_id,
-                "entity_type": "version",
-            }
+            op_session.update_entity(
+                project_name,
+                "version",
+                version_id,
+                {"thumbnailId": thumbnail_id}
+            )
             version_name = version_entity["version"]
             if version_name < 0:
                 version_name = "Hero"
-            self.log.debug("Setting thumbnail for version \"{}\" <{}>".format(
-                version_name, version_id
-            ))
-
-            folder_id = instance.data["folderEntity"]["id"]
-            folder_path = instance.data["folderPath"]
-            thumbnail_info_by_entity_id[folder_id] = {
-                "thumbnail_id": thumbnail_id,
-                "entity_type": "folder",
-            }
-            self.log.debug("Setting thumbnail for folder \"{}\" <{}>".format(
-                folder_path, version_id
-            ))
-
-        op_session = OperationsSession()
-        for entity_id, thumbnail_info in thumbnail_info_by_entity_id.items():
-            thumbnail_id = thumbnail_info["thumbnail_id"]
-            op_session.update_entity(
-                project_name,
-                thumbnail_info["entity_type"],
-                entity_id,
-                {"thumbnailId": thumbnail_id}
+            self.log.debug(
+                f"Setting thumbnail for version \"{version_name}\""
+                f" <{version_id}>"
             )
+
+        # Trigger thumbnail cleanup for the folders that did use thumbnail
+        #   id of a version. We changed the logic, folders don't need
+        #   to have explicitly set thumbnail id, but we need to auto-fix
+        #   existing folders that already did set the thumbnail.
+        if folder_ids:
+            # There is a bug in public version of 'get_addon_endpoint'
+            # - did not support subpaths correctly
+            endpoint = ayon_api.get_addon_endpoint("core", __version__)
+            response = ayon_api.post(
+                f"{endpoint}/cleanupFolderThumbnails/{project_name}",
+                folder_ids=list(folder_ids)
+            )
+            # NOTE we don't care if it failed
+            try:
+                response.raise_for_status()
+            except Exception:
+                self.log.warning(
+                    "Failed to cleanup folder thumbnails",
+                    exc_info=True,
+                )
+
         op_session.commit()
 
     def _get_instance_label(self, instance):
