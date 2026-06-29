@@ -64,11 +64,8 @@ class FrameDrawer:
                 style["border-color"] = bgc
             style["background-color"] = bgc
             # set background color of QTextEdit widgets
-            try:
+            if hasattr(w, "viewport"):
                 viewport = w.viewport()
-            except AttributeError:
-                pass
-            else:
                 palette = viewport.palette()
                 palette.setColor(QPalette.ColorRole.Base, bgc)
                 viewport.setPalette(palette)
