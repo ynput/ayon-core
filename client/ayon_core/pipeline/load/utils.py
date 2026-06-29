@@ -1007,7 +1007,7 @@ def is_compatible_loader(Loader, context):
 
 
 def loaders_from_repre_context(loaders, repre_context):
-    """Return compatible loaders for by representaiton's context."""
+    """Return compatible loaders for by representation's context."""
 
     return [
         loader
@@ -1149,7 +1149,7 @@ def filter_containers(containers, project_name):
     # - entities can be fetched per project only
     for l_project_name, l_containers in containers_by_project_name.items():
         repre_ids = {
-            container["representaiton"]
+            container["representation"]
             for container in l_containers
         }
         repre_entities = ayon_api.get_representations(
