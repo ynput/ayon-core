@@ -237,7 +237,7 @@ class AYTextEditor(AYTextEdit):
             cursor: Cursor at the insertion point; advanced past the
                 inserted characters on return.
         """
-        assert self._checkbox_handler is not None
+        self._setup_checkbox_handler()
         new_item = self._checkbox_handler.add_checkbox()
         fmt = QTextCharFormat()
         fmt.setObjectType(CHECKBOX_FORMAT_TYPE)
@@ -259,7 +259,6 @@ class AYTextEditor(AYTextEdit):
         """
         if CheckboxHandler.contains_checkboxes(md):
             self._setup_checkbox_handler()
-            assert self._checkbox_handler is not None
             self._checkbox_handler.parse_and_render(md)
         else:
             self.document().setMarkdown(md, MD_DIALECT)
@@ -484,7 +483,6 @@ class AYTextEditor(AYTextEdit):
         block inserted above when the current line is non-empty.
         """
         self._setup_checkbox_handler()
-        assert self._checkbox_handler is not None
 
         self._suppress_formatting = True
         cursor = self.textCursor()
