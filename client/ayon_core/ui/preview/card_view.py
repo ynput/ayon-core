@@ -7,9 +7,11 @@ from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.slider import AYSlider
 from ayon_core.ui.components.table_model import (
-    HIERARCHICAL_TEST_DATA,
     PaginatedTableModel,
     TableColumn,
+)
+from ayon_core.ui.preview.table_model import (
+    HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )
 from ayon_core.ui.preview.utils import Style, preview_widget
