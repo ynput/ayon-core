@@ -35,7 +35,7 @@ __all__ = (
     "AYSpinBox",
     "AYTextEdit",
     "AYTreeView",
-    "AYFrame"
+    "AYFrame",
     "AYOptionBox",
     "AYOptionalAction",
     "AYOptionalActionWidget",
