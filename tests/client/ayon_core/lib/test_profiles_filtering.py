@@ -220,6 +220,58 @@ class TestGetMatchingProfiles(unittest.TestCase):
         tasks = sorted(tasks)
         self.assertEqual(tasks, ["fx", "modeling", "render"])
 
+    def test_explicit_over_implicit_match(self):
+        """This test validates that an explicit match wins over an
+        implicit match.
+
+        the first two profiles have 2 explicit matches and rank as 1010 and
+        1100, respectively.
+        The third profile has 3 explicit matches and ranks as 0111.
+
+        The third profile should win because it has the most explicit matches,
+        even though it matches "lower keys" than the other ones.
+
+        """
+        profiles = [
+
+            # 2 explicit matches, ranking 1010
+            {
+                "product_base_type": "model",
+                # host: *
+                "task": "modeling",
+                # test: *
+            },
+
+            # 2 implicit matches, ranking 1100
+            {
+                "product_base_type": "model",
+                "host": "maya",
+                # task: *
+                # test: *
+            },
+
+            # 3 explicit matches, ranking 0111
+            {
+                # product_base_type: *
+                "host": "maya",
+                "task": "modeling",
+                "test": "1",
+            },
+        ]
+
+        key_values = {
+            "product_base_type": "model",
+            "host": "maya",
+            "task": "modeling",
+            "test": "1",
+        }
+
+        matched_profiles = profiles_filtering.get_highest_score_profiles(profiles, key_values, log)  # noqa: E501
+
+        # only the 3rd profile should be matched
+        self.assertEqual(len(matched_profiles), 1, matched_profiles)
+        self.assertEqual(matched_profiles[0], profiles[2])
+
 
 class TestGetHighestScoreProfiles(unittest.TestCase):
     """Test `get_highest_score_profiles` function."""
