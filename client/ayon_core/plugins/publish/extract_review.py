@@ -1279,9 +1279,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
             self.log.debug("Creating dir: {}".format(dst_staging_dir))
             os.makedirs(dst_staging_dir)
 
-        # Store stagingDir to representation
-        new_repre["stagingDir"] = dst_staging_dir
-
         # Store paths to temp data
         temp_data.full_input_path = full_input_path
         temp_data.full_input_path_single_file = full_input_path_single_file
