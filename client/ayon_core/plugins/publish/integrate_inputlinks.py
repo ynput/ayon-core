@@ -321,9 +321,6 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                     )
                 )
 
-            if not links_to_create:
-                continue
-
         # Create link themselves
         self.log.debug(f"Generating {len(links_to_create)} links")
         if ayon_api.get_server_version_tuple() >= (1, 15, 8):
