@@ -543,10 +543,6 @@ class AbstractTemplateBuilder(ABC):
                 scene state.
 
         """
-        # More accurate variable name
-        # - logic related to workfile creation should be moved out in future
-        explicit_build_requested = not workfile_creation_enabled
-
         # Get default values if not provided
         if (
             template_path is None
@@ -562,7 +558,7 @@ class AbstractTemplateBuilder(ABC):
 
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
-        if not explicit_build_requested:
+        if not workfile_creation_enabled:
             return
 
         self.log.info(f"Building the workfile template: {template_path}")
