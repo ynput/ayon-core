@@ -115,6 +115,11 @@ class CopyTemplateWorkfile(PreLaunchHook):
             f"Creating workfile from template: \"{template_path}\""
         )
 
+        # Keep extension of template file
+        _, ext = os.path.splitext(template_path)
+        last_workfile_extless, _ = os.path.splitext(last_workfile)
+        last_workfile = f"{last_workfile_extless}{ext}"
+
         # Copy template workfile to new destination
         shutil.copy2(
             os.path.normpath(template_path),
@@ -152,7 +157,6 @@ class CopyTemplateWorkfile(PreLaunchHook):
             host_name,
             settings=project_settings,
         )
-        ext = os.path.splitext(last_workfile)[1]
         _, version = get_last_workfile_with_version_from_paths(
             [last_workfile],
             file_template,
