@@ -164,9 +164,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
         """Add dependency link data into temporary variable.
 
         Args:
-            new_links_by_type (
-                dict[str, list[tuple[str, str, Optional[dict[str, Any]]]]]
-            ): Object where output is stored.
+            new_links_by_type (LinksByType): Object where output is stored.
             link_type (str): Type of link, one of 'reference' or 'generative'
             input_id (str): Input version id.
             output_id (str): Output version id.
