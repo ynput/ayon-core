@@ -487,7 +487,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if not all(isinstance(tag, str) for tag in tags):
                 raise KnownPublishError(
                     "Version tags must be an iterable of strings. "
-                    "Got: {}".format(repr(tags))
+                    f"Got: {type(tags)}"
                 )
             # Force the type to be list for the new_version_entity call.
             tags = list(tags)
