@@ -208,7 +208,7 @@ function Run-From-Code {
 
 function Run-Tests {
     $RunArgs = @( "run", "pytest", "$($RepoRoot)/tests", "-m",  "not server")
-
+    & uv sync --extra test
     & uv $RunArgs @arguments
 }
 
