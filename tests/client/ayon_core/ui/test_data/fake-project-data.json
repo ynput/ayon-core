@@ -1,0 +1,485 @@
+{
+    "project_name": "Fake Project",
+    "users": [
+        {
+            "full_name": "Admin",
+            "short_name": "admin",
+            "id": "admin@fake.com",
+            "image_path": ""
+        },
+        {
+            "full_name": "Bob Morane",
+            "short_name": "Bob",
+            "id": "bob.morane@fake.com",
+            "image_path": "avatar1.jpg"
+        },
+        {
+            "full_name": "Leia Organa",
+            "short_name": "Leia",
+            "id": "leia.organa@fake.com",
+            "image_path": "avatar2.jpg"
+        },
+        {
+            "full_name": "Katniss Everdeen",
+            "short_name": "Kat",
+            "id": "katniss.everdeen@fake.com",
+            "image_path": "avatar3.jpg"
+        }
+    ],
+    "anatomy": {
+        "entity_naming": {
+            "capitalization": "lower",
+            "separator": "_"
+        },
+        "roots": [
+            {
+                "name": "renders",
+                "windows": "C:/projects/UE_Renders/",
+                "linux": "",
+                "darwin": "/Users/plp/dev/AYON/renders"
+            },
+            {
+                "name": "work",
+                "windows": "C:/projects",
+                "linux": "/mnt/share/projects",
+                "darwin": "/Users/plp/dev/AYON/projects"
+            }
+        ],
+        "templates": {
+            "version_padding": 3,
+            "version": "v{version:0>{@version_padding}}",
+            "frame_padding": 3,
+            "frame": "{frame:0>{@frame_padding}}",
+            "work": [
+                {
+                    "name": "default",
+                    "directory": "{root[work]}/{project[name]}/{hierarchy}/{asset}/work/{task[name]}",
+                    "file": "{project[code]}_{asset}_{task[name]}_{@version}<_{comment}>.{ext}"
+                },
+                {
+                    "name": "unreal",
+                    "directory": "{root[work]}/{project[name]}/unreal/{task[name]}",
+                    "file": "{project[code]}_{folder[name]}.{ext}"
+                }
+            ],
+            "publish": [
+                {
+                    "name": "default",
+                    "directory": "{root[work]}/{project[name]}/{hierarchy}/{asset}/publish/{family}/{subset}/{@version}",
+                    "file": "{project[code]}_{asset}_{subset}_{@version}<_{output}><.{@frame}><_{udim}>.{ext}"
+                },
+                {
+                    "name": "render",
+                    "directory": "{root[work]}/{project[name]}/{hierarchy}/{folder[name]}/publish/{product[type]}/{product[name]}/{@version}",
+                    "file": "{project[code]}_{folder[name]}_{product[name]}_{@version}<_{output}><.{@frame}>.{ext}"
+                }
+            ],
+            "hero": [
+                {
+                    "name": "default",
+                    "directory": "{root[work]}/{project[name]}/{hierarchy}/{asset}/publish/{family}/{subset}/hero",
+                    "file": "{project[code]}_{asset}_{subset}_hero<_{output}><.{frame}>.{ext}"
+                }
+            ],
+            "delivery": [],
+            "staging": [],
+            "others": []
+        },
+        "attributes": {
+            "priority": "normal",
+            "fps": 25,
+            "resolutionWidth": 1920,
+            "resolutionHeight": 1080,
+            "pixelAspect": 1,
+            "clipIn": 1,
+            "clipOut": 1,
+            "frameStart": 1001,
+            "frameEnd": 1001,
+            "handleStart": 0,
+            "handleEnd": 0,
+            "startDate": null,
+            "endDate": null,
+            "description": null
+        },
+        "folder_types": [
+            {
+                "name": "Folder",
+                "original_name": "Folder",
+                "shortName": "",
+                "icon": "folder"
+            },
+            {
+                "name": "Shot",
+                "original_name": "Shot",
+                "shortName": "",
+                "icon": "movie"
+            },
+            {
+                "name": "Asset",
+                "original_name": "Asset",
+                "shortName": "",
+                "icon": "smart_toy"
+            },
+            {
+                "name": "Library",
+                "original_name": "Library",
+                "shortName": "",
+                "icon": "category"
+            },
+            {
+                "name": "Sequence",
+                "original_name": "Sequence",
+                "shortName": "",
+                "icon": "theaters"
+            }
+        ],
+        "task_types": [
+            {
+                "name": "Animation",
+                "original_name": "Animation",
+                "shortName": "anim",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "FX",
+                "original_name": "FX",
+                "shortName": "fx",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Lighting",
+                "original_name": "Lighting",
+                "shortName": "lgt",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Modeling",
+                "original_name": "Modeling",
+                "shortName": "mdl",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Rigging",
+                "original_name": "Rigging",
+                "shortName": "rig",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Lookdev",
+                "original_name": "Lookdev",
+                "shortName": "look",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Setdress",
+                "original_name": "Setdress",
+                "shortName": "dress",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Layout",
+                "original_name": "Layout",
+                "shortName": "lay",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Generic",
+                "original_name": "Generic",
+                "shortName": "gener",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Art",
+                "original_name": "Art",
+                "shortName": "art",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Texture",
+                "original_name": "Texture",
+                "shortName": "tex",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Edit",
+                "original_name": "Edit",
+                "shortName": "edit",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Paint",
+                "original_name": "Paint",
+                "shortName": "paint",
+                "color": "#cccccc",
+                "icon": ""
+            },
+            {
+                "name": "Compositing",
+                "original_name": "Compositing",
+                "shortName": "comp",
+                "color": "#cccccc",
+                "icon": ""
+            }
+        ],
+        "link_types": [
+            {
+                "link_type": "generative",
+                "input_type": "version",
+                "output_type": "version",
+                "color": "#2626e0",
+                "style": "solid"
+            },
+            {
+                "link_type": "breakdown",
+                "input_type": "folder",
+                "output_type": "folder",
+                "color": "#27792a",
+                "style": "solid"
+            },
+            {
+                "link_type": "reference",
+                "input_type": "version",
+                "output_type": "version",
+                "color": "#d94383",
+                "style": "solid"
+            },
+            {
+                "link_type": "master",
+                "input_type": "folder",
+                "output_type": "folder",
+                "color": "#d9c045",
+                "style": "solid"
+            }
+        ],
+        "statuses": [
+            {
+                "name": "Not ready",
+                "original_name": "Not ready",
+                "shortName": "NRD",
+                "state": "not_started",
+                "icon": "fiber_new",
+                "color": "#434a56",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            },
+            {
+                "name": "Ready to start",
+                "original_name": "Ready to start",
+                "shortName": "RDY",
+                "state": "not_started",
+                "icon": "timer",
+                "color": "#bababa",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            },
+            {
+                "name": "In progress",
+                "original_name": "In progress",
+                "shortName": "PRG",
+                "state": "in_progress",
+                "icon": "play_arrow",
+                "color": "#3498db",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            },
+            {
+                "name": "Pending review",
+                "original_name": "Pending review",
+                "shortName": "RVW",
+                "state": "in_progress",
+                "icon": "visibility",
+                "color": "#ff9b0a",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            },
+            {
+                "name": "Approved",
+                "original_name": "Approved",
+                "shortName": "APP",
+                "state": "done",
+                "icon": "task_alt",
+                "color": "#00f0b4",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            },
+            {
+                "name": "On hold",
+                "original_name": "On hold",
+                "shortName": "HLD",
+                "state": "blocked",
+                "icon": "back_hand",
+                "color": "#fa6e46",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            },
+            {
+                "name": "Omitted",
+                "original_name": "Omitted",
+                "shortName": "OMT",
+                "state": "blocked",
+                "icon": "block",
+                "color": "#cb1a1a",
+                "scope": [
+                    "folder",
+                    "product",
+                    "version",
+                    "representation",
+                    "task",
+                    "workfile"
+                ]
+            }
+        ],
+        "tags": [],
+        "product_base_types": {
+            "default": {
+                "color": "#cccccc",
+                "icon": "deployed_code"
+            },
+            "definitions": [
+                {
+                    "name": "image",
+                    "color": "#cccccc",
+                    "icon": "imagesmode"
+                },
+                {
+                    "name": "render",
+                    "color": "#cccccc",
+                    "icon": "photo_library"
+                },
+                {
+                    "name": "review",
+                    "color": "#cccccc",
+                    "icon": "photo_library"
+                },
+                {
+                    "name": "plate",
+                    "color": "#cccccc",
+                    "icon": "camera_roll"
+                },
+                {
+                    "name": "camera",
+                    "color": "#cccccc",
+                    "icon": "videocam"
+                },
+                {
+                    "name": "model",
+                    "color": "#cccccc",
+                    "icon": "language"
+                },
+                {
+                    "name": "texture",
+                    "color": "#cccccc",
+                    "icon": "texture"
+                },
+                {
+                    "name": "look",
+                    "color": "#cccccc",
+                    "icon": "ev_shadow"
+                },
+                {
+                    "name": "rig",
+                    "color": "#cccccc",
+                    "icon": "accessibility"
+                },
+                {
+                    "name": "animation",
+                    "color": "#cccccc",
+                    "icon": "directions_run"
+                },
+                {
+                    "name": "cache",
+                    "color": "#cccccc",
+                    "icon": "animation"
+                },
+                {
+                    "name": "layout",
+                    "color": "#cccccc",
+                    "icon": "nature_people"
+                },
+                {
+                    "name": "setdress",
+                    "color": "#cccccc",
+                    "icon": "forest"
+                },
+                {
+                    "name": "groom",
+                    "color": "#cccccc",
+                    "icon": "content_cut"
+                },
+                {
+                    "name": "matchmove",
+                    "color": "#cccccc",
+                    "icon": "switch_video"
+                },
+                {
+                    "name": "vdbcache",
+                    "color": "#cccccc",
+                    "icon": "local_fire_department"
+                },
+                {
+                    "name": "lightrig",
+                    "color": "#cccccc",
+                    "icon": "wb_incandescent"
+                },
+                {
+                    "name": "lut",
+                    "color": "#cccccc",
+                    "icon": "opacity"
+                },
+                {
+                    "name": "workfile",
+                    "color": "#cccccc",
+                    "icon": "home_repair_service"
+                }
+            ]
+        }
+    }
+}
