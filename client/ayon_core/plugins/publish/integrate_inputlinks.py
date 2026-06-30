@@ -49,17 +49,22 @@ def create_links_bulk(
     link_payloads: list[LinkPayload],
 ):
     """Create multiple links in AYON in a single request."""
+    if not link_payloads:
+        return
+
     links = []
     for link_payload in link_payloads:
         full_link_type_name = ayon_api.get_full_link_type_name(
             link_payload.link_type, "version", "version"
         )
-        links.append({
+        link = {
             "input": link_payload.input_id,
             "output": link_payload.output_id,
             "linkType": full_link_type_name,
-            "data": link_payload.data or {},
-        })
+        }
+        if link_payload.data:
+            link["data"] = link_payload.data
+        links.append(link)
 
     response = ayon_api.post(
         f"projects/{project_name}/links/bulk",
