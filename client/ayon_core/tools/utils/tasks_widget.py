@@ -54,6 +54,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._empty_tasks_item_used = False
         self._empty_tasks_item = None
 
+        self._selected_project_name = None
         self._last_project_name = None
         self._last_folder_id = None
 
@@ -62,6 +63,9 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         # Initial state
         self._add_invalid_selection_item()
+
+    def get_selected_project_name(self):
+        return self._selected_project_name
 
     def _clear_items(self):
         self._items_by_name = {}
@@ -463,6 +467,10 @@ class TasksWidget(QtWidgets.QWidget):
         self._tasks_proxy_model.sort(0)
         self._tasks_model.refresh()
 
+    def set_project_name(self, project_name):
+        self._tasks_model.set_selected_project(project_name)
+        self._use_task_type_sorting = None
+
     def get_selected_task_info(self):
         """Get selected task info.
 
@@ -568,12 +576,17 @@ class TasksWidget(QtWidgets.QWidget):
         ):
             return
 
+        # reset cached sorting so it re-resolves for the new project
+        self._use_task_type_sorting = None
         self._tasks_model.set_context(
             event["project_name"], self._selected_folder_id
         )
 
     def _folder_selection_changed(self, event):
         self._selected_folder_id = event["folder_id"]
+
+        # reset cached sorting so it re-resolves for the new project
+        self._use_task_type_sorting = None
         self._tasks_model.set_context(
             event["project_name"], self._selected_folder_id
         )
@@ -636,10 +649,11 @@ class TasksWidget(QtWidgets.QWidget):
     def _update_task_type_sorting(self):
         if self._use_task_type_sorting is not None:
             return
-
-        project_name = self._tasks_model.get_last_project_name()
+        project_name = self._tasks_model.get_selected_project_name()
         if project_name is None:
-            return
+            project_name = self._tasks_model.get_last_project_name()
+            if project_name is None:
+                return
 
         use_task_type_sorting = False
         if hasattr(self._controller, "get_project_settings"):
