@@ -319,7 +319,9 @@ class PublishedFilesWidget(AYContainer):
             layout_spacing=0,
         )
 
-        view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        view = AYTreeView(
+            self,item_height=23,item_padding=[1, 6]
+        )
         view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
