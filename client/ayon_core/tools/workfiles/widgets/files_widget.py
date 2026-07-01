@@ -77,7 +77,8 @@ class FilesWidget(AYContainer):
             parent=published_btns_widget,
         )
         published_btn_cancel = AYButton(
-            "Cancel", variant=AYButton.Variants.Tertiary,
+            "Cancel",
+            variant=AYButton.Variants.Tertiary,
             parent=published_btns_widget,
         )
 
