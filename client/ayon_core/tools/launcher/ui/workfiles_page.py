@@ -12,9 +12,18 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils.delegates import pretty_timestamp
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
+
+from ayon_core.ui.components import (
+    AYContainer,
+    AYTreeView,
+    AYMenu,
+)
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.ui.style_types import get_ayon_style
+
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
@@ -242,26 +251,43 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
         return super().lessThan(source_left, source_right)
 
 
-class WorkfilesView(DeselectableTreeView):
-    def drawBranches(self, painter, rect, index):
-        return
+class WorkfilesDelegate(TreeViewItemDelegate):
+    """Unified delegate for the workfiles tree view.
+
+    Column 0: workfile name with middle-elide.
+    Column 1: pretty-printed timestamp (falls back to ``"N/A"``).
+    """
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        if index.column() == 0:
+            option.textElideMode = QtCore.Qt.ElideMiddle
+        elif index.column() == 1:
+            # Column 1 exposes timestamp through DisplayRole in WorkfilesModel.
+            raw = index.data(QtCore.Qt.DisplayRole)
+            if raw is not None:
+                pretty = pretty_timestamp(raw)
+                if pretty is not None:
+                    option.text = pretty
+                    return
+            option.text = "N/A"
 
 
-class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
-    def paint(self, painter, option, index):
-        option.textElideMode = QtCore.Qt.ElideMiddle
-        super().paint(painter, option, index)
-
-
-class WorkfilesPage(QtWidgets.QWidget):
+class WorkfilesPage(AYContainer):
     def __init__(
         self,
         controller: AbstractLauncherFrontEnd,
         parent: QtWidgets.QWidget,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
-        workfiles_view = WorkfilesView(self)
+        workfiles_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        workfiles_view.setHeaderHidden(False)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -272,17 +298,15 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view.setModel(workfiles_proxy)
 
-        workfiles_delegate = WorkfilesDelegate()
-        updated_at_delegate = PrettyTimeDelegate(
-            default="N/A", parent=workfiles_view
+        workfiles_delegate = WorkfilesDelegate(
+            parent=workfiles_view,
+            style_model=get_ayon_style().model,
+            item_height=23,
+            item_padding=[1, 6]
         )
+        workfiles_view.setItemDelegate(workfiles_delegate)
 
-        workfiles_view.setItemDelegateForColumn(0, workfiles_delegate)
-        workfiles_view.setItemDelegateForColumn(1, updated_at_delegate)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(workfiles_view, 1)
+        self.add_widget(workfiles_view, stretch=1)
 
         resize_timer = QtCore.QTimer()
 
@@ -298,7 +322,6 @@ class WorkfilesPage(QtWidgets.QWidget):
         self._controller = controller
         self._workfiles_view = workfiles_view
         self._workfiles_delegate = workfiles_delegate
-        self._updated_at_delegate = updated_at_delegate
         self._workfiles_model = workfiles_model
         self._workfiles_proxy = workfiles_proxy
         self._resize_timer = resize_timer
@@ -382,6 +405,10 @@ class WorkfilesPage(QtWidgets.QWidget):
         if action_title is None:
             return
 
+        # TODO: using AYMenu breaking the tool need to figure out the issue
+        # menu = AYMenu(self._workfiles_view)
+        # Found that in AYMenu Forcing the menu to use AYONStyle for drawing
+        # it causing the application collapse
         menu = QtWidgets.QMenu(self._workfiles_view)
         menu.addAction(action_title)
 

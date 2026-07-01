@@ -406,6 +406,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self._icon_size: int = icon_size
         self._inverted_icons: dict[str, QIcon] = {}
         self.show_chevron: bool = show_chevron
+        self._custom_delegate = None
 
         if placeholder:
             self.setPlaceholderText(placeholder)

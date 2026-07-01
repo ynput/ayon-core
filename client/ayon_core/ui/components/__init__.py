@@ -11,6 +11,7 @@ from .container import AYContainer
 from .label import AYLabel
 from .layouts import AYGridLayout, AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
+from .spin_box import AYSpinBox
 from .option_action import (
     AYMenu,
     AYOptionalAction,
@@ -19,6 +20,7 @@ from .option_action import (
 )
 from .text_edit import AYTextEdit
 from .tree_view import AYTreeView
+from .frame import AYFrame
 
 __all__ = (
     "AYButton",
@@ -30,8 +32,10 @@ __all__ = (
     "AYVBoxLayout",
     "AYGridLayout",
     "AYLineEdit",
+    "AYSpinBox",
     "AYTextEdit",
     "AYTreeView",
+    "AYFrame",
     "AYOptionBox",
     "AYOptionalAction",
     "AYOptionalActionWidget",

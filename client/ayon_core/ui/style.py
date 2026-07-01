@@ -201,9 +201,11 @@ class AYONStyle(QCommonStyle):
 
         if isinstance(widget, QComboBox):
             widget.setMinimumContentsLength(1)
-            widget.setItemDelegate(
-                ComboBoxItemDelegate(parent=widget, style_model=self.model)
-            )
+            # Only set default delegate if no custom delegate was set.
+            if widget.itemDelegate() is None:
+                widget.setItemDelegate(
+                    ComboBoxItemDelegate(parent=widget, style_model=self.model)
+                )
             widget.setSizeAdjustPolicy(
                 QComboBox.SizeAdjustPolicy.AdjustToContents
             )

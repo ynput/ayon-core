@@ -10,7 +10,7 @@ from ayon_core.lib import AbstractAttrDef
 
 from .widgets import AttributeDefinitionsWidget
 
-
+#TODO: Use ayon_core/ui/components and match it with style
 class AttributeDefinitionsDialog(QtWidgets.QDialog):
     def __init__(
         self,

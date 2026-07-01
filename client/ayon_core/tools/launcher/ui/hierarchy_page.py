@@ -1,9 +1,12 @@
-import qtawesome
+from ayon_core.ui.components import (
+    AYButton,
+    AYHBoxLayout,
+    AYVBoxLayout
+)
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
-    SquareButton,
-    RefreshButton,
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
@@ -50,16 +53,21 @@ class HierarchyPage(QtWidgets.QWidget):
         # Header
         header_widget = QtWidgets.QWidget(self)
 
-        btn_back_icon = qtawesome.icon("fa.angle-left", color="white")
-        btn_back = SquareButton(header_widget)
-        btn_back.setIcon(btn_back_icon)
+        btn_back = AYButton(
+            icon="arrow_back",
+            variant=AYButton.Variants.Surface,
+            parent=header_widget,
+        )
 
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
-        refresh_btn = RefreshButton(header_widget)
+        refresh_btn = AYButton(
+            icon="refresh",
+            variant=AYButton.Variants.Surface,
+            parent=header_widget,
+        )
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(btn_back, 0)
         header_layout.addWidget(projects_combobox, 1)
         header_layout.addWidget(refresh_btn, 0)
@@ -79,7 +87,6 @@ class HierarchyPage(QtWidgets.QWidget):
         # - Folders widget
         folders_widget = LauncherFoldersWidget(controller, content_body)
         folders_widget.set_header_visible(True)
-        folders_widget.set_deselectable(True)
 
         # - Tasks widget
         tasks_widget = LauncherTasksWidget(controller, content_body)
@@ -94,8 +101,7 @@ class HierarchyPage(QtWidgets.QWidget):
         content_body.setStretchFactor(1, 85)
         content_body.setStretchFactor(2, 220)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout = AYVBoxLayout(self, margin=0, spacing=4)
         main_layout.addWidget(header_widget, 0)
         main_layout.addWidget(filters_widget, 0)
         main_layout.addWidget(content_body, 1)

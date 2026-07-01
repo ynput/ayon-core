@@ -6,13 +6,19 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.ui.components import AYComboBox, AYTreeView
+from ayon_core.ui.style import (
+    TreeViewItemDelegate,
+    get_ayon_style,
+    ComboBoxItemDelegate,
+)
+
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import (
     ProjectItem,
     PROJECTS_MODEL_SENDER,
 )
 
-from .views import ListView
 from .lib import RefreshThread, get_qt_icon
 
 if typing.TYPE_CHECKING:
@@ -338,6 +344,7 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
+    # TODO: Is this unused? I don't see anywhere with in my addons
     def _type_sort(self, l_index, r_index):
         if not self._sort_by_type:
             return None
@@ -490,134 +497,66 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self.invalidate()
 
 
-class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
+class _ProjectsPinMixin:
+    """Mixin class that provides pin icon painting functionality."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._pin_icon = None
 
-    def paint(self, painter, option, index):
+    def _paint_pin_icon(self, painter, option, index):
+        """Paint pin icon for pinned projects."""
         is_pinned = index.data(PROJECT_IS_PINNED_ROLE)
         if not is_pinned:
-            super().paint(painter, option, index)
             return
-        opt = QtWidgets.QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        widget = option.widget
-        if widget is None:
-            style = QtWidgets.QApplication.style()
-        else:
-            style = widget.style()
-        # CE_ItemViewItem
-        proxy = style.proxy()
+
         painter.save()
-        painter.setClipRect(option.rect)
-        decor_rect = proxy.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemDecoration, opt, widget
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+
+        pin_icon = self._get_pin_icon()
+        icon_size = option.decorationSize
+        # Position pin icon on the right side of the row, vertically centered
+        pin_rect = QtCore.QRect(
+            option.rect.right() - icon_size.width() - 6,
+            option.rect.center().y() - icon_size.height() // 2,
+            icon_size.width(),
+            icon_size.height(),
         )
-        text_rect = proxy.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemText, opt, widget
+        mode = (
+            QtGui.QIcon.Mode.Normal
+            if option.state & QtWidgets.QStyle.StateFlag.State_Enabled
+            else QtGui.QIcon.Mode.Disabled
         )
-        proxy.drawPrimitive(
-            QtWidgets.QStyle.PE_PanelItemViewItem, opt, painter, widget
+        pin_icon.paint(
+            painter,
+            pin_rect,
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            mode,
         )
-        mode = QtGui.QIcon.Normal
-        if not opt.state & QtWidgets.QStyle.State_Enabled:
-            mode = QtGui.QIcon.Disabled
-        elif opt.state & QtWidgets.QStyle.State_Selected:
-            mode = QtGui.QIcon.Selected
-        state = QtGui.QIcon.Off
-        if opt.state & QtWidgets.QStyle.State_Open:
-            state = QtGui.QIcon.On
-
-        # Draw project icon
-        opt.icon.paint(
-            painter, decor_rect, opt.decorationAlignment, mode, state
-        )
-
-        # Draw pin icon
-        if index.data(PROJECT_IS_PINNED_ROLE):
-            pin_icon = self._get_pin_icon()
-            pin_rect = QtCore.QRect(decor_rect)
-            diff = option.rect.width() - pin_rect.width()
-            pin_rect.moveLeft(diff)
-            pin_icon.paint(
-                painter, pin_rect, opt.decorationAlignment, mode, state
-            )
-
-        # Draw text
-        if opt.text:
-            if not opt.state & QtWidgets.QStyle.State_Enabled:
-                cg = QtGui.QPalette.Disabled
-            elif not (opt.state & QtWidgets.QStyle.State_Active):
-                cg = QtGui.QPalette.Inactive
-            else:
-                cg = QtGui.QPalette.Normal
-
-            if opt.state & QtWidgets.QStyle.State_Selected:
-                painter.setPen(
-                    opt.palette.color(cg, QtGui.QPalette.HighlightedText)
-                )
-            else:
-                painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
-
-            if opt.state & QtWidgets.QStyle.State_Editing:
-                painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
-                painter.drawRect(text_rect.adjusted(0, 0, -1, -1))
-
-            margin = proxy.pixelMetric(
-                QtWidgets.QStyle.PM_FocusFrameHMargin, None, widget
-            ) + 1
-            text_rect.adjust(margin, 0, -margin, 0)
-            # NOTE skipping some steps e.g. word wrapping and elided
-            #   text (adding '...' when too long).
-            painter.drawText(
-                text_rect,
-                opt.displayAlignment,
-                opt.text
-            )
-
-        # Draw focus rect
-        if opt.state & QtWidgets.QStyle.State_HasFocus:
-            focus_opt = QtWidgets.QStyleOptionFocusRect()
-            focus_opt.state = option.state
-            focus_opt.direction = option.direction
-            focus_opt.rect = option.rect
-            focus_opt.fontMetrics = option.fontMetrics
-            focus_opt.palette = option.palette
-
-            focus_opt.rect = style.subElementRect(
-                QtWidgets.QCommonStyle.SE_ItemViewItemFocusRect,
-                option,
-                option.widget
-            )
-            focus_opt.state |= (
-                QtWidgets.QStyle.State_KeyboardFocusChange
-                | QtWidgets.QStyle.State_Item
-            )
-            focus_opt.backgroundColor = option.palette.color(
-                (
-                    QtGui.QPalette.Normal
-                    if option.state & QtWidgets.QStyle.State_Enabled
-                    else QtGui.QPalette.Disabled
-                ),
-                (
-                    QtGui.QPalette.Highlight
-                    if option.state & QtWidgets.QStyle.State_Selected
-                    else QtGui.QPalette.Window
-                )
-            )
-            style.drawPrimitive(
-                QtWidgets.QCommonStyle.PE_FrameFocusRect,
-                focus_opt,
-                painter,
-                option.widget
-            )
         painter.restore()
 
     def _get_pin_icon(self):
         if self._pin_icon is None:
             self._pin_icon = get_qt_icon(MaterialSymbolsIcon("keep"))
         return self._pin_icon
+
+
+class ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
+    """Tree view delegate with pin icon support."""
+
+    def paint(self, painter, option, index):
+        """Paint tree item with pin icon for pinned projects."""
+        super().paint(painter, option, index)
+        self._paint_pin_icon(painter, option, index)
+
+
+class ProjectsComboBoxDelegate(_ProjectsPinMixin, ComboBoxItemDelegate):
+    """Combobox delegate with pin icon support."""
+
+    def paint(self, painter, option, index):
+        """Paint combobox item with pin icon for pinned projects."""
+        super().paint(painter, option, index)
+        self._paint_pin_icon(painter, option, index)
 
 
 class ProjectsCombobox(QtWidgets.QWidget):
@@ -632,12 +571,19 @@ class ProjectsCombobox(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        projects_combobox = QtWidgets.QComboBox(self)
-        combobox_delegate = ProjectsDelegate(projects_combobox)
-        projects_combobox.setItemDelegate(combobox_delegate)
+        projects_combobox = AYComboBox(self)
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
         projects_proxy_model.setSourceModel(projects_model)
+
+        # Set custom delegate for combobox items
+        ayon_style = get_ayon_style()
+        combobox_delegate = ProjectsComboBoxDelegate(
+            parent=projects_combobox.view(),
+            style_model=ayon_style.model
+        )
+        projects_combobox.setItemDelegate(combobox_delegate)
+
         projects_combobox.setModel(projects_proxy_model)
 
         main_layout = QtWidgets.QHBoxLayout(self)
@@ -673,7 +619,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._projects_combobox = projects_combobox
         self._projects_model = projects_model
         self._projects_proxy_model = projects_proxy_model
-        self._combobox_delegate = combobox_delegate
+
 
     def refresh(self):
         self._projects_model.refresh()
@@ -841,19 +787,23 @@ class ProjectsWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent=parent)
 
-        projects_view = ListView(parent=self)
-        projects_view.setResizeMode(QtWidgets.QListView.Adjust)
-        projects_view.setVerticalScrollMode(
-            QtWidgets.QAbstractItemView.ScrollPerPixel
+        projects_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        projects_view.setIndentation(0)
+        projects_view.setHeaderHidden(True)
+        projects_view.setSelectionMode(
+            AYTreeView.SelectionMode.SingleSelection
         )
-        projects_view.setAlternatingRowColors(False)
-        projects_view.setWrapping(False)
-        projects_view.setWordWrap(False)
-        projects_view.setSpacing(0)
-        projects_delegate = ProjectsDelegate(projects_view)
+
+        # Set custom delegate for tree view items
+        ayon_style = get_ayon_style()
+        projects_delegate = ProjectsTreeDelegate(
+            parent=projects_view,
+            style_model=ayon_style.model,
+            variant=projects_view._variant_str,
+            item_height=23,
+            item_padding=[1, 6],
+        )
         projects_view.setItemDelegate(projects_delegate)
-        projects_view.activate_flick_charm()
-        projects_view.set_deselectable(True)
 
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
@@ -864,7 +814,7 @@ class ProjectsWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(projects_view, 1)
 
-        projects_view.selectionModel().selectionChanged.connect(
+        projects_view.selection_changed.connect(
             self._on_selection_change
         )
         projects_view.double_clicked.connect(self.double_clicked)
@@ -917,9 +867,9 @@ class ProjectsWidget(QtWidgets.QWidget):
         proxy_index = self._projects_proxy_model.mapFromSource(index)
         if proxy_index.isValid():
             selection_model = self._projects_view.selectionModel()
-            selection_model.select(
+            selection_model.setCurrentIndex(
                 proxy_index,
-                QtCore.QItemSelectionModel.ClearAndSelect
+                QtCore.QItemSelectionModel.SelectCurrent
             )
 
     def _on_model_refresh(self):
@@ -927,15 +877,10 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_proxy_model.invalidateFilter()
         self.refreshed.emit()
 
-    def _on_selection_change(self, new_selection, _old_selection):
-        project_name = None
-        for index in new_selection.indexes():
-            name = index.data(PROJECT_NAME_ROLE)
-            if name:
-                project_name = name
-                break
-        self.selection_changed.emit(project_name or "")
+    def _on_selection_change(self, _new_selection=None, _old_selection=None):
+        project_name = self.get_selected_project()
         self._controller.set_selected_project(project_name)
+        self.selection_changed.emit(project_name or "")
 
     def _on_projects_refresh_finished(self, event):
         if event["sender"] != PROJECTS_MODEL_SENDER:
