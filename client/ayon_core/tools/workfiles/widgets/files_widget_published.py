@@ -1,7 +1,7 @@
 import os
 
 import qtawesome
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui
 
 from ayon_ui_qt.components import (
     AYContainer,
