@@ -9,9 +9,6 @@ from ayon_ui_qt.components import (
     AYVBoxLayout,
     AYLineEdit
 )
-
-
-
 from ayon_core import resources, style
 from ayon_core.tools.utils import (
     FoldersWidget,
