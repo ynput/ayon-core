@@ -831,9 +831,19 @@ class AbstractTemplateBuilder(ABC):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            dict: Dictionary with `path`, `keep_placeholder` and
-                `create_first_version` settings from the template preset
-                for current context.
+            dict: Dictionary with:
+                - `path`: Resolved template filesystem path.
+                - `keep_placeholder`: Whether placeholders should remain
+                    after processing.
+                - `create_first_version`: Whether first workfile version
+                    should be created in workfile-creation flow.
+                - `profile`: Defensive copy of the matched profile from
+                    project settings.
+
+                Note:
+                    `profile["path"]` contains the unresolved value from
+                    settings, while `path` contains the resolved filesystem
+                    path.
 
         Raises:
             TemplateProfileNotFound: When profiles are not filled.
