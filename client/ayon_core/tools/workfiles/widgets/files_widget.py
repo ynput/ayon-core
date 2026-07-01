@@ -42,7 +42,8 @@ class FilesWidget(AYContainer):
 
         workarea_btns_widget = QtWidgets.QWidget(btns_widget)
         workarea_btn_open = AYButton(
-            "Open", variant=AYButton.Variants.Surface,
+            "Open",
+            variant=AYButton.Variants.Surface,
             parent=workarea_btns_widget,
         )
         workarea_btn_browse = AYButton(
