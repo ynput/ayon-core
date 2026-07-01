@@ -82,7 +82,9 @@ class FilesWidget(AYContainer):
             parent=published_btns_widget,
         )
 
-        published_btns_layout = AYHBoxLayout(published_btns_widget, margin=0, spacing=4)
+        published_btns_layout = AYHBoxLayout(
+            published_btns_widget, margin=0, spacing=4
+        )
         published_btns_layout.addWidget(published_btn_copy_n_open, 1)
         published_btns_layout.addWidget(published_btn_change_context, 1)
         published_btns_layout.addWidget(published_btn_cancel, 1)
