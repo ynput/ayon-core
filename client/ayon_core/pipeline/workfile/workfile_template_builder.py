@@ -562,7 +562,8 @@ class AbstractTemplateBuilder(ABC):
 
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
-        if explicit_build_requested:
+        is_new_file = not self.host.get_current_workfile()
+        if is_new_file or explicit_build_requested:
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
@@ -898,7 +899,7 @@ class AbstractTemplateBuilder(ABC):
             "path": resolved_path,
             "keep_placeholder": keep_placeholder,
             "create_first_version": create_first_version,
-            "profile": profile,
+            "profile": copy.deepcopy(profile),
         }
 
     def resolve_template_path(self, path, fill_data=None) -> str:
