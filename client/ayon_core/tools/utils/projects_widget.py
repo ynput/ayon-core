@@ -633,7 +633,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        #TODO: Need to update component to support to show project pin
+        # TODO: Need to update component to support to show project pin
         projects_combobox = AYComboBox(self)
         combobox_delegate = ProjectsDelegate(projects_combobox)
         projects_combobox.setItemDelegate(combobox_delegate)
