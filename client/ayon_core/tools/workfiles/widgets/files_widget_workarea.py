@@ -303,7 +303,7 @@ class WorkAreaFilesWidget(AYContainer):
             layout_spacing=0,
         )
 
-        view = AYTreeView(self,  variant=AYTreeView.Variants.Default)
+        view = AYTreeView(self, variant=AYTreeView.Variants.Default)
         view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
