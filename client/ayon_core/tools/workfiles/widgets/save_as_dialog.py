@@ -129,7 +129,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         btns_widget = QtWidgets.QWidget(self)
 
         btn_ok = AYButton(
-            "Ok", variant=AYButton.Variants.Filled,
+            "Ok",
+            variant=AYButton.Variants.Filled,
             parent=btns_widget,
         )
         btn_cancel = AYButton(
