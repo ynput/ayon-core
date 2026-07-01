@@ -57,7 +57,9 @@ class FilesWidget(AYContainer):
             parent=workarea_btns_widget,
         )
 
-        workarea_btns_layout = AYHBoxLayout(workarea_btns_widget, margin=0, spacing=4)
+        workarea_btns_layout = AYHBoxLayout(
+            workarea_btns_widget, margin=0, spacing=4
+        )
         workarea_btns_layout.setContentsMargins(0, 8, 0, 0)
         workarea_btns_layout.addWidget(workarea_btn_open, 1)
         workarea_btns_layout.addWidget(workarea_btn_browse, 1)
