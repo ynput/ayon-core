@@ -52,7 +52,8 @@ class FilesWidget(AYContainer):
             parent=workarea_btns_widget,
         )
         workarea_btn_save = AYButton(
-            "Save As", variant=AYButton.Variants.Surface,
+            "Save As",
+            variant=AYButton.Variants.Surface,
             parent=workarea_btns_widget,
         )
 
