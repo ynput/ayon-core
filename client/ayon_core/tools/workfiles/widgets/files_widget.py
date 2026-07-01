@@ -72,7 +72,8 @@ class FilesWidget(AYContainer):
             parent=published_btns_widget,
         )
         published_btn_change_context = AYButton(
-            "Choose different context", variant=AYButton.Variants.Surface,
+            "Choose different context",
+            variant=AYButton.Variants.Surface,
             parent=published_btns_widget,
         )
         published_btn_cancel = AYButton(
