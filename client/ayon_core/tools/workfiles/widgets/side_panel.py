@@ -308,7 +308,10 @@ class SidePanelWidget(AYContainer):
             created_parts.append(
                 datetime.datetime.fromtimestamp(file_created).strftime(datetime_format)
             )
-        self._created_val.setText("\n".join(created_parts) if created_parts else "-")
+        if not created_parts:
+            created_parts.append("-")
+
+        self._created_val.setText("\n".join(created_parts))
 
         show_modified = bool(updated_by or file_modified)
         if show_modified:
