@@ -134,7 +134,8 @@ class SaveAsDialog(QtWidgets.QDialog):
             parent=btns_widget,
         )
         btn_cancel = AYButton(
-            "Cancel", variant=AYButton.Variants.Surface,
+            "Cancel",
+            variant=AYButton.Variants.Surface,
             parent=btns_widget,
         )
 
