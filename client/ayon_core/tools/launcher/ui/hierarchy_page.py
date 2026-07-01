@@ -85,11 +85,19 @@ class HierarchyPage(QtWidgets.QWidget):
         filters_widget = FoldersFiltersWidget(self)
 
         # - Folders widget
-        folders_widget = LauncherFoldersWidget(controller, content_body)
+        folders_widget = LauncherFoldersWidget(
+            controller,
+            content_body
+        )
         folders_widget.set_header_visible(True)
+        folders_widget.set_status_column_visible(True)
 
         # - Tasks widget
-        tasks_widget = LauncherTasksWidget(controller, content_body)
+        tasks_widget = LauncherTasksWidget(
+            controller,
+            content_body
+        )
+        tasks_widget.set_status_column_visible(True)
 
         # - Third page - Workfiles
         workfiles_page = WorkfilesPage(controller, content_body)
@@ -98,7 +106,7 @@ class HierarchyPage(QtWidgets.QWidget):
         content_body.addWidget(tasks_widget)
         content_body.addWidget(workfiles_page)
         content_body.setStretchFactor(0, 120)
-        content_body.setStretchFactor(1, 85)
+        content_body.setStretchFactor(1, 110)
         content_body.setStretchFactor(2, 220)
 
         main_layout = AYVBoxLayout(self, margin=0, spacing=4)

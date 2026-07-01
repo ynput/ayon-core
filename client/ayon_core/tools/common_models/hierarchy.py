@@ -34,10 +34,18 @@ class FolderItem:
         path (str): Folder path.
         folder_type (str): Type of folder.
         label (str | None): Folder label.
+        status (str | None): Folder status name.
     """
 
     def __init__(
-        self, entity_id, parent_id, name, path, folder_type, label
+        self,
+        entity_id,
+        parent_id,
+        name,
+        path,
+        folder_type,
+        label,
+        status,
     ):
         self.entity_id = entity_id
         self.parent_id = parent_id
@@ -45,6 +53,7 @@ class FolderItem:
         self.path = path
         self.folder_type = folder_type
         self.label = label or name
+        self.status = status
 
     def to_data(self):
         """Converts folder item to data.
@@ -60,6 +69,7 @@ class FolderItem:
             "path": self.path,
             "folder_type": self.folder_type,
             "label": self.label,
+            "status": self.status,
         }
 
     @classmethod
@@ -90,6 +100,8 @@ class TaskItem:
         name (str | None): Task label.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
+        status (str): Task status name.
+
     """
 
     def __init__(
@@ -101,6 +113,7 @@ class TaskItem:
         task_type_order: int,
         parent_id: str,
         tags: list[str],
+        status: str
     ):
         self.task_id = task_id
         self.name = name
@@ -109,6 +122,7 @@ class TaskItem:
         self.task_type_order = task_type_order
         self.parent_id = parent_id
         self.tags = tags
+        self.status = status
 
         self._full_label = None
 
@@ -150,6 +164,7 @@ class TaskItem:
             "task_type": self.task_type,
             "task_type_order": self.task_type_order,
             "tags": self.tags,
+            "status": self.status,
         }
 
     @classmethod
@@ -192,6 +207,7 @@ def _get_task_items_from_tasks(
             task_type_order,
             folder_id,
             task["tags"],
+            task["status"],
         ))
     return output
 
@@ -207,7 +223,8 @@ def _get_folder_item_from_hierarchy_item(item):
         name,
         path,
         item["folderType"],
-        item["label"]
+        item["label"],
+        item["status"],
     )
 
 
@@ -219,7 +236,8 @@ def _get_folder_item_from_entity(entity):
         name,
         entity["path"],
         entity["folderType"],
-        entity["label"] or name
+        entity["label"] or name,
+        entity["status"],
     )
 
 
@@ -312,7 +330,7 @@ class HierarchyModel(object):
         folders = ayon_api.get_folders(
             project_name,
             folder_ids=folder_ids,
-            fields=["id", "name", "label", "parentId", "path", "folderType"]
+            fields=["id", "name", "label", "parentId", "path", "folderType", "status"]
         )
         # Make sure all folder ids are in output
         output = {folder_id: None for folder_id in folder_ids}
@@ -350,7 +368,7 @@ class HierarchyModel(object):
         folders = ayon_api.get_folders(
             project_name,
             folder_paths=folder_paths,
-            fields=["id", "name", "label", "parentId", "path", "folderType"]
+            fields=["id", "name", "label", "parentId", "path", "folderType", "status"]
         )
         # Make sure all folder ids are in output
         for folder in folders:
@@ -660,7 +678,7 @@ class HierarchyModel(object):
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type", "tags"}
+            fields={"id", "name", "label", "folderId", "type", "tags", "status"}
         ))
         task_type_items = self._controller.get_task_type_items(project_name)
         return _get_task_items_from_tasks(task_type_items, tasks)

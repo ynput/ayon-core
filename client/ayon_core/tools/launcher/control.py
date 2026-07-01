@@ -113,6 +113,11 @@ class BaseLauncherController(
             project_name, sender
         )
 
+    def get_project_status_items(self, project_name, sender=None):
+        return self._projects_model.get_project_status_items(
+            project_name, sender
+        )
+
     def get_task_type_items(self, project_name, sender=None):
         return self._projects_model.get_task_type_items(
             project_name, sender

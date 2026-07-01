@@ -75,6 +75,7 @@ from .folders_widget import (
     FoldersWidget,
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
+    FOLDER_STATUS_ROLE,
     SimpleFoldersWidget,
     FoldersFiltersWidget,
 )
@@ -160,6 +161,7 @@ __all__ = (
     "FoldersWidget",
     "FoldersQtModel",
     "FOLDERS_MODEL_SENDER_NAME",
+    "FOLDER_STATUS_ROLE",
     "SimpleFoldersWidget",
     "FoldersFiltersWidget",
 
