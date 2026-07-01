@@ -47,7 +47,8 @@ class FilesWidget(AYContainer):
             parent=workarea_btns_widget,
         )
         workarea_btn_browse = AYButton(
-            "Browse", variant=AYButton.Variants.Surface,
+            "Browse",
+            variant=AYButton.Variants.Surface,
             parent=workarea_btns_widget,
         )
         workarea_btn_save = AYButton(
