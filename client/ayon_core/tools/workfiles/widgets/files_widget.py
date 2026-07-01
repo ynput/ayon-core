@@ -67,7 +67,8 @@ class FilesWidget(AYContainer):
 
         published_btns_widget = QtWidgets.QWidget(btns_widget)
         published_btn_copy_n_open = AYButton(
-            "Copy & Open", variant=AYButton.Variants.Filled,
+            "Copy & Open",
+            variant=AYButton.Variants.Filled,
             parent=published_btns_widget,
         )
         published_btn_change_context = AYButton(
