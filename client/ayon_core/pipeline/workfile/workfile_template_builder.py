@@ -560,12 +560,29 @@ class AbstractTemplateBuilder(ABC):
     """
         @wraps(func)
         def inner(self, *args, **kwargs):
-            if args and isinstance(args[0], TemplatePreset):
-                return func(self, *args, **kwargs)
-            else:
-                return self.old_build_template(*args, **kwargs)
+            if "preset" in kwargs:
+                preset = kwargs["preset"]
+                if (
+                    (preset is None or isinstance(preset, TemplatePreset))
+                    and len(kwargs) == 1
+                    and not args
+                ):
+                    return func(self, preset=preset)
 
-        setattr(func, "has_preset", True)
+            if (
+                len(args) == 1
+                and isinstance(args[0], TemplatePreset)
+                and not kwargs
+            ):
+                return func(self, *args, **kwargs)
+
+            if not args and not kwargs:
+                return func(self)
+
+            # Legacy API fallback.
+            return self.old_build_template(*args, **kwargs)
+
+        setattr(inner, "has_preset", True)
         return inner
 
     @overload
@@ -579,8 +596,7 @@ class AbstractTemplateBuilder(ABC):
         pass
 
     @overload
-    def build_template(
-        self,
+    def build_template(self,
         template_path=None,
         level_limit=None,
         keep_placeholders=None,
@@ -619,7 +635,11 @@ class AbstractTemplateBuilder(ABC):
         """
         pass
 
-    def build_template(self, preset: TemplatePreset = None) -> None:
+    @_backwards_compatibility_build_template
+    def build_template(
+        self,
+        preset: TemplatePreset = None,
+    ) -> None:
         """Build the workfile template from a preset.
 
         Args:
@@ -640,7 +660,6 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholders=preset.keep_placeholder
         )
 
-    @_backwards_compatibility_build_template
     def old_build_template(
         self,
         template_path=None,
