@@ -536,8 +536,9 @@ class AbstractTemplateBuilder(ABC):
         """Decorator for backwards compatibility of build_template method.
 
         This decorator allows the build_template method to accept either a
-        TemplatePreset object or the old parameters (template_path, level_limit,
-        keep_placeholders, create_first_version, workfile_creation_enabled).
+        TemplatePreset object or the old parameters (template_path,
+        level_limit,keep_placeholders, create_first_version,
+        workfile_creation_enabled).
         It checks the type of the first argument and calls the appropriate
         implementation based on that.
 
