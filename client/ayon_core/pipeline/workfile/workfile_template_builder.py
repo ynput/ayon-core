@@ -10,7 +10,7 @@ Placeholders are created using placeholder plugins which should care about
 logic and data of placeholder items. 'PlaceholderItem' is used to keep track
 about its progress.
 """
-
+from __future__ import annotations
 import os
 import re
 import collections
@@ -32,7 +32,7 @@ from ayon_api import (
 )
 
 from ayon_core.settings import get_project_settings
-from ayon_core.host import IWorkfileHost, AbstractHost
+from ayon_core.host import AbstractHost
 from ayon_core.lib import (
     Logger,
     StringTemplate,
@@ -109,6 +109,7 @@ class TemplateAlreadyImported(Exception):
 class TemplateLoadFailed(Exception):
     """Error raised whend Template loader was unable to load the template"""
     pass
+
 
 @dataclass
 class TemplatePreset:
