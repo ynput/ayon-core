@@ -16,7 +16,9 @@ import re
 import collections
 import copy
 from abc import ABC, abstractmethod
-from typing import Optional
+from functools import wraps
+from typing import Optional, Any, overload
+from dataclasses import dataclass
 
 import ayon_api
 from ayon_api import (
@@ -107,6 +109,31 @@ class TemplateAlreadyImported(Exception):
 class TemplateLoadFailed(Exception):
     """Error raised whend Template loader was unable to load the template"""
     pass
+
+@dataclass
+class TemplatePreset:
+    """Dataclass for template preset information.
+
+    Attributes:
+        path (str): Resolved template filesystem path.
+        keep_placeholder (bool): Whether placeholders should remain after
+            processing.
+        create_first_version (bool): Whether first workfile version should
+            be created in workfile-creation flow.
+        execute_on_app_launch (bool): Whether to execute template build on
+            application launch.
+        execute_on_new_file (bool): Whether to execute template build on
+            new file creation.
+        profile (dict): Defensive copy of the matched profile from project
+            settings.
+    """
+    path: str | None = None
+    keep_placeholder: bool = True
+    create_first_version: bool = True
+    execute_on_app_launch: bool = False
+    execute_on_new_file: bool = False
+    # For integration internal logic
+    profile: dict[str, Any] | None = None
 
 
 class AbstractTemplateBuilder(ABC):
@@ -505,7 +532,114 @@ class AbstractTemplateBuilder(ABC):
             key=lambda placeholder: placeholder.order
         ))
 
+    def _backwards_compatibility_build_template(func):
+        """Decorator for backwards compatibility of build_template method.
+
+        This decorator allows the build_template method to accept either a
+        TemplatePreset object or the old parameters (template_path, level_limit,
+        keep_placeholders, create_first_version, workfile_creation_enabled).
+        It checks the type of the first argument and calls the appropriate
+        implementation based on that.
+
+        The function is also marked with an attribute 'has_preset' set to True,
+            which can be used to check if the function is using the new
+            signature or is using the old signature. That should allow addons
+            to adapt to new signature.
+            >>> if getattr(build_template, "has_preset", True):
+            >>>     # New signature is used
+            >>>     build_template(preset)
+            >>> else:
+            >>>     # Old signature is used
+            >>>     build_template(template_path, level_limit, ...)
+
+        Args:
+            func (Callable): The original build_template method.
+
+    """
+        @wraps(func)
+        def inner(self, *args, **kwargs):
+            if args and isinstance(args[0], TemplatePreset):
+                return func(self, *args, **kwargs)
+            else:
+                return self.old_build_template(*args, **kwargs)
+
+        setattr(func, "has_preset", True)
+        return inner
+
+    @overload
+    def build_template(self, preset: TemplatePreset = None) -> None:
+        """Build the workfile template from a preset.
+
+        Args:
+            preset (TemplatePreset, optional): Template preset to use. When
+                omitted, the preset is resolved from project settings.
+        """
+        pass
+
+    @overload
     def build_template(
+        self,
+        template_path=None,
+        level_limit=None,
+        keep_placeholders=None,
+        create_first_version=None,
+        workfile_creation_enabled=False
+    ):
+        """Main callback for building workfile from template path.
+
+        Todo:
+            Handle report of populated placeholders from
+                'populate_scene_placeholders' to be shown to a user.
+
+        Args:
+            template_path (str): Path to a template file with placeholders.
+                Template from settings 'get_template_preset' used when not
+                passed.
+            level_limit (int): Limit of populate loops. Related to
+                'populate_scene_placeholders' method.
+            keep_placeholders (bool): Add flag to placeholder data for
+                hosts to decide if they want to remove
+                placeholder after it is used.
+            create_first_version (bool): Create first version of a workfile.
+                 When set to True, this option initiates the saving of the
+                 workfile for an initial version. It will skip saving if
+                 a version already exists.
+            workfile_creation_enabled (bool): Whether the call is part of
+                creating a new workfile.
+                When True, we only build if the current file is not
+                an existing saved workfile but a "new" file. Basically when
+                enabled we assume the user tries to load it only into a
+                "New File" (unsaved empty workfile).
+                When False, the default value, we assume we explicitly want to
+                build the template in our current scene regardless of current
+                scene state.
+
+        """
+        pass
+
+    def build_template(self, preset: TemplatePreset = None) -> None:
+        """Build the workfile template from a preset.
+
+        Args:
+            preset (TemplatePreset, optional): Template preset to use. When
+                omitted, the preset is resolved from project settings.
+        """
+        if not preset:
+            preset = self.get_template_preset()
+
+        if not self._is_valid_preset(preset):
+            raise TemplateLoadFailed(
+                f"Template path '{preset.path}' does not exist."
+            )
+
+        self.log.info(f"Building the workfile template: {preset.path}")
+        self.import_template(preset.path)
+        self.populate_scene_placeholders(
+            keep_placeholders=preset.keep_placeholder
+        )
+
+    @_backwards_compatibility_build_template
+    def old_build_template(
         self,
         template_path=None,
         level_limit=None,
@@ -554,11 +688,15 @@ class AbstractTemplateBuilder(ABC):
             or create_first_version is None
         ):
             preset = self.get_template_preset()
-            template_path: str = template_path or preset["path"]
+            if not self._is_valid_preset(preset):
+                raise TemplateLoadFailed(
+                    f"Template path '{preset.path}' does not exist."
+                )
+            template_path: str = preset.path or preset["path"]
             if keep_placeholders is None:
-                keep_placeholders: bool = preset["keep_placeholder"]
+                keep_placeholders: bool = preset.keep_placeholder
             if create_first_version is None:
-                create_first_version: bool = preset["create_first_version"]
+                create_first_version: bool = preset.create_first_version
 
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
@@ -618,8 +756,11 @@ class AbstractTemplateBuilder(ABC):
     def open_template(self):
         """Open template file with registered host."""
         template_preset = self.get_template_preset()
-        template_path = template_preset["path"]
-        self.host.open_workfile(template_path)
+        if not self._is_valid_preset(template_preset):
+            raise TemplateLoadFailed(
+                f"Template path '{template_preset.path}' does not exist."
+            )
+        self.host.open_workfile(template_preset.path)
 
     @abstractmethod
     def import_template(self, template_path):
@@ -648,12 +789,16 @@ class AbstractTemplateBuilder(ABC):
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
         return last_workfile_path
 
-    def save_workfile(self, workfile_path):
-        """Save workfile in current host."""
-        # Save current scene, continue to open file
-        if not isinstance(self.host, IWorkfileHost):
-            self.host.save_file(workfile_path)
-            return
+    def save_workfile(self, workfile_path: str | None = None) -> None:
+        """Save workfile in current host.
+
+        Args:
+            workfile_path (str | None): Path to save the workfile. If None,
+                the current workfile path will be used.
+
+        """
+        if workfile_path is None:
+            workfile_path = self.host.get_current_workfile()
         self.host.save_workfile_with_context(
             workfile_path,
             self.current_folder_entity,
@@ -822,7 +967,59 @@ class AbstractTemplateBuilder(ABC):
             ["profiles"]
         )
 
-    def get_template_preset(self):
+    def _is_valid_preset(self, preset: TemplatePreset) -> bool:
+        """Check if the provided template preset is valid.
+
+        Args:
+            preset (TemplatePreset): The template preset to validate.
+
+        Returns:
+            bool: True if the preset is valid, False otherwise.
+
+        """
+        if not preset.path or not os.path.exists(preset.path):
+            return False
+        return True
+
+    def trigger_on_app_launch(
+            self, preset: TemplatePreset | None = None) -> None:
+        """
+        Trigger template build on application launch if the preset allows it.
+
+        Args:
+            preset (TemplatePreset | None): The template preset to use for
+                building the workfile template. If not provided, the default
+                template preset will be used.
+
+        """
+        if preset is None:
+            preset = self.get_template_preset()
+
+        if not preset.execute_on_app_launch:
+            return
+
+        self.build_template(preset=preset)
+
+    def trigger_on_new_file(
+            self, preset: TemplatePreset | None = None) -> None:
+        """
+        Trigger template build on new file creation if the preset allows it.
+
+        Args:
+            preset (TemplatePreset | None): The template preset to use for
+                building the workfile template. If not provided, the default
+                template preset will be used.
+
+        """
+        if preset is None:
+            preset = self.get_template_preset()
+
+        if not preset.execute_on_new_file:
+            return
+
+        self.build_template(preset=preset)
+
+    def get_template_preset(self) -> TemplatePreset:
         """Unified way how template preset is received using settings.
 
         Method is dependent on '_get_build_profiles' which should return filter
@@ -831,12 +1028,16 @@ class AbstractTemplateBuilder(ABC):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            dict: Dictionary with:
+            TemplatePreset: Template preset object with:
                 - `path`: Resolved template filesystem path.
                 - `keep_placeholder`: Whether placeholders should remain
                     after processing.
                 - `create_first_version`: Whether first workfile version
                     should be created in workfile-creation flow.
+                - `execute_on_app_launch`: Whether template should be executed
+                    on application launch.
+                - `execute_on_new_file`: Whether template should be executed
+                    on new file creation.
                 - `profile`: Defensive copy of the matched profile from
                     project settings.
 
@@ -850,8 +1051,6 @@ class AbstractTemplateBuilder(ABC):
             TemplateLoadFailed: Profile was found but path is not set.
             TemplateNotFound: Path was set but file does not exist.
         """
-
-        host_name = self.host_name
         task_name = self.current_task_name
         task_type = self.current_task_type
         folder_path = self.current_folder_path
@@ -874,28 +1073,11 @@ class AbstractTemplateBuilder(ABC):
             logger=self.log
         )
         if not profile:
-            raise TemplateProfileNotFound((
-                "No matching profile found for task '{}' of type '{}' "
-                "with host '{}'"
-            ).format(task_name, task_type, host_name))
+            return TemplatePreset()
 
         path = profile["path"]
-        if not path:
-            raise TemplateLoadFailed((
-                "Template path is not set.\n"
-                "Path need to be set in {}\\Template Workfile Build "
-                "Settings\\Profiles"
-            ).format(host_name.title()))
-
+        # resolve path from ayon entity url
         resolved_path = self.resolve_template_path(path)
-        if not resolved_path or not os.path.exists(resolved_path):
-            raise TemplateNotFound(
-                "Template file found in AYON settings for task '{}' with host "
-                "'{}' does not exists. (Not found : {})".format(
-                    task_name, host_name, resolved_path)
-            )
-
-        self.log.info(f"Found template at: '{resolved_path}'")
 
         # switch to remove placeholders after they are used
         keep_placeholder = profile.get("keep_placeholder")
@@ -904,13 +1086,17 @@ class AbstractTemplateBuilder(ABC):
         # backward compatibility, since default is True
         if keep_placeholder is None:
             keep_placeholder = True
+        if create_first_version is None:
+            create_first_version = False
 
-        return {
-            "path": resolved_path,
-            "keep_placeholder": keep_placeholder,
-            "create_first_version": create_first_version,
-            "profile": copy.deepcopy(profile),
-        }
+        return TemplatePreset(
+            path=resolved_path,
+            keep_placeholder=keep_placeholder,
+            create_first_version=create_first_version,
+            execute_on_app_launch=profile.get("execute_on_app_launch", False),
+            execute_on_new_file=profile.get("execute_on_new_file", False),
+            profile=copy.deepcopy(profile)
+        )
 
     def resolve_template_path(self, path, fill_data=None) -> str:
         """Resolve the template path.
