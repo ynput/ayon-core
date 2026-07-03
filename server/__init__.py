@@ -140,11 +140,11 @@ class CoreAddon(BaseServerAddon):
 
         async with Postgres.transaction():
             if payload.folder_ids is None:
-                res = await Postgres.fetch(
+                res = await Postgres.execute(
                     UPDATE_THUMBNAILS_QUERY.format(project_name=project_name),
                 )
             else:
-                res = await Postgres.fetch(
+                res = await Postgres.execute(
                     UPDATE_THUMBNAILS_BY_IDS_QUERY.format(
                         project_name=project_name
                     ),
