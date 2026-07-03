@@ -1,11 +1,12 @@
 from typing import Any
-
-from ayon_server.addons import BaseServerAddon
 from ayon_server.actions import (
     ActionExecutor,
     ExecuteResponseModel,
     SimpleActionManifest,
 )
+from ayon_server.addons import BaseServerAddon
+from ayon_server.api.dependencies import CurrentUser
+from ayon_server.entities import ProjectEntity
 from ayon_server.types import OPModel
 from ayon_server.lib.postgres import Postgres
 try:
@@ -119,6 +120,7 @@ class CoreAddon(BaseServerAddon):
 
     async def _cleanup_folder_thumbnails(
         self,
+        user: CurrentUser,
         project_name: str,
         payload: CleanupFolderThumbnailsRequestModel,
     ) -> CleanupFolderThumbnailsResponseModel:
@@ -130,6 +132,12 @@ class CoreAddon(BaseServerAddon):
                 containing folder ids.
 
         """
+        # Validate the project exists
+        _project = await ProjectEntity.load(project_name)
+
+        # Validate user has permissions to access the project
+        await user.ensure_project_access(project_name)
+
         async with Postgres.transaction():
             if payload.folder_ids is None:
                 res = await Postgres.fetch(
