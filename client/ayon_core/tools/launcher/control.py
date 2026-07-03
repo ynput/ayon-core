@@ -17,6 +17,7 @@ from .abstract import (
     AbstractLauncherFrontEnd,
     AbstractLauncherBackend,
     RecentActionItem,
+    WebactionContext,
     WorkfileItem,
 )
 from .models import (
@@ -287,7 +288,6 @@ class BaseLauncherController(
                 item.workfile_id,
             )
         elif item.action_type == "webaction":
-            from .abstract import WebactionContext
             context = WebactionContext(
                 identifier=item.identifier,
                 project_name=item.project_name,

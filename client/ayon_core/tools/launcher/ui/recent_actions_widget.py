@@ -8,7 +8,6 @@ from ayon_core.ui.components.layouts import AYVBoxLayout, AYHBoxLayout
 from ayon_core.ui.components.scroll_area import AYScrollArea
 
 _TRANSPARENT_ICON_DEF = {"type": "transparent", "size": 256}
-RECORD_ID_ROLE = QtCore.Qt.UserRole + 1
 _QWIDGETSIZE_MAX = (1 << 24) - 1
 
 
@@ -216,7 +215,7 @@ class RecentActionsPopup(AYDropdownPopup):
         self._rows_layout = AYVBoxLayout(rows_container, margin=4, spacing=2)
 
         self._empty_label = AYLabel(
-            "No recent actions yet.", dim=True, parent=rows_container
+            "No recent actions...", dim=True, parent=rows_container
         )
         self._empty_label.setAlignment(QtCore.Qt.AlignCenter)
         self._empty_label.setContentsMargins(12, 8, 12, 8)

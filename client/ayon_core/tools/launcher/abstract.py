@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Literal, Optional, Any
 
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.common_models import (
@@ -95,18 +95,18 @@ class RecentActionItem:
     """
 
     record_id: str
-    action_type: str
+    action_type: Literal["local", "webaction"]
     identifier: str
     label: str
-    icon: Optional[dict]
-    addon_name: Optional[str]
-    addon_version: Optional[str]
-    project_name: Optional[str]
-    folder_id: Optional[str]
-    task_id: Optional[str]
-    task_name: Optional[str]
-    workfile_id: Optional[str]
     timestamp: float
+    icon: Optional[dict] = None
+    addon_name: Optional[str] = None
+    addon_version: Optional[str] = None
+    project_name: Optional[str] = None
+    folder_id: Optional[str] = None
+    task_id: Optional[str] = None
+    task_name: Optional[str] = None
+    workfile_id: Optional[str] = None
 
 
 class AbstractLauncherCommon(ABC):
