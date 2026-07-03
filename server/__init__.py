@@ -133,55 +133,45 @@ class CoreAddon(BaseServerAddon):
         async with Postgres.transaction():
             if payload.folder_ids is None:
                 res = await Postgres.fetch(
-                    FIND_THUMBNAILS_QUERY.format(project_name=project_name),
+                    UPDATE_THUMBNAILS_QUERY.format(project_name=project_name),
                 )
             else:
                 res = await Postgres.fetch(
-                    FIND_THUMBNAILS_BY_IDS_QUERY.format(
+                    UPDATE_THUMBNAILS_BY_IDS_QUERY.format(
                         project_name=project_name
                     ),
                     payload.folder_ids,
                 )
 
-        fildered_folder_ids = [row["id"] for row in res]
-        if fildered_folder_ids:
-            await Postgres.execute(
-                f"""
-                UPDATE project_{project_name}.folders
-                SET thumbnail_id = NULL
-                WHERE id = ANY($1);
-                """,
-                fildered_folder_ids,
-            )
+            filtered_folder_ids = [row["id"] for row in res]
+
         return CleanupFolderThumbnailsResponseModel(
-            count=len(fildered_folder_ids)
+            count=len(filtered_folder_ids)
         )
 
 
-FIND_THUMBNAILS_QUERY = """
-SELECT
-    f.id AS id,
-    f.thumbnail_id AS thumbnail_id
-FROM project_{project_name}.folders f
+UPDATE_THUMBNAILS_QUERY = """
+UPDATE project_{project_name}.folders AS f
+SET thumbnail_id = NULL
 WHERE f.thumbnail_id IS NOT NULL
     AND EXISTS (
         SELECT 1
-        FROM project_{project_name}.versions v
+        FROM project_{project_name}.versions AS v
         WHERE v.thumbnail_id = f.thumbnail_id
-    );
+    )
+RETURNING f.id AS id;
 """
 
 
-FIND_THUMBNAILS_BY_IDS_QUERY = """
-SELECT
-    f.id AS id,
-    f.thumbnail_id AS thumbnail_id
-FROM project_{project_name}.folders f
+UPDATE_THUMBNAILS_BY_IDS_QUERY = """
+UPDATE project_{project_name}.folders AS f
+SET thumbnail_id = NULL
 WHERE f.thumbnail_id IS NOT NULL
     AND f.id = ANY($1)
     AND EXISTS (
         SELECT 1
-        FROM project_{project_name}.versions v
+        FROM project_{project_name}.versions AS v
         WHERE v.thumbnail_id = f.thumbnail_id
-    );
+    )
+RETURNING f.id AS id;
 """
