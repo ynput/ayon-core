@@ -113,7 +113,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             if thumbnail_path:
                 self.log.debug(
                     f"Found thumbnail path for instance \"{instance_label}\"."
-                    " Thumbnail path: {}"
+                    f" Thumbnail path: {thumbnail_path}"
                 )
 
             elif valid_context_thumbnail:
@@ -126,11 +126,11 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
 
             # Skip instance if thumbnail path is not available for it
             if not thumbnail_path:
-                self.log.debug((
+                self.log.debug(
                     f"Skipping thumbnail integration for instance"
                     f" \"{instance_label}\". Instance and context"
                     " thumbnail paths are not available."
-                ).format(instance_label))
+                )
                 continue
 
             version_id = str(self._get_version_id(published_repres))
