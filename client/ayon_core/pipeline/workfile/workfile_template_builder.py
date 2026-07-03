@@ -1020,6 +1020,7 @@ class AbstractTemplateBuilder(ABC):
             return
 
         self.build_template(preset=preset)
+        self.save_first_version(preset=preset)
 
     def trigger_on_new_file(
             self, preset: TemplatePreset | None = None) -> None:
@@ -1039,6 +1040,39 @@ class AbstractTemplateBuilder(ABC):
             return
 
         self.build_template(preset=preset)
+
+    def create_first_workfile_version(
+            self, preset: TemplatePreset | None = None) -> None:
+        """Create first workfile version from template if the preset allows it.
+
+        Args:
+            preset (TemplatePreset | None): The template preset to use for
+                building the workfile template. If not provided, the default
+                template preset will be used.
+
+        """
+        if preset is None:
+            preset = self.get_template_preset()
+        self.build_template(preset=preset)
+        self.save_first_version(preset=preset)
+
+    def save_first_version(self, preset: TemplatePreset) -> None:
+        """Save the first version of the workfile if the preset allows it.
+
+        Args:
+            preset (TemplatePreset): The template preset to use for
+                building the workfile template.
+        """
+        if preset.create_first_version:
+            workfile_path = self.get_workfile_path()
+            if not os.path.exists(workfile_path):
+                self.log.info("Saving first workfile: %s", workfile_path)
+                self.save_workfile(workfile_path)
+            else:
+                self.log.info(
+                    "A workfile already exists. Skipping save of workfile as "
+                    "initial version."
+                )
 
     def get_template_preset(self) -> TemplatePreset:
         """Unified way how template preset is received using settings.
