@@ -499,7 +499,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         host_name = instance.context.data["hostName"]
         version_data["host_name"] = host_name
 
-        tags = instance.data.get("versionTags", None)
+        tags = instance.data.get("versionTags")
         if tags is not None:
             # Check if tags is an iterable.
             if not isinstance(tags, (list, tuple, set)):
