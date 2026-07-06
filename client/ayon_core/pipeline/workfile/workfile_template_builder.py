@@ -129,7 +129,7 @@ class TemplatePreset:
             settings.
     """
     path: str | None = None
-    keep_placeholder: bool = True
+    keep_placeholder: bool = False
     create_first_version: bool = True
     execute_on_app_launch: bool = False
     execute_on_new_file: bool = False
@@ -1142,7 +1142,7 @@ class AbstractTemplateBuilder(ABC):
         if keep_placeholder is None:
             keep_placeholder = True
         if create_first_version is None:
-            create_first_version = False
+            create_first_version = True
 
         return TemplatePreset(
             path=resolved_path,
