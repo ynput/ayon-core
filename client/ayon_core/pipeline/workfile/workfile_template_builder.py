@@ -816,6 +816,8 @@ class AbstractTemplateBuilder(ABC):
         """
         if workfile_path is None:
             workfile_path = self.host.get_current_workfile()
+            if not workfile_path:
+                return
         self.host.save_workfile_with_context(
             workfile_path,
             self.current_folder_entity,
