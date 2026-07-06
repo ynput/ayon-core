@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import os
-import uuid
+import sys
+import traceback
 from typing import Generator
+import uuid
 
 import arrow
 from qtpy import QtWidgets, QtCore, QtGui
@@ -84,16 +86,14 @@ class PublishReportItem:
         try:
             report = PublishReport.from_filepath(filepath)
             if report_path is None:
-                report_path = os.path.join(
-                    get_reports_dir(), f"{report.id}.json"
-                )
+                report_path = os.path.join(get_reports_dir(), report.id)
+                report.store_to_file(report_path)
+
             label = report.label
             if not label:
                 new_label = os.path.splitext(os.path.basename(filepath))[0]
 
         except Exception as exc:
-            import traceback
-            import sys
             traceback.print_exception(*sys.exc_info())
             print(f"Failed to load report from file: {filepath}. {exc}")
 
@@ -222,9 +222,6 @@ class PublisherReportHandler:
         reports_by_id = {}
         report_dir = get_reports_dir()
         for filename in os.listdir(report_dir):
-            ext = os.path.splitext(filename)[-1]
-            if ext == ".json":
-                continue
             filepath = os.path.join(report_dir, filename)
             item = PublishReportItem.from_filepath(
                 filepath, report_path=filepath
@@ -357,7 +354,6 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
                 continue
 
             new_items.append(item)
-            report_item.save()
             self._items_by_id[report_item.id] = item
             self._report_items_by_id[report_item.id] = report_item
 

@@ -422,6 +422,8 @@ class _PublishReportDataUpdate:
 
     def process(self) -> None:
         """Trigger the conversion of data."""
+        self._fix_report_label()
+        self._fix_context_label()
         self._fix_version()
         self._fill_id()
         self._fix_created_at()
@@ -441,6 +443,23 @@ class _PublishReportDataUpdate:
             item_id = uuid.uuid4().hex
             self.changed = True
             self.data["id"] = item_id
+
+    def _fix_report_label(self) -> None:
+        if self.data.get("label"):
+            return
+
+        label = "Report"
+        if self.filepath is not None:
+            label = os.path.splitext(os.path.basename(self.filepath))[0]
+        self.data["label"] = label
+        self.changed = True
+
+    def _fix_context_label(self) -> None:
+        context = self.data.setdefault("context", {})
+        label = context.get("label")
+        if label is None:
+            context["label"] = "Context"
+            self.changed = True
 
     def _fix_version(self) -> None:
         # Key 'report_version' was added in report version 1.0.0
@@ -598,15 +617,15 @@ class PublishReport:
 
     @classmethod
     def from_filepath(cls, filepath: str) -> PublishReport:
-        with open(filepath, "r") as stream:
+        with open(filepath, "r", encoding="utf-8") as stream:
             content = stream.read()
 
         data = json.loads(content)
+        if not data.get("label"):
+            data["label"] = os.path.basename(filepath)
+
         updater = _PublishReportDataUpdate(data, filepath)
         updater.process()
-        if updater.changed:
-            with open(filepath, "w") as stream:
-                json.dump(data, stream)
 
         return cls.from_data(data, skip_data_update=True)
 
@@ -643,7 +662,7 @@ class PublishReport:
         )
 
     def store_to_file(self, filepath: str) -> None:
-        with open(filepath, "w") as stream:
+        with open(filepath, "w", encoding="utf-8") as stream:
             json.dump(self.to_data(), stream)
 
 
