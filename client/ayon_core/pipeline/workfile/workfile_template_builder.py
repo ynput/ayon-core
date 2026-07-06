@@ -591,7 +591,8 @@ class AbstractTemplateBuilder(ABC):
         pass
 
     @overload
-    def build_template(self,
+    def build_template(
+        self,
         template_path=None,
         level_limit=None,
         keep_placeholders=None,
