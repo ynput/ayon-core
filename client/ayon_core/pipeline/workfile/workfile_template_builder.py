@@ -1018,7 +1018,8 @@ class AbstractTemplateBuilder(ABC):
         self.save_first_version(preset=preset)
 
     def trigger_on_new_file(
-            self, preset: TemplatePreset | None = None) -> None:
+        self, preset: TemplatePreset | None = None
+    ) -> None:
         """
         Trigger template build on new file creation if the preset allows it.
 
