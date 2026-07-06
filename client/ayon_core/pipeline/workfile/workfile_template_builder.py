@@ -1058,16 +1058,16 @@ class AbstractTemplateBuilder(ABC):
             preset (TemplatePreset): The template preset to use for
                 building the workfile template.
         """
-        if preset.create_first_version:
-            workfile_path = self.get_workfile_path()
-            if not os.path.exists(workfile_path):
-                self.log.info("Saving first workfile: %s", workfile_path)
-                self.save_workfile(workfile_path)
-            else:
-                self.log.info(
-                    "A workfile already exists. Skipping save of workfile as "
-                    "initial version."
-                )
+        if not preset.create_first_version:
+            return
+
+        workfile_path = self.get_workfile_path()
+        if not workfile_path:
+            self.log.info("Workfile path to save is not available.")
+            return
+
+        self.log.info("Saving first workfile: %s", workfile_path)
+        self.save_workfile(workfile_path)
 
     def get_template_preset(self) -> TemplatePreset:
         """Unified way how template preset is received using settings.
