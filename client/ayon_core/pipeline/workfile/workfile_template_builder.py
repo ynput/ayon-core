@@ -1001,7 +1001,8 @@ class AbstractTemplateBuilder(ABC):
         return True
 
     def trigger_on_app_launch(
-            self, preset: TemplatePreset | None = None) -> None:
+        self, preset: TemplatePreset | None = None
+    ) -> None:
         """
         Trigger template build on application launch if the preset allows it.
 
