@@ -477,7 +477,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         tags = instance.data.get("versionTags", None)
         if tags is not None:
-            # Check if tags is an iteratable.
+            # Check if tags is an iterable.
             if not isinstance(tags, (list, tuple, set)):
                 raise KnownPublishError(
                     "Tags must be an iterable."
