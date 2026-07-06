@@ -24,7 +24,7 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline import (
-    KnownPublishError,
+    PublishError,
     publish,
 )
 
@@ -533,7 +533,7 @@ class ExtractOTIOReview(
             ])
 
         else:
-            raise KnownPublishError("Sequence, video or gap is required.")
+            raise PublishError("Dev bug: Sequence, video or gap is required.")
 
         if video or sequence:
             command.extend([
