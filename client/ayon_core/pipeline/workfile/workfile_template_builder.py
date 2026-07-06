@@ -562,12 +562,7 @@ class AbstractTemplateBuilder(ABC):
         def inner(self, *args, **kwargs):
             if "preset" in kwargs:
                 preset = kwargs["preset"]
-                if (
-                    (preset is None or isinstance(preset, TemplatePreset))
-                    and len(kwargs) == 1
-                    and not args
-                ):
-                    return func(self, preset=preset)
+                return func(self, preset=preset)
 
             if (
                 len(args) == 1
