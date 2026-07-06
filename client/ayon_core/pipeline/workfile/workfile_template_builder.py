@@ -1037,7 +1037,8 @@ class AbstractTemplateBuilder(ABC):
         self.build_template(preset=preset)
 
     def create_first_workfile_version(
-            self, preset: TemplatePreset | None = None) -> None:
+        self, preset: TemplatePreset | None = None
+    ) -> None:
         """Create first workfile version from template if the preset allows it.
 
         Args:
