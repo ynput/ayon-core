@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import io
@@ -19,6 +21,15 @@ from ayon_core.style import (
 )
 from ayon_core.resources import get_image_path
 from ayon_core.lib import Logger
+from ayon_core.lib.icon_definitions import (
+    IconBase,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    PathIcon,
+    UrlIcon,
+    AYONUrlIcon,
+    TransparentIcon,
+)
 
 from .constants import (
     CHECKED_INT,
@@ -28,6 +39,7 @@ from .constants import (
 )
 
 log = Logger.get_logger(__name__)
+_PLACEHOLDER = object()
 
 
 def checkstate_int_to_enum(state):
@@ -503,15 +515,110 @@ class _IconsCache:
         return "|".join(parts)
 
     @classmethod
-    def get_icon(cls, icon_def):
-        if not icon_def:
-            return None
-        icon_type = icon_def["type"]
-        cache_key = cls._get_cache_key(icon_def)
+    def get_icon(
+        cls,
+        icon_def: IconBase | dict,
+        *,
+        default: Any = _PLACEHOLDER,
+    ) -> QtGui.QIcon | Any:
+        if icon_def is None:
+            if default is _PLACEHOLDER:
+                return None
+            return default
+
+        if isinstance(icon_def, IconBase):
+            cache_key = icon_def.get_unique_id()
+        elif isinstance(icon_def, dict):
+            cache_key = cls._get_cache_key(icon_def)
+        else:
+            raise TypeError(
+                "Unsupported icon type. Expected 'IconBase' or 'dict',"
+                f" got '{type(icon_def)}'"
+            )
+
         cache = cls._cache.get(cache_key)
         if cache is not None:
             return cache
 
+        if not isinstance(icon_def, IconBase):
+            icon = cls._get_icon_from_dict(icon_def)
+            if icon is None:
+                if default is not _PLACEHOLDER:
+                    return default
+                icon = cls.get_default()
+            cls._cache[cache_key] = icon
+            return icon
+
+        icon = None
+        if isinstance(icon_def, PathIcon):
+            if os.path.exists(icon_def.path):
+                icon = QtGui.QIcon(icon_def.path)
+
+        elif isinstance(icon_def, AwesomeFontIcon):
+            with contextlib.suppress(Exception):
+                icon = qtawesome.icon(
+                    icon_def.name,
+                    color=icon_def.color,
+                )
+
+        elif isinstance(icon_def, MaterialSymbolsIcon):
+            with contextlib.suppress(Exception):
+                icon = qtmaterialsymbols.get_icon(
+                    icon_def.name,
+                    icon_def.color,
+                )
+
+        elif isinstance(icon_def, UrlIcon):
+            url = icon_def.url
+            try:
+                content = urllib.request.urlopen(url).read()
+                pix = QtGui.QPixmap()
+                pix.loadFromData(content)
+                icon = QtGui.QIcon(pix)
+            except Exception:
+                log.warning(
+                    "Failed to download image '%s'", url, exc_info=True
+                )
+
+        elif isinstance(icon_def, AYONUrlIcon):
+            url = icon_def.url.lstrip("/")
+            url = f"{ayon_api.get_base_url()}/{url}"
+            try:
+                stream = io.BytesIO()
+                ayon_api.download_file_to_stream(url, stream)
+                pix = QtGui.QPixmap()
+                pix.loadFromData(stream.getvalue())
+                icon = QtGui.QIcon(pix)
+            except Exception:
+                log.warning(
+                    "Failed to download image '%s'", url, exc_info=True
+                )
+
+        elif isinstance(icon_def, TransparentIcon):
+            pix = QtGui.QPixmap(icon_def.size, icon_def.size)
+            pix.fill(QtCore.Qt.transparent)
+            icon = QtGui.QIcon(pix)
+
+        if icon is None:
+            # Do not cache 'default' value
+            if default is not _PLACEHOLDER:
+                return default
+
+            icon = cls.get_default()
+        cls._cache[cache_key] = icon
+        return icon
+
+    @classmethod
+    def _get_icon_from_dict(
+        cls, icon_def: dict[str, Any]
+    ) -> QtGui.QIcon | None:
+        """Get icon from dictionary definition.
+
+        In ideal case dictionary definitions should be replace with 'IconBase'
+            but that is request for future.
+
+        """
+        icon_type = icon_def["type"]
         icon = None
         if icon_type == "path":
             path = icon_def["path"]
@@ -567,10 +674,6 @@ class _IconsCache:
             pix = QtGui.QPixmap(size, size)
             pix.fill(QtCore.Qt.transparent)
             icon = QtGui.QIcon(pix)
-
-        if icon is None:
-            icon = cls.get_default()
-        cls._cache[cache_key] = icon
         return icon
 
     @classmethod
@@ -616,17 +719,22 @@ class _IconsCache:
         return icon
 
 
-def get_qt_icon(icon_def):
+def get_qt_icon(
+    icon_def: IconBase | dict[str, Any],
+    *,
+    default: Any = _PLACEHOLDER,
+) -> QtGui.QIcon | Any:
     """Returns icon from cache or creates new one.
 
     Args:
-        icon_def (dict[str, Any]): Icon definition.
+        icon_def (IconBase | dict[str, Any): Icon definition.
+        default (Any): Default value to return if icon is not found.
 
     Returns:
         QtGui.QIcon: Icon.
 
     """
-    return _IconsCache.get_icon(icon_def)
+    return _IconsCache.get_icon(icon_def, default=default)
 
 
 def get_qta_icon_by_name_and_color(icon_name, icon_color):

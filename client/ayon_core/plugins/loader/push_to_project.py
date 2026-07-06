@@ -3,6 +3,7 @@ from typing import Optional, Any
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import get_ayon_launcher_args, run_detached_process
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 
 from ayon_core.pipeline.actions import (
     LoaderSimpleActionPlugin,
@@ -15,11 +16,7 @@ class PushToProject(LoaderSimpleActionPlugin):
     identifier = "core.push-to-project"
     label = "Push to project"
     order = 35
-    icon = {
-        "type": "material-symbols",
-        "name": "send",
-        "color": "#d8d8d8",
-    }
+    icon = MaterialSymbolsIcon("send", color="#d8d8d8")
 
     def is_compatible(
         self, selection: LoaderActionSelection
