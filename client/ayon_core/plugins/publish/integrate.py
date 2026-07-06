@@ -602,7 +602,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 f"Extension must not start with a dot '.': {repre['ext']}"
             )
 
-        repre_transfers = repre["transfers"]
+        repre_transfers = repre.get("transfers")
         if repre_transfers:
             raise PublishError(
                 "Representation is not allowed to have transfers"
