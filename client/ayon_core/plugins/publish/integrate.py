@@ -26,6 +26,7 @@ from ayon_core.lib.file_transaction import (
 )
 from ayon_core.pipeline.publish import (
     KnownPublishError,
+    PublishError,
     get_publish_template_name,
 )
 from ayon_core.pipeline import is_product_base_type_supported
@@ -479,13 +480,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if tags is not None:
             # Check if tags is an iterable.
             if not isinstance(tags, (list, tuple, set)):
-                raise KnownPublishError(
+                raise PublishError(
                     "Tags must be an iterable."
                     f" Instead got type {type(tags)}"
                 )
             # Error if not all are string.
             if not all(isinstance(tag, str) for tag in tags):
-                raise KnownPublishError(
+                raise PublishError(
                     "Version tags must be an iterable of strings. "
                     f"Got: {type(tags)}"
                 )
