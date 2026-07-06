@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Optional
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
     OptionalPyblishPluginMixin,
-    KnownPublishError,
+    PublishError,
 )
 
 if TYPE_CHECKING:
@@ -129,7 +129,7 @@ class IntegrateHeroVersionTraits(
                 "data. It has to go first through product integrator."
             )
             self.log.error(msg)
-            raise KnownPublishError(msg)
+            raise PublishError(msg)
 
         if src_version_entity["version"] == 0:
             self.log.warning("Version 0 cannot have hero version. Skipping.")
@@ -193,7 +193,7 @@ class IntegrateHeroVersionTraits(
                 "has to be published to create hero version."
             )
             self.log.error(msg)
-            raise KnownPublishError(msg)
+            raise PublishError(msg)
 
         # Separate old representations into `to replace` and `to delete`
         inactive_old_repres_by_name = {}
@@ -299,7 +299,7 @@ class IntegrateHeroVersionTraits(
             )
             file_transactions.rollback()
             self.log.error(msg)
-            raise KnownPublishError(msg) from e
+            raise PublishError(msg) from e
         except Exception as e:
             msg = (
                 "An error occurred during file transfer for hero version. "
@@ -307,7 +307,7 @@ class IntegrateHeroVersionTraits(
             )
             file_transactions.rollback()
             self.log.error(msg)
-            raise KnownPublishError(msg) from e
+            raise PublishError(msg) from e
         finally:
             file_transactions.finalize()
 
