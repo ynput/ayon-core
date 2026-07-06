@@ -95,7 +95,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.49
     families = [
         "imagesequence", "render", "render2d", "prerender",
-        "source", "clip", "take", "online", "image"
+        "source", "clip", "take", "online", "image", "editorial_pkg"
     ]
     hosts = [
         "shell",
@@ -110,6 +110,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "unreal",
         "houdini",
         "batchdelivery",
+        "workflow",
     ]
     settings_category = "core"
     enabled = False

@@ -21,26 +21,6 @@ class CollectAudio(pyblish.api.ContextPlugin):
     label = "Collect Folder Audio"
     order = pyblish.api.CollectorOrder + 0.1
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "blender",
-        "houdini",
-        "max",
-        "batchdelivery",
-    ]
     settings_category = "core"
 
     audio_product_name = "audioMain"

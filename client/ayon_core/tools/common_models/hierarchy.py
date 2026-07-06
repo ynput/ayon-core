@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-import time
+from abc import ABC, abstractmethod
 import collections
 import contextlib
-import typing
-from abc import ABC, abstractmethod
+import time
+from typing import Any
 
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem
 
-if typing.TYPE_CHECKING:
-    from typing import Union
+from .projects import TaskTypeItem
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
 
@@ -29,12 +28,12 @@ class FolderItem:
 
     Args:
         entity_id (str): Folder id.
-        parent_id (Union[str, None]): Parent folder id. If 'None' then project
+        parent_id (str | None): Parent folder id. If 'None' then project
             is parent.
         name (str): Name of folder.
         path (str): Folder path.
         folder_type (str): Type of folder.
-        label (Union[str, None]): Folder label.
+        label (str | None): Folder label.
     """
 
     def __init__(
@@ -88,7 +87,7 @@ class TaskItem:
     Args:
         task_id (str): Task id.
         name (str): Name of task.
-        name (Union[str, None]): Task label.
+        name (str | None): Task label.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
     """
@@ -97,8 +96,9 @@ class TaskItem:
         self,
         task_id: str,
         name: str,
-        label: Union[str, None],
+        label: str | None,
         task_type: str,
+        task_type_order: int,
         parent_id: str,
         tags: list[str],
     ):
@@ -106,6 +106,7 @@ class TaskItem:
         self.name = name
         self.label = label
         self.task_type = task_type
+        self.task_type_order = task_type_order
         self.parent_id = parent_id
         self.tags = tags
 
@@ -147,6 +148,7 @@ class TaskItem:
             "label": self.label,
             "parent_id": self.parent_id,
             "task_type": self.task_type,
+            "task_type_order": self.task_type_order,
             "tags": self.tags,
         }
 
@@ -164,21 +166,30 @@ class TaskItem:
         return cls(**data)
 
 
-def _get_task_items_from_tasks(tasks):
+def _get_task_items_from_tasks(
+    task_type_items: list[TaskTypeItem],
+    tasks: list[dict[str, Any]]
+) -> list[TaskItem]:
     """
 
     Returns:
         TaskItem: Task item.
-    """
 
+    """
+    task_types = {
+        task_type.name: index
+        for index, task_type in enumerate(task_type_items)
+    }
     output = []
     for task in tasks:
         folder_id = task["folderId"]
+        task_type_order = task_types[task["type"]]
         output.append(TaskItem(
             task["id"],
             task["name"],
             task["label"],
             task["type"],
+            task_type_order,
             folder_id,
             task["tags"],
         ))
@@ -651,4 +662,5 @@ class HierarchyModel(object):
             folder_ids=[folder_id],
             fields={"id", "name", "label", "folderId", "type", "tags"}
         ))
-        return _get_task_items_from_tasks(tasks)
+        task_type_items = self._controller.get_task_type_items(project_name)
+        return _get_task_items_from_tasks(task_type_items, tasks)

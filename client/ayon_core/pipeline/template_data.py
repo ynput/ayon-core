@@ -219,6 +219,9 @@ def get_template_data(
 
     if host_name:
         template_data["app"] = host_name
+        template_data["host"] = {
+            "name": host_name,
+        }
 
     return template_data
 

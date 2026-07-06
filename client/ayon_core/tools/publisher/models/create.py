@@ -21,10 +21,14 @@ from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     EnumDef,
     ButtonDef,
+    UIDef,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.lib.attribute_definitions import UIDef
-from ayon_core.lib import is_func_signature_supported
+from ayon_core.lib import (
+    is_func_signature_supported,
+    IconBase,
+    get_icon_def_from_data,
+)
 from ayon_core.pipeline.create import (
     BaseCreator,
     AutoCreator,
@@ -125,7 +129,7 @@ class CreatorItem:
         product_base_type: str,
         label: str,
         group_label: str,
-        icon: Union[str, Dict[str, Any], None],
+        icon: IconBase | dict[str, Any] | str | None,
         description: Union[str, None],
         detailed_description: Union[str, None],
         default_variant: Union[str, None],
@@ -141,7 +145,7 @@ class CreatorItem:
         self.product_base_type: str = product_base_type
         self.label: str = label
         self.group_label: str = group_label
-        self.icon: Union[str, Dict[str, Any], None] = icon
+        self.icon: IconBase | dict[str, Any] | str | None = icon
         self.description: Union[str, None] = description
         self.detailed_description: Union[bool, None] = detailed_description
         self.default_variant: Union[bool, None] = default_variant
@@ -229,6 +233,10 @@ class CreatorItem:
             pre_create_attributes_defs = serialize_attr_defs(
                 self.pre_create_attributes_defs
             )
+        icon = self.icon
+        if isinstance(icon, IconBase):
+            icon = icon.to_data()
+            icon["__iconBase__"] = True
 
         return {
             "identifier": self.identifier,
@@ -250,6 +258,10 @@ class CreatorItem:
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "CreatorItem":
+        icon = data["icon"]
+        if isinstance(icon, dict) and icon.pop("__iconBase__", False):
+            data["icon"] = get_icon_def_from_data(icon)
+
         pre_create_attributes_defs = data["pre_create_attributes_defs"]
         if pre_create_attributes_defs is not None:
             data["pre_create_attributes_defs"] = deserialize_attr_defs(

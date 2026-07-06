@@ -203,6 +203,16 @@ class AYONMenuModel(BaseSettingsModel):
     )
 
 
+class GeneralToolsModel(BaseSettingsModel):
+    use_task_type_sorting: bool = SettingsField(
+        True,
+        title="Use task type sorting",
+        description=(
+            "Sort tasks in UIs based on task types order in Anatomy."
+        )
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -445,6 +455,10 @@ class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
         title="AYON Menu"
+    )
+    general: GeneralToolsModel = SettingsField(
+        default_factory=GeneralToolsModel,
+        title="General"
     )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,

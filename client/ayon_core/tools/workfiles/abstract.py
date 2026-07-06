@@ -276,6 +276,10 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         """
         pass
 
+    @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
     @property
     @abstractmethod
     def project_anatomy(self):

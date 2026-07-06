@@ -11,6 +11,7 @@ from ayon_core.lib import (
     collect_frames,
     get_datetime_data,
 )
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     LoaderSimpleActionPlugin,
@@ -30,11 +31,7 @@ class DeliveryAction(LoaderSimpleActionPlugin):
     identifier = "core.delivery"
     label = "Deliver Versions"
     order = 35
-    icon = {
-        "type": "material-symbols",
-        "name": "upload",
-        "color": "#d8d8d8",
-    }
+    icon = MaterialSymbolsIcon("uload", color="#d8d8d8")
 
     def is_compatible(self, selection: LoaderActionSelection) -> bool:
         if self.host_name is not None:
