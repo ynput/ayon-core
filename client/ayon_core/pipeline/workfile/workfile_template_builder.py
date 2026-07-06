@@ -40,6 +40,13 @@ from ayon_core.lib import (
     attribute_definitions,
 )
 from ayon_core.lib.events import EventSystem, EventCallback, Event
+from ayon_core.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.template_data import get_template_data
+from ayon_core.pipeline.workfile.path_resolving import (
+    get_workfile_template_key,
+    get_workdir,
+)
+
 from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
@@ -731,7 +738,10 @@ class AbstractTemplateBuilder(ABC):
 
         # If there is no existing workfile, save the first version
         workfile_path = self.get_workfile_path()
-        if not os.path.exists(workfile_path):
+        if (
+                not self._has_existing_workfile_version()
+                and not os.path.exists(workfile_path)
+        ):
             self.log.info("Saving first workfile: %s", workfile_path)
             self.save_workfile(workfile_path)
         else:
@@ -802,9 +812,103 @@ class AbstractTemplateBuilder(ABC):
         """
         # AYON_LAST_WORKFILE will be set to the last existing workfile OR
         # if none exist it will be set to the first version.
-        last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
-        self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
-        return last_workfile_path
+        project_name = self.project_name
+        folder_entity = self.current_folder_entity
+        task_entity = self.current_task_entity
+
+        current_path = self.host.get_current_workfile()
+        if current_path:
+            current_path = os.path.normpath(current_path)
+
+        project_settings = self.project_settings
+        project_entity = ayon_api.get_project(project_name)
+        anatomy = Anatomy(project_name, project_entity=project_entity)
+
+        template_key = get_workfile_template_key(
+            project_name,
+            task_entity["taskType"],
+            self.host_name,
+            project_settings=project_settings,
+        )
+        file_template = anatomy.get_template_item("work", template_key, "file")
+        template_data = get_template_data(
+            project_entity,
+            folder_entity,
+            task_entity,
+            self.host_name,
+            project_settings,
+        )
+        workdir = get_workdir(
+            project_entity,
+            folder_entity,
+            task_entity,
+            self.host_name,
+            anatomy=anatomy,
+            template_key=template_key,
+            project_settings=project_settings,
+        )
+
+        last_workfile = None
+        workfiles = self.host.list_workfiles(
+            project_name,
+            folder_entity,
+            task_entity,
+        )
+        for workfile in workfiles:
+            if workfile.version is None:
+                continue
+            if (
+                last_workfile is None
+                or last_workfile.version < workfile.version
+            ):
+                last_workfile = workfile
+
+        if last_workfile is not None:
+            version = last_workfile.version + 1
+        else:
+            version = get_versioning_start(
+                project_name,
+                self.host_name,
+                task_name=task_entity["name"],
+                task_type=task_entity["taskType"],
+                product_base_type="workfile",
+            )
+
+        template_data["version"] = version
+
+        ext = None
+        workfile_extensions = self.host.get_workfile_extensions()
+        if workfile_extensions:
+            if current_path:
+                ext = os.path.splitext(current_path)[1]
+            elif last_workfile is not None:
+                ext = os.path.splitext(last_workfile.filepath)[1]
+            else:
+                ext = next(iter(workfile_extensions))
+            ext = ext.lstrip(".")
+
+        if ext:
+            template_data["ext"] = ext
+
+        filename = file_template.format_strict(template_data)
+        return os.path.join(workdir, filename)
+
+    def _has_existing_workfile_version(self) -> bool:
+        """Return whether current context already has a saved workfile."""
+        folder_entity = self.current_folder_entity
+        task_entity = self.current_task_entity
+        if not folder_entity or not task_entity:
+            return False
+
+        workfiles = self.host.list_workfiles(
+            self.project_name,
+            folder_entity,
+            task_entity,
+        )
+        for workfile in workfiles:
+            if workfile.version is not None:
+                return True
+        return False
 
     def save_workfile(self, workfile_path: str | None = None) -> None:
         """Save workfile in current host.
