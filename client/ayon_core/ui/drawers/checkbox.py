@@ -205,7 +205,7 @@ class CheckboxDrawer:
             painter.setPen(pen)
         else:
             painter.setPen(Qt.PenStyle.NoPen)
-        frame_rect: QRectF = option.rect.toRectF().adjusted(1, 0, -1, 0)
+        frame_rect: QRectF = QRectF(option.rect).adjusted(1, 0, -1, 0)
         radius = frame_rect.height() / 2.0
         painter.drawRoundedRect(frame_rect, radius, radius)
 
