@@ -36,7 +36,6 @@ from ayon_core.pipeline.create import (
     CreatedInstance,
     AttributeValues,
     ProductTypeItem,
-    ButtonCallbackInfo,
 )
 from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
