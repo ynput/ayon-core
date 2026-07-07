@@ -194,6 +194,8 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             expand_cols = 2
             if attr_def.is_value_def and attr_def.is_label_horizontal:
                 expand_cols = 1
+            elif isinstance(attr_def, ButtonDef):
+                expand_cols = 1
 
             col_num = 2 - expand_cols
 
@@ -419,6 +421,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 if visible_widget:
                     expand_cols = 2
                     if attr_def.is_value_def and attr_def.is_label_horizontal:
+                        expand_cols = 1
+                    elif isinstance(attr_def, ButtonDef):
                         expand_cols = 1
 
                     col_num = 2 - expand_cols

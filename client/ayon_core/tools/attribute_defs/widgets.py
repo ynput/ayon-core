@@ -241,6 +241,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                     expand_cols = 1
                 else:
                     row += 1
+            
+            if isinstance(attr_def, ButtonDef):
+                col_num += 1
+                expand_cols = 1
 
             if attr_def.is_value_def:
                 widget.value_changed.connect(self._on_value_change)
@@ -377,9 +381,7 @@ class ButtonAttrWidget(_BaseAttrDefWidget):
 
         self._input_widget = input_widget
 
-        self.main_layout.addStretch(1)
-        self.main_layout.addWidget(input_widget, 2)
-        self.main_layout.addStretch(1)
+        self.main_layout.addWidget(input_widget, 1)
 
     def _on_click(self):
         self.attr_def.trigger()
