@@ -241,7 +241,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                     expand_cols = 1
                 else:
                     row += 1
-            
+
             if isinstance(attr_def, ButtonDef):
                 col_num += 1
                 expand_cols = 1
