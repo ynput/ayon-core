@@ -1042,7 +1042,7 @@ class CreateModel:
         self,
         instance_ids: List[str],
         include_context: bool
-    ) -> list[PublishAttrDefs]:
+    ) -> list[PublishAttrDefsInfo]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
