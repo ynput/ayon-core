@@ -915,21 +915,21 @@ class CreatedInstance:
         self.publish_attributes.mark_as_stored()
 
     @property
-    def creator_attributes(self):
+    def creator_attributes(self) -> CreatorAttributeValues:
         return self._data["creator_attributes"]
 
     @property
-    def creator_attribute_defs(self):
+    def creator_attribute_defs(self) -> list[AbstractAttrDef]:
         """Attribute definitions defined by creator plugin.
 
         Returns:
-              List[AbstractAttrDef]: Attribute definitions.
-        """
+              list[AbstractAttrDef]: Attribute definitions.
 
+        """
         return self.creator_attributes.attr_defs
 
     @property
-    def publish_attributes(self):
+    def publish_attributes(self) -> PublishAttributes:
         return self._data["publish_attributes"]
 
     @property
