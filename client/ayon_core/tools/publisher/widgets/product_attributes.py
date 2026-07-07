@@ -380,16 +380,14 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         content_layout.addStretch(1)
 
         row = 0
-        for plugin_name, attr_defs, plugin_values in result:
-            for attr_def in attr_defs:
-                instance_ids = []
+        for plugin_attr_defs in result:
+            for attr_def in plugin_attr_defs.attr_defs:
                 values = []
                 default_values = []
                 is_overriden = False
                 for (instance_id, value, default_value) in (
-                    plugin_values.get(attr_def.key, [])
+                    plugin_attr_defs.values.get(attr_def.key, [])
                 ):
-                    instance_ids.append(instance_id)
                     values.append(value)
                     if not is_overriden and value != default_value:
                         is_overriden = True
@@ -403,8 +401,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                         self._controller,
                         "publish",
                         attr_def.key,
-                        plugin_name,
-                        list(instance_ids),
+                        plugin_attr_defs.plugin_name,
+                        list(plugin_attr_defs.instance_ids),
                     )
                     attr_def = attr_def.clone()
                     attr_def.set_callback(inner_callback)
@@ -467,8 +465,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 self._attr_def_info_by_id[attr_def.id] = _PublishAttrDefInfo(
                     attr_def,
-                    plugin_name,
-                    instance_ids,
+                    plugin_attr_defs.plugin_name,
+                    plugin_attr_defs.instance_ids,
                     default_values,
                     label_widget,
                 )

@@ -47,6 +47,7 @@ from ayon_core.pipeline.create import (
 )
 
 from ayon_core.tools.publisher.abstract import (
+    PublishAttrDefsInfo,
     AbstractPublisherBackend,
     CardMessageTypes,
 )
@@ -967,6 +968,7 @@ class CreateModel:
                     attr_def.trigger()
                     return
 
+        filtered_instance_ids = []
         for instance_id in instance_ids:
             if instance_id is None:
                 if plugin_id is None:
@@ -978,18 +980,27 @@ class CreateModel:
                 )
                 if plugin_defs is None:
                     continue
-                attr_def = plugin_defs.get_attr_def(key)
-                if attr_def is None:
+                _attr_def = plugin_defs.get_attr_def(key)
+                if _attr_def is None:
                     continue
-                break
+
+                filtered_instance_ids.append(instance_id)
+                if attr_def is None:
+                    attr_def = _attr_def
+                continue
 
             instance = self._create_context.get_instance_by_id(
                 instance_id
             )
             if source == "create":
-                attr_def = instance.creator_attributes.get_attr_def(key)
-                if attr_def is not None:
-                    break
+                _attr_def = instance.creator_attributes.get_attr_def(key)
+                if _attr_def is None:
+                    continue
+
+                filtered_instance_ids.append(instance_id)
+                if attr_def is None:
+                    attr_def = _attr_def
+                continue
             else:
                 plugin_defs = (
                     instance
@@ -998,9 +1009,14 @@ class CreateModel:
                 )
                 if plugin_defs is None:
                     continue
-                attr_def = plugin_defs.get_attr_def(key)
-                if attr_def is not None:
-                    break
+
+                _attr_def = plugin_defs.get_attr_def(key)
+                if _attr_def is None:
+                    continue
+
+                filtered_instance_ids.append(instance_id)
+                if attr_def is None:
+                    attr_def = _attr_def
 
         if not isinstance(attr_def, ButtonDef):
             self.log.warning(
@@ -1012,7 +1028,10 @@ class CreateModel:
         callback = attr_def.get_callback()
         if callback is None:
             return
-        info = ButtonCallbackInfo(instance_ids)
+        info = ButtonCallbackInfo(
+            instance_ids=filtered_instance_ids,
+            selected_instance_ids=instance_ids,
+        )
         if is_func_signature_supported(callback, info):
             callback(info)
         else:
@@ -1022,11 +1041,7 @@ class CreateModel:
         self,
         instance_ids: List[str],
         include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+    ) -> list[PublishAttrDefs]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
@@ -1042,8 +1057,10 @@ class CreateModel:
         for instance_id in instance_ids:
             _tmp_items.append(self._get_instance_by_id(instance_id))
 
+        attr_defs_by_plugin_name = {}
         all_defs_by_plugin_name = {}
         all_plugin_values = {}
+        instance_ids_by_name = {}
         for item in _tmp_items:
             item_id = None
             if isinstance(item, CreatedInstance):
@@ -1059,8 +1076,13 @@ class CreateModel:
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_values = all_plugin_values.setdefault(plugin_name, {})
+                instance_ids = instance_ids_by_name.get(plugin_name)
+                if instance_ids is None:
+                    instance_ids = set()
+                    instance_ids_by_name[plugin_name] = instance_ids
+                instance_ids.add(item_id)
 
+                plugin_values = all_plugin_values.setdefault(plugin_name, {})
                 plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
@@ -1080,11 +1102,15 @@ class CreateModel:
             plugin_name = plugin.__name__
             if plugin_name not in all_defs_by_plugin_name:
                 continue
-            output.append((
-                plugin_name,
-                attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values[plugin_name],
-            ))
+            instance_ids = instance_ids_by_name[plugin_name]
+            output.append(
+                PublishAttrDefsInfo(
+                    plugin_name,
+                    attr_defs_by_plugin_name[plugin_name],
+                    all_plugin_values[plugin_name],
+                    instance_ids,
+                )
+            )
         return output
 
     def get_thumbnail_paths_for_instances(

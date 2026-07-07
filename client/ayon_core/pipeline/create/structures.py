@@ -52,6 +52,7 @@ class ParentFlags(IntEnum):
 class ButtonCallbackInfo:
     """Button callback info passed to button definition callback.."""
     instance_ids: list[str | None]
+    selected_instance_ids: list[str | None]
 
 
 @dataclass
