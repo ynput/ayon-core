@@ -31,12 +31,12 @@ from ayon_core.pipeline.create import (
     InstanceContextInfo,
     ParentFlags,
 )
+from ayon_core.pipeline.publish.report import CONTEXT_ID
 
 from ayon_core.tools.utils import BaseClickableFrame, NiceCheckbox
 from ayon_core.tools.utils.lib import html_escape
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
-    CONTEXT_ID,
     CONTEXT_LABEL,
     CONTEXT_GROUP,
     CONVERTOR_ITEM_GROUP,
