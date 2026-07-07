@@ -1123,7 +1123,6 @@ class AbstractTemplateBuilder(ABC):
             return
 
         self.build_template(preset=preset)
-        self.save_next_workfile_version(preset=preset)
 
     def trigger_on_new_file(
         self, preset: TemplatePreset | None = None
