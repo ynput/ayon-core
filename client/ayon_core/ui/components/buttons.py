@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import logging
-import os
 from typing import Callable
 
-from qtmaterialsymbols import get_icon  # type: ignore
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QPalette
@@ -15,8 +13,6 @@ from ..variants import QPushButtonVariants
 from .container import AYContainer
 from .dropdown import AYDropdownPopup
 from .style_mixin import StyleMixin
-
-logger = logging.getLogger(__name__)
 
 
 class AYButton(StyleMixin, QtWidgets.QPushButton):
@@ -30,8 +26,8 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         icon_on: str | None = None,
         icon_size: int = 16,
         icon_color: str | None = None,
-        icon_fill=False,
-        checkable=False,
+        icon_fill: bool = False,
+        checkable: bool = False,
         tooltip: str = "",
         name_id: str = "",
         contrast_color: QColor | None = None,
@@ -330,111 +326,3 @@ class AYButtonMenu(AYButton):
         """Update state when the popup signals it has closed."""
         self._menu_open = False
         self.menu_closed.emit()
-
-
-# TEST =======================================================================
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def _build_test():
-        # Create and show the test widget
-        widget = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.High,
-            layout_spacing=10,
-            layout_margin=10,
-        )
-
-        variants = [v for v in QPushButtonVariants]
-
-        l1 = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            parent=widget,
-            layout_spacing=10,
-            layout_margin=10,
-        )
-        for var in variants:
-            b = AYButton(
-                f"{var.value} button",
-                variant=var,
-                tooltip=f"{var.value}",
-            )
-            l1.add_widget(b)
-
-        l2 = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            parent=widget,
-            layout_spacing=10,
-            layout_margin=10,
-        )
-        for var in variants:
-            b = AYButton(
-                f"{var.value} button",
-                variant=var,
-                icon="add",
-                tooltip=f"{var.value}",
-            )
-            l2.add_widget(b)
-
-        l3 = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            parent=widget,
-            layout_spacing=10,
-            layout_margin=10,
-        )
-        for var in variants:
-            b = AYButton(
-                variant=var,
-                icon="home",
-                tooltip=f"{var.value}",
-            )
-            l3.add_widget(b)
-        l3.addStretch(1)
-
-        l4 = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            parent=widget,
-            layout_spacing=10,
-            layout_margin=10,
-        )
-
-        def populate_menu(container: QtWidgets.QFrame) -> None:
-            layout = container.layout()
-            assert layout is not None
-            layout.setContentsMargins(10, 10, 10, 10)
-            layout.setSpacing(5)
-            for i in range(5):
-                btn = AYButton(
-                    f"Option {i + 1}",
-                    parent=container,
-                    variant=AYButton.Variants.Text,
-                    icon=f"counter_{i + 1}",
-                    checkable=True,
-                )
-                layout.addWidget(btn)
-
-        menu_btn = AYButtonMenu(
-            "Menu Button",
-            variant=QPushButtonVariants.Filled,
-            icon="layers",
-            populate_callback=populate_menu,
-        )
-        l4.add_widget(menu_btn)
-        l4.addStretch(1)
-
-        widget.add_widget(l1)
-        widget.add_widget(l2)
-        widget.add_widget(l3)
-        widget.add_widget(l4)
-
-        return widget
-
-    os.environ["QT_SCALE_FACTOR"] = "1"
-    test(_build_test, style=Style.AyonStyleOverCSS)

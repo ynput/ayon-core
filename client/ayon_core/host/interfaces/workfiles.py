@@ -186,10 +186,15 @@ class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
     ]:
         product_entities = self.product_entities
         if product_entities is None:
+            # TODO remove when server >= 1.14.0 is required
+            filter_key = "product_base_types"
+            if ayon_api.get_server_version_tuple() < (1, 14, 0):
+                filter_key = "product_types"
+            filter_kwargs = {filter_key: {"workfile"}}
             product_entities = list(ayon_api.get_products(
                 project_name,
                 folder_ids={folder_id},
-                product_types={"workfile"},
+                **filter_kwargs,
                 fields={"id", "name"},
             ))
 

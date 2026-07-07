@@ -15,14 +15,25 @@ It also exposes :class:`AYComboBoxModel`, the default
 - ``IconNameRole`` - the Material Symbol icon name used to regenerate icons
   when the *inverted* colour mode is toggled.
 
-A drop-in sample dataset :data:`ALL_STATUSES` is included for quick
-prototyping and automated tests.
-
 Typical usage::
 
-    from ayon_core.ui.components.combo_box import AYComboBox, ALL_STATUSES
+    from ayon_core.ui.components.combo_box import AYComboBox
 
-    combo = AYComboBox(parent=my_widget, items=ALL_STATUSES)
+    items = [
+        {
+            "text": "Item 1",
+            "short_text": "I1",
+            "icon": "fiber_new",
+            "color": "#434a56",
+        },
+        {
+            "text": "Item 2",
+            "short_text": "I2",
+            "icon": "timer",
+            "color": "#bababa",
+        },
+    ]
+    combo = AYComboBox(parent=my_widget, items=items)
     combo.set_size("short")   # or MenuSize.Short
     combo.set_inverted(True)
 
@@ -41,11 +52,9 @@ Note:
 
 from __future__ import annotations
 
-import logging
-import os
 from typing import List, Optional
 
-from qtmaterialsymbols import get_icon  # type: ignore
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtWidgets
 from qtpy.QtCore import QRect, Qt
 from qtpy.QtGui import (
@@ -64,66 +73,6 @@ from ..data_models import MenuSize
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QComboBoxVariants
 from .style_mixin import StyleMixin
-
-# Configure logging
-logger = logging.getLogger(__name__)
-
-
-ALL_STATUSES = [
-    {
-        "text": "Not ready",
-        "short_text": "NRD",
-        "icon": "fiber_new",
-        "color": "#434a56",
-    },
-    {
-        "text": "Ready to start",
-        "short_text": "RDY",
-        "icon": "timer",
-        "color": "#bababa",
-    },
-    {
-        "text": "In progress",
-        "short_text": "PRG",
-        "icon": "play_arrow",
-        "color": "#3498db",
-    },
-    {
-        "text": "Pending review",
-        "short_text": "RVW",
-        "icon": "visibility",
-        "color": "#ff9b0a",
-    },
-    {
-        "text": "Approved",
-        "short_text": "APP",
-        "icon": "task_alt",
-        "color": "#00f0b4",
-    },
-    {
-        "text": "On hold",
-        "short_text": "HLD",
-        "icon": "back_hand",
-        "color": "#fa6e46",
-    },
-    {
-        "text": "Omitted",
-        "short_text": "OMT",
-        "icon": "block",
-        "color": "#cb1a1a",
-    },
-]
-"""Sample status definitions for prototyping and tests.
-
-Each entry is a :class:`dict` with the following keys:
-
-- ``"text"``       - Full display label shown in
-  :attr:`~ayon_core.ui.data_models.MenuSize.Full` mode.
-- ``"short_text"`` - Abbreviated label (≤ 3 chars) shown in
-  :attr:`~ayon_core.ui.data_models.MenuSize.Short` mode.
-- ``"icon"``       - Material Symbol icon name passed to ``get_icon()``.
-- ``"color"``      - Hex colour string used as the item foreground.
-"""
 
 
 class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
@@ -413,7 +362,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
 
             combo = AYComboBox(
                 parent=my_widget,
-                items=ALL_STATUSES,
+                items=[...],
                 size=MenuSize.Short,
                 placeholder="Select status…",
             )
@@ -776,129 +725,3 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
             p,
             self,
         )
-
-
-# TEST  =======================================================================
-
-
-if __name__ == "__main__":
-    # Run an interactive test window that exercises AYComboBox scenarios:
-    # - default AYComboBoxModel with ALL_STATUSES
-    # - custom compatible model
-    # - inverted-colour toggle and size switcher
-    import os
-
-    from ..tester import Style, test
-    from .check_box import AYCheckBox
-    from .container import AYContainer
-    from .label import AYLabel
-
-    class CustomModel(QStandardItemModel):
-        ShortTextRole = QtCore.Qt.ItemDataRole.UserRole + 1
-        IconNameRole = QtCore.Qt.ItemDataRole.UserRole + 2
-
-        def __init__(self, parent=None):
-            super().__init__(parent)
-
-        def add_item(
-            self,
-            text: str,
-            color: QColor,
-            icon_name: str | None = None,
-            short: str = "",
-        ):
-            bg_color = (
-                self.parent()
-                .palette()
-                .color(QPalette.ColorGroup.Active, QPalette.ColorRole.Window)
-            )
-            item = QStandardItem(text)
-            item.setForeground(QBrush(color))
-            item.setBackground(QBrush(bg_color))
-            if icon_name:
-                item.setIcon(
-                    get_icon(
-                        icon_name,
-                        color_normal=bg_color,
-                        color_selected=color,
-                        # TODO: add fill support to get_icon and
-                        #       pass self._icon_fill here
-                    )
-                )
-                item.setData(icon_name, self.IconNameRole)
-            if short:
-                item.setData(short, self.ShortTextRole)
-            self.appendRow(item)
-
-    def build():
-        w = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
-            layout_spacing=6,
-            layout_margin=20,
-        )
-        w.setMinimumWidth(250)
-
-        w.add_widget(AYLabel("AYComboBox Tests", rel_text_size=6, bold=True))
-        w._layout.addSpacerItem(QtWidgets.QSpacerItem(16, 16))
-
-        w.add_widget(AYLabel("Default Model", dim=True, bold=True))
-        cb = AYComboBox(items=ALL_STATUSES)
-        w.add_widget(
-            cb, stretch=0, alignment=QtCore.Qt.AlignmentFlag.AlignLeft
-        )
-        inv = AYCheckBox("inverted", parent=w)
-        w.add_widget(inv)
-        size = AYComboBox(w)
-        size.addItems([s.name for s in MenuSize])
-        w.add_widget(size)
-
-        w._layout.addSpacerItem(QtWidgets.QSpacerItem(16, 16))
-
-        # custom model test
-        w.add_widget(AYLabel("Custom Model: invert ON", dim=True, bold=True))
-        custom = AYComboBox(w, inverted=True)
-        model = CustomModel(parent=custom)
-        model.add_item(
-            "Custom Model Item 1",
-            QColor("#ee6666"),
-            icon_name="map",
-            short="CUST 1",
-        )
-        model.add_item(
-            "Custom Model Item 2",
-            QColor("#66ee66"),
-            icon_name="map",
-            short="CUST 2",
-        )
-        model.add_item(
-            "Custom Model Item 3",
-            QColor("#6666ee"),
-            icon_name="map",
-            # short="CUST 3",   # check for empty case !
-        )
-        custom.setModel(model)
-        w.add_widget(custom)
-        cust_inv = AYCheckBox("inverted", parent=w)
-        cust_inv.setChecked(True)
-        w.add_widget(cust_inv)
-        cust_size = AYComboBox(w)
-        cust_size.addItems([s.name for s in MenuSize])
-        w.add_widget(cust_size)
-
-        w._layout.addSpacerItem(QtWidgets.QSpacerItem(16, 16))
-        w.add_widget(AYLabel("Backward compatibility"))
-        back = AYComboBox(w, items=ALL_STATUSES, inverted=True)
-        w.add_widget(back)
-
-        # configure
-        inv.clicked.connect(lambda x: cb.set_inverted(x))
-        size.currentTextChanged.connect(lambda x: cb.set_size(x))
-        cust_inv.clicked.connect(lambda x: custom.set_inverted(x))
-        cust_size.currentTextChanged.connect(lambda x: custom.set_size(x))
-
-        return w
-
-    os.environ["QT_SCALE_FACTOR"] = "1"
-
-    test(build, style=Style.AyonStyleOverCSS)

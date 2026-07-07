@@ -9,7 +9,7 @@ from qtpy.QtWidgets import QStyle, QStyleOptionFrame, QWidget
 from ..style_types import get_ayon_style
 
 
-class AyonStyleEventFilter(QObject):
+class AYONStyleEventFilter(QObject):
     def __init__(
         self,
         parent: QObject | None = None,
@@ -61,7 +61,7 @@ def install_event_filter(obj) -> None:
     children = []
     _collect_child_widgets(obj, seen_widgets, children)
 
-    filter_obj = AyonStyleEventFilter(parent=obj)
+    filter_obj = AYONStyleEventFilter(parent=obj)
     # Install event filter on child widgets
     for child in children:
         if not hasattr(child, "paintEvent"):

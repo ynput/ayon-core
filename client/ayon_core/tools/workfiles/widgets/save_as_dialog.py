@@ -129,11 +129,13 @@ class SaveAsDialog(QtWidgets.QDialog):
         btns_widget = QtWidgets.QWidget(self)
 
         btn_ok = AYButton(
-            "Ok", variant=AYButton.Variants.Filled,
+            "Ok",
+            variant=AYButton.Variants.Filled,
             parent=btns_widget,
         )
         btn_cancel = AYButton(
-            "Cancel", variant=AYButton.Variants.Surface,
+            "Cancel",
+            variant=AYButton.Variants.Surface,
             parent=btns_widget,
         )
 
@@ -181,7 +183,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input = SubversionLineEdit(inputs_widget)
         subversion_input.set_placeholder("Will be part of filename.")
 
-        extension_combobox = AYComboBox(parent=inputs_widget, show_chevron=True)
+        extension_combobox = AYComboBox(
+            parent=inputs_widget, show_chevron=True
+        )
         # Add styled delegate to use stylesheets
         extension_delegate = QtWidgets.QStyledItemDelegate()
         extension_combobox.setItemDelegate(extension_delegate)
