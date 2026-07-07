@@ -478,15 +478,30 @@ class PublisherController(
             instance_ids, plugin_name, key
         )
 
-    def trigger_button_attribute_callback(
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        self._create_model.trigger_pre_create_button_callback(
+            identifier, button_name
+        )
+
+    def trigger_create_button_callback(
         self,
-        source: Literal["precreate", "create", "publish"],
-        plugin_id: str | None,
-        key: str,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        self._create_model.trigger_create_button_callback(
+            button_name, instance_ids
+        )
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
         instance_ids: list[str | None],
     ) -> None:
-        self._create_model.trigger_button_attribute_callback(
-            source, plugin_id, key, instance_ids
+        self._create_model.trigger_publish_button_callback(
+            plugin_name, button_name, instance_ids
         )
 
     def get_product_name(

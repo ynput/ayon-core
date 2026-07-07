@@ -6,7 +6,7 @@ from ayon_core.lib import AbstractAttrDef, ButtonDef
 
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 
-from .utils import ButtonCallback
+from .utils import PreCreateButtonCallback
 
 from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
 
@@ -124,16 +124,16 @@ class AttributesWidget(QtWidgets.QWidget):
         attr_defs: list[AbstractAttrDef],
     ) -> None:
         self.clear_attr_defs()
+        if plugin_id is None:
+            return
 
         row = 0
         for attr_def in attr_defs:
             if isinstance(attr_def, ButtonDef):
-                inner_callback = ButtonCallback(
+                inner_callback = PreCreateButtonCallback(
                     self._controller,
-                    "precreate",
                     attr_def.key,
                     plugin_id,
-                    [],
                 )
                 attr_def = attr_def.clone()
                 attr_def.set_callback(inner_callback)

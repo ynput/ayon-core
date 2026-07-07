@@ -20,7 +20,7 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_VSPACING,
 )
 
-from .utils import ButtonCallback
+from .utils import CreateButtonCallback, PublishButtonCallback
 
 if typing.TYPE_CHECKING:
     from typing import Union
@@ -150,11 +150,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, info_by_id in result:
             if isinstance(attr_def, ButtonDef):
-                inner_callback = ButtonCallback(
+                inner_callback = CreateButtonCallback(
                     self._controller,
-                    "create",
                     attr_def.key,
-                    None,
                     list(info_by_id),
                 )
                 attr_def = attr_def.clone()
@@ -397,9 +395,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                         default_values.append(default_value)
 
                 if isinstance(attr_def, ButtonDef):
-                    inner_callback = ButtonCallback(
+                    inner_callback = PublishButtonCallback(
                         self._controller,
-                        "publish",
                         attr_def.key,
                         plugin_attr_defs.plugin_name,
                         list(plugin_attr_defs.instance_ids),

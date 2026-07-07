@@ -945,98 +945,31 @@ class CreateModel:
             instance_ids, plugin_name, key, _DEFAULT_VALUE
         )
 
-    def trigger_button_attribute_callback(
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        self._create_context.trigger_pre_create_button_callback(
+            identifier, button_name
+        )
+
+    def trigger_create_button_callback(
         self,
-        source: Literal["precreate", "create", "publish"],
-        plugin_id: str | None,
-        key: str,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        self._create_context.trigger_create_button_callback(
+            button_name, instance_ids
+        )
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
         instance_ids: list[str | None],
     ) -> None:
-        if source not in ("precreate", "create", "publish"):
-            raise ValueError(
-                f"Unknown source '{source}'."
-                " Expected 'precreate', 'create' or 'publish'."
-            )
-
-        attr_def = None
-        if source == "precreate":
-            item = self.get_creator_item_by_id(plugin_id)
-            if item is None:
-                return
-
-            for attr_def in item.pre_create_attributes_defs:
-                if attr_def.key == key:
-                    attr_def.trigger()
-                    return
-
-        filtered_instance_ids = []
-        for instance_id in instance_ids:
-            if instance_id is None:
-                if plugin_id is None:
-                    continue
-                plugin_defs = (
-                    self._create_context
-                    .publish_attributes
-                    .get(plugin_id)
-                )
-                if plugin_defs is None:
-                    continue
-                _attr_def = plugin_defs.get_attr_def(key)
-                if _attr_def is None:
-                    continue
-
-                filtered_instance_ids.append(instance_id)
-                if attr_def is None:
-                    attr_def = _attr_def
-                continue
-
-            instance = self._create_context.get_instance_by_id(
-                instance_id
-            )
-            if source == "create":
-                _attr_def = instance.creator_attributes.get_attr_def(key)
-                if _attr_def is None:
-                    continue
-
-                filtered_instance_ids.append(instance_id)
-                if attr_def is None:
-                    attr_def = _attr_def
-                continue
-            else:
-                plugin_defs = (
-                    instance
-                    .publish_attributes
-                    .get(plugin_id)
-                )
-                if plugin_defs is None:
-                    continue
-
-                _attr_def = plugin_defs.get_attr_def(key)
-                if _attr_def is None:
-                    continue
-
-                filtered_instance_ids.append(instance_id)
-                if attr_def is None:
-                    attr_def = _attr_def
-
-        if not isinstance(attr_def, ButtonDef):
-            self.log.warning(
-                "Triggered button callback for non-button attribute"
-                f" got '{type(attr_def)}' expected 'ButtonDef'"
-            )
-            return
-
-        callback = attr_def.get_callback()
-        if callback is None:
-            return
-        info = ButtonCallbackInfo(
-            create_context=self._create_context,
-            instance_ids=filtered_instance_ids,
+        self._create_context.trigger_publish_button_callback(
+            plugin_name, button_name, instance_ids
         )
-        if is_func_signature_supported(callback, info):
-            callback(info)
-        else:
-            callback()
 
     def get_publish_attribute_definitions(
         self,

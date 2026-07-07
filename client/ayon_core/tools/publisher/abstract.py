@@ -476,13 +476,26 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def trigger_button_attribute_callback(
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def trigger_create_button_callback(
         self,
-        source: Literal["precreate", "create", "publish"],
-        plugin_id: str | None,
-        key: str,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
         instance_ids: list[str | None],
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
