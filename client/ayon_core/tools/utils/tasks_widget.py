@@ -586,8 +586,9 @@ class TasksWidget(QtWidgets.QWidget):
     def _folder_selection_changed(self, event):
         self._selected_folder_id = event["folder_id"]
 
-        # reset cached sorting so it re-resolves for the new project
-        self._use_task_type_sorting = None
+        if event["project_name"] != self._tasks_model.get_last_project_name():
+            # Reset cached sorting so it re-resolves for the new project
+            self._use_task_type_sorting = None
         self._tasks_model.set_context(
             event["project_name"], self._selected_folder_id
         )
