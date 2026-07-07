@@ -20,7 +20,6 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     AbstractAttrDef,
     EnumDef,
-    ButtonDef,
     UIDef,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
