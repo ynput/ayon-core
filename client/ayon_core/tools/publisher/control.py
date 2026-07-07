@@ -4,7 +4,7 @@ import os
 import logging
 import tempfile
 import shutil
-from typing import Union, Optional, Any, Literal
+from typing import Union, Optional, Any
 
 import ayon_api
 

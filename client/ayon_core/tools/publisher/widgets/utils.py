@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Literal
-
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 

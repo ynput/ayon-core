@@ -12,7 +12,6 @@ from typing import (
     Optional,
     Iterable,
     Pattern,
-    Literal,
 )
 
 from ayon_core.lib.attribute_definitions import (
