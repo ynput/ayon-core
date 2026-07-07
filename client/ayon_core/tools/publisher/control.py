@@ -599,6 +599,12 @@ class PublisherController(
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
 
+    def get_publish_report_data(self) -> dict[str, Any]:
+        return self._publish_model.get_publish_report_data()
+
+    def store_publish_report(self, filepath: str) -> None:
+        self._publish_model.store_publish_report(filepath)
+
     def get_publish_errors_report(self):
         return self._publish_model.get_publish_errors_report()
 
