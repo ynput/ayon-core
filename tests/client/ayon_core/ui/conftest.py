@@ -13,6 +13,7 @@ from pathlib import Path
 
 # Must be set before any Qt import. pytest-qt respects this too.
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+os.environ["QT_SCALE_FACTOR"] = "1.0"
 
 # Pin the font-size platform key so visual regression images are
 # identical regardless of the OS running the test suite.

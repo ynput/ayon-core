@@ -16,8 +16,6 @@ package-mode = false
 requires-python = ">=3.11,<3.12"
 
 dependencies = [
-    "pytest >=8.0.0",
-    "pytest-print >=1.0.0",
     "ayon-python-api >=1.0.0",
     "arrow ==0.17.0",
     "ruff >=0.11.7",
@@ -32,13 +30,23 @@ dependencies = [
     "clique >=2.0.0",
     "opentimelineio ==0.17.0",
     "speedcopy >=2.1.0",
+    "numpy >=2.4.3",
     "qtpy >=2.4.3",
-    "pyside6 >=6.5.2",
-    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
+    "pyside6 >=6.8.3",
+    "Pillow ==9.5.0"
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-qt", "pytest-regressions[image]"]
+test = [
+    "Pillow ==9.5.0",
+    "pytest",
+    "pytest-print >=1.0.0",
+    "pytest-mock",
+    "pytest-timeout",
+    "pytest-qt",
+    "pytest-regressions[image]",
+    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
+]
 
 [tool.codespell]
 # Ignore words that are not in the dictionary.
