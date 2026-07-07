@@ -874,7 +874,16 @@ class CreateContext:
                     publish_attributes.update(output)
 
         for plugin in self.plugins_with_defs:
-            attr_defs = plugin.get_attr_defs_for_context(self)
+            try:
+                attr_defs = plugin.get_attr_defs_for_context(self)
+            except Exception:
+                self.log.error(
+                    "Failed to get attribute definitions"
+                    f" from plugin '{plugin.__name__}'.",
+                    exc_info=True
+                )
+                continue
+
             if not attr_defs:
                 continue
             self._publish_attributes.set_publish_plugin_attr_defs(
