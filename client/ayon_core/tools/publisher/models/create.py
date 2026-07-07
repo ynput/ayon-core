@@ -954,7 +954,8 @@ class CreateModel:
     ) -> None:
         if source not in ("precreate", "create", "publish"):
             raise ValueError(
-                f"Unknown source '{source}'. Expected 'create' or 'publish'."
+                f"Unknown source '{source}'."
+                " Expected 'precreate', 'create' or 'publish'."
             )
 
         attr_def = None
@@ -1031,7 +1032,6 @@ class CreateModel:
         info = ButtonCallbackInfo(
             create_context=self._create_context,
             instance_ids=filtered_instance_ids,
-            selected_instance_ids=instance_ids,
         )
         if is_func_signature_supported(callback, info):
             callback(info)
@@ -1058,7 +1058,6 @@ class CreateModel:
         for instance_id in instance_ids:
             _tmp_items.append(self._get_instance_by_id(instance_id))
 
-        attr_defs_by_plugin_name = {}
         all_defs_by_plugin_name = {}
         all_plugin_values = {}
         instance_ids_by_name = {}
