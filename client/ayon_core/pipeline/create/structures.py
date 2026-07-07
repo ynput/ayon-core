@@ -26,6 +26,7 @@ from .exceptions import ImmutableKeyError
 from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
+    from .context import CreateContext
     from .creator_plugins import BaseCreator
 
 log = Logger.get_logger(__name__)
@@ -50,7 +51,8 @@ class ParentFlags(IntEnum):
 
 @dataclass
 class ButtonCallbackInfo:
-    """Button callback info passed to button definition callback.."""
+    """Button callback info passed to button definition callback."""
+    create_context: "CreateContext"
     instance_ids: list[str | None]
     selected_instance_ids: list[str | None]
 

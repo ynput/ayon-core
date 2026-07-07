@@ -1029,6 +1029,7 @@ class CreateModel:
         if callback is None:
             return
         info = ButtonCallbackInfo(
+            create_context=self._create_context,
             instance_ids=filtered_instance_ids,
             selected_instance_ids=instance_ids,
         )
