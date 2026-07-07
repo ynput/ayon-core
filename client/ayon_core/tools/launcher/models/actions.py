@@ -259,17 +259,7 @@ class ActionsModel:
                 }
             )
 
-            conn = ayon_api.get_server_api_connection()
-            # Add 'referer' header to the request
-            # - ayon-api 1.1.1 adds the value to the header automatically
-            headers = conn.get_headers()
-            if "referer" in headers:
-                headers = None
-            else:
-                headers["referer"] = conn.get_base_url()
-            response = ayon_api.raw_post(
-                url, headers=headers, json=request_data
-            )
+            response = ayon_api.raw_post(url, json=request_data)
             response.raise_for_status()
             handle_response = self._handle_webaction_response(response.data)
 
