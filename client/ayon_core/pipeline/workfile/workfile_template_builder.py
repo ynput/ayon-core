@@ -1171,7 +1171,7 @@ class AbstractTemplateBuilder(ABC):
             return
 
         workfile_path = self.get_workfile_path()
-        if not workfile_path:
+        if not os.path.exists(workfile_path):
             self.log.info("Workfile path to save is not available.")
             return
 
