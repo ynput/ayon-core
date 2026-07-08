@@ -40,6 +40,7 @@ from ayon_core.lib import (
     attribute_definitions,
 )
 from ayon_core.lib.events import EventSystem, EventCallback, Event
+from ayon_core.pipeline.workfile import save_next_version
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.workfile.path_resolving import (
@@ -738,12 +739,9 @@ class AbstractTemplateBuilder(ABC):
 
         # If there is no existing workfile, save the first version
         workfile_path = self.get_workfile_path()
-        if (
-                not self._has_existing_workfile_version()
-                and not os.path.exists(workfile_path)
-        ):
+        if not os.path.exists(workfile_path):
             self.log.info("Saving first workfile: %s", workfile_path)
-            self.save_workfile(workfile_path)
+            save_next_version()
         else:
             self.log.info(
                 "A workfile already exists. Skipping save of workfile as "
@@ -810,8 +808,6 @@ class AbstractTemplateBuilder(ABC):
         Return:
             str: Last workfile path, or first version to create if none exist.
         """
-        # AYON_LAST_WORKFILE will be set to the last existing workfile OR
-        # if none exist it will be set to the first version.
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         task_entity = self.current_task_entity
@@ -892,41 +888,6 @@ class AbstractTemplateBuilder(ABC):
 
         filename = file_template.format_strict(template_data)
         return os.path.join(workdir, filename)
-
-    def _has_existing_workfile_version(self) -> bool:
-        """Return whether current context already has a saved workfile."""
-        folder_entity = self.current_folder_entity
-        task_entity = self.current_task_entity
-        if not folder_entity or not task_entity:
-            return False
-
-        workfiles = self.host.list_workfiles(
-            self.project_name,
-            folder_entity,
-            task_entity,
-        )
-        for workfile in workfiles:
-            if workfile.version is not None:
-                return True
-        return False
-
-    def save_workfile(self, workfile_path: str | None = None) -> None:
-        """Save workfile in current host.
-
-        Args:
-            workfile_path (str | None): Path to save the workfile. If None,
-                the current workfile path will be used.
-
-        """
-        if workfile_path is None:
-            workfile_path = self.host.get_current_workfile()
-            if not workfile_path:
-                return
-        self.host.save_workfile_with_context(
-            workfile_path,
-            self.current_folder_entity,
-            self.current_task_entity,
-        )
 
     def _prepare_placeholders(self, placeholders):
         """Run preparation part for placeholders on plugins.
@@ -1176,7 +1137,7 @@ class AbstractTemplateBuilder(ABC):
             return
 
         self.log.info("Saving first workfile: %s", workfile_path)
-        self.save_workfile(workfile_path)
+        save_next_version()
 
     def get_template_preset(self) -> TemplatePreset:
         """Unified way how template preset is received using settings.
