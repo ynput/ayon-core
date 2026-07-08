@@ -834,6 +834,9 @@ class IWorkfileHost(AbstractHost):
         all host integrations.
 
     """
+    change_context_after_workfile_open = False
+    change_context_after_workfile_save = False
+
     @abstractmethod
     def save_workfile(self, dst_path: Optional[str] = None) -> None:
         """Save the currently opened scene.
@@ -956,15 +959,25 @@ class IWorkfileHost(AbstractHost):
         # Set 'AYON_WORKDIR' environment variable
         os.environ["AYON_WORKDIR"] = workdir
 
-        self.set_current_context(
-            folder_entity,
-            task_entity,
-            reason=ContextChangeReason.workfile_save,
-            project_entity=save_workfile_context.project_entity,
-            anatomy=save_workfile_context.anatomy,
-        )
+        if not self.change_context_after_workfile_save:
+            self.set_current_context(
+                folder_entity,
+                task_entity,
+                reason=ContextChangeReason.workfile_save,
+                project_entity=save_workfile_context.project_entity,
+                anatomy=save_workfile_context.anatomy,
+            )
 
         self.save_workfile(filepath)
+
+        if self.change_context_after_workfile_save:
+            self.set_current_context(
+                folder_entity,
+                task_entity,
+                reason=ContextChangeReason.workfile_save,
+                project_entity=save_workfile_context.project_entity,
+                anatomy=save_workfile_context.anatomy,
+            )
 
         self._save_workfile_entity(
             save_workfile_context,
@@ -1019,15 +1032,25 @@ class IWorkfileHost(AbstractHost):
         self._before_workfile_open(open_workfile_context)
         self._emit_workfile_open_event(event_data, after_open=False)
 
-        self.set_current_context(
-            folder_entity,
-            task_entity,
-            reason=ContextChangeReason.workfile_open,
-            project_entity=open_workfile_context.project_entity,
-            anatomy=open_workfile_context.anatomy,
-        )
+        if not self.change_context_after_workfile_open:
+            self.set_current_context(
+                folder_entity,
+                task_entity,
+                reason=ContextChangeReason.workfile_open,
+                project_entity=open_workfile_context.project_entity,
+                anatomy=open_workfile_context.anatomy,
+            )
 
         self.open_workfile(filepath)
+
+        if self.change_context_after_workfile_open:
+            self.set_current_context(
+                folder_entity,
+                task_entity,
+                reason=ContextChangeReason.workfile_open,
+                project_entity=open_workfile_context.project_entity,
+                anatomy=open_workfile_context.anatomy,
+            )
 
         self._after_workfile_open(open_workfile_context)
         self._emit_workfile_open_event(event_data)
