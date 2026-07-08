@@ -843,32 +843,14 @@ class AbstractTemplateBuilder(ABC):
             template_key=template_key,
             project_settings=project_settings,
         )
-
-        last_workfile = None
-        workfiles = self.host.list_workfiles(
+        version = get_versioning_start(
             project_name,
-            folder_entity,
-            task_entity,
+            self.host_name,
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
+            product_base_type="workfile",
+            project_settings=project_settings,
         )
-        for workfile in workfiles:
-            if workfile.version is None:
-                continue
-            if (
-                last_workfile is None
-                or last_workfile.version < workfile.version
-            ):
-                last_workfile = workfile
-
-        if last_workfile is not None:
-            version = last_workfile.version + 1
-        else:
-            version = get_versioning_start(
-                project_name,
-                self.host_name,
-                task_name=task_entity["name"],
-                task_type=task_entity["taskType"],
-                product_base_type="workfile",
-            )
 
         template_data["version"] = version
 
@@ -877,8 +859,6 @@ class AbstractTemplateBuilder(ABC):
         if workfile_extensions:
             if current_path:
                 ext = os.path.splitext(current_path)[1]
-            elif last_workfile is not None:
-                ext = os.path.splitext(last_workfile.filepath)[1]
             else:
                 ext = next(iter(workfile_extensions))
             ext = ext.lstrip(".")
