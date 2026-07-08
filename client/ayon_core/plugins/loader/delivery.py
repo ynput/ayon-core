@@ -1,7 +1,7 @@
 import platform
 from collections import defaultdict
 from typing import Optional, Any
-
+from pathlib import Path
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -248,17 +248,6 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             )
 
             template_data = template_data_by_repre_id[repre["id"]]
-            new_report_items = check_destination_path(
-                repre["id"],
-                self.anatomy,
-                template_data,
-                datetime_data,
-                template_name
-            )
-
-            report_items.update(new_report_items)
-            if new_report_items:
-                continue
 
             args = [
                 repre_path,
@@ -285,8 +274,34 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             frames = set(sources_and_frames.values())
             frames.discard(None)
             first_frame = None
+            first_file_path = next(iter(sources_and_frames.keys()))
             if frames:
+                # this representation is a sequence
                 first_frame = min(frames)
+                base_name = Path(first_file_path).stem
+                published_basename = (
+                    base_name
+                    .replace(first_frame, "")
+                    .rstrip("_")
+                    .rstrip("-")
+                    .rstrip(".")
+                )
+            else:
+                # this representation is a single file
+                published_basename = Path(first_file_path).stem
+            template_data["publishedBasename"] = published_basename
+
+            new_report_items = check_destination_path(
+                repre["id"],
+                self.anatomy,
+                template_data,
+                datetime_data,
+                template_name
+            )
+
+            report_items.update(new_report_items)
+            if new_report_items:
+                continue
 
             for src_path, frame in sources_and_frames.items():
                 args[0] = src_path
@@ -319,6 +334,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                             " formatting data."
                         )
                         template_data["frame"] = frame
+
                 new_report_items, uploaded = deliver_single_file(*args)
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)
