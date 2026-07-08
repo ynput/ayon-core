@@ -16,7 +16,7 @@ Provides:
 import pyblish.api
 import ayon_api
 
-from ayon_core.pipeline import KnownPublishError, Anatomy
+from ayon_core.pipeline import PublishError, Anatomy
 
 
 class CollectContextEntities(pyblish.api.ContextPlugin):
@@ -37,9 +37,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         if not project_entity:
             project_entity = ayon_api.get_project(project_name)
             if not project_entity:
-                raise KnownPublishError(
-                    f"Project '{project_name}' was not found."
-                )
+                raise PublishError(f"Project '{project_name}' was not found.")
 
         context.data["projectEntity"] = project_entity
         context.data["anatomy"] = Anatomy(
@@ -109,7 +107,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
             return None
         folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
         if not folder_entity:
-            raise KnownPublishError(
+            raise PublishError(
                 f"Folder '{folder_path}' was not found"
                 f" in project '{project_name}'."
             )
@@ -123,7 +121,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         )
         if not task_entity:
             task_path = "/".join([folder_entity["path"], task_name])
-            raise KnownPublishError(
+            raise PublishError(
                 f"Task '{task_path}' was not found"
                 f" in project '{project_name}'."
             )

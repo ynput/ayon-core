@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
-from typing import Union
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import (
@@ -12,6 +11,10 @@ from ayon_core.tools.utils import (
     IconButton,
     paint_image_with_color,
     get_qt_icon,
+)
+from ayon_core.pipeline.publish.report import (
+    PublishReport,
+    PublishPluginReportInfo,
 )
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
@@ -27,14 +30,13 @@ from .model import (
     PluginsModel,
     PluginProxyModel
 )
-from .report_items import PublishReport
 
 FILEPATH_ROLE = QtCore.Qt.UserRole + 1
 TRACEBACK_ROLE = QtCore.Qt.UserRole + 2
 IS_DETAIL_ITEM_ROLE = QtCore.Qt.UserRole + 3
 
 
-def get_pretty_milliseconds(value):
+def get_pretty_milliseconds(value: int) -> str:
     if value < 1000:
         return f"{value:.3f}ms"
     value /= 1000
@@ -66,18 +68,18 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         self._is_active = is_active
         self._update_items()
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport | None) -> None:
         self._need_refresh = True
         if report is None:
             self._traceback_by_filepath.clear()
             self._update_items()
             return
 
-        filepaths = set(report.crashed_plugin_paths.keys())
+        filepaths = set(report.crashed_filepaths.keys())
         to_remove = set(self._traceback_by_filepath) - filepaths
         for filepath in filepaths:
             self._traceback_by_filepath[filepath] = (
-                report.crashed_plugin_paths[filepath]
+                report.crashed_filepaths[filepath]
             )
 
         for filepath in to_remove:
@@ -138,7 +140,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
 
 
 class DetailWidget(QtWidgets.QTextEdit):
-    def __init__(self, text, *args, **kwargs):
+    def __init__(self, text: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setReadOnly(True)
@@ -159,7 +161,7 @@ class DetailWidget(QtWidgets.QTextEdit):
 
 
 class PluginLoadReportWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         view = QtWidgets.QTreeView(self)
@@ -186,7 +188,7 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
     def set_active(self, is_active):
         self._model.set_active(is_active)
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport | None):
         self._widgets_by_filepath = {}
         self._model.set_report(report)
 
@@ -220,13 +222,13 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         if filepath in self._widgets_by_filepath:
             return
 
-        traceback_txt = index.data(TRACEBACK_ROLE)
+        traceback_txt = index.data(TRACEBACK_ROLE).replace("\n", "<br/>")
         detail_text = (
             "<b>Filepath:</b><br/>"
-            "{}<br/><br/>"
+            f"{filepath}<br/><br/>"
             "<b>Traceback:</b><br/>"
-            "{}"
-        ).format(filepath, traceback_txt.replace("\n", "<br/>"))
+            f"{traceback_txt}"
+        )
         widget = DetailWidget(detail_text, self)
         self._view.setIndexWidget(index, widget)
         self._widgets_by_filepath[filepath] = (widget, index)
@@ -309,7 +311,7 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
 
 
 class DetailsWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         output_widget = ZoomPlainText(self)
@@ -320,87 +322,85 @@ class DetailsWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(output_widget)
 
-        self._is_active = True
-        self._need_refresh = False
-        self._output_widget = output_widget
-        self._report_item = None
-        self._instance_filter = set()
-        self._plugin_filter = set()
+        self._is_active: bool = True
+        self._need_refresh: bool = False
+        self._output_widget: ZoomPlainText = output_widget
+        self._report_item: PublishReport | None = None
+        self._instance_filter: set[str] = set()
+        self._plugin_filter: set[str] = set()
 
-    def clear(self):
+    def clear(self) -> None:
         self._output_widget.setPlainText("")
 
-    def set_active(self, is_active):
+    def set_active(self, is_active: bool) -> None:
         if self._is_active is is_active:
             return
         self._is_active = is_active
         self._update_logs()
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport | None) -> None:
         self._report_item = report
         self._plugin_filter = set()
         self._instance_filter = set()
         self._need_refresh = True
         self._update_logs()
 
-    def set_plugin_filter(self, plugin_filter):
+    def set_plugin_filter(self, plugin_filter: set[str]) -> None:
         self._plugin_filter = plugin_filter
         self._need_refresh = True
         self._update_logs()
 
-    def set_instance_filter(self, instance_filter):
+    def set_instance_filter(self, instance_filter: set[str]) -> None:
         self._instance_filter = instance_filter
         self._need_refresh = True
         self._update_logs()
 
-    def _update_logs(self):
+    def _update_logs(self) -> None:
         if not self._is_active or not self._need_refresh:
             return
 
-        if not self._report_item:
+        if self._report_item is None:
             self._output_widget.setPlainText("")
             return
 
-        filtered_logs = []
-        for log in self._report_item.logs:
-            if (
-                self._instance_filter
-                and log.instance_id not in self._instance_filter
-            ):
-                continue
-
-            if (
-                self._plugin_filter
-                and log.plugin_id not in self._plugin_filter
-            ):
-                continue
-            filtered_logs.append(log)
+        filtered_logs = [
+            log
+            for _, _, log in self._report_item.iter_logs(
+                plugin_ids_filter=self._plugin_filter or None,
+                instance_ids_filter=self._instance_filter or None,
+            )
+        ]
 
         self._set_logs(filtered_logs)
 
     def _set_logs(self, logs):
         lines = []
         for log in logs:
-            if log["type"] == "record":
-                message = "{}: {}".format(log["levelname"], log["msg"])
+            if log.type == "record":
+                message = f"{log.levelname}: {log.message}"
 
                 lines.append(message)
-                exc_info = log["exc_info"]
+                exc_info = log.exc_info
                 if exc_info:
                     lines.append(exc_info)
 
-            elif log["type"] == "error":
-                lines.append(log["traceback"])
+            elif log.type == "error":
+                lines.append(log.traceback)
 
             else:
-                print(log["type"])
+                print(log.type)
 
         text = "\n".join(lines)
         self._output_widget.setPlainText(text)
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
-    def __init__(self, plugin_item, parent):
+    def __init__(
+        self,
+        plugin_info: PublishPluginReportInfo,
+        process_time: float,
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
 
         content_widget = QtWidgets.QFrame(self)
@@ -454,33 +454,33 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         ):
             label_widget.setObjectName("PluginFormLabel")
 
-        plugin_label = plugin_item.label or plugin_item.name
-        if plugin_item.plugin_type:
+        plugin_label = plugin_info.label or plugin_info.name
+        if plugin_info.plugin_type:
             plugin_label += " ({})".format(
-                plugin_item.plugin_type.capitalize()
+                plugin_info.plugin_type.capitalize()
             )
 
         time_label = "Not started"
-        if plugin_item.passed:
-            time_label = get_pretty_milliseconds(plugin_item.process_time)
-        elif plugin_item.skipped:
+        if plugin_info.passed:
+            time_label = get_pretty_milliseconds(process_time)
+        elif plugin_info.skipped:
             time_label = "Skipped plugin"
 
         families = "N/A"
-        if plugin_item.families:
-            families = ", ".join(plugin_item.families)
+        if plugin_info.families:
+            families = ", ".join(plugin_info.families)
 
         order = "N/A"
-        if plugin_item.order is not None:
-            order = str(plugin_item.order)
+        if plugin_info.order is not None:
+            order = str(plugin_info.order)
 
         plugin_label_widget.setText(plugin_label)
-        plugin_doc_widget.setText(plugin_item.docstring or "N/A")
-        plugin_class_widget.setText(plugin_item.name or "N/A")
+        plugin_doc_widget.setText(plugin_info.docstring or "N/A")
+        plugin_class_widget.setText(plugin_info.name or "N/A")
         plugin_order_widget.setText(order)
         plugin_families_widget.setText(families)
-        plugin_path_widget.setText(plugin_item.filepath or "N/A")
-        plugin_path_widget.setToolTip(plugin_item.filepath or None)
+        plugin_path_widget.setText(plugin_info.filepath or "N/A")
+        plugin_path_widget.setToolTip(plugin_info.filepath or "")
         plugin_time_widget.setText(time_label)
 
         content_layout = QtWidgets.QGridLayout(content_widget)
@@ -493,7 +493,7 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         row += 1
 
         # Hide docstring if it is empty
-        if plugin_item.docstring:
+        if plugin_info.docstring:
             content_layout.addWidget(plugin_doc_widget, row, 0, 1, 2)
             row += 1
         else:
@@ -519,7 +519,7 @@ class PluginDetailsWidget(QtWidgets.QWidget):
 
 
 class PluginsDetailsWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
@@ -561,50 +561,40 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._widgets_by_plugin_id = {}
         self._stretch_item_index = 0
 
-        self._is_active = True
-        self._need_refresh = False
+        self._is_active: bool = True
+        self._need_refresh: bool = False
 
-        self._report_item = None
-        self._plugin_filter = set()
-        self._plugin_ids = None
+        self._report_item: PublishReport | None = None
+        self._plugin_filter: set[str] = set()
 
-    def set_active(self, is_active):
+    def set_active(self, is_active: bool) -> None:
         if self._is_active is is_active:
             return
         self._is_active = is_active
         self._update_widgets()
 
-    def set_plugin_filter(self, plugin_filter):
-        self._need_refresh = True
+    def set_plugin_filter(self, plugin_filter: set[str]) -> None:
+        if plugin_filter == self._plugin_filter:
+            return
+
         self._plugin_filter = plugin_filter
-        self._update_widgets()
+        self._invalidate_filters()
 
     def set_report(self, report):
-        self._plugin_ids = None
         self._plugin_filter = set()
         self._need_refresh = True
         self._report_item = report
         self._update_widgets()
 
-    def _get_plugin_ids(self):
-        if self._plugin_ids is not None:
-            return self._plugin_ids
-
+    def _clear_widgets(self) -> None:
         # Clear layout and clear widgets
+        self._widgets_by_plugin_id.clear()
         while self._content_layout.count():
             item = self._content_layout.takeAt(0)
             widget = item.widget()
             if widget:
                 widget.setVisible(False)
                 widget.deleteLater()
-
-        self._widgets_by_plugin_id.clear()
-
-        plugin_ids = []
-        if self._report_item is not None:
-            plugin_ids = list(self._report_item.plugins_id_order)
-        self._plugin_ids = plugin_ids
-        return plugin_ids
 
     def _update_widgets(self):
         if not self._is_active or not self._need_refresh:
@@ -617,18 +607,30 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         #   the layout and widget size hints
         self._content_widget.setVisible(False)
 
-        any_visible = False
-        for plugin_id in self._get_plugin_ids():
-            widget = self._widgets_by_plugin_id.get(plugin_id)
-            if widget is None:
-                plugin_item = self._report_item.plugins_items_by_id[plugin_id]
-                widget = PluginDetailsWidget(plugin_item, self._content_widget)
-                self._widgets_by_plugin_id[plugin_id] = widget
-                self._content_layout.addWidget(widget, 0)
+        self._clear_widgets()
+        if self._report_item is None:
+            return
 
-            is_visible = plugin_id in self._plugin_filter
-            widget.setVisible(is_visible)
-            if is_visible:
+        for plugin_info in self._report_item.plugins_info:
+            process_time = 0.0
+            for process_report in plugin_info.process_reports:
+                process_time += process_report.process_time
+            widget = PluginDetailsWidget(
+                plugin_info,
+                process_time,
+                self._content_widget
+            )
+            self._widgets_by_plugin_id[plugin_info.id] = widget
+            self._content_layout.addWidget(widget, 0)
+
+        self._invalidate_filters()
+
+    def _invalidate_filters(self) -> None:
+        any_visible = False
+        for plugin_id, widget in self._widgets_by_plugin_id.items():
+            visible = plugin_id in self._plugin_filter
+            widget.setVisible(visible)
+            if visible:
                 any_visible = True
 
         self._content_widget.setVisible(any_visible)
@@ -877,16 +879,21 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             self.close_details_popup()
 
     def set_report_data(self, report_data):
-        report = PublishReport(report_data)
+        report = PublishReport.from_data(report_data)
         self.set_report(report)
 
-    def set_report(self, report: Union[PublishReport, None]) -> None:
+    def set_report(self, report: PublishReport | None) -> None:
         self._ignore_selection_changes = True
 
         self._report_item = report
-
-        self._instances_model.set_report(report)
-        self._plugins_model.set_report(report)
+        errored_instance_ids = set()
+        errored_plugin_ids = set()
+        if report is not None:
+            logs_summary = report.get_logs_summary()
+            errored_instance_ids = logs_summary.errored_instance_ids
+            errored_plugin_ids = logs_summary.errored_plugin_ids
+        self._instances_model.set_report(report, errored_instance_ids)
+        self._plugins_model.set_report(report, errored_plugin_ids)
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
         self._plugins_details_widget.set_report(report)
