@@ -35,6 +35,7 @@ class ValidateOutdatedContainers(
 
     optional = True
     actions = [ShowInventory]
+    validate_if_approved: bool = False
 
     @classmethod
     def apply_settings(cls, settings):
@@ -69,9 +70,15 @@ class ValidateOutdatedContainers(
             setattr(cls, attr_name, profile[attr_name])
 
     def process(self, context):
+        if self.validate_if_approved:
+            statuses_data = context.data["projectEntity"]["statuses"]
+            approved_statuses = [s["name"] for s in statuses_data if s["state"] == "done"]
+        else:
+            approved_statuses = None
+
         if not self.is_active(context.data):
             return
 
-        if any_outdated_containers():
+        if any_outdated_containers(statuses=approved_statuses):
             msg = "There are outdated containers in the scene."
             raise PublishXmlValidationError(self, msg)
