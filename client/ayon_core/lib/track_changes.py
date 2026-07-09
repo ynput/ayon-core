@@ -3,14 +3,14 @@ import copy
 _EMPTY_VALUE = object()
 
 
-class TrackChangesItem:
+class TrackDictChangesItem:
     """Helper object to track changes in data.
 
     Has access to full old and new data and will create deep copy of them,
     so it is not needed to create copy before passed in.
 
     Can work as a dictionary if old or new value is a dictionary. In
-    that case received object is another object of 'TrackChangesItem'.
+    that case received object is another object of 'TrackDictChangesItem'.
 
     Goal is to be able to get old or new value as was or only changed values
     or get information about removed/changed keys, and all of that on
@@ -39,7 +39,7 @@ class TrackChangesItem:
     ...     "key_3": "value_3"
     ... }
 
-    >>> changes = TrackChangesItem(old_value, new_value)
+    >>> changes = TrackDictChangesItem(old_value, new_value)
     >>> changes.changed
     True
 
@@ -280,7 +280,7 @@ class TrackChangesItem:
         old_value = self.old_value
         if self._old_is_dict and self._new_is_dict:
             for key in self.available_keys:
-                item = TrackChangesItem(
+                item = TrackDictChangesItem(
                     old_value.get(key), new_value.get(key)
                 )
                 sub_items[key] = item
@@ -294,7 +294,7 @@ class TrackChangesItem:
             for key in available_keys:
                 # NOTE Use '_EMPTY_VALUE' because old value could be 'None'
                 #   which would result in "unchanged" item
-                sub_items[key] = TrackChangesItem(
+                sub_items[key] = TrackDictChangesItem(
                     old_value.get(key), _EMPTY_VALUE
                 )
 
@@ -305,7 +305,7 @@ class TrackChangesItem:
             for key in available_keys:
                 # NOTE Use '_EMPTY_VALUE' because new value could be 'None'
                 #   which would result in "unchanged" item
-                sub_items[key] = TrackChangesItem(
+                sub_items[key] = TrackDictChangesItem(
                     _EMPTY_VALUE, new_value.get(key)
                 )
 
