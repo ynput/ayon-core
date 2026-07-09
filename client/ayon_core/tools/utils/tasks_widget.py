@@ -118,9 +118,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         return self._last_folder_id
 
-    def set_selected_project(self, project_name):
-        self._selected_project_name = project_name
-
     def _get_invalid_selection_item(self):
         if self._invalid_selection_item is None:
             item = QtGui.QStandardItem("Select a folder")
