@@ -81,17 +81,47 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         root_line_edit = QtWidgets.QLineEdit()
 
-        repre_checkboxes_layout = QtWidgets.QFormLayout()
-        repre_checkboxes_layout.setContentsMargins(10, 5, 5, 10)
+        # Collapsible "Advanced options" section, hidden by default
+        advanced_toggle = QtWidgets.QToolButton()
+        advanced_toggle.setText("Advanced options")
+        advanced_toggle.setCheckable(True)
+        advanced_toggle.setChecked(False)
+        advanced_toggle.setToolButtonStyle(
+            QtCore.Qt.ToolButtonTextBesideIcon)
+        advanced_toggle.setArrowType(QtCore.Qt.RightArrow)
 
-        self._representation_checkboxes = {}
-        for repre in self._get_representation_names():
-            checkbox = QtWidgets.QCheckBox()
-            checkbox.setChecked(False)
-            self._representation_checkboxes[repre] = checkbox
+        advanced_widget = QtWidgets.QWidget(self)
+        advanced_layout = QtWidgets.QFormLayout(advanced_widget)
+        advanced_layout.setContentsMargins(10, 5, 5, 5)
+        advanced_layout.addRow("Renumber Frame", renumber_frame)
+        advanced_layout.addRow("Renumber start frame", first_frame_start)
+        advanced_layout.addRow("Root", root_line_edit)
+        advanced_widget.setVisible(False)
 
-            checkbox.stateChanged.connect(self._update_selected_label)
-            repre_checkboxes_layout.addRow(repre, checkbox)
+        def _on_advanced_toggled(checked):
+            advanced_widget.setVisible(checked)
+            advanced_toggle.setArrowType(
+                QtCore.Qt.DownArrow if checked else QtCore.Qt.RightArrow
+            )
+
+        advanced_toggle.toggled.connect(_on_advanced_toggled)
+
+        btn_select_all = QtWidgets.QPushButton("Select All")
+
+        repre_list = QtWidgets.QListWidget()
+        repre_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection)
+        for repre in sorted(self._get_representation_names()):
+            repre_list.addItem(QtWidgets.QListWidgetItem(repre))
+
+        repre_list.itemSelectionChanged.connect(self._update_selected_label)
+        btn_select_all.clicked.connect(repre_list.selectAll)
+
+        repre_widget = QtWidgets.QWidget(self)
+        repre_layout = QtWidgets.QVBoxLayout(repre_widget)
+        repre_layout.setContentsMargins(10, 5, 5, 10)
+        repre_layout.addWidget(btn_select_all)
+        repre_layout.addWidget(repre_list)
 
         selected_label = QtWidgets.QLabel()
 
@@ -103,10 +133,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         input_layout.addRow("Delivery template", dropdown)
         input_layout.addRow("Directory template", template_dir_label)
         input_layout.addRow("File template", template_file_label)
-        input_layout.addRow("Renumber Frame", renumber_frame)
-        input_layout.addRow("Renumber start frame", first_frame_start)
-        input_layout.addRow("Root", root_line_edit)
-        input_layout.addRow("Representations", repre_checkboxes_layout)
+        input_layout.addRow("Representations", repre_widget)
+        input_layout.addRow(advanced_toggle)
+        input_layout.addRow(advanced_widget)
 
         btn_delivery = QtWidgets.QPushButton("Deliver")
         btn_delivery.setEnabled(False)
@@ -136,6 +165,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self.first_frame_start = first_frame_start
         self.renumber_frame = renumber_frame
         self.root_line_edit = root_line_edit
+        self.repre_list = repre_list
         self.progress_bar = progress_bar
         self.text_area = text_area
         self.btn_delivery = btn_delivery
@@ -322,13 +352,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         return label
 
     def _get_selected_repres(self):
-        """Returns list of representation names filtered from checkboxes."""
-        selected_repres = []
-        for repre_name, checkbox in self._representation_checkboxes.items():
-            if checkbox.isChecked():
-                selected_repres.append(repre_name)
-
-        return selected_repres
+        """Returns list of representation names selected in the list."""
+        return [item.text() for item in self.repre_list.selectedItems()]
 
     def _update_selected_label(self):
         """Updates label with list of number of selected files."""
