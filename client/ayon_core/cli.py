@@ -241,7 +241,7 @@ def create_project_structure(
     type=str,
     help="Version ids",
     required=True)
-def delivery(
+def deliver(
     project, version_ids
 ):
     """Create project folder structure as defined in setting

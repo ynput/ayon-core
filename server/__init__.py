@@ -116,7 +116,7 @@ class CoreAddon(BaseServerAddon):
                 )
             version_ids = {version.id for version in selected_versions}
             args = [
-                "delivery", "--project", project_name,
+                "deliver", "--project", project_name,
                 "--version_ids", ",".join(version_ids),
             ]
 
