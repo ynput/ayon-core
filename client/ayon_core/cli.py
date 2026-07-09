@@ -262,7 +262,7 @@ def deliver(
         # must be here because no module qargparse
         from ayon_core.tools.utils.lib import get_qt_app
 
-        get_qt_app()
+        _app = get_qt_app()
         version_ids = version_ids.split(",")
         dialog = DeliveryOptionsDialog(
             project, version_ids, log=log
