@@ -89,10 +89,6 @@ class PublishReportItem:
                 report_path = os.path.join(get_reports_dir(), report.id)
                 report.store_to_file(report_path)
 
-            label = report.label
-            if not label:
-                new_label = os.path.splitext(os.path.basename(filepath))[0]
-
         except Exception as exc:
             traceback.print_exception(*sys.exc_info())
             print(f"Failed to load report from file: {filepath}. {exc}")
