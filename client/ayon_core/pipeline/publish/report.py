@@ -622,7 +622,7 @@ class PublishReport:
 
         data = json.loads(content)
         if not data.get("label"):
-            data["label"] = os.path.basename(filepath)
+            data["label"] = os.path.splitext(os.path.basename(filepath))[0]
 
         updater = _PublishReportDataUpdate(data, filepath)
         updater.process()
