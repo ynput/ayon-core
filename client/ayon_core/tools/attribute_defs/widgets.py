@@ -27,6 +27,7 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
     set_style_property,
+    get_qt_icon,
 )
 from ayon_core.tools.utils import NiceCheckbox
 
@@ -373,9 +374,17 @@ class LabelAttrWidget(_BaseAttrDefWidget):
 class ButtonAttrWidget(_BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = QtWidgets.QPushButton(self)
-        label = self.attr_def.label
-        if label:
-            input_widget.setText(str(label))
+        text = self.attr_def.text
+        if text:
+            input_widget.setText(str(text))
+
+        icon = self.attr_def.icon
+        if icon is not None:
+            qt_icon = get_qt_icon(icon)
+            input_widget.setIcon(qt_icon)
+
+        if self.attr_def.tooltip:
+            input_widget.setToolTip(self.attr_def.tooltip)
 
         input_widget.clicked.connect(self._on_click)
 

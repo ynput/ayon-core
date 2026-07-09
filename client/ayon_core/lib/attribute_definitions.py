@@ -22,6 +22,12 @@ from typing import (
 
 import clique
 
+from .icon_definitions import (
+    IconBase,
+    MaterialSymbolsIcon,
+    get_icon_def_from_data,
+)
+
 if typing.TYPE_CHECKING:
     from typing import Self, Tuple, Union, TypedDict, Pattern
 
@@ -334,10 +340,16 @@ class ButtonDef(UIDef):
         self,
         key: str,
         callback: Callable | None,
-        *args, **kwargs
+        text: str | None = None,
+        icon: IconBase | None = None,
+        **kwargs
     ):
         self._callback = callback
-        super().__init__(key=key, *args, **kwargs)
+        if not text and not icon:
+            icon = MaterialSymbolsIcon(name="left_click")
+        self.icon = icon
+        self.text = text
+        super().__init__(key=key, **kwargs)
 
     def get_callback(self) -> Callable | None:
         return self._callback
@@ -358,8 +370,25 @@ class ButtonDef(UIDef):
 
         """
         data = super().serialize()
+        icon_data = None
+        if self.icon is not None:
+            icon_data = self.icon.to_data()
         data["callback"] = None
+        data["icon"] = icon_data
+        data["text"] = self.text
         return data
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> "Self":
+        """Recreate object from data.
+
+        Data can be received using 'serialize' method.
+        """
+        icon = data["icon"]
+        if isinstance(icon, dict):
+            data["icon"] = get_icon_def_from_data(icon)
+
+        return cls(**data)
 
     def clone(self) -> "Self":
         attr_def = super().clone()
