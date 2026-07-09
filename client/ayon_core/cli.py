@@ -269,9 +269,7 @@ def deliver(
         )
         dialog.exec_()
     except Exception:
-        print("Failed to deliver versions.")
-        exc_info = sys.exc_info()
-        traceback.print_exception(*exc_info)
+        log.warning("Failed to deliver versions.", exc_info=True)
 
 
 def _set_global_environments() -> None:
