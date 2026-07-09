@@ -832,7 +832,7 @@ class AbstractTemplateBuilder(ABC):
             folder_entity,
             task_entity,
             self.host_name,
-            project_settings,
+            project_settings=project_settings,
         )
         workdir = get_workdir(
             project_entity,
