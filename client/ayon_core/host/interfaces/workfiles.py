@@ -834,6 +834,10 @@ class IWorkfileHost(AbstractHost):
         all host integrations.
 
     """
+    # Can be changed to False if the host integration needs to change context
+    #   after workfile is opened
+    # - usefull in cases when the integration does store context to metadata
+    #   of the file
     change_context_before_workfile_open = True
 
     @abstractmethod
