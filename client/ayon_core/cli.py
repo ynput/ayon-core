@@ -22,6 +22,7 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
+from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
 
 
 @click.group(invoke_without_command=True)
@@ -228,6 +229,49 @@ def create_project_structure(
 
     print(f">>> Creating project folder structure for project '{project}'.")
     create_project_folders(project)
+
+
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+@click.option(
+    "--version_ids",
+    type=str,
+    help="Version ids",
+    required=True)
+def delivery(
+    project, version_ids
+):
+    """Create project folder structure as defined in setting
+    `ayon+settings://core/project_folder_structure`
+
+    Args:
+        project (str): The name of the project for which you
+            want to create its additional folder structure.
+
+    """
+
+    print(f">>> Launching browser for Delivery action '{project}'.")
+
+    log = Logger.get_logger("delivery")
+
+    try:
+        # must be here because no module qargparse
+        from ayon_core.tools.utils.lib import get_qt_app
+
+        get_qt_app()
+        version_ids = version_ids.split(",")
+        dialog = DeliveryOptionsDialog(
+            project, version_ids, log=log
+        )
+        dialog.exec_()
+    except Exception:
+        print("Failed to deliver versions.")
+        exc_info = sys.exc_info()
+        traceback.print_exception(*exc_info)
 
 
 def _set_global_environments() -> None:
