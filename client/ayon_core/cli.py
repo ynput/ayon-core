@@ -22,7 +22,6 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
-from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
 
 
 @click.group(invoke_without_command=True)
@@ -259,6 +258,7 @@ def delivery(
     log = Logger.get_logger("delivery")
 
     try:
+        from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
         # must be here because no module qargparse
         from ayon_core.tools.utils.lib import get_qt_app
 
