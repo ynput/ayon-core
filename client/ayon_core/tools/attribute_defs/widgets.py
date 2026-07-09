@@ -393,7 +393,8 @@ class ButtonAttrWidget(_BaseAttrDefWidget):
 
         self._input_widget = input_widget
 
-        self.main_layout.addWidget(input_widget, 1)
+        self.main_layout.addWidget(input_widget, 0)
+        self.main_layout.addStretch(1)
 
     def _on_click(self):
         self.attr_def.trigger()
