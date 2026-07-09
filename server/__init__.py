@@ -60,6 +60,20 @@ class CoreAddon(BaseServerAddon):
                     allow_multiselection=False,
                 )
             )
+            output.append(
+                SimpleActionManifest(
+                    identifier="core.delivery",
+                    label="Start Delivery Action in Launcher",
+                    icon={
+                        "type": "material-symbols",
+                        "name": "create_new_folder",
+                    },
+                    order=100,
+                    entity_type="version",
+                    entity_subtypes=None,
+                    allow_multiselection=True,
+                )
+            )
 
         return output
 
@@ -92,6 +106,21 @@ class CoreAddon(BaseServerAddon):
                 return await executor.get_launcher_response(args)
 
             return await executor.get_launcher_action_response(args)
+
+        if executor.identifier == "core.delivery":
+            selected_versions = await executor.context.get_entities()
+            if not selected_versions:
+                return await executor.get_server_action_response(
+                    message="No versions available in selection.",
+                    success=False
+                )
+            version_ids = {version.id for version in selected_versions}
+            args = [
+                "delivery", "--project", project_name,
+                "--version_ids", ",".join(version_ids),
+            ]
+
+            return await executor.get_launcher_response(args)
 
         logger.debug(f"Unknown action: {executor.identifier}")
         # Works since AYON server 1.8.3
