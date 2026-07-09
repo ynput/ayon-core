@@ -1105,24 +1105,6 @@ class AbstractTemplateBuilder(ABC):
                 self.log.info("Saving first workfile: %s", workfile_path)
                 save_next_version()
 
-    def save_next_workfile_version(self, preset: TemplatePreset) -> None:
-        """Save the next version of the workfile if the preset allows it.
-
-        Args:
-            preset (TemplatePreset): The template preset to use for
-                building the workfile template.
-        """
-        if not preset.create_first_version:
-            return
-
-        workfile_path = self.get_workfile_path()
-        if os.path.exists(workfile_path):
-            self.log.info("Workfile path to save is not available.")
-            return
-
-        self.log.info("Saving first workfile: %s", workfile_path)
-        save_next_version()
-
     def get_template_preset(self) -> TemplatePreset:
         """Unified way how template preset is received using settings.
 
