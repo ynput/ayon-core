@@ -237,19 +237,28 @@ def create_project_structure(
     help="Project name",
     required=True)
 @click.option(
+    "--event_id",
+    type=str,
+    help="Id of the event carrying the version ids",
+    default=None)
+@click.option(
     "--version_ids",
     type=str,
-    help="Version ids",
-    required=True)
+    help="Comma separated version ids",
+    default=None)
 def deliver(
-    project, version_ids
+    project, event_id, version_ids
 ):
-    """Create project folder structure as defined in setting
-    `ayon+settings://core/project_folder_structure`
+    """Launch delivery action for selected versions.
+
+    The version ids can be passed either directly via '--version_ids' (legacy)
+    or via an event using '--event_id'. Exactly one of the two must be
+    provided.
 
     Args:
-        project (str): The name of the project for which you
-            want to create its additional folder structure.
+        project (str): The name of the project.
+        event_id (str): Id of the event carrying the version ids.
+        version_ids (str): Comma separated version ids.
 
     """
 
@@ -257,13 +266,24 @@ def deliver(
 
     log = Logger.get_logger("delivery")
 
+    if (event_id and version_ids) or (not event_id and not version_ids):
+        log.warning(
+            "Exactly one of '--event_id' or '--version_ids' must be provided."
+        )
+        return
+
     try:
         from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
         # must be here because no module qargparse
         from ayon_core.tools.utils.lib import get_qt_app
 
         _app = get_qt_app()
-        version_ids = version_ids.split(",")
+        if event_id:
+            import ayon_api
+            event = ayon_api.get_event(event_id)
+            version_ids = event["payload"]["version_ids"]
+        else:
+            version_ids = version_ids.split(",")
         dialog = DeliveryOptionsDialog(
             project, version_ids, log=log
         )
