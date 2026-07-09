@@ -1099,7 +1099,11 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
         self.build_template(preset=preset)
-        self.save_next_workfile_version(preset=preset)
+        if preset.create_first_version:
+            workfile_path = self.get_workfile_path()
+            if not os.path.exists(workfile_path):
+                self.log.info("Saving first workfile: %s", workfile_path)
+                save_next_version()
 
     def save_next_workfile_version(self, preset: TemplatePreset) -> None:
         """Save the next version of the workfile if the preset allows it.
