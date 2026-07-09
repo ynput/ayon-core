@@ -471,11 +471,11 @@ class ExtractOTIOReview(
         # the intended range, e.g. the image2 demuxer has no "end frame"
         # option and will keep consuming consecutive numbered files on
         # disk beyond what this segment actually needs.
-        frames_to_render = None
+        frame_count = None
         if sequence is not None:
             input_dir, collection, sequence_fps = sequence
             in_frame_start = min(collection.indexes)
-            frames_to_render = len(collection.indexes)
+            frame_count = len(collection.indexes)
 
             # converting image sequence to image sequence
             input_file = collection.format("{head}{padding}{tail}")
@@ -512,7 +512,7 @@ class ExtractOTIOReview(
             frame_start = otio_range.start_time.value
             input_fps = otio_range.start_time.rate
             frame_duration = otio_range.duration.value
-            frames_to_render = int(round(frame_duration))
+            frame_count = round(frame_duration)
             sec_start = frames_to_seconds(frame_start, input_fps)
             sec_duration = frames_to_seconds(
                 frame_duration, input_fps
@@ -547,7 +547,11 @@ class ExtractOTIOReview(
             command.extend([
                 "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos",
                 "-compression_level", "5",
-                "-frames:v", str(frames_to_render),
+            ])
+
+        if frame_count is not None:
+            command.extend([
+                "-frames:v", str(frame_count)
             ])
 
         # add output attributes
