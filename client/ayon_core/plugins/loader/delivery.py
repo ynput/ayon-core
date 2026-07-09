@@ -6,7 +6,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
+from ayon_core.tools.delivery import DeliveryOptionsDialog
 
 
 class DeliveryAction(LoaderSimpleActionPlugin):
