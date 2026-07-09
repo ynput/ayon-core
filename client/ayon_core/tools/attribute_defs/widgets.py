@@ -216,11 +216,21 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
+
             col_num = 0
-            expand_cols = 2
-            if attr_def.is_value_def and attr_def.label:
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
+                col_num = 1
+            expand_cols = 2 - col_num
+
+            if label:
                 label_widget = AttributeDefinitionsLabel(
-                    attr_def.id, attr_def.label, self
+                    attr_def.id, label, self
                 )
                 label_widget.revert_to_default_requested.connect(
                     self._on_revert_request
@@ -235,17 +245,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                         | QtCore.Qt.AlignVCenter
                     )
                 layout.addWidget(
-                    label_widget, row, col_num, 1, 1
+                    label_widget, row, 0, 1, expand_cols
                 )
-                if attr_def.is_label_horizontal:
-                    col_num += 1
-                    expand_cols = 1
-                else:
+                if not attr_def.is_label_horizontal:
                     row += 1
-
-            if isinstance(attr_def, ButtonDef):
-                col_num += 1
-                expand_cols = 1
 
             if attr_def.is_value_def:
                 widget.value_changed.connect(self._on_value_change)

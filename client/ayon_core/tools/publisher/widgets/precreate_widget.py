@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib import AbstractAttrDef, ButtonDef
+from ayon_core.lib import AbstractAttrDef, ButtonDef, UILabelDef
 
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 
@@ -140,15 +140,20 @@ class AttributesWidget(QtWidgets.QWidget):
             widget = create_widget_for_attr_def(attr_def, self)
 
             expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
-                expand_cols = 1
-            elif isinstance(attr_def, ButtonDef):
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
                 expand_cols = 1
 
             col_num = 2 - expand_cols
 
-            if attr_def.is_value_def and attr_def.label:
-                label_widget = QtWidgets.QLabel(attr_def.label, self)
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
+
+            if label:
+                label_widget = QtWidgets.QLabel(label, self)
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)

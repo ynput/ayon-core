@@ -5,6 +5,7 @@ from typing import Dict, List, Any
 
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.lib import UILabelDef
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
@@ -191,22 +192,25 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
-            expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
-                expand_cols = 1
-            elif isinstance(attr_def, ButtonDef):
-                expand_cols = 1
+            col_num = 0
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
+                col_num = 1
 
-            col_num = 2 - expand_cols
+            expand_cols = 2 - col_num
 
-            label = None
             is_overriden = False
-            if attr_def.is_value_def:
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
+
+            elif attr_def.is_value_def:
                 is_overriden = any(
                     item["value"] != item["default"]
                     for item in info_by_id.values()
                 )
-                label = attr_def.label or attr_def.key
 
             if label:
                 label_widget = AttributeDefinitionsLabel(
@@ -215,6 +219,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
+
                 if attr_def.is_label_horizontal:
                     label_widget.setAlignment(
                         QtCore.Qt.AlignRight
@@ -419,16 +424,19 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 label_widget = None
                 if visible_widget:
-                    expand_cols = 2
-                    if attr_def.is_value_def and attr_def.is_label_horizontal:
-                        expand_cols = 1
-                    elif isinstance(attr_def, ButtonDef):
-                        expand_cols = 1
+                    col_num = 0
+                    if attr_def.is_label_horizontal and (
+                        attr_def.is_value_def
+                        or isinstance(attr_def, ButtonDef)
+                    ):
+                        col_num = 1
 
-                    col_num = 2 - expand_cols
-                    label = None
-                    if attr_def.is_value_def:
-                        label = attr_def.label or attr_def.key
+                    expand_cols = 2 - col_num
+
+                    label = attr_def.label
+                    if isinstance(attr_def, UILabelDef):
+                        label = None
+
                     if label:
                         label_widget = AttributeDefinitionsLabel(
                             attr_def.id, label, content_widget
