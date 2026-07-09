@@ -41,11 +41,11 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.events import EventSystem, EventCallback, Event
 from ayon_core.pipeline.workfile import save_next_version
-from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.workfile.path_resolving import (
     get_workfile_template_key,
     get_workdir,
+    get_last_workfile,
 )
 
 from ayon_core.lib.attribute_definitions import get_attributes_keys
@@ -544,7 +544,14 @@ class AbstractTemplateBuilder(ABC):
     def _backwards_compatibility_build_template(func):
         """Decorator for backwards compatibility of build_template method.
 
-        This decorator allows the build_template method to accept either a
+        This decorator keeps legacy build behavior as default while allowing
+        explicit use of a TemplatePreset for the new behavior.
+
+        If a TemplatePreset is passed (or provided via ``preset=``),
+        the wrapped method (new implementation) is executed. Otherwise,
+        execution is delegated to ``old_build_template``.
+
+        It supports either a
         TemplatePreset object or the old parameters (template_path,
         level_limit,keep_placeholders, create_first_version,
         workfile_creation_enabled).
@@ -577,10 +584,7 @@ class AbstractTemplateBuilder(ABC):
                 and isinstance(args[0], TemplatePreset)
                 and not kwargs
             ):
-                return func(self, *args, **kwargs)
-
-            if not args and not kwargs:
-                return func(self)
+                return func(self, args[0])
 
             # Legacy API fallback.
             return self.old_build_template(*args, **kwargs)
@@ -808,13 +812,12 @@ class AbstractTemplateBuilder(ABC):
         Return:
             str: Last workfile path, or first version to create if none exist.
         """
+        current_path = self.host.get_current_workfile()
+        if current_path:
+            return current_path
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         task_entity = self.current_task_entity
-
-        current_path = self.host.get_current_workfile()
-        if current_path:
-            current_path = os.path.normpath(current_path)
 
         project_settings = self.project_settings
         project_entity = ayon_api.get_project(project_name)
@@ -832,7 +835,7 @@ class AbstractTemplateBuilder(ABC):
             folder_entity,
             task_entity,
             self.host_name,
-            project_settings=project_settings,
+            settings=project_settings,
         )
         workdir = get_workdir(
             project_entity,
@@ -843,31 +846,13 @@ class AbstractTemplateBuilder(ABC):
             template_key=template_key,
             project_settings=project_settings,
         )
-        version = get_versioning_start(
-            project_name,
-            self.host_name,
-            task_name=task_entity["name"],
-            task_type=task_entity["taskType"],
-            product_base_type="workfile",
-            project_settings=project_settings,
+        return get_last_workfile(
+            workdir,
+            file_template.template,
+            template_data,
+            set(self.host.get_workfile_extensions() or []),
+            full_path=True,
         )
-
-        template_data["version"] = version
-
-        ext = None
-        workfile_extensions = self.host.get_workfile_extensions()
-        if workfile_extensions:
-            if current_path:
-                ext = os.path.splitext(current_path)[1]
-            else:
-                ext = next(iter(workfile_extensions))
-            ext = ext.lstrip(".")
-
-        if ext:
-            template_data["ext"] = ext
-
-        filename = file_template.format_strict(template_data)
-        return os.path.join(workdir, filename)
 
     def _prepare_placeholders(self, placeholders):
         """Run preparation part for placeholders on plugins.
@@ -1064,6 +1049,11 @@ class AbstractTemplateBuilder(ABC):
             return
 
         self.build_template(preset=preset)
+        if preset.create_first_version:
+            workfile_path = self.get_workfile_path()
+            if not os.path.exists(workfile_path):
+                self.log.info("Saving first workfile: %s", workfile_path)
+                save_next_version()
 
     def trigger_on_new_file(
         self, preset: TemplatePreset | None = None
@@ -1084,6 +1074,11 @@ class AbstractTemplateBuilder(ABC):
             return
 
         self.build_template(preset=preset)
+        if preset.create_first_version:
+            workfile_path = self.get_workfile_path()
+            if not os.path.exists(workfile_path):
+                self.log.info("Saving first workfile: %s", workfile_path)
+                save_next_version()
 
     def create_first_workfile_version(
         self, preset: TemplatePreset | None = None
