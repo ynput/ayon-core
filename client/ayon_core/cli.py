@@ -279,13 +279,28 @@ def deliver(
         from ayon_core.tools.utils.lib import get_qt_app
 
         _app = get_qt_app()
+        list_entity_label = None
         if event_id:
             event = ayon_api.get_event(event_id)
-            version_ids = event["payload"]["version_ids"]
+
+            # either version_ids or list_id can be in payload
+            version_ids = event["payload"].get("version_ids")
+            list_id = event["payload"].get("list_id")
+            if not version_ids and not list_id:
+                raise ValueError("No version_ids or list_id in payload.")
+            if list_id:
+                list_entity = ayon_api.get_entity_lists(
+                    project, list_ids=[list_id], fields=["items", "label"])
+                list_entity = list(list_entity)[0]
+                list_entity_label = list_entity["label"]
+                # get all version entities belonging to the list
+                version_ids = [
+                    version["entityId"] for version in list_entity["items"]]
         else:
             version_ids = version_ids.split(",")
+
         dialog = DeliveryOptionsDialog(
-            project, version_ids, log=log
+            project, version_ids, list_entity_label=list_entity_label, log=log
         )
         dialog.exec_()
     except Exception:

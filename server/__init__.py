@@ -63,7 +63,7 @@ class CoreAddon(BaseServerAddon):
             )
             output.append(
                 SimpleActionManifest(
-                    identifier="core.delivery",
+                    identifier="core.delivery.version",
                     label="Delivery Versions (launcher action)",
                     icon={
                         "type": "material-symbols",
@@ -73,6 +73,23 @@ class CoreAddon(BaseServerAddon):
                     entity_type="version",
                     entity_subtypes=None,
                     allow_multiselection=True,
+                )
+            )
+            output.append(
+                SimpleActionManifest(
+                    identifier="core.delivery.list",
+                    label="Delivery Versions (launcher action)",
+                    icon={
+                        "type": "material-symbols",
+                        "name": "create_new_folder",
+                    },
+                    order=100,
+                    entity_type="list",
+                    entity_subtypes=[
+                        "version:review-session",
+                        "version:generic",
+                    ],
+                    allow_multiselection=False,
                 )
             )
 
@@ -108,7 +125,7 @@ class CoreAddon(BaseServerAddon):
 
             return await executor.get_launcher_action_response(args)
 
-        if executor.identifier == "core.delivery":
+        if executor.identifier == "core.delivery.version":
             selected_versions = await executor.context.get_entities()
             if not selected_versions:
                 return await executor.get_server_action_response(
@@ -120,6 +137,27 @@ class CoreAddon(BaseServerAddon):
                 topic="delivery.requested",
                 project=project_name,
                 payload={"version_ids": version_ids},
+                finished=True,
+            )
+            args = [
+                "deliver", "--project", project_name,
+                "--event_id", event_id,
+            ]
+
+            return await executor.get_launcher_response(args)
+
+        if executor.identifier == "core.delivery.list":
+            selected_list = executor.context.entity_ids[0]
+            print(f"selected_list: {selected_list}")
+            if not selected_list:
+                return await executor.get_server_action_response(
+                    message="No list available in selection.",
+                    success=False
+                )
+            event_id = await dispatch_event(
+                topic="delivery.requested",
+                project=project_name,
+                payload={"list_id": selected_list},
                 finished=True,
             )
             args = [
