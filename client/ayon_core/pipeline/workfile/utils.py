@@ -332,6 +332,7 @@ def save_current_workfile_to(
     folder_path: str,
     task_name: str,
     *,
+    project_name: str | None = None,
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
@@ -343,6 +344,7 @@ def save_current_workfile_to(
         workfile_path (str): Destination workfile path.
         folder_path (str): Target folder path.
         task_name (str): Target task name.
+        project_name (str | None): Project name.
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
@@ -353,8 +355,10 @@ def save_current_workfile_to(
     from ayon_core.pipeline.context_tools import registered_host
 
     host = registered_host()
-    context = host.get_current_context()
-    project_name = context["project_name"]
+    if project_name is None:
+        context = host.get_current_context()
+        project_name = context["project_name"]
+
     folder_entity = ayon_api.get_folder_by_path(
         project_name, folder_path
     )
@@ -365,6 +369,7 @@ def save_current_workfile_to(
         workfile_path,
         folder_entity,
         task_entity,
+        project_name=project_name,
         version=version,
         comment=comment,
         description=description,
@@ -413,6 +418,7 @@ def save_workfile_with_current_context(
         workfile_path,
         folder_entity,
         task_entity,
+        project_name=project_name,
         version=version,
         comment=comment,
         description=description,
@@ -580,6 +586,7 @@ def save_next_version(
         workfile_path,
         folder_entity,
         task_entity,
+        project_name=project_name,
         version=version,
         comment=comment,
         description=description,
@@ -592,6 +599,7 @@ def copy_workfile_to_context(
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
     *,
+    project_name: str | None = None,
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
@@ -607,6 +615,8 @@ def copy_workfile_to_context(
         src_workfile_path (str): Source workfile path.
         folder_entity (dict[str, Any]): Target folder entity.
         task_entity (dict[str, Any]): Target task entity.
+        project_name (str | None): Project name. Current project is used
+            if not passed.
         version (Optional[int]): Workfile version. Use next version if not
             passed.
         comment (optional[str]): Workfile comment.
@@ -619,8 +629,15 @@ def copy_workfile_to_context(
     from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.context_tools import registered_host
 
+    if prepared_data is None:
+        prepared_data = CopyWorkfileOptionalData()
+
     host = registered_host()
-    project_name = host.get_current_project_name()
+    if project_name is None:
+        if prepared_data.project_entity:
+            project_name = prepared_data.project_entity["name"]
+        else:
+            project_name = host.get_current_project_name()
 
     anatomy = prepared_data.anatomy
     if anatomy is None:
@@ -702,6 +719,7 @@ def copy_workfile_to_context(
         workfile_path,
         folder_entity,
         task_entity,
+        project_name=project_name,
         version=version,
         comment=comment,
         description=description,
