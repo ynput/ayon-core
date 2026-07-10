@@ -8,6 +8,7 @@ import traceback
 from pathlib import Path
 
 import click
+import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
@@ -279,7 +280,6 @@ def deliver(
 
         _app = get_qt_app()
         if event_id:
-            import ayon_api
             event = ayon_api.get_event(event_id)
             version_ids = event["payload"]["version_ids"]
         else:
