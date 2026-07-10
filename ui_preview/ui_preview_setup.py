@@ -15,18 +15,18 @@ import sys
 from pathlib import Path
 
 # Import QtWidgets to make sure Qt binding is available
-from qtpy import QtWidgets
+from qtpy import QtWidgets  # noqa: F401
 
 CURRENT_DIR = Path(__file__).parent
 
 
 try:
-    import ayon_core
+    import ayon_core  # noqa: F401
 except ImportError:
     sys.path.append(str(CURRENT_DIR.parent / "client"))
 
 try:
-    import qtmaterialsymbols
+    import qtmaterialsymbols  # noqa: F401
 except ImportError:
     sys.path.append(
         str(CURRENT_DIR.parent / "client" / "ayon_core" / "vendor" / "python")
@@ -77,7 +77,7 @@ class _ModuleClass:
         return self.__attributes__.items()
 
 try:
-    import ui_preview
+    import ui_preview  # noqa: F401
 except ImportError:
     module = _ModuleClass("ui_preview")
     sys.modules[module.name] = module
