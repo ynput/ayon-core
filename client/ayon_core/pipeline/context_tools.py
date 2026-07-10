@@ -29,7 +29,6 @@ from . import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
-    deregister_loader_plugin_path,
     deregister_inventory_action_path
 )
 
