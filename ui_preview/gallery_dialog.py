@@ -33,13 +33,6 @@ def build_gallery_dialog_preview_widget():
     for img_file in rsrc_dir.glob("*.png"):
         images.append((str(img_file), img_file.name))
 
-    if not images:
-        # Create dummy entries for testing
-        images = [
-            ("test1.png", "Test Image 1"),
-            ("test2.png", "Test Image 2"),
-        ]
-
     dialog = GalleryDialog(images, current_index=0)
     # Because 'GallerDialog' is marked as tool it's closing does not trigger
     #   application close. So a fake dialog close event is used to trigger
