@@ -306,49 +306,6 @@ def make_hierarchical_test_fetch(
     return _fetch
 
 
-def make_hierarchical_test_fetch_batch(
-    data: dict[str | None, list[dict[str, Any]]],
-) -> Callable[
-    [list[BatchFetchRequest]], dict[str | None, list[dict[str, Any]]]
-]:
-    """Create a *fetch_page_batch* callback from hierarchical test data.
-
-    Wraps :func:`make_hierarchical_test_fetch` so that several child
-    fetch requests are resolved in one call, mimicking a batched server
-    API.  Use together with ``fetch_page_batch=`` on
-    :class:`PaginatedTableModel` to exercise the batch code path.
-
-    Args:
-        data: Mapping of parent_id -> list[row_dict].
-              ``None`` key holds the root-level rows.
-
-    Returns:
-        A callable suitable for ``PaginatedTableModel(fetch_page_batch=…)``
-        in tree mode.
-    """
-    single_fetch = make_hierarchical_test_fetch(data)
-
-    def _batch_fetch(
-        requests: list[BatchFetchRequest],
-    ) -> dict[str | None, list[dict[str, Any]]]:
-        print(
-            f"[test]  Batch fetch for {len(requests)} parent(s): "
-            f"{[r.parent_id for r in requests]!r}"
-        )
-        return {
-            req.parent_id: single_fetch(
-                req.page,
-                req.page_size,
-                req.sort_key,
-                req.descending,
-                req.parent_id,
-            )
-            for req in requests
-        }
-
-    return _batch_fetch
-
-
 def main():
     _app = QApplication(sys.argv)
     fetch = make_test_fetch(TABLE_TEST_DATA)
