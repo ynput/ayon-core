@@ -64,7 +64,7 @@ class CoreAddon(BaseServerAddon):
             output.append(
                 SimpleActionManifest(
                     identifier="core.delivery",
-                    label="Start Delivery Action in Launcher",
+                    label="Delivery Versions (launcher action)",
                     icon={
                         "type": "material-symbols",
                         "name": "create_new_folder",
