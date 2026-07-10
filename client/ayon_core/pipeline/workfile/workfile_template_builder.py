@@ -658,6 +658,7 @@ class AbstractTemplateBuilder(ABC):
             workfile_path,
             self.current_folder_entity,
             self.current_task_entity,
+            project_name=self.project_name,
         )
 
     def _prepare_placeholders(self, placeholders):
