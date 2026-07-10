@@ -76,6 +76,7 @@ class _ModuleClass:
     def items(self):
         return self.__attributes__.items()
 
+
 try:
     import ui_preview  # noqa: F401
 except ImportError:
