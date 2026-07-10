@@ -4,10 +4,11 @@ import os
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
 from ayon_core.ui.variants import QPushButtonVariants
 from ayon_core.ui.components.buttons import AYButton, AYButtonMenu
 from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 
 def build_buttons_preview_widget():

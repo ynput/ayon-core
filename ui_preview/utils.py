@@ -8,6 +8,8 @@ from typing import Any
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.ui.style_types import get_ayon_style
 
@@ -30,6 +32,8 @@ class Style(Enum):
     AYONStyle = 2
     AYONStyleOverCSS = 3
 
+
+CURRENT_DIR = Path(__file__).parent
 
 AWFUL_CSS = """
 QWidget {
@@ -69,7 +73,7 @@ def get_test_data_dir() -> Path | None:
 
 def load_rv_stylesheet(old: bool = True) -> str:
     filename = "rv_mac_dark_legacy.qss" if old else "rv_dark.qss"
-    resources_dir = Path(AYON_CORE_ROOT) / "ui" / "preview" / "resources"
+    resources_dir = CURRENT_DIR / "resources"
     fpath = resources_dir / filename
     print(f"Loading stylesheet from {fpath}")
     return fpath.read_text(encoding="utf-8")

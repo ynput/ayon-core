@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.text_edit import AYTextEdit
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 _SAMPLE_TEXT = (
     "The quick brown fox jumps over the lazy dog.\n"

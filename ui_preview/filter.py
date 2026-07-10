@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.filter import AYFilterByCategory, FilterItem
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 
 def build_filter_preview_widget() -> QtWidgets.QWidget:

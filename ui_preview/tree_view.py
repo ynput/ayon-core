@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.layouts import AYVBoxLayout
 from ayon_core.ui.components.tree_model import (
     LazyTreeModel,
     TreeNode,
 )
 from ayon_core.ui.components.tree_view import AYTreeView
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 
 PRODUCTS_TEST_DATA: dict[str | None, list[TreeNode]] = {

@@ -4,6 +4,8 @@ from qtpy import QtCore
 from qtpy.QtWidgets import QAction, QStyle
 from qtpy.QtCore import Qt
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.combo_box import AYComboBox
@@ -14,8 +16,8 @@ from ayon_core.ui.components.option_action import AYMenu, AYOptionalAction
 from ayon_core.ui.components.text_box import AYTextBox
 from ayon_core.ui.components.user_image import AYUserImage
 from ayon_core.ui.drawers import get_icon, enum_to_str
-from ayon_core.ui.preview.constants import EXAMPLE_STATUSES
-from ayon_core.ui.preview.utils import (
+from ui_preview.constants import EXAMPLE_STATUSES
+from ui_preview.utils import (
     Style,
     preview_widget,
     get_test_data_dir,

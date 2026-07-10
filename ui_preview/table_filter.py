@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.table_model import (
@@ -14,8 +16,8 @@ from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.table_filter import AYTableFilter
 from ayon_core.ui.components.tree_model import TreeNode, LazyTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView
-from ayon_core.ui.preview.utils import Style, preview_widget
-from ayon_core.ui.preview.table_model import (
+from ui_preview.utils import Style, preview_widget
+from ui_preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )

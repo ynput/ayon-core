@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.text_box import AYTextBox
 from ayon_core.ui.components.comment import AYComment
 from ayon_core.ui.data_models import CommentModel
-from ayon_core.ui.preview.utils import (
+from ui_preview.utils import (
     Style,
     preview_widget,
     get_test_data_dir,

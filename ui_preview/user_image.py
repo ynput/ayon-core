@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.user_image import AYUserImage
-from ayon_core.ui.preview.utils import (
+from ui_preview.utils import (
     Style,
     preview_widget,
     get_test_data_dir,

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from qtpy.QtCore import QTimer
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
-from ayon_core.ui.preview.utils import (
+from ui_preview.utils import (
     Style,
     preview_widget,
     get_test_data_dir,

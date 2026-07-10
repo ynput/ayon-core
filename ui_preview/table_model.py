@@ -6,6 +6,8 @@ import sys
 
 from qtpy.QtWidgets import QApplication
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.table_model import (
     PaginatedTableModel,
     BatchFetchRequest,

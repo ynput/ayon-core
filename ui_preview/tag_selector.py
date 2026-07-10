@@ -4,10 +4,12 @@ import logging
 
 from qtpy.QtWidgets import QWidget
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.tag_selector import AYTagSelector, TagData
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 logger = logging.getLogger(__name__)
 

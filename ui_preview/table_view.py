@@ -6,6 +6,8 @@ from qtpy import QtWidgets
 from qtpy.QtWidgets import QWidget
 from qtpy.QtCore import QModelIndex
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.check_box import AYCheckBox
@@ -14,8 +16,8 @@ from ayon_core.ui.components.table_model import (
     PaginatedTableModel,
     TableColumn,
 )
-from ayon_core.ui.preview.utils import Style, preview_widget
-from ayon_core.ui.preview.table_model import (
+from ui_preview.utils import Style, preview_widget
+from ui_preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )

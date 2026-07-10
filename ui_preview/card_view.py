@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
 from ayon_core.ui.components.card_view import AYCardView
 from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.container import AYContainer
@@ -10,11 +11,11 @@ from ayon_core.ui.components.table_model import (
     PaginatedTableModel,
     TableColumn,
 )
-from ayon_core.ui.preview.table_model import (
+from ui_preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 
 def _make_card_mapper(

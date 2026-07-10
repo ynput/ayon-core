@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.gallery_dialog import GalleryDialog
-from ayon_core.ui.preview.utils import (
+from ui_preview.utils import (
     Style,
     preview_widget,
     get_test_data_dir,

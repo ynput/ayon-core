@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.frame import AYFrame
 from ayon_core.ui.components.layouts import AYVBoxLayout
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 
 def build_frame_preview_widget():

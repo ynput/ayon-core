@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from qtpy import QtWidgets, QtGui
 
+import ui_preview_setup  # noqa: F401
+
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.tag import AYTag
-from ayon_core.ui.preview.utils import Style, preview_widget
+from ui_preview.utils import Style, preview_widget
 
 
 def _connect_signals(w: QtWidgets.QWidget):
