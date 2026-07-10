@@ -31,7 +31,7 @@ class Style(Enum):
 
 
 CURRENT_DIR = Path(__file__).parent
-REPO_ROOT = Path(CURRENT_DIR).parent
+REPO_ROOT = Path(CURRENT_DIR).parent.parent.parent.parent
 
 AWFUL_CSS = """
 QWidget {
