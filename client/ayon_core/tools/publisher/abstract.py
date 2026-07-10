@@ -51,6 +51,14 @@ class CardMessageTypes:
     error = "error"
 
 
+@dataclass
+class PublishAttrDefsInfo:
+    plugin_name: str
+    attr_defs: list[AbstractAttrDef]
+    values: dict[str, list[tuple[str, Any, Any]]]
+    instance_ids: list[str | None]
+
+
 class AbstractPublisherCommon(ABC):
     @abstractmethod
     def register_event_callback(self, topic, callback):
@@ -444,11 +452,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         self,
         instance_ids: Iterable[str],
         include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+    ) -> list[PublishAttrDefsInfo]:
         pass
 
     @abstractmethod
@@ -468,6 +472,29 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         plugin_name: str,
         key: str,
     ):
+        pass
+
+    @abstractmethod
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
         pass
 
     @abstractmethod
