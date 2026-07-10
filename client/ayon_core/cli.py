@@ -8,6 +8,7 @@ import traceback
 from pathlib import Path
 
 import click
+import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
@@ -228,6 +229,67 @@ def create_project_structure(
 
     print(f">>> Creating project folder structure for project '{project}'.")
     create_project_folders(project)
+
+
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+@click.option(
+    "--event_id",
+    type=str,
+    help="Id of the event carrying the version ids",
+    default=None)
+@click.option(
+    "--version_ids",
+    type=str,
+    help="Comma separated version ids",
+    default=None)
+def deliver(
+    project, event_id, version_ids
+):
+    """Launch delivery action for selected versions.
+
+    The version ids can be passed either directly via '--version_ids' (legacy)
+    or via an event using '--event_id'. Exactly one of the two must be
+    provided.
+
+    Args:
+        project (str): The name of the project.
+        event_id (str): Id of the event carrying the version ids.
+        version_ids (str): Comma separated version ids.
+
+    """
+
+    print(f">>> Launching browser for Delivery action '{project}'.")
+
+    log = Logger.get_logger("delivery")
+
+    if (event_id and version_ids) or (not event_id and not version_ids):
+        log.warning(
+            "Exactly one of '--event_id' or '--version_ids' must be provided."
+        )
+        return
+
+    try:
+        from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
+        # must be here because no module qargparse
+        from ayon_core.tools.utils.lib import get_qt_app
+
+        _app = get_qt_app()
+        if event_id:
+            event = ayon_api.get_event(event_id)
+            version_ids = event["payload"]["version_ids"]
+        else:
+            version_ids = version_ids.split(",")
+        dialog = DeliveryOptionsDialog(
+            project, version_ids, log=log
+        )
+        dialog.exec_()
+    except Exception:
+        log.warning("Failed to deliver versions.", exc_info=True)
 
 
 def _set_global_environments() -> None:

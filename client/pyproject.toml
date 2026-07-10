@@ -21,5 +21,6 @@ Pillow = "9.5.0"
 websocket-client = ">=0.40.0,<2"
 fontTools = "*"
 
+
 [ayon.runtimeDependencies.darwin]
 pyobjc-core = "^11.1"
