@@ -10,7 +10,6 @@ from qtpy import QtWidgets
 
 import ui_preview_setup  # noqa: F401
 
-from ayon_core import AYON_CORE_ROOT
 from ayon_core.ui.style_types import get_ayon_style
 
 from ayon_core.ui.data_models import (
@@ -34,6 +33,7 @@ class Style(Enum):
 
 
 CURRENT_DIR = Path(__file__).parent
+REPO_ROOT = Path(CURRENT_DIR).parent
 
 AWFUL_CSS = """
 QWidget {
@@ -62,9 +62,8 @@ def get_test_data_dir() -> Path | None:
     """
 
     # Relative to repo root path tests/client/ayon_core/ui/test_data
-    repo_root = Path(AYON_CORE_ROOT).parent.parent
     test_data = (
-        repo_root / "tests" / "client" / "ayon_core" / "ui" / "test_data"
+        REPO_ROOT / "tests" / "client" / "ayon_core" / "ui" / "test_data"
     )
     if test_data.is_dir():
         return test_data
