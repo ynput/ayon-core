@@ -4,7 +4,7 @@ import ui_preview_setup  # noqa: F401
 
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.text_box import AYTextBox
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 def build_text_box_preview_widget():

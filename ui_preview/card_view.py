@@ -15,7 +15,7 @@ from ui_preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 def _make_card_mapper(

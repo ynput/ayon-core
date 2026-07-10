@@ -5,7 +5,7 @@ import ui_preview_setup  # noqa: F401
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.entity_path import AYEntityPath
 from ayon_core.ui.components.label import AYLabel
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 def build_entity_path_preview_widget():

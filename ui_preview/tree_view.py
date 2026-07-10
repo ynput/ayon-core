@@ -10,7 +10,7 @@ from ayon_core.ui.components.tree_model import (
     TreeNode,
 )
 from ayon_core.ui.components.tree_view import AYTreeView
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 PRODUCTS_TEST_DATA: dict[str | None, list[TreeNode]] = {

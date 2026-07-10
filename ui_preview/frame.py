@@ -6,7 +6,7 @@ import ui_preview_setup  # noqa: F401
 
 from ayon_core.ui.components.frame import AYFrame
 from ayon_core.ui.components.layouts import AYVBoxLayout
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 def build_frame_preview_widget():

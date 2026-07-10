@@ -62,7 +62,7 @@ from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.label import AYLabel
 
-from ui_preview.utils import Style, preview_widget, EXAMPLE_STATUSES
+from ayon_core.ui.preview_utils import Style, preview_widget, EXAMPLE_STATUSES
 
 
 class CustomModel(QStandardItemModel):

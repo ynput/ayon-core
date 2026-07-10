@@ -16,7 +16,7 @@ from ayon_core.ui.components.option_action import AYMenu, AYOptionalAction
 from ayon_core.ui.components.text_box import AYTextBox
 from ayon_core.ui.components.user_image import AYUserImage
 from ayon_core.ui.drawers import get_icon, enum_to_str
-from ui_preview.utils import (
+from ayon_core.ui.preview_utils import (
     Style,
     preview_widget,
     get_test_data_dir,

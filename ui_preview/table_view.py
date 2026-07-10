@@ -16,7 +16,7 @@ from ayon_core.ui.components.table_model import (
     PaginatedTableModel,
     TableColumn,
 )
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 from ui_preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,

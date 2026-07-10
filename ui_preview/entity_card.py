@@ -4,7 +4,7 @@ import ui_preview_setup  # noqa: F401
 
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.entity_card import AYEntityCard
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 _USERS = [

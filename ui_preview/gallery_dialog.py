@@ -5,7 +5,7 @@ from qtpy import QtWidgets
 import ui_preview_setup  # noqa: F401
 
 from ayon_core.ui.components.gallery_dialog import GalleryDialog
-from ui_preview.utils import (
+from ayon_core.ui.preview_utils import (
     Style,
     preview_widget,
     get_test_data_dir,

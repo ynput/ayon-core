@@ -16,7 +16,7 @@ from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.table_filter import AYTableFilter
 from ayon_core.ui.components.tree_model import TreeNode, LazyTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 from ui_preview.table_model import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,

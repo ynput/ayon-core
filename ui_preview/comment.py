@@ -6,7 +6,7 @@ from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.text_box import AYTextBox
 from ayon_core.ui.components.comment import AYComment
 from ayon_core.ui.data_models import CommentModel
-from ui_preview.utils import (
+from ayon_core.ui.preview_utils import (
     Style,
     preview_widget,
     get_test_data_dir,

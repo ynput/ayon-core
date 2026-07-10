@@ -8,7 +8,7 @@ from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.slicer import TreeFilterProxyModel, AYSlicer
 from ayon_core.ui.components.tree_model import TreeNode, LazyTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 from ui_preview.tree_view import (
     PRODUCTS_TEST_DATA,
     REVIEWS_TEST_DATA,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ui_preview_setup  # noqa: F401
 from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.container import AYContainer
-from ui_preview.utils import Style, preview_widget
+from ayon_core.ui.preview_utils import Style, preview_widget
 
 
 def build_check_box_preview_widget():
