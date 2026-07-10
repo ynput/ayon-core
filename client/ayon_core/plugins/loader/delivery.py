@@ -6,7 +6,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
+from ayon_core.tools.delivery import DeliveryOptionsDialog
 
 
 class DeliveryAction(LoaderSimpleActionPlugin):
@@ -58,4 +58,3 @@ class DeliveryAction(LoaderSimpleActionPlugin):
             self.log.error("Failed to deliver versions.", exc_info=True)
 
         return LoaderActionResult()
-

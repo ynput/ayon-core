@@ -6,6 +6,7 @@ from ayon_server.actions import (
     ExecuteResponseModel,
     SimpleActionManifest,
 )
+from ayon_server.events import dispatch_event
 try:
     from ayon_server.logging import logger
 except ImportError:
@@ -114,10 +115,16 @@ class CoreAddon(BaseServerAddon):
                     message="No versions available in selection.",
                     success=False
                 )
-            version_ids = {version.id for version in selected_versions}
+            version_ids = [version.id for version in selected_versions]
+            event_id = await dispatch_event(
+                topic="delivery.requested",
+                project=project_name,
+                payload={"version_ids": version_ids},
+                finished=True,
+            )
             args = [
-                "delivery", "--project", project_name,
-                "--version_ids", ",".join(version_ids),
+                "deliver", "--project", project_name,
+                "--event_id", event_id,
             ]
 
             return await executor.get_launcher_response(args)
