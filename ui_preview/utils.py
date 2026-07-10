@@ -34,6 +34,7 @@ class Style(Enum):
 
 CURRENT_DIR = Path(__file__).parent
 REPO_ROOT = Path(CURRENT_DIR).parent
+RESOURCES_DIR = CURRENT_DIR / "resources"
 
 AWFUL_CSS = """
 QWidget {
@@ -54,7 +55,7 @@ QPushButton {
 """
 
 
-def get_test_data_dir() -> Path | None:
+def get_test_data_dir() -> Path:
     """
     As we moved all resources
     from `tests/client/ayon_core/ui` to `tests/client/ayon_core/ui/test_data`
@@ -62,18 +63,18 @@ def get_test_data_dir() -> Path | None:
     """
 
     # Relative to repo root path tests/client/ayon_core/ui/test_data
-    test_data = (
+    return (
         REPO_ROOT / "tests" / "client" / "ayon_core" / "ui" / "test_data"
     )
-    if test_data.is_dir():
-        return test_data
-    return None
+
+
+def get_resources_dir() -> Path:
+    return CURRENT_DIR / "resources"
 
 
 def load_rv_stylesheet(old: bool = True) -> str:
     filename = "rv_mac_dark_legacy.qss" if old else "rv_dark.qss"
-    resources_dir = CURRENT_DIR / "resources"
-    fpath = resources_dir / filename
+    fpath = RESOURCES_DIR / filename
     print(f"Loading stylesheet from {fpath}")
     return fpath.read_text(encoding="utf-8")
 
@@ -104,8 +105,7 @@ def preview_widget(
     return app.exec()
 
 
-# --- TODO find out if is used ---
-def read_json_file(fpath: Path) -> dict[str, Any]:
+def read_json_file(fpath: Path):
     return json.loads(fpath.read_text(encoding="utf-8"))
 
 
@@ -162,24 +162,31 @@ def process_test_activity_data(activity_data) -> ActivityData:
 
 def get_test_project_data() -> ProjectData:
     # read project data
-    file_dir = get_test_data_dir() or Path(__file__).parent
-    project_file = file_dir / "sample_project_data.json"
+    project_file = RESOURCES_DIR / "sample_project_data.json"
     project_data = read_json_file(project_file)
     print(f"[test]  read: {project_file}")  # noqa: T201
     return process_test_project_data(project_data)
 
 
 def get_test_version_data() -> VersionData:
-    file_dir = get_test_data_dir() or Path(__file__).parent
-    version_data_file = file_dir / "sample_version_data.json"
+    version_data_file = RESOURCES_DIR / "sample_version_data.json"
     version_data = read_json_file(version_data_file)
     print(f"[test]  read: {version_data_file}")  # noqa: T201
     return process_test_version_data(version_data)
 
 
 def get_test_activity_data() -> ActivityData:
-    file_dir = get_test_data_dir() or Path(__file__).parent
-    activity_file = file_dir / "sample_activities.json"
+    activity_file = RESOURCES_DIR / "sample_activities.json"
     activity_data = read_json_file(activity_file)
     print(f"[test]  read: {activity_file}")  # noqa: T201
     return process_test_activity_data(activity_data)
+
+
+def _load_statuses() -> list[dict[str, Any]]:
+    statuses_file = get_test_data_dir() / "sample_statuses.json"
+    statuses_data = read_json_file(statuses_file)
+    print(f"[test]  read: {statuses_file}")  # noqa: T201
+    return statuses_data
+
+
+EXAMPLE_STATUSES = _load_statuses()

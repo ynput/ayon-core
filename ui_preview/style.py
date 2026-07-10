@@ -16,11 +16,11 @@ from ayon_core.ui.components.option_action import AYMenu, AYOptionalAction
 from ayon_core.ui.components.text_box import AYTextBox
 from ayon_core.ui.components.user_image import AYUserImage
 from ayon_core.ui.drawers import get_icon, enum_to_str
-from ui_preview.constants import EXAMPLE_STATUSES
 from ui_preview.utils import (
     Style,
     preview_widget,
     get_test_data_dir,
+    EXAMPLE_STATUSES,
 )
 from ayon_core.ui.style_types import StyleData
 from ayon_core.ui.variants import QPushButtonVariants
