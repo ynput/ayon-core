@@ -51,7 +51,7 @@ class DeliveryAction(LoaderSimpleActionPlugin):
         try:
             # TODO run the tool in subprocess
             dialog = DeliveryOptionsDialog(
-                selection.project_name, version_ids, self.log
+                selection.project_name, version_ids, log=self.log
             )
             dialog.exec_()
         except Exception:

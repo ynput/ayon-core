@@ -1,4 +1,5 @@
 import platform
+import logging
 from collections import defaultdict
 
 import ayon_api
@@ -29,10 +30,14 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         project_name,
         version_ids,
         list_entity_label=None,
+        *,
         log=None,
         parent=None,
     ):
         super().__init__(parent=parent)
+
+        if log is None:
+            log = logging.getLogger(__name__)
 
         self.setWindowTitle(f"Deliver {len(version_ids)} versions")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
