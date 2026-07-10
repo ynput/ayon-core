@@ -5,7 +5,7 @@ from __future__ import annotations
 from qtpy.QtWidgets import QWidget
 
 from widget_test import WidgetTest
-from test_data import EXAMPLE_STATUSES
+from ayon_core.ui.preview_utils import EXAMPLE_STATUSES
 from ayon_core.ui.components.slicer import AYSlicer
 from ayon_core.ui.components.container import AYContainer
 

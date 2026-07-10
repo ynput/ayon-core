@@ -8,7 +8,7 @@ from ayon_core.ui.data_models import MenuSize
 from qtpy import QtCore, QtWidgets
 from qtpy.QtWidgets import QApplication, QWidget
 from widget_test import WidgetTest
-from test_data import EXAMPLE_STATUSES
+from ayon_core.ui.preview_utils import EXAMPLE_STATUSES
 
 from utils.composite_widget import CompositeWidget
 
