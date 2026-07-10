@@ -34,6 +34,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
     """
     _default_task_icon = None
     refreshed = QtCore.Signal()
+    project_changed = QtCore.Signal()
     column_labels = ["Tasks"]
 
     def __init__(self, controller):
@@ -117,9 +118,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         return self._last_folder_id
 
-    def set_selected_project(self, project_name):
-        self._selected_project_name = project_name
-
     def _get_invalid_selection_item(self):
         if self._invalid_selection_item is None:
             item = QtGui.QStandardItem("Select a folder")
@@ -178,9 +176,13 @@ class TasksQtModel(QtGui.QStandardItemModel):
             self._empty_tasks_item_used = False
 
     def _refresh(self, project_name, folder_id):
+        project_changed = self._last_project_name != project_name
         self._is_refreshing = True
         self._last_project_name = project_name
         self._last_folder_id = folder_id
+        if project_changed:
+            self.project_changed.emit()
+
         if not folder_id:
             self._add_invalid_selection_item()
             self._current_refresh_thread = None
@@ -439,6 +441,7 @@ class TasksWidget(QtWidgets.QWidget):
         selection_model.selectionChanged.connect(self._on_selection_change)
 
         tasks_model.refreshed.connect(self._on_tasks_model_refresh)
+        tasks_model.project_changed.connect(self._on_tasks_project_change)
 
         self._controller = controller
         self._tasks_view = tasks_view
@@ -450,17 +453,12 @@ class TasksWidget(QtWidgets.QWidget):
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection_data = None
 
-        self._use_task_type_sorting = None
-
     def refresh(self):
         """Refresh folders for last selected project.
 
         Force to update folders model from controller. This may or may not
         trigger query from server, that's based on controller's cache.
         """
-        self._use_task_type_sorting = None
-        self._update_task_type_sorting()
-        self._tasks_proxy_model.sort(0)
         self._tasks_model.refresh()
 
     def get_selected_task_info(self):
@@ -583,9 +581,10 @@ class TasksWidget(QtWidgets.QWidget):
             self._on_selection_change()
 
         self._update_task_type_sorting()
-
-        self._tasks_proxy_model.sort(0)
         self.refreshed.emit()
+
+    def _on_tasks_project_change(self):
+        self._update_task_type_sorting()
 
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
@@ -634,9 +633,6 @@ class TasksWidget(QtWidgets.QWidget):
         return True
 
     def _update_task_type_sorting(self):
-        if self._use_task_type_sorting is not None:
-            return
-
         project_name = self._tasks_model.get_last_project_name()
         if project_name is None:
             return
@@ -654,10 +650,10 @@ class TasksWidget(QtWidgets.QWidget):
                 " sorting will be disabled."
             )
 
-        self._use_task_type_sorting = use_task_type_sorting
         self._tasks_proxy_model.set_task_type_sorting_enabled(
-            self._use_task_type_sorting
+            use_task_type_sorting
         )
+        self._tasks_proxy_model.sort(0)
 
     def _update_expected_selection(self, expected_data=None):
         if not self._handle_expected_selection:
