@@ -58,4 +58,3 @@ class DeliveryAction(LoaderSimpleActionPlugin):
             self.log.error("Failed to deliver versions.", exc_info=True)
 
         return LoaderActionResult()
-
