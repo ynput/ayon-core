@@ -15,7 +15,8 @@ from ayon_core.lib.attribute_definitions import (
     FileDef,
     UIDef,
     UISeparatorDef,
-    UILabelDef
+    UILabelDef,
+    ButtonDef,
 )
 from ayon_core.tools.utils import (
     CustomTextComboBox,
@@ -26,6 +27,7 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
     set_style_property,
+    get_qt_icon,
 )
 from ayon_core.tools.utils import NiceCheckbox
 
@@ -89,6 +91,9 @@ def _create_widget_for_attr_def(
 
     elif isinstance(attr_def, UILabelDef):
         cls = LabelAttrWidget
+
+    elif isinstance(attr_def, ButtonDef):
+        cls = ButtonAttrWidget
 
     if cls is None:
         raise ValueError("Unknown attribute definition \"{}\"".format(
@@ -211,11 +216,21 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
+
             col_num = 0
-            expand_cols = 2
-            if attr_def.is_value_def and attr_def.label:
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
+                col_num = 1
+            expand_cols = 2 - col_num
+
+            if label:
                 label_widget = AttributeDefinitionsLabel(
-                    attr_def.id, attr_def.label, self
+                    attr_def.id, label, self
                 )
                 label_widget.revert_to_default_requested.connect(
                     self._on_revert_request
@@ -230,12 +245,9 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                         | QtCore.Qt.AlignVCenter
                     )
                 layout.addWidget(
-                    label_widget, row, col_num, 1, 1
+                    label_widget, row, 0, 1, expand_cols
                 )
-                if attr_def.is_label_horizontal:
-                    col_num += 1
-                    expand_cols = 1
-                else:
+                if not attr_def.is_label_horizontal:
                     row += 1
 
             if attr_def.is_value_def:
@@ -360,6 +372,32 @@ class LabelAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+
+class ButtonAttrWidget(_BaseAttrDefWidget):
+    def _ui_init(self):
+        input_widget = QtWidgets.QPushButton(self)
+        text = self.attr_def.text
+        if text:
+            input_widget.setText(str(text))
+
+        icon = self.attr_def.icon
+        if icon is not None:
+            qt_icon = get_qt_icon(icon)
+            input_widget.setIcon(qt_icon)
+
+        if self.attr_def.tooltip:
+            input_widget.setToolTip(self.attr_def.tooltip)
+
+        input_widget.clicked.connect(self._on_click)
+
+        self._input_widget = input_widget
+
+        self.main_layout.addWidget(input_widget, 0)
+        self.main_layout.addStretch(1)
+
+    def _on_click(self):
+        self.attr_def.trigger()
 
 
 class ClickableLineEdit(QtWidgets.QLineEdit):
