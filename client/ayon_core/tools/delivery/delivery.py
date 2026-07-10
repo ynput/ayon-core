@@ -33,7 +33,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
     ):
         super().__init__(parent=parent)
 
-        self.setWindowTitle("AYON - Deliver versions")
+        self.setWindowTitle(f"Deliver {len(version_ids)} versions")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
@@ -170,7 +170,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self.text_area = text_area
         self.btn_delivery = btn_delivery
 
-        self.files_selected, self.size_selected = \
+        self.selected_repres_count, self.files_selected, self.size_selected = \
             self._get_counts(self._get_selected_repres())
 
         self._update_selected_label()
@@ -331,8 +331,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         """Returns tuple of number of selected files and their size."""
         files_selected = 0
         size_selected = 0
+        selected_repres_count = 0
         for repre in self._representations:
             if repre["name"] in selected_repres:
+                selected_repres_count += 1
                 files = repre.get("files", [])
                 if not files:  # for repre without files, cannot divide by 0
                     files_selected += 1
@@ -342,11 +344,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                         files_selected += 1
                         size_selected += repre_file["size"]
 
-        return files_selected, size_selected
+        return selected_repres_count, files_selected, size_selected
 
     def _prepare_label(self):
         """Provides text with no of selected files and their size."""
-        label = "{} files, size {}".format(
+        label = "{} ({} files, size {})".format(
+            self.selected_repres_count,
             self.files_selected,
             format_file_size(self.size_selected))
         return label
@@ -358,7 +361,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
     def _update_selected_label(self):
         """Updates label with list of number of selected files."""
         selected_repres = self._get_selected_repres()
-        self.files_selected, self.size_selected = \
+        self.selected_repres_count, self.files_selected, self.size_selected = \
             self._get_counts(selected_repres)
         self.selected_label.setText(self._prepare_label())
         # update delivery button state if any templates found
