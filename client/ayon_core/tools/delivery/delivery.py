@@ -1,3 +1,4 @@
+import os
 import platform
 from collections import defaultdict
 
@@ -262,6 +263,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 first_frame = min(frames)
 
             for src_path, frame in sources_and_frames.items():
+                # Support {publishedFilename} token
+                template_data["publishedFilename"] = os.path.basename(src_path)
                 args[0] = src_path
                 # Renumber frames
                 if renumber_frame and frame is not None:
