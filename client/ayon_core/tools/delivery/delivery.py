@@ -1,4 +1,6 @@
+import os
 import platform
+import logging
 from collections import defaultdict
 
 import ayon_api
@@ -28,10 +30,15 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self,
         project_name,
         version_ids,
+        list_entity_label=None,
+        *,
         log=None,
         parent=None,
     ):
         super().__init__(parent=parent)
+
+        if log is None:
+            log = logging.getLogger(__name__)
 
         self.setWindowTitle(f"Deliver {len(version_ids)} versions")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
@@ -80,6 +87,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         first_frame_start.setRange(0, max_int - 1)
 
         root_line_edit = QtWidgets.QLineEdit()
+        list_label_line_edit = QtWidgets.QLineEdit()
 
         # Collapsible "Advanced options" section, hidden by default
         advanced_toggle = QtWidgets.QToolButton()
@@ -96,6 +104,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         advanced_layout.addRow("Renumber Frame", renumber_frame)
         advanced_layout.addRow("Renumber start frame", first_frame_start)
         advanced_layout.addRow("Root", root_line_edit)
+        advanced_layout.addRow("List label", list_label_line_edit)
+        # set default value if `list_entity_label` arg is provided
+        if list_entity_label:
+            list_label_line_edit.setText(list_entity_label)
         advanced_widget.setVisible(False)
 
         def _on_advanced_toggled(checked):
@@ -165,6 +177,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self.first_frame_start = first_frame_start
         self.renumber_frame = renumber_frame
         self.root_line_edit = root_line_edit
+        self.list_label_line_edit = list_label_line_edit
         self.repre_list = repre_list
         self.progress_bar = progress_bar
         self.text_area = text_area
@@ -201,6 +214,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         datetime_data = get_datetime_data()
         template_name = self.dropdown.currentText()
         format_dict = get_format_dict(self.anatomy, self.root_line_edit.text())
+        list_label = self.list_label_line_edit.text()
         renumber_frame = self.renumber_frame.isChecked()
         frame_offset = self.first_frame_start.value()
         filtered_repres = []
@@ -221,6 +235,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             )
 
             template_data = template_data_by_repre_id[repre["id"]]
+            if list_label:
+                template_data["list"] = {"label": list_label}
+
+            # Use temporary placeholder so we don't need to check destination
+            # path per file of the representation
+            template_data["publishedFilename"] = "<publishedFilename>"
             new_report_items = check_destination_path(
                 repre["id"],
                 self.anatomy,
@@ -262,6 +282,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 first_frame = min(frames)
 
             for src_path, frame in sources_and_frames.items():
+                # Support {publishedFilename} token
+                template_data["publishedFilename"] = os.path.basename(
+                    # Replace backslash to forward slashes so basename
+                    # also resolves to filename only on POSIX
+                    src_path.replace("\\", "/")
+                )
                 args[0] = src_path
                 # Renumber frames
                 if renumber_frame and frame is not None:
