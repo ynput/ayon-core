@@ -167,7 +167,7 @@ class CoreAddon(BaseServerAddon):
             return await executor.get_launcher_response(args)
 
         logger.debug(f"Unknown action: {executor.identifier}")
-        # Works since AYON server 1.8.3
+
         if hasattr(executor, "get_simple_response"):
             return await executor.get_simple_response(
                 "Unknown action", success=False

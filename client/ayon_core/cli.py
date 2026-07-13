@@ -284,6 +284,9 @@ def deliver(
                 raise ValueError("No version_ids or list_id in payload.")
             if list_id:
                 list_entity = ayon_api.get_entity_list_rest(project, list_id)
+                if not list_entity:
+                    raise ValueError(
+                        f"Entity list '{list_id}' was not found.")
                 list_entity_label = list_entity["label"]
                 # get all version entities belonging to the list
                 version_ids = [
