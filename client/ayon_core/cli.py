@@ -267,12 +267,6 @@ def deliver(
 
     log = Logger.get_logger("delivery")
 
-    if (event_id and version_ids) or (not event_id and not version_ids):
-        log.warning(
-            "Exactly one of '--event_id' or '--version_ids' must be provided."
-        )
-        return
-
     try:
         from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
         # must be here because no module qargparse
@@ -296,8 +290,10 @@ def deliver(
                 # get all version entities belonging to the list
                 version_ids = [
                     version["entityId"] for version in list_entity["items"]]
-        else:
+        elif version_ids:
             version_ids = version_ids.split(",")
+        else:
+            raise ValueError("Missing option '--version_ids' or '--event_id'")
 
         dialog = DeliveryOptionsDialog(
             project, version_ids, list_entity_label=list_entity_label, log=log
