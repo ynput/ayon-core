@@ -1171,6 +1171,7 @@ def main_cli_publish(
         install_ayon_plugins,
         get_global_context,
     )
+    from ayon_core.pipeline.publish import PublishLogic
 
     # Register target and host
     if not isinstance(path, str):
@@ -1239,15 +1240,17 @@ def main_cli_publish(
     discover_result = publish_plugins_discover()
     print(discover_result.get_report(only_errors=False))
 
-    filtered_crashed_paths = filter_crashed_publish_paths(
-        context["project_name"],
-        set(discover_result.crashed_file_paths),
-        project_settings=project_settings,
+    logic = PublishLogic()
+    logic.reset(
+        project_name=context["project_name"],
+        publish_discover_result=discover_result,
     )
-    if filtered_crashed_paths:
+    report = logic.get_publish_report()
+
+    if report.blocking_crashed_paths:
         joined_paths = "\n".join([
             f"- {path}"
-            for path in filtered_crashed_paths
+            for path in report.blocking_crashed_paths
         ])
         log.error(
             "Plugin discovery strict mode is enabled."
@@ -1256,15 +1259,9 @@ def main_cli_publish(
         )
         sys.exit(1)
 
-    publish_plugins = discover_result.plugins
-
-    # Error exit as soon as any error occurs.
-    error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
-
-    for result in pyblish.util.publish_iter(plugins=publish_plugins):
-        if result["error"]:
-            log.error(error_format.format(**result))
-            sys.exit(1)
+    logic.start_publish(wait=True)
+    if logic.has_crashed() or logic.has_validation_errors():
+        sys.exit(1)
 
     log.info("Publish finished.")
 
