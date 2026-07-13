@@ -267,25 +267,37 @@ def deliver(
 
     log = Logger.get_logger("delivery")
 
-    if (event_id and version_ids) or (not event_id and not version_ids):
-        log.warning(
-            "Exactly one of '--event_id' or '--version_ids' must be provided."
-        )
-        return
-
     try:
         from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
         # must be here because no module qargparse
         from ayon_core.tools.utils.lib import get_qt_app
 
         _app = get_qt_app()
+        list_entity_label = None
         if event_id:
             event = ayon_api.get_event(event_id)
-            version_ids = event["payload"]["version_ids"]
-        else:
+
+            # either version_ids or list_id can be in payload
+            version_ids = event["payload"].get("version_ids")
+            list_id = event["payload"].get("list_id")
+            if not version_ids and not list_id:
+                raise ValueError("No version_ids or list_id in payload.")
+            if list_id:
+                list_entity = ayon_api.get_entity_list_rest(project, list_id)
+                if not list_entity:
+                    raise ValueError(
+                        f"Entity list '{list_id}' was not found.")
+                list_entity_label = list_entity["label"]
+                # get all version entities belonging to the list
+                version_ids = [
+                    version["entityId"] for version in list_entity["items"]]
+        elif version_ids:
             version_ids = version_ids.split(",")
+        else:
+            raise ValueError("Missing option '--version_ids' or '--event_id'")
+
         dialog = DeliveryOptionsDialog(
-            project, version_ids, log=log
+            project, version_ids, list_entity_label=list_entity_label, log=log
         )
         dialog.exec_()
     except Exception:
