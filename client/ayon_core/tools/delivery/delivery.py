@@ -222,6 +222,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             )
 
             template_data = template_data_by_repre_id[repre["id"]]
+            # Use temporary placeholder so we don't need to check destination
+            # path per file of the representation
+            template_data["publishedFilename"] = "<publishedFilename>"
             new_report_items = check_destination_path(
                 repre["id"],
                 self.anatomy,
