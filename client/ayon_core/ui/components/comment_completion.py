@@ -490,7 +490,7 @@ class MentionHighlighter(QSyntaxHighlighter):
                 length = len(full_match.split()[0])
             self.setFormat(m.start(), length, self._mention_fmt)
 
-        # Serialized user mentions ((Full Name)[user:username])
+        # Serialized user mentions (Full Name)[user:username]
         for m in self._P_USER_TAG.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
 
