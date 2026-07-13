@@ -267,7 +267,11 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
             for src_path, frame in sources_and_frames.items():
                 # Support {publishedFilename} token
-                template_data["publishedFilename"] = os.path.basename(src_path)
+                template_data["publishedFilename"] = os.path.basename(
+                    # Replace backslash to forward slashes so basename
+                    # also resolves to filename only on POSIX
+                    src_path.replace("\\", "/")
+                )
                 args[0] = src_path
                 # Renumber frames
                 if renumber_frame and frame is not None:
