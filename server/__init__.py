@@ -146,13 +146,13 @@ class CoreAddon(BaseServerAddon):
 
             return await executor.get_launcher_response(args)
 
-        if executor.identifier == "core.delivery.list":
-            selected_list = executor.context.entity_ids[0]
-            if not selected_list:
+            if not executor.context.entity_ids:
                 return await executor.get_server_action_response(
-                    message="No list available in selection.",
+                    message="No list selected.",
                     success=False
                 )
+
+            selected_list = executor.context.entity_ids[0]
             event_id = await dispatch_event(
                 topic="delivery.requested",
                 project=project_name,
