@@ -32,6 +32,7 @@ class ReportLog:
     thread_name: str | None = None
     threadName: InitVar[str | None] = None
     pathname: str | None = None
+    created: float | None = None
     msecs: float | None = None
     exc_info: str | None = None
     func: str | None = None
@@ -64,6 +65,7 @@ class ReportLog:
             "levelname": self.levelname,
             "threadName": self.thread_name,
             "pathname": self.pathname,
+            "created": self.created,
             "msecs": self.msecs,
             "exc_info": self.exc_info,
         }
@@ -80,6 +82,7 @@ class ReportLog:
             levelname=data.get("levelname"),
             thread_name=data.get("thread_name"),
             pathname=data.get("pathname"),
+            created=data.get("created"),
             msecs=data.get("msecs"),
             exc_info=data.get("exc_info"),
             func=data.get("func"),
@@ -115,6 +118,7 @@ class ReportLog:
                 thread_name=record.threadName,
                 filename=record.filename,
                 pathname=record.pathname,
+                created=record.created,
                 msecs=record.msecs,
                 exc_info=record_exc_info,
             ))
