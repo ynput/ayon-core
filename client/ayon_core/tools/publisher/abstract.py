@@ -3,24 +3,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from typing import (
-    Optional,
-    Dict,
-    List,
-    Tuple,
     Any,
     Callable,
-    Union,
     Iterable,
     TYPE_CHECKING,
 )
 
-from ayon_core.lib import AbstractAttrDef
-from ayon_core.host import AbstractHost
-from ayon_core.pipeline.publish import PublishReport
-from ayon_core.pipeline.create import (
-    CreateContext,
-    ConvertorItem,
-)
 from ayon_core.tools.common_models import (
     FolderItem,
     TaskItem,
@@ -29,7 +17,19 @@ from ayon_core.tools.common_models import (
 )
 
 if TYPE_CHECKING:
-    from .models import CreatorItem, PublishErrorInfo, InstanceItem
+    from ayon_core.lib import AbstractAttrDef
+    from ayon_core.host import AbstractHost
+    from ayon_core.pipeline.create import (
+        CreateContext,
+        ConvertorItem,
+    )
+    from ayon_core.pipeline.publish import PublishReport
+    from ayon_core.pipeline.publish.logic import (
+        PublishErrorInfo,
+        PublishErrorsReport,
+    )
+
+    from .models import CreatorItem, InstanceItem
 
 
 @dataclass
@@ -61,7 +61,7 @@ class PublishAttrDefsInfo:
 
 class AbstractPublisherCommon(ABC):
     @abstractmethod
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(self, topic: str, callback: Callable) -> None:
         """Register event callback.
 
         Listen for events with given topic.
@@ -70,22 +70,22 @@ class AbstractPublisherCommon(ABC):
             topic (str): Name of topic.
             callback (Callable): Callback that will be called when event
                 is triggered.
-        """
 
+        """
         pass
 
     @abstractmethod
     def emit_event(
         self, topic: str,
-        data: Optional[Dict[str, Any]] = None,
-        source: Optional[str] = None
-    ):
+        data: dict[str, Any] | None = None,
+        source: str | None = None
+    ) -> None:
         """Emit event.
 
         Args:
             topic (str): Event topic used for callbacks filtering.
-            data (Optional[dict[str, Any]]): Event data.
-            source (Optional[str]): Event source.
+            data (dict[str, Any] | None): Event data.
+            source (str | None): Event source.
 
         """
         pass
@@ -94,8 +94,8 @@ class AbstractPublisherCommon(ABC):
     def emit_card_message(
         self,
         message: str,
-        message_type: Optional[str] = CardMessageTypes.standard
-    ):
+        message_type: str | None = CardMessageTypes.standard
+    ) -> None:
         """Emit a card message which can have a lifetime.
 
         This is for UI purposes. Method can be extended to more arguments
@@ -104,38 +104,38 @@ class AbstractPublisherCommon(ABC):
         Args:
             message (str): Message that will be shown.
             message_type (Optional[str]): Message type.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_current_project_name(self) -> Union[str, None]:
+    def get_current_project_name(self) -> str | None:
         """Current context project name.
 
         Returns:
             str: Name of project.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_current_folder_path(self) -> Union[str, None]:
+    def get_current_folder_path(self) -> str | None:
         """Current context folder path.
 
         Returns:
-            Union[str, None]: Folder path.
+            str | None: Folder path.
 
         """
         pass
 
     @abstractmethod
-    def get_current_task_name(self) -> Union[str, None]:
+    def get_current_task_name(self) -> str | None:
         """Current context task name.
 
         Returns:
-            Union[str, None]: Name of task.
-        """
+            str | None: Name of task.
 
+        """
         pass
 
     @abstractmethod
@@ -146,18 +146,18 @@ class AbstractPublisherCommon(ABC):
 
         Returns:
             bool: Context has changed.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         """Reset whole controller.
 
         This should reset create context, publish context and all variables
         that are related to it.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -200,8 +200,8 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         project_name: str,
         folder_id: str,
         task_name: str,
-        sender: Optional[str] = None
-    ) -> Union[TaskItem, None]:
+        sender: str | None = None
+    ) -> TaskItem | None:
         pass
 
     @abstractmethod
@@ -211,40 +211,40 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
     @abstractmethod
     def get_project_entity(
         self, project_name: str
-    ) -> Union[Dict[str, Any], None]:
+    ) -> dict[str, Any] | None:
         pass
 
     @abstractmethod
     def get_folder_entity(
         self, project_name: str, folder_id: str
-    ) -> Union[Dict[str, Any], None]:
+    ) -> dict[str, Any] | None:
         pass
 
     @abstractmethod
     def get_folder_item_by_path(
         self, project_name: str, folder_path: str
-    ) -> Union[FolderItem, None]:
+    ) -> FolderItem | None:
         pass
 
     @abstractmethod
     def get_task_entity(
         self, project_name: str, task_id: str
-    ) -> Union[Dict[str, Any], None]:
+    ) -> dict[str, Any] | None:
         pass
 
 
 class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
-    def get_window_subtitle(self) -> Optional[str]:
+    def get_window_subtitle(self) -> str | None:
         """Get window subtitle.
 
         Returns:
-            Optional[str]: Window subtitle.
+            str | None: Window subtitle.
 
         """
 
     @abstractmethod
-    def register_event_callback(self, topic: str, callback: Callable):
+    def register_event_callback(self, topic: str, callback: Callable) -> None:
         pass
 
     @abstractmethod
@@ -261,44 +261,44 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_context_title(self) -> Union[str, None]:
+    def get_context_title(self) -> str | None:
         """Get context title for artist shown at the top of main window.
 
         Returns:
-            Union[str, None]: Context title for window or None. In case of None
+            str | None: Context title for window or None. In case of None
                 a warning is displayed (not nice for artists).
-        """
 
+        """
         pass
 
     @abstractmethod
     def get_task_items_by_folder_paths(
         self, folder_paths: Iterable[str]
-    ) -> Dict[str, List[TaskItem]]:
+    ) -> dict[str, list[TaskItem]]:
         pass
 
     @abstractmethod
     def get_folder_items(
-        self, project_name: str, sender: Optional[str] = None
-    ) -> List[FolderItem]:
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderItem]:
         pass
 
     @abstractmethod
     def get_task_items(
-        self, project_name: str, folder_id: str, sender: Optional[str] = None
-    ) -> List[TaskItem]:
+        self, project_name: str, folder_id: str, sender: str | None = None
+    ) -> list[TaskItem]:
         pass
 
     @abstractmethod
     def get_folder_type_items(
-        self, project_name: str, sender: Optional[str] = None
-    ) -> List[FolderTypeItem]:
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
         pass
 
     @abstractmethod
     def get_task_type_items(
-        self, project_name: str, sender: Optional[str] = None
-    ) -> List[TaskTypeItem]:
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
         pass
 
     @abstractmethod
@@ -315,7 +315,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
+    def get_folder_id_from_path(self, folder_path: str) -> str | None:
         """Get folder id from folder path."""
         pass
 
@@ -336,11 +336,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     # --- Create ---
     @abstractmethod
-    def get_creator_items(self) -> Dict[str, "CreatorItem"]:
+    def get_creator_items(self) -> dict[str, CreatorItem]:
         """Creator items by identifier.
 
         Returns:
-            Dict[str, CreatorItem]: Creator items that will be shown to user.
+            dict[str, CreatorItem]: Creator items that will be shown to user.
 
         """
         pass
@@ -348,14 +348,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_creator_item_by_id(
         self, identifier: str
-    ) -> Optional["CreatorItem"]:
+    ) -> CreatorItem | None:
         """Get creator item by identifier.
 
         Args:
             identifier (str): Create plugin identifier.
 
         Returns:
-            Optional[CreatorItem]: Creator item or None.
+            CreatorItem | None: Creator item or None.
 
         """
         pass
@@ -363,7 +363,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_creator_icon(
         self, identifier: str
-    ) -> Union[str, Dict[str, Any], None]:
+    ) -> str | dict[str, Any] | None:
         """Receive creator's icon by identifier.
 
         Todos:
@@ -373,78 +373,78 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
             identifier (str): Creator's identifier.
 
         Returns:
-            Union[str, None]: Creator's icon string.
-        """
+            str | dict[str, Any] | None: Creator's icon string.
 
+        """
         pass
 
     @abstractmethod
-    def get_convertor_items(self) -> Dict[str, ConvertorItem]:
+    def get_convertor_items(self) -> dict[str, ConvertorItem]:
         """Convertor items by identifier.
 
         Returns:
-            Dict[str, ConvertorItem]: Convertor items that can be triggered
+            dict[str, ConvertorItem]: Convertor items that can be triggered
                 by user.
 
         """
         pass
 
     @abstractmethod
-    def get_instance_items(self) -> List["InstanceItem"]:
+    def get_instance_items(self) -> list[InstanceItem]:
         """Collected/created instances.
 
         Returns:
-            List[InstanceItem]: List of created instances.
+            list[InstanceItem]: List of created instances.
 
         """
         pass
 
     @abstractmethod
     def get_instance_items_by_id(
-        self, instance_ids: Optional[Iterable[str]] = None
-    ) -> Dict[str, Union["InstanceItem", None]]:
+        self, instance_ids: Iterable[str] | None = None
+    ) -> dict[str, InstanceItem | None]:
         pass
 
     @abstractmethod
     def get_instances_context_info(
-        self, instance_ids: Optional[Iterable[str]] = None
+        self, instance_ids: Iterable[str] | None = None
     ):
         pass
 
     @abstractmethod
     def set_instances_context_info(
-        self, changes_by_instance_id: Dict[str, Dict[str, Any]]
-    ):
+        self, changes_by_instance_id: dict[str, dict[str, Any]]
+    ) -> None:
         pass
 
     @abstractmethod
     def set_instances_active_state(
-        self, active_state_by_id: Dict[str, bool]
-    ):
+        self, active_state_by_id: dict[str, bool]
+    ) -> None:
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path: str) -> List[str]:
+    def get_existing_product_names(self, folder_path: str) -> list[str]:
         pass
 
     @abstractmethod
     def get_creator_attribute_definitions(
         self, instance_ids: Iterable[str]
-    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
+    ) -> list[tuple[AbstractAttrDef, dict[str, dict[str, Any]]]]:
         pass
 
     @abstractmethod
     def set_instances_create_attr_values(
         self, instance_ids: Iterable[str], key: str, value: Any
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
     def revert_instances_create_attr_values(
         self,
-        instance_ids: List["Union[str, None]"],
+        instance_ids: list[str | None],
         key: str,
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
@@ -462,16 +462,16 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         plugin_name: str,
         key: str,
         value: Any
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
     def revert_instances_publish_attr_values(
         self,
-        instance_ids: List["Union[str, None]"],
+        instance_ids: list[str | None],
         plugin_name: str,
         key: str,
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
@@ -503,9 +503,9 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         creator_identifier: str,
         product_type: str,
         variant: str,
-        folder_path: Union[str, None],
-        task_name: Union[str, None],
-        instance_id: Optional[str] = None
+        folder_path: str | None,
+        task_name: str | None,
+        instance_id: str | None = None
     ):
         """Get product name based on passed data.
 
@@ -514,12 +514,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
                 responsible for product name creation.
             product_type (str): Product type.
             variant (str): Variant value from user's input.
-            folder_path (str): Folder path for which is instance created.
-            task_name (str): Name of task for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when product
+            folder_path (str | None): Folder path for which
+                is instance created.
+            task_name (str | None): Name of task for which
+                is instance created.
+            instance_id (str | None): Existing instance id when product
                 name is updated.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -527,33 +529,32 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         self,
         creator_identifier: str,
         product_name: str,
-        instance_data: Dict[str, Any],
-        options: Dict[str, Any],
-    ):
+        instance_data: dict[str, Any],
+        options: dict[str, Any],
+    ) -> None:
         """Trigger creation by creator identifier.
 
         Should also trigger refresh of instances.
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
-            product_type (str): Product type.
             product_name (str): Calculated product name.
-            instance_data (Dict[str, Any]): Base instance data with variant,
+            instance_data (dict[str, Any]): Base instance data with variant,
                 folder path and task name.
-            options (Dict[str, Any]): Data from pre-create attributes.
+            options (dict[str, Any]): Data from pre-create attributes.
+
         """
-
         pass
 
     @abstractmethod
-    def trigger_convertor_items(self, convertor_identifiers: List[str]):
+    def trigger_convertor_items(
+        self, convertor_identifiers: list[str]
+    ) -> None:
         pass
 
     @abstractmethod
-    def remove_instances(self, instance_ids: Iterable[str]):
+    def remove_instances(self, instance_ids: Iterable[str]) -> None:
         """Remove list of instances from create context."""
-        # TODO expect instance ids
-
         pass
 
     @abstractmethod
@@ -564,42 +565,39 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: Save was successful.
-        """
 
+        """
         pass
 
     # --- Publish ---
     @abstractmethod
-    def publish(self):
+    def publish(self) -> None:
         """Trigger publishing without any order limitations."""
-
         pass
 
     @abstractmethod
-    def validate(self):
+    def validate(self) -> None:
         """Trigger publishing which will stop after validation order."""
-
         pass
 
     @abstractmethod
-    def stop_publish(self):
+    def stop_publish(self) -> None:
         """Stop publishing can be also used to pause publishing.
 
         Pause of publishing is possible only if all plugins successfully
         finished.
         """
-
         pass
 
     @abstractmethod
-    def run_action(self, plugin_id: str, action_id: str):
+    def run_action(self, plugin_id: str, action_id: str) -> None:
         """Trigger pyblish action on a plugin.
 
         Args:
             plugin_id (str): Publish plugin id.
             action_id (str): Publish action id.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -608,8 +606,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: If publishing finished and all plugins were iterated.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -618,8 +616,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: If publishing finished and all plugins were iterated.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -628,8 +626,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: If publishing is in progress.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -643,7 +641,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def publish_can_continue(self):
+    def publish_can_continue(self) -> bool:
         """Publish has still plugins to process and did not crash yet.
 
         Returns:
@@ -658,8 +656,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: Publishing crashed.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -668,8 +666,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: Validation error was raised during validation.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -688,16 +686,16 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             int: Number that can be used as 100% of publish progress bar.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_publish_error_info(self) -> Optional["PublishErrorInfo"]:
+    def get_publish_error_info(self) -> PublishErrorInfo | None:
         """Current error message which cause fail of publishing.
 
         Returns:
-            Optional[PublishErrorInfo]: Error info or None.
+            PublishErrorInfo | None: Error info or None.
 
         """
         pass
@@ -711,7 +709,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_errors_report(self):
+    def get_publish_errors_report(self) -> PublishErrorsReport:
         pass
 
     @abstractmethod
@@ -719,27 +717,27 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def set_comment(self, comment: str):
+    def set_comment(self, comment: str) -> None:
         """Set comment on pyblish context.
 
         Set "comment" key on current pyblish.api.Context data.
 
         Args:
             comment (str): Artist's comment.
-        """
 
+        """
         pass
 
     @abstractmethod
     def get_thumbnail_paths_for_instances(
-        self, instance_ids: List[str]
-    ) -> Dict[str, Union[str, None]]:
+        self, instance_ids: list[str]
+    ) -> dict[str, str | None]:
         pass
 
     @abstractmethod
     def set_thumbnail_paths_for_instances(
-        self, thumbnail_path_mapping: Dict[str, Optional[str]]
-    ):
+        self, thumbnail_path_mapping: dict[str, str | None]
+    ) -> None:
         pass
 
     @abstractmethod
@@ -748,12 +746,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             str: Path to a directory.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def clear_thumbnail_temp_dir_path(self):
+    def clear_thumbnail_temp_dir_path(self) -> None:
         """Remove content of thumbnail temp directory."""
-
         pass

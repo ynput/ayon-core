@@ -625,7 +625,7 @@ class PublisherController(
     def get_publish_errors_report(self):
         return self._publish_model.get_publish_errors_report()
 
-    def set_comment(self, comment):
+    def set_comment(self, comment: str) -> None:
         """Set comment from ui to pyblish context.
 
         This should be called always before publishing is started but should
@@ -635,7 +635,7 @@ class PublisherController(
 
         self._publish_model.set_comment(comment)
 
-    def publish(self):
+    def publish(self) -> None:
         """Run publishing.
 
         Make sure all changes are saved before method is called (Call
@@ -643,7 +643,7 @@ class PublisherController(
         """
         self._start_publish(False)
 
-    def validate(self):
+    def validate(self) -> None:
         """Run publishing and stop after Validation.
 
         Make sure all changes are saved before method is called (Call
@@ -651,17 +651,17 @@ class PublisherController(
         """
         self._start_publish(True)
 
-    def stop_publish(self):
+    def stop_publish(self) -> None:
         """Stop publishing process (any reason)."""
         self._publish_model.stop_publish()
 
-    def run_action(self, plugin_id, action_id):
+    def run_action(self, plugin_id: str, action_id: str) -> None:
         self._publish_model.run_action(plugin_id, action_id)
 
     def _create_event_system(self):
         return QueuedEventSystem()
 
-    def _emit_event(self, topic, data=None):
+    def _emit_event(self, topic: str, data: dict | None = None) -> None:
         self.emit_event(topic, data, "controller")
 
     def _start_publish(self, up_validation: bool) -> None:
