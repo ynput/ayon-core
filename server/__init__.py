@@ -146,6 +146,7 @@ class CoreAddon(BaseServerAddon):
 
             return await executor.get_launcher_response(args)
 
+        if executor.identifier == "core.delivery.list":
             if not executor.context.entity_ids:
                 return await executor.get_server_action_response(
                     message="No list selected.",
