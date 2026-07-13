@@ -13,11 +13,9 @@ authors = [
 license = {file = "LICENSE"}
 readme = "README.md"
 package-mode = false
-requires-python = ">=3.9.1,<3.10"
+requires-python = ">=3.11,<3.12"
 
 dependencies = [
-    "pytest >=8.0.0",
-    "pytest-print >=1.0.0",
     "ayon-python-api >=1.0.0",
     "arrow ==0.17.0",
     "ruff >=0.11.7",
@@ -32,8 +30,21 @@ dependencies = [
     "clique >=2.0.0",
     "opentimelineio ==0.17.0",
     "speedcopy >=2.1.0",
+    "numpy >=2.4.3",
     "qtpy >=2.4.3",
-    "pyside6 >=6.5.2",
+    "pyside6 >=6.8.3",
+    "Pillow ==9.5.0"
+]
+
+[project.optional-dependencies]
+test = [
+    "Pillow ==9.5.0",
+    "pytest",
+    "pytest-print >=1.0.0",
+    "pytest-mock",
+    "pytest-timeout",
+    "pytest-qt",
+    "pytest-regressions[image]",
     "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
 ]
 
@@ -57,7 +68,12 @@ log_cli = true
 log_cli_level = "INFO"
 addopts = "-ra -q"
 testpaths = [
-    "client/ayon_core/tests"
+    "client/ayon_core/tests",
+    "tests/client/ayon_core/ui",
+]
+pythonpath = [
+    "client",
+    "tests/client/ayon_core/ui",
 ]
 markers = [
     "unit: Unit tests",
