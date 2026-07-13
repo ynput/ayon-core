@@ -283,9 +283,7 @@ def deliver(
             if not version_ids and not list_id:
                 raise ValueError("No version_ids or list_id in payload.")
             if list_id:
-                list_entity = ayon_api.get_entity_lists(
-                    project, list_ids=[list_id], fields=["items", "label"])
-                list_entity = list(list_entity)[0]
+                list_entity = ayon_api.get_entity_list_rest(project, list_id)
                 list_entity_label = list_entity["label"]
                 # get all version entities belonging to the list
                 version_ids = [

@@ -64,7 +64,7 @@ class CoreAddon(BaseServerAddon):
             output.append(
                 SimpleActionManifest(
                     identifier="core.delivery.version",
-                    label="Delivery Versions (launcher action)",
+                    label="Deliver versions (launcher action)",
                     icon={
                         "type": "material-symbols",
                         "name": "create_new_folder",
@@ -78,7 +78,7 @@ class CoreAddon(BaseServerAddon):
             output.append(
                 SimpleActionManifest(
                     identifier="core.delivery.list",
-                    label="Delivery Versions (launcher action)",
+                    label="Deliver versions (launcher action)",
                     icon={
                         "type": "material-symbols",
                         "name": "create_new_folder",
@@ -148,7 +148,6 @@ class CoreAddon(BaseServerAddon):
 
         if executor.identifier == "core.delivery.list":
             selected_list = executor.context.entity_ids[0]
-            print(f"selected_list: {selected_list}")
             if not selected_list:
                 return await executor.get_server_action_response(
                     message="No list available in selection.",
