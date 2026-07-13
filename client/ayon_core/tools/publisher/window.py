@@ -541,7 +541,7 @@ class PublisherWindow(QtWidgets.QDialog):
             save_match = save_match == QtGui.QKeySequence.ExactMatch
 
         if save_match:
-            if not self._controller.publish_has_started:
+            if not self._controller.publish_has_started():
                 self._save_changes(True)
             event.accept()
             return
@@ -557,7 +557,7 @@ class PublisherWindow(QtWidgets.QDialog):
             )
 
         if reset_match_result == QtGui.QKeySequence.ExactMatch:
-            if not self._controller.publish_is_running:
+            if not self._controller.publish_is_running():
                 self.reset()
             event.accept()
             return

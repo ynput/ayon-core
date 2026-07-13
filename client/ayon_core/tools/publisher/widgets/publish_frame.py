@@ -396,7 +396,7 @@ class PublishFrame(QtWidgets.QWidget):
 
     def _set_stopped(self):
         main_label = "Publish paused"
-        if self._controller.publish_has_validated:
+        if self._controller.publish_has_validated():
             main_label += " - Validation passed"
 
         self._set_main_label(main_label)
