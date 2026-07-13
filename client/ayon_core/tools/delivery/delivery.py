@@ -1,3 +1,4 @@
+import os
 import platform
 import logging
 from collections import defaultdict
@@ -237,6 +238,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             if list_label:
                 template_data["list"] = {"label": list_label}
 
+            # Use temporary placeholder so we don't need to check destination
+            # path per file of the representation
+            template_data["publishedFilename"] = "<publishedFilename>"
             new_report_items = check_destination_path(
                 repre["id"],
                 self.anatomy,
@@ -278,6 +282,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 first_frame = min(frames)
 
             for src_path, frame in sources_and_frames.items():
+                # Support {publishedFilename} token
+                template_data["publishedFilename"] = os.path.basename(
+                    # Replace backslash to forward slashes so basename
+                    # also resolves to filename only on POSIX
+                    src_path.replace("\\", "/")
+                )
                 args[0] = src_path
                 # Renumber frames
                 if renumber_frame and frame is not None:
