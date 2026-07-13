@@ -98,6 +98,10 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
+class CollectVersionTagsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
+
+
 def usd_contribution_layer_types():
     return [
         {"value": "asset", "label": "Asset"},
@@ -1432,6 +1436,13 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectHierarchyModel,
         title="Collect Hierarchy"
     )
+    CollectVersionTags: CollectVersionTagsModel = SettingsField(
+        title="Collect Version Tags",
+        description=(
+            "Provides a selectable list of tags for the user in the"
+            " publisher."
+        )
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1659,6 +1670,9 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectHierarchy": {
         "edit_shot_attributes_on_update": True,
+    },
+    "CollectVersionTags": {
+        "enabled": False
     },
     "ValidateEditorialAssetName": {
         "enabled": True,

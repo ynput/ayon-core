@@ -39,7 +39,7 @@ from ayon_core.pipeline.entity_uri import (
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
-from ayon_core.pipeline import publish, KnownPublishError
+from ayon_core.pipeline import publish, PublishError
 
 
 # This global toggle is here mostly for debugging purposes and should usually
@@ -711,7 +711,7 @@ class ValidateUSDDependencies(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         if Sdf is None:
-            raise KnownPublishError("USD library 'Sdf' is not available.")
+            raise PublishError("USD library 'Sdf' is not available.")
 
 
 class ExtractUSDLayerContribution(publish.Extractor):
