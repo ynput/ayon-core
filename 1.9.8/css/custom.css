@@ -1,0 +1,12 @@
+[data-md-color-scheme="slate"] {
+    /* simple slate overrides */
+    --md-primary-fg-color: hsl(155, 49%, 50%);
+    --md-accent-fg-color: rgb(93, 200, 156);
+    --md-typeset-a-color: hsl(155, 49%, 45%) !important;
+}
+[data-md-color-scheme="default"] {
+    /* simple default overrides */
+    --md-primary-fg-color: hsl(155, 49%, 50%);
+    --md-accent-fg-color: rgb(93, 200, 156);
+    --md-typeset-a-color: hsl(155, 49%, 45%) !important;
+}

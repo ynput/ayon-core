@@ -1,0 +1,1477 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=style.html><link rel=next href=utils.html><link rel=icon href=../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.6"><title>style_types - ayon-core</title><link rel=stylesheet href=../../../../assets/stylesheets/main.484c7ddc.min.css><link rel=stylesheet href=../../../../assets/stylesheets/palette.ab4e12ef.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../css/custom.css><script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.ui.style_types class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> style_types </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <div class=md-nav__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class="md-nav__item md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_2> <label class=md-nav__link for=__nav_2 id=__nav_2_label tabindex> <span class=md-ellipsis> UI Library </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_2_label aria-expanded=false> <label class=md-nav__title for=__nav_2> <span class="md-nav__icon md-icon"></span> UI Library </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../ui.html class=md-nav__link> <span class=md-ellipsis> Overview </span> </a> </li> <li class=md-nav__item> <a href=../../../../ui_testing.html class=md-nav__link> <span class=md-ellipsis> Testing </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4 checked> <label class=md-nav__link for=__nav_4 id=__nav_4_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_4_label aria-expanded=true> <label class=md-nav__title for=__nav_4> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1 checked> <label class=md-nav__link for=__nav_4_1 id=__nav_4_1_label tabindex=0> <span class=md-ellipsis> client </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_4_1_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1 checked> <label class=md-nav__link for=__nav_4_1_1 id=__nav_4_1_1_label tabindex=0> <span class=md-ellipsis> ayon_core </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_4_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../host/abstract.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../lib/_compatibility.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../pipeline/actions/inventory.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1_15 checked> <label class=md-nav__link for=__nav_4_1_1_15 id=__nav_4_1_1_15_label tabindex=0> <span class=md-ellipsis> ui </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_4_1_1_15_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1_15> <span class="md-nav__icon md-icon"></span> ui </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=color_utils.html class=md-nav__link> <span class=md-ellipsis> color_utils </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=components/buttons.html class=md-nav__link> <span class=md-ellipsis> components </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=data_models.html class=md-nav__link> <span class=md-ellipsis> data_models </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=drawers/_utils.html class=md-nav__link> <span class=md-ellipsis> drawers </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=image_cache.html class=md-nav__link> <span class=md-ellipsis> image_cache </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=preview_utils/utils.html class=md-nav__link> <span class=md-ellipsis> preview_utils </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=style.html class=md-nav__link> <span class=md-ellipsis> style </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> style_types </span> <span class="md-nav__icon md-icon"></span> </label> <a href=style_types.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> style_types </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types class=md-nav__link> <span class=md-ellipsis> style_types </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData class=md-nav__link> <span class=md-ellipsis> StyleData </span> </a> <nav class=md-nav aria-label=StyleData> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.base_font class=md-nav__link> <span class=md-ellipsis> base_font </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.current_style class=md-nav__link> <span class=md-ellipsis> current_style </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.default_variant class=md-nav__link> <span class=md-ellipsis> default_variant </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.dump_cache_stats class=md-nav__link> <span class=md-ellipsis> dump_cache_stats </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_style class=md-nav__link> <span class=md-ellipsis> get_style </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_style_palette class=md-nav__link> <span class=md-ellipsis> get_style_palette </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_styles class=md-nav__link> <span class=md-ellipsis> get_styles </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_widget_color class=md-nav__link> <span class=md-ellipsis> get_widget_color </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.palette class=md-nav__link> <span class=md-ellipsis> palette </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.validate_variant class=md-nav__link> <span class=md-ellipsis> validate_variant </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_data class=md-nav__link> <span class=md-ellipsis> widget_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_list class=md-nav__link> <span class=md-ellipsis> widget_list </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_states class=md-nav__link> <span class=md-ellipsis> widget_states </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_variants class=md-nav__link> <span class=md-ellipsis> widget_variants </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleDict class=md-nav__link> <span class=md-ellipsis> StyleDict </span> </a> <nav class=md-nav aria-label=StyleDict> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleDict.get class=md-nav__link> <span class=md-ellipsis> get </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleDict.set_context class=md-nav__link> <span class=md-ellipsis> set_context </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.get_ayon_style class=md-nav__link> <span class=md-ellipsis> get_ayon_style </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.get_ayon_style_data class=md-nav__link> <span class=md-ellipsis> get_ayon_style_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.hsl_to_html_color class=md-nav__link> <span class=md-ellipsis> hsl_to_html_color </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=utils.html class=md-nav__link> <span class=md-ellipsis> utils </span> </a> </li> <li class=md-nav__item> <a href=variants.html class=md-nav__link> <span class=md-ellipsis> variants </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../ui_preview/buttons.html class=md-nav__link> <span class=md-ellipsis> ui_preview </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types class=md-nav__link> <span class=md-ellipsis> style_types </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData class=md-nav__link> <span class=md-ellipsis> StyleData </span> </a> <nav class=md-nav aria-label=StyleData> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.base_font class=md-nav__link> <span class=md-ellipsis> base_font </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.current_style class=md-nav__link> <span class=md-ellipsis> current_style </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.default_variant class=md-nav__link> <span class=md-ellipsis> default_variant </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.dump_cache_stats class=md-nav__link> <span class=md-ellipsis> dump_cache_stats </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_style class=md-nav__link> <span class=md-ellipsis> get_style </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_style_palette class=md-nav__link> <span class=md-ellipsis> get_style_palette </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_styles class=md-nav__link> <span class=md-ellipsis> get_styles </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.get_widget_color class=md-nav__link> <span class=md-ellipsis> get_widget_color </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.palette class=md-nav__link> <span class=md-ellipsis> palette </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.validate_variant class=md-nav__link> <span class=md-ellipsis> validate_variant </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_data class=md-nav__link> <span class=md-ellipsis> widget_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_list class=md-nav__link> <span class=md-ellipsis> widget_list </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_states class=md-nav__link> <span class=md-ellipsis> widget_states </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleData.widget_variants class=md-nav__link> <span class=md-ellipsis> widget_variants </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleDict class=md-nav__link> <span class=md-ellipsis> StyleDict </span> </a> <nav class=md-nav aria-label=StyleDict> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleDict.get class=md-nav__link> <span class=md-ellipsis> get </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.StyleDict.set_context class=md-nav__link> <span class=md-ellipsis> set_context </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.get_ayon_style class=md-nav__link> <span class=md-ellipsis> get_ayon_style </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.get_ayon_style_data class=md-nav__link> <span class=md-ellipsis> get_ayon_style_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.style_types.hsl_to_html_color class=md-nav__link> <span class=md-ellipsis> hsl_to_html_color </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <nav class=md-path aria-label=Navigation> <ol class=md-path__list> <li class=md-path__item> <a href=../../../../index.html class=md-path__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-path__item> <a href=../__main__.html class=md-path__link> <span class=md-ellipsis> Reference </span> </a> </li> <li class=md-path__item> <a href=../__main__.html class=md-path__link> <span class=md-ellipsis> client </span> </a> </li> <li class=md-path__item> <a href=../__main__.html class=md-path__link> <span class=md-ellipsis> ayon_core </span> </a> </li> <li class=md-path__item> <a href=color_utils.html class=md-path__link> <span class=md-ellipsis> ui </span> </a> </li> </ol> </nav> <article class="md-content__inner md-typeset"> <h1>style_types</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.ui.style_types></a> <div class="doc doc-contents first"> <p>Shared style types and singleton accessor for ayon_ui_qt.</p> <p>This module is intentionally a <strong>leaf</strong> — it imports only from stdlib, Qt, and the drawers utility layer. No import from <code>.components</code> or from the top-level <code>.style</code> module is performed at module-load time, which breaks the circular dependency that would otherwise arise between <code>style.py</code> and the component modules.</p> <details class=exports open> <summary>Exports</summary> <p>StyleDict: Context-aware dict that resolves <code>@attr</code> references. StyleData: Loads and caches data from <code>ayon_style.json</code>. get_ayon_style: Returns the process-wide <code>AYONStyle</code> singleton. get_ayon_style_data: Convenience wrapper around <code>get_ayon_style().model.get_style()</code>. hsl_to_html_color: Converts HSL CSS strings to Qt colour hex codes.</p> </details> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.ui.style_types.StyleData class="doc doc-heading"> <code>StyleData</code> </h2> <div class="doc doc-contents "> <p>Loads <code>ayon_style.json</code> and provides cached style lookups.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.style_types.StyleData.data>data</span></code></td> <td> </td> <td> <div class=doc-md-description> <p>The raw parsed JSON data.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.style_types.StyleData.base_palette>base_palette</span></code></td> <td> <code><span title=qtpy.QtGui.QPalette>QPalette</span></code> </td> <td> <div class=doc-md-description> <p>A <code>QPalette</code> built from the <code>palette</code> section.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>StyleData</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Loads ``ayon_style.json`` and provides cached style lookups.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        data: The raw parsed JSON data.</span>
+<span class=sd>        base_palette: A ``QPalette`` built from the ``palette`` section.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>fpath</span> <span class=o>=</span> <span class=n>Path</span><span class=p>(</span><span class=vm>__file__</span><span class=p>)</span><span class=o>.</span><span class=n>parent</span> <span class=o>/</span> <span class=s2>&quot;ayon_style.json&quot;</span>
+        <span class=k>with</span> <span class=nb>open</span><span class=p>(</span><span class=n>fpath</span><span class=p>,</span> <span class=s2>&quot;r&quot;</span><span class=p>)</span> <span class=k>as</span> <span class=n>fh</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>data</span> <span class=o>=</span> <span class=n>json</span><span class=o>.</span><span class=n>load</span><span class=p>(</span><span class=n>fh</span><span class=p>)</span>
+        <span class=c1># Palette values can reference each other</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;palette&quot;</span><span class=p>,</span> <span class=p>{})</span>
+        <span class=k>for</span> <span class=n>k</span><span class=p>,</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=k>if</span> <span class=n>v</span><span class=o>.</span><span class=n>startswith</span><span class=p>(</span><span class=s2>&quot;hsl(&quot;</span><span class=p>):</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=p>[</span><span class=n>k</span><span class=p>]</span> <span class=o>=</span> <span class=n>hsl_to_html_color</span><span class=p>(</span><span class=n>v</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>k</span><span class=p>,</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=p>[</span><span class=n>k</span><span class=p>]</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>v</span><span class=p>,</span> <span class=n>v</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>k</span><span class=p>,</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=k>if</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=p>:</span>
+                <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;Unresolved palette value in </span><span class=si>{</span><span class=n>k</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>)</span>
+        <span class=c1># cache</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>last_key</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span>
+        <span class=c1># base palette</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>base_palette</span><span class=p>:</span> <span class=n>QPalette</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_build_palette</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_base_font</span><span class=p>:</span> <span class=n>QFont</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>base_font</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QFont</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the base application font, loading it lazily.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A copy of the configured base ``QFont``.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=c1># delayed to make sure QApplication is initialized</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_base_font</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_base_font</span> <span class=o>=</span> <span class=n>style_font</span><span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;global&quot;</span><span class=p>,</span> <span class=p>{}),</span> <span class=n>QWidget</span><span class=p>()</span>
+            <span class=p>)</span>
+            <span class=n>_load_fonts</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>QFont</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_base_font</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_build_palette</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QPalette</span><span class=p>:</span>
+        <span class=n>bp</span> <span class=o>=</span> <span class=p>{</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Window</span><span class=p>:</span> <span class=s2>&quot;qt-active-window&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>WindowText</span><span class=p>:</span> <span class=s2>&quot;qt-active-window-text&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Base</span><span class=p>:</span> <span class=s2>&quot;qt-active-base&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Text</span><span class=p>:</span> <span class=s2>&quot;qt-active-text&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Link</span><span class=p>:</span> <span class=s2>&quot;qt-active-link&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Button</span><span class=p>:</span> <span class=s2>&quot;qt-active-button&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>ButtonText</span><span class=p>:</span> <span class=s2>&quot;qt-active-button-text&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>PlaceholderText</span><span class=p>:</span> <span class=s2>&quot;qt-active-placeholder-text&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Highlight</span><span class=p>:</span> <span class=s2>&quot;qt-active-highlight&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>HighlightedText</span><span class=p>:</span> <span class=s2>&quot;qt-active-highlight-text&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Light</span><span class=p>:</span> <span class=s2>&quot;qt-active-light&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Midlight</span><span class=p>:</span> <span class=s2>&quot;qt-active-midlight&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Dark</span><span class=p>:</span> <span class=s2>&quot;qt-active-dark&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Mid</span><span class=p>:</span> <span class=s2>&quot;qt-active-mid&quot;</span><span class=p>,</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorRole</span><span class=o>.</span><span class=n>Shadow</span><span class=p>:</span> <span class=s2>&quot;qt-active-shadow&quot;</span><span class=p>,</span>
+        <span class=p>}</span>
+        <span class=n>p</span> <span class=o>=</span> <span class=n>QPalette</span><span class=p>()</span>
+        <span class=k>for</span> <span class=n>role</span><span class=p>,</span> <span class=n>color_name</span> <span class=ow>in</span> <span class=n>bp</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+                <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorGroup</span><span class=o>.</span><span class=n>Active</span><span class=p>,</span>
+                <span class=n>role</span><span class=p>,</span>
+                <span class=n>QColor</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_palette</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>color_name</span><span class=p>,</span> <span class=s2>&quot;#ff0000&quot;</span><span class=p>)),</span>
+            <span class=p>)</span>
+        <span class=k>return</span> <span class=n>p</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_style_palette</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget</span><span class=p>:</span> <span class=n>QWidget</span><span class=p>,</span> <span class=n>widget_key</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QPalette</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get a QPalette for the widget based on the current style data.</span>
+
+<span class=sd>        Resolves any @ references in the style data to widget attributes.</span>
+<span class=sd>        Caches results for efficiency, if there are no @ references.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget: The widget to build the palette for.</span>
+<span class=sd>            widget_key: The style key identifying the widget class.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A ``QPalette`` configured for the widget.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>variant</span> <span class=o>=</span> <span class=nb>getattr</span><span class=p>(</span><span class=n>widget</span><span class=p>,</span> <span class=s2>&quot;_variant_str&quot;</span><span class=p>,</span> <span class=s2>&quot;default&quot;</span><span class=p>)</span>
+        <span class=c1># check if cached</span>
+        <span class=n>cache_key</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>widget_key</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-palette&quot;</span>
+        <span class=k>if</span> <span class=n>cache_key</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QPalette</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>])</span>
+
+        <span class=n>style</span><span class=p>:</span> <span class=n>StyleDict</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_styles</span><span class=p>(</span>
+            <span class=n>widget_key</span><span class=p>,</span>
+            <span class=n>variant</span><span class=o>=</span><span class=n>variant</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=n>style</span><span class=o>.</span><span class=n>set_context</span><span class=p>(</span><span class=n>widget</span><span class=p>)</span>
+
+        <span class=n>p</span> <span class=o>=</span> <span class=n>QPalette</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>base_palette</span><span class=p>)</span>
+
+        <span class=n>fg_color</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;base&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;color&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>fg_color</span><span class=p>:</span>
+            <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+                <span class=n>widget</span><span class=o>.</span><span class=n>foregroundRole</span><span class=p>(),</span>
+                <span class=n>QColor</span><span class=p>(</span><span class=n>fg_color</span><span class=p>),</span>
+            <span class=p>)</span>
+        <span class=n>opacity</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;disabled&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;opacity&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>opacity</span><span class=p>:</span>
+            <span class=n>disabled_fg_color</span> <span class=o>=</span> <span class=n>QColor</span><span class=p>(</span><span class=n>fg_color</span><span class=p>)</span>
+            <span class=n>disabled_fg_color</span><span class=o>.</span><span class=n>setAlphaF</span><span class=p>(</span><span class=n>opacity</span><span class=p>)</span>
+            <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+                <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorGroup</span><span class=o>.</span><span class=n>Disabled</span><span class=p>,</span>
+                <span class=n>widget</span><span class=o>.</span><span class=n>foregroundRole</span><span class=p>(),</span>
+                <span class=n>disabled_fg_color</span><span class=p>,</span>
+            <span class=p>)</span>
+
+        <span class=n>bg_color</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;base&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;background-color&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>bg_color</span><span class=p>:</span>
+            <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+                <span class=n>widget</span><span class=o>.</span><span class=n>backgroundRole</span><span class=p>(),</span>
+                <span class=n>QColor</span><span class=p>(</span><span class=n>bg_color</span><span class=p>),</span>
+            <span class=p>)</span>
+
+        <span class=c1># cache result</span>
+        <span class=n>style</span><span class=o>.</span><span class=n>set_context</span><span class=p>(</span><span class=kc>None</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>p</span>
+
+        <span class=k>return</span> <span class=n>QPalette</span><span class=p>(</span><span class=n>p</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>dump_cache_stats</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Print cache statistics to stdout (debug aid).&quot;&quot;&quot;</span>
+        <span class=nb>print</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;[StyleData] cached </span><span class=si>{</span><span class=nb>len</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>)</span><span class=si>}</span><span class=s2> styles.&quot;</span><span class=p>)</span>
+        <span class=nb>print</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;[StyleData]   &gt;&gt; </span><span class=si>{</span><span class=nb>list</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=o>.</span><span class=n>keys</span><span class=p>())</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>widget_variants</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return all variant names registered for *widget_cls*.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_cls: The widget class key (e.g. ``&quot;QPushButton&quot;``).</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A list of variant name strings.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=nb>list</span><span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>keys</span><span class=p>()</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>widget_states</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the list of states for *widget_cls*, always including</span>
+<span class=sd>        ``&quot;base&quot;`` as the first entry.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_cls: The widget class key.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Ordered list of state name strings.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>states</span> <span class=o>=</span> <span class=nb>list</span><span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;states&quot;</span><span class=p>,</span> <span class=p>[])</span>
+        <span class=p>)</span>
+        <span class=k>return</span> <span class=n>states</span> <span class=k>if</span> <span class=s2>&quot;base&quot;</span> <span class=ow>in</span> <span class=n>states</span> <span class=k>else</span> <span class=p>[</span><span class=s2>&quot;base&quot;</span><span class=p>]</span> <span class=o>+</span> <span class=n>states</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>widget_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the raw widget data block for *widget_cls*.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_cls: The widget class key.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The raw data dict (empty dict if not found).</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=p>{})</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>widget_list</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return all registered widget class keys.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            List of widget class key strings.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=nb>list</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>keys</span><span class=p>())</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>default_variant</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_data</span><span class=p>:</span> <span class=nb>dict</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the default variant name for *widget_data*.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_data: The raw widget data block.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The default variant name string.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>variants</span> <span class=o>=</span> <span class=n>widget_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span>
+        <span class=k>return</span> <span class=n>widget_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span>
+            <span class=s2>&quot;default-variant&quot;</span><span class=p>,</span> <span class=nb>next</span><span class=p>(</span><span class=nb>iter</span><span class=p>(</span><span class=n>variants</span><span class=o>.</span><span class=n>keys</span><span class=p>()),</span> <span class=s2>&quot;default&quot;</span><span class=p>)</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>validate_variant</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_data</span><span class=p>:</span> <span class=nb>dict</span><span class=p>,</span> <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return *variant* if valid, otherwise return the default variant.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_data: The raw widget data block.</span>
+<span class=sd>            variant: The requested variant name.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A valid variant name string.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>variant</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>widget_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{}):</span>
+            <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>default_variant</span><span class=p>(</span><span class=n>widget_data</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>variant</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>palette</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the resolved colour palette mapping.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Dict mapping palette key strings to HTML hex colours.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_style</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+        <span class=n>state</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=s2>&quot;base&quot;</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return a style dict for a widget, variant and state.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_cls: The widget class key.</span>
+<span class=sd>            variant: Optional variant name.</span>
+<span class=sd>            state: State to retrieve; ``&quot;all&quot;`` returns every state merged.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A :class:`StyleDict` for the requested combination.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>try</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>widget_cls</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>state</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>])</span>
+        <span class=k>except</span> <span class=ne>KeyError</span><span class=p>:</span>
+            <span class=k>pass</span>
+
+        <span class=n>data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>widget_data</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span>
+        <span class=n>vrt</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>validate_variant</span><span class=p>(</span><span class=n>data</span><span class=p>,</span> <span class=n>variant</span><span class=p>)</span>
+        <span class=n>dvrt</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>default_variant</span><span class=p>(</span><span class=n>data</span><span class=p>)</span>
+        <span class=n>pal</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span>
+        <span class=n>d</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>copy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;global&quot;</span><span class=p>])</span>
+        <span class=n>d</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>dvrt</span><span class=p>,</span> <span class=p>{})))</span>
+        <span class=n>d</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>vrt</span><span class=p>,</span> <span class=p>{})))</span>
+
+        <span class=k>if</span> <span class=n>state</span> <span class=o>==</span> <span class=s2>&quot;all&quot;</span><span class=p>:</span>
+            <span class=k>for</span> <span class=n>key</span><span class=p>,</span> <span class=n>val</span> <span class=ow>in</span> <span class=n>d</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+                <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>dict</span><span class=p>):</span>
+                    <span class=n>d</span><span class=p>[</span><span class=n>key</span><span class=p>]</span> <span class=o>=</span> <span class=p>{</span><span class=n>kk</span><span class=p>:</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>vv</span><span class=p>,</span> <span class=n>vv</span><span class=p>)</span> <span class=k>for</span> <span class=n>kk</span><span class=p>,</span> <span class=n>vv</span> <span class=ow>in</span> <span class=n>val</span><span class=o>.</span><span class=n>items</span><span class=p>()}</span>
+                <span class=k>elif</span> <span class=ow>not</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>list</span><span class=p>):</span>
+                    <span class=n>d</span><span class=p>[</span><span class=n>key</span><span class=p>]</span> <span class=o>=</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=n>val</span><span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=c1># Override palette variables with the current state&#39;s values and</span>
+            <span class=c1># remove all states. That way, we can directly use</span>
+            <span class=c1># &quot;background-color&quot; without checking the widget&#39;s state.</span>
+            <span class=n>state_dict</span> <span class=o>=</span> <span class=p>{}</span>
+            <span class=k>for</span> <span class=n>key</span><span class=p>,</span> <span class=n>val</span> <span class=ow>in</span> <span class=nb>list</span><span class=p>(</span><span class=n>d</span><span class=o>.</span><span class=n>items</span><span class=p>()):</span>
+                <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>dict</span><span class=p>):</span>
+                    <span class=k>if</span> <span class=n>key</span> <span class=o>==</span> <span class=n>state</span><span class=p>:</span>
+                        <span class=n>state_dict</span> <span class=o>=</span> <span class=p>{</span>
+                            <span class=n>kk</span><span class=p>:</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>vv</span><span class=p>,</span> <span class=n>vv</span><span class=p>)</span> <span class=k>for</span> <span class=n>kk</span><span class=p>,</span> <span class=n>vv</span> <span class=ow>in</span> <span class=n>val</span><span class=o>.</span><span class=n>items</span><span class=p>()</span>
+                        <span class=p>}</span>
+                    <span class=n>d</span><span class=o>.</span><span class=n>pop</span><span class=p>(</span><span class=n>key</span><span class=p>)</span>
+                <span class=k>elif</span> <span class=ow>not</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>list</span><span class=p>):</span>
+                    <span class=n>d</span><span class=p>[</span><span class=n>key</span><span class=p>]</span> <span class=o>=</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=n>val</span><span class=p>)</span>
+            <span class=c1># apply current state overrides last to ensure they take precedence</span>
+            <span class=c1># over the base variant</span>
+            <span class=n>d</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>state_dict</span><span class=p>)</span>
+
+        <span class=c1># cache result</span>
+        <span class=n>d</span> <span class=o>=</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>last_key</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>widget_cls</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>state</span><span class=si>}</span><span class=s2>&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=bp>self</span><span class=o>.</span><span class=n>last_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>d</span>
+        <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_styles</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+        <span class=n>states</span><span class=p>:</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return styles for a widget, variant and multiple states at once.</span>
+
+<span class=sd>        This is more efficient than calling :meth:`get_style` multiple times</span>
+<span class=sd>        when you need styles for several states of the same widget/variant.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            widget_cls: The widget class name, e.g. ``&quot;QStyledItemDelegate&quot;``.</span>
+<span class=sd>            variant: The variant name (e.g., ``&quot;default&quot;``). Defaults to None.</span>
+<span class=sd>            states: List of states to retrieve (e.g., ``[&quot;base&quot;, &quot;hover&quot;,</span>
+<span class=sd>                &quot;checked&quot;]``). Defaults to all defined states.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A :class:`StyleDict` mapping state names to their style dicts.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>states</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>states</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>widget_states</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span>
+
+        <span class=n>cache_key</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;all-</span><span class=si>{</span><span class=n>widget_cls</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=s1>&#39;|&#39;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>states</span><span class=p>)</span><span class=si>}</span><span class=s2>&quot;</span>
+        <span class=k>try</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>])</span>
+        <span class=k>except</span> <span class=ne>KeyError</span><span class=p>:</span>
+            <span class=k>pass</span>
+
+        <span class=n>d</span> <span class=o>=</span> <span class=p>{</span>
+            <span class=n>state</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_style</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=n>variant</span><span class=p>,</span> <span class=n>state</span><span class=p>)</span>
+            <span class=k>for</span> <span class=n>state</span> <span class=ow>in</span> <span class=n>states</span>
+        <span class=p>}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>current_style</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the most recently computed style entry from cache.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The last :class:`StyleDict` placed into the cache.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=bp>self</span><span class=o>.</span><span class=n>last_key</span><span class=p>]</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_widget_color</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>color_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>style</span><span class=p>:</span> <span class=nb>dict</span><span class=p>,</span>
+        <span class=n>w</span><span class=p>:</span> <span class=n>QWidget</span><span class=p>,</span>
+        <span class=n>default</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=n>QColor</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QColor</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Process color definitions referencing a widget attribute/property</span>
+<span class=sd>        using the ``@`` syntax.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            color_name: The color name to retrieve.</span>
+<span class=sd>            style: The style dictionary.</span>
+<span class=sd>            w: The widget to get the color from.</span>
+<span class=sd>            default: The default color to use if the attribute is not found.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The resolved :class:`QColor`.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>color</span> <span class=o>=</span> <span class=n>style</span><span class=p>[</span><span class=n>color_name</span><span class=p>]</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>color</span><span class=p>,</span> <span class=nb>str</span><span class=p>)</span> <span class=ow>and</span> <span class=n>color</span><span class=o>.</span><span class=n>startswith</span><span class=p>(</span><span class=s2>&quot;@&quot;</span><span class=p>):</span>
+            <span class=n>color</span> <span class=o>=</span> <span class=nb>getattr</span><span class=p>(</span><span class=n>w</span><span class=p>,</span> <span class=n>color</span><span class=p>[</span><span class=mi>1</span><span class=p>:],</span> <span class=n>default</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>QColor</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.ui.style_types.StyleData.base_font class="doc doc-heading"> <code class="highlight language-python"><span class=n>base_font</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Return the base application font, loading it lazily.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtGui.QFont>QFont</span></code> </td> <td> <div class=doc-md-description> <p>A copy of the configured base <code>QFont</code>.</p> </div> </td> </tr> </tbody> </table> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.current_style class="doc doc-heading"> <code class="highlight language-python"><span class=n>current_style</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Return the most recently computed style entry from cache.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><a class="autorefs autorefs-internal" title="StyleDict (client.ayon_core.ui.style_types.StyleDict)" href=#client.ayon_core.ui.style_types.StyleDict>StyleDict</a></code> </td> <td> <div class=doc-md-description> <p>The last :class:<code>StyleDict</code> placed into the cache.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>current_style</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the most recently computed style entry from cache.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The last :class:`StyleDict` placed into the cache.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=bp>self</span><span class=o>.</span><span class=n>last_key</span><span class=p>]</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.default_variant class="doc doc-heading"> <code class="highlight language-python"><span class=n>default_variant</span><span class=p>(</span><span class=n>widget_data</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return the default variant name for <em>widget_data</em>.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>The raw widget data block.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The default variant name string.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>default_variant</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_data</span><span class=p>:</span> <span class=nb>dict</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the default variant name for *widget_data*.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_data: The raw widget data block.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The default variant name string.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>variants</span> <span class=o>=</span> <span class=n>widget_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span>
+    <span class=k>return</span> <span class=n>widget_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span>
+        <span class=s2>&quot;default-variant&quot;</span><span class=p>,</span> <span class=nb>next</span><span class=p>(</span><span class=nb>iter</span><span class=p>(</span><span class=n>variants</span><span class=o>.</span><span class=n>keys</span><span class=p>()),</span> <span class=s2>&quot;default&quot;</span><span class=p>)</span>
+    <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.dump_cache_stats class="doc doc-heading"> <code class="highlight language-python"><span class=n>dump_cache_stats</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Print cache statistics to stdout (debug aid).</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>dump_cache_stats</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Print cache statistics to stdout (debug aid).&quot;&quot;&quot;</span>
+    <span class=nb>print</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;[StyleData] cached </span><span class=si>{</span><span class=nb>len</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>)</span><span class=si>}</span><span class=s2> styles.&quot;</span><span class=p>)</span>
+    <span class=nb>print</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;[StyleData]   &gt;&gt; </span><span class=si>{</span><span class=nb>list</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=o>.</span><span class=n>keys</span><span class=p>())</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.get_style class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_style</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=n>variant</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>state</span><span class=o>=</span><span class=s1>&#39;base&#39;</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return a style dict for a widget, variant and state.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_cls</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The widget class key.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>variant</code> </td> <td> <code><span title=str>str</span> | None</code> </td> <td> <div class=doc-md-description> <p>Optional variant name.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>state</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>State to retrieve; <code>"all"</code> returns every state merged.</p> </div> </td> <td> <code>&#39;base&#39;</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>A</code></td> <td> <code><a class="autorefs autorefs-internal" title="StyleDict (client.ayon_core.ui.style_types.StyleDict)" href=#client.ayon_core.ui.style_types.StyleDict>StyleDict</a></code> </td> <td> <div class=doc-md-description> <p>class:<code>StyleDict</code> for the requested combination.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_style</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+    <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=n>state</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=s2>&quot;base&quot;</span><span class=p>,</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return a style dict for a widget, variant and state.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_cls: The widget class key.</span>
+<span class=sd>        variant: Optional variant name.</span>
+<span class=sd>        state: State to retrieve; ``&quot;all&quot;`` returns every state merged.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A :class:`StyleDict` for the requested combination.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>try</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>widget_cls</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>state</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>])</span>
+    <span class=k>except</span> <span class=ne>KeyError</span><span class=p>:</span>
+        <span class=k>pass</span>
+
+    <span class=n>data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>widget_data</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span>
+    <span class=n>vrt</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>validate_variant</span><span class=p>(</span><span class=n>data</span><span class=p>,</span> <span class=n>variant</span><span class=p>)</span>
+    <span class=n>dvrt</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>default_variant</span><span class=p>(</span><span class=n>data</span><span class=p>)</span>
+    <span class=n>pal</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span>
+    <span class=n>d</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>copy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;global&quot;</span><span class=p>])</span>
+    <span class=n>d</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>dvrt</span><span class=p>,</span> <span class=p>{})))</span>
+    <span class=n>d</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>vrt</span><span class=p>,</span> <span class=p>{})))</span>
+
+    <span class=k>if</span> <span class=n>state</span> <span class=o>==</span> <span class=s2>&quot;all&quot;</span><span class=p>:</span>
+        <span class=k>for</span> <span class=n>key</span><span class=p>,</span> <span class=n>val</span> <span class=ow>in</span> <span class=n>d</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>dict</span><span class=p>):</span>
+                <span class=n>d</span><span class=p>[</span><span class=n>key</span><span class=p>]</span> <span class=o>=</span> <span class=p>{</span><span class=n>kk</span><span class=p>:</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>vv</span><span class=p>,</span> <span class=n>vv</span><span class=p>)</span> <span class=k>for</span> <span class=n>kk</span><span class=p>,</span> <span class=n>vv</span> <span class=ow>in</span> <span class=n>val</span><span class=o>.</span><span class=n>items</span><span class=p>()}</span>
+            <span class=k>elif</span> <span class=ow>not</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>list</span><span class=p>):</span>
+                <span class=n>d</span><span class=p>[</span><span class=n>key</span><span class=p>]</span> <span class=o>=</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=n>val</span><span class=p>)</span>
+    <span class=k>else</span><span class=p>:</span>
+        <span class=c1># Override palette variables with the current state&#39;s values and</span>
+        <span class=c1># remove all states. That way, we can directly use</span>
+        <span class=c1># &quot;background-color&quot; without checking the widget&#39;s state.</span>
+        <span class=n>state_dict</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=k>for</span> <span class=n>key</span><span class=p>,</span> <span class=n>val</span> <span class=ow>in</span> <span class=nb>list</span><span class=p>(</span><span class=n>d</span><span class=o>.</span><span class=n>items</span><span class=p>()):</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>dict</span><span class=p>):</span>
+                <span class=k>if</span> <span class=n>key</span> <span class=o>==</span> <span class=n>state</span><span class=p>:</span>
+                    <span class=n>state_dict</span> <span class=o>=</span> <span class=p>{</span>
+                        <span class=n>kk</span><span class=p>:</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>vv</span><span class=p>,</span> <span class=n>vv</span><span class=p>)</span> <span class=k>for</span> <span class=n>kk</span><span class=p>,</span> <span class=n>vv</span> <span class=ow>in</span> <span class=n>val</span><span class=o>.</span><span class=n>items</span><span class=p>()</span>
+                    <span class=p>}</span>
+                <span class=n>d</span><span class=o>.</span><span class=n>pop</span><span class=p>(</span><span class=n>key</span><span class=p>)</span>
+            <span class=k>elif</span> <span class=ow>not</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=nb>list</span><span class=p>):</span>
+                <span class=n>d</span><span class=p>[</span><span class=n>key</span><span class=p>]</span> <span class=o>=</span> <span class=n>pal</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>val</span><span class=p>,</span> <span class=n>val</span><span class=p>)</span>
+        <span class=c1># apply current state overrides last to ensure they take precedence</span>
+        <span class=c1># over the base variant</span>
+        <span class=n>d</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>state_dict</span><span class=p>)</span>
+
+    <span class=c1># cache result</span>
+    <span class=n>d</span> <span class=o>=</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>last_key</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>widget_cls</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>state</span><span class=si>}</span><span class=s2>&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=bp>self</span><span class=o>.</span><span class=n>last_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>d</span>
+    <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.get_style_palette class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_style_palette</span><span class=p>(</span><span class=n>widget</span><span class=p>,</span> <span class=n>widget_key</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Get a QPalette for the widget based on the current style data.</p> <p>Resolves any @ references in the style data to widget attributes. Caches results for efficiency, if there are no @ references.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget</code> </td> <td> <code><span title=qtpy.QtWidgets.QWidget>QWidget</span></code> </td> <td> <div class=doc-md-description> <p>The widget to build the palette for.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>widget_key</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The style key identifying the widget class.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtGui.QPalette>QPalette</span></code> </td> <td> <div class=doc-md-description> <p>A <code>QPalette</code> configured for the widget.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_style_palette</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget</span><span class=p>:</span> <span class=n>QWidget</span><span class=p>,</span> <span class=n>widget_key</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QPalette</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get a QPalette for the widget based on the current style data.</span>
+
+<span class=sd>    Resolves any @ references in the style data to widget attributes.</span>
+<span class=sd>    Caches results for efficiency, if there are no @ references.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget: The widget to build the palette for.</span>
+<span class=sd>        widget_key: The style key identifying the widget class.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A ``QPalette`` configured for the widget.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>variant</span> <span class=o>=</span> <span class=nb>getattr</span><span class=p>(</span><span class=n>widget</span><span class=p>,</span> <span class=s2>&quot;_variant_str&quot;</span><span class=p>,</span> <span class=s2>&quot;default&quot;</span><span class=p>)</span>
+    <span class=c1># check if cached</span>
+    <span class=n>cache_key</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;</span><span class=si>{</span><span class=n>widget_key</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-palette&quot;</span>
+    <span class=k>if</span> <span class=n>cache_key</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>QPalette</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>])</span>
+
+    <span class=n>style</span><span class=p>:</span> <span class=n>StyleDict</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_styles</span><span class=p>(</span>
+        <span class=n>widget_key</span><span class=p>,</span>
+        <span class=n>variant</span><span class=o>=</span><span class=n>variant</span><span class=p>,</span>
+    <span class=p>)</span>
+    <span class=n>style</span><span class=o>.</span><span class=n>set_context</span><span class=p>(</span><span class=n>widget</span><span class=p>)</span>
+
+    <span class=n>p</span> <span class=o>=</span> <span class=n>QPalette</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>base_palette</span><span class=p>)</span>
+
+    <span class=n>fg_color</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;base&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;color&quot;</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>fg_color</span><span class=p>:</span>
+        <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+            <span class=n>widget</span><span class=o>.</span><span class=n>foregroundRole</span><span class=p>(),</span>
+            <span class=n>QColor</span><span class=p>(</span><span class=n>fg_color</span><span class=p>),</span>
+        <span class=p>)</span>
+    <span class=n>opacity</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;disabled&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;opacity&quot;</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>opacity</span><span class=p>:</span>
+        <span class=n>disabled_fg_color</span> <span class=o>=</span> <span class=n>QColor</span><span class=p>(</span><span class=n>fg_color</span><span class=p>)</span>
+        <span class=n>disabled_fg_color</span><span class=o>.</span><span class=n>setAlphaF</span><span class=p>(</span><span class=n>opacity</span><span class=p>)</span>
+        <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+            <span class=n>QPalette</span><span class=o>.</span><span class=n>ColorGroup</span><span class=o>.</span><span class=n>Disabled</span><span class=p>,</span>
+            <span class=n>widget</span><span class=o>.</span><span class=n>foregroundRole</span><span class=p>(),</span>
+            <span class=n>disabled_fg_color</span><span class=p>,</span>
+        <span class=p>)</span>
+
+    <span class=n>bg_color</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;base&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;background-color&quot;</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>bg_color</span><span class=p>:</span>
+        <span class=n>p</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span>
+            <span class=n>widget</span><span class=o>.</span><span class=n>backgroundRole</span><span class=p>(),</span>
+            <span class=n>QColor</span><span class=p>(</span><span class=n>bg_color</span><span class=p>),</span>
+        <span class=p>)</span>
+
+    <span class=c1># cache result</span>
+    <span class=n>style</span><span class=o>.</span><span class=n>set_context</span><span class=p>(</span><span class=kc>None</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>p</span>
+
+    <span class=k>return</span> <span class=n>QPalette</span><span class=p>(</span><span class=n>p</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.get_styles class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_styles</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=n>variant</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>states</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return styles for a widget, variant and multiple states at once.</p> <p>This is more efficient than calling :meth:<code>get_style</code> multiple times when you need styles for several states of the same widget/variant.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_cls</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The widget class name, e.g. <code>"QStyledItemDelegate"</code>.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>variant</code> </td> <td> <code><span title=str>str</span> | None</code> </td> <td> <div class=doc-md-description> <p>The variant name (e.g., <code>"default"</code>). Defaults to None.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>states</code> </td> <td> <code><span title=list>list</span>[<span title=str>str</span>] | None</code> </td> <td> <div class=doc-md-description> <p>List of states to retrieve (e.g., <code>["base", "hover", "checked"]</code>). Defaults to all defined states.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>A</code></td> <td> <code><a class="autorefs autorefs-internal" title="StyleDict (client.ayon_core.ui.style_types.StyleDict)" href=#client.ayon_core.ui.style_types.StyleDict>StyleDict</a></code> </td> <td> <div class=doc-md-description> <p>class:<code>StyleDict</code> mapping state names to their style dicts.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_styles</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+    <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=n>states</span><span class=p>:</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return styles for a widget, variant and multiple states at once.</span>
+
+<span class=sd>    This is more efficient than calling :meth:`get_style` multiple times</span>
+<span class=sd>    when you need styles for several states of the same widget/variant.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_cls: The widget class name, e.g. ``&quot;QStyledItemDelegate&quot;``.</span>
+<span class=sd>        variant: The variant name (e.g., ``&quot;default&quot;``). Defaults to None.</span>
+<span class=sd>        states: List of states to retrieve (e.g., ``[&quot;base&quot;, &quot;hover&quot;,</span>
+<span class=sd>            &quot;checked&quot;]``). Defaults to all defined states.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A :class:`StyleDict` mapping state names to their style dicts.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>states</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>states</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>widget_states</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span>
+
+    <span class=n>cache_key</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;all-</span><span class=si>{</span><span class=n>widget_cls</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=n>variant</span><span class=si>}</span><span class=s2>-</span><span class=si>{</span><span class=s1>&#39;|&#39;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>states</span><span class=p>)</span><span class=si>}</span><span class=s2>&quot;</span>
+    <span class=k>try</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>])</span>
+    <span class=k>except</span> <span class=ne>KeyError</span><span class=p>:</span>
+        <span class=k>pass</span>
+
+    <span class=n>d</span> <span class=o>=</span> <span class=p>{</span>
+        <span class=n>state</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_style</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=n>variant</span><span class=p>,</span> <span class=n>state</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>state</span> <span class=ow>in</span> <span class=n>states</span>
+    <span class=p>}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>StyleDict</span><span class=p>(</span><span class=n>d</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.get_widget_color class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_widget_color</span><span class=p>(</span><span class=n>color_name</span><span class=p>,</span> <span class=n>style</span><span class=p>,</span> <span class=n>w</span><span class=p>,</span> <span class=n>default</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Process color definitions referencing a widget attribute/property using the <code>@</code> syntax.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>color_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The color name to retrieve.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>style</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>The style dictionary.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>w</code> </td> <td> <code><span title=qtpy.QtWidgets.QWidget>QWidget</span></code> </td> <td> <div class=doc-md-description> <p>The widget to get the color from.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>default</code> </td> <td> <code><span title=str>str</span> | <span title=qtpy.QtGui.QColor>QColor</span></code> </td> <td> <div class=doc-md-description> <p>The default color to use if the attribute is not found.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtGui.QColor>QColor</span></code> </td> <td> <div class=doc-md-description> <p>The resolved :class:<code>QColor</code>.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_widget_color</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>color_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+    <span class=n>style</span><span class=p>:</span> <span class=nb>dict</span><span class=p>,</span>
+    <span class=n>w</span><span class=p>:</span> <span class=n>QWidget</span><span class=p>,</span>
+    <span class=n>default</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=n>QColor</span><span class=p>,</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QColor</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Process color definitions referencing a widget attribute/property</span>
+<span class=sd>    using the ``@`` syntax.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        color_name: The color name to retrieve.</span>
+<span class=sd>        style: The style dictionary.</span>
+<span class=sd>        w: The widget to get the color from.</span>
+<span class=sd>        default: The default color to use if the attribute is not found.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The resolved :class:`QColor`.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>color</span> <span class=o>=</span> <span class=n>style</span><span class=p>[</span><span class=n>color_name</span><span class=p>]</span>
+    <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>color</span><span class=p>,</span> <span class=nb>str</span><span class=p>)</span> <span class=ow>and</span> <span class=n>color</span><span class=o>.</span><span class=n>startswith</span><span class=p>(</span><span class=s2>&quot;@&quot;</span><span class=p>):</span>
+        <span class=n>color</span> <span class=o>=</span> <span class=nb>getattr</span><span class=p>(</span><span class=n>w</span><span class=p>,</span> <span class=n>color</span><span class=p>[</span><span class=mi>1</span><span class=p>:],</span> <span class=n>default</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>QColor</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.palette class="doc doc-heading"> <code class="highlight language-python"><span class=n>palette</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Return the resolved colour palette mapping.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Dict mapping palette key strings to HTML hex colours.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>palette</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the resolved colour palette mapping.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Dict mapping palette key strings to HTML hex colours.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_palette</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.validate_variant class="doc doc-heading"> <code class="highlight language-python"><span class=n>validate_variant</span><span class=p>(</span><span class=n>widget_data</span><span class=p>,</span> <span class=n>variant</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return <em>variant</em> if valid, otherwise return the default variant.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>The raw widget data block.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>variant</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The requested variant name.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>A valid variant name string.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>validate_variant</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_data</span><span class=p>:</span> <span class=nb>dict</span><span class=p>,</span> <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return *variant* if valid, otherwise return the default variant.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_data: The raw widget data block.</span>
+<span class=sd>        variant: The requested variant name.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A valid variant name string.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>variant</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>widget_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{}):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>default_variant</span><span class=p>(</span><span class=n>widget_data</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>variant</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.widget_data class="doc doc-heading"> <code class="highlight language-python"><span class=n>widget_data</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return the raw widget data block for <em>widget_cls</em>.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_cls</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The widget class key.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>The raw data dict (empty dict if not found).</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>widget_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the raw widget data block for *widget_cls*.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_cls: The widget class key.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The raw data dict (empty dict if not found).</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=p>{})</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.widget_list class="doc doc-heading"> <code class="highlight language-python"><span class=n>widget_list</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Return all registered widget class keys.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>List of widget class key strings.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>widget_list</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return all registered widget class keys.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        List of widget class key strings.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=nb>list</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>keys</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.widget_states class="doc doc-heading"> <code class="highlight language-python"><span class=n>widget_states</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return the list of states for <em>widget_cls</em>, always including <code>"base"</code> as the first entry.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_cls</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The widget class key.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Ordered list of state name strings.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>widget_states</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the list of states for *widget_cls*, always including</span>
+<span class=sd>    ``&quot;base&quot;`` as the first entry.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_cls: The widget class key.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Ordered list of state name strings.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>states</span> <span class=o>=</span> <span class=nb>list</span><span class=p>(</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;states&quot;</span><span class=p>,</span> <span class=p>[])</span>
+    <span class=p>)</span>
+    <span class=k>return</span> <span class=n>states</span> <span class=k>if</span> <span class=s2>&quot;base&quot;</span> <span class=ow>in</span> <span class=n>states</span> <span class=k>else</span> <span class=p>[</span><span class=s2>&quot;base&quot;</span><span class=p>]</span> <span class=o>+</span> <span class=n>states</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleData.widget_variants class="doc doc-heading"> <code class="highlight language-python"><span class=n>widget_variants</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return all variant names registered for <em>widget_cls</em>.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_cls</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The widget class key (e.g. <code>"QPushButton"</code>).</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>A list of variant name strings.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>widget_variants</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return all variant names registered for *widget_cls*.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_cls: The widget class key (e.g. ``&quot;QPushButton&quot;``).</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A list of variant name strings.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=nb>list</span><span class=p>(</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>data</span><span class=p>[</span><span class=s2>&quot;widgets&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;variants&quot;</span><span class=p>,</span> <span class=p>{})</span><span class=o>.</span><span class=n>keys</span><span class=p>()</span>
+    <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.ui.style_types.StyleDict class="doc doc-heading"> <code>StyleDict</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=dict>dict</span></code></p> <p>A dict where string values starting with <code>'@'</code> are resolved via :func:<code>getattr</code> on a bound context object.</p> <details class=example open> <summary>Example</summary> <p>ctx = SomeWidget(...) d = StyleDict({"color": "<a class="gh-link gh-mention" href=https://github.com/fg_color title="GitHub User: @fg_color">@fg_color</a>"}, _context=ctx) d["color"] # -&gt; ctx.fg_color</p> </details> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 63</span>
+<span class=normal> 64</span>
+<span class=normal> 65</span>
+<span class=normal> 66</span>
+<span class=normal> 67</span>
+<span class=normal> 68</span>
+<span class=normal> 69</span>
+<span class=normal> 70</span>
+<span class=normal> 71</span>
+<span class=normal> 72</span>
+<span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>StyleDict</span><span class=p>(</span><span class=nb>dict</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;A dict where string values starting with ``&#39;@&#39;`` are resolved</span>
+<span class=sd>    via :func:`getattr` on a bound context object.</span>
+
+<span class=sd>    Example:</span>
+<span class=sd>        ctx = SomeWidget(...)</span>
+<span class=sd>        d = StyleDict({&quot;color&quot;: &quot;@fg_color&quot;}, _context=ctx)</span>
+<span class=sd>        d[&quot;color&quot;]  # -&gt; ctx.fg_color</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>_SENTINEL</span> <span class=o>=</span> <span class=nb>object</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=o>*</span><span class=n>args</span><span class=p>:</span> <span class=n>Any</span><span class=p>,</span>
+        <span class=n>_context</span><span class=p>:</span> <span class=n>Any</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+        <span class=n>deepcopy</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>True</span><span class=p>,</span>
+        <span class=o>**</span><span class=n>kwargs</span><span class=p>:</span> <span class=n>Any</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>deepcopy</span><span class=p>:</span>
+            <span class=n>args</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>args</span><span class=p>)</span>
+            <span class=n>kwargs</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>kwargs</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+        <span class=c1># store as attribute on the instance — not as a dict key</span>
+        <span class=nb>object</span><span class=o>.</span><span class=fm>__setattr__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=s2>&quot;_context&quot;</span><span class=p>,</span> <span class=n>_context</span><span class=p>)</span>
+        <span class=c1># convert nested dicts to StyleDicts with the same context</span>
+        <span class=k>for</span> <span class=n>k</span><span class=p>,</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__setitem__</span><span class=p>(</span>
+                <span class=n>k</span><span class=p>,</span>
+                <span class=n>StyleDict</span><span class=p>(</span><span class=n>v</span><span class=p>,</span> <span class=n>_context</span><span class=o>=</span><span class=n>_context</span><span class=p>)</span> <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>v</span><span class=p>,</span> <span class=nb>dict</span><span class=p>)</span> <span class=k>else</span> <span class=n>v</span><span class=p>,</span>
+            <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_context</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>_context</span><span class=p>:</span> <span class=n>Any</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Bind a new context object for ``@attr`` resolution.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            _context: The new context; pass ``None`` to unbind.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=nb>object</span><span class=o>.</span><span class=fm>__setattr__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=s2>&quot;_context&quot;</span><span class=p>,</span> <span class=n>_context</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>values</span><span class=p>():</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>v</span><span class=p>,</span> <span class=n>StyleDict</span><span class=p>):</span>
+                <span class=n>v</span><span class=o>.</span><span class=n>set_context</span><span class=p>(</span><span class=n>_context</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__getitem__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>key</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Any</span><span class=p>:</span>
+        <span class=n>value</span> <span class=o>=</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__getitem__</span><span class=p>(</span><span class=n>key</span><span class=p>)</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_resolve</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>key</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span> <span class=n>default</span><span class=p>:</span> <span class=n>Any</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span> <span class=n>raw</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>False</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Any</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the value for *key*, resolving ``@attr`` references.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            key: Dict key to look up.</span>
+<span class=sd>            default: Value to return when *key* is absent.</span>
+<span class=sd>            raw: If ``True``, skip ``@attr`` resolution.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The resolved (or raw) value, or *default*.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>value</span> <span class=o>=</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_SENTINEL</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>value</span> <span class=ow>is</span> <span class=bp>self</span><span class=o>.</span><span class=n>_SENTINEL</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>default</span>
+        <span class=k>if</span> <span class=n>raw</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>value</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_resolve</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_resolve</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>value</span><span class=p>:</span> <span class=n>Any</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Any</span><span class=p>:</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=nb>isinstance</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=nb>str</span><span class=p>)</span>
+            <span class=ow>and</span> <span class=n>value</span><span class=o>.</span><span class=n>startswith</span><span class=p>(</span><span class=s2>&quot;@&quot;</span><span class=p>)</span>
+            <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+        <span class=p>):</span>
+            <span class=k>return</span> <span class=nb>getattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_context</span><span class=p>,</span> <span class=n>value</span><span class=p>[</span><span class=mi>1</span><span class=p>:],</span> <span class=n>value</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>value</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__repr__</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+        <span class=k>return</span> <span class=sa>f</span><span class=s2>&quot;StyleDict(</span><span class=si>{</span><span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__repr__</span><span class=p>()</span><span class=si>}</span><span class=s2>, context=</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_context</span><span class=si>!r}</span><span class=s2>)&quot;</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleDict.get class="doc doc-heading"> <code class="highlight language-python"><span class=n>get</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>default</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>raw</span><span class=o>=</span><span class=kc>False</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return the value for <em>key</em>, resolving <code>@attr</code> references.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>key</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Dict key to look up.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>default</code> </td> <td> <code><span title=typing.Any>Any</span></code> </td> <td> <div class=doc-md-description> <p>Value to return when <em>key</em> is absent.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>raw</code> </td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>If <code>True</code>, skip <code>@attr</code> resolution.</p> </div> </td> <td> <code>False</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=typing.Any>Any</span></code> </td> <td> <div class=doc-md-description> <p>The resolved (or raw) value, or <em>default</em>.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>key</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span> <span class=n>default</span><span class=p>:</span> <span class=n>Any</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span> <span class=n>raw</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>False</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Any</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the value for *key*, resolving ``@attr`` references.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        key: Dict key to look up.</span>
+<span class=sd>        default: Value to return when *key* is absent.</span>
+<span class=sd>        raw: If ``True``, skip ``@attr`` resolution.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The resolved (or raw) value, or *default*.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>value</span> <span class=o>=</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_SENTINEL</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>value</span> <span class=ow>is</span> <span class=bp>self</span><span class=o>.</span><span class=n>_SENTINEL</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>default</span>
+    <span class=k>if</span> <span class=n>raw</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>value</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_resolve</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.style_types.StyleDict.set_context class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_context</span><span class=p>(</span><span class=n>_context</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Bind a new context object for <code>@attr</code> resolution.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>_context</code> </td> <td> <code><span title=typing.Any>Any</span></code> </td> <td> <div class=doc-md-description> <p>The new context; pass <code>None</code> to unbind.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_context</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>_context</span><span class=p>:</span> <span class=n>Any</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Bind a new context object for ``@attr`` resolution.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        _context: The new context; pass ``None`` to unbind.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=nb>object</span><span class=o>.</span><span class=fm>__setattr__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=s2>&quot;_context&quot;</span><span class=p>,</span> <span class=n>_context</span><span class=p>)</span>
+    <span class=k>for</span> <span class=n>v</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>values</span><span class=p>():</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>v</span><span class=p>,</span> <span class=n>StyleDict</span><span class=p>):</span>
+            <span class=n>v</span><span class=o>.</span><span class=n>set_context</span><span class=p>(</span><span class=n>_context</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.ui.style_types.get_ayon_style class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_ayon_style</span><span class=p>()</span></code> </h2> <div class="doc doc-contents "> <p>Return the process-wide :class:<code>~ayon_ui_qt.style.AYONStyle</code> singleton.</p> <p>The <code>AYONStyle</code> class is imported lazily on the first call to avoid a circular import at module load time.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><a class="autorefs autorefs-internal" title="AYONStyle (client.ayon_core.ui.style.AYONStyle)" href=style.html#client.ayon_core.ui.style.AYONStyle>AYONStyle</a></code> </td> <td> <div class=doc-md-description> <p>The singleton <code>AYONStyle</code> instance.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_ayon_style</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>AYONStyle</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the process-wide :class:`~ayon_ui_qt.style.AYONStyle` singleton.</span>
+
+<span class=sd>    The ``AYONStyle`` class is imported lazily on the first call to avoid</span>
+<span class=sd>    a circular import at module load time.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The singleton ``AYONStyle`` instance.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>_LocalContext</span><span class=o>.</span><span class=n>ayon_style_instance</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>_LocalContext</span><span class=o>.</span><span class=n>ayon_style_instance</span>
+
+    <span class=kn>from</span><span class=w> </span><span class=nn>.style</span><span class=w> </span><span class=kn>import</span> <span class=n>AYONStyle</span>
+
+    <span class=n>instance</span> <span class=o>=</span> <span class=n>AYONStyle</span><span class=p>()</span>
+    <span class=n>_LocalContext</span><span class=o>.</span><span class=n>ayon_style_instance</span> <span class=o>=</span> <span class=n>instance</span>
+    <span class=k>return</span> <span class=n>instance</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.ui.style_types.get_ayon_style_data class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_ayon_style_data</span><span class=p>(</span><span class=n>widget_cls</span><span class=p>,</span> <span class=n>variant</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Return style data for <em>widget_cls</em> / <em>variant</em> (all states merged).</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>widget_cls</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The widget class key (e.g. <code>"QPushButton"</code>).</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>variant</code> </td> <td> <code><span title=str>str</span> | None</code> </td> <td> <div class=doc-md-description> <p>Optional variant name.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>A</code></td> <td> <code><a class="autorefs autorefs-internal" title="StyleDict (client.ayon_core.ui.style_types.StyleDict)" href=#client.ayon_core.ui.style_types.StyleDict>StyleDict</a></code> </td> <td> <div class=doc-md-description> <p>class:<code>StyleDict</code> with all states merged.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_ayon_style_data</span><span class=p>(</span>
+    <span class=n>widget_cls</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span> <span class=n>variant</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=n>StyleDict</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return style data for *widget_cls* / *variant* (all states merged).</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        widget_cls: The widget class key (e.g. ``&quot;QPushButton&quot;``).</span>
+<span class=sd>        variant: Optional variant name.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A :class:`StyleDict` with all states merged.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=n>get_ayon_style</span><span class=p>()</span><span class=o>.</span><span class=n>model</span><span class=o>.</span><span class=n>get_style</span><span class=p>(</span>
+        <span class=n>widget_cls</span><span class=p>,</span> <span class=n>variant</span><span class=o>=</span><span class=n>variant</span><span class=p>,</span> <span class=n>state</span><span class=o>=</span><span class=s2>&quot;all&quot;</span>
+    <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.ui.style_types.hsl_to_html_color class="doc doc-heading"> <code class="highlight language-python"><span class=n>hsl_to_html_color</span><span class=p>(</span><span class=n>hsl</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Convert a CSS <code>hsl(h, s%, l%)</code> string to an HTML hex colour.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>hsl</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>A CSS colour string such as <code>"hsl(210, 50%, 40%)"</code>.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>The corresponding HTML hex colour string (e.g. <code>"#336699"</code>).</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/style_types.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>42</span>
+<span class=normal>43</span>
+<span class=normal>44</span>
+<span class=normal>45</span>
+<span class=normal>46</span>
+<span class=normal>47</span>
+<span class=normal>48</span>
+<span class=normal>49</span>
+<span class=normal>50</span>
+<span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span>
+<span class=normal>54</span>
+<span class=normal>55</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>hsl_to_html_color</span><span class=p>(</span><span class=n>hsl</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Convert a CSS ``hsl(h, s%, l%)`` string to an HTML hex colour.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        hsl: A CSS colour string such as ``&quot;hsl(210, 50%, 40%)&quot;``.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The corresponding HTML hex colour string (e.g. ``&quot;#336699&quot;``).</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>vals</span> <span class=o>=</span> <span class=n>hsl</span><span class=p>[</span><span class=mi>4</span><span class=p>:</span><span class=o>-</span><span class=mi>1</span><span class=p>]</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=s2>&quot;, &quot;</span><span class=p>)</span>
+    <span class=n>hue</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>vals</span><span class=p>[</span><span class=mi>0</span><span class=p>])</span> <span class=o>/</span> <span class=mf>360.0</span>
+    <span class=n>sat</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>vals</span><span class=p>[</span><span class=mi>1</span><span class=p>][:</span><span class=o>-</span><span class=mi>1</span><span class=p>])</span> <span class=o>/</span> <span class=mf>100.0</span>
+    <span class=n>lum</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>vals</span><span class=p>[</span><span class=mi>2</span><span class=p>][:</span><span class=o>-</span><span class=mi>1</span><span class=p>])</span> <span class=o>/</span> <span class=mf>100.0</span>
+    <span class=k>return</span> <span class=n>QColor</span><span class=o>.</span><span class=n>fromHslF</span><span class=p>(</span><span class=n>hue</span><span class=p>,</span> <span class=n>sat</span><span class=p>,</span> <span class=n>lum</span><span class=p>)</span><span class=o>.</span><span class=n>name</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"annotate": null, "base": "../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../assets/javascripts/bundle.79ae519e.min.js></script> </body> </html>
