@@ -139,6 +139,10 @@ class AbstractPublisherCommon(ABC):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def host_context_has_changed(self) -> bool:
         """Host context changed after last reset.
 
@@ -202,10 +206,6 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         task_name: str,
         sender: str | None = None
     ) -> TaskItem | None:
-        pass
-
-    @abstractmethod
-    def get_project_settings(self, project_name: str | None) -> dict:
         pass
 
     @abstractmethod
