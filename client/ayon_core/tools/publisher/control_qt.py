@@ -1,6 +1,15 @@
-import collections
+from __future__ import annotations
 
+import collections
+from dataclasses import dataclass
+
+import pyblish.api
 from qtpy import QtCore
+
+from ayon_core.pipeline.publish.logic import (
+    PublishIterInfo,
+    PublishIterAction,
+)
 
 from .control import PublisherController
 
@@ -64,6 +73,21 @@ class MainThreadProcess(QtCore.QObject):
         self.stop()
 
 
+@dataclass
+class _IterData:
+    """Store iteration data for a single publish process.
+
+    Changes of the value do trigger an event (not handled by this class).
+
+    """
+    # Store the label of the current item being processed
+    item_label: str = ""
+    # Store the current plugin being processed
+    plugin: pyblish.api.Plugin | None = None
+    # Store whether the publish process has been validated
+    validated: bool = False
+
+
 class QtPublisherController(PublisherController):
     def __init__(self, *args, **kwargs):
         self._main_thread_processor = MainThreadProcess()
@@ -79,13 +103,15 @@ class QtPublisherController(PublisherController):
         # Capture if '_next_publish_item_process' is in
         #   '_main_thread_processor' loop
         self._item_process_in_loop = False
+        self._iter_data = _IterData()
 
     def reset(self):
         self._main_thread_processor.clear()
         self._item_process_in_loop = False
+        self._iter_data = _IterData()
         super().reset()
 
-    def _start_publish(self, up_validation):
+    def _start_publish(self, up_validation: bool) -> None:
         self._publish_model.set_publish_up_validation(up_validation)
         self._publish_model.start_publish(wait=False)
         # Make sure '_next_publish_item_process' is only once in
@@ -99,14 +125,57 @@ class QtPublisherController(PublisherController):
         if not self._publish_model.is_running():
             # This removes '_next_publish_item_process' from loop
             self._item_process_in_loop = False
+            self._publish_model.process_stopped()
             return
 
         self._item_process_in_loop = True
-        func = self._publish_model.get_next_process_func()
-        self._process_main_thread_item(MainThreadItem(func))
+        iter_info = self._publish_model.get_next_process_func()
         self._process_main_thread_item(
-            MainThreadItem(self._next_publish_item_process)
+            MainThreadItem(self._process_iter_info, iter_info)
         )
+
+    def _process_iter_info(self, iter_info: PublishIterInfo):
+        item_label = iter_info.item_label
+        plugin = iter_info.plugin
+        if (
+            plugin is not None
+            and plugin is not self._iter_data.plugin
+        ):
+            self._iter_data.plugin = plugin
+            plugin_label = getattr(plugin, "label", None)
+            if not plugin_label:
+                plugin_label = plugin.__name__
+
+            self._emit_event(
+                "publish.process.plugin.changed",
+                {"plugin_label": plugin_label},
+            )
+
+        if (
+            item_label is not None
+            and item_label != self._iter_data.item_label
+        ):
+            self._iter_data.item_label = item_label
+            self._emit_event(
+                "publish.process.instance.changed",
+                {"instance_label": item_label},
+            )
+
+        iter_info()
+        if (
+            not self._iter_data.validated
+            and self._publish_model.has_validated()
+        ):
+            self._iter_data.validated = True
+            self._emit_event("publish.has_validated")
+
+        if iter_info.action is PublishIterAction.Stop:
+            self._publish_model.process_stopped()
+            self._item_process_in_loop = False
+        else:
+            self._process_main_thread_item(
+                MainThreadItem(self._next_publish_item_process)
+            )
 
     def _process_main_thread_item(self, item):
         self._main_thread_processor.add_item(item)

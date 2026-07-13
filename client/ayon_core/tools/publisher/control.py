@@ -76,17 +76,8 @@ class PublisherController(
         "publish.process.stopped" - Publishing stopped/paused process.
         "publish.process.plugin.changed" - Plugin state has changed.
         "publish.process.instance.changed" - Instance state has changed.
-        "publish.has_validated.changed" - Attr 'publish_has_validated'
-            changed.
-        "publish.is_running.changed" - Attr 'publish_is_running' changed.
-        "publish.has_crashed.changed" - Attr 'publish_has_crashed' changed.
-        "publish.publish_error.changed" - Attr 'publish_error'
-        "publish.has_validation_errors.changed" - Attr
-            'has_validation_errors' changed.
-        "publish.max_progress.changed" - Attr 'publish_max_progress'
-            changed.
-        "publish.progress.changed" - Attr 'publish_progress' changed.
-        "publish.finished.changed" - Attr 'publish_has_finished' changed.
+        "publish.has_validated" - Publishing validated.
+        "publish.finished" - Publishing finished.
 
     Args:
         headless (bool): Headless publishing. ATM not implemented or used.
@@ -605,7 +596,7 @@ class PublisherController(
         return self._publish_model.has_validated()
 
     def publish_has_crashed(self):
-        return self._publish_model.is_crashed()
+        return self._publish_model.has_crashed()
 
     def publish_has_validation_errors(self):
         return self._publish_model.has_validation_errors()
@@ -673,7 +664,7 @@ class PublisherController(
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
 
-    def _start_publish(self, up_validation):
+    def _start_publish(self, up_validation: bool) -> None:
         self._publish_model.set_publish_up_validation(up_validation)
         self._publish_model.start_publish(wait=True)
 

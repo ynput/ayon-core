@@ -171,7 +171,7 @@ class PublishFrame(QtWidgets.QWidget):
             "publish.process.started", self._on_publish_start
         )
         controller.register_event_callback(
-            "publish.has_validated.changed", self._on_publish_validated_change
+            "publish.has_validated", self._on_publish_validated
         )
         controller.register_event_callback(
             "publish.process.stopped", self._on_publish_stop
@@ -347,9 +347,8 @@ class PublishFrame(QtWidgets.QWidget):
 
         self.set_shrunk_state(False)
 
-    def _on_publish_validated_change(self, event):
-        if event["value"]:
-            self._validate_btn.setEnabled(False)
+    def _on_publish_validated(self):
+        self._validate_btn.setEnabled(False)
 
     def _on_instance_change(self, event):
         """Change instance label when instance is going to be processed."""
