@@ -597,8 +597,8 @@ class AbstractTemplateBuilder(ABC):
         """Build the workfile template from a preset.
 
         Args:
-            preset (TemplatePreset, optional): Template preset to use. When
-                omitted, the preset is resolved from project settings.
+            preset (TemplatePreset): Template preset to use.
+
         """
         pass
 
