@@ -12,8 +12,6 @@ from ayon_core.ui.components import (
     AYLineEdit
 )
 
-
-
 from ayon_core import resources, style
 from ayon_core.tools.utils import (
     FoldersWidget,

@@ -48,13 +48,10 @@ class FrameDrawer:
         state = "base"
         row_state = w.property("row_state") if w is not None else None
         if row_state:
-            state = (
-                "selected"
-                if row_state & QStyle.StateFlag.State_Selected
-                else "hover"
-                if row_state & QStyle.StateFlag.State_MouseOver
-                else "base"
-            )
+            if row_state & QStyle.StateFlag.State_Selected:
+                state = "selected"
+            elif row_state & QStyle.StateFlag.State_MouseOver:
+                state = "hover"
         style = self.model.get_style("QFrame", variant, state)
         style.set_context(w)
 
@@ -67,11 +64,8 @@ class FrameDrawer:
                 style["border-color"] = bgc
             style["background-color"] = bgc
             # set background color of QTextEdit widgets
-            try:
+            if hasattr(w, "viewport"):
                 viewport = w.viewport()
-            except AttributeError:
-                pass
-            else:
                 palette = viewport.palette()
                 palette.setColor(QPalette.ColorRole.Base, bgc)
                 viewport.setPalette(palette)

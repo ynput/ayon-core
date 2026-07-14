@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import platform
+
 from qtpy.QtGui import QFont
 from qtpy.QtWidgets import QStyle, QWidget
 
@@ -18,26 +21,23 @@ def do_nothing(*args, **kwargs):
 def enum_to_str(enum, enum_value: int, widget: str) -> str:
     """Convert enum value to string representation."""
     cachekey = f"{enum.__name__}_{enum_value}_{widget}"
-    try:
-        return enum_to_str._cache[cachekey]  # type: ignore
-    except AttributeError:
+    if not hasattr(enum_to_str, "_cache"):
         enum_to_str._cache = {}  # type: ignore
-    except KeyError:
-        pass
+    value: str | None = enum_to_str._cache.get(cachekey)
+    if value is not None:
+        return value
 
-    try:
-        enum_to_str._cache[cachekey] = enum.valueToKey(  # type: ignore
-            enum_value
-        )
-    except AttributeError:
-        meta_object = QStyle.staticMetaObject  # type: ignore
+    if hasattr(enum, "valueToKey"):
+        value = enum.valueToKey(enum_value)
+    else:
+        meta_object = QStyle.staticMetaObject
         enum_index = meta_object.indexOfEnumerator(enum.__name__)
         meta_enum = meta_object.enumerator(enum_index)
-        enum_to_str._cache[cachekey] = (  # type: ignore
-            f"{meta_enum.valueToKey(enum_value)}-{widget}"
-        )
+        value = f"{meta_enum.valueToKey(enum_value)}-{widget}"
 
-    return enum_to_str._cache[cachekey]  # type: ignore
+    enum_to_str._cache[cachekey] = value
+
+    return value
 
 
 def style_font(style: dict, w: QWidget | None) -> QFont:
@@ -49,16 +49,15 @@ def style_font(style: dict, w: QWidget | None) -> QFont:
 
     Returns:
         Configured QFont instance.
-    """
-    import os
-    import platform
 
+    """
     font = QFont()
     font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
     font.setFamily(style["font-family"])
-    env_val = os.environ.get("AYON_CORE_UI_FONT_OS")
-    os_name = env_val.lower() if env_val else platform.system().lower()
-    pt_size = style.get(f"font-size-{os_name}", style["font-size"])
+    os_name = os.environ.get("AYON_CORE_UI_FONT_OS")
+    if not os_name:
+        os_name = platform.system()
+    pt_size = style.get(f"font-size-{os_name.lower()}", style["font-size"])
     font.setPointSizeF(pt_size)
     font.setWeight(QFont.Weight(style["font-weight"]))
     return font

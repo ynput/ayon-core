@@ -9,9 +9,9 @@ from qtpy.QtCore import (
     QObject,
     QPoint,
     Qt,
-    Signal,  # type: ignore
-    Slot,  # type: ignore
-)  # type: ignore
+    Signal,
+    Slot,
+)
 from qtpy.QtGui import (
     QColor,
     QFont,
@@ -237,7 +237,7 @@ class AYTextEditor(AYTextEdit):
             cursor: Cursor at the insertion point; advanced past the
                 inserted characters on return.
         """
-        assert self._checkbox_handler is not None
+        self._setup_checkbox_handler()
         new_item = self._checkbox_handler.add_checkbox()
         fmt = QTextCharFormat()
         fmt.setObjectType(CHECKBOX_FORMAT_TYPE)
@@ -259,7 +259,6 @@ class AYTextEditor(AYTextEdit):
         """
         if CheckboxHandler.contains_checkboxes(md):
             self._setup_checkbox_handler()
-            assert self._checkbox_handler is not None
             self._checkbox_handler.parse_and_render(md)
         else:
             self.document().setMarkdown(md, MD_DIALECT)
@@ -458,9 +457,7 @@ class AYTextEditor(AYTextEdit):
             else:
                 # Toggle on: apply code style
                 fmt.setFontFixedPitch(True)
-                fmt.setFontFamilies(
-                    ["Courier New", "Menlo", "Monaco", "monospace"]
-                )
+                fmt.setFontFamilies(["Noto Sans Mono"])
                 fmt.setBackground(CODE_BG)
                 fmt.setForeground(CODE_FG)
 
@@ -484,7 +481,6 @@ class AYTextEditor(AYTextEdit):
         block inserted above when the current line is non-empty.
         """
         self._setup_checkbox_handler()
-        assert self._checkbox_handler is not None
 
         self._suppress_formatting = True
         cursor = self.textCursor()
@@ -937,10 +933,10 @@ class AYTextBox(AYContainer):
 
     def _on_thumbnail_clicked(self, index: int, attachment_type: str) -> None:
         """Handle thumbnail click to open gallery."""
+        from .gallery_dialog import GalleryDialog
+
         if not self._attachments:
             return
-
-        from .gallery_dialog import GalleryDialog
 
         # Prepare images list for GalleryDialog
         images = [(att["path"], att["filename"]) for att in self._attachments]
@@ -1090,47 +1086,3 @@ class AYTextBox(AYContainer):
     def _on_screenshot_btn_clicked(self):
         """Handle screenshot button click - always capture new screenshot."""
         self.screenshot_handler.launch_capture()
-
-
-# TEST ------------------------------------------------------------------------
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def build():
-        w = AYContainer(layout=AYContainer.Layout.HBox, margin=8)
-        ww = AYTextBox(
-            parent=w, variant=AYTextBox.Variants.High, show_categories=True
-        )
-        ww.set_markdown(
-            "## Title\nText can be **bold** or *italic*, as expected !\n"
-            "- [ ] Do this\n- [ ] Do that\n"
-        )
-        w.add_widget(ww)
-        ww.signals.comment_submitted.connect(
-            lambda x, y: print(
-                f"Comment [{y}] {'=' * (70 - len(y) - 2)}\n{x}{'=' * 78}"
-            )
-        )
-
-        # Test adding attachments
-        ww.add_annotation_attachments(
-            [
-                {
-                    "file_path": "test1.png",
-                    "filename": "test_annotation1.png",
-                    "timestamp": 12345678,
-                },
-                {
-                    "file_path": "test2.png",
-                    "filename": "test_annotation2.png",
-                    "timestamp": 12345679,
-                },
-            ]
-        )
-
-        return w
-
-    test(build, style=Style.AyonStyle)

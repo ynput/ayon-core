@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import os
 import pkgutil
 from pathlib import Path
+import shutil
 from typing import Type
 
 import pytest
@@ -65,11 +67,23 @@ def test_initial(widget_test_cls: Type[WidgetTest], qtbot, image_regression):
     qtbot.waitExposed(widget)
     wt.wait_loaded(qtbot)
 
-    image_regression.check(
-        capture_widget(widget),
-        diff_threshold=widget_test_cls.tolerance,
-        basename=f"{widget_test_cls.__name__}_00_initial",
-    )
+    output = capture_widget(widget)
+    basename = f"{widget_test_cls.__name__}_00_initial"
+    try:
+        image_regression.check(
+            output,
+            diff_threshold=widget_test_cls.tolerance,
+            basename=basename,
+        )
+    except Exception:
+        output_dir = os.path.join(os.getcwd(), "test_images")
+        os.makedirs(output_dir, exist_ok=True)
+
+        with open(f"{output_dir}/{basename}.png", "wb") as stream:
+            stream.write(output)
+        src_path = image_regression.datadir.joinpath(f"{basename}.png")
+        shutil.copy(src_path, f"{output_dir}/{basename}.expected.png")
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -129,8 +143,19 @@ def test_steps(
     step_name = getattr(step_fn, "__name__", f"step_{step_index}")
     basename = f"{widget_test_cls.__name__}_{step_index + 1:02d}_{step_name}"
 
-    image_regression.check(
-        capture_widget(widget),
-        diff_threshold=widget_test_cls.tolerance,
-        basename=basename,
-    )
+    output = capture_widget(widget)
+    try:
+        image_regression.check(
+            output,
+            diff_threshold=widget_test_cls.tolerance,
+            basename=basename,
+        )
+    except Exception:
+        output_dir = os.path.join(os.getcwd(), "test_images")
+        os.makedirs(output_dir, exist_ok=True)
+
+        with open(f"{output_dir}/{basename}.png", "wb") as stream:
+            stream.write(output)
+        src_path = image_regression.datadir.joinpath(f"{basename}.png")
+        shutil.copy(src_path, f"{output_dir}/{basename}.expected.png")
+        raise
