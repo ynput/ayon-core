@@ -547,9 +547,9 @@ class AbstractTemplateBuilder(ABC):
         This decorator keeps legacy build behavior as default while allowing
         explicit use of a TemplatePreset for the new behavior.
 
-        If a TemplatePreset is passed (or provided via ``preset=``),
-        the wrapped method (new implementation) is executed. Otherwise,
-        execution is delegated to ``old_build_template``.
+        If a TemplatePreset is explicitly passed (or provided via
+        ``preset=``), the wrapped method (new implementation) is executed.
+        Otherwise, execution is delegated to ``old_build_template``.
 
         It supports either a
         TemplatePreset object or the old parameters (template_path,
@@ -582,7 +582,6 @@ class AbstractTemplateBuilder(ABC):
             if (
                 len(args) == 1
                 and isinstance(args[0], TemplatePreset)
-                and not kwargs
             ):
                 return func(self, args[0])
 
