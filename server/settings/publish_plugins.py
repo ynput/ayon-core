@@ -2,7 +2,6 @@ from pydantic import validator
 from typing import Any
 
 from ayon_server.enum import EnumItem
-from ayon_server.lib.postgres import Postgres
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
