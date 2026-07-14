@@ -1,6 +1,8 @@
 from pydantic import validator
 from typing import Any
 
+from ayon_server.enum import EnumItem
+from ayon_server.lib.postgres import Postgres
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
@@ -39,6 +41,27 @@ def _handle_missing_frames_enum():
     ]
 
 
+async def version_attributes_enum() -> list[EnumItem]:
+    result: list[EnumItem] = []
+
+    res = await Postgres.fetch(
+        """
+        SELECT name, data FROM attributes
+        WHERE $1 && scope
+        ORDER BY COALESCE(data->>'title', name) ASC
+        """,
+        ["version"],
+    )
+    for name, data in res:
+        result.append(
+            EnumItem(
+                value=name,
+                label=data.get("title") or name,
+            )
+        )
+    return result
+
+
 class EnabledModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
 
@@ -70,6 +93,15 @@ class CollectHierarchyModel(BaseSettingsModel):
     edit_shot_attributes_on_update: bool = SettingsField(
         True,
         title="Edit shot attributes on update"
+    )
+    skip_shot_attributes_on_update: list[str] = SettingsField(
+        default_factory=list,
+        title="Skip shot attributes on update",
+        description=(
+            "Attributes set here will not be update on the folder entities if"
+            " *Edit shot attributes on update* was enabled."
+        ),
+        enum_resolver=version_attributes_enum,
     )
 
 
@@ -1670,6 +1702,7 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectHierarchy": {
         "edit_shot_attributes_on_update": True,
+        "skip_shot_attributes_on_update": [],
     },
     "CollectVersionTags": {
         "enabled": False

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pyblish.api
 import ayon_api
 
@@ -36,6 +38,7 @@ class CollectHierarchy(
     settings_category = "core"
 
     edit_shot_attributes_on_update = True
+    skip_shot_attributes_on_update: list[str] = []
 
     @classmethod
     def get_attr_defs_for_context(cls, create_context):
@@ -130,6 +133,10 @@ class CollectHierarchy(
         existing_entities = self.get_existing_folder_entities(
             project_name, shot_instances)
 
+        skip_shot_attributes_on_update: set[str] = set(
+            self.skip_shot_attributes_on_update
+        )
+
         for instance in shot_instances:
             folder_path = instance.data["folderPath"]
             self.log.debug(
@@ -156,6 +163,10 @@ class CollectHierarchy(
                 or not folder_entity
             ):
                 for shot_attr in SHOT_ATTRS:
+                    if shot_attr in skip_shot_attributes_on_update:
+                        self.log.debug("%s shot attribute skipped.", shot_attr)
+                        continue
+
                     attr_value = instance.data.get(shot_attr)
                     if attr_value is None:
                         # Shot attribute might not be defined (e.g. CSV ingest)
