@@ -650,7 +650,8 @@ class AbstractTemplateBuilder(ABC):
         """Build the workfile template from a preset.
 
         Args:
-            preset (TemplatePreset): Template preset to use.
+            preset (TemplatePreset | None): Template preset to use. To use
+                default implementation use 'preset=None'.
 
         """
         if preset is None:
