@@ -16,6 +16,7 @@ from typing import (
 
 from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import AbstractHost
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.pipeline.create import (
     CreateContext,
     ConvertorItem,
@@ -48,6 +49,14 @@ class CardMessageTypes:
     standard = None
     info = "info"
     error = "error"
+
+
+@dataclass
+class PublishAttrDefsInfo:
+    plugin_name: str
+    attr_defs: list[AbstractAttrDef]
+    values: dict[str, list[tuple[str, Any, Any]]]
+    instance_ids: list[str | None]
 
 
 class AbstractPublisherCommon(ABC):
@@ -443,11 +452,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         self,
         instance_ids: Iterable[str],
         include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+    ) -> list[PublishAttrDefsInfo]:
         pass
 
     @abstractmethod
@@ -467,6 +472,29 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         plugin_name: str,
         key: str,
     ):
+        pass
+
+    @abstractmethod
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
         pass
 
     @abstractmethod
@@ -675,11 +703,19 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_report(self) -> Dict[str, Any]:
+    def get_publish_report(self) -> PublishReport:
+        pass
+
+    @abstractmethod
+    def get_publish_report_data(self) -> dict[str, Any]:
         pass
 
     @abstractmethod
     def get_publish_errors_report(self):
+        pass
+
+    @abstractmethod
+    def store_publish_report(self, filepath: str) -> None:
         pass
 
     @abstractmethod

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import re
 import copy
@@ -43,6 +44,7 @@ from ayon_core.pipeline.create import (
 )
 
 from ayon_core.tools.publisher.abstract import (
+    PublishAttrDefsInfo,
     AbstractPublisherBackend,
     CardMessageTypes,
 )
@@ -940,15 +942,37 @@ class CreateModel:
             instance_ids, plugin_name, key, _DEFAULT_VALUE
         )
 
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        self._create_context.trigger_pre_create_button_callback(
+            identifier, button_name
+        )
+
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        self._create_context.trigger_create_button_callback(
+            button_name, instance_ids
+        )
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        self._create_context.trigger_publish_button_callback(
+            plugin_name, button_name, instance_ids
+        )
+
     def get_publish_attribute_definitions(
         self,
         instance_ids: List[str],
         include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+    ) -> list[PublishAttrDefsInfo]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
@@ -966,6 +990,7 @@ class CreateModel:
 
         all_defs_by_plugin_name = {}
         all_plugin_values = {}
+        instance_ids_by_name = {}
         for item in _tmp_items:
             item_id = None
             if isinstance(item, CreatedInstance):
@@ -981,8 +1006,13 @@ class CreateModel:
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_values = all_plugin_values.setdefault(plugin_name, {})
+                instance_ids = instance_ids_by_name.get(plugin_name)
+                if instance_ids is None:
+                    instance_ids = set()
+                    instance_ids_by_name[plugin_name] = instance_ids
+                instance_ids.add(item_id)
 
+                plugin_values = all_plugin_values.setdefault(plugin_name, {})
                 plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
@@ -1002,11 +1032,15 @@ class CreateModel:
             plugin_name = plugin.__name__
             if plugin_name not in all_defs_by_plugin_name:
                 continue
-            output.append((
-                plugin_name,
-                attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values[plugin_name],
-            ))
+            instance_ids = instance_ids_by_name[plugin_name]
+            output.append(
+                PublishAttrDefsInfo(
+                    plugin_name,
+                    attr_defs_by_plugin_name[plugin_name],
+                    all_plugin_values[plugin_name],
+                    instance_ids,
+                )
+            )
         return output
 
     def get_thumbnail_paths_for_instances(
