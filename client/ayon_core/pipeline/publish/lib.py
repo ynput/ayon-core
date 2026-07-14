@@ -20,7 +20,6 @@ from ayon_api import (
     get_last_version_by_product_name
 )
 import clique
-import pyblish.util
 import pyblish.plugin
 import pyblish.api
 
