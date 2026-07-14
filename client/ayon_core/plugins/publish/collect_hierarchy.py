@@ -180,10 +180,10 @@ class CollectHierarchy(
                         continue
 
                     shot_data["attributes"][shot_attr] = attr_value
-                else:
-                    self.log.debug(
-                        "Shot attributes will not be updated."
-                    )
+            else:
+                self.log.debug(
+                    "Shot attributes will not be updated."
+                )
 
             # Split by '/' for AYON where asset is a path
             name = folder_path.split("/")[-1]
