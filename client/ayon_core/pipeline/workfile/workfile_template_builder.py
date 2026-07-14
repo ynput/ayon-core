@@ -592,7 +592,7 @@ class AbstractTemplateBuilder(ABC):
         return inner
 
     @overload
-    def build_template(self, preset: TemplatePreset) -> None:
+    def build_template(self, preset: TemplatePreset | None) -> None:
         """Build the workfile template from a preset.
 
         Args:
