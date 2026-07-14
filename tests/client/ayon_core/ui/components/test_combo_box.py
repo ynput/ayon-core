@@ -5,10 +5,10 @@ from __future__ import annotations
 from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.data_models import MenuSize
-from ayon_core.ui.preview.constants import EXAMPLE_STATUSES
 from qtpy import QtCore, QtWidgets
 from qtpy.QtWidgets import QApplication, QWidget
 from widget_test import WidgetTest
+from ayon_core.ui.preview_utils import EXAMPLE_STATUSES
 
 from utils.composite_widget import CompositeWidget
 
