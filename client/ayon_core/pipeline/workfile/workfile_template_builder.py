@@ -646,7 +646,7 @@ class AbstractTemplateBuilder(ABC):
     @_backwards_compatibility_build_template
     def build_template(
         self,
-        preset: TemplatePreset = None,
+        preset: TemplatePreset,
     ) -> None:
         """Build the workfile template from a preset.
 
