@@ -13,7 +13,7 @@ from ayon_core.lib.icon_definitions import (
     TransparentIcon,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.delegates import pretty_timestamp
+from ayon_core.tools.utils.delegates import pretty_timestamp, file_size_to_string
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 from ayon_core.ui.components import (
@@ -29,6 +29,7 @@ ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
+FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -37,9 +38,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
     def __init__(self, controller: AbstractLauncherFrontEnd) -> None:
         super().__init__()
 
-        self.setColumnCount(2)
+        self.setColumnCount(3)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Workfiles")
         self.setHeaderData(1, QtCore.Qt.Horizontal, "Modified")
+        self.setHeaderData(2, QtCore.Qt.Horizontal, "Size")
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -88,8 +90,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
+            item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
-            item.setColumnCount(2)
+            item.setColumnCount(3)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -112,7 +115,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_item.setData(host_name, HOST_NAME_ROLE)
             host_item.setData(1, ITEM_TYPE_ROLE)
             host_item.setFlags(QtCore.Qt.ItemIsEnabled)
-            host_item.setColumnCount(2)
+            host_item.setColumnCount(3)
             host_items_by_name[host_name] = host_item
             if host_name in self._group_host_names:
                 new_items.append(host_item)
@@ -176,18 +179,26 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         return super().flags(index)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.column() == 1:
-            if role == QtCore.Qt.DisplayRole:
-                role = UPDATED_AT_ROLE
+        if role in {
+            WORKFILE_ID_ROLE,
+            HOST_NAME_ROLE,
+            ITEM_TYPE_ROLE,
+            FILE_SIZE_ROLE
+        }:
+            if index.column() != 0:
+                index = self.index(index.row(), 0, index.parent())
+            return super().data(index, role)
 
-            elif role not in (
-                WORKFILE_ID_ROLE,
-                HOST_NAME_ROLE,
-                ITEM_TYPE_ROLE,
-            ):
+        col = index.column()
+        if col != 0:
+            if role != QtCore.Qt.DisplayRole:
                 return None
-
+            if col == 1:
+                role = UPDATED_AT_ROLE
+            else:
+                role = FILE_SIZE_ROLE
             index = self.index(index.row(), 0, index.parent())
+
         return super().data(index, role)
 
     def _on_selection_project_changed(self, event) -> None:
@@ -255,7 +266,8 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     """Unified delegate for the workfiles tree view.
 
     Column 0: workfile name with middle-elide.
-    Column 1: pretty-printed timestamp (falls back to ``"N/A"``).
+    Column 1: pretty-printed timestamp.
+    Column 2: file size in human-readable format.
     """
 
     def initStyleOption(self, option, index):
@@ -270,7 +282,13 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 if pretty is not None:
                     option.text = pretty
                     return
-            option.text = "N/A"
+            option.text = ""
+        elif index.column() == 2:
+            raw = index.data(FILE_SIZE_ROLE)
+            if raw is not None:
+                option.text = file_size_to_string(raw)
+            else:
+                option.text = ""
 
 
 class WorkfilesPage(AYContainer):
@@ -366,14 +384,18 @@ class WorkfilesPage(AYContainer):
         view_header.setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Interactive
         )
+        view_header.setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
 
         # Resize workfiles column
         view_size = self._workfiles_view.size()
-        col_1_width = view_size.width() - 160
-        if col_1_width < 120:
-            col_1_width = 120
-        view_header = self._workfiles_view.header()
-        view_header.resizeSection(view_header.logicalIndex(0), col_1_width)
+        col_0_width = view_size.width() - 220
+        if col_0_width < 120:
+            col_0_width = 120
+        view_header.resizeSection(0, col_0_width)
+        view_header.resizeSection(1, 140)
+        view_header.resizeSection(2, 80)
 
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
