@@ -213,7 +213,7 @@ class CreateWidget(QtWidgets.QWidget):
         creators_attrs_top_layout.addWidget(thumbnail_widget, 0)
 
         # Precreate attributes widget
-        pre_create_widget = PreCreateWidget(creators_attrs_widget)
+        pre_create_widget = PreCreateWidget(controller, creators_attrs_widget)
 
         # Create button
         create_btn_wrapper = QtWidgets.QWidget(creators_attrs_widget)

@@ -5,7 +5,7 @@ import json
 import time
 import collections
 import copy
-from typing import Optional, Any
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -13,6 +13,7 @@ from ayon_core import (
     resources,
     style
 )
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.tools.utils import (
     ErrorMessageBox,
     PlaceholderLineEdit,
@@ -691,18 +692,19 @@ class PublisherWindow(QtWidgets.QDialog):
     def _update_publish_details_widget(
         self,
         force: bool = False,
-        report_data: Optional[dict[str, Any]] = None,
+        report: PublishReport | None = None,
     ) -> None:
         if (
-            report_data is None
+            report is None
             and not force
             and not self._is_on_details_tab()
         ):
             return
 
-        if report_data is None:
-            report_data = self._controller.get_publish_report()
-        self._publish_details_widget.set_report_data(report_data)
+        if report is None:
+            report = self._controller.get_publish_report()
+
+        self._publish_details_widget.set_report(report)
 
     def _on_help_click(self):
         if self._help_dialog.isVisible():
@@ -928,10 +930,10 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_overlay_visibility(False)
         self._set_publish_visibility(False)
 
-        report_data = self._controller.get_publish_report()
-        blocked = bool(report_data["blocking_crashed_paths"])
+        report = self._controller.get_publish_report()
+        blocked = bool(report.blocking_crashed_paths)
         self._set_blocked(blocked)
-        self._update_publish_details_widget(report_data=report_data)
+        self._update_publish_details_widget(report=report)
 
     def _on_controller_reset(self):
         self._update_publish_details_widget(force=True)
@@ -1140,17 +1142,18 @@ class PublisherWindow(QtWidgets.QDialog):
         self._create_overlay_button.set_under_mouse(under_mouse)
 
     def _copy_report(self):
-        logs = self._controller.get_publish_report()
-        logs_string = json.dumps(logs, indent=4)
+        data = self._controller.get_publish_report_data()
+        report_string = json.dumps(data, indent=4)
 
         mime_data = QtCore.QMimeData()
-        mime_data.setText(logs_string)
+        mime_data.setText(report_string)
         QtWidgets.QApplication.instance().clipboard().setMimeData(
             mime_data
         )
         self._controller.emit_card_message(
             "Report added to clipboard",
-            CardMessageTypes.info)
+            CardMessageTypes.info
+        )
 
     def _export_report(self):
         default_filename = "publish-report-{}".format(
@@ -1166,18 +1169,12 @@ class PublisherWindow(QtWidgets.QDialog):
         if not ext or not new_filepath:
             return
 
-        logs = self._controller.get_publish_report()
         full_path = new_filepath + ext
-        dir_path = os.path.dirname(full_path)
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-
-        with open(full_path, "w") as file_stream:
-            json.dump(logs, file_stream)
-
+        self._controller.store_publish_report(full_path)
         self._controller.emit_card_message(
             "Report saved",
-            CardMessageTypes.info)
+            CardMessageTypes.info
+        )
 
 
 class ErrorsMessageBox(ErrorMessageBox):
