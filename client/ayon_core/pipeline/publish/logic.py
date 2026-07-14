@@ -1014,8 +1014,9 @@ class PublishLogic:
                 plugin.id, self._publish_context
             )
 
-            # WARNING This is hack fix for optional plugins
-            if not self._is_publish_plugin_active(plugin):
+            # Check if plugin should be skipped because is not enabled
+            #   or active.
+            if self._should_skip_plugin(plugin):
                 self._publish_report.set_plugin_skipped(plugin.id)
                 continue
 
@@ -1153,34 +1154,39 @@ class PublishLogic:
             result["instance"]
         )
 
-    def _is_publish_plugin_active(self, plugin: pyblish.api.Plugin) -> bool:
-        """Decide if publish plugin is active.
+    def _should_skip_plugin(self, plugin: pyblish.api.Plugin) -> bool:
+        """Decide if publish plugin should be skipped.
 
-        This is hack because 'active' is mis-used in mixin
-        'OptionalPyblishPluginMixin' where 'active' is used for default value
-        of optional plugins. Because of that is 'active' state of plugin
-        which inherit from 'OptionalPyblishPluginMixin' ignored. That affects
-        headless publishing inside host, potentially remote publishing.
+        The pyblish base does define 'active' on plugin which is used to mark
+            plugin as active or not. But if plugin is also 'optional' it is
+            possible to change the 'active' value.
 
-        We have to change that to match pyblish base, but we can do that
-        only when all hosts use Publisher because the change requires
-        change of settings schemas.
+        AYON does use 'optional' to mark plugin as optional. But the
+            optional logic does not change 'active', instead it is handled by
+            'process' logic. So AYON's 'OptionalPyblishPluginMixin' will
+            always be 'active'.
+
+        With that AYON plugins have to somehow mark plugin as disabled, that
+            is why 'enabled' can be set on plugins. If plugin is disabled
+            it is skipped no matter what.
 
         Args:
-            plugin (pyblish.api.Plugin): Plugin which should be checked if is
-                active.
+            plugin (pyblish.api.Plugin): Plugin which should be checked
+                if it should be skipped.
 
         Returns:
-            bool: Is plugin active.
+            bool: Skip the plugin.
 
         """
+        if getattr(plugin, "enabled", True) is False:
+            return True
 
         if plugin.active:
-            return True
-
-        if not plugin.optional:
             return False
 
-        if OptionalPyblishPluginMixin in inspect.getmro(plugin):
+        if not plugin.optional:
             return True
-        return False
+
+        if OptionalPyblishPluginMixin in inspect.getmro(plugin):
+            return False
+        return True
