@@ -163,16 +163,19 @@ class CollectHierarchy(
                 or not folder_entity
             ):
                 for shot_attr in SHOT_ATTRS:
-                    if shot_attr in skip_shot_attributes_on_update:
-                        self.log.debug("%s shot attribute skipped.", shot_attr)
-                        continue
-
                     attr_value = instance.data.get(shot_attr)
                     if attr_value is None:
                         # Shot attribute might not be defined (e.g. CSV ingest)
                         self.log.debug(
                             "%s shot attribute is not defined for instance.",
                             shot_attr
+                        )
+                        continue
+
+                    if shot_attr in skip_shot_attributes_on_update:
+                        self.log.debug(
+                            "%s shot attribute skipped as the attribute is"
+                            " blacklisted for update in settings.", shot_attr
                         )
                         continue
 
