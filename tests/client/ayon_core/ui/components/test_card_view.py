@@ -11,7 +11,7 @@ from ayon_core.ui.components.table_model import (
     TableColumn,
 )
 from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.preview.table_model import (
+from test_data import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )

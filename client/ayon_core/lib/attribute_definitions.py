@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import collections
@@ -15,9 +17,16 @@ from typing import (
     Dict,
     Iterable,
     TypeVar,
+    Callable,
 )
 
 import clique
+
+from .icon_definitions import (
+    IconBase,
+    MaterialSymbolsIcon,
+    get_icon_def_from_data,
+)
 
 if typing.TYPE_CHECKING:
     from typing import Self, Tuple, Union, TypedDict, Pattern
@@ -318,6 +327,73 @@ class UILabelDef(UIDef):
 
     def _def_type_compare(self, other: "UILabelDef") -> bool:
         return self.label == other.label
+
+
+class ButtonDef(UIDef):
+    """Button definition.
+
+    UI element to allow to trigger a callback.
+    """
+    type = "button"
+
+    def __init__(
+        self,
+        key: str,
+        callback: Callable | None,
+        text: str | None = None,
+        icon: IconBase | None = None,
+        **kwargs
+    ):
+        self._callback = callback
+        if not text and not icon:
+            icon = MaterialSymbolsIcon(name="left_click")
+        self.icon = icon
+        self.text = text
+        super().__init__(key=key, **kwargs)
+
+    def get_callback(self) -> Callable | None:
+        return self._callback
+
+    def set_callback(self, callback: Callable) -> None:
+        self._callback = callback
+
+    callback = property(get_callback, set_callback)
+
+    def trigger(self) -> None:
+        self._callback()
+
+    def serialize(self) -> dict[str, Any]:
+        """Serialize object to data so it's possible to recreate it.
+
+        Serialization of button definition does not include callback function.
+            Logic after deserialization has to be handled manually.
+
+        """
+        data = super().serialize()
+        icon_data = None
+        if self.icon is not None:
+            icon_data = self.icon.to_data()
+        data["callback"] = None
+        data["icon"] = icon_data
+        data["text"] = self.text
+        return data
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> "Self":
+        """Recreate object from data.
+
+        Data can be received using 'serialize' method.
+        """
+        icon = data["icon"]
+        if isinstance(icon, dict):
+            data["icon"] = get_icon_def_from_data(icon)
+
+        return cls(**data)
+
+    def clone(self) -> "Self":
+        attr_def = super().clone()
+        attr_def.set_callback(self._callback)
+        return attr_def
 
 
 # ---------------------------------------
