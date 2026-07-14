@@ -651,8 +651,8 @@ class AbstractTemplateBuilder(ABC):
         """Build the workfile template from a preset.
 
         Args:
-            preset (TemplatePreset, optional): Template preset to use. When
-                omitted, the preset is resolved from project settings.
+            preset (TemplatePreset): Template preset to use.
+
         """
         if not preset:
             preset = self.get_template_preset()
