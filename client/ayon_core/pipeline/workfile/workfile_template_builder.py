@@ -653,7 +653,7 @@ class AbstractTemplateBuilder(ABC):
             preset (TemplatePreset): Template preset to use.
 
         """
-        if not preset:
+        if preset is None:
             preset = self.get_template_preset()
 
         if not self._is_valid_preset(preset):
