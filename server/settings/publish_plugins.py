@@ -118,7 +118,7 @@ class CollectHierarchyModel(BaseSettingsModel):
         default_factory=list,
         title="Skip shot attributes on update",
         description=(
-            "Attributes set here will not be update on the folder entities if"
+            "Attributes set here will not be updated on the folder entities if"
             " *Edit shot attributes on update* was enabled."
         ),
         enum_resolver=version_attributes_enum,
