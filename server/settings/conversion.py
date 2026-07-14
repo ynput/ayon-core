@@ -4,7 +4,6 @@ import json
 from typing import Any
 
 from semver import VersionInfo
-from server.settings.conversion import parse_version
 
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
 
@@ -295,9 +294,10 @@ def _convert_publish_plugins(overrides):
     _convert_oiio_transcode_0_4_5(overrides["publish"])
 
 
-def _convert_extract_thumbnail(source_version, overrides):
+def _convert_extract_thumbnail(overrides, version: VersionInfo):
     """ExtractThumbnail config settings did change to profiles."""
-    if parse_version(source_version) >= (1, 7, 0):
+
+    if (version.major, version.minor, version.patch) >= (1, 7, 0):
         return
 
     extract_thumbnail_overrides = (
@@ -374,11 +374,11 @@ def _convert_burnin_offset_1_8_6(
         burnin_options["x_offset"] = max(y_offset - bg_padding, 0)
 
 
-def _fix_duplicates_extract_thumbnail(source_version, overrides):
+def _fix_duplicates_extract_thumbnail(overrides, version: VersionInfo):
     """Fix issue where settings conversion may have duplicated the base
     profile each time on settings copy due to bug in
     `_convert_extract_thumbnail` implementation."""
-    if parse_version(source_version) > (1, 9, 8):
+    if (version.major, version.minor, version.patch) > (1, 9, 8):
         # Nothing to fix anymore
         return
 
@@ -413,9 +413,9 @@ def convert_settings_overrides(
     _convert_product_name_templates_1_6_5(overrides)
     _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
-    _convert_extract_thumbnail(overrides)
+    _convert_extract_thumbnail(overrides, version)
     _convert_product_base_types_1_8_0(overrides)
     _convert_unify_profile_keys_1_8_0(overrides)
     _convert_burnin_offset_1_8_6(overrides, version)
-    _fix_duplicates_extract_thumbnail(source_version, overrides)
+    _fix_duplicates_extract_thumbnail(overrides, version)
     return overrides
