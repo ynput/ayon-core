@@ -9,19 +9,39 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
+from ayon_server.lib.postgres import Postgres
 from ayon_server.settings.anatomy import Anatomy
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
 from ayon_server.helpers.anatomy import get_project_anatomy
 
+try:
+    # Available since AYON server 1.15.13 or 1.16.0 (not released yet)
+    from ayon_server.enum.resolvers import StatusesEnumResolver
+    from ayon_server.enum import EnumRegistry
+    if not hasattr(StatusesEnumResolver, "for_type"):
+        StatusesEnumResolver = None
+except ImportError:
+    StatusesEnumResolver = None
+
 
 async def _get_anatomy(project_name: str | None = None) -> Anatomy:
-    if not project_name:
-        return Anatomy()
-    return await get_project_anatomy(project_name)
+    if project_name:
+        return await get_project_anatomy(project_name)
+
+    query = "SELECT * FROM anatomy_presets WHERE is_primary is TRUE"
+    async for row in Postgres.iterate(query):
+        return Anatomy(**row["data"])
+    return Anatomy()
 
 
 async def _version_statuses_enum(project_name: str | None = None):
+    if StatusesEnumResolver is not None:
+        return await EnumRegistry.resolve(
+            "statuses",
+            project_name=project_name,
+            entity_type="version",
+        )
     anatomy = await _get_anatomy(project_name)
     return [
         status.name
@@ -96,6 +116,10 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
+
+
+class CollectVersionTagsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
 
 
 def usd_contribution_layer_types():
@@ -1432,6 +1456,13 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectHierarchyModel,
         title="Collect Hierarchy"
     )
+    CollectVersionTags: CollectVersionTagsModel = SettingsField(
+        title="Collect Version Tags",
+        description=(
+            "Provides a selectable list of tags for the user in the"
+            " publisher."
+        )
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1659,6 +1690,9 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectHierarchy": {
         "edit_shot_attributes_on_update": True,
+    },
+    "CollectVersionTags": {
+        "enabled": False
     },
     "ValidateEditorialAssetName": {
         "enabled": True,

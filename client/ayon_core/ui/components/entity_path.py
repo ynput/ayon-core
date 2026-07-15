@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from os.path import normpath
 from typing import Optional
 
 from qtpy.QtCore import Qt
@@ -67,7 +66,7 @@ class AYEntityPath(QWidget):
     def entity_path(self, value):
         self._path = value
         if not self._simple:
-            self._path_segments = normpath(value).split("/")
+            self._path_segments = value.split("/")
             self._build()
         else:
             self._label.setText(self._path.replace("/", " / "))
@@ -84,22 +83,3 @@ class AYEntityPath(QWidget):
             if p != self._path_segments[-1]:
                 lyt.addWidget(AYEntityPathSegment("/", parent=self))
         lyt.addStretch(100)
-
-
-if __name__ == "__main__":
-    from ..tester import Style, test
-    from .container import AYContainer
-
-    def _build():
-        w = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
-            layout_margin=20,
-            layout_spacing=10,
-        )
-        w.add_widget(AYLabel("AYEntityPath", bold=True, rel_text_size=2))
-        w.add_widget(AYEntityPath("project/asset/shot/comp", simple=False))
-        w.add_widget(AYEntityPath("project/asset/shot/comp", simple=True))
-        return w
-
-    test(_build, style=Style.AyonStyleOverCSS)

@@ -358,13 +358,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         pal = get_ayon_style().model.base_palette
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
-        self._code_fmt = QTextCharFormat()
-        self._code_fmt.setFontFixedPitch(True)
-        self._code_fmt.setFontFamilies(
-            ["Courier New", "Menlo", "Monaco", "monospace"]
-        )
-        self._code_fmt.setBackground(CODE_BG)
-        self._code_fmt.setForeground(CODE_FG)
+        self._code_fmt = None
 
     def update_user_list(self, user_list: list) -> None:
         """Replace the user list and trigger a full rehighlight.
@@ -410,11 +404,12 @@ class MentionHighlighter(QSyntaxHighlighter):
         """
         block = self.currentBlock()
         in_fence = self.previousBlockState() == 1
+        code_fmt = self._get_code_char_format()
 
         # ── Edit mode: raw fence markers ─────────────────────────────────
         if in_fence:
             # The entire line belongs to the open fenced block.
-            self.setFormat(0, len(text), self._code_fmt)
+            self.setFormat(0, len(text), code_fmt)
             # A line starting with ``` closes the fence.
             if text.startswith("```"):
                 self.setCurrentBlockState(0)
@@ -423,7 +418,7 @@ class MentionHighlighter(QSyntaxHighlighter):
             return
 
         if text.startswith("```"):
-            self.setFormat(0, len(text), self._code_fmt)
+            self.setFormat(0, len(text), code_fmt)
             rest = text[3:]
             # Closing ``` on the same line → single-line block, no state.
             if "```" in rest:
@@ -441,7 +436,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         # Style the whole line and skip mention/URL patterns — they don't
         # belong inside code.
         if block.blockFormat().nonBreakableLines():
-            self.setFormat(0, len(text), self._code_fmt)
+            self.setFormat(0, len(text), code_fmt)
             return
 
         # ── Mentions and URLs (applied before inline code) ───────────────
@@ -476,7 +471,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         # Raw backtick syntax `code` — detected in plain text for live
         # editing where backtick characters are still present:
         for m in self._P_CODE_INLINE.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._code_fmt)
+            self.setFormat(m.start(), m.end() - m.start(), code_fmt)
 
         # Qt-rendered inline code spans — after setMarkdown() the backticks
         # are consumed and individual fragments carry fontFixedPitch=True:
@@ -485,8 +480,21 @@ class MentionHighlighter(QSyntaxHighlighter):
             fragment = it.fragment()
             if fragment.isValid() and fragment.charFormat().fontFixedPitch():
                 frag_start = fragment.position() - block.position()
-                self.setFormat(frag_start, fragment.length(), self._code_fmt)
+                self.setFormat(frag_start, fragment.length(), code_fmt)
             it += 1
+
+    def _get_code_char_format(self) -> QTextCharFormat:
+        """Return a QTextCharFormat for inline code spans."""
+        if self._code_fmt is not None:
+            return self._code_fmt
+
+        fmt = QTextCharFormat()
+        fmt.setFontFixedPitch(True)
+        fmt.setFontFamilies(["Noto Sans Mono"])
+        fmt.setBackground(CODE_BG)
+        fmt.setForeground(CODE_FG)
+        self._code_fmt = fmt
+        return fmt
 
 
 def format_comment_on_change(text_edit: QTextEdit) -> None:

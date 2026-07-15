@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from ayon_core.ui.components.combo_box import ALL_STATUSES, AYComboBox
+from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.data_models import MenuSize
 from qtpy import QtCore, QtWidgets
 from qtpy.QtWidgets import QApplication, QWidget
 from widget_test import WidgetTest
+from ayon_core.ui.preview_utils import EXAMPLE_STATUSES
 
 from utils.composite_widget import CompositeWidget
 
@@ -63,7 +64,7 @@ class ComboBoxTest(WidgetTest):
             layout_spacing=8,
         )
         self._default_full = AYComboBox(
-            items=ALL_STATUSES,
+            items=EXAMPLE_STATUSES,
             size=MenuSize.Full,
             variant=AYComboBox.Variants.Default,
             placeholder="Select status…",
@@ -73,7 +74,7 @@ class ComboBoxTest(WidgetTest):
 
         # Row 1: Low variant
         self._low_full = AYComboBox(
-            items=ALL_STATUSES,
+            items=EXAMPLE_STATUSES,
             size=MenuSize.Full,
             variant=AYComboBox.Variants.Low,
         )
@@ -89,14 +90,14 @@ class ComboBoxTest(WidgetTest):
             layout_spacing=8,
         )
         self._short_combo = AYComboBox(
-            items=ALL_STATUSES,
+            items=EXAMPLE_STATUSES,
             size=MenuSize.Short,
         )
         self._short_combo.setCurrentIndex(4)  # Approved
         row2.add_widget(self._short_combo)
 
         self._icon_combo = AYComboBox(
-            items=ALL_STATUSES,
+            items=EXAMPLE_STATUSES,
             size=MenuSize.Icon,
         )
         self._icon_combo.setCurrentIndex(5)  # On hold

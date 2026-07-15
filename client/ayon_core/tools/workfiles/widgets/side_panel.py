@@ -9,25 +9,7 @@ from ayon_core.ui.components import (
     AYLabel,
     AYTextEdit
 )
-
-
-def file_size_to_string(file_size):
-    if not file_size:
-        return "N/A"
-    size = 0
-    size_ending_mapping = {
-        "KB": 1024 ** 1,
-        "MB": 1024 ** 2,
-        "GB": 1024 ** 3,
-    }
-    ending = "B"
-    for _ending, _size in size_ending_mapping.items():
-        if file_size < _size:
-            break
-        size = file_size / _size
-        ending = _ending
-    return "{:.2f} {}".format(size, ending)
-
+from ayon_core.tools.utils.delegates import file_size_to_string
 
 class SidePanelWidget(AYContainer):
     """Details about selected workfile.
