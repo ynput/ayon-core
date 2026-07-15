@@ -387,8 +387,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 parent_item.appendRows(new_items)
 
         for item_id in ids_to_remove:
-            self._items_by_id.pop(item_id, None)
-            self._parent_id_by_id.pop(item_id, None)
+            self._items_by_id.pop(item_id)
+            self._parent_id_by_id.pop(item_id)
 
         self._is_refreshing = False
         self.refreshed.emit()
