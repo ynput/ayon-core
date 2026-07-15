@@ -71,6 +71,7 @@ class WorkfileItem:
     icon: str | None
     version: int | None
     updated_at_time: float | None
+    file_size: int | None = None
 
 
 @dataclass
