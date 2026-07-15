@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.abstract import (
+    AbstractPublisherFrontend,
+    UIFailInfo,
+)
 
 from .widgets import (
     StopBtn,
@@ -410,11 +415,13 @@ class PublishFrame(QtWidgets.QWidget):
         """Show error message to artist on publish crash."""
 
         self._set_main_label("Error happened")
-        error_info = self._controller.get_publish_error_info()
+        fail_info: UIFailInfo | None = (
+            self._controller.get_publish_fail_info()
+        )
 
         error_message = "Unknown error happened"
-        if error_info is not None:
-            error_message = error_info.message
+        if fail_info is not None:
+            error_message = fail_info.message
 
         self._message_label_top.setText(error_message)
 

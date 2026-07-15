@@ -3,12 +3,12 @@ from __future__ import annotations
 import collections
 from dataclasses import dataclass
 
-import pyblish.api
 from qtpy import QtCore
 
 from ayon_core.pipeline.publish.logic import (
     PublishIterInfo,
     PublishIterAction,
+    PluginType,
 )
 
 from .control import PublisherController
@@ -83,7 +83,7 @@ class _IterData:
     # Store the label of the current item being processed
     item_label: str = ""
     # Store the current plugin being processed
-    plugin: pyblish.api.Plugin | None = None
+    plugin: PluginType | None = None
     # Store whether the publish process has been validated
     validated: bool = False
 

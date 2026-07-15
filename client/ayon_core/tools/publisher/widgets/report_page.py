@@ -27,7 +27,11 @@ from ayon_core.tools.utils import (
     paint_image_with_color,
     SeparatorWidget,
 )
-from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.abstract import (
+    AbstractPublisherFrontend,
+    UIPublishErrorReport,
+    UIFailInfo,
+)
 from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     CONTEXT_LABEL,
@@ -131,7 +135,7 @@ class ActionButton(BaseClickableFrame):
     Action may have label or icon or both.
 
     Args:
-        plugin_action_item (PublishPluginActionItem): Action item that can be
+        plugin_action_item (UIPublishPluginActionItem): Action item that can be
             triggered by its id.
     """
 
@@ -236,7 +240,7 @@ class PublishActionsWidget(QtWidgets.QFrame):
             self.setVisible(False)
             return
 
-        plugin_action_items = error_info["plugin_action_items"]
+        plugin_action_items = error_info.plugin_action_items
         for plugin_action_item in plugin_action_items:
             if not plugin_action_item.active:
                 continue
@@ -298,12 +302,17 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
     instance_changed = QtCore.Signal(str)
     _error_pixmap = None
 
-    def __init__(self, title_id, error_info, parent):
+    def __init__(
+        self,
+        title_id: str,
+        error_info: UIPublishErrorReport,
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
 
-        self._title_id = title_id
-        self._error_info = error_info
-        self._selected = False
+        self._title_id: str = title_id
+        self._error_info: UIPublishErrorReport = error_info
+        self._selected: bool = False
 
         instances_model = QtGui.QStandardItemModel()
 
@@ -312,7 +321,7 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
         items = []
         is_context_plugin = False
         is_crashing_error = False
-        for error_item in error_info["error_items"]:
+        for error_item in error_info.error_items:
             is_crashing_error = not error_item.is_validation_error
             is_context_plugin = error_item.is_context_plugin
             if is_context_plugin:
@@ -350,7 +359,7 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
             error_pixmap = self._get_error_pixmap()
             icon_label = PublishPixmapLabel(error_pixmap, self)
 
-        label_widget = QtWidgets.QLabel(error_info["title"], title_frame)
+        label_widget = QtWidgets.QLabel(error_info.title, title_frame)
 
         title_frame_layout = QtWidgets.QHBoxLayout(title_frame)
         title_frame_layout.setContentsMargins(8, 8, 8, 8)
@@ -397,11 +406,11 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
         self._instances_model = instances_model
         self._instances_view = instances_view
 
-        self._is_context_plugin = is_context_plugin
-        self._is_crashing_error = is_crashing_error
+        self._is_context_plugin: bool = is_context_plugin
+        self._is_crashing_error: bool = is_crashing_error
 
-        self._instance_ids = instance_ids
-        self._expanded = False
+        self._instance_ids: list[str] = instance_ids
+        self._expanded: bool = False
 
     def sizeHint(self):
         result = super().sizeHint()
@@ -421,13 +430,13 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
     def minimumSizeHint(self):
         return self.sizeHint()
 
-    def _mouse_release_callback(self):
+    def _mouse_release_callback(self) -> None:
         """Mark this widget as selected on click."""
 
         self.set_selected(True)
 
     @property
-    def is_selected(self):
+    def is_selected(self) -> bool:
         """Is widget marked a selected.
 
         Returns:
@@ -437,21 +446,21 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
         return self._selected
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._title_id
 
     @property
-    def is_crashing_error(self):
+    def is_crashing_error(self) -> bool:
         return self._is_crashing_error
 
-    def _change_style_property(self, selected):
+    def _change_style_property(self, selected: bool) -> None:
         """Change style of widget based on selection."""
 
         value = "1" if selected else ""
         self._title_frame.setProperty("selected", value)
         self._title_frame.style().polish(self._title_frame)
 
-    def set_selected(self, selected=None):
+    def set_selected(self, selected: bool | None = None) -> None:
         """Change selected state of widget."""
 
         if selected is None:
@@ -477,12 +486,12 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
             cls._error_pixmap = get_pixmap("error")
         return cls._error_pixmap
 
-    def _on_toggle_btn_click(self):
+    def _on_toggle_btn_click(self) -> None:
         """Show/hide instances list."""
 
         self._set_expanded()
 
-    def _set_expanded(self, expanded=None):
+    def _set_expanded(self, expanded: bool | None = None) -> None:
         if expanded is None:
             expanded = not self._expanded
 
@@ -499,10 +508,10 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
         else:
             self._toggle_instance_btn.setArrowType(QtCore.Qt.RightArrow)
 
-    def _on_selection_change(self):
+    def _on_selection_change(self) -> None:
         self.instance_changed.emit(self._title_id)
 
-    def get_selected_instances(self):
+    def get_selected_instances(self) -> list[str]:
         if self._is_context_plugin:
             return [CONTEXT_ID]
         sel_model = self._instances_view.selectionModel()
@@ -512,7 +521,7 @@ class PublishErrorTitleWidget(QtWidgets.QWidget):
             if index.isValid()
         ]
 
-    def get_available_instances(self):
+    def get_available_instances(self) -> list[str]:
         return list(self._instance_ids)
 
 
@@ -541,8 +550,8 @@ class PublishErrorsView(QtWidgets.QWidget):
 
         self._errors_widget = errors_widget
         self._errors_layout = errors_layout
-        self._title_widgets = {}
-        self._previous_select = None
+        self._title_widgets: dict[str, PublishErrorTitleWidget] = {}
+        self._previous_select: PublishErrorTitleWidget | None = None
 
     def _clear(self):
         """Delete all dynamic widgets and hide all wrappers."""
@@ -555,11 +564,13 @@ class PublishErrorsView(QtWidgets.QWidget):
             if widget:
                 widget.deleteLater()
 
-    def set_errors(self, grouped_error_items):
+    def set_errors(
+        self, grouped_error_items: list[UIPublishErrorReport]
+    ) -> None:
         """Set errors into context and created titles.
 
         Args:
-            grouped_error_items (List[Dict[str, Any]]): Report
+            grouped_error_items (list[UIPublishErrorReport]): Report
                 with information about publish errors and publish plugin
                 actions.
         """
@@ -568,7 +579,7 @@ class PublishErrorsView(QtWidgets.QWidget):
 
         select_id = None
         for title_item in grouped_error_items:
-            title_id = title_item["id"]
+            title_id = title_item.id
             if select_id is None:
                 select_id = title_id
             widget = PublishErrorTitleWidget(title_id, title_item, self)
@@ -588,7 +599,7 @@ class PublishErrorsView(QtWidgets.QWidget):
 
         self.updateGeometry()
 
-    def _on_select(self, title_id):
+    def _on_select(self, title_id: str) -> None:
         if self._previous_select:
             if self._previous_select.id == title_id:
                 return
@@ -597,13 +608,13 @@ class PublishErrorsView(QtWidgets.QWidget):
         self._previous_select = self._title_widgets[title_id]
         self.selection_changed.emit()
 
-    def _on_instance_change(self, title_id):
+    def _on_instance_change(self, title_id: str) -> None:
         if self._previous_select and self._previous_select.id != title_id:
             self._title_widgets[title_id].set_selected(True)
         else:
             self.selection_changed.emit()
 
-    def get_selected_items(self):
+    def get_selected_items(self) -> tuple[str | None, list[str]]:
         if not self._previous_select:
             return None, []
 
@@ -1833,19 +1844,19 @@ class ReportsWidget(QtWidgets.QWidget):
 
         self._controller: AbstractPublisherFrontend = controller
 
-        self._publish_errors_by_id = {}
+        self._publish_errors_by_id: dict[str, UIPublishErrorReport] = {}
 
     def update_data(self):
         has_validation_error = self._controller.publish_has_validation_errors()
         has_finished = self._controller.publish_has_finished()
         has_crashed = self._controller.publish_has_crashed()
-        error_info = None
+        fail_info: UIFailInfo | None = None
         if has_crashed:
-            error_info = self._controller.get_publish_error_info()
+            fail_info = self._controller.get_publish_fail_info()
 
         publish_error_mode = False
-        if error_info is not None:
-            publish_error_mode = not error_info.is_unknown_error
+        if fail_info is not None:
+            publish_error_mode = not fail_info.is_unknown_error
         elif has_validation_error:
             publish_error_mode = True
 
@@ -1870,16 +1881,17 @@ class ReportsWidget(QtWidgets.QWidget):
         self._logs_view.update_report(report)
 
         # Publish errors
-        publish_errors_report = self._controller.get_publish_errors_report()
-        grouped_error_items = publish_errors_report.group_items_by_title()
+        publish_errors_reports: list[UIPublishErrorReport] = (
+            self._controller.get_publish_errors_reports()
+        )
 
         publish_errors_by_id = {
-            title_item["id"]: title_item
-            for title_item in grouped_error_items
+            title_item.id: title_item
+            for title_item in publish_errors_reports
         }
 
         self._publish_errors_by_id = publish_errors_by_id
-        self._publish_error_view.set_errors(grouped_error_items)
+        self._publish_error_view.set_errors(publish_errors_reports)
 
     def _on_instance_selection(self):
         instance_ids = self._instances_view.get_selected_instance_ids()
@@ -1895,10 +1907,10 @@ class ReportsWidget(QtWidgets.QWidget):
             return
 
         self._logs_view.set_instances_filter(instance_ids)
-        self._logs_view.set_plugins_filter({error_info["plugin_id"]})
+        self._logs_view.set_plugins_filter({error_info.plugin_id})
 
         match_error_item = None
-        for error_item in error_info["error_items"]:
+        for error_item in error_info.error_items:
             instance_id = error_item.instance_id or CONTEXT_ID
             if instance_id in instance_ids:
                 match_error_item = error_item

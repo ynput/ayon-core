@@ -1,19 +1,26 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+import collections
+from dataclasses import dataclass, asdict, field
 from typing import (
     Any,
     Callable,
     Iterable,
     TYPE_CHECKING,
 )
+import uuid
 
 from ayon_core.tools.common_models import (
     FolderItem,
     TaskItem,
     FolderTypeItem,
     TaskTypeItem,
+)
+from ayon_core.pipeline.publish import PublishError, KnownPublishError
+from ayon_core.pipeline.publish.logic import (
+    PublishErrorInfo,
+    ActionType,
 )
 
 if TYPE_CHECKING:
@@ -23,11 +30,7 @@ if TYPE_CHECKING:
         CreateContext,
         ConvertorItem,
     )
-    from ayon_core.pipeline.publish import PublishReport
-    from ayon_core.pipeline.publish.logic import (
-        PublishErrorInfo,
-        PublishErrorsReport,
-    )
+    from ayon_core.pipeline.publish import PublishReport, PublishLogic
 
     from .models import CreatorItem, InstanceItem
 
@@ -57,6 +60,273 @@ class PublishAttrDefsInfo:
     attr_defs: list[AbstractAttrDef]
     values: dict[str, list[tuple[str, Any, Any]]]
     instance_ids: list[str | None]
+
+
+@dataclass
+class UIFailInfo:
+    message: str
+    is_unknown_error: bool
+
+    @classmethod
+    def from_exception(cls, exc) -> "UIFailInfo":
+        if isinstance(exc, PublishError):
+            return cls(exc.message, False)
+
+        if isinstance(exc, KnownPublishError):
+            msg = str(exc)
+        else:
+            msg = (
+                "Something went wrong. Send report"
+                " to your supervisor or Ynput team."
+            )
+        return cls(msg, True)
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "mesasge": self.message,
+            "is_unknown_error": self.is_unknown_error,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "UIFailInfo":
+        return cls(data["message"], data["is_unknown_error"])
+
+
+@dataclass
+class UIPublishPluginActionItem:
+    """Representation of publish plugin action.
+
+    Data driven object which is used as proxy for controller and UI.
+
+    Attributes:
+        action_id (str): Action id.
+        plugin_id (str): Plugin id.
+        active (bool): Action is active.
+        on_filter (Literal["all", "notProcessed", "processed", "failed",
+            "warning", "failedOrWarning", "succeeded"]): Actions have 'on'
+            attribute which define  when can be action triggered
+            (e.g. 'all', 'failed', ...).
+        label (str): Action's label.
+        icon (str | None) Action's icon.
+
+    """
+    action_id: str
+    plugin_id: str
+    active: bool
+    on_filter: str
+    label: str
+    icon: str | None
+
+    @classmethod
+    def from_action(
+        cls, action: ActionType, plugin_id: str
+    ) -> "UIPublishPluginActionItem":
+        label = action.label or action.__name__
+        icon = getattr(action, "icon", None)
+        return cls(
+            action_id=action.id,
+            plugin_id=plugin_id,
+            active=action.active,
+            on_filter="all",
+            label=label,
+            icon=icon,
+        )
+
+    @classmethod
+    def from_data(
+        cls, data: dict[str, str | bool | None]
+    ) -> "UIPublishPluginActionItem":
+        """Create object from data.
+
+        Args:
+            data (dict[str, str | bool | None]): Data used to recreate
+                object.
+
+        Returns:
+            UIPublishPluginActionItem: Object created using data.
+
+        """
+        return cls(**data)
+
+    def to_data(self) -> dict[str, str | bool | None]:
+        """Serialize object to dictionary.
+
+        Returns:
+            dict[str, str | bool | None]: Serialized object.
+
+        """
+        return {
+            "action_id": self.action_id,
+            "plugin_id": self.plugin_id,
+            "active": self.active,
+            "on_filter": self.on_filter,
+            "label": self.label,
+            "icon": self.icon
+        }
+
+
+@dataclass
+class UIPublishErrorItem:
+    """Data driven publish error item.
+
+    Prepared data container with information about publish error and it's
+    source plugin.
+
+    Can be converted to raw data and recreated should be used for controller
+    and UI connection.
+
+    Args:
+        instance_id (str | None): Pyblish instance id to which is
+            publish error connected.
+        instance_label (str | None): Prepared instance label.
+        plugin_id (str): Pyblish plugin id which triggered the publish
+            error. Id is generated using 'PublishPluginsProxy'.
+        is_context_plugin (bool): Error happened on context.
+        is_validation_error (bool): Error is a validation error.
+        title (str | None): Error title.
+        description (str | None): Error description.
+        detail (str): Error detail.
+
+    """
+    instance_id: str | None
+    instance_label: str | None
+    plugin_id: str
+    is_context_plugin: bool
+    is_validation_error: bool
+    title: str | None
+    description: str | None
+    detail: str | None
+
+    @classmethod
+    def from_error_item(
+        cls, error_info: PublishErrorInfo
+    ) -> "UIPublishErrorItem":
+        """Create new object based on resukt from controller.
+
+        Returns:
+            PublishErrorItem: New object with filled data.
+        """
+        return cls(
+            instance_id=error_info.instance_id,
+            instance_label=error_info.instance_label,
+            plugin_id=error_info.plugin_id,
+            is_context_plugin=error_info.is_context_plugin,
+            is_validation_error=error_info.is_validation_error,
+            title=error_info.title,
+            description=error_info.description,
+            detail=error_info.detail,
+        )
+
+    def to_data(self) -> dict[str, str | bool | None]:
+        """Serialize object to dictionary.
+
+        Returns:
+            dict[str, str | bool | None]: Serialized object data.
+
+        """
+        return {
+            "instance_id": self.instance_id,
+            "instance_label": self.instance_label,
+            "plugin_id": self.plugin_id,
+            "is_context_plugin": self.is_context_plugin,
+            "is_validation_error": self.is_validation_error,
+            "title": self.title,
+            "description": self.description,
+            "detail": self.detail,
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
+
+
+@dataclass
+class UIPublishErrorReport:
+    plugin_id: str
+    title: str
+    error_items: list[UIPublishErrorItem]
+    plugin_action_items: list[UIPublishPluginActionItem]
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+
+    @classmethod
+    def get_items_grouped_by_title(
+        cls, logic: PublishLogic
+    ) -> list[UIPublishErrorReport]:
+        """Group errors by plugin and their titles.
+
+        Items are grouped by plugin and title -> same title from different
+        plugin is different item. Items are ordered by plugin order.
+
+        Returns:
+            list[dict[str, Any]]: List where each item title, instance
+                information related to title and possible plugin actions.
+        """
+        ordered_plugin_ids = []
+        error_items_by_plugin_id = collections.defaultdict(list)
+        for error_item in logic.iter_all_error_info():
+            plugin_id = error_item.plugin_id
+            if plugin_id not in ordered_plugin_ids:
+                ordered_plugin_ids.append(plugin_id)
+            ui_error_item = UIPublishErrorItem.from_error_item(error_item)
+            error_items_by_plugin_id[plugin_id].append(ui_error_item)
+
+        grouped_error_items = []
+        for plugin_id in ordered_plugin_ids:
+            plugin_action_items = [
+                UIPublishPluginActionItem.from_action(
+                    action, plugin_id
+                )
+                for action in logic.get_publish_plugin_actions_by_id(plugin_id)
+            ]
+            error_items = error_items_by_plugin_id[plugin_id]
+
+            titles = []
+            error_items_by_title = collections.defaultdict(list)
+            for error_item in error_items:
+                title = error_item.title
+                if title not in titles:
+                    titles.append(error_item.title)
+                error_items_by_title[title].append(error_item)
+
+            for title in titles:
+                item = UIPublishErrorReport(
+                    plugin_id=plugin_id,
+                    title=title,
+                    error_items=error_items_by_title[title],
+                    plugin_action_items=plugin_action_items,
+                )
+                grouped_error_items.append(item)
+        return grouped_error_items
+
+    def to_data(self) -> dict[str, Any]:
+        """Serialize object to json supported dictionary."""
+        return {
+            "id": self.id,
+            "plugin_id": self.plugin_id,
+            "title": self.title,
+            "error_items": [ei.to_data() for ei in self.error_items],
+            "plugin_action_items": [
+                ai.to_data() for ai in self.plugin_action_items
+            ],
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]):
+        """Recreate object from data serialized using 'to_data'."""
+
+        return cls(
+            id=data["id"],
+            plugin_id=data["plugin_id"],
+            title=data["title"],
+            error_items=[
+                UIPublishErrorItem.from_data(ei)
+                for ei in data["error_items"]
+            ],
+            plugin_action_items=[
+                UIPublishPluginActionItem.from_data(ai)
+                for ai in data["plugin_action_items"]
+            ],
+        )
 
 
 class AbstractPublisherCommon(ABC):
@@ -652,7 +922,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def publish_has_crashed(self) -> bool:
-        """Publishing crashed for any reason.
+        """Publishing crashed with an error during process iteration.
 
         Returns:
             bool: Publishing crashed.
@@ -691,11 +961,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_error_info(self) -> PublishErrorInfo | None:
+    def get_publish_fail_info(self) -> UIFailInfo | None:
         """Current error message which cause fail of publishing.
 
         Returns:
-            PublishErrorInfo | None: Error info or None.
+            UIFailInfo | None: Error info or None.
 
         """
         pass
@@ -709,7 +979,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_errors_report(self) -> PublishErrorsReport:
+    def get_publish_errors_reports(self) -> list[UIPublishErrorReport]:
         pass
 
     @abstractmethod

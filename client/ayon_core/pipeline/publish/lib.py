@@ -1243,23 +1243,31 @@ def main_cli_publish(
     logic.reset(
         project_name=context["project_name"],
         publish_discover_result=discover_result,
+        targets=targets,
     )
-    report = logic.get_publish_report()
+    if logic.has_failed():
+        report = logic.get_publish_report()
+        if report.blocking_crashed_paths:
+            joined_paths = "\n".join([
+                f"- {path}"
+                for path in report.blocking_crashed_paths
+            ])
+            log.error(
+                "Plugin discovery strict mode is enabled."
+                " Crashed plugin paths that prevent from publishing:"
+                f"\n{joined_paths}"
+            )
+            sys.exit(1)
 
-    if report.blocking_crashed_paths:
-        joined_paths = "\n".join([
-            f"- {path}"
-            for path in report.blocking_crashed_paths
-        ])
+        fail_reason = logic.get_fail_reason()
         log.error(
-            "Plugin discovery strict mode is enabled."
-            " Crashed plugin paths that prevent from publishing:"
-            f"\n{joined_paths}"
+            "Failed before publishing started."
+            f" Probably because of unhandled reason '{fail_reason}'."
         )
         sys.exit(1)
 
     logic.start_publish(wait=True)
-    if logic.has_crashed() or logic.has_validation_errors():
+    if logic.has_failed():
         sys.exit(1)
 
     log.info("Publish finished.")

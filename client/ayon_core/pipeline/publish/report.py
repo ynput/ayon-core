@@ -665,9 +665,13 @@ class PublishReport:
             },
         )
 
-    def store_to_file(self, filepath: str) -> None:
+    def store_to_file(
+        self,
+        filepath: str,
+        current_plugin_id: str | None = None,
+    ) -> None:
         with open(filepath, "w", encoding="utf-8") as stream:
-            json.dump(self.to_data(), stream)
+            json.dump(self.to_data(current_plugin_id), stream)
 
 
 class PublishReportMaker:

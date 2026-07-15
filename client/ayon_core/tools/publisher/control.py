@@ -610,8 +610,8 @@ class PublisherController(
     def get_publish_progress(self):
         return self._publish_model.get_progress()
 
-    def get_publish_error_info(self):
-        return self._publish_model.get_error_info()
+    def get_publish_fail_info(self):
+        return self._publish_model.get_publish_fail_info()
 
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
@@ -622,8 +622,8 @@ class PublisherController(
     def store_publish_report(self, filepath: str) -> None:
         self._publish_model.store_publish_report(filepath)
 
-    def get_publish_errors_report(self):
-        return self._publish_model.get_publish_errors_report()
+    def get_publish_errors_reports(self):
+        return self._publish_model.get_publish_errors_reports()
 
     def set_comment(self, comment: str) -> None:
         """Set comment from ui to pyblish context.
