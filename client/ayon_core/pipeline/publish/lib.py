@@ -1149,17 +1149,17 @@ def get_instance_expected_output_path(
 
 def main_cli_publish(
     path: str,
-    targets: Optional[List[str]] = None,
-    addons_manager: Optional[AddonsManager] = None,
-):
+    targets: list[str] | None = None,
+    addons_manager: AddonsManager | None = None,
+) -> None:
     """Start headless publishing.
 
     Publish use json from passed path argument.
 
     Args:
         path (str): Path to JSON.
-        targets (Optional[List[str]]): List of pyblish targets.
-        addons_manager (Optional[AddonsManager]): Addons manager instance.
+        targets (list[str] | None): List of pyblish targets.
+        addons_manager (AddonsManager | None): Addons manager instance.
 
     Raises:
         RuntimeError: When there is no path to process or when executed with
@@ -1224,15 +1224,11 @@ def main_cli_publish(
 
     pyblish.api.register_host("shell")
 
-    if targets:
-        for target in targets:
-            print(f"setting target: {target}")
-            pyblish.api.register_target(target)
-    else:
-        pyblish.api.register_target("farm")
+    if not targets:
+        targets = ["farm"]
 
     os.environ["AYON_PUBLISH_DATA"] = path
-    os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
+    os.environ["HEADLESS_PUBLISH"] = "true"  # to use in app lib
 
     log.info("Running publish ...")
 
