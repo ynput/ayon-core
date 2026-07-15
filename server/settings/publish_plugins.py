@@ -60,7 +60,7 @@ def _handle_missing_frames_enum():
     ]
 
 
-async def version_attributes_enum() -> list[EnumItem]:
+async def folder_attributes_enum() -> list[EnumItem]:
     result: list[EnumItem] = []
 
     res = await Postgres.fetch(
@@ -69,7 +69,7 @@ async def version_attributes_enum() -> list[EnumItem]:
         WHERE $1 && scope
         ORDER BY COALESCE(data->>'title', name) ASC
         """,
-        ["version"],
+        ["folder"],
     )
     for name, data in res:
         result.append(
@@ -120,7 +120,7 @@ class CollectHierarchyModel(BaseSettingsModel):
             "Attributes set here will not be updated on the folder entities if"
             " *Edit shot attributes on update* was enabled."
         ),
-        enum_resolver=version_attributes_enum,
+        enum_resolver=folder_attributes_enum,
     )
 
 
