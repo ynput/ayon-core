@@ -218,10 +218,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 project_name, sender=TASKS_MODEL_SENDER_NAME
             )
 
-        status_col_items = (
+        status_items = (
             self._controller.get_project_status_items(project_name)
         )
-        return task_items, task_type_items, status_col_items
+        return task_items, task_type_items, status_items
 
     @classmethod
     def _get_default_task_icon(cls):
@@ -260,7 +260,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
 
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items, status_col_items = thread.get_result()
+        task_items, task_type_items, status_items = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -273,7 +273,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         project_statuses = {
             status_col_item.name: status_col_item
-            for status_col_item in status_col_items
+            for status_col_item in status_items
         }
         statuses_used = {task_item.status for task_item in task_items}
         status_icon_by_name = {}

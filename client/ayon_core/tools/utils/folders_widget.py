@@ -31,6 +31,8 @@ FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
 FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 5
+FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 6
+FOLDER_STATUS_TOOLTIP_ROLE = QtCore.Qt.UserRole + 7
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
@@ -188,10 +190,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 project_name, FOLDERS_MODEL_SENDER_NAME
             )
 
-        status_col_items = (
+        status_items = (
             self._controller.get_project_status_items(project_name)
         )
-        return folder_items, folder_type_items, status_col_items
+        return folder_items, folder_type_items, status_items
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -215,10 +217,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             return
         if thread.failed:
             # TODO visualize that refresh failed
-            folder_items, folder_type_items, status_col_items = {}, [], []
+            folder_items, folder_type_items, status_items = {}, [], []
         else:
-            folder_items, folder_type_items, status_col_items = thread.get_result()
-        self._fill_items(folder_items, folder_type_items, status_col_items)
+            folder_items, folder_type_items, status_items = thread.get_result()
+        self._fill_items(folder_items, folder_type_items, status_items)
         self._current_refresh_thread = None
 
     def _get_folder_item_icon(
@@ -252,7 +254,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_item,
         folder_type_item_by_name,
         folder_type_icon_cache,
-        status_col_item=None,
         status_icon_by_name=None,
     ):
         """
@@ -261,7 +262,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             folder_item (FolderItem): Folder item.
             folder_type_item_by_name: Mapping of folder type names to items.
             folder_type_icon_cache: Cache for folder type icons.
-            status_col_item: Optional status item for the folder.
             status_icon_by_name: Mapping of status name to QIcon (or None).
         """
         icon = self._get_folder_item_icon(
@@ -276,17 +276,23 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
         item.setData(icon, QtCore.Qt.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
+        status_name = folder_item.status or ""
+        item.setData(status_icon_by_name.get(status_name), FOLDER_STATUS_ICON_ROLE)
+        item.setData(status_name, FOLDER_STATUS_TOOLTIP_ROLE)
 
-        # Status column: icon + tooltip
-        if status_col_item is not None:
-            status_name = folder_item.status or ""
-            icon = None
-            if status_icon_by_name is not None:
-                icon = status_icon_by_name.get(status_name)
-            status_col_item.setData(icon, QtCore.Qt.DecorationRole)
-            status_col_item.setData(status_name, QtCore.Qt.ToolTipRole)
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if index.isValid() and index.column() == 1:
+            folder_index = self.index(index.row(), 0, index.parent())
+            if folder_index.isValid():
+                if role == QtCore.Qt.DecorationRole:
+                    return super().data(folder_index, FOLDER_STATUS_ICON_ROLE)
+                if role == QtCore.Qt.ToolTipRole:
+                    return super().data(folder_index, FOLDER_STATUS_TOOLTIP_ROLE)
+                if role == QtCore.Qt.DisplayRole:
+                    return ""
+        return super().data(index, role)
 
-    def _fill_items(self, folder_items_by_id, folder_type_items, status_col_items=None):
+    def _fill_items(self, folder_items_by_id, folder_type_items, status_items=None):
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
@@ -302,7 +308,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         # Build a local status-icon lookup for this fill operation
         project_statuses = {
-            s.name: s for s in (status_col_items or [])
+            s.name: s for s in (status_items or [])
         }
         statuses_used = {
             folder_item.status
@@ -360,38 +366,29 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     is_new = True
                     item = QtGui.QStandardItem()
                     item.setEditable(False)
-                    status_col_item = QtGui.QStandardItem()
-                    status_col_item.setEditable(False)
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
-                    status_col_item = parent_item.child(item.row(), 1)
-                    if status_col_item is None:
-                        status_col_item = QtGui.QStandardItem()
-                        status_col_item.setEditable(False)
-                        parent_item.setChild(item.row(), 1, status_col_item)
 
                 self._fill_item_data(
                     item,
                     folder_item,
                     folder_type_item_by_name,
                     folder_type_icon_cache,
-                    status_col_item,
                     status_icon_by_name,
                 )
                 if is_new:
-                    new_items.append([item, status_col_item])
+                    new_items.append(item)
                 self._items_by_id[item_id] = item
                 self._parent_id_by_id[item_id] = parent_id
 
                 hierarchy_queue.append((item, item_id))
 
             if new_items:
-                for row in new_items:
-                    parent_item.appendRow(row)
+                parent_item.appendRows(new_items)
 
         for item_id in ids_to_remove:
-            self._items_by_id.pop(item_id)
-            self._parent_id_by_id.pop(item_id)
+            self._items_by_id.pop(item_id, None)
+            self._parent_id_by_id.pop(item_id, None)
 
         self._is_refreshing = False
         self.refreshed.emit()
