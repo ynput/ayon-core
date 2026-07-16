@@ -27,13 +27,11 @@ from .report import (
 )
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.create import CreateContext
+    from .typing import PluginType, ActionType
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
 VALIDATION_ORDER: float = pyblish.api.ValidatorOrder + PLUGIN_ORDER_OFFSET
-# The pyblish logic is working with classes, not with objects
-PluginType = Type[pyblish.api.Plugin]
-ActionType = Type[pyblish.api.Action]
 
 
 class MessageHandler(logging.Handler):
