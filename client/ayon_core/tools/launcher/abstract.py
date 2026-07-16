@@ -75,24 +75,21 @@ class WorkfileItem:
 
 
 @dataclass
-class RecentActionItem:
-    """Item representing a recently triggered action stored in local history.
+class RecentActionRecord:
+    """Persistent record of a recently triggered action.
 
     Attributes:
         record_id (str): Unique identifier for this history record (UUID hex).
-        action_type (str): Type of action – ``"local"`` or ``"webaction"``.
+        action_type (Literal["local", "webaction"]): Type of action.
         identifier (str): Action identifier used to re-trigger the action.
         label (str): Human-readable full label of the action.
-        icon (Optional[dict]): Icon definition dict (same format as
-            :attr:`ActionItem.icon`).
+        timestamp (float): Unix timestamp of when the action was triggered.
         addon_name (Optional[str]): Addon name (webactions only).
         addon_version (Optional[str]): Addon version (webactions only).
         project_name (Optional[str]): Project name at trigger time.
         folder_id (Optional[str]): Folder id at trigger time.
         task_id (Optional[str]): Task id at trigger time.
-        task_name (Optional[str]): Task name at trigger time.
         workfile_id (Optional[str]): Workfile id at trigger time.
-        timestamp (float): Unix timestamp of when the action was triggered.
     """
 
     record_id: str
@@ -100,14 +97,48 @@ class RecentActionItem:
     identifier: str
     label: str
     timestamp: float
-    icon: Optional[dict] = None
     addon_name: Optional[str] = None
     addon_version: Optional[str] = None
     project_name: Optional[str] = None
     folder_id: Optional[str] = None
     task_id: Optional[str] = None
-    task_name: Optional[str] = None
     workfile_id: Optional[str] = None
+
+
+@dataclass
+class RecentActionItem:
+    """UI-facing recent action item.
+
+    Attributes:
+        record_id (str): Unique identifier for this history record (UUID hex).
+        action_type (Literal["local", "webaction"]): Type of action.
+        identifier (str): Action identifier used to re-trigger the action.
+        label (str): Human-readable full label of the action.
+        timestamp (float): Unix timestamp of when the action was triggered.
+        project_name (Optional[str]): Project name at trigger time.
+        folder_id (Optional[str]): Folder id at trigger time.
+        task_id (Optional[str]): Task id at trigger time.
+        workfile_id (Optional[str]): Workfile id at trigger time.
+        addon_name (Optional[str]): Addon name (webactions only).
+        addon_version (Optional[str]): Addon version (webactions only).
+        task_name (Optional[str]): Task name at trigger time.
+        icon (Optional[dict]): Icon definition dict (same format as
+            :attr:`ActionItem.icon`).
+    """
+
+    record_id: str
+    action_type: Literal["local", "webaction"]
+    identifier: str
+    label: str
+    timestamp: float
+    project_name: Optional[str] = None
+    folder_id: Optional[str] = None
+    task_id: Optional[str] = None
+    workfile_id: Optional[str] = None
+    addon_name: Optional[str] = None
+    addon_version: Optional[str] = None
+    task_name: Optional[str] = None
+    icon: Optional[dict] = None
 
 
 class AbstractLauncherCommon(ABC):

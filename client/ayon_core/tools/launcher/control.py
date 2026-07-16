@@ -275,7 +275,7 @@ class BaseLauncherController(
 
         The launcher's current selection is intentionally NOT changed.
         """
-        item = self._recent_actions_model.get_recent_action_item(record_id)
+        item = self._recent_actions_model.get_recent_action_record(record_id)
         if item is None:
             return
 
@@ -309,12 +309,12 @@ class BaseLauncherController(
         Emits ``locate.context.requested`` after updating the selection so
         that UI widgets can visibly navigate to the stored context.
         """
-        item = self._recent_actions_model.get_recent_action_item(record_id)
+        item = self._recent_actions_model.get_recent_action_record(record_id)
         if item is None:
             return
 
-        task_name = item.task_name
-        if task_name is None and item.project_name and item.task_id:
+        task_name = None
+        if item.project_name and item.task_id:
             task_entity = self.get_task_entity(item.project_name, item.task_id)
             if task_entity:
                 task_name = task_entity.get("name")
