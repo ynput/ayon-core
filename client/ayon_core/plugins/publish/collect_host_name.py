@@ -10,7 +10,7 @@ import pyblish.api
 
 
 class CollectHostName(pyblish.api.ContextPlugin):
-    """Collect avalon host name to context."""
+    """Collect AYON host name to context."""
 
     label = "Collect Host Name"
     order = pyblish.api.CollectorOrder - 0.5
