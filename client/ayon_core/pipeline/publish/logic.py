@@ -360,6 +360,7 @@ class PublishLogic:
 
         self._publish_plugins: list[PluginType] = []
         self._publish_plugins_by_id: dict[str, PluginType] = {}
+        self._publish_plugins_by_name: dict[str, PluginType] = {}
 
         # pyblish.api.Context
         self._publish_context: pyblish.api.Context = pyblish.api.Context()
@@ -430,6 +431,11 @@ class PublishLogic:
         self, plugin_id: str
     ) -> PluginType | None:
         return self._publish_plugins_by_id.get(plugin_id)
+
+    def get_publish_plugin_by_name(
+        self, plugin_name: str
+    ) -> PluginType | None:
+        return self._publish_plugins_by_name.get(plugin_name)
 
     def set_log_to_console(self, value: bool) -> None:
         """Set whether to log to console."""
@@ -668,7 +674,10 @@ class PublishLogic:
         action: ActionType | str,
     ) -> PublishActionResult:
         if isinstance(plugin, str):
-            plugin = self._publish_plugins_by_id[plugin]
+            _plugin = self._publish_plugins_by_id.get(plugin)
+            if _plugin is None:
+                _plugin = self._publish_plugins_by_name[plugin]
+            plugin = _plugin
 
         if isinstance(action, str):
             action_id = action
@@ -787,6 +796,10 @@ class PublishLogic:
         self._publish_plugins = plugins_by_targets
         self._publish_plugins_by_id = {
             self.get_publish_plugin_id(plugin): plugin
+            for plugin in plugins_by_targets
+        }
+        self._publish_plugins_by_name = {
+            plugin.__name__: plugin
             for plugin in plugins_by_targets
         }
         strict_validation_error_handling = (
