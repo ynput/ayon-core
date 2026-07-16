@@ -6,6 +6,7 @@ import copy
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
+import warnings
 
 from ayon_core.lib import (
     Logger,
@@ -354,6 +355,20 @@ class BaseCreator(ABC):
 
         """
         pass
+
+    @property
+    def product_type(self) -> str:
+        """DEPRECATED use 'product_base_type' instead.
+
+        Kept for backwards compatibility. Warning added 2026/07/16.
+
+        """
+        warnings.warn(
+            "'product_type' is deprecated, use 'product_base_type' instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.product_base_type
 
     @property
     def project_name(self):
