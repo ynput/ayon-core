@@ -6,7 +6,7 @@ from enum import auto, Enum
 import inspect
 import logging
 import typing
-from typing import Any, Iterable, Generator, Type
+from typing import Any, Iterable, Generator
 
 import pyblish.api
 import pyblish.logic
