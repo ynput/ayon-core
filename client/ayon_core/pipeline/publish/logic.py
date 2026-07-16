@@ -356,7 +356,7 @@ class PublishLogic:
 
         self._log_to_console: bool = True
 
-        self._publish_state = PublishState()
+        self._publish_state: PublishState = PublishState()
 
         self._publish_plugins: list[PluginType] = []
         self._publish_plugins_by_id: dict[str, PluginType] = {}
@@ -368,7 +368,7 @@ class PublishLogic:
         self._publish_report: PublishReportMaker = PublishReportMaker()
 
         # Plugin iterator
-        self._main_thread_iter: Generator[PublishIterInfo] = (
+        self._main_thread_iter: Generator[PublishIterInfo, None, None] = (
             self._default_iterator()
         )
 
@@ -400,7 +400,7 @@ class PublishLogic:
         create_context: CreateContext,
         context: pyblish.api.Context | None = None,
         targets: list[str] | None = None,
-    ):
+    ) -> None:
         self._reset(
             create_context.project_name,
             publish_context=context,
