@@ -7,7 +7,6 @@ from ayon_core.ui.components.dropdown import AYDropdownPopup
 from ayon_core.ui.components.layouts import AYVBoxLayout, AYHBoxLayout
 from ayon_core.ui.components.scroll_area import AYScrollArea
 
-_TRANSPARENT_ICON_DEF = {"type": "transparent", "size": 256}
 _QWIDGETSIZE_MAX = (1 << 24) - 1
 
 
@@ -24,18 +23,15 @@ def _build_breadcrumb(action_item, controller=None) -> str:
 
     # Folder path – needs a controller lookup; best-effort only.
     if controller is not None and project_name and action_item.folder_id:
-        try:
-            folder_entity = controller.get_folder_entity(
-                project_name, action_item.folder_id
+        folder_entity = controller.get_folder_entity(
+            project_name, action_item.folder_id
+        )
+        if folder_entity:
+            folder_path = folder_entity.get("path") or folder_entity.get(
+                "name"
             )
-            if folder_entity:
-                folder_path = folder_entity.get("path") or folder_entity.get(
-                    "name"
-                )
-                if folder_path:
-                    parts.append(folder_path)
-        except Exception:
-            pass
+            if folder_path:
+                parts.append(folder_path)
 
     task_name = action_item.task_name
     if (
@@ -44,13 +40,10 @@ def _build_breadcrumb(action_item, controller=None) -> str:
         and project_name
         and action_item.task_id
     ):
-        try:
-            task_entity = controller.get_task_entity(
-                project_name, action_item.task_id
-            )
-            task_name = (task_entity or {}).get("name")
-        except Exception:
-            pass
+        task_entity = controller.get_task_entity(
+            project_name, action_item.task_id
+        )
+        task_name = (task_entity or {}).get("name")
 
     if task_name:
         parts.append(task_name)
@@ -62,55 +55,16 @@ def _build_breadcrumb(action_item, controller=None) -> str:
         and action_item.task_id
         and action_item.workfile_id
     ):
-        try:
-            workfile_items = controller.get_workfile_items(
-                project_name, action_item.task_id
-            )
-            for wf in workfile_items:
-                if wf.workfile_id == action_item.workfile_id:
-                    if wf.filename:
-                        parts.append(wf.filename)
-                    break
-        except Exception:
-            pass
+        workfile_items = controller.get_workfile_items(
+            project_name, action_item.task_id
+        )
+        for wf in workfile_items:
+            if wf.workfile_id == action_item.workfile_id:
+                if wf.filename:
+                    parts.append(wf.filename)
+                break
 
     return " \u203a ".join(parts)
-
-
-def _get_recent_action_icon(action_item, controller, fallback_icon):
-    if controller is None:
-        return fallback_icon
-
-    try:
-        action_items = controller.get_action_items(
-            action_item.project_name,
-            action_item.folder_id,
-            action_item.task_id,
-            action_item.workfile_id,
-        )
-    except Exception:
-        return fallback_icon
-
-    for candidate in action_items:
-        if candidate.action_type != action_item.action_type:
-            continue
-        if candidate.identifier != action_item.identifier:
-            continue
-        if action_item.action_type == "webaction" and (
-            candidate.addon_name != action_item.addon_name
-            or candidate.addon_version != action_item.addon_version
-        ):
-            continue
-
-        icon_def = candidate.icon
-        if not icon_def:
-            return fallback_icon
-        try:
-            return get_qt_icon(icon_def)
-        except Exception:
-            return fallback_icon
-
-    return fallback_icon
 
 
 class _RecentActionRow(QtWidgets.QWidget):
@@ -276,9 +230,8 @@ class RecentActionsPopup(AYDropdownPopup):
                 item.widget().deleteLater()
 
         self._empty_label.setVisible(not bool(items))
-        fallback = get_qt_icon(_TRANSPARENT_ICON_DEF)
         for action_item in items:
-            icon = _get_recent_action_icon(action_item, self._controller, fallback)
+            icon = get_qt_icon(action_item.icon) if action_item.icon else None
             row = _RecentActionRow(
                 action_item.record_id, icon, action_item.label,
                 _build_breadcrumb(action_item, self._controller),

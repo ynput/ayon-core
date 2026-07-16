@@ -181,10 +181,12 @@ class ActionsModel:
         action_label = identifier
         action_items = self._get_action_items(project_name)
         trigger_id = uuid.uuid4().hex
+        icon = None
         try:
             action = self._actions[identifier]
             action_item = action_items[identifier]
             action_label = action_item.full_label
+            icon = action_item.icon
             self._controller.emit_event(
                 "action.trigger.started",
                 {
@@ -214,6 +216,7 @@ class ActionsModel:
                 "workfile_id": workfile_id,
                 "addon_name": None,
                 "addon_version": None,
+                "icon": icon,
             }
         )
 
@@ -255,6 +258,7 @@ class ActionsModel:
 
         trigger_id = uuid.uuid4().hex
         failed = False
+        icon = None
         try:
             self._controller.emit_event(
                 "webaction.trigger.started",
@@ -278,6 +282,20 @@ class ActionsModel:
                 error_message="Failed to trigger webaction.",
             )
 
+        # Get icon from webactions list
+        selection = self._prepare_selection(
+            project_name, folder_id, task_id, workfile_id
+        )
+        webactions = self._get_webactions(selection)
+        for webaction in webactions:
+            if (
+                webaction.identifier == identifier
+                and webaction.addon_name == addon_name
+                and webaction.addon_version == addon_version
+            ):
+                icon = webaction.icon
+                break
+
         data = asdict(handle_response)
         data.update({
             "trigger_failed": failed,
@@ -290,6 +308,7 @@ class ActionsModel:
             "workfile_id": workfile_id,
             "addon_name": addon_name,
             "addon_version": addon_version,
+            "icon": icon,
         })
         self._controller.emit_event(
             "webaction.trigger.finished",

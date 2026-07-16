@@ -89,7 +89,7 @@ class RecentActionsModel:
             addon_name=record.addon_name,
             addon_version=record.addon_version,
             task_name=None,
-            icon=None,
+            icon=record.icon,
         )
 
     def _deserialize_items(self, raw: list[dict] | None) -> list[RecentActionRecord]:
@@ -103,6 +103,7 @@ class RecentActionsModel:
                 entry.setdefault("folder_id", None)
                 entry.setdefault("task_id", None)
                 entry.setdefault("workfile_id", None)
+                entry.setdefault("icon", None)
                 output.append(RecentActionRecord(**entry))
             except Exception:
                 self.log.warning(
@@ -152,7 +153,7 @@ class RecentActionsModel:
             response.raise_for_status()
             return True
         except Exception:
-            self.log.warning("Failed to save recent actions to AYON user data.", exc_info=True)
+            self.log.error("Failed to save recent actions to AYON user data.", exc_info=True)
             return False
 
     def _load(self) -> list[RecentActionRecord] | None:
@@ -163,12 +164,10 @@ class RecentActionsModel:
         return self._records_cache
 
     def _save(self, items: list[RecentActionRecord]) -> None:
-        self._records_cache = list(items)
         if not self._save_to_user_data(items):
-            self.log.warning(
-                "Recent actions saved to in-memory cache only; "
-                "server PATCH failed — history may be lost on restart."
-            )
+            self.log.error("Failed to persist recent actions to server; data not saved.")
+            return
+        self._records_cache = list(items)
 
     def _record(self, item: RecentActionRecord) -> None:
         items = self._load() or []
@@ -228,6 +227,7 @@ class RecentActionsModel:
             task_id=event.get("task_id"),
             workfile_id=event.get("workfile_id"),
             timestamp=time.time(),
+            icon=event.get("icon"),
         )
         self.log.debug(
             "action.trigger.finished recording action_type=%r record_id=%s identifier=%r",
@@ -265,6 +265,7 @@ class RecentActionsModel:
             task_id=event.get("task_id"),
             workfile_id=event.get("workfile_id"),
             timestamp=time.time(),
+            icon=event.get("icon"),
         )
         self.log.debug(
             "webaction.trigger.finished recording action_type=%r record_id=%s identifier=%r",

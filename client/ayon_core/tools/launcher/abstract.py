@@ -90,6 +90,7 @@ class RecentActionRecord:
         folder_id (Optional[str]): Folder id at trigger time.
         task_id (Optional[str]): Task id at trigger time.
         workfile_id (Optional[str]): Workfile id at trigger time.
+        icon (Optional[dict[str, str]]): Icon definition (captured at record time).
     """
 
     record_id: str
@@ -103,6 +104,7 @@ class RecentActionRecord:
     folder_id: Optional[str] = None
     task_id: Optional[str] = None
     workfile_id: Optional[str] = None
+    icon: Optional[dict[str, str]] = None
 
 
 @dataclass
