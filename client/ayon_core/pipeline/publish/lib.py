@@ -1269,6 +1269,43 @@ def main_cli_publish(
     log.info("Publish finished.")
 
 
+def run_publish(
+    project_name: str,
+    *,
+    context: pyblish.api.Context | None = None,
+    plugins: list[PluginType] | None = None,
+    targets: list[str] | None = None,
+    create_context: CreateContext | None = None,
+    publish_discover_result: DiscoverResult | None = None,
+    project_settings: dict[str, Any] | None = None,
+) -> PublishReport:
+    """Start publishing.
+
+    Args:
+        targets (list[str] | None): List of pyblish targets.
+
+    """
+    from ayon_core.pipeline.publish import PublishLogic
+
+    logic = PublishLogic()
+    logic.reset(
+        project_name,
+        context=context,
+        plugins=plugins,
+        targets=targets,
+        create_context=create_context,
+        publish_discover_result=publish_discover_result,
+        project_settings=project_settings,
+    )
+    report = logic.get_publish_report()
+    if report.blocking_crashed_paths:
+        return report
+
+    logic.start_publish(wait=True)
+
+    return logic.get_publish_report()
+
+
 def has_trait_representations(
         instance: pyblish.api.Instance) -> bool:
     """Check if instance has trait representation.
