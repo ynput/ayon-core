@@ -667,12 +667,6 @@ class PublishLogic:
             return actions
         return []
 
-    def get_publish_plugin_actions_by_id(
-        self, plugin_id: str
-    ) -> list[ActionType]:
-        plugin = self._publish_plugins_by_id[plugin_id]
-        return self.get_publish_plugin_actions(plugin)
-
     def run_action(
         self,
         plugin: PluginType | str,

@@ -272,11 +272,12 @@ class UIPublishErrorReport:
 
         grouped_error_items = []
         for plugin_id in ordered_plugin_ids:
+            plugin = logic.get_publish_plugin_by_id(plugin_id)
             plugin_action_items = [
                 UIPublishPluginActionItem.from_action(
                     action, plugin_id
                 )
-                for action in logic.get_publish_plugin_actions_by_id(plugin_id)
+                for action in logic.get_publish_plugin_actions(plugin)
             ]
             error_items = error_items_by_plugin_id[plugin_id]
 
