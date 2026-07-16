@@ -363,7 +363,7 @@ class PublishLogic:
         self._publish_plugins_by_name: dict[str, PluginType] = {}
 
         # pyblish.api.Context
-        self._publish_context: pyblish.api.Context = pyblish.api.Context()
+        self._pyblish_context: pyblish.api.Context = pyblish.api.Context()
         # Pyblish report
         self._publish_report: PublishReportMaker = PublishReportMaker()
 
@@ -426,6 +426,11 @@ class PublishLogic:
 
         """
         return plugin.id
+
+    def get_pyblish_context(self) -> pyblish.api.Context:
+        return self._pyblish_context
+
+    pyblish_context: pyblish.api.Context = property(get_pyblish_context)
 
     def get_publish_plugin_by_id(
         self, plugin_id: str
@@ -593,7 +598,7 @@ class PublishLogic:
 
     def get_publish_report(self) -> PublishReport:
         """Extract report for current state of publishing."""
-        self._publish_report.update_publish_instances(self._publish_context)
+        self._publish_report.update_publish_instances(self._pyblish_context)
         return self._publish_report.get_report()
 
     def get_publish_report_data(self) -> dict[str, Any]:
@@ -650,7 +655,7 @@ class PublishLogic:
         # Ignore change of comment when publishing started
         if self._publish_state.started:
             return
-        self._publish_context.data["comment"] = comment
+        self._pyblish_context.data["comment"] = comment
         self._publish_state.comment_is_set = True
 
     @staticmethod
@@ -693,7 +698,7 @@ class PublishLogic:
                 )
 
         result = pyblish.plugin.process(
-            plugin, self._publish_context, None, action.id
+            plugin, self._pyblish_context, None, action.id
         )
         self._publish_report.add_action_result(action, result)
 
@@ -792,7 +797,7 @@ class PublishLogic:
                     self.get_publish_plugin_id(plugin)
                 )
 
-        self._publish_context = publish_context
+        self._pyblish_context = publish_context
         self._publish_plugins = plugins_by_targets
         self._publish_plugins_by_id = {
             self.get_publish_plugin_id(plugin): plugin
@@ -858,7 +863,7 @@ class PublishLogic:
 
             # Add plugin to publish report
             self._publish_report.add_plugin_iter(
-                plugin_id, self._publish_context
+                plugin_id, self._pyblish_context
             )
 
             # Check if plugin should be skipped because is not enabled
@@ -870,7 +875,7 @@ class PublishLogic:
             # Plugin is instance plugin
             if plugin.__instanceEnabled__:
                 instances = pyblish.logic.instances_by_plugin(
-                    self._publish_context, plugin
+                    self._pyblish_context, plugin
                 )
                 if not instances:
                     self._publish_report.set_plugin_skipped(plugin_id)
@@ -893,7 +898,7 @@ class PublishLogic:
                     )
             else:
                 families = collect_families_from_instances(
-                    self._publish_context, only_active=True
+                    self._pyblish_context, only_active=True
                 )
                 plugins = pyblish.logic.plugins_by_families(
                     [plugin], families
@@ -903,8 +908,8 @@ class PublishLogic:
                     continue
 
                 item_label = (
-                    self._publish_context.data.get("label")
-                    or self._publish_context.data.get("name")
+                    self._pyblish_context.data.get("label")
+                    or self._pyblish_context.data.get("name")
                     or "Context"
                 )
                 yield PublishIterInfo(
@@ -952,7 +957,7 @@ class PublishLogic:
         plugin_id = self.get_publish_plugin_id(plugin)
         with self._log_manager(plugin) as log_handler:
             result = pyblish.plugin.process(
-                plugin, self._publish_context, instance
+                plugin, self._pyblish_context, instance
             )
             if log_handler is not None:
                 records = log_handler.get_records()
