@@ -475,6 +475,7 @@ class DeliveryRepresentationRuleModel(BaseSettingsModel):
             "- `{file}` - original 'File Name Template'"
         )
     )
+
     @validator("name")
     def normalize_value(cls, value):
         return normalize_name(value)
@@ -495,6 +496,7 @@ class DeliveryTemplateOverrideModel(BaseSettingsModel):
             "determines the delivery template to use."
         )
     )
+
     @validator("name")
     def normalize_value(cls, value):
         return normalize_name(value)
