@@ -121,25 +121,31 @@ class CollectAddons(pyblish.api.ContextPlugin):
         ayon_info = get_ayon_info()
         launcher_version = ayon_info["ayon_launcher_version"]
         launcher_type = ayon_info["version_type"]
+        sep_line = "+".join([
+            (name_width + 1) * "-",
+            (version_width + 2) * "-",
+            (server_version_width + 2) * "-"
+        ])
         lines = [
             "Basic AYON information:",
             f"AYON server: {server_version}",
             f"Bundle: {bundle_name} ({settings_variant})",
             f"AYON launcher: {launcher_version} ({launcher_type})",
             "Addons:",
-            len(title) * "-",
+            sep_line,
             title,
-            len(title) * "-",
+            sep_line,
         ]
         lines.extend(
             item.get_row(name_width, version_width, server_version_width)
             for item in items
         )
         if server_items:
-            lines.append(len(title) * "-")
+            lines.append(sep_line)
             lines.extend(
                 item.get_row(name_width, version_width, server_version_width)
                 for item in server_items
             )
+            lines.append(sep_line)
 
         self.log.debug("\n".join(lines))

@@ -59,9 +59,9 @@ class TrayAddonsManager(AddonsManager):
                 self.doubleclick_callback = callback_name
             return
 
-        self.log.warning((
-            "Callback with name \"{}\" is already registered."
-        ).format(callback_name))
+        self.log.warning(
+            f"Callback with name \"{callback_name}\" is already registered."
+        )
 
     def initialize(self, tray_menu):
         self.initialize_addons()
@@ -117,29 +117,24 @@ class TrayAddonsManager(AddonsManager):
 
     def tray_init(self):
         self._init_tray_webserver()
-        report = {}
         time_start = time.time()
         prev_start_time = time_start
         for addon in self.get_enabled_tray_addons():
+            report_row = self._report_by_name[addon.name]
             try:
                 addon._tray_manager = self._tray_manager
                 addon.tray_init()
                 addon.tray_initialized = True
             except Exception:
                 self.log.warning(
-                    "Addon \"{}\" crashed on `tray_init`.".format(
-                        addon.name
-                    ),
+                    f"Addon \"{addon.name}\" crashed on `tray_init`.",
                     exc_info=True
                 )
-
             now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
+            report_row.tray_init_time = now - prev_start_time
             prev_start_time = now
 
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Tray init"] = report
+        self._total_row.tray_init_time = time.time() - time_start
 
     def connect_addons(self):
         self._webserver_manager.connect_with_addons(
@@ -160,12 +155,13 @@ class TrayAddonsManager(AddonsManager):
                 ordered_addons.append(addon_by_name)
         ordered_addons.extend(enabled_by_name.values())
 
-        report = {}
         time_start = time.time()
         prev_start_time = time_start
         for addon in ordered_addons:
             if not addon.tray_initialized:
                 continue
+
+            report_row = self._report_by_name[addon.name]
 
             try:
                 addon.tray_menu(tray_menu)
@@ -173,23 +169,18 @@ class TrayAddonsManager(AddonsManager):
                 # Unset initialized mark
                 addon.tray_initialized = False
                 self.log.warning(
-                    "Addon \"{}\" crashed on `tray_menu`.".format(
-                        addon.name
-                    ),
+                    f"Addon \"{addon.name}\" crashed on `tray_menu`.",
                     exc_info=True
                 )
             now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
+            report_row.tray_menu_time = now - prev_start_time
             prev_start_time = now
 
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Tray menu"] = report
+        self._total_row.tray_menu_time = time.time() - time_start
 
     def start_addons(self):
         self._webserver_manager.start_server()
 
-        report = {}
         time_start = time.time()
         prev_start_time = time_start
         for addon in self.get_enabled_tray_addons():
@@ -198,22 +189,19 @@ class TrayAddonsManager(AddonsManager):
                     addon.set_service_failed_icon()
                 continue
 
+            report_row = self._report_by_name[addon.name]
             try:
                 addon.tray_start()
             except Exception:
                 self.log.warning(
-                    "Addon \"{}\" crashed on `tray_start`.".format(
-                        addon.name
-                    ),
+                    f"Addon \"{addon.name}\" crashed on `tray_start`.",
                     exc_info=True
                 )
             now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
+            report_row.tray_start_time = now - prev_start_time
             prev_start_time = now
 
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Addons start"] = report
+        self._total_row.tray_start_time = time.time() - time_start
 
     def on_exit(self):
         self._webserver_manager.stop_server()
@@ -223,9 +211,7 @@ class TrayAddonsManager(AddonsManager):
                     addon.tray_exit()
                 except Exception:
                     self.log.warning(
-                        "Addon \"{}\" crashed on `tray_exit`.".format(
-                            addon.name
-                        ),
+                        f"Addon \"{addon.name}\" crashed on `tray_exit`.",
                         exc_info=True
                     )
 
