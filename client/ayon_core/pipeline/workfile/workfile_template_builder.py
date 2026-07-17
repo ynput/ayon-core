@@ -1093,6 +1093,9 @@ class AbstractTemplateBuilder(ABC):
         """
         if preset is None:
             preset = self.get_template_preset()
+        if not preset.has_valid_path():
+            return
+
         self.build_template(preset=preset)
         if preset.create_first_version:
             workfile_path = self.get_workfile_path()
