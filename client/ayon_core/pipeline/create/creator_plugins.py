@@ -907,7 +907,7 @@ class Creator(BaseCreator):
 
     def get_default_variant(
         self, only_explicit: bool = False
-    ) -> str:
+    ) -> str | None:
         """Default variant value that will be used to prefill variant input.
 
         This is for user input and value may not be content of result from
@@ -922,7 +922,7 @@ class Creator(BaseCreator):
                 variant from '_default_variant' will be returned.
 
         Returns:
-            str: Variant value.
+            str | None: Variant value.
 
         """
         if only_explicit or self._default_variant:
