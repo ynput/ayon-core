@@ -152,7 +152,10 @@ class TemplatePreset:
 
         """
         return self.path and os.path.exists(self.path)
+<<<<<<< HEAD
 
+=======
+>>>>>>> fa5e75c29226823642976bbee55e54385fc2b169
 
 class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
@@ -796,7 +799,7 @@ class AbstractTemplateBuilder(ABC):
     def open_template(self):
         """Open template file with registered host."""
         template_preset = self.get_template_preset()
-        if not self._is_valid_preset(template_preset):
+        if not template_preset.has_valid_path():
             raise TemplateLoadFailed(
                 f"Template path '{template_preset.path}' does not exist."
             )
