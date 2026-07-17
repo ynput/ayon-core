@@ -152,10 +152,7 @@ class TemplatePreset:
 
         """
         return self.path and os.path.exists(self.path)
-<<<<<<< HEAD
 
-=======
->>>>>>> fa5e75c29226823642976bbee55e54385fc2b169
 
 class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
