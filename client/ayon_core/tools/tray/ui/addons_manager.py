@@ -31,6 +31,10 @@ class TrayAddonsManager(AddonsManager):
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
 
+    def print_report(self, include_tray: bool = True) -> None:
+        """Change default behavior of print_report method."""
+        super().print_report(include_tray=include_tray)
+
     @property
     def webserver_url(self):
         return self._webserver_manager.url

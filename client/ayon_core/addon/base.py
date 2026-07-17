@@ -1038,7 +1038,7 @@ class AddonsManager:
             if isinstance(addon, IHostAddon)
         }
 
-    def print_report(self) -> None:
+    def print_report(self, include_tray: bool = False) -> None:
         """Print out report of time spent on addons initialization parts.
 
         Reporting is not automated must be implemented for each initialization
@@ -1073,14 +1073,17 @@ class AddonsManager:
 
         # Prepare columns to calculate their widths
         cols: list[list[str]] = [names, versions, server_versions]
-        for col_name, attr_name in (
-            ("Initialize", "init_time"),
-            ("Connect", "connect_time"),
-            ("Tray init", "tray_init_time"),
-            ("Tray menu", "tray_menu_time"),
-            ("Startup", "tray_start_time"),
-            ("Total", "total_time"),
+        for col_name, attr_name, is_tray_value in (
+            ("Initialize", "init_time", False),
+            ("Connect", "connect_time", False),
+            ("Tray init", "tray_init_time", True),
+            ("Tray menu", "tray_menu_time", True),
+            ("Startup", "tray_start_time", True),
+            ("Total", "total_time", False),
         ):
+            if is_tray_value and not include_tray:
+                continue
+
             values = [
                 f"{getattr(row, attr_name):.3f}"
                 for row in sorted_rows
