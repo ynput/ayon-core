@@ -677,7 +677,8 @@ class AbstractTemplateBuilder(ABC):
         create_first_version=None,
         workfile_creation_enabled=False
     ):
-        """Main callback for building workfile from template path.
+        """Legacy callback for building workfile from template path.
+        Deprecated, use 'build_template' with 'preset' argument instead.
 
         Todo:
             Handle report of populated placeholders from
