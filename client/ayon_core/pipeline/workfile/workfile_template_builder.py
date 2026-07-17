@@ -1027,20 +1027,6 @@ class AbstractTemplateBuilder(ABC):
             ["profiles"]
         )
 
-    def _is_valid_preset(self, preset: TemplatePreset) -> bool:
-        """Check if the provided template preset is valid.
-
-        Args:
-            preset (TemplatePreset): The template preset to validate.
-
-        Returns:
-            bool: True if the preset is valid, False otherwise.
-
-        """
-        if not preset.path or not os.path.exists(preset.path):
-            return False
-        return True
-
     def trigger_on_app_launch(
         self, preset: TemplatePreset | None = None
     ) -> None:
