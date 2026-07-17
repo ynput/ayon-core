@@ -144,6 +144,15 @@ class TemplatePreset:
     # For integration internal logic
     profile: dict[str, Any] | None = None
 
+    def has_valid_path(self) -> bool:
+        """Check if the template preset has valid path.
+
+        Returns:
+            bool: Preset has set path to an existing file.
+
+        """
+        return self.path and os.path.exists(self.path)
+
 
 class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
@@ -658,7 +667,7 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
-        if not self._is_valid_preset(preset):
+        if not preset.has_valid_path():
             raise TemplateLoadFailed(
                 f"Template path '{preset.path}' does not exist."
             )
@@ -719,7 +728,7 @@ class AbstractTemplateBuilder(ABC):
             or create_first_version is None
         ):
             preset = self.get_template_preset()
-            if not self._is_valid_preset(preset):
+            if not preset.has_valid_path():
                 raise TemplateLoadFailed(
                     f"Template path '{preset.path}' does not exist."
                 )
