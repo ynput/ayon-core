@@ -144,6 +144,14 @@ class TemplatePreset:
     # For integration internal logic
     profile: dict[str, Any] | None = None
 
+    def has_valid_path(self) -> bool:
+        """Check if the template preset has valid path.
+
+        Returns:
+            bool: Preset has set path to an existing file.
+
+        """
+        return self.path and os.path.exists(self.path)
 
 class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
