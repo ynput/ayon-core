@@ -81,7 +81,7 @@ class ProductConvertorPlugin(ABC):
         return self._log
 
     @property
-    def host(self) -> HostBase:
+    def host(self) -> IPublishHost:
         return self._create_context.host
 
     @property
