@@ -66,7 +66,9 @@ def check_destination_path(
     anatomy,
     anatomy_data,
     datetime_data,
-    template_name
+    template_name,
+    *,
+    explicit_template_obj=None,
 ):
     """ Try to create destination path based on 'template_name'.
 
@@ -80,14 +82,20 @@ def check_destination_path(
         datetime_data (dict): Values with actual date.
         template_name (str): Name of template which should be used from anatomy
             templates.
+        explicit_template_obj (AnatomyTemplateItem, optional): Anatomy template
+            item to use instead of the one defined in the delivery template.
     Returns:
         Dict[str, List[str]]: Report of happened errors. Key is message title
             value is detailed information.
     """
 
     anatomy_data.update(datetime_data)
-    path_template = anatomy.get_template_item(
-        "delivery", template_name, "path"
+
+    if explicit_template_obj is not None:
+        path_template = explicit_template_obj.get("path")
+    else:
+        path_template = anatomy.get_template_item(
+            "delivery", template_name, "path"
     )
     dest_path = path_template.format(anatomy_data)
     report_items = collections.defaultdict(list)
@@ -131,7 +139,9 @@ def deliver_single_file(
     anatomy_data,
     format_dict,
     report_items,
-    log
+    log,
+    *,
+    explicit_template_obj=None
 ):
     """Copy single file to calculated path based on template
 
@@ -145,6 +155,8 @@ def deliver_single_file(
         format_dict (dict): root dictionary with names and values
         report_items (collections.defaultdict): to return error messages
         log (logging.Logger): for log printing
+        explicit_template_obj (AnatomyTemplateItem, optional): Anatomy template
+            item to use instead of the one defined in the delivery template.
 
     Returns:
         (collections.defaultdict, int)
@@ -161,8 +173,12 @@ def deliver_single_file(
     if format_dict:
         anatomy_data = copy.deepcopy(anatomy_data)
         anatomy_data["root"] = format_dict["root"]
-    template_obj = anatomy.get_template_item(
-        "delivery", template_name, "path"
+
+    if explicit_template_obj is not None:
+        template_obj = explicit_template_obj.get("path")
+    else:
+        template_obj = anatomy.get_template_item(
+            "delivery", template_name, "path"
     )
     delivery_path = template_obj.format_strict(anatomy_data)
 
@@ -192,8 +208,10 @@ def deliver_sequence(
     format_dict,
     report_items,
     log,
+    *,
     has_renumbered_frame=False,
-    new_frame_start=0
+    new_frame_start=0,
+    explicit_template_obj=None,
 ):
     """ For Pype2(mainly - works in 3 too) where representation might not
         contain files.
@@ -213,6 +231,12 @@ def deliver_sequence(
         format_dict (dict): root dictionary with names and values
         report_items (collections.defaultdict): to return error messages
         log (logging.Logger): for log printing
+        has_renumbered_frame (bool, optional): whether the frame has been
+            renumbered.
+        new_frame_start (int, optional): new frame start value.
+        explicit_template_obj (AnatomyTemplateItem, optional): Anatomy template
+            item to use instead of the one defined in the delivery template.
+
 
     Returns:
         (collections.defaultdict, int)
@@ -233,8 +257,11 @@ def deliver_sequence(
         report_items["Source file was not found"].append(msg)
         return report_items, 0
 
-    delivery_template = anatomy.get_template_item(
-        "delivery", template_name, "path", default=None
+    if explicit_template_obj is not None:
+        delivery_template = explicit_template_obj.get("path")
+    else:
+        delivery_template = anatomy.get_template_item(
+            "delivery", template_name, "path", default=None
     )
     if delivery_template is None:
         msg = (

@@ -451,6 +451,67 @@ class PublishToolModel(BaseSettingsModel):
     )
 
 
+class DeliveryRepresentationRuleModel(BaseSettingsModel):
+    name: str = SettingsField(
+        "",
+        title="Representation Name",
+        description="Name of the representation to match"
+    )
+    template_dir: str = SettingsField(
+        "",
+        title="Directory Template Override",
+        description=(
+            "Overriding 'Directory Template'. Additional tokens: \n"
+            "- `{directory}` - original 'Directory Template'\n"
+            "- `{file}` - original 'File Name Template'"
+        )
+    )
+    template_file: str = SettingsField(
+        "",
+        title="File Name Template Override",
+        description=(
+            "Overriding 'File Name Template'. Additional tokens: \n"
+            "- `{directory}` - original 'Directory Template'\n"
+            "- `{file}` - original 'File Name Template'"
+        )
+    )
+    @validator("name")
+    def normalize_value(cls, value):
+        return normalize_name(value)
+
+
+class DeliveryTemplateOverrideModel(BaseSettingsModel):
+    name: str = SettingsField(
+        "",
+        title="Anatomy DeliveryTemplate Name",
+        description="Name of the delivery category template to match"
+    )
+    rules: list[DeliveryRepresentationRuleModel] = SettingsField(
+        default_factory=list,
+        title="Representation Rules",
+        description=(
+            "Rules to override the chosen delivery template. "
+            "Rules are evaluated in order, and the first matching rule "
+            "determines the delivery template to use."
+        )
+    )
+    @validator("name")
+    def normalize_value(cls, value):
+        return normalize_name(value)
+
+
+class DeliveryToolModel(BaseSettingsModel):
+    overrides: list[DeliveryTemplateOverrideModel] = SettingsField(
+        default_factory=list,
+        title="Delivery Anatomy Template Override Presets",
+        description=(
+            "Overrides presets to override the chosen delivery template. "
+            "Evaluated in order, and the first matching override "
+            "determines the delivery template to use."
+        )
+    )
+
+
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
@@ -475,6 +536,10 @@ class GlobalToolsModel(BaseSettingsModel):
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
         title="Publish"
+    )
+    delivery: DeliveryToolModel = SettingsField(
+        default_factory=DeliveryToolModel,
+        title="Delivery"
     )
 
 
@@ -772,5 +837,9 @@ DEFAULT_TOOLS_VALUES = {
             "ignore_paths": [],
         },
         "comment_minimum_required_chars": 0,
-    }
+    },
+    "delivery": {
+        "enabled": False,
+        "overrides": [],
+    },
 }

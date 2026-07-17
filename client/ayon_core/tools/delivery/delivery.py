@@ -1,26 +1,26 @@
+import logging
 import os
 import platform
-import logging
 from collections import defaultdict
 
 import ayon_api
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
 from ayon_core.lib import (
-    format_file_size,
     collect_frames,
+    format_file_size,
     get_datetime_data,
 )
 from ayon_core.pipeline import Anatomy
-
-from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
-    get_format_dict,
     check_destination_path,
     deliver_single_file,
+    get_format_dict,
     get_representations_delivery_template_data,
 )
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
+from ayon_core.settings import get_project_settings
 
 
 class DeliveryOptionsDialog(QtWidgets.QDialog):
@@ -229,7 +229,21 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 self.anatomy.project_name, repre_ids
             )
         )
+        # TODO: implement overrides
+        # get settings and check if template name in override presets
+        # if it is then get template data from self.templates with
+        # template name. Then get representation rules
+        core_settings = get_project_settings(self.anatomy.project_name)
+        overrides: list[dict] = core_settings["tools"]["delivery"]["overrides"]
+        # check if template name is in overrides keys
+        override_preset = None
+        for preset in overrides:
+            if preset["name"] == template_name:
+                override_preset = preset
+                break
+
         for repre in filtered_repres:
+            explicit_template_obj = None
             repre_path = get_representation_path_with_anatomy(
                 repre, self.anatomy
             )
@@ -237,6 +251,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             template_data = template_data_by_repre_id[repre["id"]]
             if list_label:
                 template_data["list"] = {"label": list_label}
+
+            # TODO: check if representation is in override preset rules
+            # if it is then get override template data
+            # get format new explicit_template_obj and add it to args.
+            if override_preset:
+
 
             # Use temporary placeholder so we don't need to check destination
             # path per file of the representation
@@ -246,7 +266,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 self.anatomy,
                 template_data,
                 datetime_data,
-                template_name
+                template_name,
+                explicit_template_obj=explicit_template_obj,
             )
 
             report_items.update(new_report_items)
@@ -261,7 +282,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 template_data,
                 format_dict,
                 report_items,
-                self.log
+                self.log,
+                explicit_template_obj,
             ]
 
             # TODO: This will currently incorrectly detect 'resources'
@@ -283,11 +305,13 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
             for src_path, frame in sources_and_frames.items():
                 # Support {publishedFilename} token
-                template_data["publishedFilename"] = os.path.basename(
+                publish_basename = os.path.basename(
                     # Replace backslash to forward slashes so basename
                     # also resolves to filename only on POSIX
                     src_path.replace("\\", "/")
                 )
+                filename, _ = os.path.splitext(publish_basename)
+                template_data["publishedFilename"] = filename
                 args[0] = src_path
                 # Renumber frames
                 if renumber_frame and frame is not None:
