@@ -393,7 +393,6 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 m_directory_tmpl = m_directory_tmpl.replace(
                     "{file}", original_file
                 )
-        print(m_directory_tmpl)
 
         m_file_tmpl = (
             matching_rule["template_file"] or original_file
