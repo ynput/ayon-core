@@ -905,6 +905,7 @@ class IWorkfileHost(AbstractHost):
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
+        project_name: str | None = None,
         version: Optional[int] = None,
         comment: Optional[str] = None,
         description: Optional[str] = None,
@@ -926,6 +927,8 @@ class IWorkfileHost(AbstractHost):
             filepath (str): Where the current scene should be saved.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
+            project_name (str | None): Project name. Current project is used
+                if not passed.
             version (Optional[int]): Version of the workfile. Information
                 for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
@@ -935,7 +938,11 @@ class IWorkfileHost(AbstractHost):
                 for speed enhancements.
 
         """
-        project_name = self.get_current_project_name()
+        if project_name is None:
+            if prepared_data is not None and prepared_data.project_entity:
+                project_name = prepared_data.project_entity["name"]
+            else:
+                project_name = self.get_current_project_name()
         save_workfile_context = get_save_workfile_context(
             project_name,
             filepath,
@@ -986,6 +993,7 @@ class IWorkfileHost(AbstractHost):
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
+        project_name: str | None = None,
         prepared_data: Optional[OpenWorkfileOptionalData] = None,
     ) -> None:
         """Open passed filepath in the host with context.
@@ -999,12 +1007,17 @@ class IWorkfileHost(AbstractHost):
             filepath (str): Path to workfile.
             folder_entity (dict[str, Any]): Folder id.
             task_entity (dict[str, Any]): Task id.
+            project_name (str | None): Project name. Current project is used
+                if not passed.
             prepared_data (Optional[WorkfileOptionalData]): Prepared data
                 for speed enhancements.
 
         """
-        context = self.get_current_context()
-        project_name = context["project_name"]
+        if project_name is None:
+            if prepared_data is not None and prepared_data.project_entity:
+                project_name = prepared_data.project_entity["name"]
+            else:
+                project_name = self.get_current_project_name()
 
         open_workfile_context = get_open_workfile_context(
             project_name,
@@ -1297,6 +1310,7 @@ class IWorkfileHost(AbstractHost):
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
+        project_name: str | None = None,
         version: Optional[int] = None,
         comment: Optional[str] = None,
         description: Optional[str] = None,
@@ -1320,6 +1334,8 @@ class IWorkfileHost(AbstractHost):
             dst_path (str): Where the scene should be saved.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
+            project_name (str | None): Project name. Current project is used
+                if not passed.
             version (Optional[int]): Version of the workfile. Information
                 for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
@@ -1329,7 +1345,12 @@ class IWorkfileHost(AbstractHost):
                 for speed enhancements.
 
         """
-        project_name = self.get_current_project_name()
+        if project_name is None:
+            if prepared_data is not None and prepared_data.project_entity:
+                project_name = prepared_data.project_entity["name"]
+            else:
+                project_name = self.get_current_project_name()
+
         copy_workfile_context: CopyWorkfileContext = get_copy_workfile_context(
             project_name,
             src_path,
@@ -1359,6 +1380,7 @@ class IWorkfileHost(AbstractHost):
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
+        project_name: str | None = None,
         version: Optional[int] = None,
         comment: Optional[str] = None,
         description: Optional[str] = None,
@@ -1377,12 +1399,15 @@ class IWorkfileHost(AbstractHost):
             if it is not provided.
 
         Args:
-            src_project_name (str): Project name.
+            src_project_name (str): Project name where representation is
+                comming from.
             src_representation_entity (dict[str, Any]): Representation
                 entity.
             dst_path (str): Where the scene should be saved.
             folder_entity (dict[str, Any): Folder entity.
             task_entity (dict[str, Any]): Task entity.
+            project_name (str | None): Project name. Current project is used
+                if not passed.
             version (Optional[int]): Version of the workfile. Information
                 for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
@@ -1392,7 +1417,12 @@ class IWorkfileHost(AbstractHost):
                 Prepared data for speed enhancements.
 
         """
-        project_name = self.get_current_project_name()
+        if project_name is None:
+            if prepared_data is not None and prepared_data.project_entity:
+                project_name = prepared_data.project_entity["name"]
+            else:
+                project_name = self.get_current_project_name()
+
         copy_repre_workfile_context: CopyPublishedWorkfileContext = (
             get_copy_repre_workfile_context(
                 project_name,
@@ -1532,6 +1562,7 @@ class IWorkfileHost(AbstractHost):
             copy_workfile_context.dst_path,
             copy_workfile_context.folder_entity,
             copy_workfile_context.task_entity,
+            project_name=copy_workfile_context.project_name,
         )
 
     def _save_workfile_entity(
@@ -1558,7 +1589,7 @@ class IWorkfileHost(AbstractHost):
             save_workfile_info
         )
 
-        project_name = self.get_current_project_name()
+        project_name = save_workfile_context.project_name
         if not description:
             description = None
 
