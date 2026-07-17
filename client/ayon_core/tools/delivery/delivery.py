@@ -13,6 +13,7 @@ from ayon_core.lib import (
     get_datetime_data,
 )
 from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.anatomy.templates import TemplateItem
 from ayon_core.pipeline.delivery import (
     check_destination_path,
     deliver_single_file,
@@ -229,13 +230,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 self.anatomy.project_name, repre_ids
             )
         )
-        # TODO: implement overrides
-        # get settings and check if template name in override presets
-        # if it is then get template data from self.templates with
-        # template name. Then get representation rules
         core_settings = get_project_settings(self.anatomy.project_name)
-        overrides: list[dict] = core_settings["tools"]["delivery"]["overrides"]
-        # check if template name is in overrides keys
+        overrides: list[dict] = (
+            core_settings["core"]["tools"]["delivery"]["overrides"]
+        )
         override_preset = None
         for preset in overrides:
             if preset["name"] == template_name:
@@ -252,11 +250,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             if list_label:
                 template_data["list"] = {"label": list_label}
 
-            # TODO: check if representation is in override preset rules
-            # if it is then get override template data
-            # get format new explicit_template_obj and add it to args.
             if override_preset:
-
+                explicit_template_obj = self._get_explicit_template_obj(
+                    repre, override_preset, template_name
+                )
 
             # Use temporary placeholder so we don't need to check destination
             # path per file of the representation
@@ -283,7 +280,6 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 format_dict,
                 report_items,
                 self.log,
-                explicit_template_obj,
             ]
 
             # TODO: This will currently incorrectly detect 'resources'
@@ -322,7 +318,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                     # Add offset to new frame start
                     dst_frame = int(frame) + offset
                     if dst_frame < 0:
-                        msg = "Renumber frame has a smaller number than original frame"     # noqa
+                        msg = (
+                            "Renumber frame has a smaller number than "
+                            "original frame"
+                        )
                         report_items[msg].append(src_path)
                         self.log.warning("{} <{}>".format(
                             msg, dst_frame))
@@ -342,12 +341,77 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                             " formatting data."
                         )
                         template_data["frame"] = frame
-                new_report_items, uploaded = deliver_single_file(*args)
+
+                new_report_items, uploaded = deliver_single_file(
+                    *args,
+                    explicit_template_obj=explicit_template_obj
+                )
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)
 
         self.text_area.setText(self._format_report(report_items))
         self.text_area.setVisible(True)
+
+    def _get_explicit_template_obj(
+        self, repre, override_preset, template_name
+    ):
+        """Build an explicit template override for a representation."""
+        if not override_preset:
+            return None
+
+        matching_rule = None
+        for rule in override_preset["rules"]:
+            if rule["name"] == repre["name"]:
+                matching_rule = rule
+                break
+
+        if matching_rule is None:
+            return None
+
+        original_template = self.templates[template_name]
+        if (
+            not matching_rule["template_dir"]
+            and not matching_rule["template_file"]
+        ):
+            return None
+
+        original_directory = original_template["directory"]
+        original_file = original_template["file"]
+        # make sure if file or directory is in template it is
+        # wrapped into double braces so it is not formatted
+        # e.g. "{directory}" should be "{{directory}}" so it is not
+        # replaced by the format method
+        m_directory_tmpl = (
+            matching_rule["template_dir"] or original_directory
+        )
+        if m_directory_tmpl != original_directory:
+            if "{directory}" in m_directory_tmpl:
+                m_directory_tmpl = m_directory_tmpl.replace(
+                    "{directory}", original_directory
+                )
+            if "{file}" in m_directory_tmpl:
+                m_directory_tmpl = m_directory_tmpl.replace(
+                    "{file}", original_file
+                )
+        print(m_directory_tmpl)
+
+        m_file_tmpl = (
+            matching_rule["template_file"] or original_file
+        )
+        if m_file_tmpl != original_file:
+            if "{directory}" in m_file_tmpl:
+                m_file_tmpl = m_file_tmpl.replace(
+                    "{directory}", original_directory
+                )
+            if "{file}" in m_file_tmpl:
+                m_file_tmpl = m_file_tmpl.replace(
+                    "{file}", original_file
+                )
+
+        return TemplateItem(
+            self.anatomy.templates_obj,
+            {"directory": m_directory_tmpl, "file": m_file_tmpl},
+        )
 
     def _get_representation_names(self):
         """Get set of representation names for checkbox filtering."""

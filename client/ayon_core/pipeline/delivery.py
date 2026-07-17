@@ -190,6 +190,16 @@ def deliver_single_file(
     delivery_path = delivery_path.rstrip()
 
     delivery_folder = os.path.dirname(delivery_path)
+    # Remove frame number if is find in folder path
+    # usually due publishedFilename token used in directory
+    frame = anatomy_data.get("frame")
+    if frame is not None:
+        frame_pattern = f".{frame}"
+        if frame_pattern in delivery_folder:
+            delivery_folder = delivery_folder.replace(frame_pattern, "")
+            delivery_path = os.path.join(
+                delivery_folder, os.path.basename(delivery_path))
+
     if not os.path.exists(delivery_folder):
         os.makedirs(delivery_folder)
 
@@ -208,10 +218,8 @@ def deliver_sequence(
     format_dict,
     report_items,
     log,
-    *,
     has_renumbered_frame=False,
-    new_frame_start=0,
-    explicit_template_obj=None,
+    new_frame_start=0
 ):
     """ For Pype2(mainly - works in 3 too) where representation might not
         contain files.
@@ -234,9 +242,6 @@ def deliver_sequence(
         has_renumbered_frame (bool, optional): whether the frame has been
             renumbered.
         new_frame_start (int, optional): new frame start value.
-        explicit_template_obj (AnatomyTemplateItem, optional): Anatomy template
-            item to use instead of the one defined in the delivery template.
-
 
     Returns:
         (collections.defaultdict, int)
@@ -257,10 +262,7 @@ def deliver_sequence(
         report_items["Source file was not found"].append(msg)
         return report_items, 0
 
-    if explicit_template_obj is not None:
-        delivery_template = explicit_template_obj.get("path")
-    else:
-        delivery_template = anatomy.get_template_item(
+    delivery_template = anatomy.get_template_item(
             "delivery", template_name, "path", default=None
     )
     if delivery_template is None:
