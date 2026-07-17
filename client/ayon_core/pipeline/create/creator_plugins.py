@@ -29,7 +29,7 @@ from .structures import CreatedInstance, ProductTypeItem
 if TYPE_CHECKING:
     import logging
 
-    from ayon_core.host import HostBase
+    from ayon_core.host import IPublishHost
     from ayon_core.pipeline import Anatomy
     from ayon_core.lib import AbstractAttrDef, IconBase
 
@@ -411,7 +411,7 @@ class BaseCreator(ABC):
         return self.create_context.project_anatomy
 
     @property
-    def host(self) -> HostBase:
+    def host(self) -> IPublishHost:
         return self.create_context.host
 
     def get_group_label(self) -> str:
