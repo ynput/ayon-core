@@ -2,6 +2,8 @@
 """Base class for AYON addons."""
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import os
 import sys
 import time
@@ -11,7 +13,6 @@ import threading
 import collections
 import warnings
 from uuid import uuid4
-from abc import ABC, abstractmethod
 from urllib.parse import urlencode
 from types import ModuleType
 import typing
@@ -19,7 +20,7 @@ from typing import Optional, Any, Union
 
 import ayon_api
 
-from ayon_core import AYON_CORE_ROOT
+from ayon_core import AYON_CORE_ROOT, __version__
 from ayon_core.lib import (
     Logger,
     is_dev_mode_enabled,
@@ -103,41 +104,8 @@ class ProcessContext:
             print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
-class _LoadCache:
-    addons_lock = threading.Lock()
-    addons_loaded = False
-    addon_modules = []
-
-
-def load_addons(force: bool = False) -> None:
-    """Load AYON addons as python modules.
-
-    Modules does not load only classes (like in Interfaces) because there must
-    be ability to use inner code of addon and be able to import it from one
-    defined place.
-
-    With this it is possible to import addon's content from predefined module.
-
-    Args:
-        force (bool): Force to load addons even if are already loaded.
-            This won't update already loaded and used (cached) modules.
-    """
-
-    if _LoadCache.addons_loaded and not force:
-        return
-
-    if not _LoadCache.addons_lock.locked():
-        with _LoadCache.addons_lock:
-            _load_addons()
-            _LoadCache.addons_loaded = True
-    else:
-        # If lock is locked wait until is finished
-        while _LoadCache.addons_lock.locked():
-            time.sleep(0.1)
-
-
 def _get_ayon_bundle_data() -> tuple[
-    dict[str, Any], Optional[dict[str, Any]]
+    dict[str, Any], dict[str, Any] | None
 ]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
@@ -176,10 +144,20 @@ def _get_ayon_bundle_data() -> tuple[
     return studio_bundle, project_bundle
 
 
-def _get_ayon_addons_information(
-    studio_bundle: dict[str, Any],
-    project_bundle: Optional[dict[str, Any]],
-) -> dict[str, str]:
+@dataclass(frozen=True)
+class BundleAddon:
+    name: str
+    version: str
+
+
+@dataclass(frozen=True)
+class BundleInformation:
+    studio_bundle: dict[str, Any]
+    project_bundle: dict[str, Any] | None
+    addons: list[BundleAddon]
+
+
+def _load_bundle_information() -> BundleInformation:
     """Receive information about addons to use from server.
 
     Todos:
@@ -189,9 +167,10 @@ def _get_ayon_addons_information(
         Wrap versions into an object.
 
     Returns:
-        list[dict[str, Any]]: List of addon information to use.
+        BundleInformation: List of addon information to use.
 
     """
+    studio_bundle, project_bundle = _get_ayon_bundle_data()
     key_values = {
         "summary": "true",
         "bundle_name": studio_bundle["name"],
@@ -202,13 +181,22 @@ def _get_ayon_addons_information(
     query = urlencode(key_values)
 
     response = ayon_api.get(f"settings?{query}")
-    return {
-        addon["name"]: addon["version"]
+    addons = [
+        BundleAddon(name=addon["name"], version=addon["version"])
         for addon in response.data["addons"]
-    }
+    ]
+
+    _LoadCache.bundle_information = BundleInformation(
+        studio_bundle=studio_bundle,
+        project_bundle=project_bundle,
+        addons=addons,
+    )
+    return _LoadCache.bundle_information
 
 
-def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
+def _load_ayon_addons(
+    bundle_info: BundleInformation,
+) -> list[ModuleType]:
     """Load AYON addons based on information from server.
 
     This function should not trigger downloading of any addons but only use
@@ -216,17 +204,16 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
     development).
 
     Args:
-        log (logging.Logger): Logger object.
+        bundle_info (BundleInformation): Bundle information.
 
     Returns:
         list[ModuleType]: Loaded addon modules.
 
     """
-    all_addon_modules = []
-    studio_bundle, project_bundle = _get_ayon_bundle_data()
-    addons_info = _get_ayon_addons_information(studio_bundle, project_bundle)
-    if not addons_info:
-        return all_addon_modules
+    log = Logger.get_logger("AddonsLoader")
+    _LoadCache.addon_modules = []
+    if not bundle_info.addons:
+        return _LoadCache.addon_modules
 
     addons_dir = os.environ.get("AYON_ADDONS_DIR")
     if not addons_dir:
@@ -236,7 +223,7 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
     dev_addons_info = {}
     if dev_mode_enabled:
         # Get dev addons info only when dev mode is enabled
-        dev_addons_info = studio_bundle.get(
+        dev_addons_info = bundle_info.studio_bundle.get(
             "addonDevelopment", dev_addons_info
         )
 
@@ -245,7 +232,9 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
         log.warning(
             f"Addons directory does not exists. Path \"{addons_dir}\"")
 
-    for addon_name, addon_version in addons_info.items():
+    for addon in bundle_info.addons:
+        addon_name = addon.name
+        addon_version = addon.version
         # core addon does not have any addon object
         if addon_name == "core":
             continue
@@ -330,16 +319,53 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
                 f"Multiple modules ({joined_modules}) were found in"
                 f" addon '{addon_name}' in dir {addon_dir}."
             )
-        all_addon_modules.extend(addon_modules)
+        _LoadCache.addon_modules.extend(addon_modules)
 
-    return all_addon_modules
+    return _LoadCache.addon_modules
 
 
-def _load_addons():
-    log = Logger.get_logger("AddonsLoader")
+class _LoadCache:
+    lock = threading.Lock()
+    loaded = False
+    bundle_information = None
+    addon_modules = []
 
-    # Store modules to local cache
-    _LoadCache.addon_modules = _load_ayon_addons(log)
+
+def load_addons(force: bool = False) -> None:
+    """Load AYON addons as python modules.
+
+    Modules does not load only classes (like in Interfaces) because there must
+    be ability to use inner code of addon and be able to import it from one
+    defined place.
+
+    With this it is possible to import addon's content from predefined module.
+
+    Args:
+        force (bool): Force to load addons even if are already loaded.
+            This won't update already loaded and used (cached) modules.
+
+    """
+    _cache_data(force=force)
+
+
+def get_bundle_information() -> BundleInformation:
+    _cache_data()
+    return _LoadCache.bundle_information
+
+
+def _cache_data(force: bool = False) -> None:
+    if _LoadCache.loaded and not force:
+        return
+
+    if not _LoadCache.lock.locked():
+        with _LoadCache.lock:
+            _load_bundle_information()
+            _load_ayon_addons(_LoadCache.bundle_information)
+            _LoadCache.loaded = True
+    else:
+        # If lock is locked wait until is finished
+        while _LoadCache.lock.locked():
+            time.sleep(0.1)
 
 
 class AYONAddon(ABC):
@@ -526,7 +552,7 @@ class _AddonReportInfo:
         class_name: str,
         name: str,
         version: str,
-        report_value_by_label: dict[str, Optional[str]],
+        report_value_by_label: dict[str, str | None],
     ) -> None:
         self.class_name = class_name
         self.name = name
@@ -1037,6 +1063,17 @@ class AddonsManager:
             for addon in self.addons
             if addon.__class__.__name__ in available_col_names
         ]
+        addons_info.append(
+            _AddonReportInfo(
+                class_name="core",
+                name="core",
+                version=__version__,
+                report_value_by_label={
+                    label: 0.0
+                    for label in self._report.keys()
+                },
+            )
+        )
         addons_info.sort(key=lambda x: x.name)
 
         addon_name_rows = [
