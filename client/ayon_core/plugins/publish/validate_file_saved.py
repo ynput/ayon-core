@@ -5,8 +5,8 @@ import pyblish.api
 from ayon_core.host import IWorkfileHost
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.workfile import save_next_version
 from ayon_core.tools.utils.host_tools import show_workfiles
-from ayon_core.pipeline.context_tools import version_up_current_workfile
 
 
 class SaveByVersionUpAction(pyblish.api.Action):
@@ -16,7 +16,7 @@ class SaveByVersionUpAction(pyblish.api.Action):
     icon = "save"
 
     def process(self, context, plugin):
-        version_up_current_workfile()
+        save_next_version()
 
 
 class ShowWorkfilesAction(pyblish.api.Action):
