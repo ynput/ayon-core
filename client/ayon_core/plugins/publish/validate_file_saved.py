@@ -2,6 +2,8 @@ import inspect
 
 import pyblish.api
 
+from ayon_core.host import IWorkfileHost
+from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.publish import PublishValidationError
 from ayon_core.tools.utils.host_tools import show_workfiles
 from ayon_core.pipeline.context_tools import version_up_current_workfile
@@ -42,6 +44,9 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
     actions = [SaveByVersionUpAction, ShowWorkfilesAction]
 
     def process(self, context):
+        host = registered_host()
+        if not isinstance(host, IWorkfileHost):
+            return
 
         current_file = context.data["currentFile"]
         if not current_file:
