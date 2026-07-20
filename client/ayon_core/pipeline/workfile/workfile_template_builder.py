@@ -1042,9 +1042,6 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
-        if preset.execute_on_new_file:
-            return
-
         if not preset.execute_on_app_launch:
             return
 
