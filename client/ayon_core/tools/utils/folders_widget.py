@@ -292,7 +292,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     return ""
         return super().data(index, role)
 
-    def _fill_items(self, folder_items_by_id, folder_type_items, status_items=None):
+    def _fill_items(self, folder_items_by_id, folder_type_items, status_items):
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
