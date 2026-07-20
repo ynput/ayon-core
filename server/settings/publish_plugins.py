@@ -142,6 +142,7 @@ class CollectCommentPIModel(BaseSettingsModel):
 
 
 class CollectFramesFixDefModel(BaseSettingsModel):
+    """This plugin was moved to nuke integration (0.4.12)."""
     enabled: bool = SettingsField(True)
     rewrite_version_enable: bool = SettingsField(
         True,
