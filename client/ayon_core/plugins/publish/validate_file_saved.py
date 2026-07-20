@@ -43,6 +43,10 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
     def process(self, context):
         host = registered_host()
         if not isinstance(host, IWorkfileHost):
+            self.log.debug(
+                "Skipping file save validation because host does "
+                "not implement workfiles."
+            )
             return
 
         current_file = context.data["currentFile"]
