@@ -307,22 +307,14 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_type_icon_cache = {}
 
         # Build a local status-icon lookup for this fill operation
-        project_statuses = {
-            s.name: s for s in (status_items or [])
-        }
-        statuses_used = {
-            folder_item.status
-            for folder_item in folder_items_by_id.values()
-        }
         status_icon_by_name = {}
-        for status_name in statuses_used:
-            status = project_statuses.get(status_name)
+        for status in status_items:
             icon = None
-            if status is not None and status.icon:
+            if status.icon:
                 icon = get_qt_icon(
                     MaterialSymbolsIcon(status.icon, color=status.color)
                 )
-            status_icon_by_name[status_name] = icon
+            status_icon_by_name[status.name] = icon
 
         self._has_content = True
 
