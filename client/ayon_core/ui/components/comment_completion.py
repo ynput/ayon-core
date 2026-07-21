@@ -30,6 +30,12 @@ from .user_image import AYUserImage
 # block-level (fenced code block) highlighting.  Defined once here so
 # that both the highlighter and ``apply_code_block_backgrounds()`` always
 # use the same value.
+COMPLETER_BG = QColor("#1f2430")
+COMPLETER_ROW_BG = QColor("#252b39")
+COMPLETER_ROW_SELECTED_BG = QColor("#2f6fed")
+COMPLETER_TEXT = QColor("#e6eaf2")
+COMPLETER_TEXT_SELECTED = QColor("#ffffff")
+COMPLETER_BORDER = "#3a4257"
 CODE_BG: QColor = QColor("#1e1e1e")
 CODE_FG: QColor = QColor("#eeeeee")
 
@@ -79,9 +85,11 @@ class UserCompleterDelegate(QStyledItemDelegate):
 
         # Draw background
         if option.state & QStyle.StateFlag.State_Selected:
-            painter.fillRect(option.rect, option.palette.light())
+            painter.fillRect(option.rect, COMPLETER_ROW_SELECTED_BG)
+            painter.setPen(COMPLETER_TEXT_SELECTED)
         else:
-            painter.fillRect(option.rect, option.palette.midlight())
+            painter.fillRect(option.rect, COMPLETER_ROW_BG)
+            painter.setPen(COMPLETER_TEXT)
 
         # Draw user icon
         try:
