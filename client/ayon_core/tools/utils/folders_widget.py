@@ -191,8 +191,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         status_items = []
         if hasattr(self._controller, "get_project_status_items"):
-            status_items = (
-                self._controller.get_project_status_items(project_name)
+            status_items = self._controller.get_project_status_items(
+                project_name, sender=FOLDERS_MODEL_SENDER_NAME
             )
         return folder_items, folder_type_items, status_items
 
