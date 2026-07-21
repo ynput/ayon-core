@@ -326,18 +326,25 @@ class TasksQtModel(QtGui.QStandardItemModel):
             root_item.appendRows(new_items)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.column() == 1:
-            index = index.sibling(index.row(), 0)
-            if role == QtCore.Qt.DecorationRole:
-                role = TASK_STATUS_ICON_ROLE
-            elif role == QtCore.Qt.ToolTipRole:
-                role = TASK_STATUS_ROLE
-            elif role < QtCore.Qt.UserRole:
-                return None
+        if not index.isValid():
+            return None
+
+        if index.column() != 0:
+            return self._get_index_data(index, role)
+        return super().data(index, role)
+
+    def _get_index_data(self, index, role):
+        index = index.sibling(index.row(), 0)
+        if role == QtCore.Qt.DecorationRole:
+            role = TASK_STATUS_ICON_ROLE
+        elif role == QtCore.Qt.ToolTipRole:
+            role = TASK_STATUS_ROLE
+        elif role < QtCore.Qt.UserRole:
+            return None
         return super().data(index, role)
 
     def flags(self, index):
-        if index.column() == 1:
+        if index.isValid() and index.column() != 0:
             index = index.sibling(index.row(), 0)
         return super().flags(index)
 
