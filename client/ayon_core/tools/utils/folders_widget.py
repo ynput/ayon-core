@@ -385,6 +385,11 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._is_refreshing = False
         self.refreshed.emit()
 
+    def flags(self, index):
+        if index.column() == 1:
+            index = index.sibling(index.row(), 0)
+        return super().flags(index)
+
 
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self):

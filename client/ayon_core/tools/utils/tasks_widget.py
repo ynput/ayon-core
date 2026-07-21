@@ -336,6 +336,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 return None
         return super().data(index, role)
 
+    def flags(self, index):
+        if index.column() == 1:
+            index = index.sibling(index.row(), 0)
+        return super().flags(index)
+
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
 
