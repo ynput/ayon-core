@@ -19,7 +19,6 @@ from ayon_core.lib import (
 from ayon_core.pipeline import publish
 
 
-
 class ExtractOTIOTrimmingVideo(publish.Extractor):
     """
     Trimming video file longer then required lenght
