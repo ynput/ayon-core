@@ -289,7 +289,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 if role == QtCore.Qt.ToolTipRole:
                     return super().data(folder_index, FOLDER_STATUS_TOOLTIP_ROLE)
                 if role == QtCore.Qt.DisplayRole:
-                    return ""
+        if index.column() == 1:
+            index = self.index(index.row(), 0, index.parent())
+            if role == QtCore.Qt.DecorationRole:
+                role = FOLDER_STATUS_ICON_ROLE
+            elif role == QtCore.Qt.ToolTipRole:
+                role = FOLDER_STATUS_TOOLTIP_ROLE
+            elif role == QtCore.Qt.DisplayRole:
+                role = FOLDER_STATUS_ROLE
+            elif role < QtCore.Qt.UserRole:
+                return None
         return super().data(index, role)
 
     def _fill_items(self, folder_items_by_id, folder_type_items, status_items):
