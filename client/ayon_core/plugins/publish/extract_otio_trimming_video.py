@@ -18,7 +18,6 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import publish
 
-FW_KEY = "__OTIO_TRIM_VIDEO__"
 
 
 class ExtractOTIOTrimmingVideo(publish.Extractor):
@@ -31,9 +30,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
     families = ["otio.trim.video"]
 
     def process(self, instance):
-        # Mark instance for 'ExtractOTIOTrimmingVideoOld'
-        instance.data[FW_KEY] = True
-
         self.staging_dir = self.staging_dir(instance)
         otio_trim_range = instance.data["otioTrimmingRange"]
         representations = instance.data["representations"]
@@ -150,15 +146,3 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         )
         # create path to destination
         return os.path.join(self.staging_dir, output_file)
-
-
-class ExtractOTIOTrimmingVideoOld(publish.Extractor):
-    order = pyblish.api.ExtractorOrder + 0.000001
-    label = "Extract OTIO trim longer video (old)"
-    families = ["trim"]
-    hosts = ["resolve", "hiero", "flame"]
-
-    def process(self, instance):
-        if instance.data.pop(FW_KEY, False) is True:
-            return
-        super().process(instance)

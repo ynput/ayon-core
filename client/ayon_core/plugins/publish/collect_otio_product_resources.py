@@ -220,7 +220,7 @@ class CollectOTIOProductResources(
             self.staging_dir = dirname
             if trimmed_duration < available_duration:
                 self.log.debug("Ready for Trimming")
-                instance.data["families"].append("trim")
+                instance.data["families"].append("otio.trim.video")
                 instance.data["otioTrimmingRange"] = trimmed_media_range_h
                 _trim = True
 
