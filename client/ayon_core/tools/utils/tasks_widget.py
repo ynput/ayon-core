@@ -288,7 +288,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
             for task_type_item in task_type_items
         }
         task_type_icon_cache = {}
-        root_item = self.invisibleRootItem()
         new_items = []
         new_names = set()
         for task_item in task_items:
@@ -316,6 +315,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(icon, QtCore.Qt.DecorationRole)
             status_icon = status_icon_by_name.get(task_item.status)
             item.setData(status_icon, TASK_STATUS_ICON_ROLE)
+
+        root_item = self.invisibleRootItem()
 
         for name in set(self._items_by_name) - new_names:
             item = self._items_by_name.pop(name)
@@ -639,9 +640,7 @@ class TasksWidget(QtWidgets.QWidget):
 
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
-        for index in selection_model.selectedIndexes():
-            if index.column() != 0:
-                index = index.sibling(index.row(), 0)
+        for index in selection_model.selectedRows():
             task_id = index.data(ITEM_ID_ROLE)
             task_name = index.data(ITEM_NAME_ROLE)
             task_type = index.data(TASK_TYPE_ROLE)

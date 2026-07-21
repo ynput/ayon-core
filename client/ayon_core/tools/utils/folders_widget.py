@@ -189,9 +189,11 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 project_name, FOLDERS_MODEL_SENDER_NAME
             )
 
-        status_items = (
-            self._controller.get_project_status_items(project_name)
-        )
+        status_items = []
+        if hasattr(self._controller, "get_project_status_items"):
+            status_items = (
+                self._controller.get_project_status_items(project_name)
+            )
         return folder_items, folder_type_items, status_items
 
     def _on_refresh_thread(self, thread_id):
