@@ -276,9 +276,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
         item.setData(icon, QtCore.Qt.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
-        status_name = folder_item.status or ""
-        item.setData(status_icon_by_name.get(status_name), FOLDER_STATUS_ICON_ROLE)
-        item.setData(status_name, FOLDER_STATUS_TOOLTIP_ROLE)
+        status_icon = status_icon_by_name.get(folder_item.status)
+        item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
+        item.setData(folder_item.status, FOLDER_STATUS_TOOLTIP_ROLE)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if index.isValid() and index.column() == 1:
