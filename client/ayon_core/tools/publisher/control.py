@@ -214,19 +214,6 @@ class PublisherController(
         """Current instances in create context."""
         return self._create_model.get_instance_items()
 
-    # --- Legacy for TrayPublisher ---
-    @property
-    def instances(self):
-        return self.get_instance_items()
-
-    def get_instances(self):
-        return self.get_instance_items()
-
-    def get_instances_by_id(self, *args, **kwargs):
-        return self.get_instance_items_by_id(*args, **kwargs)
-
-    # ---
-
     def get_instance_items_by_id(self, instance_ids=None):
         return self._create_model.get_instance_items_by_id(instance_ids)
 
@@ -476,6 +463,32 @@ class PublisherController(
     ):
         return self._create_model.revert_instances_publish_attr_values(
             instance_ids, plugin_name, key
+        )
+
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        self._create_model.trigger_pre_create_button_callback(
+            identifier, button_name
+        )
+
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        self._create_model.trigger_create_button_callback(
+            button_name, instance_ids
+        )
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        self._create_model.trigger_publish_button_callback(
+            plugin_name, button_name, instance_ids
         )
 
     def get_product_name(
