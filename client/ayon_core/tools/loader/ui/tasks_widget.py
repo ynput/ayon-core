@@ -420,7 +420,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
         item_ids = set()
-        for index in selection_model.selectedIndexes():
+        for index in selection_model.selectedRows():
             item_id = index.data(ITEM_ID_ROLE)
             if item_id is None:
                 continue
