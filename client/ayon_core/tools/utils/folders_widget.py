@@ -716,9 +716,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def _get_selected_item_value(self, role):
         selection_model = self._folders_view.selectionModel()
-        for index in selection_model.selectedIndexes():
-            if index.column() != 0:
-                index = index.sibling(index.row(), 0)
+        for index in selection_model.selectedRows():
             item_id = index.data(role)
             if item_id is not None:
                 return item_id
