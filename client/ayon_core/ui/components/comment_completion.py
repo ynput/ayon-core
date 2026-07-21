@@ -297,7 +297,7 @@ def on_completer_activated(
     selected_user = _get_mentioned_user(text_edit, text)
     if not selected_user:
         return
-    mention_text = f"({selected_user.full_name})[user:{selected_user.name}]"
+    mention_text = f"[{selected_user.full_name}](user:{selected_user.name})"
     # Replace from '@' to cursor with serialized mention markup.
     cursor.setPosition(block.position() + at_pos)
     cursor.setPosition(
@@ -375,7 +375,7 @@ class MentionHighlighter(QSyntaxHighlighter):
     _P_TASK = re.compile(r"@@@\w+( \w+)?")
     _P_VERSION = re.compile(r"@@(?!@)\w+( \w+)?")
     _P_USER = re.compile(r"@(?!@)\w+( \w+)?")
-    _P_USER_TAG = re.compile(r"\([^)]+\)\[user:[^\]]+\]")
+    _P_USER_TAG = re.compile(r"\[[^\]]+\]\(user:[^\)]+\)")
     _P_RAW_LINK = re.compile(r"https?://\S+")
     # Inline code: single backtick pair on the same line.
     _P_CODE_INLINE = re.compile(r"`[^`\n]+`")
@@ -490,7 +490,7 @@ class MentionHighlighter(QSyntaxHighlighter):
                 length = len(full_match.split()[0])
             self.setFormat(m.start(), length, self._mention_fmt)
 
-        # Serialized user mentions (Full Name)[user:username]
+        # Serialized user mentions [Full Name](user:username)
         for m in self._P_USER_TAG.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
 
