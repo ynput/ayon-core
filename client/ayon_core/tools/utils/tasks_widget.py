@@ -26,6 +26,7 @@ ITEM_NAME_ROLE = QtCore.Qt.UserRole + 3
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
 TASK_TYPE_ORDER_ROLE = QtCore.Qt.UserRole + 5
 TASK_STATUS_ROLE = QtCore.Qt.UserRole + 6
+TASK_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 7
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
@@ -218,9 +219,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 project_name, sender=TASKS_MODEL_SENDER_NAME
             )
 
-        status_items = (
-            self._controller.get_project_status_items(project_name)
-        )
+        status_items = []
+        if hasattr(self._controller, "get_project_status_items"):
+            status_items = (
+                self._controller.get_project_status_items(project_name)
+            )
         return task_items, task_type_items, status_items
 
     @classmethod
@@ -271,20 +274,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         self._remove_invalid_items()
 
-        project_statuses = {
-            status_col_item.name: status_col_item
-            for status_col_item in status_items
-        }
-        statuses_used = {task_item.status for task_item in task_items}
         status_icon_by_name = {}
-        for status_name in statuses_used:
-            status = project_statuses.get(status_name)
+        for status in status_items:
             icon = None
-            if status is not None and status.icon:
+            if status.icon:
                 icon = get_qt_icon(
                     MaterialSymbolsIcon(status.icon, color=status.color)
                 )
-            status_icon_by_name[status_name] = icon
+            status_icon_by_name[status.name] = icon
 
         task_type_item_by_name = {
             task_type_item.name: task_type_item
@@ -301,16 +298,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
             if item is None:
                 item = QtGui.QStandardItem()
                 item.setEditable(False)
-                status_col_item = QtGui.QStandardItem()
-                status_col_item.setEditable(False)
-                new_items.append([item, status_col_item])
+                new_items.append(item)
                 self._items_by_name[name] = item
-            else:
-                status_col_item = root_item.child(item.row(), 1)
-                if status_col_item is None:
-                    status_col_item = QtGui.QStandardItem()
-                    status_col_item.setEditable(False)
-                    root_item.setChild(item.row(), 1, status_col_item)
 
             icon = self._get_task_item_icon(
                 task_item,
@@ -325,23 +314,26 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(task_item.task_type_order, TASK_TYPE_ORDER_ROLE)
             item.setData(task_item.status, TASK_STATUS_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
-
-            # Status column: icon + tooltip
-            if status_col_item is not None:
-                status_name = task_item.status or ""
-                status_col_item.setData(
-                    status_icon_by_name.get(status_name),
-                    QtCore.Qt.DecorationRole,
-                )
-                status_col_item.setData(status_name, QtCore.Qt.ToolTipRole)
+            status_icon = status_icon_by_name.get(task_item.status)
+            item.setData(status_icon, TASK_STATUS_ICON_ROLE)
 
         for name in set(self._items_by_name) - new_names:
             item = self._items_by_name.pop(name)
             root_item.removeRow(item.row())
 
         if new_items:
-            for row in new_items:
-                root_item.appendRow(row)
+            root_item.appendRows(new_items)
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if index.column() == 1:
+            index = self.index(index.row(), 0, index.parent())
+            if role == QtCore.Qt.DecorationRole:
+                role = TASK_STATUS_ICON_ROLE
+            elif role == QtCore.Qt.ToolTipRole:
+                role = TASK_STATUS_ROLE
+            elif role < QtCore.Qt.UserRole:
+                return None
+        return super().data(index, role)
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.

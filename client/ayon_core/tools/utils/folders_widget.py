@@ -32,7 +32,6 @@ FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
 FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 5
 FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 6
-FOLDER_STATUS_TOOLTIP_ROLE = QtCore.Qt.UserRole + 7
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
@@ -137,7 +136,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         if not project_name:
             self._last_project_name = project_name
-            self._fill_items({}, {})
+            self._fill_items({}, {}, [])
             self._current_refresh_thread = None
             return
 
@@ -254,7 +253,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_item,
         folder_type_item_by_name,
         folder_type_icon_cache,
-        status_icon_by_name=None,
+        status_icon_by_name                 ,
     ):
         """
         Args:
@@ -278,24 +277,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
         status_icon = status_icon_by_name.get(folder_item.status)
         item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
-        item.setData(folder_item.status, FOLDER_STATUS_TOOLTIP_ROLE)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.isValid() and index.column() == 1:
-            folder_index = self.index(index.row(), 0, index.parent())
-            if folder_index.isValid():
-                if role == QtCore.Qt.DecorationRole:
-                    return super().data(folder_index, FOLDER_STATUS_ICON_ROLE)
-                if role == QtCore.Qt.ToolTipRole:
-                    return super().data(folder_index, FOLDER_STATUS_TOOLTIP_ROLE)
-                if role == QtCore.Qt.DisplayRole:
         if index.column() == 1:
             index = self.index(index.row(), 0, index.parent())
             if role == QtCore.Qt.DecorationRole:
                 role = FOLDER_STATUS_ICON_ROLE
             elif role == QtCore.Qt.ToolTipRole:
-                role = FOLDER_STATUS_TOOLTIP_ROLE
-            elif role == QtCore.Qt.DisplayRole:
                 role = FOLDER_STATUS_ROLE
             elif role < QtCore.Qt.UserRole:
                 return None
