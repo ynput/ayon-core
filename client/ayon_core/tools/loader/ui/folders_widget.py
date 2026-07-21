@@ -175,7 +175,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
 class LoaderFoldersModel(FoldersQtModel):
     def __init__(self, *args, **kwargs):
-        super(LoaderFoldersModel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._colored_items = set()
 
@@ -243,7 +243,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(LoaderFoldersWidget, self).__init__(parent)
+        super().__init__(parent)
 
         folders_view = DeselectableTreeView(self)
         folders_view.setHeaderHidden(True)
@@ -259,6 +259,14 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
 
         folders_view.setModel(folders_proxy_model)
         folders_view.setItemDelegate(folders_label_delegate)
+
+        header = folders_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(1, 50)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -353,7 +361,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
     def _get_selected_item_ids(self):
         selection_model = self._folders_view.selectionModel()
         item_ids = []
-        for index in selection_model.selectedIndexes():
+        for index in selection_model.selectedRows():
             item_id = index.data(FOLDER_ID_ROLE)
             if item_id is not None:
                 item_ids.append(item_id)
