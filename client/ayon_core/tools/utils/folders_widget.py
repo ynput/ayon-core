@@ -349,7 +349,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 else:
                     items_by_id[child_id] = child_item
 
-            new_rows = []
+            new_items = []
             for item_id in folder_ids_to_add:
                 folder_item = folder_items[item_id]
                 item = items_by_id.get(item_id)
@@ -368,24 +368,15 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     status_icon_by_name,
                 )
                 if is_new:
-                    placeholder = QtGui.QStandardItem()
-                    placeholder.setEditable(False)
-                    new_rows.append([item, placeholder])
+                    item.setColumnCount(self.columnCount())
+                    new_items.append(item)
                 self._items_by_id[item_id] = item
                 self._parent_id_by_id[item_id] = parent_id
 
                 hierarchy_queue.append((item, item_id))
 
-            if new_rows:
-                start_row = parent_item.rowCount()
-                parent_item.insertRows(start_row, len(new_rows))
-                for row_offset, row_items in enumerate(new_rows):
-                    for col_idx, row_item in enumerate(row_items):
-                        parent_item.setChild(
-                            start_row + row_offset,
-                            col_idx,
-                            row_item,
-                        )
+            if new_items:
+                parent_item.appendRows(new_items)
 
         for item_id in ids_to_remove:
             self._items_by_id.pop(item_id)
