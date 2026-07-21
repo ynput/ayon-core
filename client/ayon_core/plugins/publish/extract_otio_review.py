@@ -28,6 +28,8 @@ from ayon_core.pipeline import (
     publish,
 )
 
+FW_KEY = "__OTIO_REVIEW__"
+
 
 class ExtractOTIOReview(
     publish.Extractor,
@@ -51,8 +53,7 @@ class ExtractOTIOReview(
 
     order = api.ExtractorOrder - 0.45
     label = "Extract OTIO review"
-    families = ["review"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.clip.review"]
 
     # plugin default attributes
     to_width = 1280
@@ -68,6 +69,8 @@ class ExtractOTIOReview(
             is_clip_from_media_sequence
         )
 
+        # Mark instance for 'ExtractOTIOReviewOld'
+        instance.data[FW_KEY] = True
         # TODO refactor from using instance variable
         self.temp_file_head = self._get_folder_name_based_prefix(instance)
 
@@ -654,3 +657,15 @@ class ExtractOTIOReview(
         self.log.debug(f"file_prefix::{file_prefix}")
 
         return file_prefix
+
+
+class ExtractOTIOReviewOld(ExtractOTIOReview):
+    order = ExtractOTIOReview.order + 0.00001
+    label = "Extract OTIO review (old)"
+    families = ["review"]
+    hosts = ["resolve", "hiero", "flame"]
+
+    def process(self, instance):
+        if instance.data.pop(FW_KEY, False) is True:
+            return
+        super().process(instance)

@@ -15,16 +15,18 @@ from pprint import pformat
 
 import pyblish.api
 
+FW_KEY = "__OTIO_REVIEW_TRACK_PROCESSED__"
 
-class CollectOtioReview(pyblish.api.InstancePlugin):
-    """Get matching otio track from defined review layer"""
 
-    label = "Collect OTIO Review"
+class CollectOTIOReviewTrack(pyblish.api.InstancePlugin):
+    label = "Collect OTIO Review Track"
     order = pyblish.api.CollectorOrder - 0.078
-    families = ["clip"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.review.track"]
 
     def process(self, instance):
+        # Mark instance for 'CollectOtioReview'
+        instance.data[FW_KEY] = True
+
         # Not all hosts can import this module.
         import opentimelineio as otio
 
@@ -147,3 +149,15 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
             "_ instance.data: {}".format(pformat(instance.data)))
         self.log.debug(
             "_ families: {}".format(instance.data["families"]))
+
+
+class CollectOtioReview(CollectOTIOReviewTrack):
+    label = "Collect OTIO Review (old)"
+    order = CollectOTIOReviewTrack.order + 0.00001
+    families = ["clip"]
+    hosts = ["resolve", "hiero", "flame"]
+
+    def process(self, instance):
+        if instance.data.pop(FW_KEY, False) is True:
+            return
+        super().process(instance)
