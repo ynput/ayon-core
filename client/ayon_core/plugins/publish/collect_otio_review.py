@@ -160,4 +160,5 @@ class CollectOtioReview(CollectOTIOReviewTrack):
     def process(self, instance):
         if instance.data.pop(FW_KEY, False) is True:
             return
+        self.log.debug("Using old CollectOtioReview plugin")
         super().process(instance)

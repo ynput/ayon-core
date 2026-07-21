@@ -223,4 +223,5 @@ class CollectOTIORangesOld(CollectOTIORanges):
     def process(self, instance):
         if instance.data.pop(FW_KEY, False) is True:
             return
+        self.log.debug("Using old CollectOTIORanges plugin")
         super().process(instance)
