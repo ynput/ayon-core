@@ -89,21 +89,20 @@ class CollectAddons(pyblish.api.ContextPlugin):
                 label,
             ))
 
-        server_items = []
+        items = []
         for addon_name in server_only_addons:
             server_version = server_version_by_name[addon_name]
             name_width = max(name_width, len(addon_name))
             server_version_width = max(
                 server_version_width, len(server_version)
             )
-            server_items.append(AddonInfo(
+            items.append(AddonInfo(
                 addon_name,
                 None,
                 server_version,
             ))
 
         items.sort(key=lambda x: x.name)
-        server_items.sort(key=lambda x: x.name)
 
         title = (
             f"{title_name:<{name_width}}"
@@ -140,12 +139,6 @@ class CollectAddons(pyblish.api.ContextPlugin):
             item.get_row(name_width, version_width, server_version_width)
             for item in items
         )
-        if server_items:
-            lines.append(sep_line)
-            lines.extend(
-                item.get_row(name_width, version_width, server_version_width)
-                for item in server_items
-            )
-            lines.append(sep_line)
+        lines.append(sep_line)
 
         self.log.debug("\n".join(lines))
