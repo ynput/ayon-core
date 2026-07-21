@@ -261,7 +261,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
         task_type_icon_cache[task_item.task_type] = icon
         return icon
 
-
     def _fill_data_from_thread(self, thread):
         task_items, task_type_items, status_items = thread.get_result()
         # Task items are refreshed
@@ -297,6 +296,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             if item is None:
                 item = QtGui.QStandardItem()
                 item.setEditable(False)
+                item.setColumnCount(self.columnCount())
                 new_items.append(item)
                 self._items_by_name[name] = item
 
