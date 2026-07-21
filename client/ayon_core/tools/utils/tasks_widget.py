@@ -39,14 +39,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
     _default_task_icon = None
     refreshed = QtCore.Signal()
     project_changed = QtCore.Signal()
-    column_labels = ["Tasks"]
+    column_labels = ["Tasks", "Status"]
 
     def __init__(self, controller):
         super().__init__()
 
-        self.setColumnCount(2)
-        self.setHeaderData(0, QtCore.Qt.Horizontal, "Tasks")
-        self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
+        self.setColumnCount(len(self.column_labels))
+        for idx, label in enumerate(self.column_labels):
+            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
         self._controller = controller
 
