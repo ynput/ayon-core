@@ -89,7 +89,6 @@ class CollectAddons(pyblish.api.ContextPlugin):
                 label,
             ))
 
-        items = []
         for addon_name in server_only_addons:
             server_version = server_version_by_name[addon_name]
             name_width = max(name_width, len(addon_name))
