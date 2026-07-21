@@ -282,7 +282,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if index.column() == 1:
-            index = self.index(index.row(), 0, index.parent())
+            index = index.sibling(index.row(), 0)
             if role == QtCore.Qt.DecorationRole:
                 role = FOLDER_STATUS_ICON_ROLE
             elif role == QtCore.Qt.ToolTipRole:
