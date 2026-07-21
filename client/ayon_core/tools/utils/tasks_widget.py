@@ -344,8 +344,15 @@ class TasksQtModel(QtGui.QStandardItemModel):
         return super().data(index, role)
 
     def flags(self, index):
-        if index.isValid() and index.column() != 0:
-            index = index.sibling(index.row(), 0)
+        if not index.isValid():
+            return QtCore.Qt.NoItemFlags
+
+        if index.column() != 0:
+            return self._get_index_flags(index)
+        return super().flags(index)
+
+    def _get_index_flags(self, index):
+        index = index.sibling(index.row(), 0)
         return super().flags(index)
 
     def _on_refresh_thread(self, thread_id):

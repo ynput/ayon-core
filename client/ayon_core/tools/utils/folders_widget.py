@@ -281,14 +281,33 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.column() == 1:
-            index = index.sibling(index.row(), 0)
-            if role == QtCore.Qt.DecorationRole:
-                role = FOLDER_STATUS_ICON_ROLE
-            elif role == QtCore.Qt.ToolTipRole:
-                role = FOLDER_STATUS_ROLE
-            elif role < QtCore.Qt.UserRole:
-                return None
+        if not index.isValid():
+            return None
+
+        if index.column() != 0:
+            return self._get_index_data(index, role)
+
+        return super().data(index, role)
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.NoItemFlags
+        if index.column() != 0:
+            return self._get_index_flags(index)
+        return super().flags(index)
+    
+    def _get_index_flags(self, index):
+        index = index.sibling(index.row(), 0)
+        return super().flags(index)
+
+    def _get_index_data(self, index, role):
+        index = index.sibling(index.row(), 0)
+        if role == QtCore.Qt.DecorationRole:
+            role = FOLDER_STATUS_ICON_ROLE
+        elif role == QtCore.Qt.ToolTipRole:
+            role = FOLDER_STATUS_ROLE
+        elif role < QtCore.Qt.UserRole:
+            return None
         return super().data(index, role)
 
     def _fill_items(self, folder_items_by_id, folder_type_items, status_items):
@@ -384,11 +403,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         self._is_refreshing = False
         self.refreshed.emit()
-
-    def flags(self, index):
-        if index.column() == 1:
-            index = index.sibling(index.row(), 0)
-        return super().flags(index)
 
 
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
