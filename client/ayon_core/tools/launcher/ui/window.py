@@ -187,7 +187,7 @@ class LauncherWindow(AYContainer):
         self._page_slide_anim = page_slide_anim
 
         hierarchy_page.setVisible(not self._is_on_projects_page)
-        self.resize(920, 740)
+        self.resize(1100, 740)
 
     def showEvent(self, event):
         super().showEvent(event)
