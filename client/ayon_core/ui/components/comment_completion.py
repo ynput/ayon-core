@@ -401,8 +401,6 @@ class MentionHighlighter(QSyntaxHighlighter):
         pal = get_ayon_style().model.base_palette
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
-        self._plain_fmt = QTextCharFormat()
-        self._plain_fmt.setForeground(pal.text())
         self._code_fmt = None
 
     def update_user_list(self, user_list: list) -> None:
