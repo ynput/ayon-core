@@ -116,11 +116,9 @@ class LoaderTasksQtModel(TasksQtModel):
         task_items = self._controller.get_task_items(
             project_name, folder_ids, sender=TASKS_MODEL_SENDER_NAME
         )
-        task_type_items = {}
-        if hasattr(self._controller, "get_task_type_items"):
-            task_type_items = self._controller.get_task_type_items(
-                project_name, sender=TASKS_MODEL_SENDER_NAME
-            )
+        task_type_items = self._controller.get_task_type_items(
+            project_name, sender=TASKS_MODEL_SENDER_NAME
+        )
         folder_ids = {
             task_item.parent_id
             for task_item in task_items
