@@ -15,14 +15,14 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
 )
-
-from .models import RecursiveSortFilterProxyModel
-from .lib import RefreshThread, get_qt_icon
 from ayon_core.ui.components import (
     AYCheckBox,
     AYLineEdit,
     AYTreeView
 )
+
+from .models import RecursiveSortFilterProxyModel
+from .lib import RefreshThread, get_qt_icon
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
