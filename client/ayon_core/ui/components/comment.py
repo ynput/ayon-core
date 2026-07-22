@@ -391,7 +391,9 @@ class AYCommentField(AYTextEdit):
             if full_name is None:
                 return f"[@{label}](user:{user_id})"
 
-            split_result = self._split_label_around_user_token(label, full_name)
+            split_result = self._split_label_around_user_token(
+                label, full_name
+            )
             if split_result is None:
                 return f"[@{label}](user:{user_id})"
 
@@ -457,7 +459,9 @@ class AYCommentField(AYTextEdit):
             if full_name is None:
                 return f"[{label}](user:{user_id})"
 
-            split_result = self._split_label_around_user_token(label, full_name)
+            split_result = self._split_label_around_user_token(
+                label, full_name
+            )
             if split_result is None:
                 return f"[{label}](user:{user_id})"
 
