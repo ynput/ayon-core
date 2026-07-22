@@ -485,7 +485,6 @@ class MentionHighlighter(QSyntaxHighlighter):
             self.setFormat(0, len(text), code_fmt)
             return
 
-        self.setFormat(0, len(text), self._plain_fmt)
         # ── Mentions and URLs (applied before inline code) ───────────────
         users = {u.full_name for u in self._user_list}
 
