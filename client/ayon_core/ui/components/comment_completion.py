@@ -13,7 +13,6 @@ from qtpy.QtGui import (
     QTextBlockFormat,
     QTextCharFormat,
     QTextCursor,
-    QTextDocument,
 )
 from qtpy.QtWidgets import (
     QCompleter,
@@ -396,7 +395,6 @@ class MentionHighlighter(QSyntaxHighlighter):
     _P_RAW_LINK = re.compile(r"https?://\S+")
     # Inline code: single backtick pair on the same line.
     _P_CODE_INLINE = re.compile(r"`[^`\n]+`")
-    _P_PLAIN = re.compile(r"[^@`\n]+")  # any text not part of a mention or code
 
     def __init__(self, document, user_list: list) -> None:
         super().__init__(document)
