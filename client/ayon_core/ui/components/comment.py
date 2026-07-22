@@ -213,9 +213,6 @@ MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
 USER_MENTION_PATTERN = re.compile(
 r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
 )
-USER_MENTION_DISPLAY_PATTERN = re.compile(
-r"\[@(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
-)
 NESTED_USER_MENTION_PATTERN = re.compile(
     r"\[\[(?P<label>[^\]]+)\]\(user:(?P<inner_id>[^)]+)\)"
     r"(?P<tail>[^\]]*)\]\(user:(?P<outer_id>[^)]+)\)"
@@ -351,26 +348,54 @@ class AYCommentField(AYTextEdit):
     def _split_label_around_user_token(
         label: str,
         full_name: str,
+        user_id: str,
     ) -> tuple[str, str] | None:
         """Split label into prefix/suffix around a user mention token.
-
         Supports malformed labels like:
-        - "1234 @Kayla"
-        - "Kayla 1234"
-        - "Kayla"
+        - "1234 @Joe"
+        - "1234 @joe"
+        - "Joe 1234"
+        - "Joe"
+
+        Args:
+            label: The label text from the markdown link (without brackets)
+            full_name: The full name of the user to match against
+            user_id: The user id of the mention target
+
+        Returns:
+            A tuple of (prefix, suffix) if a match is found, or None if no
+            match is found.
         """
-        if label == full_name:
-            return "", ""
+        candidates = (
+            f"@{full_name}",
+            f"@{user_id}",
+            full_name,
+            user_id,
+        )
+        lowered_label = label.lower()
 
-        mention_token = f"@{full_name}"
-        token_index = label.lower().find(mention_token.lower())
-        if token_index != -1:
-            prefix = label[:token_index]
-            suffix = label[token_index + len(mention_token):]
+        best_index: int | None = None
+        best_len = 0
+        for token in candidates:
+            token = token.strip()
+            if not token:
+                continue
+            index = lowered_label.find(token.lower())
+            if index == -1:
+                continue
+
+            if (
+                best_index is None
+                or index < best_index
+                or (index == best_index and len(token) > best_len)
+            ):
+                best_index = index
+                best_len = len(token)
+
+        if best_index is not None:
+            prefix = label[:best_index]
+            suffix = label[best_index + best_len:]
             return prefix, suffix
-
-        if label.startswith(full_name):
-            return "", label[len(full_name):]
 
         return None
 
@@ -392,7 +417,7 @@ class AYCommentField(AYTextEdit):
                 return f"[@{label}](user:{user_id})"
 
             split_result = self._split_label_around_user_token(
-                label, full_name
+                label, full_name, user_id
             )
             if split_result is None:
                 return f"[@{label}](user:{user_id})"
@@ -457,19 +482,19 @@ class AYCommentField(AYTextEdit):
             user_id = match.group("id")
             full_name = self._get_user_full_name_by_id(user_id)
             if full_name is None:
-                return f"[{label}](user:{user_id})"
+                return f"[@{label}](user:{user_id})"
 
             split_result = self._split_label_around_user_token(
-                label, full_name
+                label, full_name, user_id
             )
             if split_result is None:
-                return f"[{label}](user:{user_id})"
+                return f"[@{label}](user:{user_id})"
 
             prefix, suffix = split_result
-            return f"{prefix}[{full_name}](user:{user_id}){suffix}"
+            return f"{prefix}[@{full_name}](user:{user_id}){suffix}"
 
         md = normalize_nested_mentions(md)
-        return USER_MENTION_DISPLAY_PATTERN.sub(repl, md)
+        return USER_MENTION_PATTERN.sub(repl, md)
 
     def _setup_checkbox_handler(self) -> None:
         """Initialize checkbox handler if not already done."""
