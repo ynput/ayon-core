@@ -482,16 +482,17 @@ class AYCommentField(AYTextEdit):
             user_id = match.group("id")
             full_name = self._get_user_full_name_by_id(user_id)
             if full_name is None:
-                return f"[{label}](user:{user_id})"
+                return f"[@{label}](user:{user_id})"
 
             split_result = self._split_label_around_user_token(
                 label, full_name, user_id
             )
             if split_result is None:
-                return f"[{label}](user:{user_id})"
+                return f"[@{label}](user:{user_id})"
 
             prefix, suffix = split_result
-            return f"{prefix}[{full_name}](user:{user_id}){suffix}"
+            return f"{prefix}[@{full_name}](user:{user_id}){suffix}"
+
         md = normalize_nested_mentions(md)
         return USER_MENTION_PATTERN.sub(repl, md)
 

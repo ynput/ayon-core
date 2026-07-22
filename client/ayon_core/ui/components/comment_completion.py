@@ -580,7 +580,8 @@ class MentionHighlighter(QSyntaxHighlighter):
 
     def _get_plain_char_format(self) -> QTextCharFormat:
         fmt = QTextCharFormat()
-        fmt.setForeground(get_ayon_style().model.base_palette.text())
+        pal = get_ayon_style().model.base_palette
+        fmt.setForeground(pal.text())
         return fmt
 
 
