@@ -6,6 +6,7 @@ import copy
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
+import warnings
 
 from ayon_core.lib import (
     Logger,
@@ -342,30 +343,32 @@ class BaseCreator(ABC):
         or falls back to product type if product base type is not set.
 
         """
-        identifier = self.product_base_type
-        if not identifier:
-            identifier = self.product_type
-        return identifier
+        return self.product_base_type
 
     @property
     @abstractmethod
-    def product_type(self):
-        """Family that plugin represents."""
-
-    @property
-    def product_base_type(self) -> Optional[str]:
+    def product_base_type(self) -> str:
         """Product base type that plugin represents.
 
-        Todo (antirotor): This should be required in future - it
-            should be made abstract then.
-
         Returns:
-            Optional[str]: Product base type that plugin represents.
-                If not set, it is assumed that the creator plugin is obsolete
-                and does not support product base type.
+            str: Product base type that plugin represents.
 
         """
-        return None
+        pass
+
+    @property
+    def product_type(self) -> str:
+        """DEPRECATED use 'product_base_type' instead.
+
+        Kept for backwards compatibility. Warning added 2026/07/16.
+
+        """
+        warnings.warn(
+            "'product_type' is deprecated, use 'product_base_type' instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.product_base_type
 
     @property
     def project_name(self):
@@ -445,9 +448,6 @@ class BaseCreator(ABC):
         """
         if not product_base_type:
             product_base_type = self.product_base_type
-
-        if not product_base_type:
-            product_base_type = self.product_type
 
         if product_type is None:
             product_type = product_base_type
@@ -602,19 +602,14 @@ class BaseCreator(ABC):
         if host_name is None:
             host_name = self.create_context.host_name
 
-        # Backwards compatibility for create plugins that don't implement
-        #   'product_base_type'.
-        # TODO Remove when 'product_base_type' is required
         product_base_type = self.product_base_type
-        if not product_base_type:
-            product_base_type = self.product_type
-
         if product_type is None:
             for product_type_item in self.get_product_type_items():
                 product_type = product_type_item.product_type
                 break
-            else:
-                product_type = product_base_type
+
+        if product_type is None:
+            product_type = product_base_type
 
         cur_project_name = self.create_context.get_current_project_name()
         if not project_entity and project_name == cur_project_name:
