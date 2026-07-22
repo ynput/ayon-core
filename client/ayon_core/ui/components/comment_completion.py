@@ -484,6 +484,8 @@ class MentionHighlighter(QSyntaxHighlighter):
         # ── Mentions and URLs (applied before inline code) ───────────────
         users = {u.full_name for u in self._user_list}
 
+        plain_fmt = self._get_plain_char_format()
+        self.setFormat(0, len(text), plain_fmt)
         # Task mentions (@@@)
         for m in self._P_TASK.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
@@ -518,7 +520,6 @@ class MentionHighlighter(QSyntaxHighlighter):
         # editing where backtick characters are still present:
         for m in self._P_CODE_INLINE.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), code_fmt)
-
         # Qt-rendered inline code spans — after setMarkdown() the backticks
         # are consumed and individual fragments carry fontFixedPitch=True:
         it = block.begin()
@@ -540,6 +541,13 @@ class MentionHighlighter(QSyntaxHighlighter):
         fmt.setBackground(CODE_BG)
         fmt.setForeground(CODE_FG)
         self._code_fmt = fmt
+        return fmt
+
+    def _get_plain_char_format(self):
+        fmt = QTextCharFormat()
+        fmt.setForeground(COMPLETER_TEXT)      # or your normal editor color
+        fmt.setFontFixedPitch(False)
+        fmt.setBackground(Qt.BrushStyle.NoBrush)
         return fmt
 
 
