@@ -234,6 +234,14 @@ def on_completer_text_changed(
     # Get text after '@'
     prefix = text[at_pos + 1 : pos_in_block]
 
+    # Once whitespace appears after '@', the mention token has ended.
+    # Hide the popup so trailing words are not captured into the link label.
+    if any(char.isspace() for char in prefix):
+        popup = text_edit.completer.popup()
+        if popup:
+            popup.hide()
+        return
+
     # Show completer if '@' is followed by nothing or non-space characters
     if not prefix or (prefix and not prefix[0].isspace()):
         text_edit.completer.setCompletionPrefix(prefix)

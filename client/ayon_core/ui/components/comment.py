@@ -216,6 +216,10 @@ r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
 USER_MENTION_DISPLAY_PATTERN = re.compile(
 r"\[@(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
 )
+NESTED_USER_MENTION_PATTERN = re.compile(
+    r"\[\[(?P<label>[^\]]+)\]\(user:(?P<inner_id>[^)]+)\)"
+    r"(?P<tail>[^\]]*)\]\(user:(?P<outer_id>[^)]+)\)"
+)
 
 
 class AYCommentField(AYTextEdit):
@@ -336,6 +340,40 @@ class AYCommentField(AYTextEdit):
         if self._read_only:
             self._adjust_height_to_content()
 
+    def _get_user_full_name_by_id(self, user_id: str) -> str | None:
+        """Return full name for a given user id if present in user list."""
+        for user in self._user_list:
+            if user.name == user_id:
+                return user.full_name.strip()
+        return None
+
+    @staticmethod
+    def _split_label_around_user_token(
+        label: str,
+        full_name: str,
+    ) -> tuple[str, str] | None:
+        """Split label into prefix/suffix around a user mention token.
+
+        Supports malformed labels like:
+        - "1234 @Kayla"
+        - "Kayla 1234"
+        - "Kayla"
+        """
+        if label == full_name:
+            return "", ""
+
+        mention_token = f"@{full_name}"
+        token_index = label.lower().find(mention_token.lower())
+        if token_index != -1:
+            prefix = label[:token_index]
+            suffix = label[token_index + len(mention_token):]
+            return prefix, suffix
+
+        if label.startswith(full_name):
+            return "", label[len(full_name):]
+
+        return None
+
     def _inject_user_mention_display(self, md: str) -> str:
         """Render user mentions as @label while preserving markdown links.
 
@@ -347,7 +385,18 @@ class AYCommentField(AYTextEdit):
         """
         def repl(match: re.Match[str]) -> str:
             label = match.group("label").lstrip("@").strip()
-            return f"[@{label}](user:{match.group('id')})"
+            user_id = match.group("id")
+
+            full_name = self._get_user_full_name_by_id(user_id)
+            if full_name is None:
+                return f"[@{label}](user:{user_id})"
+
+            split_result = self._split_label_around_user_token(label, full_name)
+            if split_result is None:
+                return f"[@{label}](user:{user_id})"
+
+            prefix, suffix = split_result
+            return f"{prefix}[@{full_name}](user:{user_id}){suffix}"
 
         return USER_MENTION_PATTERN.sub(repl, md)
 
@@ -360,10 +409,62 @@ class AYCommentField(AYTextEdit):
         Returns:
             str: Markdown text with user mentions in storage format
         """
-        def repl(match: re.Match[str]) -> str:
-            label = match.group("label").lstrip("@").strip()
-            return f"[{label}](user:{match.group('id')})"
+        def normalize_nested_mentions(text: str) -> str:
+            """Collapse malformed nested mention links into a single link.
 
+            Example:
+                ``[[Joe](user:joe) 1234](user:joe)``
+                -> ``[Joe](user:joe) 1234``
+
+            Args:
+                text (str): Markdown text to normalize
+
+            Returns:
+                str: Normalized markdown text
+            """
+
+            def nested_repl(match: re.Match[str]) -> str:
+                inner_id = match.group("inner_id")
+                outer_id = match.group("outer_id")
+                label = match.group("label")
+                tail = match.group("tail")
+
+                user_id = inner_id if inner_id == outer_id else outer_id
+                return f"[{label}](user:{user_id}){tail}"
+
+            previous = None
+            current = text
+            while previous != current:
+                previous = current
+                current = NESTED_USER_MENTION_PATTERN.sub(
+                    nested_repl,
+                    current,
+                )
+            return current
+
+        def repl(match: re.Match[str]) -> str:
+            """Convert display mention to storage format.
+
+            Args:
+                match (re.Match[str]): Regex match object for user mention.
+
+            Returns:
+                str: Markdown text with user mention in storage format.
+            """
+            label = match.group("label").lstrip("@").strip()
+            user_id = match.group("id")
+            full_name = self._get_user_full_name_by_id(user_id)
+            if full_name is None:
+                return f"[{label}](user:{user_id})"
+
+            split_result = self._split_label_around_user_token(label, full_name)
+            if split_result is None:
+                return f"[{label}](user:{user_id})"
+
+            prefix, suffix = split_result
+            return f"{prefix}[{full_name}](user:{user_id}){suffix}"
+
+        md = normalize_nested_mentions(md)
         return USER_MENTION_DISPLAY_PATTERN.sub(repl, md)
 
     def _setup_checkbox_handler(self) -> None:
@@ -391,7 +492,6 @@ class AYCommentField(AYTextEdit):
         """
         if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
             return self._checkbox_handler.to_markdown()
-
         rendered_md = self.document().toMarkdown(MD_DIALECT)
         return self._strip_user_mention_display(rendered_md)
 
