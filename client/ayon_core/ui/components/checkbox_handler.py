@@ -5,9 +5,17 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
 
-from qtpy.QtCore import QObject, QPoint, QPointF, QRect, QRectF, QSizeF, Signal
+from qtmaterialsymbols import get_icon
+from qtpy.QtCore import (
+    QObject,
+    QPoint,
+    QPointF,
+    QRect,
+    QRectF,
+    QSizeF,
+    Signal,
+)
 from qtpy.QtGui import (
     QPainter,
     QPixmap,
@@ -21,7 +29,6 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import QTextEdit
 
-from qtmaterialsymbols import get_icon  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -100,7 +107,7 @@ class CheckboxTextObject(QPyTextObject):
     def drawObject(
         self,
         painter: QPainter,
-        rect: Union[QRectF, QRect],
+        rect: QRectF | QRect,
         doc: QTextDocument,
         posInDocument: int,
         format: QTextFormat,
@@ -163,7 +170,7 @@ class CheckboxHandler(QObject):
         """
         super().__init__(parent)
         self._text_edit = text_edit
-        self._checkboxes: List[CheckboxItem] = []
+        self._checkboxes: list[CheckboxItem] = []
         self._checkbox_object: CheckboxTextObject | None = None
         self._original_markdown: str = ""
         self._register_handler()
@@ -189,7 +196,7 @@ class CheckboxHandler(QObject):
 
         # Find all checkbox patterns
         lines = markdown.split("\n")
-        processed_lines: List[str] = []
+        processed_lines: list[str] = []
         checkbox_index = 0
 
         for line_num, line in enumerate(lines):
@@ -307,7 +314,7 @@ class CheckboxHandler(QObject):
 
     def find_checkbox_at_click(
         self, click_pos: "QPoint", content_offset: "QPoint | None" = None
-    ) -> Optional[Tuple[bool, Optional[int]]]:
+    ) -> tuple[bool, int | None]:
         """Find the checkbox hit by a viewport click using stored positions.
 
         Uses the cached ``doc_position`` on each :class:`CheckboxItem`
@@ -537,7 +544,7 @@ class CheckboxHandler(QObject):
         # already been dealt with.
         text = self._text_edit.toMarkdown(MD_DIALECT)
         lines = text.split("\n")
-        result_lines: List[str] = []
+        result_lines: list[str] = []
 
         checkbox_iter = iter(self._checkboxes)
         current_cb = next(checkbox_iter, None)
@@ -556,7 +563,7 @@ class CheckboxHandler(QObject):
         return "\n".join(result_lines)
 
     @property
-    def checkboxes(self) -> List[CheckboxItem]:
+    def checkboxes(self) -> list[CheckboxItem]:
         """Get the list of checkbox items.
 
         Returns:

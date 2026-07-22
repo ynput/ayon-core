@@ -5,14 +5,14 @@ from __future__ import annotations
 from qtpy.QtWidgets import QWidget
 
 from widget_test import WidgetTest
+from ayon_core.ui.preview_utils import EXAMPLE_STATUSES
 from ayon_core.ui.components.slicer import AYSlicer
-from ayon_core.ui.components.combo_box import ALL_STATUSES
 from ayon_core.ui.components.container import AYContainer
 
 
 _CATEGORIES = [
     {"text": s["text"], "icon": s["icon"], "color": s["color"]}
-    for s in ALL_STATUSES
+    for s in EXAMPLE_STATUSES
 ]
 
 

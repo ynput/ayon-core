@@ -13,10 +13,12 @@ from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.table_model import (
     PaginatedTableModel,
     TableColumn,
+)
+from ayon_core.ui.components.container import AYContainer
+from test_data import (
     HIERARCHICAL_TEST_DATA,
     make_hierarchical_test_fetch,
 )
-from ayon_core.ui.components.container import AYContainer
 
 
 # ---------------------------------------------------------------------------
