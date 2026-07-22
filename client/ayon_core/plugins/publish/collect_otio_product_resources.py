@@ -326,7 +326,7 @@ class CollectOtioSubsetResources(CollectOTIOProductResources):
 
     def process(self, instance):
         if instance.data.pop(FW_KEY, False) is True:
-#            self.log.debug("Skipping, CollectOtioSubsetResources has run.")
+            self.log.debug("Skipping, CollectOtioSubsetResources has run.")
             return
         self.log.debug("Using old CollectOtioSubsetResources plugin")
         super().process(instance)
