@@ -337,7 +337,14 @@ class AYCommentField(AYTextEdit):
             self._adjust_height_to_content()
 
     def _inject_user_mention_display(self, md: str) -> str:
-        """Render user mentions as @label while preserving markdown links."""
+        """Render user mentions as @label while preserving markdown links.
+
+        Args:
+            md: Markdown text with user mentions in storage format
+
+        Returns:
+            str: Markdown text with user mentions in display format
+        """
         def repl(match: re.Match[str]) -> str:
             label = match.group("label").lstrip("@").strip()
             return f"[@{label}](user:{match.group('id')})"
@@ -345,7 +352,14 @@ class AYCommentField(AYTextEdit):
         return USER_MENTION_PATTERN.sub(repl, md)
 
     def _strip_user_mention_display(self, md: str) -> str:
-        """Convert display mentions back to storage format."""
+        """Convert display mentions back to storage format.
+
+        Args:
+            md: Markdown text with user mentions in display format
+
+        Returns:
+            str: Markdown text with user mentions in storage format
+        """
         def repl(match: re.Match[str]) -> str:
             label = match.group("label").lstrip("@").strip()
             return f"[{label}](user:{match.group('id')})"
