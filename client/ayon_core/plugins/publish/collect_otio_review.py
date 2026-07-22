@@ -301,4 +301,3 @@ class CollectOtioReview(CollectOTIOReviewTrack):
             "_ instance.data: {}".format(pformat(instance.data)))
         self.log.debug(
             "_ families: {}".format(instance.data["families"]))
-
