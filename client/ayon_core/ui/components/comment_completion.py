@@ -548,8 +548,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         if self._plain_fmt is not None:
             return self._plain_fmt
         fmt = QTextCharFormat()
-        fmt.setForeground(COMPLETER_TEXT)      # or your normal editor color
-        fmt.setFontFixedPitch(False)
+        fmt.setForeground(COMPLETER_TEXT)
         fmt.setBackground(Qt.BrushStyle.NoBrush)
         self._plain_fmt = fmt
         return fmt
