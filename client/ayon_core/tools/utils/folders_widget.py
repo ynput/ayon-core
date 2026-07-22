@@ -804,16 +804,37 @@ class SimpleFoldersWidget(FoldersWidget):
         pass
 
 
-class FoldersFiltersWidget(QtWidgets.QWidget):
-    """Helper widget for most commonly used filters in context selection."""
+class FoldersFiltersWidgetBase(QtWidgets.QWidget):
+    """Helper widget for text based filtering in context selection."""
+
     text_changed = QtCore.Signal(str)
-    my_tasks_changed = QtCore.Signal(bool)
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         folders_filter_input = PlaceholderLineEdit(self)
         folders_filter_input.setPlaceholderText("Folder name filter...")
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        layout.addWidget(folders_filter_input, 1)
+
+        folders_filter_input.textChanged.connect(self.text_changed)
+
+    def text(self) -> str:
+        return self._folders_filter_input.text()
+
+    def set_text(self, text: str) -> None:
+        self._folders_filter_input.setText(text)
+
+
+class FoldersFiltersWidget(FoldersFiltersWidgetBase):
+    """Helper widget for most commonly used filters in context selection."""
+    my_tasks_changed = QtCore.Signal(bool)
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
 
         my_tasks_tooltip = (
             "Filter folders and task to only those you are assigned to."
@@ -825,27 +846,16 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         my_tasks_checkbox.setChecked(False)
         my_tasks_checkbox.setToolTip(my_tasks_tooltip)
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(5)
-        layout.addWidget(folders_filter_input, 1)
+        layout = self.layout()
+
         layout.addWidget(my_tasks_label, 0)
         layout.addWidget(my_tasks_checkbox, 0)
 
-        folders_filter_input.textChanged.connect(self.text_changed)
         my_tasks_checkbox.stateChanged.connect(self._on_my_tasks_change)
-
-        self._folders_filter_input = folders_filter_input
         self._my_tasks_checkbox = my_tasks_checkbox
 
     def is_my_tasks_checked(self) -> bool:
         return self._my_tasks_checkbox.isChecked()
-
-    def text(self) -> str:
-        return self._folders_filter_input.text()
-
-    def set_text(self, text: str) -> None:
-        self._folders_filter_input.setText(text)
 
     def set_my_tasks_checked(self, checked: bool) -> None:
         self._my_tasks_checkbox.setChecked(checked)
