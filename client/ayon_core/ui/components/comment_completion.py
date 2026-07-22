@@ -35,7 +35,6 @@ COMPLETER_ROW_BG = QColor("#252b39")
 COMPLETER_ROW_SELECTED_BG = QColor("#2f6fed")
 COMPLETER_TEXT = QColor("#e6eaf2")
 COMPLETER_TEXT_SELECTED = QColor("#ffffff")
-COMPLETER_BORDER = "#3a4257"
 CODE_BG: QColor = QColor("#1e1e1e")
 CODE_FG: QColor = QColor("#eeeeee")
 
