@@ -401,6 +401,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
         self._code_fmt = None
+        self._plain_fmt = None
 
     def update_user_list(self, user_list: list) -> None:
         """Replace the user list and trigger a full rehighlight.
@@ -544,10 +545,13 @@ class MentionHighlighter(QSyntaxHighlighter):
         return fmt
 
     def _get_plain_char_format(self):
+        if self._plain_fmt is not None:
+            return self._plain_fmt
         fmt = QTextCharFormat()
         fmt.setForeground(COMPLETER_TEXT)      # or your normal editor color
         fmt.setFontFixedPitch(False)
         fmt.setBackground(Qt.BrushStyle.NoBrush)
+        self._plain_fmt = fmt
         return fmt
 
 
