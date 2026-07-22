@@ -487,6 +487,12 @@ class MentionHighlighter(QSyntaxHighlighter):
         mention_ranges: list[tuple[int, int]] = []
 
         def _mark_mention(start: int, length: int) -> None:
+            """Mark mention highlight for certain pattern matches.
+
+            Args:
+                start: Start index of the mention in the block.
+                length: Length of the mention text.
+            """
             if length <= 0:
                 return
             self.setFormat(start, length, self._mention_fmt)
