@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import atexit
 import logging
 import tempfile
@@ -209,6 +210,12 @@ class AYPublish(AYFrame):
 # COMMENT ---------------------------------------------------------------------
 
 MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
+USER_MENTION_PATTERN = re.compile(
+r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
+)
+USER_MENTION_DISPLAY_PATTERN = re.compile(
+r"\[@(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
+)
 
 
 class AYCommentField(AYTextEdit):
@@ -322,11 +329,28 @@ class AYCommentField(AYTextEdit):
                 self._adjust_height_to_content()
             return
 
-        self.document().setMarkdown(md, MD_DIALECT)
+        display_md = self._inject_user_mention_display(md)
+        self.document().setMarkdown(display_md, MD_DIALECT)
         apply_code_block_backgrounds(self)
 
         if self._read_only:
             self._adjust_height_to_content()
+
+    def _inject_user_mention_display(self, md: str) -> str:
+        """Render user mentions as @label while preserving markdown links."""
+        def repl(match: re.Match[str]) -> str:
+            label = match.group("label").lstrip("@").strip()
+            return f"[@{label}](user:{match.group('id')})"
+
+        return USER_MENTION_PATTERN.sub(repl, md)
+
+    def _strip_user_mention_display(self, md: str) -> str:
+        """Convert display mentions back to storage format."""
+        def repl(match: re.Match[str]) -> str:
+            label = match.group("label").lstrip("@").strip()
+            return f"[{label}](user:{match.group('id')})"
+
+        return USER_MENTION_DISPLAY_PATTERN.sub(repl, md)
 
     def _setup_checkbox_handler(self) -> None:
         """Initialize checkbox handler if not already done."""
@@ -353,7 +377,9 @@ class AYCommentField(AYTextEdit):
         """
         if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
             return self._checkbox_handler.to_markdown()
-        return self.document().toMarkdown(MD_DIALECT)
+
+        rendered_md = self.document().toMarkdown(MD_DIALECT)
+        return self._strip_user_mention_display(rendered_md)
 
     def _on_text_changed(self) -> None:
         """Handle text changes to show/hide completer."""
