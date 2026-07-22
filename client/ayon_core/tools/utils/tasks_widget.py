@@ -334,6 +334,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
         return super().data(index, role)
 
     def _get_index_data(self, index, role):
+        """Get data for index with column 1 or higher.
+
+        Allow classes inheriting from this class to change the 'data' method
+            behavior. Without this they can't use 'super' call.
+
+        """
         index = index.sibling(index.row(), 0)
         if role == QtCore.Qt.DecorationRole:
             role = TASK_STATUS_ICON_ROLE

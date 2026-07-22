@@ -301,6 +301,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         return super().flags(index)
 
     def _get_index_data(self, index, role):
+        """Get data for index with column 1 or higher.
+
+        Allow classes inheriting from this class to change the 'data' method
+            behavior. Without this they can't use 'super' call.
+
+        """
         index = index.sibling(index.row(), 0)
         if role == QtCore.Qt.DecorationRole:
             role = FOLDER_STATUS_ICON_ROLE
