@@ -401,6 +401,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
         self._code_fmt = None
+        self._plain_fmt = self._get_plain_char_format()
 
     def update_user_list(self, user_list: list) -> None:
         """Replace the user list and trigger a full rehighlight.
@@ -483,14 +484,21 @@ class MentionHighlighter(QSyntaxHighlighter):
 
         # ── Mentions and URLs (applied before inline code) ───────────────
         users = {u.full_name for u in self._user_list}
+        mention_ranges: list[tuple[int, int]] = []
+
+        def _mark_mention(start: int, length: int) -> None:
+            if length <= 0:
+                return
+            self.setFormat(start, length, self._mention_fmt)
+            mention_ranges.append((start, start + length))
 
         # Task mentions (@@@)
         for m in self._P_TASK.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
 
         # Version mentions (@@)
         for m in self._P_VERSION.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
 
         # User mentions (@) — highlight only the first word unless the full
         # two-word name is in the known user list.
@@ -502,15 +510,38 @@ class MentionHighlighter(QSyntaxHighlighter):
             else:
                 # Highlight only up to the first word (no trailing space+word)
                 length = len(full_match.split()[0])
-            self.setFormat(m.start(), length, self._mention_fmt)
+            _mark_mention(m.start(), length)
 
         # Serialized user mentions [Full Name](user:username)
         for m in self._P_USER_TAG.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
 
         # Raw URLs
         for m in self._P_RAW_LINK.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
+
+        # Apply plain style only outside mention/url ranges so mention
+        # formatting stays intact while the rest of the line is normalized.
+        if not mention_ranges:
+            self.setFormat(0, len(text), self._plain_fmt)
+        else:
+            mention_ranges.sort()
+            merged: list[tuple[int, int]] = []
+            for start, end in mention_ranges:
+                if not merged or start > merged[-1][1]:
+                    merged.append((start, end))
+                else:
+                    prev_start, prev_end = merged[-1]
+                    merged[-1] = (prev_start, max(prev_end, end))
+
+            cursor = 0
+            for start, end in merged:
+                if start > cursor:
+                    self.setFormat(cursor, start - cursor, self._plain_fmt)
+                cursor = max(cursor, end)
+
+            if cursor < len(text):
+                self.setFormat(cursor, len(text) - cursor, self._plain_fmt)
 
         # ── Inline code (applied last, overrides mention formatting) ─────
 
@@ -539,6 +570,13 @@ class MentionHighlighter(QSyntaxHighlighter):
         fmt.setBackground(CODE_BG)
         fmt.setForeground(CODE_FG)
         self._code_fmt = fmt
+        return fmt
+
+    def _get_plain_char_format(self, pal: QColor = None) -> QTextCharFormat:
+        fmt = QTextCharFormat()
+        fmt.setForeground(
+            pal.text() if pal else get_ayon_style().model.base_palette.text()
+        )
         return fmt
 
 
