@@ -30,7 +30,6 @@ from .user_image import AYUserImage
 # block-level (fenced code block) highlighting.  Defined once here so
 # that both the highlighter and ``apply_code_block_backgrounds()`` always
 # use the same value.
-COMPLETER_BG = QColor("#1f2430")
 COMPLETER_ROW_BG = QColor("#252b39")
 COMPLETER_ROW_SELECTED_BG = QColor("#2f6fed")
 COMPLETER_TEXT = QColor("#e6eaf2")
