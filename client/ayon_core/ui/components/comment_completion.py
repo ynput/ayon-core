@@ -401,7 +401,6 @@ class MentionHighlighter(QSyntaxHighlighter):
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
         self._code_fmt = None
-        self._plain_fmt = None
 
     def update_user_list(self, user_list: list) -> None:
         """Replace the user list and trigger a full rehighlight.
@@ -485,8 +484,6 @@ class MentionHighlighter(QSyntaxHighlighter):
         # ── Mentions and URLs (applied before inline code) ───────────────
         users = {u.full_name for u in self._user_list}
 
-        plain_fmt = self._get_plain_char_format()
-        self.setFormat(0, len(text), plain_fmt)
         # Task mentions (@@@)
         for m in self._P_TASK.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
@@ -542,15 +539,6 @@ class MentionHighlighter(QSyntaxHighlighter):
         fmt.setBackground(CODE_BG)
         fmt.setForeground(CODE_FG)
         self._code_fmt = fmt
-        return fmt
-
-    def _get_plain_char_format(self):
-        if self._plain_fmt is not None:
-            return self._plain_fmt
-        fmt = QTextCharFormat()
-        fmt.setForeground(COMPLETER_TEXT)
-        fmt.setBackground(Qt.BrushStyle.NoBrush)
-        self._plain_fmt = fmt
         return fmt
 
 
