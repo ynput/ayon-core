@@ -210,12 +210,15 @@ class AYPublish(AYFrame):
 # COMMENT ---------------------------------------------------------------------
 
 MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
+# Match plain user mentions like "@Joe" or "@Joe Smith".
+# The optional second token must start with a letter to avoid swallowing
+# trailing numbers (e.g. "@Joe 1234" should only match "@Joe").
 USER_MENTION_PATTERN = re.compile(
-r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
+    r"(?<![\w\[])@(?!@)\w+(?: [^\W\d_][\w'-]*)?"
 )
-NESTED_USER_MENTION_PATTERN = re.compile(
-    r"\[\[(?P<label>[^\]]+)\]\(user:(?P<inner_id>[^)]+)\)"
-    r"(?P<tail>[^\]]*)\]\(user:(?P<outer_id>[^)]+)\)"
+# Match stored user links like "[@Joe](user:admin)".
+USER_MENTION_LINK_PATTERN = re.compile(
+    r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
 )
 
 
@@ -425,7 +428,24 @@ class AYCommentField(AYTextEdit):
             prefix, suffix = split_result
             return f"{prefix}[@{full_name}](user:{user_id}){suffix}"
 
-        return USER_MENTION_PATTERN.sub(repl, md)
+        return USER_MENTION_LINK_PATTERN.sub(repl, md)
+
+    def _find_user_for_mention(self, mention_text: str) -> User | None:
+        """Find user matching plain mention text.
+
+        Args:
+            mention_text: Mention text without leading '@'.
+
+        Returns:
+            Matching user model or None when no match exists.
+        """
+        if not mention_text:
+            return None
+
+        for user in self._user_list:
+            if user.full_name == mention_text:
+                return user
+        return None
 
     def _strip_user_mention_display(self, md: str) -> str:
         """Convert display mentions back to storage format.
@@ -436,65 +456,53 @@ class AYCommentField(AYTextEdit):
         Returns:
             str: Markdown text with user mentions in storage format
         """
-        def normalize_nested_mentions(text: str) -> str:
-            """Collapse malformed nested mention links into a single link.
-
-            Example:
-                ``[[Joe](user:joe) 1234](user:joe)``
-                -> ``[Joe](user:joe) 1234``
-
-            Args:
-                text (str): Markdown text to normalize
-
-            Returns:
-                str: Normalized markdown text
-            """
-
-            def nested_repl(match: re.Match[str]) -> str:
-                inner_id = match.group("inner_id")
-                outer_id = match.group("outer_id")
-                label = match.group("label")
-                tail = match.group("tail")
-
-                user_id = inner_id if inner_id == outer_id else outer_id
-                return f"[{label}](user:{user_id}){tail}"
-
-            previous = None
-            current = text
-            while previous != current:
-                previous = current
-                current = NESTED_USER_MENTION_PATTERN.sub(
-                    nested_repl,
-                    current,
-                )
-            return current
-
         def repl(match: re.Match[str]) -> str:
-            """Convert display mention to storage format.
+            raw_mention = match.group(0)
+            mention_text = raw_mention.lstrip("@").strip()
 
-            Args:
-                match (re.Match[str]): Regex match object for user mention.
-
-            Returns:
-                str: Markdown text with user mention in storage format.
-            """
-            label = match.group("label").lstrip("@").strip()
-            user_id = match.group("id")
-            full_name = self._get_user_full_name_by_id(user_id)
-            if full_name is None:
-                return f"[@{label}](user:{user_id})"
-
-            split_result = self._split_label_around_user_token(
-                label, full_name, user_id
+            # Normalize in case an over-capture happens upstream.
+            normalized = re.match(r"\w+(?: [^\W\d_][\w'-]*)?", mention_text)
+            normalized_text = (
+                normalized.group(0) if normalized
+                else mention_text
             )
-            if split_result is None:
-                return f"[@{label}](user:{user_id})"
+            suffix = (
+                mention_text[len(normalized_text):]
+                if mention_text.startswith(normalized_text) else ""
+            )
 
-            prefix, suffix = split_result
-            return f"{prefix}[@{full_name}](user:{user_id}){suffix}"
+            user = self._find_user_for_mention(normalized_text)
+            if user is not None:
+                return f"[{normalized_text}](user:{user.name}){suffix}"
 
-        md = normalize_nested_mentions(md)
-        return USER_MENTION_PATTERN.sub(repl, md)
+            # If two-word capture doesn't map, try first token only.
+            if " " in normalized_text:
+                first_token, rmd = normalized_text.split(" ", 1)
+                user = self._find_user_for_mention(first_token)
+                if user is not None:
+                    return (
+                        f"[{first_token}](user:{user.name}) {rmd}{suffix}"
+                    )
+
+            return raw_mention
+
+        # Convert mentions only in plain-text segments and keep already
+        # stored user links untouched.
+        result_parts: list[str] = []
+        last_end = 0
+        for link_match in USER_MENTION_LINK_PATTERN.finditer(md):
+            start, end = link_match.span()
+            if start > last_end:
+                segment = md[last_end:start]
+                result_parts.append(USER_MENTION_PATTERN.sub(repl, segment))
+            result_parts.append(md[start:end])
+            last_end = end
+
+        if last_end < len(md):
+            tail = md[last_end:]
+            result_parts.append(USER_MENTION_PATTERN.sub(repl, tail))
+
+        return "".join(result_parts)
 
     def _setup_checkbox_handler(self) -> None:
         """Initialize checkbox handler if not already done."""

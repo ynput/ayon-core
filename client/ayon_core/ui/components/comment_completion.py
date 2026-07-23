@@ -38,29 +38,6 @@ CODE_BG: QColor = QColor("#1e1e1e")
 CODE_FG: QColor = QColor("#eeeeee")
 
 
-def _get_mentioned_user(text_edit: QTextEdit, text: str) -> User | None:
-    """Get the mentioned user for a completer activation.
-
-    Prefer the popup's current item data when available, then fall back to
-    matching the emitted completion text against the editor's current
-    ``_user_list``.
-    """
-    completer = getattr(text_edit, "completer", None)
-    if completer is not None:
-        popup = completer.popup()
-        if popup is not None:
-            current_index = popup.currentIndex()
-            if current_index.isValid():
-                user = current_index.data(Qt.ItemDataRole.UserRole)
-                if isinstance(user, User):
-                    return user
-
-    for user in getattr(text_edit, "_user_list", []):
-        if user.full_name == text:
-            return user
-    return None
-
-
 class UserCompleterDelegate(QStyledItemDelegate):
     """Custom delegate to display user icon and full name in completer."""
 
@@ -114,7 +91,6 @@ class UserCompleterDelegate(QStyledItemDelegate):
             Qt.AlignmentFlag.AlignVCenter,
             user.full_name,
         )
-        
 
     def sizeHint(
         self,
@@ -309,17 +285,13 @@ def on_completer_activated(
     if at_pos == -1:
         return
 
-    selected_user = _get_mentioned_user(text_edit, text)
-    if not selected_user:
-        return
-    mention_text = f"[{selected_user.full_name}](user:{selected_user.name})"
-    # Replace from '@' to cursor with serialized mention markup.
+    # Replace from '@' to cursor with '@' + full_name
     cursor.setPosition(block.position() + at_pos)
     cursor.setPosition(
         block.position() + pos_in_block,
         QTextCursor.MoveMode.KeepAnchor,
     )
-    cursor.insertText(mention_text)
+    cursor.insertText(f"@{text}")
     text_edit.setTextCursor(cursor)
     popup = text_edit.completer.popup()
     if popup:
@@ -390,7 +362,6 @@ class MentionHighlighter(QSyntaxHighlighter):
     _P_TASK = re.compile(r"@@@\w+( \w+)?")
     _P_VERSION = re.compile(r"@@(?!@)\w+( \w+)?")
     _P_USER = re.compile(r"@(?!@)\w+( \w+)?")
-    _P_USER_TAG = re.compile(r"\[[^\]]+\]\(user:[^\)]+\)")
     _P_RAW_LINK = re.compile(r"https?://\S+")
     # Inline code: single backtick pair on the same line.
     _P_CODE_INLINE = re.compile(r"`[^`\n]+`")
@@ -518,10 +489,6 @@ class MentionHighlighter(QSyntaxHighlighter):
                 # Highlight only up to the first word (no trailing space+word)
                 length = len(full_match.split()[0])
             _mark_mention(m.start(), length)
-
-        # Serialized user mentions [Full Name](user:username)
-        for m in self._P_USER_TAG.finditer(text):
-            _mark_mention(m.start(), m.end() - m.start())
 
         # Raw URLs
         for m in self._P_RAW_LINK.finditer(text):

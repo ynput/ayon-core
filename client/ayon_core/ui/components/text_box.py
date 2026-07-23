@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import re
 import logging
 import os
 from functools import partial
@@ -272,7 +272,69 @@ class AYTextEditor(AYTextEdit):
         """
         if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
             return self._checkbox_handler.to_markdown()
-        return self.document().toMarkdown(MD_DIALECT)
+        rendered_md = self.document().toMarkdown(MD_DIALECT)
+        return self._convert_user_mentions_to_markdown(rendered_md)
+
+    def _convert_user_mentions_to_markdown(self, md: str) -> str:
+        """Convert user mentions in the markdown to a format suitable for
+        storage or transmission.
+
+        Args:
+            md: Markdown text with display mentions.
+
+        Returns:
+            str: Markdown text with mentions converted to a storable format.
+        """
+
+        def _get_user(username: str) -> User | None:
+            """Get user by username
+
+            Args:
+                username (str): username
+
+            Returns:
+                User | None: User object if found, else None
+            """
+            if not username:
+                return None
+
+            for user in self._user_list:
+                if user.full_name == username:
+                    return user
+            return None
+
+        # Match plain user mentions like "@Joe" or "@Joe Smith".
+        # Optional second token must start with a letter, so mentions like
+        # "@Joe 1234" only capture "@Joe" and keep "1234" untouched.
+        pattern = (
+            r"(?<![\w\[])@(?!@)(?P<username>\w+(?: [^\W\d_][\w'-]*)?)"
+        )
+
+        def repl(match: re.Match[str]) -> str:
+            """Replacement function for re.sub to convert mentions.
+
+            Args:
+                match (re.Match[str]): regex match object
+
+            Returns:
+                str: converted mention or original text if user not found
+            """
+            username = match.group("username")
+            user = _get_user(username)
+            if user is not None:
+                return f"[{username}](user:{user.name})"
+
+            # If regex captured two words but only first token is a user,
+            # link just that token and keep the tail as plain text.
+            if " " in username:
+                first_token, remainder = username.split(" ", 1)
+                user = _get_user(first_token)
+                if user is not None:
+                    return f"[{first_token}](user:{user.name}){remainder}"
+
+            return match.group(0)
+
+        return re.sub(pattern, repl, md)
 
     def _is_checkbox_at_cursor(
         self, click_pos: QPoint
