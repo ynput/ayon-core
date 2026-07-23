@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import atexit
 import logging
 import tempfile
@@ -46,12 +45,14 @@ from .checkbox_handler import (
     CheckboxHandler,
 )
 from .comment_completion import (
+    USER_MENTION_LINK_PATTERN,
     apply_code_block_backgrounds,
     format_comment_on_change,
     on_completer_activated,
     on_completer_key_press,
     on_completer_text_changed,
     setup_user_completer,
+    strip_user_mention_display,
 )
 from .container import AYContainer, AYFrame
 from .gallery_dialog import GalleryDialog
@@ -210,16 +211,6 @@ class AYPublish(AYFrame):
 # COMMENT ---------------------------------------------------------------------
 
 MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
-# Match plain user mentions like "@Joe" or "@Joe Smith".
-# The optional second token must start with a letter to avoid swallowing
-# trailing numbers (e.g. "@Joe 1234" should only match "@Joe").
-USER_MENTION_PATTERN = re.compile(
-    r"(?<![\w\[])@(?!@)\w+(?: [^\W\d_][\w'-]*)?"
-)
-# Match stored user links like "[Joe](user:admin)".
-USER_MENTION_LINK_PATTERN = re.compile(
-    r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
-)
 
 
 class AYCommentField(AYTextEdit):
@@ -357,13 +348,8 @@ class AYCommentField(AYTextEdit):
             str: Text with links replaced by @full_name (or the original link
                 if the user is not found).
         """
-        # Compile pattern once (consider making it a class attribute for speed)
-        USER_MENTION_LINK_PATTERN = re.compile(
-            r"\[[^\]]+\]\(user:([^)]+)\)"
-        )
-
-        def repl(match: re.Match[str]) -> str:
-            user_id = match.group(1)
+        def repl(match) -> str:
+            user_id = match.group("id")
             full_name = self._get_user_full_name_by_id(user_id)
             if full_name:
                 return f"@{full_name}"
@@ -371,85 +357,6 @@ class AYCommentField(AYTextEdit):
             return match.group(0)
 
         return USER_MENTION_LINK_PATTERN.sub(repl, md)
-
-    def _find_user_for_mention(self, mention_text: str) -> User | None:
-        """Find user matching plain mention text.
-
-        Args:
-            mention_text: Mention text without leading '@'.
-
-        Returns:
-            Matching user model or None when no match exists.
-        """
-        if not mention_text:
-            return None
-
-        for user in self._user_list:
-            if user.full_name == mention_text:
-                return user
-        return None
-
-    def _strip_user_mention_display(self, md: str) -> str:
-        """Convert display @mentions back to storage links.
-
-        Existing links like [label](user:id) are preserved unchanged.
-        Plain @mentions are replaced with [name](user:name) if the user exists.
-
-        Args:
-            md: Markdown text.
-
-        Returns:
-            Markdown text with @mentions replaced by links.
-        """
-
-        def repl(match: re.Match) -> str:
-            """Replacement function for user mentions.
-
-            Args:
-                match (re.Match): Regex match object for a user mention.
-
-            Returns:
-                str: Markdown link for the user mention if found,
-                    else the original text.
-            """
-            # e.g. "@John" or "@John Doe"
-            raw = match.group(0)
-            # strip leading '@'
-            mention_text = raw.lstrip("@")
-
-            # Try exact full‑name match
-            user = self._find_user_for_mention(mention_text)
-            if user is not None:
-                return f"[{mention_text}](user:{user.name})"
-
-            # If it's a two‑word mention, try linking only the first token
-            if " " in mention_text:
-                first, rest = mention_text.split(" ", 1)
-                user = self._find_user_for_mention(first)
-                if user is not None:
-                    return f"[{first}](user:{user.name}) {rest}"
-
-            # No match → keep the original text
-            return raw
-
-        # Iterate over existing links and keep them untouched.
-        # Apply the substitution only to the plain‑text segments between them.
-        result_parts = []
-        last_end = 0
-        for link_match in USER_MENTION_LINK_PATTERN.finditer(md):
-            start, end = link_match.span()
-            if start > last_end:
-                segment = md[last_end:start]
-                result_parts.append(USER_MENTION_PATTERN.sub(repl, segment))
-            # preserve the original link
-            result_parts.append(md[start:end])
-            last_end = end
-
-        if last_end < len(md):
-            tail = md[last_end:]
-            result_parts.append(USER_MENTION_PATTERN.sub(repl, tail))
-
-        return ''.join(result_parts)
 
     def _setup_checkbox_handler(self) -> None:
         """Initialize checkbox handler if not already done."""
@@ -477,7 +384,7 @@ class AYCommentField(AYTextEdit):
         if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
             return self._checkbox_handler.to_markdown()
         rendered_md = self.document().toMarkdown(MD_DIALECT)
-        return self._strip_user_mention_display(rendered_md)
+        return strip_user_mention_display(rendered_md, self._user_list)
 
     def _on_text_changed(self) -> None:
         """Handle text changes to show/hide completer."""

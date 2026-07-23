@@ -37,6 +37,91 @@ COMPLETER_TEXT_SELECTED = QColor("#ffffff")
 CODE_BG: QColor = QColor("#1e1e1e")
 CODE_FG: QColor = QColor("#eeeeee")
 
+# Match plain user mentions like "@Joe" or "@Joe Smith".
+# The optional second token must start with a letter to avoid swallowing
+# trailing numbers (e.g. "@Joe 1234" should only match "@Joe").
+USER_MENTION_PATTERN = re.compile(
+    r"(?<![\w\[])@(?!@)\w+(?: [^\W\d_][\w'-]*)?"
+)
+# Match stored user links like "[Joe](user:admin)".
+USER_MENTION_LINK_PATTERN = re.compile(
+    r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
+)
+
+
+def find_user_for_mention(
+    user_list: list[User],
+    mention_text: str,
+) -> User | None:
+    """Find user matching plain mention text.
+
+    Args:
+        user_list: Available users for mention lookup.
+        mention_text: Mention text without leading '@'.
+
+    Returns:
+        Matching user model or None when no match exists.
+    """
+    if not mention_text:
+        return None
+
+    for user in user_list:
+        if user.full_name == mention_text:
+            return user
+    return None
+
+
+def strip_user_mention_display(md: str, user_list: list[User]) -> str:
+    """Convert display @mentions back to storage links.
+
+    Existing links like [label](user:id) are preserved unchanged.
+    Plain @mentions are replaced with [name](user:name) if the user exists.
+
+    Args:
+        md: Markdown text.
+        user_list: Available users for mention lookup.
+
+    Returns:
+        Markdown text with @mentions replaced by links.
+    """
+
+    def repl(match: re.Match) -> str:
+        """Replacement function for user mentions."""
+        # e.g. "@John" or "@John Doe"
+        raw = match.group(0)
+        mention_text = raw.lstrip("@")
+
+        user = find_user_for_mention(user_list, mention_text)
+        if user is not None:
+            return f"[{mention_text}](user:{user.name})"
+
+        # If it's a two-word mention, try linking only the first token.
+        if " " in mention_text:
+            first, rest = mention_text.split(" ", 1)
+            user = find_user_for_mention(user_list, first)
+            if user is not None:
+                return f"[{first}](user:{user.name}) {rest}"
+
+        return raw
+
+    # Iterate over existing links and keep them untouched.
+    # Apply the substitution only to the plain-text segments between them.
+    result_parts = []
+    last_end = 0
+    for link_match in USER_MENTION_LINK_PATTERN.finditer(md):
+        start, end = link_match.span()
+        if start > last_end:
+            segment = md[last_end:start]
+            result_parts.append(USER_MENTION_PATTERN.sub(repl, segment))
+        result_parts.append(md[start:end])
+        last_end = end
+
+    if last_end < len(md):
+        tail = md[last_end:]
+        result_parts.append(USER_MENTION_PATTERN.sub(repl, tail))
+
+    return "".join(result_parts)
+
 
 class UserCompleterDelegate(QStyledItemDelegate):
     """Custom delegate to display user icon and full name in completer."""
