@@ -208,7 +208,6 @@ def browser():
     app.exec_()
 
 
-
 @main_cli.command()
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
