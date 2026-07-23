@@ -198,8 +198,8 @@ def interactive():
 @main_cli.command()
 def browser():
     """Show Browser tool."""
-    from ayon_core.tools.utils import get_ayon_qt_app
     from ayon_core.tools.loader.ui import LoaderWindow
+    from ayon_core.tools.utils import get_ayon_qt_app
 
     app = get_ayon_qt_app()
     browser_window = LoaderWindow()
