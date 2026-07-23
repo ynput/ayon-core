@@ -241,6 +241,9 @@ class AYCommentField(AYTextEdit):
         self._num_lines = num_lines
         self._read_only: bool = read_only
         self._user_list: list[User] = user_list or []
+        self._user_full_name_by_user_id = {
+            user.name: user.full_name for user in self._user_list
+        }
         self._data = model
         self._bg_color = None
         self._checkbox_handler: CheckboxHandler | None = None
@@ -331,20 +334,6 @@ class AYCommentField(AYTextEdit):
         if self._read_only:
             self._adjust_height_to_content()
 
-    def _get_user_full_name_by_id(self, user_id: str) -> str | None:
-        """Return full name for a given user id if present in user list.
-
-        Args:
-            user_id: User ID to look up.
-
-        Returns:
-            Full name of the user if found, otherwise None.
-        """
-        for user in self._user_list:
-            if user.name == user_id:
-                return user.full_name.strip()
-        return None
-
     def _inject_user_mention_display(self, md: str) -> str:
         """Convert user mention links to plain @mentions.
 
@@ -357,7 +346,7 @@ class AYCommentField(AYTextEdit):
         """
         def repl(match) -> str:
             user_id = match.group("id")
-            full_name = self._get_user_full_name_by_id(user_id)
+            full_name = self._user_full_name_by_user_id.get(user_id)
             if full_name:
                 return f"@{full_name}"
             # Fallback: keep the original link if user lookup fails
