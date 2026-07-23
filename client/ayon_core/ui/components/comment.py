@@ -53,6 +53,7 @@ from .comment_completion import (
     on_completer_text_changed,
     setup_user_completer,
     strip_user_mention_display,
+    find_user_for_mention,
 )
 from .container import AYContainer, AYFrame
 from .gallery_dialog import GalleryDialog
@@ -332,7 +333,14 @@ class AYCommentField(AYTextEdit):
             self._adjust_height_to_content()
 
     def _get_user_full_name_by_id(self, user_id: str) -> str | None:
-        """Return full name for a given user id if present in user list."""
+        """Return full name for a given user id if present in user list.
+
+        Args:
+            user_id: User ID to look up.
+
+        Returns:
+            Full name of the user if found, otherwise None.
+        """
         for user in self._user_list:
             if user.name == user_id:
                 return user.full_name.strip()
