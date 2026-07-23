@@ -30,8 +30,8 @@ from .user_image import AYUserImage
 # block-level (fenced code block) highlighting.  Defined once here so
 # that both the highlighter and ``apply_code_block_backgrounds()`` always
 # use the same value.
-COMPLETER_ROW_BG = QColor("#252b39")
-COMPLETER_ROW_SELECTED_BG = QColor("#2f6fed")
+COMPLETER_ROW_BG = QColor("#353b46")
+COMPLETER_ROW_SELECTED_BG = QColor("#424F52FF")
 COMPLETER_TEXT = QColor("#e6eaf2")
 COMPLETER_TEXT_SELECTED = QColor("#ffffff")
 CODE_BG: QColor = QColor("#1e1e1e")
@@ -114,6 +114,7 @@ class UserCompleterDelegate(QStyledItemDelegate):
             Qt.AlignmentFlag.AlignVCenter,
             user.full_name,
         )
+        
 
     def sizeHint(
         self,
