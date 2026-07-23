@@ -53,7 +53,6 @@ from .comment_completion import (
     on_completer_text_changed,
     setup_user_completer,
     strip_user_mention_display,
-    find_user_for_mention,
 )
 from .container import AYContainer, AYFrame
 from .gallery_dialog import GalleryDialog
