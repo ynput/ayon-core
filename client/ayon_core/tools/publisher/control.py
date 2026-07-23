@@ -213,19 +213,6 @@ class PublisherController(
         """Current instances in create context."""
         return self._create_model.get_instance_items()
 
-    # --- Legacy for TrayPublisher ---
-    @property
-    def instances(self):
-        return self.get_instance_items()
-
-    def get_instances(self):
-        return self.get_instance_items()
-
-    def get_instances_by_id(self, *args, **kwargs):
-        return self.get_instance_items_by_id(*args, **kwargs)
-
-    # ---
-
     def get_instance_items_by_id(self, instance_ids=None):
         return self._create_model.get_instance_items_by_id(instance_ids)
 
