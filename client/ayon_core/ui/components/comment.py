@@ -390,53 +390,58 @@ class AYCommentField(AYTextEdit):
         return None
 
     def _strip_user_mention_display(self, md: str) -> str:
-        """Convert display mentions back to storage format.
+        """Convert display @mentions back to storage links.
+
+        Existing links like [label](user:id) are preserved unchanged.
+        Plain @mentions are replaced with [name](user:name) if the user exists.
 
         Args:
-            md: Markdown text with user mentions in display format
+            md: Markdown text.
 
         Returns:
-            str: Markdown text with user mentions in storage format
+            Markdown text with @mentions replaced by links.
         """
-        def repl(match: re.Match[str]) -> str:
-            raw_mention = match.group(0)
-            mention_text = raw_mention.lstrip("@").strip()
 
-            # Normalize in case an over-capture happens upstream.
-            normalized = re.match(r"\w+(?: [^\W\d_][\w'-]*)?", mention_text)
-            normalized_text = (
-                normalized.group(0) if normalized
-                else mention_text
-            )
-            suffix = (
-                mention_text[len(normalized_text):]
-                if mention_text.startswith(normalized_text) else ""
-            )
+        def repl(match: re.Match) -> str:
+            """Replacement function for user mentions.
 
-            user = self._find_user_for_mention(normalized_text)
+            Args:
+                match (re.Match): Regex match object for a user mention.
+
+            Returns:
+                str: Markdown link for the user mention if found,
+                    else the original text.
+            """
+            # e.g. "@John" or "@John Doe"
+            raw = match.group(0)
+            # strip leading '@'
+            mention_text = raw.lstrip("@")
+
+            # Try exact full‑name match
+            user = self._find_user_for_mention(mention_text)
             if user is not None:
-                return f"[{normalized_text}](user:{user.name}){suffix}"
+                return f"[{mention_text}](user:{user.name})"
 
-            # If two-word capture doesn't map, try first token only.
-            if " " in normalized_text:
-                first_token, rmd = normalized_text.split(" ", 1)
-                user = self._find_user_for_mention(first_token)
+            # If it's a two‑word mention, try linking only the first token
+            if " " in mention_text:
+                first, rest = mention_text.split(" ", 1)
+                user = self._find_user_for_mention(first)
                 if user is not None:
-                    return (
-                        f"[{first_token}](user:{user.name}) {rmd}{suffix}"
-                    )
+                    return f"[{first}](user:{user.name}) {rest}"
 
-            return raw_mention
+            # No match → keep the original text
+            return raw
 
-        # Convert mentions only in plain-text segments and keep already
-        # stored user links untouched.
-        result_parts: list[str] = []
+        # Iterate over existing links and keep them untouched.
+        # Apply the substitution only to the plain‑text segments between them.
+        result_parts = []
         last_end = 0
         for link_match in USER_MENTION_LINK_PATTERN.finditer(md):
             start, end = link_match.span()
             if start > last_end:
                 segment = md[last_end:start]
                 result_parts.append(USER_MENTION_PATTERN.sub(repl, segment))
+            # preserve the original link
             result_parts.append(md[start:end])
             last_end = end
 
@@ -444,7 +449,7 @@ class AYCommentField(AYTextEdit):
             tail = md[last_end:]
             result_parts.append(USER_MENTION_PATTERN.sub(repl, tail))
 
-        return "".join(result_parts)
+        return ''.join(result_parts)
 
     def _setup_checkbox_handler(self) -> None:
         """Initialize checkbox handler if not already done."""
