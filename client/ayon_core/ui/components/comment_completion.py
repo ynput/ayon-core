@@ -31,7 +31,7 @@ from .user_image import AYUserImage
 # that both the highlighter and ``apply_code_block_backgrounds()`` always
 # use the same value.
 COMPLETER_ROW_BG = QColor("#353b46")
-COMPLETER_ROW_SELECTED_BG = QColor("#424F52FF")
+COMPLETER_ROW_SELECTED_BG = QColor("#424852")
 COMPLETER_TEXT = QColor("#e6eaf2")
 COMPLETER_TEXT_SELECTED = QColor("#ffffff")
 CODE_BG: QColor = QColor("#1e1e1e")
