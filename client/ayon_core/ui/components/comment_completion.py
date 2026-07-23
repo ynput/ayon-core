@@ -82,7 +82,7 @@ def strip_user_mention_display(md: str, user_list: list[User]) -> str:
         user_list: Available users for mention lookup.
 
     Returns:
-        Markdown text with @mentions replaced by links.
+        Markdown text with @mentions replaced by links e.g. [name](user:name).
     """
 
     def repl(match: re.Match) -> str:
