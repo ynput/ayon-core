@@ -216,7 +216,7 @@ MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
 USER_MENTION_PATTERN = re.compile(
     r"(?<![\w\[])@(?!@)\w+(?: [^\W\d_][\w'-]*)?"
 )
-# Match stored user links like "[@Joe](user:admin)".
+# Match stored user links like "[Joe](user:admin)".
 USER_MENTION_LINK_PATTERN = re.compile(
     r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
 )
@@ -347,86 +347,28 @@ class AYCommentField(AYTextEdit):
                 return user.full_name.strip()
         return None
 
-    @staticmethod
-    def _split_label_around_user_token(
-        label: str,
-        full_name: str,
-        user_id: str,
-    ) -> tuple[str, str] | None:
-        """Split label into prefix/suffix around a user mention token.
-        Supports malformed labels like:
-        - "1234 @Joe"
-        - "1234 @joe"
-        - "Joe 1234"
-        - "Joe"
-
-        Args:
-            label: The label text from the markdown link (without brackets)
-            full_name: The full name of the user to match against
-            user_id: The user id of the mention target
-
-        Returns:
-            A tuple of (prefix, suffix) if a match is found, or None if no
-            match is found.
-        """
-        candidates = (
-            f"@{full_name}",
-            f"@{user_id}",
-            full_name,
-            user_id,
-        )
-        lowered_label = label.lower()
-
-        best_index: int | None = None
-        best_len = 0
-        for token in candidates:
-            token = token.strip()
-            if not token:
-                continue
-            index = lowered_label.find(token.lower())
-            if index == -1:
-                continue
-
-            if (
-                best_index is None
-                or index < best_index
-                or (index == best_index and len(token) > best_len)
-            ):
-                best_index = index
-                best_len = len(token)
-
-        if best_index is not None:
-            prefix = label[:best_index]
-            suffix = label[best_index + best_len:]
-            return prefix, suffix
-
-        return None
-
     def _inject_user_mention_display(self, md: str) -> str:
-        """Render user mentions as @label while preserving markdown links.
+        """Convert user mention links to plain @mentions.
 
         Args:
-            md: Markdown text with user mentions in storage format
+            md: Markdown text with links like [label](user:id)
 
         Returns:
-            str: Markdown text with user mentions in display format
+            str: Text with links replaced by @full_name (or the original link
+                if the user is not found).
         """
+        # Compile pattern once (consider making it a class attribute for speed)
+        USER_MENTION_LINK_PATTERN = re.compile(
+            r"\[[^\]]+\]\(user:([^)]+)\)"
+        )
+
         def repl(match: re.Match[str]) -> str:
-            label = match.group("label").lstrip("@").strip()
-            user_id = match.group("id")
-
+            user_id = match.group(1)
             full_name = self._get_user_full_name_by_id(user_id)
-            if full_name is None:
-                return f"[@{label}](user:{user_id})"
-
-            split_result = self._split_label_around_user_token(
-                label, full_name, user_id
-            )
-            if split_result is None:
-                return f"[@{label}](user:{user_id})"
-
-            prefix, suffix = split_result
-            return f"{prefix}[@{full_name}](user:{user_id}){suffix}"
+            if full_name:
+                return f"@{full_name}"
+            # Fallback: keep the original link if user lookup fails
+            return match.group(0)
 
         return USER_MENTION_LINK_PATTERN.sub(repl, md)
 
