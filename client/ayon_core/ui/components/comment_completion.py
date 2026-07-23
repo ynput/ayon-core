@@ -337,7 +337,7 @@ class MentionHighlighter(QSyntaxHighlighter):
     Patterns highlighted:
 
     - Fenced code blocks (```\\`\\`\\` ... \\`\\`\\```) spanning multiple
-      lines — black background, white monospace text.  Block state ``1``
+      lines - black background, white monospace text.  Block state ``1``
       tracks whether the current block is inside a fence.
     - Qt-rendered code blocks (from ``setMarkdown()``) — detected via
       ``nonBreakableLines`` on the block format.
