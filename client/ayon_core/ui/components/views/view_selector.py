@@ -471,7 +471,6 @@ if __name__ == "__main__":  # pragma: no cover
         ViewSettings,
         Visibility,
     )
-    from .view_bindings import ViewBindings
     from .view_manager import InMemoryViewManager
 
     _USER = "demo_user"
