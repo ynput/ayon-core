@@ -107,7 +107,6 @@ class PublisherController(
         self._create_model = CreateModel(self)
         self._publish_model = PublishModel(self)
 
-        # Cacher of avalon documents
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._users_model = UsersModel(self)

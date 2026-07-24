@@ -66,11 +66,11 @@ class LauncherActionSelection:
             ),
             category=DeprecationWarning
         )
-        if key in {"AYON_PROJECT_NAME", "AVALON_PROJECT"}:
+        if key == "AYON_PROJECT_NAME":
             return self.project_name
-        if key in {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
+        if key == "AYON_FOLDER_PATH":
             return self.folder_path
-        if key in {"AYON_TASK_NAME", "AVALON_TASK"}:
+        if key == "AYON_TASK_NAME":
             return self.task_name
         raise KeyError(f"Key: {key} not found")
 
@@ -88,20 +88,11 @@ class LauncherActionSelection:
             category=DeprecationWarning
         )
         # Fake missing keys check for backwards compatibility
-        if key in {
-            "AYON_PROJECT_NAME",
-            "AVALON_PROJECT",
-        }:
+        if key == "AYON_PROJECT_NAME":
             return self._project_name is not None
-        if key in {
-            "AYON_FOLDER_PATH",
-            "AVALON_ASSET",
-        }:
+        if key == "AYON_FOLDER_PATH":
             return self._folder_id is not None
-        if key in {
-            "AYON_TASK_NAME",
-            "AVALON_TASK",
-        }:
+        if key == "AYON_TASK_NAME":
             return self._task_id is not None
         return False
 
