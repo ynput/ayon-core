@@ -19,4 +19,5 @@ ayon_compatible_addons = {
     "harmony": ">0.4.0",
     "fusion": ">=0.3.3",
     "openrv": ">=1.0.2",
+    "traypublisher": ">=0.3.0",
 }

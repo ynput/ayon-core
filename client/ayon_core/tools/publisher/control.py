@@ -107,7 +107,6 @@ class PublisherController(
         self._create_model = CreateModel(self)
         self._publish_model = PublishModel(self)
 
-        # Cacher of avalon documents
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._users_model = UsersModel(self)
@@ -213,19 +212,6 @@ class PublisherController(
     def get_instance_items(self):
         """Current instances in create context."""
         return self._create_model.get_instance_items()
-
-    # --- Legacy for TrayPublisher ---
-    @property
-    def instances(self):
-        return self.get_instance_items()
-
-    def get_instances(self):
-        return self.get_instance_items()
-
-    def get_instances_by_id(self, *args, **kwargs):
-        return self.get_instance_items_by_id(*args, **kwargs)
-
-    # ---
 
     def get_instance_items_by_id(self, instance_ids=None):
         return self._create_model.get_instance_items_by_id(instance_ids)
