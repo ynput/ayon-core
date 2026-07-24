@@ -18,6 +18,7 @@ from ayon_core.tools.utils import (
 
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
+from .recent_actions_widget import RecentActionsButton
 
 
 class LauncherWindow(AYContainer):
@@ -86,9 +87,12 @@ class LauncherWindow(AYContainer):
             parent=projects_header_widget,
         )
 
+        recent_actions_btn = RecentActionsButton(controller, projects_header_widget)
+
         projects_header_layout = AYHBoxLayout(projects_header_widget, margin=0, spacing=4)
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)
+        projects_header_layout.addWidget(recent_actions_btn, 0)
 
         projects_widget = ProjectsWidget(controller, pages_widget)
 
