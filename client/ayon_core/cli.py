@@ -208,6 +208,19 @@ def interactive():
 
 
 @main_cli.command()
+def browser():
+    """Show Browser tool."""
+    from ayon_core.tools.loader.ui import LoaderWindow
+    from ayon_core.tools.utils import get_ayon_qt_app
+
+    app = get_ayon_qt_app()
+    browser_window = LoaderWindow()
+    browser_window.setWindowTitle("AYON Browser")
+    browser_window.show()
+    app.exec_()
+
+
+@main_cli.command()
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
 def version(build):
