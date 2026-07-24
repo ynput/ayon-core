@@ -163,10 +163,6 @@ class CreateContext:
     Context itself also can store data related to whole creation (workfile).
     - those are mainly for Context publish plugins
 
-    Todos:
-        Don't use 'AvalonMongoDB'. It's used only to keep track about current
-            context which should be handled by host.
-
     Args:
         host (IPublishHost): Host implementation which handles implementation
             and global metadata.

@@ -258,7 +258,7 @@ def uninstall_host():
 
     deregister_host()
 
-    log.info("Successfully uninstalled Avalon!")
+    log.info("Successfully uninstalled AYON!")
 
 
 def is_installed():

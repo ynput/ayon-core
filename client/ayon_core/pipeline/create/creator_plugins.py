@@ -147,9 +147,6 @@ class ProductConvertorPlugin(ABC):
 class BaseCreator(ABC):
     """Plugin that create and modify instance data before publishing process.
 
-    We should maybe find better name as creation is only one part of its logic
-    and to avoid expectations that it is the same as `avalon.api.Creator`.
-
     Single object should be used for multiple instances instead of single
     instance per one creator object. Do not store temp data or mid-process data
     to `self` if it's not Plugin specific.
@@ -520,13 +517,8 @@ class BaseCreator(ABC):
         self.create_context.creator_removed_instance(instance)
 
     @abstractmethod
-    def create(self) -> Any:
-        """Create new instance.
-
-        Replacement of `process` method from avalon implementation.
-        - must expect all data that were passed to init in previous
-            implementation
-        """
+    def create(self):
+        """Trigger creation logic usually to create new instance/s."""
 
     @abstractmethod
     def collect_instances(self) -> None:
