@@ -205,18 +205,16 @@ class ServerViewManager(ViewManager):
         """
         payload = view.to_payload()
         is_update = bool(view.id)
+        if not is_update:
+            payload.pop("id", None)
 
         try:
             if is_update:
                 endpoint = self._endpoint(f"views/{view.view_type}/{view.id}")
-                resp = ayon_api.get_server_api_connection().raw_patch(
-                    endpoint, json=payload
-                )
+                resp = ayon_api.patch(endpoint, **payload)
             else:
                 endpoint = self._endpoint(f"views/{view.view_type}")
-                resp = ayon_api.get_server_api_connection().raw_post(
-                    endpoint, json=payload
-                )
+                resp = ayon_api.post(endpoint, **payload)
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to save view %s", view.id)
             self.error.emit(f"Failed to save view: {exc}")

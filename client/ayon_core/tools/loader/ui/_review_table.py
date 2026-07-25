@@ -43,7 +43,23 @@ from ._review_toolbar import Customize, DisplayType, GroupByMenu
 
 log = Logger.get_logger(__name__)
 
-VIEW_TYPE_VERSIONS = "versions"
+VIEW_TYPE_HIERARCHY = "desktop.browser"
+VIEW_TYPE_REVIEWS = "desktop.reviews"
+
+
+def _view_type_for_category(category: str) -> str:
+    """Return the server view-type string for the given category.
+
+    Args:
+        category: A :class:`ReviewCategory` value string.
+
+    Returns:
+        ``"desktop.browser"`` for the hierarchy category,
+        ``"desktop.reviews"`` for everything else.
+    """
+    if category == ReviewCategory.HIERARCHY.value:
+        return VIEW_TYPE_HIERARCHY
+    return VIEW_TYPE_REVIEWS
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -188,7 +204,9 @@ class ReviewTable(AYContainer):
         self._view_selector = AYViewSelector(
             bindings=self._view_bindings,
             manager=self._view_manager,
-            view_type=VIEW_TYPE_VERSIONS,
+            view_type=_view_type_for_category(
+                self._controller.current_category
+            ),
             current_user=_get_current_user(),
             user_access_level=50,
             allow_studio_scope=False,
@@ -379,6 +397,9 @@ class ReviewTable(AYContainer):
         self._model.set_columns(self._build_columns(category))
         self._group_by_menu.setVisible(
             category == ReviewCategory.HIERARCHY.value
+        )
+        self._view_selector.set_view_type(
+            _view_type_for_category(category)
         )
 
     # ------------------------------------------------------------------
