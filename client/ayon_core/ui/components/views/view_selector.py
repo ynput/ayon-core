@@ -51,6 +51,9 @@ class AYViewSelector(AYButtonMenu):
             the bindings.
         view_saved(View): Emitted after a view has been persisted.
         view_deleted(str): Emitted with the view id after deletion.
+        view_filters_modified(str): Emitted when the active filter no
+            longer matches the loaded view settings. Payload is the
+            current view name.
         binding_error(str, str): Emitted with ``(stage, message)`` when
             :class:`ViewBindings` reports a non-fatal failure while
             applying or capturing a view.
@@ -59,6 +62,9 @@ class AYViewSelector(AYButtonMenu):
     view_applied = Signal(object)
     view_saved = Signal(object)
     view_deleted = Signal(str)
+    #TODO: highlight view button upon any modifications
+    # in view with respect to current view
+    view_filters_modified = Signal(str)
     binding_error = Signal(str, str)
 
     def __init__(
@@ -79,6 +85,7 @@ class AYViewSelector(AYButtonMenu):
         self._current_user = current_user
         self._user_access = int(user_access_level)
         self._allow_studio_scope = bool(allow_studio_scope)
+        self._view_filters_modified = False
 
         self._current_view: View | None = None
         self._views: list[View] = []
@@ -106,6 +113,9 @@ class AYViewSelector(AYButtonMenu):
 
         # Refresh when the manager changes.
         self._manager.views_changed.connect(self._on_manager_changed)
+        self._bindings.filter_bar.filters_changed.connect(
+            self._on_filters_changed
+        )
 
         # Forward binding errors via the public ``binding_error`` signal so
         # hosts can surface them.  Overrides any pre-existing
@@ -300,6 +310,8 @@ class AYViewSelector(AYButtonMenu):
             working = next((v for v in self._views if v.working), None)
             if working is not None:
                 self._apply_view(working, emit=True)
+                return
+        self._sync_view_filters_modified_state()
 
     def current_view(self) -> View | None:
         """Return the currently active view, or ``None``."""
@@ -373,6 +385,7 @@ class AYViewSelector(AYButtonMenu):
     def _on_reset_clicked(self) -> None:
         """Clear the active view (does *not* persist anything)."""
         self._current_view = None
+        self._sync_view_filters_modified_state()
         self._close_menu()
 
     def _on_manager_changed(self, view_type: str) -> None:
@@ -396,6 +409,32 @@ class AYViewSelector(AYButtonMenu):
         except Exception:
             pass
 
+    def _on_filters_changed(self, _):
+        self._sync_view_filters_modified_state()
+
+    def _sync_view_filters_modified_state(self):
+        modified = self._signature() != self._signature(self._current_view)
+        if modified == self._view_filters_modified: return
+        self._view_filters_modified = modified
+        if modified and self._current_view:
+            view_name  = self._current_view.label or self._current_view.id
+            print(f"{view_name} modified")
+            self.view_filters_modified.emit(view_name)
+
+    def _signature(self, view=None):
+        items = (
+            self._bindings.filter_bar.get_criteria()
+            if view is None
+            else (c for c in view.settings.filter.conditions if isinstance(c, dict))
+        ) if (view or self._bindings.filter_bar) else ()
+        return tuple(sorted(
+            (k, s, tuple(sorted(map(str, v))))
+            for i in items
+            if (k := str(i.get("key") if view else getattr(i, "key", "")))
+            and (v := i.get("values") if view else getattr(i, "values", ()))
+            for s in [bool(i.get("useSubstring") if view else getattr(i, "use_substring", False))]
+        ))
+
     def _apply_view(self, view: View, emit: bool) -> None:
         """Apply *view* to the bindings and update the local state."""
         try:
@@ -405,6 +444,8 @@ class AYViewSelector(AYButtonMenu):
             return
 
         self._current_view = view
+        self._sync_view_filters_modified_state()
+
         if emit:
             self.view_applied.emit(view)
 
