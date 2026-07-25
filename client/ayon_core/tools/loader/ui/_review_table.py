@@ -212,7 +212,11 @@ class ReviewTable(AYContainer):
             allow_studio_scope=False,
             parent=self,
         )
+        self._view_selector._icon_size = 20
         self._view_selector.view_applied.connect(self._on_view_applied)
+        self._view_selector.view_deleted.connect(
+            lambda _: self._table_filter.set_active_criteria([])
+        )
         self._view_selector.binding_error.connect(
             self._on_view_selector_error
         )
