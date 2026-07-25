@@ -930,12 +930,6 @@ class ReviewTable(AYContainer):
 
         hierarchy = [
             TableColumn(
-                "entityType",
-                "Entity Type",
-                width=_w("Entity Type"),
-                icon="layers",
-            ),
-            TableColumn(
                 "productType",
                 "Product Type",
                 width=_w("Product Type"),
@@ -945,6 +939,7 @@ class ReviewTable(AYContainer):
                 "folderName",
                 "Folder Name",
                 width=_w("Folder Name"),
+                filterable=False,
                 icon="folder",
             ),
             TableColumn("author", "Author", width=_w("Author"), icon="person"),
@@ -983,12 +978,6 @@ class ReviewTable(AYContainer):
                 "Task Type",
                 width=_w("Task Type"),
                 icon="task_alt",
-            ),
-            TableColumn(
-                "entityType",
-                "Entity Type",
-                width=_w("Entity Type"),
-                icon="layers",
             ),
             TableColumn("author", "Author", width=_w("Author"), icon="person"),
             TableColumn(
