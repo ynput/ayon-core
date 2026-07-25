@@ -44,6 +44,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         self._tooltip = tooltip
         self._icon = icon
         self._icon_on = icon_on or icon
+        self._icon_color_override = icon_color
         self._icon_fill = icon_fill
         self._contrast_color = contrast_color
 
@@ -53,34 +54,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         self._style = get_ayon_style()
         self._style_data = get_ayon_style_data("QPushButton", variant.value)
         self._style_data.set_context(self)
-
-        # Determine the icon color
-        color_str = icon_color or self._style_data.get("color", "#ffffff")
-        self._icon_color = QColor(color_str)
-        # Adjust the icon color to have enough contrast with the background
-        if isinstance(contrast_color, QColor) and contrast_color.isValid():
-            self._icon_color = compute_color_for_contrast(
-                contrast_color.toTuple(),
-                self._icon_color.toTuple(),
-                min_contrast_ratio=7,
-            )
-
-        # compute a readable icon hover color
-        self._icon_hover_color = self._icon_color
-        icon_hover_bg = self._style_data.get("hover", {}).get(
-            "background-color", "#000000"
-        )
-        if isinstance(icon_hover_bg, str) and self._icon_color.isValid():
-            self._icon_hover_color = compute_color_for_contrast(
-                QColor(icon_hover_bg).toTuple(),
-                self._icon_color.toTuple(),
-                min_contrast_ratio=7,
-            )
-
-        # get the disabled opacity
-        self._disabled_opacity = self._style_data.get("disabled", {}).get(
-            "opacity", 0.5
-        )
+        self._refresh_icon_style_values()
 
         if self._icon:
             self.set_icon(self._icon)
@@ -117,6 +91,56 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
     @property
     def contrast_color(self):
         return self._contrast_color
+
+    def _refresh_icon_style_values(self):
+        # Determine the icon color
+        color_str = self._icon_color_override or self._style_data.get(
+            "color", "#ffffff"
+        )
+        self._icon_color = QColor(color_str)
+        # Adjust the icon color to have enough contrast with the background
+        if (
+            isinstance(self._contrast_color, QColor)
+            and self._contrast_color.isValid()
+        ):
+            self._icon_color = compute_color_for_contrast(
+                self._contrast_color.toTuple(),
+                self._icon_color.toTuple(),
+                min_contrast_ratio=7,
+            )
+
+        # compute a readable icon hover color
+        self._icon_hover_color = self._icon_color
+        icon_hover_bg = self._style_data.get("hover", {}).get(
+            "background-color", "#000000"
+        )
+        if isinstance(icon_hover_bg, str) and self._icon_color.isValid():
+            self._icon_hover_color = compute_color_for_contrast(
+                QColor(icon_hover_bg).toTuple(),
+                self._icon_color.toTuple(),
+                min_contrast_ratio=7,
+            )
+
+        # get the disabled opacity
+        self._disabled_opacity = self._style_data.get("disabled", {}).get(
+            "opacity", 0.5
+        )
+
+    def set_variant(self, variant: Variants | str):
+        variant_str = variant if isinstance(variant, str) else variant.value
+        normalized_variant = self.Variants(variant_str).value
+        if normalized_variant == self._variant_str:
+            return
+
+        self._variant_str = normalized_variant
+        self._style_data = get_ayon_style_data("QPushButton", self._variant_str)
+        self._style_data.set_context(self)
+        self._refresh_icon_style_values()
+        self._style.style_widget(self)
+        if self._icon:
+            self.set_icon(self._icon)
+        self.updateGeometry()
+        self.update()
 
     def _compute_contrast_text_color(
         self,

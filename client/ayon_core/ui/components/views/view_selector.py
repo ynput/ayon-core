@@ -274,6 +274,13 @@ class AYViewSelector(AYButtonMenu):
             edit_btn.clicked.connect(
                 lambda _checked=False, v=view: self._on_edit_clicked(v)
             )
+            save_btn = AYButton(
+                icon="save",
+                variant=AYButton.Variants.Filled,
+                tooltip="Save view…",
+            )
+            save_btn.setFixedSize(24, 24)
+            row.add_widget(save_btn)
             row.add_widget(edit_btn)
 
         return row
@@ -414,10 +421,14 @@ class AYViewSelector(AYButtonMenu):
 
     def _sync_view_filters_modified_state(self):
         modified = self._signature() != self._signature(self._current_view)
-        if modified == self._view_filters_modified: return
+        if modified == self._view_filters_modified:
+            return
         self._view_filters_modified = modified
+        self.set_variant(
+            AYButton.Variants.Filled if modified else AYButton.Variants.Surface
+        )
         if modified and self._current_view:
-            view_name  = self._current_view.label or self._current_view.id
+            view_name = self._current_view.label or self._current_view.id
             print(f"{view_name} modified")
             self.view_filters_modified.emit(view_name)
 
