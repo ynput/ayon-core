@@ -274,13 +274,18 @@ class AYViewSelector(AYButtonMenu):
             edit_btn.clicked.connect(
                 lambda _checked=False, v=view: self._on_edit_clicked(v)
             )
-            save_btn = AYButton(
-                icon="save",
-                variant=AYButton.Variants.Filled,
-                tooltip="Save view…",
-            )
-            save_btn.setFixedSize(24, 24)
-            row.add_widget(save_btn)
+            if hasattr(self._current_view, "id") and self._view_filters_modified:
+                if view.label == self._current_view.label:
+                    save_btn = AYButton(
+                            icon="save",
+                            variant=AYButton.Variants.Filled,
+                            tooltip="Save view…",
+                        )
+                    save_btn.setFixedSize(24, 24)
+                    save_btn.clicked.connect(
+                        lambda _checked=False, v=view: self._on_view_save_clicked(v)
+                    )
+                    row.add_widget(save_btn)
             row.add_widget(edit_btn)
 
         return row
@@ -459,6 +464,14 @@ class AYViewSelector(AYButtonMenu):
 
         if emit:
             self.view_applied.emit(view)
+
+    def _on_view_save_clicked(self, view: View) -> None:
+        self._close_menu()
+        view.settings = self._bindings.capture()
+        with self._suspend_auto_apply():
+            saved = self._save_view(view)
+        if saved is not None:
+            self._apply_view(saved, emit=True)
 
     def _save_view(self, view: View) -> View | None:
         """Persist *view* and return the manager's response."""
