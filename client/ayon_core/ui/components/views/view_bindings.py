@@ -199,7 +199,7 @@ class ViewBindings:
 
         # Filter conditions.
         if self.filter_bar is not None:
-            settings.filter = self._capture_filter()
+            settings.filter = self.capture_filter()
 
         # Grouping (round-tripped verbatim; no widget yet).
         settings.grouping = copy.deepcopy(self._last_grouping)
@@ -289,7 +289,7 @@ class ViewBindings:
         except Exception as exc:
             self._report_error("filter_apply", exc)
 
-    def _capture_filter(self) -> FilterDef:
+    def capture_filter(self) -> FilterDef:
         """Capture filter criteria from the live filter bar.
 
         The operator is preserved from the last :meth:`apply` call so a

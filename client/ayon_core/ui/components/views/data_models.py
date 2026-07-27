@@ -387,10 +387,12 @@ class ViewSettings:
 # View
 # ---------------------------------------------------------------------------
 
+VIEWER_ACCESS_LEVEL: int = 10
+EDITOR_ACCESS_LEVEL: int = 20
+ADMIN_ACCESS_LEVEL: int = 30
 
 # Default access level used when a payload does not specify one.
-# Scale is 0-50 step 10 — see plan documentation for semantics.
-DEFAULT_ACCESS_LEVEL: int = 30
+DEFAULT_ACCESS_LEVEL: int = ADMIN_ACCESS_LEVEL
 
 
 @dataclass
@@ -411,7 +413,7 @@ class View:
             ad-hoc tweaks.  At most one working view per (user,
             view_type) should be flagged.
         position: Sort order hint within the selector.
-        access_level: Required access level (0–50, step 10) for editing
+        access_level: Required access level (0–30, step 10) for editing
             shared views.  Components store the value and gate UI via
             :meth:`can_edit`.
         access: Free-form per-user/per-group access dict, preserved

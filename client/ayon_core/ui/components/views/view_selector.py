@@ -22,7 +22,7 @@ from ..buttons import AYButton, AYButtonMenu
 from ..container import AYContainer
 from ..label import AYLabel
 
-from .data_models import View, Visibility
+from .data_models import FilterDef, View, Visibility
 from .view_bindings import ViewBindings
 from .view_editor import AYViewEditor
 from .view_manager import ViewManager
@@ -114,7 +114,7 @@ class AYViewSelector(AYButtonMenu):
         # Refresh when the manager changes.
         self._manager.views_changed.connect(self._on_manager_changed)
         self._bindings.filter_bar.filters_changed.connect(
-            self._on_filters_changed
+            self._sync_view_filters_modified_state
         )
 
         # Forward binding errors via the public ``binding_error`` signal so
@@ -346,6 +346,7 @@ class AYViewSelector(AYButtonMenu):
             view,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
+            current_project= self._manager.project_name,
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -421,11 +422,13 @@ class AYViewSelector(AYButtonMenu):
         except Exception:
             pass
 
-    def _on_filters_changed(self, _):
-        self._sync_view_filters_modified_state()
-
     def _sync_view_filters_modified_state(self):
-        modified = self._signature() != self._signature(self._current_view)
+        live = self._bindings.capture_filter()
+        saved = (
+            self._current_view.settings.filter
+            if self._current_view else FilterDef()
+        )
+        modified = live != saved
         if modified == self._view_filters_modified:
             return
         self._view_filters_modified = modified
@@ -434,22 +437,7 @@ class AYViewSelector(AYButtonMenu):
         )
         if modified and self._current_view:
             view_name = self._current_view.label or self._current_view.id
-            print(f"{view_name} modified")
             self.view_filters_modified.emit(view_name)
-
-    def _signature(self, view=None):
-        items = (
-            self._bindings.filter_bar.get_criteria()
-            if view is None
-            else (c for c in view.settings.filter.conditions if isinstance(c, dict))
-        ) if (view or self._bindings.filter_bar) else ()
-        return tuple(sorted(
-            (k, s, tuple(sorted(map(str, v))))
-            for i in items
-            if (k := str(i.get("key") if view else getattr(i, "key", "")))
-            and (v := i.get("values") if view else getattr(i, "values", ()))
-            for s in [bool(i.get("useSubstring") if view else getattr(i, "use_substring", False))]
-        ))
 
     def _apply_view(self, view: View, emit: bool) -> None:
         """Apply *view* to the bindings and update the local state."""
