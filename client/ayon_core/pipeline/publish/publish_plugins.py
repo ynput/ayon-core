@@ -463,7 +463,11 @@ class Extractor(pyblish.api.InstancePlugin):
             originalBasename=repre_data.get("originalBasename"),
             data=repre_data.get("data")
         )
-        representation.set_sequence(repre_data["files"])
+        files = repre_data["files"]
+        if isinstance(files, (list, tuple)):
+            representation.set_sequence(list(files))
+        else:
+            representation.set_single_file(files)
 
         instance.data["representations"].append(representation)
 
