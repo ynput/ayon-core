@@ -193,18 +193,18 @@ def get_transferable_representations(instance):
     to_transfer = []
 
     for representation in instance.data.get("representations", []):
-        repre_tags = repre_get(representation, "tags") or []
+        repre_tags = repre_get(representation, "tags", [])
         if "publish_on_farm" not in repre_tags:
             continue
 
         trans_rep = copy.deepcopy(representation)
 
         # remove publish_on_farm from representations tags
-        trans_rep_tags = repre_get(trans_rep, "tags") or []
+        trans_rep_tags = repre_get(trans_rep, "tags", [])
         trans_rep_tags.remove("publish_on_farm")
         repre_set(trans_rep, "tags", trans_rep_tags)
 
-        staging_dir = repre_get(trans_rep, "stagingDir")
+        staging_dir = repre_get(trans_rep, "stagingDir", "")
 
         if staging_dir:
             try:
@@ -570,7 +570,7 @@ def prepare_representations(
         already_there = False
         for repre in skeleton_data.get("representations", []):
             # might be added explicitly before by publish_on_farm
-            already_there = repre_get(repre, "files") == rep["files"]
+            already_there = repre_get(repre, "files", "") == rep["files"]
             if already_there:
                 log.debug("repre {} already_there".format(repre))
                 break

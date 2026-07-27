@@ -81,7 +81,7 @@ class ExtractBurnin(publish.Extractor):
         # tags `delete` and `burnin`
         for repre in tuple(instance.data["representations"]):
             if all(
-                x in repre_get(repre, "tags") for x in ['delete', 'burnin']
+                x in repre_get(repre, "tags", []) for x in ['delete', 'burnin']
             ):
                 self.log.debug("Removing representation: {}".format(repre))
                 instance.data["representations"].remove(repre)
@@ -304,13 +304,13 @@ class ExtractBurnin(publish.Extractor):
             for burnin_def in repre_burnin_defs:
                 filename_suffix = burnin_def["name"]
                 new_repre = copy.deepcopy(repre)
-                repre_set(new_repre, "name", src_repre_staging_dir)
+                repre_set(new_repre, "stagingDir", src_repre_staging_dir)
 
                 # Keep "ftrackreview" tag only on first output
                 if first_output:
                     first_output = False
                 elif "ftrackreview" in repre_get(new_repre, "tags"):
-                    repre_get(new_repre, "tags").remove("ftrackreview")
+                    repre_get(new_repre, "tags", []).remove("ftrackreview")
 
                 burnin_values = {}
                 for key in self.positions:
@@ -319,8 +319,9 @@ class ExtractBurnin(publish.Extractor):
                         burnin_values[key] = value
 
                 # Remove "delete" tag from new representation
-                if "delete" in new_repre["tags"]:
-                    repre_get(new_repre, "tags").remove("delete")
+                repre_tags = repre_get(new_repre, "tags", [])
+                if "delete" in repre_tags:
+                    repre_tags.remove("delete")
 
                 if len(repre_burnin_defs) > 1:
                     # Update name and outputName to be
@@ -704,7 +705,7 @@ class ExtractBurnin(publish.Extractor):
         burnin_data["representation"] = repre_get(repre, "name")
 
         # no handles switch from profile tags
-        if "no-handles" in repre_get(repre, "tags"):
+        if "no-handles" in repre_get(repre, "tags", []):
             burnin_frame_start = temp_data["frame_start"]
             burnin_frame_end = temp_data["frame_end"]
 
@@ -727,7 +728,7 @@ class ExtractBurnin(publish.Extractor):
         # Move frame start by 1 frame when slate is used.
         if (
             "slate" in instance.data["families"]
-            and "slate-frame" in repre_get(repre, "tags")
+            and "slate-frame" in repre_get(repre, "tags", [])
         ):
             burnin_slate_frame_start -= 1
 
@@ -744,8 +745,12 @@ class ExtractBurnin(publish.Extractor):
         })
 
         # burnin source resolution which might be different than on review
-        repre_source_resolution_width = repre_get("source_resolution_width")
-        repre_source_resolution_height = repre_get("source_resolution_height")
+        repre_source_resolution_width = repre_get(
+            repre, "source_resolution_width"
+        )
+        repre_source_resolution_height = repre_get(
+            repre, "source_resolution_height"
+        )
         if repre_source_resolution_width and repre_source_resolution_height:
             burnin_data.update({
                 "source_resolution_width": repre_source_resolution_width,

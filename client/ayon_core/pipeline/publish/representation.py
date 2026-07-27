@@ -92,7 +92,13 @@ def repre_get(
     if isinstance(repre, dict):
         return repre.get(key, default)
 
-    return getattr(repre, key, default)
+    elif isinstance(repre, Representation):
+        return getattr(repre, key, default)
+
+    else:
+        raise TypeError(
+            f"Expected Representation or dict, got {type(repre).__name__}"
+        )
 
 
 def repre_set(

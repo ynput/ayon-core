@@ -60,10 +60,10 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         return data
 
     def _fill_staging_dir(self, data_object, anatomy):
-        staging_dir = repre_get(data_object, "stagingDir")
+        staging_dir = repre_get(data_object, "stagingDir", "")
         if staging_dir:
-            repre_set(data_object, "stagingDir", anatomy.fill_root(staging_dir))
-            data_object["stagingDir"] = anatomy.fill_root(staging_dir)
+            filled_staging_dir = anatomy.fill_root(staging_dir)
+            repre_set(data_object, "stagingDir", filled_staging_dir)
             self.log.debug("Filling stagingDir with root to: %s",
                            data_object["stagingDir"])
 

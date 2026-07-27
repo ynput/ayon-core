@@ -32,7 +32,7 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
         for repre in representations:
             self.log.debug(
                 "Processing representation {}".format(repre_get(repre, "name")))
-            tags = repre_get(repre, "tags")
+            tags = repre_get(repre, "tags", [])
             if "toScanline" not in tags:
                 self.log.debug(" - missing toScanline tag")
                 continue
@@ -87,7 +87,7 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
 
             repre_set(repre, "name", "exr")
             try:
-                repre_get(repre, "tags").remove("toScanline")
+                repre_get(repre, "tags", []).remove("toScanline")
 
             except ValueError:
                 # no `toScanline` tag present

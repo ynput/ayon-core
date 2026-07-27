@@ -1285,7 +1285,7 @@ def set_colorspace_data_to_representation(
     """
     log = log or Logger.get_logger(__name__)
 
-    file_ext = repre_get(representation, "ext")
+    file_ext = repre_get(representation, "ext", "")
 
     # check if `file_ext` in lower case is in CachedData.allowed_exts
     if file_ext.lstrip(".").lower() not in CachedData.allowed_exts:
@@ -1310,7 +1310,7 @@ def set_colorspace_data_to_representation(
     project_settings = context_data["project_settings"]
 
     # get one filename
-    filename = representation["files"]
+    filename = repre_get(representation, "files")
     if isinstance(filename, list):
         filename = filename[0]
 
@@ -1334,7 +1334,6 @@ def set_colorspace_data_to_representation(
 
         # update data key
         repre_set(representation, "colorspaceData", colorspace_data)
-        representation["colorspaceData"] = colorspace_data
 
 
 def get_display_view_colorspace_name(config_path, display, view):
