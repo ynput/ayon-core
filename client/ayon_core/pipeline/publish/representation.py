@@ -74,20 +74,25 @@ class Representation:
         self.data = data
 
 
-def repre_get(repre: Union[Representation, dict], key: str) -> Any:
+def repre_get(
+    repre: Union[Representation, dict],
+    key: str,
+    default: Any = None,
+) -> Any:
     """Get value from representation by key.
 
     Args:
-        repre (Representation): Representation object.
+        repre (Representation | dict): Representation object or legacy dict.
         key (str): Key to get value from.
+        default (Any): Default value if key/attribute is missing.
 
     Returns:
         Any: Value from representation.
     """
     if isinstance(repre, dict):
-        return repre.get(key, None)
+        return repre.get(key, default)
 
-    return getattr(repre, key, None)
+    return getattr(repre, key, default)
 
 
 def repre_set(
