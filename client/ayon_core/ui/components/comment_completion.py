@@ -59,6 +59,8 @@ def strip_user_mention_display(md: str, user_list: list[User]) -> str:
     Returns:
         Markdown text with @mentions replaced by links e.g. [name](user:name).
     """
+    if "@" not in md:
+        return md
 
     for user in sorted(
         user_list,
