@@ -241,7 +241,7 @@ class AYCommentField(AYTextEdit):
         self._num_lines = num_lines
         self._read_only: bool = read_only
         self._user_list: list[User] = user_list or []
-        self._user_full_name_by_user_id = {
+        self._user_full_name_by_username = {
             user.name: user.full_name for user in self._user_list
         }
         self._data = model
