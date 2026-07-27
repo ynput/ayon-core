@@ -15,17 +15,17 @@ from pprint import pformat
 
 import pyblish.api
 
-FW_KEY = "__OTIO_REVIEW_TRACK_PROCESSED__"
-
 
 class CollectOTIOReviewTrack(pyblish.api.InstancePlugin):
     label = "Collect OTIO Review Track"
     order = pyblish.api.CollectorOrder - 0.078
     families = ["otio.review.track"]
 
+    HAS_RUN_KEY = "__CollectOTIOReviewTrack_Run__"
+
     def process(self, instance):
         # Mark instance for 'CollectOtioReview'
-        instance.data[FW_KEY] = True
+        instance.data[self.HAS_RUN_KEY] = True
 
         otio_review_clips = self._get_review_clips(instance)
         if not otio_review_clips:
@@ -169,8 +169,10 @@ class CollectOtioReview(CollectOTIOReviewTrack):
     hosts = ["resolve", "hiero", "flame"]
 
     def process(self, instance):
-        if instance.data.pop(FW_KEY, False) is True:
-            self.log.debug("Skipping, CollectOtioReview has run.")
+        if instance.data.pop(
+            CollectOTIOReviewTrack.HAS_RUN_KEY, False
+        ) is True:
+            self.log.debug("Skipping, CollectOTIOReviewTrack has run.")
             return
         self.log.debug("Using old CollectOtioReview plugin")
 

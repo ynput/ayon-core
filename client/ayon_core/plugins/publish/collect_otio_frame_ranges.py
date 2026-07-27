@@ -10,8 +10,6 @@ from pprint import pformat
 
 import pyblish.api
 
-FW_KEY = "__OTIO_CLIP_RANGES_PROCESSED__"
-
 
 def validate_otio_clip(instance, logger):
     """Validate if instance has required OTIO clip data.
@@ -60,6 +58,7 @@ class CollectOTIORanges(pyblish.api.InstancePlugin):
     label = "Collect OTIO Ranges"
     order = pyblish.api.CollectorOrder - 0.08
     families = ["otio.clip.ranges"]
+    HAS_RUN_KEY = "__CollectOTIORanges_Run__"
 
     def process(self, instance):
         """Process the instance to collect all frame ranges.
@@ -68,7 +67,7 @@ class CollectOTIORanges(pyblish.api.InstancePlugin):
             instance: The instance to process
         """
         # Mark instance for 'CollectOTIORangesOld'
-        instance.data[FW_KEY] = True
+        instance.data[self.HAS_RUN_KEY] = True
 
         if not validate_otio_clip(instance, self.log):
             return
@@ -221,7 +220,7 @@ class CollectOTIORangesOld(CollectOTIORanges):
     families = ["shot", "clip"]
 
     def process(self, instance):
-        if instance.data.pop(FW_KEY, False) is True:
+        if instance.data.pop(CollectOTIORanges.HAS_RUN_KEY, False) is True:
             self.log.debug("Skipping, CollectOTIORanges has run.")
             return
         self.log.debug("Using old CollectOTIORanges plugin")

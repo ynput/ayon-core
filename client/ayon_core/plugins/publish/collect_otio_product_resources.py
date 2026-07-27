@@ -16,8 +16,6 @@ from ayon_core.pipeline.publish import (
     get_publish_template_name
 )
 
-FW_KEY = "__OTIO_REVIEW_PRODUCT_RESOURCES__"
-
 
 class CollectOTIOProductResources(
     pyblish.api.InstancePlugin,
@@ -27,6 +25,7 @@ class CollectOTIOProductResources(
     label = "Collect OTIO Product Resources"
     order = pyblish.api.CollectorOrder + 0.491
     families = ["otio.clip.resources"]
+    HAS_RUN_KEY = "__CollectOTIOProductResources_Run__"
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -38,7 +37,7 @@ class CollectOTIOProductResources(
         )
 
         # Mark instance for 'CollectOtioSubsetResources'
-        instance.data[FW_KEY] = True
+        instance.data[self.HAS_RUN_KEY] = True
 
         product_base_type = instance.data.get("productBaseType")
         if not product_base_type:
@@ -325,8 +324,10 @@ class CollectOtioSubsetResources(CollectOTIOProductResources):
     hosts = ["resolve", "hiero", "flame"]
 
     def process(self, instance):
-        if instance.data.pop(FW_KEY, False) is True:
-            self.log.debug("Skipping, CollectOtioSubsetResources has run.")
+        if instance.data.pop(
+            CollectOTIOProductResources.HAS_RUN_KEY, False
+        ) is True:
+            self.log.debug("Skipping, CollectOTIOProductResources has run.")
             return
         self.log.debug("Using old CollectOtioSubsetResources plugin")
         super().process(instance)
