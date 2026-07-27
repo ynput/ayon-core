@@ -1,5 +1,6 @@
 import pyblish.api
 from ayon_core.pipeline import publish
+from ayon_core.pipeline.publish.representation import repre_get
 
 
 class ExtractColorspaceData(publish.Extractor,
@@ -43,7 +44,7 @@ class ExtractColorspaceData(publish.Extractor,
         # loop representations
         for representation in representations:
             # skip if colorspaceData is already at representation
-            if representation.get("colorspaceData"):
+            if repre_get(representation, "colorspaceData"):
                 continue
 
             self.set_representation_colorspace(
