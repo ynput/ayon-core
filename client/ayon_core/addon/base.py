@@ -1054,7 +1054,7 @@ class AddonsManager:
             report_row
             for report_row in sorted(
                 self._report_by_name.values(),
-                key=lambda item: (int(item.server_addon), item.name)
+                key=lambda item: item.name
             )
         ]
         sorted_rows.append(self._total_row)
