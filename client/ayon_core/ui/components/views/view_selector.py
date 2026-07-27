@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 
-from qtpy.QtCore import Qt, Signal  # type: ignore[attr-defined]
+from qtpy.QtCore import QEvent, QObject, Qt, Signal  # type: ignore[attr-defined]
 from qtpy.QtWidgets import QDialog, QFrame, QSizePolicy, QWidget
 
 from ..buttons import AYButton, AYButtonMenu
@@ -34,6 +34,22 @@ log = logging.getLogger(__name__)
 # Real consumer apps should pass the user's actual project access level
 # when constructing the selector so View.can_edit() works correctly.
 _DEFAULT_USER_ACCESS: int = 50
+
+
+class _HoverReveal(QObject):
+    """Event filter that shows *widget* only while
+    the watched widget is hovered."""
+
+    def __init__(self, widget: QWidget, parent: QObject) -> None:
+        super().__init__(parent)
+        self._widget = widget
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.Enter:
+            self._widget.setVisible(True)
+        elif event.type() == QEvent.Type.Leave:
+            self._widget.setVisible(False)
+        return False  # never consume the event
 
 
 class AYViewSelector(AYButtonMenu):
@@ -62,8 +78,6 @@ class AYViewSelector(AYButtonMenu):
     view_applied = Signal(object)
     view_saved = Signal(object)
     view_deleted = Signal(str)
-    #TODO: highlight view button upon any modifications
-    # in view with respect to current view
     view_filters_modified = Signal(str)
     binding_error = Signal(str, str)
 
@@ -240,53 +254,50 @@ class AYViewSelector(AYButtonMenu):
 
         return row
 
+    def _make_save_btn(self, view: View, row: AYContainer) -> AYButton:
+        is_modified = (
+                self._current_view
+                and view.id == self._current_view.id
+                and self._view_filters_modified
+        )
+        variant = AYButton.Variants.Filled if is_modified else AYButton.Variants.Surface
+        btn = AYButton(icon="save", variant=variant, tooltip="Save view…")
+        btn.setFixedSize(24, 24)
+        btn.clicked.connect(lambda _checked=False, v=view: self._on_view_save_clicked(v))
+
+        if not is_modified:
+            sp = btn.sizePolicy()
+            sp.setRetainSizeWhenHidden(True)
+            btn.setSizePolicy(sp)
+            btn.setVisible(False)
+            row.installEventFilter(_HoverReveal(btn, row))
+
+        return btn
+
+    def _make_edit_btn(self, view: View) -> AYButton:
+        btn = AYButton(icon="more_horiz", variant=AYButton.Variants.Nav_Small, tooltip="Edit view…")
+        btn.setFixedSize(24, 24)
+        btn.clicked.connect(lambda _checked=False, v=view: self._on_edit_clicked(v))
+        return btn
+
     def _make_row(self, view: View) -> AYContainer:
         """Build one selectable row for *view*."""
-        row = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            layout_spacing=4,
-            layout_margin=0,
-        )
+        row = AYContainer(layout=AYContainer.Layout.HBox, layout_spacing=4, layout_margin=0)
 
-        icon = "star" if view.working else "view_list"
         select_btn = AYButton(
             view.label or "(unnamed view)",
-            icon=icon,
+            icon="star" if view.working else "view_list",
             variant=AYButton.Variants.Text,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
         )
-        select_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
-        select_btn.clicked.connect(
-            lambda _checked=False, v=view: self._on_view_selected(v)
-        )
+        select_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        select_btn.clicked.connect(lambda _checked=False, v=view: self._on_view_selected(v))
         row.add_widget(select_btn, stretch=1)
 
         if view.can_edit(self._current_user, self._user_access):
-            edit_btn = AYButton(
-                icon="more_horiz",
-                variant=AYButton.Variants.Nav_Small,
-                tooltip="Edit view…",
-            )
-            edit_btn.setFixedSize(24, 24)
-            edit_btn.clicked.connect(
-                lambda _checked=False, v=view: self._on_edit_clicked(v)
-            )
-            if hasattr(self._current_view, "id") and self._view_filters_modified:
-                if view.label == self._current_view.label:
-                    save_btn = AYButton(
-                            icon="save",
-                            variant=AYButton.Variants.Filled,
-                            tooltip="Save view…",
-                        )
-                    save_btn.setFixedSize(24, 24)
-                    save_btn.clicked.connect(
-                        lambda _checked=False, v=view: self._on_view_save_clicked(v)
-                    )
-                    row.add_widget(save_btn)
-            row.add_widget(edit_btn)
+            row.add_widget(self._make_save_btn(view, row))
+            row.add_widget(self._make_edit_btn(view))
 
         return row
 
