@@ -86,6 +86,9 @@ def repre_get(
         key (str): Key to get value from.
         default (Any): Default value if key/attribute is missing.
 
+    Raises:
+        TypeError: If `repre` is not a Representation or dict.
+
     Returns:
         Any: Value from representation.
     """
@@ -111,8 +114,17 @@ def repre_set(
         repre (Representation): Representation object.
         key (str): Key to set value for.
         value (Any): Value to set.
+
+    Raises:
+        TypeError: If `repre` is not a Representation or dict.
     """
     if isinstance(repre, dict):
         repre[key] = value
-    else:
+
+    elif isinstance(repre, Representation):
         setattr(repre, key, value)
+
+    else:
+        raise TypeError(
+            f"Expected Representation or dict, got {type(repre).__name__}"
+        )
