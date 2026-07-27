@@ -171,9 +171,8 @@ class AYViewSelector(AYButtonMenu):
                 item.widget().deleteLater()
 
         # Current view row with inline reset button.
-        if self._current_view is not None:
-            layout.addWidget(self._make_current_row(self._current_view))
-            layout.addWidget(self._make_separator())
+        layout.addWidget(self._make_current_row(self._current_view))
+        layout.addWidget(self._make_separator())
 
         private = [
             v for v in self._views if v.visibility == Visibility.PRIVATE
@@ -193,6 +192,8 @@ class AYViewSelector(AYButtonMenu):
         if not self._views:
             layout.addWidget(AYLabel("No saved views.", dim=True))
 
+        layout.addWidget(self._make_header("Default view"))
+        layout.addWidget(self._make_default_view_row())
         layout.addWidget(self._make_separator())
 
         new_btn = AYButton(
@@ -231,8 +232,7 @@ class AYViewSelector(AYButtonMenu):
         )
 
         label_btn = AYButton(
-            view.label or "(unnamed view)",
-            icon="check",
+            "Working view",
             variant=AYButton.Variants.Text,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
@@ -298,6 +298,38 @@ class AYViewSelector(AYButtonMenu):
         if view.can_edit(self._current_user, self._user_access):
             row.add_widget(self._make_save_btn(view, row))
             row.add_widget(self._make_edit_btn(view))
+
+        return row
+
+    def _make_default_view_row(self) -> AYContainer:
+        """Build a row for the default view."""
+        row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=0,
+            layout_margin=0)
+
+        studio_btn = AYButton(
+            "Studio",
+            icon="add",
+            variant=AYButton.Variants.Surface,
+            fixed_width=False,
+            label_alignment=Qt.AlignmentFlag.AlignLeft,
+        )
+        project_btn = AYButton(
+            "Project",
+            icon="add",
+            variant=AYButton.Variants.Surface,
+            fixed_width=False,
+            label_alignment=Qt.AlignmentFlag.AlignLeft,
+        )
+
+        studio_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        studio_btn.clicked.connect(lambda _checked=False: self._on_set_default_view_clicked(studio_btn))
+        row.add_widget(studio_btn, stretch=1)
+
+        project_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        project_btn.clicked.connect(lambda _checked=False: self._on_set_default_view_clicked(project_btn))
+        row.add_widget(project_btn, stretch=1)
 
         return row
 
@@ -408,9 +440,25 @@ class AYViewSelector(AYButtonMenu):
 
     def _on_reset_clicked(self) -> None:
         """Clear the active view (does *not* persist anything)."""
+        #TODO: Reset to default means:
+        # reset to project default if set
+        # reset to studio default if set
+        # reset to AYON default
         self._current_view = None
         self._sync_view_filters_modified_state()
         self._close_menu()
+
+    def _on_set_default_view_clicked(self, button: AYButton) -> None:
+        """Save to the default view for the given *scope*"""
+        #TODO: Implement the actual logic to save
+        # the default view for the given scope (studio or project).
+        if button._variant_str == "surface":
+            button.set_variant(AYButton.Variants.Filled)
+            button.set_icon("close")
+        else:
+            button.set_variant(AYButton.Variants.Surface)
+            button.set_icon("add")
+
 
     def _on_manager_changed(self, view_type: str) -> None:
         """Refresh when the manager signals a change for our type.
