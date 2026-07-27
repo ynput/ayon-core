@@ -74,9 +74,7 @@ from .abstract_collect_render import (
 from .representation import (
     Representation,
     repre_get,
-    repre_copy,
-    repre_to_dict,
-    repre_tags,
+    repre_set,
 )
 
 
@@ -151,6 +149,5 @@ __all__ = (
 
     "Representation",
     "repre_get",
-    "repre_copy",
-    "repre_to_dict",
+    "repre_set",
 )

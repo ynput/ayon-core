@@ -26,6 +26,7 @@ from ayon_core.lib import (
     get_rescaled_command_arguments,
 )
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
+from ayon_core.pipeline.publish.representation import repre_get
 
 
 class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
@@ -153,7 +154,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             instance.data["representations"] = []
 
         for repre in instance.data["representations"]:
-            if repre["name"] == "thumbnail":
+            if repre_get(repre, "name") == "thumbnail":
                 return True
         return False
 

@@ -25,7 +25,6 @@ from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import (
     PublishError,
     repre_get,
-    repre_to_dict,
     repre_set,
 )
 from ayon_core.pipeline.publish.input_versions import serialize_input_versions
@@ -571,7 +570,7 @@ def prepare_representations(
         already_there = False
         for repre in skeleton_data.get("representations", []):
             # might be added explicitly before by publish_on_farm
-            already_there = repre.get("files") == rep["files"]
+            already_there = repre_get(repre, "files") == rep["files"]
             if already_there:
                 log.debug("repre {} already_there".format(repre))
                 break

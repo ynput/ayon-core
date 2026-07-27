@@ -8,6 +8,7 @@ from ayon_core.lib import get_media_mime_type, format_file_size
 from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     get_publish_repre_path,
+    repre_get,
 )
 
 
@@ -33,7 +34,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
     def _upload_reviewable(self, project_name, version_id, instance):
         uploaded_labels = set()
         for repre in instance.data["representations"]:
-            repre_tags = repre.get("tags") or []
+            repre_tags = repre_get(repre, "tags") or []
             # Ignore representations that are not reviewable
             if "webreview" not in repre_tags:
                 continue
@@ -43,7 +44,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 continue
 
             # Skip thumbnails
-            if repre.get("thumbnail") or "thumbnail" in repre_tags:
+            if repre_get(repre, "thumbnail") or "thumbnail" in repre_tags:
                 continue
 
             repre_path = get_publish_repre_path(
@@ -99,7 +100,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
 
     def _get_review_label(self, repre, uploaded_labels):
         # Use output name as label if available
-        label = repre.get("outputName")
+        label = repre_get(repre, "outputName")
         if not label:
             return None
         orig_label = label

@@ -32,13 +32,13 @@ from ayon_core.lib import (
 from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import get_staging_dir_info
-from ayon_core.pipeline.publish import repre_get
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.lib.file_transaction import copyfile
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
 )
+from .representation import repre_get
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.traits import Representation
@@ -766,8 +766,7 @@ def get_publish_repre_path(instance, repre, only_published=False):
         str: Path to representation file.
         None: Path is not filled or does not exists.
     """
-
-    published_path = repre.get("published_path")
+    published_path = repre_get(repre, "published_path")
     if published_path:
         published_path = os.path.normpath(published_path)
         if os.path.exists(published_path):
@@ -776,13 +775,13 @@ def get_publish_repre_path(instance, repre, only_published=False):
     if only_published:
         return published_path
 
-    comp_files = repre["files"]
+    comp_files = repre_get(repre, "files")
     if isinstance(comp_files, (tuple, list, set)):
         filename = comp_files[0]
     else:
         filename = comp_files
 
-    staging_dir = repre.get("stagingDir")
+    staging_dir = repre_get(repre, "stagingDir")
     if not staging_dir:
         staging_dir = get_instance_staging_dir(instance)
 
