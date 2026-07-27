@@ -345,8 +345,8 @@ class AYCommentField(AYTextEdit):
                 if the user is not found).
         """
         def repl(match) -> str:
-            user_id = match.group("id")
-            full_name = self._user_full_name_by_user_id.get(user_id)
+            username = match.group("username")
+            full_name = self._user_full_name_by_username.get(username)
             if full_name:
                 return f"@{full_name}"
             # Fallback: keep the original link if user lookup fails
