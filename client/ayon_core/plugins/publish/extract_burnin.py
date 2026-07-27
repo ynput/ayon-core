@@ -80,7 +80,9 @@ class ExtractBurnin(publish.Extractor):
         # Remove only representation tagged with both
         # tags `delete` and `burnin`
         for repre in tuple(instance.data["representations"]):
-            if all(x in repre_get(repre, "tags") for x in ['delete', 'burnin']):
+            if all(
+                x in repre_get(repre, "tags") for x in ['delete', 'burnin']
+            ):
                 self.log.debug("Removing representation: {}".format(repre))
                 instance.data["representations"].remove(repre)
 

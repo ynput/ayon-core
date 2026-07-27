@@ -178,7 +178,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # Make sure cleanup happens and pop representations with "delete" tag.
         for repre in orig_representations:
-            tags = repre.get("tags") or []
+            tags = repre_get(repre, "tags") or []
             # Representation is not marked to be deleted
             if "delete" not in tags:
                 continue
@@ -333,7 +333,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         for repre, output_defs in outputs_per_repres:
             # Check if input should be preconverted before processing
             # Store original staging dir (it's value may change)
-            src_repre_staging_dir = repre["stagingDir"]
+            src_repre_staging_dir = repre_get(repre, "stagingDir")
             # Receive filepath to first file in representation
             first_input_path = None
             input_filepaths = []
@@ -393,7 +393,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     project_name=instance.context.data["projectName"],
                     use_local_temp=True,
                 )
-                repre["stagingDir"] = new_staging_dir
+                repre_set(repre, "stagingDir", new_staging_dir)
 
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
@@ -421,7 +421,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 if do_convert:
                     # Set staging dir of source representation back to previous
                     #   value
-                    repre["stagingDir"] = src_repre_staging_dir
+                    repre_set(repre, "stagingDir", src_repre_staging_dir)
                     if os.path.exists(new_staging_dir):
                         shutil.rmtree(new_staging_dir)
 
@@ -445,11 +445,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             # Create copy of representation
             new_repre = copy.deepcopy(repre)
-            new_tags = new_repre.get("tags") or []
+            new_tags = repre_get(new_repre, "tags") or []
             # Make sure new representation has origin staging dir
             #   - this is because source representation may change
             #       it's staging dir because of ffmpeg conversion
-            new_repre["stagingDir"] = src_repre_staging_dir
+            repre_set(new_repre, "stagingDir", src_repre_staging_dir)
 
             # Remove "delete" tag from new repre if there is
             if "delete" in new_tags:
@@ -464,22 +464,22 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     new_tags.append(tag)
 
             # Return tags to new representation
-            new_repre["tags"] = new_tags
+            repre_set(new_repre, "tags", new_tags)
 
             # Add burnin link from output definition to representation
             for burnin in output_def["burnins"]:
-                if burnin not in new_repre.get("burnins", []):
-                    if not new_repre.get("burnins"):
-                        new_repre["burnins"] = []
-                    new_repre["burnins"].append(str(burnin))
+                burnins = repre_get(new_repre, "burnins") or []
+                if burnin not in burnins:
+                    burnins.append(str(burnin))
+                    repre_set(new_repre, "burnins", burnins)
 
             self.log.debug(
-                "Linked burnins: `{}`".format(new_repre.get("burnins"))
+                "Linked burnins: `{}`".format(repre_get(new_repre, "burnins"))
             )
 
             self.log.debug(
                 "New representation tags: `{}`".format(
-                    new_repre.get("tags"))
+                    repre_get(new_repre, "tags"))
             )
 
             temp_data = self.prepare_temp_data(instance, repre, output_def)
@@ -487,7 +487,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if temp_data.input_is_sequence:
                 self.log.debug("Checking sequence to fill gaps in sequence..")
 
-                files = temp_data.origin_repre["files"]
+                files = repre_get(temp_data.origin_repre, "files")
                 collections = clique.assemble(
                     files,
                 )[0]
@@ -500,17 +500,18 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 collection = collections[0]
 
                 fill_missing_frames = _output_def["fill_missing_frames"]
+                staging_dir = repre_get(new_repre, "stagingDir")
                 if fill_missing_frames == "closest_existing":
                     new_frame_files = self.fill_sequence_gaps_from_existing(
                         collection=collection,
-                        staging_dir=new_repre["stagingDir"],
+                        staging_dir=staging_dir,
                         start_frame=temp_data.frame_start,
                         end_frame=temp_data.frame_end,
                     )
                 elif fill_missing_frames == "blank":
                     new_frame_files = self.fill_sequence_gaps_with_blanks(
                         collection=collection,
-                        staging_dir=new_repre["stagingDir"],
+                        staging_dir=staging_dir,
                         start_frame=temp_data.frame_start,
                         end_frame=temp_data.frame_end,
                         resolution_width=temp_data.resolution_width,
@@ -521,9 +522,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 elif fill_missing_frames == "previous_version":
                     fill_output = fill_sequence_gaps_with_previous_version(
                         collection=collection,
-                        staging_dir=new_repre["stagingDir"],
+                        staging_dir=staging_dir,
                         instance=instance,
-                        current_repre_name=repre["name"],
+                        current_repre_name=repre_get(new_repre, "name"),
                         start_frame=temp_data.frame_start,
                         end_frame=temp_data.frame_end,
                     )
@@ -537,14 +538,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         new_frame_files = (
                             self.fill_sequence_gaps_from_existing(
                             collection=collection,
-                            staging_dir=new_repre["stagingDir"],
+                            staging_dir=staging_dir,
                             start_frame=temp_data.frame_start,
                             end_frame=temp_data.frame_end,
                         ))
                 elif fill_missing_frames == "only_rendered":
                     temp_data.explicit_input_paths = [
                         os.path.join(
-                            new_repre["stagingDir"], file
+                            staging_dir, file
                         ).replace("\\", "/")
                         for file in files
                     ]
@@ -556,8 +557,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             temp_data.filled_files = new_frame_files
 
             # create or update outputName
-            output_name = new_repre.get("outputName", "")
-            output_ext = new_repre["ext"]
+            output_name = repre_get(new_repre, "outputName") or ""
+            output_ext = repre_get(new_repre, "ext")
             if output_name:
                 output_name += "_"
             output_name += output_def["filename_suffix"]
@@ -591,7 +592,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             except ZeroDivisionError:
                 # TODO recalculate width and height using OIIO before
                 #   conversion
-                if 'exr' in temp_data.origin_repre["ext"]:
+                if 'exr' in repre_get(temp_data.origin_repre, "ext"):
                     self.log.warning(
                         (
                             "Unsupported compression on input files."
@@ -626,9 +627,16 @@ class ExtractReview(pyblish.api.InstancePlugin):
             })
 
             # Force to pop these key if are in new repre
-            new_repre.pop("thumbnail", None)
-            if "clean_name" in new_repre.get("tags", []):
-                new_repre.pop("outputName")
+            if isinstance(repre, dict):
+                new_repre.pop("thumbnail", None)
+            else:
+                repre_set(new_repre, "thumbnail", None)
+
+            if "clean_name" in repre_get(new_repre, "tags"):
+                if isinstance(repre, dict):
+                    new_repre.pop("outputName")
+                else:
+                    repre_set(new_repre, "outputName", None)
 
             # adding representation
             self.log.debug(
