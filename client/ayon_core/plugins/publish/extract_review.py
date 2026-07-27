@@ -18,6 +18,10 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
+from ayon_core.pipeline.publish import (
+    repre_get,
+    repre_set,
+)
 from ayon_core.pipeline.publish.lib import (
     fill_sequence_gaps_with_previous_version
 )
@@ -245,9 +249,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
     def _get_outputs_per_representations(self, instance, profile_outputs):
         outputs_per_representations = []
         for repre in instance.data["representations"]:
-            repre_name = str(repre.get("name"))
-            tags = repre.get("tags") or []
-            custom_tags = repre.get("custom_tags")
+            repre_name = str(repre_get(repre, "name"))
+            tags = repre_get(repre, "tags") or []
+            custom_tags = repre_get(repre, "custom_tags")
             if "review" not in tags:
                 self.log.debug((
                     "Repre: {} - Didn't find \"review\" in tags. Skipping"
@@ -265,8 +269,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     "Repre: {} - Found \"passing\" in tags. Skipping"
                 ).format(repre_name))
                 continue
-
-            input_ext = repre["ext"].lower()
+            input_ext = repre_get(repre, "ext").lower()
             if input_ext.startswith("."):
                 input_ext = input_ext[1:]
 
@@ -336,11 +339,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
             input_filepaths = []
             if not self.input_is_sequence(repre):
                 first_input_path = os.path.join(
-                    src_repre_staging_dir, repre["files"]
+                    src_repre_staging_dir, repre_get(repre, "files")
                 )
                 input_filepaths.append(first_input_path)
             else:
-                for filename in repre["files"]:
+                for filename in repre_get(repre, "files"):
                     filepath = os.path.join(
                         src_repre_staging_dir, filename
                     )
@@ -355,14 +358,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 self.log.debug((
                     "Repre: {} - All output definitions were filtered"
                     " out by single frame filter. Skipped."
-                ).format(repre["name"]))
+                ).format(repre_get(repre, "name")))
                 continue
 
             # Skip if file is not set
             if first_input_path is None:
                 self.log.warning((
                     "Representation \"{}\" has empty files. Skipped."
-                ).format(repre["name"]))
+                ).format(repre_get(repre, "name")))
                 continue
 
             # Determine if representation requires pre conversion for ffmpeg
@@ -642,7 +645,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         #   - there may be multiple files ant not be sequence
         #   - remainders are not checked at all
         #   - there can be more than one collection
-        return isinstance(repre["files"], (list, tuple))
+        return isinstance(repre_get(repre, "files"), (list, tuple))
 
     def prepare_temp_data(self, instance, repre, output_def) -> TempData:
         """Prepare dictionary with values used across extractor's process.
@@ -704,9 +707,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
         input_allow_bg = False
         first_sequence_frame = None
 
-        if input_is_sequence and repre["files"]:
+        if input_is_sequence and repre_get(repre, "files"):
             # Calculate first frame that should be used
-            cols, _ = clique.assemble(repre["files"])
+            cols, _ = clique.assemble(repre_get(repre, "files"))
             input_frames = list(sorted(cols[0].indexes))
             first_sequence_frame = input_frames[0]
             # WARNING: This is an issue as we don't know if first frame
@@ -719,11 +722,15 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ):
                 first_sequence_frame += handle_start
 
-            ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
+            ext = os.path.splitext(
+                repre_get(repre, "files")[0]
+            )[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
         else:
-            ext = os.path.splitext(repre["files"])[1].replace(".", "")
+            ext = os.path.splitext(
+                repre_get(repre, "files")
+            )[1].replace(".", "")
 
         return TempData(
             fps=float(instance.data["fps"]),
@@ -1183,11 +1190,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
         """
 
         repre = temp_data.origin_repre
-        src_staging_dir = repre["stagingDir"]
-        dst_staging_dir = new_repre["stagingDir"]
+        src_staging_dir = repre_get(repre, "stagingDir")
+        dst_staging_dir = repre_get(new_repre, "stagingDir")
+        repre_files = repre_get(repre, "files")
 
         if temp_data.input_is_sequence:
-            collections = clique.assemble(repre["files"])[0]
+            collections = clique.assemble(repre_files)[0]
             full_input_path = os.path.join(
                 src_staging_dir,
                 collections[0].format("{head}{padding}{tail}")
@@ -1199,14 +1207,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             # Make sure to have full path to one input file
             full_input_path_single_file = os.path.join(
-                src_staging_dir, repre["files"][0]
+                src_staging_dir, repre_files[0]
             )
 
         else:
             full_input_path = os.path.join(
-                src_staging_dir, repre["files"]
+                src_staging_dir, repre_files
             )
-            filename = os.path.splitext(repre["files"])[0]
+            filename = os.path.splitext(repre_files)[0]
 
             # Make sure to have full path to one input file
             full_input_path_single_file = full_input_path
@@ -1233,7 +1241,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         output_ext = output_ext.lower()
 
         # Store extension to representation
-        new_repre["ext"] = output_ext
+        repre_set(new_repre, "ext", output_ext)
 
         self.log.debug("New representation ext: `{}`".format(output_ext))
 
@@ -1258,7 +1266,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             for frame in range(frame_start, frame_end + 1):
                 new_repre_files.append(repr_file % frame)
 
-            new_repre["sequence_file"] = repr_file
+            repre_set(new_repre, "sequence_file", repr_file)
             full_output_path = os.path.join(
                 dst_staging_dir, filename_base, repr_file
             )
@@ -1271,7 +1279,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             new_repre_files = repr_file
 
         # Store files to representation
-        new_repre["files"] = new_repre_files
+        repre_set(new_repre, "files", new_repre_files)
 
         # Make sure stagingDire exists
         dst_staging_dir = os.path.normpath(os.path.dirname(full_output_path))
@@ -1280,7 +1288,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             os.makedirs(dst_staging_dir)
 
         # Store stagingDir to representation
-        new_repre["stagingDir"] = dst_staging_dir
+        repre_set(new_repre, "stagingDir", dst_staging_dir)
 
         # Store paths to temp data
         temp_data.full_input_path = full_input_path
@@ -1500,9 +1508,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # if reformat input video file is already reforamted from upstream
         reformat_in_baking = (
-            "reformatted" in new_repre["tags"]
+            "reformatted" in repre_get(new_repre, "tags")
             # Backwards compatibility
-            or "reformated" in new_repre["tags"]
+            or "reformated" in repre_get(new_repre, "tags")
         )
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
 
@@ -1549,10 +1557,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ).format(full_input_path_single_file))
 
         # collect source values to be potentially used in burnins later
-        if "source_resolution_width" not in new_repre:
-            new_repre["source_resolution_width"] = input_width
-        if "source_resolution_height" not in new_repre:
-            new_repre["source_resolution_height"] = input_height
+        if not repre_get(new_repre, "source_resolution_width"):
+            repre_set(new_repre, "source_resolution_width", input_width)
+        if not repre_get(new_repre, "source_resolution_height"):
+            repre_set(new_repre, "source_resolution_height", input_height)
 
         # NOTE Setting only one of `width` or `height` is not allowed
         # - settings value can't have None but has value of 0
@@ -1679,8 +1687,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "Output resolution is same as input's"
                 " and \"letter_box\" key is not set. Skipping reformat part."
             )
-            new_repre["resolutionWidth"] = input_width
-            new_repre["resolutionHeight"] = input_height
+            repre_set(new_repre, "resolutionWidth", input_width)
+            repre_set(new_repre, "resolutionHeight", input_height)
             return filters
 
         # scaling none square pixels and 1920 width
@@ -1707,10 +1715,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     output_height
                 )
             )
-
-        new_repre["resolutionWidth"] = output_width
-        new_repre["resolutionHeight"] = output_height
-
+        repre_set(new_repre, "resolutionWidth", output_width)
+        repre_set(new_repre, "resolutionHeight", output_height)
         return filters
 
     def lut_filters(self, new_repre, instance, input_args):

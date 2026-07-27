@@ -3,6 +3,7 @@
 import os
 import shutil
 import pyblish.api
+from ayon_core.pipeline.publish import repre_get
 
 
 class CleanUpFarm(pyblish.api.ContextPlugin):
@@ -44,7 +45,7 @@ class CleanUpFarm(pyblish.api.ContextPlugin):
 
             if "representations" in instance.data:
                 for repre in instance.data["representations"]:
-                    staging_dir = repre.get("stagingDir")
+                    staging_dir = repre_get(repre, "stagingDir")
                     if staging_dir:
                         dirpaths_to_remove.add(os.path.normpath(staging_dir))
 

@@ -16,6 +16,7 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.lib.profiles_filtering import filter_profiles
+from ayon_core.pipeline.publish import repre_get, repre_set
 
 
 class ExtractOIIOPostProcess(publish.Extractor):
@@ -59,7 +60,8 @@ class ExtractOIIOPostProcess(publish.Extractor):
 
         new_representations = []
         for idx, repre in enumerate(list(instance.data["representations"])):
-            self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
+            self.log.debug(
+                "repre ({}): `{}`".format(idx + 1, repre_get(repre, "name")))
             if not self._repre_is_valid(repre):
                 continue
 
@@ -74,10 +76,11 @@ class ExtractOIIOPostProcess(publish.Extractor):
                 continue
 
             # Get representation files to convert
-            if isinstance(repre["files"], list):
-                repre_files_to_convert = copy.deepcopy(repre["files"])
+            repre_files = repre_get(repre, "files")
+            if isinstance(repre_files, list):
+                repre_files_to_convert = copy.deepcopy(repre_files)
             else:
-                repre_files_to_convert = [repre["files"]]
+                repre_files_to_convert = [repre_files]
 
             added_representations = False
             added_review = False
@@ -91,12 +94,12 @@ class ExtractOIIOPostProcess(publish.Extractor):
                 output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
-                original_staging_dir = new_repre["stagingDir"]
+                original_staging_dir = repre_get(new_repre, "stagingDir")
                 new_staging_dir = get_temp_dir(
                     project_name=instance.context.data["projectName"],
                     use_local_temp=True,
                 )
-                new_repre["stagingDir"] = new_staging_dir
+                repre_set(new_repre, "stagingDir", new_staging_dir)
 
                 output_extension = output_def["extension"]
                 output_extension = output_extension.replace('.', '')
@@ -147,7 +150,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
                     run_subprocess(oiio_cmd, logger=self.log)
 
                 # cleanup temporary transcoded files
-                for file_name in new_repre["files"]:
+                for file_name in repre_get(new_repre, "files"):
                     transcoded_file_path = os.path.join(new_staging_dir,
                                                         file_name)
                     instance.context.data["cleanupFullPaths"].append(
@@ -155,30 +158,34 @@ class ExtractOIIOPostProcess(publish.Extractor):
 
                 custom_tags = output_def.get("custom_tags")
                 if custom_tags:
-                    if new_repre.get("custom_tags") is None:
-                        new_repre["custom_tags"] = []
-                    new_repre["custom_tags"].extend(custom_tags)
+                    repre_custom_tags = (
+                        repre_get(new_repre, "custom_tags") or []
+                    )
+                    repre_custom_tags.extend(custom_tags)
+                    repre_set(new_repre, "custom_tags", repre_custom_tags)
 
                 # Add additional tags from output definition to representation
-                if new_repre.get("tags") is None:
-                    new_repre["tags"] = []
+                if repre_get(new_repre, "tags") is None:
+                    repre_set(new_repre, "tags", [])
                 for tag in output_def["tags"]:
-                    if tag not in new_repre["tags"]:
-                        new_repre["tags"].append(tag)
+                    if tag not in repre_get(new_repre, "tags"):
+                        repre_get(new_repre, "tags").append(tag)
 
                     if tag == "review":
                         added_review = True
 
                 # If there is only 1 file outputted then convert list to
                 # string, because that'll indicate that it is not a sequence.
-                if len(new_repre["files"]) == 1:
-                    new_repre["files"] = new_repre["files"][0]
+                new_repre_files = repre_get(new_repre, "files")
+                if len(new_repre_files) == 1:
+                    repre_set(new_repre, "files", new_repre_files[0])
 
                 # If the source representation has "review" tag, but it's not
                 # part of the output definition tags, then both the
                 # representations will be transcoded in ExtractReview and
                 # their outputs will clash in integration.
-                if "review" in repre.get("tags", []):
+                repre_tags = repre_get(repre, "tags") or []
+                if "review" in repre_tags:
                     added_review = True
 
                 new_representations.append(new_repre)
@@ -189,7 +196,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
                     repre, profile, added_review
                 )
 
-            tags = repre.get("tags") or []
+            tags = repre_get(repre, "tags") or []
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
 
@@ -208,12 +215,12 @@ class ExtractOIIOPostProcess(publish.Extractor):
             output_extension (str): extension from output definition
         """
         if output_name != "passthrough":
-            new_repre["name"] = output_name
+            repre_set(new_repre, "name", output_name)
         if not output_extension:
             return
 
-        new_repre["ext"] = output_extension
-        new_repre["outputName"] = output_name
+        repre_set(new_repre, "ext", output_extension)
+        repre_set(new_repre, "outputName", output_name)
 
         renamed_files = []
         for file_name in files_to_convert:
@@ -221,7 +228,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
             file_name = '{}.{}'.format(file_name,
                                        output_extension)
             renamed_files.append(file_name)
-        new_repre["files"] = renamed_files
+        repre_set(new_repre, "files", renamed_files)
 
     def _translate_to_sequence(self, files_to_convert):
         """Returns original list or a clique.Collection of a sequence.
@@ -280,8 +287,8 @@ class ExtractOIIOPostProcess(publish.Extractor):
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
-        repre_name: str = repre["name"]
-        repre_ext: str = repre["ext"]
+        repre_name: str = repre_get(repre, "name")
+        repre_ext: str = repre_get(repre, "ext")
         filtering_criteria = {
             "host_names": host_name,
             "product_base_types": product_base_type,
@@ -316,22 +323,24 @@ class ExtractOIIOPostProcess(publish.Extractor):
         Returns:
             bool: False if can't be processed else True.
         """
-        if repre.get("ext") not in self.supported_exts:
+        extension = repre_get(repre, "ext")
+        if extension not in self.supported_exts:
             self.log.debug((
                 "Representation '{}' has unsupported extension: '{}'. Skipped."
-            ).format(repre["name"], repre.get("ext")))
+            ).format(repre_get(repre, "name"), extension))
             return False
 
-        if not repre.get("files"):
+        if not repre_get(repre, "files"):
             self.log.debug((
                 "Representation '{}' has empty files. Skipped."
-            ).format(repre["name"]))
+            ).format(repre_get(repre, "name")))
             return False
 
-        if "delete" in repre.get("tags", []):
+        tags = repre_get(repre, "tags") or []
+        if "delete" in tags:
             self.log.debug((
                 "Representation '{}' has 'delete' tag. Skipped."
-            ).format(repre["name"]))
+            ).format(repre_get(repre, "name")))
             return False
 
         return True
@@ -343,14 +352,19 @@ class ExtractOIIOPostProcess(publish.Extractor):
         added_review: bool
     ):
         """If new transcoded representation created, delete old."""
-        if not repre.get("tags"):
-            repre["tags"] = []
+        if not repre_get(repre, "tags"):
+            repre_set(repre, "tags", [])
 
         delete_original = profile["delete_original"]
 
         if delete_original:
-            if "delete" not in repre["tags"]:
-                repre["tags"].append("delete")
+            repre_tags = repre_get(repre, "tags") or []
+            if "delete" not in repre_tags:
+                repre_tags.append("delete")
+                repre_set(repre, "tags", repre_tags)
 
-        if added_review and "review" in repre["tags"]:
-            repre["tags"].remove("review")
+        if added_review:
+            repre_tags = repre_get(repre, "tags") or []
+            if "review" in repre_tags:
+                repre_tags.remove("review")
+                repre_set(repre, "tags", repre_tags)

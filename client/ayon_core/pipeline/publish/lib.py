@@ -32,6 +32,7 @@ from ayon_core.lib import (
 from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import get_staging_dir_info
+from ayon_core.pipeline.publish import repre_get
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.lib.file_transaction import copyfile
 from .constants import (
@@ -899,8 +900,8 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     # determine published path from Anatomy.
     template_data = copy.deepcopy(workfile_instance.data["anatomyData"])
     rep = workfile_instance.data["representations"][0]
-    template_data["representation"] = rep.get("name")
-    template_data["ext"] = rep.get("ext")
+    template_data["representation"] = repre_get(rep, "name")
+    template_data["ext"] = repre_get(rep, "ext")
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
@@ -986,13 +987,13 @@ def add_repre_files_for_cleanup(instance, repre):
     Should be used on intermediate files (eg. review, thumbnails) to be
     explicitly deleted.
     """
-    files = repre["files"]
-    staging_dir = repre.get("stagingDir")
+    files = repre_get(repre, "files")
+    staging_dir = repre_get(repre, "stagingDir")
 
     # first make sure representation level is not persistent
     if (
         not staging_dir
-        or repre.get("stagingDir_persistent")
+        or repre_get(repre, "stagingDir_persistent")
     ):
         return
 

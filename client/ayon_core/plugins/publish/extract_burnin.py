@@ -24,6 +24,10 @@ from ayon_core.pipeline.publish.lib import (
     add_repre_files_for_cleanup,
     get_default_reviewable_layers
 )
+from ayon_core.pipeline.publish.representation import (
+    repre_get,
+    repre_set
+)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -76,7 +80,7 @@ class ExtractBurnin(publish.Extractor):
         # Remove only representation tagged with both
         # tags `delete` and `burnin`
         for repre in tuple(instance.data["representations"]):
-            if all(x in repre.get("tags", []) for x in ['delete', 'burnin']):
+            if all(x in repre_get(repre, "tags") for x in ['delete', 'burnin']):
                 self.log.debug("Removing representation: {}".format(repre))
                 instance.data["representations"].remove(repre)
 
@@ -99,11 +103,12 @@ class ExtractBurnin(publish.Extractor):
         filtered_repres = []
         repres = instance.data.get("representations") or []
         for idx, repre in enumerate(repres):
-            self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
+            self.log.debug("repre ({}): `{}`".format(
+                idx + 1, repre_get(repre, "name")))
             if not self.repres_is_valid(repre):
                 continue
 
-            repre_burnin_links = repre.get("burnins", [])
+            repre_burnin_links = repre_get(repre, "burnins") or []
             self.log.debug(
                 "repre_burnin_links: {}".format(repre_burnin_links)
             )
@@ -126,13 +131,13 @@ class ExtractBurnin(publish.Extractor):
 
             # Filter output definition by representation tags (optional)
             repre_burnin_defs = self.filter_burnins_by_tags(
-                burnin_defs, repre["tags"]
+                burnin_defs, repre_get(repre, "tags") or []
             )
             if not repre_burnin_defs:
                 self.log.debug(
                     "Skipped representation. All burnin definitions from"
                     " selected profile do not match to representation's"
-                    " tags. \"{}\"".format(repre["tags"])
+                    " tags. \"{}\"".format(repre_get(repre, "tags") or [])
                 )
                 continue
             filtered_repres.append((repre, repre_burnin_defs))
@@ -214,9 +219,9 @@ class ExtractBurnin(publish.Extractor):
             # Prepare representation based data.
             self.prepare_repre_data(instance, repre, burnin_data, temp_data)
 
-            src_repre_staging_dir = repre["stagingDir"]
+            src_repre_staging_dir = repre_get(repre, "stagingDir")
             # Should convert representation source files before processing?
-            repre_files = repre["files"]
+            repre_files = repre_get(repre, "files")
             if isinstance(repre_files, (tuple, list)):
                 filename = repre_files[0]
                 src_filepaths = [
@@ -249,7 +254,7 @@ class ExtractBurnin(publish.Extractor):
                     project_name=instance.context.data["projectName"],
                     use_local_temp=True,
                 )
-                repre["stagingDir"] = new_staging_dir
+                repre_set(repre, "stagingDir", new_staging_dir)
 
                 convert_input_paths_for_ffmpeg(
                     src_filepaths,
@@ -287,7 +292,7 @@ class ExtractBurnin(publish.Extractor):
 
             repre_burnin_options = copy.deepcopy(burnin_options)
             # Use fps from representation for output in options
-            fps = repre.get("fps")
+            fps = repre_get(repre, "fps")
             if fps is not None:
                 repre_burnin_options["fps"] = fps
                 # TODO Should we use fps from source representation to fill
@@ -297,13 +302,13 @@ class ExtractBurnin(publish.Extractor):
             for burnin_def in repre_burnin_defs:
                 filename_suffix = burnin_def["name"]
                 new_repre = copy.deepcopy(repre)
-                new_repre["stagingDir"] = src_repre_staging_dir
+                repre_set(new_repre, "name", src_repre_staging_dir)
 
                 # Keep "ftrackreview" tag only on first output
                 if first_output:
                     first_output = False
-                elif "ftrackreview" in new_repre["tags"]:
-                    new_repre["tags"].remove("ftrackreview")
+                elif "ftrackreview" in repre_get(new_repre, "tags"):
+                    repre_get(new_repre, "tags").remove("ftrackreview")
 
                 burnin_values = {}
                 for key in self.positions:
@@ -313,17 +318,17 @@ class ExtractBurnin(publish.Extractor):
 
                 # Remove "delete" tag from new representation
                 if "delete" in new_repre["tags"]:
-                    new_repre["tags"].remove("delete")
+                    repre_get(new_repre, "tags").remove("delete")
 
                 if len(repre_burnin_defs) > 1:
                     # Update name and outputName to be
                     # able have multiple outputs in case of more burnin presets
                     # Join previous "outputName" with filename suffix
                     new_name = "_".join(
-                        [new_repre["outputName"], filename_suffix]
+                        [repre_get(new_repre, "outputName"), filename_suffix]
                     )
-                    new_repre["name"] = new_name
-                    new_repre["outputName"] = new_name
+                    repre_set(new_repre, "name", new_name)
+                    repre_set(new_repre, "outputName", new_name)
 
                 # Prepare paths and files for process.
                 self.input_output_paths(
@@ -386,11 +391,11 @@ class ExtractBurnin(publish.Extractor):
 
             # Cleanup temp staging dir after processing of output definitions
             if do_convert:
-                temp_dir = repre["stagingDir"]
+                temp_dir = repre_get(repre, "stagingDir")
                 shutil.rmtree(temp_dir)
                 # Set staging dir of source representation back to previous
                 #   value
-                repre["stagingDir"] = src_repre_staging_dir
+                repre_set(repre, "stagingDir", src_repre_staging_dir)
 
             # Remove source representation
             # NOTE we maybe can keep source representation if necessary
@@ -547,16 +552,16 @@ class ExtractBurnin(publish.Extractor):
             bool: False if can't be processed else True.
         """
 
-        if "burnin" not in (repre.get("tags") or []):
+        if "burnin" not in (repre_get(repre, "tags") or []):
             self.log.debug((
                 "Representation \"{}\" does not have \"burnin\" tag. Skipped."
-            ).format(repre["name"]))
+            ).format(repre_get(repre, "name")))
             return False
 
-        if not repre.get("files"):
+        if not repre_get(repre, "files"):
             self.log.warning((
                 "Representation \"{}\" have empty files. Skipped."
-            ).format(repre["name"]))
+            ).format(repre_get(repre, "name")))
             return False
         return True
 
@@ -694,10 +699,10 @@ class ExtractBurnin(publish.Extractor):
             temp_data (dict): Copy of basic temp data
         """
         # Add representation name to burnin data
-        burnin_data["representation"] = repre["name"]
+        burnin_data["representation"] = repre_get(repre, "name")
 
         # no handles switch from profile tags
-        if "no-handles" in repre["tags"]:
+        if "no-handles" in repre_get(repre, "tags"):
             burnin_frame_start = temp_data["frame_start"]
             burnin_frame_end = temp_data["frame_end"]
 
@@ -720,7 +725,7 @@ class ExtractBurnin(publish.Extractor):
         # Move frame start by 1 frame when slate is used.
         if (
             "slate" in instance.data["families"]
-            and "slate-frame" in repre["tags"]
+            and "slate-frame" in repre_get(repre, "tags")
         ):
             burnin_slate_frame_start -= 1
 
@@ -737,8 +742,8 @@ class ExtractBurnin(publish.Extractor):
         })
 
         # burnin source resolution which might be different than on review
-        repre_source_resolution_width = repre.get("source_resolution_width")
-        repre_source_resolution_height = repre.get("source_resolution_height")
+        repre_source_resolution_width = repre_get("source_resolution_width")
+        repre_source_resolution_height = repre_get("source_resolution_height")
         if repre_source_resolution_width and repre_source_resolution_height:
             burnin_data.update({
                 "source_resolution_width": repre_source_resolution_width,

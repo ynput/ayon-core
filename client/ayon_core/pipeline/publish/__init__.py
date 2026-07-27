@@ -71,6 +71,13 @@ from .abstract_collect_render import (
     RenderInstance,
     AbstractCollectRender,
 )
+from .representation import (
+    Representation,
+    repre_get,
+    repre_copy,
+    repre_to_dict,
+    repre_tags,
+)
 
 
 __all__ = (
@@ -141,4 +148,9 @@ __all__ = (
     "IntegrationTemplateItem",
 
     "get_default_reviewable_layers",
+
+    "Representation",
+    "repre_get",
+    "repre_copy",
+    "repre_to_dict",
 )

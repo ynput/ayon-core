@@ -8,6 +8,7 @@ from ayon_core.pipeline import (
     publish,
     get_temp_dir
 )
+from ayon_core.pipeline.publish import repre_get, repre_set
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 from ayon_core.lib import is_oiio_supported
@@ -107,7 +108,10 @@ class ExtractOIIOTranscode(publish.Extractor):
         project_settings = instance.context.data["project_settings"]
         review_layers = get_default_reviewable_layers(project_settings)
         for idx, repre in enumerate(list(repres)):
-            self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
+            self.log.debug("repre ({}): `{}`".format(
+                idx + 1,
+                repre_get(repre, "name"))
+            )
             if not self._repre_is_valid(repre, profile):
                 continue
 
@@ -424,21 +428,21 @@ class ExtractOIIOTranscode(publish.Extractor):
             bool: False if can't be processed else True.
         """
 
-        if repre.get("ext") not in self.supported_exts:
+        if repre_get(repre, "ext") not in self.supported_exts:
             self.log.debug((
                 "Representation '{}' has unsupported extension: '{}'. Skipped."
-            ).format(repre["name"], repre.get("ext")))
+            ).format(repre_get(repre, "name"), repre_get(repre, "ext")))
             return False
 
-        if not repre.get("files"):
+        if not repre_get(repre, "files"):
             self.log.debug((
                 "Representation '{}' has empty files. Skipped."
-            ).format(repre["name"]))
+            ).format(repre_get(repre, "name")))
             return False
 
-        if not repre.get("colorspaceData"):
+        if not repre_get(repre, "colorspaceData"):
             self.log.debug("Representation '{}' has no colorspace data. "
-                           "Skipped.".format(repre["name"]))
+                           "Skipped.".format(repre_get(repre, "name")))
             return False
 
         representations_names = profile["representation_names"]
@@ -447,7 +451,7 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not representations_names:
             return True
 
-        repre_name = repre["name"]
+        repre_name = repre_get(repre, "name")
 
         # check if any of representation patterns match in repre_name
         for r_pattern in representations_names:
@@ -458,14 +462,15 @@ class ExtractOIIOTranscode(publish.Extractor):
 
     def _mark_original_repre_for_deletion(self, repre, profile, added_review):
         """If new transcoded representation created, delete old."""
-        if not repre.get("tags"):
-            repre["tags"] = []
+        tags = repre_get(repre, "tags") or []
+        if repre_get(repre, "tags") is None:
+            repre_set(repre, "tags", tags)
 
         delete_original = profile["delete_original"]
 
         if delete_original:
-            if "delete" not in repre["tags"]:
-                repre["tags"].append("delete")
+            if "delete" not in tags:
+                tags.append("delete")
 
-        if added_review and "review" in repre["tags"]:
-            repre["tags"].remove("review")
+        if added_review and "review" in tags:
+            tags.remove("review")
