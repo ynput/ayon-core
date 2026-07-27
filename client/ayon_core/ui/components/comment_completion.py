@@ -13,6 +13,7 @@ from qtpy.QtGui import (
     QTextBlockFormat,
     QTextCharFormat,
     QTextCursor,
+    QPalette,
 )
 from qtpy.QtWidgets import (
     QCompleter,
@@ -30,10 +31,6 @@ from .user_image import AYUserImage
 # block-level (fenced code block) highlighting.  Defined once here so
 # that both the highlighter and ``apply_code_block_backgrounds()`` always
 # use the same value.
-COMPLETER_ROW_BG = QColor("#353b46")
-COMPLETER_ROW_SELECTED_BG = QColor("#424852")
-COMPLETER_TEXT = QColor("#e6eaf2")
-COMPLETER_TEXT_SELECTED = QColor("#ffffff")
 CODE_BG: QColor = QColor("#1e1e1e")
 CODE_FG: QColor = QColor("#eeeeee")
 
@@ -62,44 +59,17 @@ def strip_user_mention_display(md: str, user_list: list[User]) -> str:
     Returns:
         Markdown text with @mentions replaced by links e.g. [name](user:name).
     """
-    user_dict = {user.full_name: user for user in user_list}
 
-    def repl(match: re.Match) -> str:
-        """Replacement function for user mentions."""
-        # e.g. "@John" or "@John Doe"
-        raw = match.group(0)
-        mention_text = raw.lstrip("@")
-
-        user = user_dict.get(mention_text)
-        if user is not None:
-            return f"[{mention_text}](user:{user.name})"
-
-        # If it's a two-word mention, try linking only the first token.
-        if " " in mention_text:
-            first, rest = mention_text.split(" ", 1)
-            user = user_dict.get(first)
-            if user is not None:
-                return f"[{first}](user:{user.name}) {rest}"
-
-        return raw
-
-    # Iterate over existing links and keep them untouched.
-    # Apply the substitution only to the plain-text segments between them.
-    result_parts = []
-    last_end = 0
-    for link_match in USER_MENTION_LINK_PATTERN.finditer(md):
-        start, end = link_match.span()
-        if start > last_end:
-            segment = md[last_end:start]
-            result_parts.append(USER_MENTION_PATTERN.sub(repl, segment))
-        result_parts.append(md[start:end])
-        last_end = end
-
-    if last_end < len(md):
-        tail = md[last_end:]
-        result_parts.append(USER_MENTION_PATTERN.sub(repl, tail))
-
-    return "".join(result_parts)
+    for user in sorted(
+        user_list,
+        key=lambda u: len(u.full_name),
+        reverse=True
+    ):
+        mention = f"@{user.full_name}"
+        if mention not in md:
+            continue
+        md = md.replace(mention, f"[{user.full_name}](user:{user.name})")
+    return md
 
 
 class UserCompleterDelegate(QStyledItemDelegate):
@@ -124,11 +94,21 @@ class UserCompleterDelegate(QStyledItemDelegate):
 
         # Draw background
         if option.state & QStyle.StateFlag.State_Selected:
-            painter.fillRect(option.rect, COMPLETER_ROW_SELECTED_BG)
-            painter.setPen(COMPLETER_TEXT_SELECTED)
+            palette = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Light
+            )
+            text_color = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.HighlightedText
+            )
+            painter.fillRect(option.rect, palette)
+            painter.setPen(text_color)
         else:
-            painter.fillRect(option.rect, COMPLETER_ROW_BG)
-            painter.setPen(COMPLETER_TEXT)
+            palette = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Midlight)
+            text_color = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
+            painter.fillRect(option.rect, palette)
+            painter.setPen(text_color)
 
         # Draw user icon
         try:
