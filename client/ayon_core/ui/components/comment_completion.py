@@ -45,7 +45,7 @@ USER_MENTION_PATTERN = re.compile(
 )
 # Match stored user links like "[Joe](user:admin)".
 USER_MENTION_LINK_PATTERN = re.compile(
-    r"\[(?P<label>[^\]]+)\]\(user:(?P<id>[^)]+)\)"
+    r"\[(?P<label>[^\]]+)\]\(user:(?P<username>[^)]+)\)"
 )
 
 
