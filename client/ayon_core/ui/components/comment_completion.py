@@ -95,20 +95,18 @@ class UserCompleterDelegate(QStyledItemDelegate):
             return
 
         # Draw background
+        text_color = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Text
+        )
         if option.state & QStyle.StateFlag.State_Selected:
             palette = get_ayon_style().model.base_palette.color(
                 QPalette.ColorGroup.Active, QPalette.ColorRole.Light
-            )
-            text_color = get_ayon_style().model.base_palette.color(
-                QPalette.ColorGroup.Active, QPalette.ColorRole.HighlightedText
             )
             painter.fillRect(option.rect, palette)
             painter.setPen(text_color)
         else:
             palette = get_ayon_style().model.base_palette.color(
                 QPalette.ColorGroup.Active, QPalette.ColorRole.Midlight)
-            text_color = get_ayon_style().model.base_palette.color(
-                QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
             painter.fillRect(option.rect, palette)
             painter.setPen(text_color)
 
