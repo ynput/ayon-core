@@ -47,8 +47,8 @@ class CollectOTIOProductResources(
         # - if instance has family 'otio.resources' it should be
         #   processed
         if (
-            "otio.resources" in instance.data["families"]
-            and "audio" in product_base_type
+            "audio" in product_base_type
+            and "otio.resources" not in instance.data["families"]
         ):
             return
 
