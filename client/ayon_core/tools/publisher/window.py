@@ -144,6 +144,11 @@ class PublisherWindow(QtWidgets.QDialog):
         validate_btn = ValidateBtn(footer_widget)
         publish_btn = PublishBtn(footer_widget)
 
+        save_btn.setEnabled(False)
+        stop_btn.setEnabled(False)
+        validate_btn.setEnabled(False)
+        publish_btn.setEnabled(False)
+
         footer_bottom_layout = QtWidgets.QHBoxLayout(footer_bottom_widget)
         footer_bottom_layout.setContentsMargins(0, 0, 0, 0)
         footer_bottom_layout.addStretch(1)
