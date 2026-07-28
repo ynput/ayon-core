@@ -271,7 +271,7 @@ if __name__ == "__main__":
         label="Test View",
         view_type="test",
         scope=Scope.PROJECT,
-        visibility=Visibility.SHARED,
+        visibility=Visibility.PUBLIC,
         access_level=50,
         working=True,
         owner="user",

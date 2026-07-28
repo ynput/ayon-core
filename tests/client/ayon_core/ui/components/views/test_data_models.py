@@ -154,7 +154,7 @@ def test_view_from_payload_parses_known_fields() -> None:
     assert view.view_type == "versions"
     assert view.owner == "alice"
     assert view.scope == Scope.PROJECT
-    assert view.visibility == Visibility.SHARED
+    assert view.visibility == Visibility.PUBLIC
     assert view.working is False
     assert view.position == 2
     assert view.access_level == 30
@@ -233,12 +233,12 @@ def test_view_from_payload_rejects_non_dict() -> None:
         View.from_payload([])  # type: ignore[arg-type]
 
 
-def test_view_from_payload_handles_unknown_visibility() -> None:
-    """Unknown visibility values fall back to PRIVATE."""
+def test_view_from_payload_rejects_unknown_visibility() -> None:
+    """Unknown visibility values are rejected in canonical-only mode."""
     payload = _load_fixture()
     payload["visibility"] = "highly_classified"
-    view = View.from_payload(payload)
-    assert view.visibility == Visibility.PRIVATE
+    with pytest.raises(ValueError):
+        View.from_payload(payload)
 
 
 # ---------------------------------------------------------------------------
@@ -260,14 +260,14 @@ def test_private_view_only_editable_by_owner() -> None:
     assert v.can_edit("") is False
 
 
-def test_shared_view_editable_when_access_level_sufficient() -> None:
-    """A shared view requires an access level >= the view's threshold."""
+def test_public_view_editable_when_access_level_sufficient() -> None:
+    """A public view requires an access level >= the view's threshold."""
     v = View(
         id="v2",
         label="Team",
         view_type="versions",
         owner="alice",
-        visibility=Visibility.SHARED,
+        visibility=Visibility.PUBLIC,
         access_level=30,
     )
     assert v.can_edit("bob", user_access_level=30) is True

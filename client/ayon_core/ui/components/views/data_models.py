@@ -67,28 +67,13 @@ _KNOWN_VIEW_KEYS: frozenset[str] = frozenset(
 
 
 class Visibility(str, Enum):
-    """Whether a view is owner-only or shared with others.
+    """Whether a view is owner-only or public to others.
 
     Subclasses ``str`` so it serialises naturally to JSON.
     """
 
     PRIVATE = "private"
-    SHARED = "shared"
-
-    @classmethod
-    def _missing_(cls, value: Any) -> "Visibility":
-        """Fall back to ``PRIVATE`` when the payload uses an unknown value.
-
-        Args:
-            value: Raw value found in the payload.
-
-        Returns:
-            The matching enum member, or ``PRIVATE`` if unknown.
-        """
-        log.warning(
-            "Unknown Visibility value %r, defaulting to PRIVATE", value
-        )
-        return cls.PRIVATE
+    PUBLIC = "public"
 
 
 class Scope(str, Enum):
@@ -414,7 +399,7 @@ class View:
             view_type) should be flagged.
         position: Sort order hint within the selector.
         access_level: Required access level (0–30, step 10) for editing
-            shared views.  Components store the value and gate UI via
+            public views.  Components store the value and gate UI via
             :meth:`can_edit`.
         access: Free-form per-user/per-group access dict, preserved
             verbatim for the consumer to interpret.
@@ -519,7 +504,7 @@ class View:
             True when:
 
             - The view is private and the viewer owns it.
-            - Or the view is shared and the viewer's access level is
+            - Or the view is public and the viewer's access level is
               greater or equal to the view's required level.
         """
         if self.visibility == Visibility.PRIVATE:

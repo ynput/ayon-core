@@ -35,7 +35,7 @@ def _payload(
         "viewType": view_type,
         "owner": "alice",
         "scope": "project",
-        "visibility": "shared",
+        "visibility": "public",
         "working": False,
         "position": position,
         "settings": {"columns": []},

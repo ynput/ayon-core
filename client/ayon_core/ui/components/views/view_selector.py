@@ -130,6 +130,7 @@ class AYViewSelector(AYButtonMenu):
         self._bindings.filter_bar.filters_changed.connect(
             self._sync_view_filters_modified_state
         )
+        self.view_filters_modified.connect(self._on_view_filters_modified)
 
         # Forward binding errors via the public ``binding_error`` signal so
         # hosts can surface them.  Overrides any pre-existing
@@ -177,16 +178,18 @@ class AYViewSelector(AYButtonMenu):
         private = [
             v for v in self._views if v.visibility == Visibility.PRIVATE
         ]
-        shared = [v for v in self._views if v.visibility == Visibility.SHARED]
+        public_views = [
+            v for v in self._views if v.visibility == Visibility.PUBLIC
+        ]
 
         if private:
             layout.addWidget(self._make_header("My views"))
             for view in private:
                 layout.addWidget(self._make_row(view))
 
-        if shared:
+        if public_views:
             layout.addWidget(self._make_header("Shared views"))
-            for view in shared:
+            for view in public_views:
                 layout.addWidget(self._make_row(view))
 
         if not self._views:
@@ -459,6 +462,9 @@ class AYViewSelector(AYButtonMenu):
             button.set_variant(AYButton.Variants.Surface)
             button.set_icon("add")
 
+    def _on_view_filters_modified(self, view_name: str) -> None:
+        view_id = self._current_view.id if self._current_view else ""
+        print(f"view_filters_modified: name={view_name}, id={view_id}")
 
     def _on_manager_changed(self, view_type: str) -> None:
         """Refresh when the manager signals a change for our type.
@@ -510,6 +516,7 @@ class AYViewSelector(AYButtonMenu):
         self._sync_view_filters_modified_state()
 
         if emit:
+            print("yes")
             self.view_applied.emit(view)
 
     def _on_view_save_clicked(self, view: View) -> None:
@@ -655,7 +662,7 @@ if __name__ == "__main__":  # pragma: no cover
             ),
             owner="producer",
             scope=Scope.PROJECT,
-            visibility=Visibility.SHARED,
+            visibility=Visibility.PUBLIC,
             access_level=20,
         )
 

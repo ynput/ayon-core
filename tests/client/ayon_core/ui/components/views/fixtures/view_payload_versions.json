@@ -4,7 +4,7 @@
     "viewType": "versions",
     "owner": "alice",
     "scope": "project",
-    "visibility": "shared",
+    "visibility": "public",
     "working": false,
     "position": 2,
     "accessLevel": 30,
