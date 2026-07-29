@@ -212,6 +212,7 @@ class ReviewTable(AYContainer):
             allow_studio_scope=False,
             parent=self,
         )
+        self._view_selector.setToolTip("Views")
         self._view_selector._icon_size = 20
         self._view_selector.view_applied.connect(self._on_view_applied)
         self._view_selector.view_deleted.connect(
