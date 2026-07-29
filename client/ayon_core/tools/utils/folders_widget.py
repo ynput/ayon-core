@@ -211,7 +211,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._current_refresh_task = refresh_task
         self._refresh_tasks[refresh_task.id] = refresh_task
         refresh_task.finished.connect(self._on_refresh_task)
-        self._refresh_threadpool.start(refresh_task)
         # NOTE The tryStart and print are in fact NOT NEEDED, it was added to
         #   fix workfiles tool refresh in 3ds Max. It looks like there must be
         #   one more line after the start of the thread task. The thread won't
