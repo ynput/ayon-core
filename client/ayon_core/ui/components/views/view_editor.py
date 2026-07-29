@@ -20,20 +20,30 @@ from enum import IntEnum
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
-    QSizePolicy,
     QWidget,
+    QHBoxLayout,
+    QLabel,
 )
 
 from ...style_types import get_ayon_style
 from ..buttons import AYButton
 from ..combo_box import AYComboBox
 from ..container import AYContainer
+from ..label import AYLabel
 from ..layouts import AYVBoxLayout
 from ..line_edit import AYLineEdit
 from .data_models import Scope, View, Visibility
 
 log = logging.getLogger(__name__)
+
+# Access level constants
+ACCESS_LEVELS = {
+    0: "No access",
+    10: "Viewer",
+    20: "Editor",
+    30: "Admin",
+}
+ACCESS_LEVEL_VALUES = list(ACCESS_LEVELS.keys())
 
 
 class AYViewEditor(QDialog):
@@ -80,10 +90,15 @@ class AYViewEditor(QDialog):
 
         self._view = view
         self._current_user = current_user
-        self._user_list = user_list  # TODO: use to validate and display users
+        self._user_list = user_list or []
         self._current_project = current_project
         self._allow_studio_scope = bool(allow_studio_scope)
         self._delete_requested = False
+
+        # Access control state: {key: access_level} where key is "user:name" or "group:name"
+        self._access_dict: dict[str, int] = {}
+        # Stores row widgets by access key
+        self._access_row_widgets: dict[str, QWidget] = {}
 
         self._build_ui()
         self._load_from_view(view)
@@ -94,7 +109,7 @@ class AYViewEditor(QDialog):
 
     def _build_ui(self) -> None:
         """Create the form and button row."""
-        root = AYVBoxLayout(self, spacing=8, margin=0)
+        root = AYVBoxLayout(self, spacing=0, margin=0)
 
         form = AYContainer(
             layout=AYContainer.Layout.Form,
@@ -122,15 +137,33 @@ class AYViewEditor(QDialog):
         self._scope_combo.update_items(scope_items)
         form.add_row("Scope", self._scope_combo)
 
-        # user access — required.
-        self._user_access_edit = AYLineEdit(
-            placeholder="Add people or access groups"
+        # User/group selector dropdown
+        self._user_selector = AYComboBox()
+        self._update_user_dropdown()
+        form.add_row(
+            "Add people or access groups",
+            self._user_selector
         )
-        form.add_row("People with access", self._user_access_edit)
+        self._user_selector.activated.connect(self._on_user_selected)
+
+        # Access control rows container
+        self._access_form = AYContainer(
+            layout=AYContainer.Layout.Form,
+            variant=AYContainer.Variants.Default,
+            layout_spacing=(16, 16),
+            layout_margin=16,
+        )
 
         root.addWidget(form)
+        root.addWidget(self._access_form)
+        root.addStretch()
 
-        # OK / Cancel button row.
+        # Button row - positioned at bottom with Delete on left, Save on right
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(16, 16, 16, 16)
+        button_layout.setSpacing(8)
+
         save_btn = AYButton(
             "Save"
             if self._dialog_mode == AYViewEditor.Mode.EDIT
@@ -138,39 +171,24 @@ class AYViewEditor(QDialog):
             variant=AYButton.Variants.Filled,
             icon="check",
         )
-        cancel_btn = AYButton("Cancel")
         delete_btn = AYButton(
             "Delete", variant=AYButton.Variants.Danger, icon="delete"
         )
-        buttons = QDialogButtonBox()
+
         if self._dialog_mode == AYViewEditor.Mode.EDIT:
-            buttons.addButton(
-                save_btn,
-                QDialogButtonBox.ButtonRole.AcceptRole,
-            )
-            buttons.addButton(
-                cancel_btn,
-                QDialogButtonBox.ButtonRole.RejectRole,
-            )
-            buttons.addButton(
-                delete_btn,
-                QDialogButtonBox.ButtonRole.DestructiveRole,
-            )
+            # Delete on left, stretch, Save on right
+            button_layout.addWidget(delete_btn)
+            button_layout.addStretch()
+            button_layout.addWidget(save_btn)
             delete_btn.clicked.connect(self._on_delete)
         else:
-            buttons.addButton(
-                save_btn,
-                QDialogButtonBox.ButtonRole.AcceptRole,
-            )
-            buttons.addButton(
-                cancel_btn,
-                QDialogButtonBox.ButtonRole.RejectRole,
-            )
+            # Just Save on right for create mode
+            button_layout.addStretch()
+            button_layout.addWidget(save_btn)
 
-        buttons.accepted.connect(self._on_accept)
-        buttons.rejected.connect(self.reject)
-        buttons.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-        form.add_row(buttons)
+        save_btn.clicked.connect(self._on_accept)
+
+        root.addWidget(button_container)
 
         self.setMinimumWidth(500)
         self.setContentsMargins(0, 0, 0, 0)
@@ -193,6 +211,136 @@ class AYViewEditor(QDialog):
             self._scope_combo.setCurrentIndex(1)
         else:
             self._scope_combo.setCurrentIndex(0)
+
+        # Load access data from view
+        self._access_dict = dict(view.access) if view.access else {}
+        self._populate_access_rows()
+
+    def _update_user_dropdown(self) -> None:
+        """Update dropdown to show only users/groups not yet added."""
+        added_keys = set(self._access_dict.keys())
+
+        items = []
+        if self._user_list:
+            for user in self._user_list:
+                user_key = f"user:{user}"
+                if user_key not in added_keys:
+                    items.append({"text": f"{user}"})
+
+            # Add group option if not already added
+            group_key = "group:artist"
+            if group_key not in added_keys:
+                items.append({"text": "group:artist"})
+
+        if not items:
+            items.append({"text": "No more users to add"})
+
+        self._user_selector.update_items(items)
+
+    def _on_user_selected(self, index: int) -> None:
+        """Handle user selection from dropdown."""
+        selected_text = self._user_selector.itemText(index).strip()
+        if not selected_text or selected_text == "No more users to add":
+            return
+
+        if selected_text.startswith("group:"):
+            access_key = selected_text
+        else:
+            access_key = f"user:{selected_text}"
+
+        self._add_access_row(access_key, 10)  # Default to Viewer access
+        self._update_user_dropdown()
+
+    def _add_access_row(self, key: str, access_level: int) -> None:
+        """Add an access control row for the given user/group.
+
+        Args:
+            key: The access key (e.g., "user:name" or "group:name").
+            access_level: The access level (0, 10, 20, or 30).
+        """
+        if key in self._access_dict:
+            return  # Already exists
+
+        self._access_dict[key] = access_level
+        self._populate_access_rows()
+
+    def _remove_access_row(self, key: str) -> None:
+        """Remove an access control row.
+
+        Args:
+            key: The access key to remove.
+        """
+        if key not in self._access_dict:
+            return
+
+        del self._access_dict[key]
+
+        self._populate_access_rows()
+        self._update_user_dropdown()
+
+    def _render_dynamic_access_row(self, key: str, access_level: int) -> None:
+        """Render a single dynamic access row without mutating _access_dict."""
+        row_widget = QWidget(self._access_form)
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(8)
+
+        access_combo = AYComboBox()
+        access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
+        access_combo.update_items(access_items)
+
+        if access_level not in ACCESS_LEVEL_VALUES:
+            access_level = 10
+        access_combo.setCurrentIndex(ACCESS_LEVEL_VALUES.index(access_level))
+
+        def on_access_changed(idx: int) -> None:
+            self._access_dict[key] = ACCESS_LEVEL_VALUES[idx]
+
+        access_combo.currentIndexChanged.connect(on_access_changed)
+        row_layout.addWidget(access_combo)
+
+        remove_btn = AYButton("", icon="close")
+        remove_btn.clicked.connect(lambda: self._remove_access_row(key))
+        row_layout.addWidget(remove_btn)
+        row_layout.addStretch()
+
+        self._access_form.add_row(key, row_widget)
+        self._access_row_widgets[key] = row_widget
+
+    def _populate_access_rows(self) -> None:
+        """Populate access control rows from _access_dict."""
+        # Clear existing rows
+        for widget in self._access_form.findChildren(QWidget):
+            if widget != self._access_form:
+                widget.deleteLater()
+        self._access_row_widgets.clear()
+
+        # Add Owner row
+        owner_name = self._view.owner or self._current_user or "-"
+        self._access_form.add_row("Owner", QLabel(owner_name))
+
+        # Add Everyone row
+        everyone_combo = AYComboBox()
+        access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
+        everyone_combo.update_items(access_items)
+
+        everyone_level = self._access_dict.get("__everyone__", 0)
+        if everyone_level not in ACCESS_LEVEL_VALUES:
+            everyone_level = 0
+        everyone_combo.setCurrentIndex(ACCESS_LEVEL_VALUES.index(everyone_level))
+        self._access_dict["__everyone__"] = everyone_level
+
+        def on_everyone_changed(idx: int) -> None:
+            self._access_dict["__everyone__"] = ACCESS_LEVEL_VALUES[idx]
+
+        everyone_combo.currentIndexChanged.connect(on_everyone_changed)
+        self._access_form.add_row("Everyone", everyone_combo)
+
+        # Add dynamic user/group rows
+        for key in sorted(self._access_dict.keys()):
+            if key == "__everyone__":
+                continue
+            self._render_dynamic_access_row(key, int(self._access_dict[key]))
 
     # ------------------------------------------------------------------
     # Accept handling
@@ -246,7 +394,7 @@ class AYViewEditor(QDialog):
         else:
             view.scope = Scope.PROJECT
 
-        # TODO: IMPLEMENT user access parsing and validation.
+        view.access = dict(self._access_dict)
 
         if not view.owner and self._current_user:
             view.owner = self._current_user
