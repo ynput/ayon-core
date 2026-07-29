@@ -1,6 +1,9 @@
 from __future__ import annotations
 import collections
-from typing import Optional
+from functools import partial
+from typing import Callable, Any, Optional
+import sys
+import traceback
 
 from qtpy import QtWidgets, QtGui, QtCore
 
@@ -18,7 +21,7 @@ from ayon_core.tools.common_models import (
 
 from .models import RecursiveSortFilterProxyModel
 from .views import TreeView
-from .lib import RefreshThread, get_qt_icon
+from .lib import get_qt_icon
 from .widgets import PlaceholderLineEdit
 from .nice_checkbox import NiceCheckbox
 
@@ -28,6 +31,56 @@ FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
 FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
+
+
+class RefreshTask(QtCore.QObject, QtCore.QRunnable):
+    finished = QtCore.Signal(str, bool)
+
+    def __init__(
+        self,
+        refresh_task_id: str,
+        default_output: Any,
+        func: Callable,
+        *args,
+        **kwargs,
+    ):
+        QtCore.QObject.__init__(self)
+        QtCore.QRunnable.__init__(self)
+
+        self.id = refresh_task_id
+        self.started = False
+        self._callback = partial(func, *args, **kwargs)
+        self._exception = None
+        self._traceback = None
+        self._result = default_output
+
+    def is_failed(self) -> bool:
+        return self._exception is not None
+
+    def get_result(self):
+        return self._result
+
+    def print_traceback(self):
+        if self._traceback:
+            print(self._traceback)
+
+    def run(self) -> None:
+        self.started = True
+        success = False
+        try:
+            self._result = self._callback()
+
+            success = True
+        except Exception as exc:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            err_traceback = "".join(traceback.format_exception(
+                exc_type, exc_value, exc_traceback
+            ))
+            self._traceback = err_traceback
+            self._exception = exc
+
+        finally:
+            self.finished.emit(self.id, success)
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
@@ -43,6 +96,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     def __init__(self, controller):
         super().__init__()
 
+        refresh_threadpool = QtCore.QThreadPool()
+        refresh_threadpool.setMaxThreadCount(2)
+
         self.setColumnCount(1)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
 
@@ -50,8 +106,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._items_by_id = {}
         self._parent_id_by_id = {}
 
-        self._refresh_threads = {}
-        self._current_refresh_thread = None
+        self._refresh_threadpool = refresh_threadpool
+        self._refresh_tasks = {}
+        self._current_refresh_task = None
         self._last_project_name = None
 
         self._has_content = False
@@ -130,8 +187,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         if not project_name:
             self._last_project_name = project_name
-            self._fill_items({}, {})
-            self._current_refresh_thread = None
+            self._fill_items({}, [])
+            self._current_refresh_task = None
             return
 
         self._is_refreshing = True
@@ -140,20 +197,21 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._clear_items()
         self._last_project_name = project_name
 
-        thread = self._refresh_threads.get(project_name)
-        if thread is not None:
-            self._current_refresh_thread = thread
+        refresh_task = self._refresh_tasks.get(project_name)
+        if refresh_task is not None:
+            self._current_refresh_task = refresh_task
             return
 
-        thread = RefreshThread(
+        refresh_task = RefreshTask(
             project_name,
+            ({}, []),
             self._thread_getter,
-            project_name
+            project_name,
         )
-        self._current_refresh_thread = thread
-        self._refresh_threads[thread.id] = thread
-        thread.refresh_finished.connect(self._on_refresh_thread)
-        thread.start()
+        self._current_refresh_task = refresh_task
+        self._refresh_tasks[refresh_task.id] = refresh_task
+        refresh_task.finished.connect(self._on_refresh_task)
+        self._refresh_threadpool.start(refresh_task)
 
     @classmethod
     def _get_default_folder_icon(cls):
@@ -184,7 +242,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             )
         return folder_items, folder_type_items
 
-    def _on_refresh_thread(self, thread_id):
+    def _on_refresh_task(self, refresh_task_id: str, success: bool):
         """Callback when refresh thread is finished.
 
         Technically can be running multiple refresh threads at the same time,
@@ -194,23 +252,27 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         Folders are stored by id.
 
         Args:
-            thread_id (str): Thread id.
-        """
+            refresh_task_id (str): Thread id.
+            success (bool): True if refresh was successful.
 
+        """
         # Make sure to remove thread from '_refresh_threads' dict
-        thread = self._refresh_threads.pop(thread_id)
+        refresh_task = self._refresh_tasks.pop(refresh_task_id)
+        refresh_task.print_traceback()
         if (
-            self._current_refresh_thread is None
-            or thread_id != self._current_refresh_thread.id
+            self._current_refresh_task is None
+            or refresh_task_id != self._current_refresh_task.id
         ):
             return
-        if thread.failed:
-            # TODO visualize that refresh failed
-            folder_items, folder_type_items = {}, []
-        else:
-            folder_items, folder_type_items = thread.get_result()
+
+        # TODO visualize that refresh failed
+        # if not success:
+        #     pass
+
+        folder_items, folder_type_items = refresh_task.get_result()
+
         self._fill_items(folder_items, folder_type_items)
-        self._current_refresh_thread = None
+        self._current_refresh_task = None
 
     def _get_folder_item_icon(
         self,
