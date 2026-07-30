@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import collections
 from functools import partial
-from typing import Callable, Any, Optional
 import sys
+from typing import Callable, Any, Optional
+import time
 import traceback
 
 from qtpy import QtWidgets, QtGui, QtCore
@@ -208,18 +210,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._thread_getter,
             project_name,
         )
+
         self._current_refresh_task = refresh_task
         self._refresh_tasks[refresh_task.id] = refresh_task
         refresh_task.finished.connect(self._on_refresh_task)
-        # NOTE The tryStart and print are in fact NOT NEEDED, it was added to
-        #   fix workfiles tool refresh in 3ds Max. It looks like there must be
-        #   one more line after the start of the thread task. The thread won't
+        self._refresh_threadpool.start(refresh_task)
+        # NOTE: The time.sleep was added to fix workfiles tool refresh in
+        #   3ds Max. It looks like there must be one more line running a code
+        #   after the start of the thread task. The thread would not
         #   be started but will trigger 'finished' signal.
-        # Adding the print won't hurt... I guess
-        if not self._refresh_threadpool.tryStart(refresh_task):
-            print(
-                f"Failed to start refresh thread for project: {project_name}"
-            )
+        time.sleep(0.01)
 
     @classmethod
     def _get_default_folder_icon(cls):
