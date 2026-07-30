@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Optional
 
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
+    has_trait_representations,
     OptionalPyblishPluginMixin,
     PublishError,
 )
@@ -104,6 +105,12 @@ class IntegrateHeroVersionTraits(
 
         """
         if not self.is_active(instance.data):
+            return
+
+        if not has_trait_representations(instance):
+            self.log.debug(
+                f"Instance '{instance.name}' has no representations with "
+                "traits. Skipping")
             return
 
         anatomy: Anatomy = instance.context.data["anatomy"]
