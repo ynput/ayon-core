@@ -4,7 +4,6 @@ import collections
 from functools import partial
 import sys
 from typing import Callable, Any, Optional
-import time
 import traceback
 
 from qtpy import QtWidgets, QtGui, QtCore
@@ -219,7 +218,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         #   3ds Max. It looks like there must be one more line running a code
         #   after the start of the thread task. The thread would not
         #   be started but will trigger 'finished' signal.
-        time.sleep(0.01)
+        QtCore.QThread.msleep(1)
 
     @classmethod
     def _get_default_folder_icon(cls):
