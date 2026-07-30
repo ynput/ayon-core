@@ -130,7 +130,6 @@ class AYViewSelector(AYButtonMenu):
         self._bindings.filter_bar.filters_changed.connect(
             self._sync_view_filters_modified_state
         )
-        self.view_filters_modified.connect(self._on_view_filters_modified)
 
         # Forward binding errors via the public ``binding_error`` signal so
         # hosts can surface them.  Overrides any pre-existing
@@ -172,19 +171,20 @@ class AYViewSelector(AYButtonMenu):
                 item.widget().deleteLater()
 
         # Current view row with inline reset button.
-        layout.addWidget(self._make_current_row(self._current_view))
+        layout.addWidget(self._make_working_view_row(self._current_view))
         layout.addWidget(self._make_separator())
 
-        private = [
-            v for v in self._views if v.visibility == Visibility.PRIVATE
+        # Exclude working view as it stored with private Visibility
+        private_views = [
+            v for v in self._views if v.visibility == Visibility.PRIVATE and not v.working
         ]
         public_views = [
             v for v in self._views if v.visibility == Visibility.PUBLIC
         ]
 
-        if private:
+        if private_views:
             layout.addWidget(self._make_header("My views"))
-            for view in private:
+            for view in private_views:
                 layout.addWidget(self._make_row(view))
 
         if public_views:
@@ -226,7 +226,7 @@ class AYViewSelector(AYButtonMenu):
         label.setContentsMargins(6, 4, 6, 2)
         return label
 
-    def _make_current_row(self, view: View) -> AYContainer:
+    def _make_working_view_row(self, view: View) -> AYContainer:
         """Build the current-view row with an inline reset button."""
         row = AYContainer(
             layout=AYContainer.Layout.HBox,
@@ -234,21 +234,23 @@ class AYViewSelector(AYButtonMenu):
             layout_margin=0,
         )
 
-        label_btn = AYButton(
+        working_view_btn = AYButton(
             "Working view",
-            variant=AYButton.Variants.Text,
+            variant=AYButton.Variants.Checked
+            if self._view_filters_modified else AYButton.Variants.Text,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
         )
-        label_btn.setSizePolicy(
+        working_view_btn.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        label_btn.setEnabled(False)
-        row.add_widget(label_btn, stretch=1)
+        working_view_btn.clicked.connect(self._on_working_view_clicked)
+        row.add_widget(working_view_btn, stretch=1)
 
         reset_btn = AYButton(
             icon="restart_alt",
-            variant=AYButton.Variants.Nav_Small,
+            variant=AYButton.Variants.Checked
+            if self._view_filters_modified else AYButton.Variants.Nav_Small,
             tooltip="Reset to default",
         )
         reset_btn.setFixedSize(24, 24)
@@ -257,16 +259,40 @@ class AYViewSelector(AYButtonMenu):
 
         return row
 
+    def _make_view_label_btn(self, view: View,
+                             not_modified) -> AYButton:
+        select_btn = AYButton(
+            view.label or "(unnamed view)",
+            icon="star" if view.working else "view_list",
+            variant=AYButton.Variants.Checked
+            if not_modified else AYButton.Variants.Text,
+            fixed_width=False,
+            label_alignment=Qt.AlignmentFlag.AlignLeft,
+        )
+        select_btn.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed
+        )
+        select_btn.clicked.connect(
+            lambda _checked=False,v=view: self._on_view_selected(v)
+        )
+        return select_btn
+
     def _make_save_btn(self, view: View, row: AYContainer) -> AYButton:
         is_modified = (
                 self._current_view
                 and view.id == self._current_view.id
                 and self._view_filters_modified
         )
-        variant = AYButton.Variants.Filled if is_modified else AYButton.Variants.Surface
-        btn = AYButton(icon="save", variant=variant, tooltip="Save view…")
+        variant = AYButton.Variants.Filled\
+            if is_modified else AYButton.Variants.Surface
+        btn = AYButton(icon="save",
+                       variant=variant,
+                       tooltip="Save view…")
         btn.setFixedSize(24, 24)
-        btn.clicked.connect(lambda _checked=False, v=view: self._on_view_save_clicked(v))
+        btn.clicked.connect(
+            lambda _checked=False, v=view: self._on_view_save_clicked(v)
+        )
 
         if not is_modified:
             sp = btn.sizePolicy()
@@ -277,30 +303,36 @@ class AYViewSelector(AYButtonMenu):
 
         return btn
 
-    def _make_edit_btn(self, view: View) -> AYButton:
-        btn = AYButton(icon="more_horiz", variant=AYButton.Variants.Nav_Small, tooltip="Edit view…")
+    def _make_edit_btn(self, view: View, not_modified) -> AYButton:
+        btn = AYButton(
+            icon="more_horiz",
+            variant=AYButton.Variants.Checked
+            if not_modified else AYButton.Variants.Nav_Small,
+            tooltip="Edit view…")
         btn.setFixedSize(24, 24)
         btn.clicked.connect(lambda _checked=False, v=view: self._on_edit_clicked(v))
         return btn
 
     def _make_row(self, view: View) -> AYContainer:
         """Build one selectable row for *view*."""
-        row = AYContainer(layout=AYContainer.Layout.HBox, layout_spacing=4, layout_margin=0)
-
-        select_btn = AYButton(
-            view.label or "(unnamed view)",
-            icon="star" if view.working else "view_list",
-            variant=AYButton.Variants.Text,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
+        row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=4,
+            layout_margin=0
         )
-        select_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        select_btn.clicked.connect(lambda _checked=False, v=view: self._on_view_selected(v))
-        row.add_widget(select_btn, stretch=1)
+
+        not_modified = (
+                self._current_view
+                and view.id == self._current_view.id
+                and not self._view_filters_modified
+        )
+
+        row.add_widget(self._make_view_label_btn(view,not_modified), stretch=1)
 
         if view.can_edit(self._current_user, self._user_access):
-            row.add_widget(self._make_save_btn(view, row))
-            row.add_widget(self._make_edit_btn(view))
+            if not not_modified:
+                row.add_widget(self._make_save_btn(view, row))
+            row.add_widget(self._make_edit_btn(view, not_modified))
 
         return row
 
@@ -327,11 +359,18 @@ class AYViewSelector(AYButtonMenu):
         )
 
         studio_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        studio_btn.clicked.connect(lambda _checked=False: self._on_set_default_view_clicked(studio_btn))
+        studio_btn.clicked.connect(
+            lambda _checked=False: self._on_set_default_view_clicked(studio_btn)
+        )
         row.add_widget(studio_btn, stretch=1)
 
-        project_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        project_btn.clicked.connect(lambda _checked=False: self._on_set_default_view_clicked(project_btn))
+        project_btn.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed
+        )
+        project_btn.clicked.connect(
+            lambda _checked=False: self._on_set_default_view_clicked(project_btn)
+        )
         row.add_widget(project_btn, stretch=1)
 
         return row
@@ -392,7 +431,7 @@ class AYViewSelector(AYButtonMenu):
             view,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
-            current_project= self._manager.project_name,
+            current_project=self._current_project_name(),
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -417,6 +456,7 @@ class AYViewSelector(AYButtonMenu):
             new_view,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
+            current_project=self._current_project_name(),
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -447,9 +487,7 @@ class AYViewSelector(AYButtonMenu):
         # reset to project default if set
         # reset to studio default if set
         # reset to AYON default
-        self._current_view = None
-        self._sync_view_filters_modified_state()
-        self._close_menu()
+        pass
 
     def _on_set_default_view_clicked(self, button: AYButton) -> None:
         """Save to the default view for the given *scope*"""
@@ -461,10 +499,6 @@ class AYViewSelector(AYButtonMenu):
         else:
             button.set_variant(AYButton.Variants.Surface)
             button.set_icon("add")
-
-    def _on_view_filters_modified(self, view_name: str) -> None:
-        view_id = self._current_view.id if self._current_view else ""
-        print(f"view_filters_modified: name={view_name}, id={view_id}")
 
     def _on_manager_changed(self, view_type: str) -> None:
         """Refresh when the manager signals a change for our type.
@@ -487,7 +521,18 @@ class AYViewSelector(AYButtonMenu):
         except Exception:
             pass
 
+    def _current_project_name(self) -> str:
+        """Return the manager's current project name when available."""
+        project_name = getattr(self._manager, "project_name", "")
+        return str(project_name or "")
+
     def _sync_view_filters_modified_state(self):
+
+        if self._current_view:
+            self.setToolTip(f"View: {self._current_view.label}")
+        else:
+            self.setToolTip("Working View")
+
         live = self._bindings.capture_filter()
         saved = (
             self._current_view.settings.filter
@@ -497,9 +542,17 @@ class AYViewSelector(AYButtonMenu):
         if modified == self._view_filters_modified:
             return
         self._view_filters_modified = modified
-        self.set_variant(
-            AYButton.Variants.Filled if modified else AYButton.Variants.Surface
-        )
+
+        # Update the working view
+        if modified:
+            self._update_working_view()
+
+        # Change views icon state to filled if modified and not working view
+        if self._current_view and not self._current_view.working:
+            self.set_variant(
+                AYButton.Variants.Filled if modified else AYButton.Variants.Surface
+            )
+
         if modified and self._current_view:
             view_name = self._current_view.label or self._current_view.id
             self.view_filters_modified.emit(view_name)
@@ -527,18 +580,55 @@ class AYViewSelector(AYButtonMenu):
             self._apply_view(saved, emit=True)
 
     def _save_view(self, view: View) -> View | None:
-        """Persist *view* and return the manager's response."""
+        """
+        This called when new view is created or existing view is updated.
+        Persist *view* and return the manager's response."""
         try:
-            if view.working:
-                self._manager.set_working_view(view)
-                saved = view
-            else:
-                saved = self._manager.save_view(view)
+            saved = self._manager.save_view(view)
         except Exception:
             log.exception("Failed to save view %r", view.label)
             return None
         self.view_saved.emit(saved)
         return saved
+
+    def _on_working_view_clicked(self, _checked: bool = False) -> None:
+        try:
+            working_view = self._manager.get_working_view(self._view_type)
+        except Exception:
+            log.exception(
+                "Failed to resolve working view for %r", self._view_type
+            )
+            return
+
+        if not working_view:
+            return
+
+        self._apply_view(working_view, emit=True)
+
+    def _update_working_view(self) -> None:
+        #TODO: A very first working view will be creating after any view modified
+        # I need to find better place in init to validate working view existence and create one
+        try:
+            working_view = self._manager.get_working_view(self._view_type)
+        except Exception:
+            log.exception(
+                "Failed to resolve working view for %r", self._view_type
+            )
+            return
+
+        if not working_view:
+            working_view = View(
+                label="Working",
+            )
+
+        working_view.settings = self._bindings.capture()
+        working_view.working = True
+        working_view.visibility = Visibility.PRIVATE
+        working_view.view_type = self._view_type
+        working_view.owner = self._current_user
+
+        with self._suspend_auto_apply():
+            self._manager.set_working_view(working_view)
 
     def _suspend_auto_apply(self) -> "_SuspendAutoApply":
         """Return a context manager that suppresses the auto-apply branch

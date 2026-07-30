@@ -33,7 +33,7 @@ from urllib.parse import urlencode
 import ayon_api
 from qtpy.QtCore import QObject  # type: ignore[attr-defined]
 
-from .data_models import View
+from .data_models import View, Scope
 from .view_manager import ViewManager
 
 log = logging.getLogger(__name__)
@@ -145,8 +145,7 @@ class ServerViewManager(ViewManager):
             log.exception("Failed to list views for %s", view_type)
             self.error.emit(f"Failed to list views: {exc}")
             return []
-
-        payload = getattr(resp, "data", None)
+        payload = self._extract_data(resp)
         if isinstance(payload, dict):
             items = payload.get("views", payload)
         else:
@@ -157,17 +156,43 @@ class ServerViewManager(ViewManager):
         views: list[View] = []
         for item in items:
             try:
+                if not isinstance(item, dict):
+                    continue
+
+                view_id = str(item.get("id") or "").strip()
+                if not view_id:
+                    continue
+
+                candidate: dict[str, Any] = dict(item)
                 try:
                     resp = ayon_api.get(
-                        f"views/{view_type}/{item.get('id')}",
+                        f"views/{view_type}/{view_id}",
                         project_name=self._project_name,
                     )
                 except Exception as exc:  # noqa: BLE001
-                    log.exception("Failed to fetch view %s", item.get("id"))
+                    log.exception("Failed to fetch view %s", view_id)
                     self.error.emit(f"Failed to fetch view: {exc}")
                     continue
-                full_item = resp.data
-                views.append(View.from_payload(full_item))
+
+                raw_detail = self._extract_data(resp)
+                detail_payload = self._extract_view_dict(raw_detail)
+
+                # Do not let blank detail values overwrite valid
+                # summary values from the list response.
+                for key, value in detail_payload.items():
+                    if (
+                        key in {"id", "label", "viewType"}
+                        and (value is None or value == "")
+                    ):
+                        continue
+                    candidate[key] = value
+
+                candidate["viewType"] = str(
+                    candidate.get("viewType") or view_type
+                )
+
+                parsed = View.from_payload(candidate)
+                views.append(parsed)
             except Exception:  # noqa: BLE001
                 log.exception("Skipping malformed view payload: %r", item)
 
@@ -209,12 +234,23 @@ class ServerViewManager(ViewManager):
             payload.pop("id", None)
 
         try:
-            if is_update:
-                endpoint = self._endpoint(f"views/{view.view_type}/{view.id}")
-                resp = ayon_api.patch(endpoint, **payload)
+            # Use studio or project endpoints based on view scope
+            if view.scope == Scope.STUDIO:
+                # Studio-scoped views use studio endpoints
+                if is_update:
+                    endpoint = f"views/{view.view_type}/{view.id}"
+                    resp = ayon_api.patch(endpoint, **payload)
+                else:
+                    endpoint = f"views/{view.view_type}"
+                    resp = ayon_api.post(endpoint, **payload)
             else:
-                endpoint = self._endpoint(f"views/{view.view_type}")
-                resp = ayon_api.post(endpoint, **payload)
+                # Project-scoped views use project-specific endpoints
+                if is_update:
+                    endpoint = self._endpoint(f"views/{view.view_type}/{view.id}")
+                    resp = ayon_api.patch(endpoint, **payload)
+                else:
+                    endpoint = self._endpoint(f"views/{view.view_type}")
+                    resp = ayon_api.post(endpoint, **payload)
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to save view %s", view.id)
             self.error.emit(f"Failed to save view: {exc}")
@@ -321,6 +357,17 @@ class ServerViewManager(ViewManager):
             except Exception:  # noqa: BLE001
                 return None
         return None
+
+    @staticmethod
+    def _extract_view_dict(payload: Any) -> dict[str, Any] | None:
+        """Return a single-view dict from common detail response shapes."""
+        if not isinstance(payload, dict):
+            return None
+        if isinstance(payload.get("view"), dict):
+            return payload["view"]
+        if isinstance(payload.get("data"), dict):
+            return payload["data"]
+        return payload
 
     def _upsert_cache(self, view: View) -> None:
         """Insert or replace *view* in the per-type cache in place.
