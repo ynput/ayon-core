@@ -516,7 +516,6 @@ class AYViewSelector(AYButtonMenu):
         self._sync_view_filters_modified_state()
 
         if emit:
-            print("yes")
             self.view_applied.emit(view)
 
     def _on_view_save_clicked(self, view: View) -> None:

@@ -212,6 +212,7 @@ class ReviewTable(AYContainer):
             allow_studio_scope=False,
             parent=self,
         )
+        self._view_selector.setToolTip("Views")
         self._view_selector._icon_size = 20
         self._view_selector.view_applied.connect(self._on_view_applied)
         self._view_selector.view_deleted.connect(
@@ -222,10 +223,10 @@ class ReviewTable(AYContainer):
         )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
+        toolbar_lyt.addWidget(self._view_selector, stretch=0)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
         toolbar_lyt.addWidget(self._group_by_menu, stretch=0)
         toolbar_lyt.addWidget(self._display_type, stretch=0)
-        toolbar_lyt.addWidget(self._view_selector, stretch=0)
         toolbar_lyt.addWidget(self._customize, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
 
