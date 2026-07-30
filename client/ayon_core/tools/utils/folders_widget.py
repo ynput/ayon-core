@@ -218,7 +218,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         #   3ds Max. It looks like there must be one more line running a code
         #   after the start of the thread task. The thread would not
         #   be started but will trigger 'finished' signal.
-        QtCore.QThread.msleep(1)
+        QtCore.QThread.msleep(5)
 
     @classmethod
     def _get_default_folder_icon(cls):
