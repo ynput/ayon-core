@@ -328,6 +328,7 @@ class AYButtonMenu(AYButton):
 
         self._populate_callback = populate_callback
         self._menu_open: bool = False
+        self._suppress_reopen_on_next_click: bool = False
 
         self._dropdown = ButtonMenuDropdown(self)
         self._populate_callback(self._dropdown)
@@ -339,6 +340,10 @@ class AYButtonMenu(AYButton):
 
     def _on_button_clicked(self) -> None:
         """Toggle the dropdown popup visibility."""
+        if self._suppress_reopen_on_next_click:
+            self._suppress_reopen_on_next_click = False
+            return
+
         if self._menu_open:
             self._dropdown.close()
         else:
@@ -349,4 +354,7 @@ class AYButtonMenu(AYButton):
     def _on_popup_closed(self) -> None:
         """Update state when the popup signals it has closed."""
         self._menu_open = False
+        if QtWidgets.QApplication.mouseButtons() & Qt.MouseButton.LeftButton:
+            local_pos = self.mapFromGlobal(QtGui.QCursor.pos())
+            self._suppress_reopen_on_next_click = self.rect().contains(local_pos)
         self.menu_closed.emit()

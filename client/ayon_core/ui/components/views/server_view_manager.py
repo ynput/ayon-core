@@ -75,6 +75,9 @@ class ServerViewManager(ViewManager):
         # view_id -> view_type (survives list_views; used by delete_view
         # so it doesn't require a populated per-type cache).
         self._id_to_type: dict[str, str] = {}
+        # view_id -> Scope (used by delete_view to decide whether to pass
+        # project_name; studio-scoped views must NOT include it).
+        self._id_to_scope: dict[str, Scope] = {}
 
     # ------------------------------------------------------------------
     # Project scope
@@ -100,6 +103,7 @@ class ServerViewManager(ViewManager):
             return
         self._project_name = project_name
         self._id_to_type.clear()
+        self._id_to_scope.clear()
         self._cache.clear()
         if self._known_types:
             for vt in sorted(self._known_types):
@@ -202,6 +206,7 @@ class ServerViewManager(ViewManager):
         for v in views:
             if v.id:
                 self._id_to_type[v.id] = view_type
+                self._id_to_scope[v.id] = v.scope
         return list(views)
 
     def save_view(self, view: View) -> View:
@@ -272,6 +277,7 @@ class ServerViewManager(ViewManager):
         # Update the id-map and per-type cache in-place.
         if saved.id:
             self._id_to_type[saved.id] = saved.view_type
+            self._id_to_scope[saved.id] = saved.scope
         self._upsert_cache(saved)
 
         self.view_saved.emit(saved.id)
@@ -300,11 +306,17 @@ class ServerViewManager(ViewManager):
             self.error.emit(f"Unknown view id: {view_id}")
             return
 
+        view_scope = self._id_to_scope.get(view_id, Scope.PROJECT)
+        is_studio = view_scope == Scope.STUDIO
+
         try:
-            ayon_api.delete(
-                f"views/{view_type}/{view_id}",
-                project_name=self._project_name,
-            )
+            if is_studio:
+                ayon_api.delete(f"views/{view_type}/{view_id}")
+            else:
+                ayon_api.delete(
+                    f"views/{view_type}/{view_id}",
+                    project_name=self._project_name,
+                )
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to delete view %s", view_id)
             self.error.emit(f"Failed to delete view: {exc}")
@@ -312,6 +324,7 @@ class ServerViewManager(ViewManager):
 
         # Remove in-place from the per-type cache if populated.
         self._id_to_type.pop(view_id, None)
+        self._id_to_scope.pop(view_id, None)
         view_list = self._cache.get(view_type)
         if view_list is not None:
             self._cache[view_type] = [v for v in view_list if v.id != view_id]

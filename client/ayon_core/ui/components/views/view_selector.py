@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 
+import ayon_api
 from qtpy.QtCore import QEvent, QObject, Qt, Signal  # type: ignore[attr-defined]
 from qtpy.QtWidgets import QDialog, QFrame, QSizePolicy, QWidget
 
@@ -22,13 +23,13 @@ from ..buttons import AYButton, AYButtonMenu
 from ..container import AYContainer
 from ..label import AYLabel
 
-from .data_models import FilterDef, View, Visibility
+from .data_models import FilterDef, View, Visibility, Scope
+from .default_view_control import DefaultViewControl
 from .view_bindings import ViewBindings
 from .view_editor import AYViewEditor
-from .view_manager import ViewManager
+from .view_manager import ViewManager, DEFAULT_VIEW_LABEL
 
 log = logging.getLogger(__name__)
-
 
 # Default access level granted to the current user in standalone demos.
 # Real consumer apps should pass the user's actual project access level
@@ -110,6 +111,7 @@ class AYViewSelector(AYButtonMenu):
         self._suppress_auto_apply: bool = False
 
         self._dropdown_layout = None  # type: ignore[assignment]
+        self._default_view_control = DefaultViewControl(self)
 
         super().__init__(
             populate_callback=self._populate_menu,
@@ -176,7 +178,10 @@ class AYViewSelector(AYButtonMenu):
 
         # Exclude working view as it stored with private Visibility
         private_views = [
-            v for v in self._views if v.visibility == Visibility.PRIVATE and not v.working
+            v for v in self._views
+            if v.visibility == Visibility.PRIVATE
+               and not v.working
+               and v.label != DEFAULT_VIEW_LABEL
         ]
         public_views = [
             v for v in self._views if v.visibility == Visibility.PUBLIC
@@ -338,42 +343,7 @@ class AYViewSelector(AYButtonMenu):
 
     def _make_default_view_row(self) -> AYContainer:
         """Build a row for the default view."""
-        row = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            layout_spacing=0,
-            layout_margin=0)
-
-        studio_btn = AYButton(
-            "Studio",
-            icon="add",
-            variant=AYButton.Variants.Surface,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
-        )
-        project_btn = AYButton(
-            "Project",
-            icon="add",
-            variant=AYButton.Variants.Surface,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
-        )
-
-        studio_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        studio_btn.clicked.connect(
-            lambda _checked=False: self._on_set_default_view_clicked(studio_btn)
-        )
-        row.add_widget(studio_btn, stretch=1)
-
-        project_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed
-        )
-        project_btn.clicked.connect(
-            lambda _checked=False: self._on_set_default_view_clicked(project_btn)
-        )
-        row.add_widget(project_btn, stretch=1)
-
-        return row
+        return self._default_view_control.build_row()
 
     def _on_binding_error(self, stage: str, exc: BaseException) -> None:
         """Forward a :class:`ViewBindings` error via :attr:`binding_error`."""
@@ -427,11 +397,13 @@ class AYViewSelector(AYButtonMenu):
         """Open the editor for an existing view."""
         self._close_menu()
         view.settings = self._bindings.capture()
+        user_list = self._get_active_usernames()
         editor = AYViewEditor(
             view,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
             current_project=self._current_project_name(),
+            user_list=user_list,
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -452,11 +424,13 @@ class AYViewSelector(AYButtonMenu):
         self._close_menu()
         new_view = View(view_type=self._view_type)
         new_view.settings = self._bindings.capture()
+        user_list = self._get_active_usernames()
         editor = AYViewEditor(
             new_view,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
             current_project=self._current_project_name(),
+            user_list=user_list,
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -482,23 +456,13 @@ class AYViewSelector(AYButtonMenu):
         self.view_deleted.emit(view.id)
 
     def _on_reset_clicked(self) -> None:
-        """Clear the active view (does *not* persist anything)."""
-        #TODO: Reset to default means:
-        # reset to project default if set
-        # reset to studio default if set
-        # reset to AYON default
-        pass
-
-    def _on_set_default_view_clicked(self, button: AYButton) -> None:
-        """Save to the default view for the given *scope*"""
-        #TODO: Implement the actual logic to save
-        # the default view for the given scope (studio or project).
-        if button._variant_str == "surface":
-            button.set_variant(AYButton.Variants.Filled)
-            button.set_icon("close")
-        else:
-            button.set_variant(AYButton.Variants.Surface)
-            button.set_icon("add")
+        """Reset the current view to the default view for the current scope."""
+        ctrl = self._default_view_control
+        if ctrl.studio_default_view:
+            self._apply_view(ctrl.studio_default_view, emit=True)
+            return
+        if ctrl.project_default_view:
+            self._apply_view(ctrl.project_default_view, emit=True)
 
     def _on_manager_changed(self, view_type: str) -> None:
         """Refresh when the manager signals a change for our type.
@@ -509,6 +473,31 @@ class AYViewSelector(AYButtonMenu):
         """
         if not view_type or view_type == self._view_type:
             self.refresh()
+
+    def _get_active_usernames(self) -> list[str]:
+        """Fetch active project users and return unique usernames."""
+        project_name = getattr(self._manager, "project_name", "")
+        if not project_name:
+            return []
+        try:
+            users = ayon_api.get_users(project_name=project_name) or []
+        except Exception:  # noqa: BLE001
+            log.exception("Failed to fetch users for project %r", project_name)
+            return []
+
+        usernames: list[str] = []
+        seen: set[str] = set()
+        for user in users:
+            if not isinstance(user, dict):
+                continue
+            if not bool(user.get("active", False)):
+                continue
+            name = str(user.get("name") or "").strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            usernames.append(name)
+        return usernames
 
     # ------------------------------------------------------------------
     # Helpers
@@ -629,6 +618,13 @@ class AYViewSelector(AYButtonMenu):
 
         with self._suspend_auto_apply():
             self._manager.set_working_view(working_view)
+
+    def get_default_views(self):
+        """Return the current default views from the default view control."""
+        return (
+            self._default_view_control.studio_default_view,
+            self._default_view_control.project_default_view,
+        )
 
     def _suspend_auto_apply(self) -> "_SuspendAutoApply":
         """Return a context manager that suppresses the auto-apply branch

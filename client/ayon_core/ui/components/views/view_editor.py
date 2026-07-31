@@ -111,7 +111,7 @@ class AYViewEditor(QDialog):
         """Create the form and button row."""
         root = AYVBoxLayout(self, spacing=0, margin=0)
 
-        form = AYContainer(
+        self._form = AYContainer(
             layout=AYContainer.Layout.Form,
             variant=AYContainer.Variants.Default,
             layout_spacing=(16, 16),
@@ -120,7 +120,7 @@ class AYViewEditor(QDialog):
 
         # view name field — required.
         self._view_name_edit = AYLineEdit(placeholder="View name")
-        form.add_row("View name", self._view_name_edit)
+        self._form.add_row("View name", self._view_name_edit)
 
         # Scope combo (project / all projects).
         self._scope_combo = AYComboBox()
@@ -136,27 +136,18 @@ class AYViewEditor(QDialog):
                 {"text": "All Projects", "short_text": "All Projects"}
             )
         self._scope_combo.update_items(scope_items)
-        form.add_row("Scope", self._scope_combo)
+        self._form.add_row("Scope", self._scope_combo)
 
         # User/group selector dropdown
         self._user_selector = AYComboBox()
         self._update_user_dropdown()
-        form.add_row(
+        self._form.add_row(
             "Add people or access groups",
             self._user_selector
         )
         self._user_selector.activated.connect(self._on_user_selected)
 
-        # Access control rows container
-        self._access_form = AYContainer(
-            layout=AYContainer.Layout.Form,
-            variant=AYContainer.Variants.Default,
-            layout_spacing=(16, 16),
-            layout_margin=16,
-        )
-
-        root.addWidget(form)
-        root.addWidget(self._access_form)
+        root.addWidget(self._form)
         root.addStretch()
 
         # Button row - positioned at bottom with Delete on left, Save on right
@@ -281,7 +272,7 @@ class AYViewEditor(QDialog):
 
     def _render_dynamic_access_row(self, key: str, access_level: int) -> None:
         """Render a single dynamic access row without mutating _access_dict."""
-        row_widget = QWidget(self._access_form)
+        row_widget = QWidget(self._form)
         row_layout = QHBoxLayout(row_widget)
         row_layout.setContentsMargins(0, 0, 0, 0)
         row_layout.setSpacing(8)
@@ -305,20 +296,25 @@ class AYViewEditor(QDialog):
         row_layout.addWidget(remove_btn)
         row_layout.addStretch()
 
-        self._access_form.add_row(key, row_widget)
+        self._form.add_row(key, row_widget)
         self._access_row_widgets[key] = row_widget
 
     def _populate_access_rows(self) -> None:
         """Populate access control rows from _access_dict."""
         # Clear existing rows
-        for widget in self._access_form.findChildren(QWidget):
-            if widget != self._access_form:
-                widget.deleteLater()
+        for widget in self._access_row_widgets.values():
+            widget.deleteLater()
         self._access_row_widgets.clear()
+
+        # Clear access-related rows that were added dynamically
+        # (Owner, Everyone, and user/group rows)
+        layout = self._form.layout()
+        while layout.rowCount() > 3:
+            layout.removeRow(3)
 
         # Add Owner row
         owner_name = self._view.owner or self._current_user or "-"
-        self._access_form.add_row("Owner", QLabel(owner_name))
+        self._form.add_row("Owner", QLabel(owner_name))
 
         # Add Everyone row
         everyone_combo = AYComboBox()
@@ -335,7 +331,7 @@ class AYViewEditor(QDialog):
             self._access_dict["__everyone__"] = ACCESS_LEVEL_VALUES[idx]
 
         everyone_combo.currentIndexChanged.connect(on_everyone_changed)
-        self._access_form.add_row("Everyone", everyone_combo)
+        self._form.add_row("Everyone", everyone_combo)
 
         # Add dynamic user/group rows
         for key in sorted(self._access_dict.keys()):
