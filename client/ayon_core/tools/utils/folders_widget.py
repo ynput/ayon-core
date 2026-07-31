@@ -215,7 +215,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         refresh_task.finished.connect(self._on_refresh_task)
         self._refresh_threadpool.start(refresh_task)
         # NOTE: The `msleep` was added to fix workfiles tool refresh in
-        #   3ds Max 2027. It looks like there must be one more line running 
+        #   3ds Max 2027. It looks like there must be one more line running
         #   code after the start of the thread task. Otherwise, the thread
         #   would not be started but will trigger 'finished' signal directly.
         QtCore.QThread.msleep(5)
