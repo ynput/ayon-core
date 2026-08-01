@@ -81,6 +81,7 @@ class AYViewSelector(AYButtonMenu):
     view_deleted = Signal(str)
     view_modified = Signal(str, bool)
     binding_error = Signal(str, str)
+    default_view_message = Signal(str, bool)
 
     def __init__(
         self,
@@ -482,10 +483,34 @@ class AYViewSelector(AYButtonMenu):
         """Reset the current view to the default view for the current scope."""
         ctrl = self._default_view_control
         if ctrl.studio_default_view:
-            self._apply_view(ctrl.studio_default_view, emit=True)
+            if self._apply_view(ctrl.studio_default_view, emit=True):
+                self.emit_default_view_message(
+                    "Loaded studio default view.",
+                    True,
+                )
+            else:
+                self.emit_default_view_message(
+                    "Failed to load studio default view.",
+                    False,
+                )
             return
         if ctrl.project_default_view:
-            self._apply_view(ctrl.project_default_view, emit=True)
+            if self._apply_view(ctrl.project_default_view, emit=True):
+                self.emit_default_view_message(
+                    "Loaded project default view.",
+                    True,
+                )
+            else:
+                self.emit_default_view_message(
+                    "Failed to load project default view.",
+                    False,
+                )
+            return
+
+        self.emit_default_view_message(
+            "No default view configured.",
+            False,
+        )
 
     def _on_manager_changed(self, view_type: str) -> None:
         """Refresh when the manager signals a change for our type.
@@ -532,6 +557,14 @@ class AYViewSelector(AYButtonMenu):
             self._dropdown.close()
         except Exception:
             pass
+
+    def emit_default_view_message(self, message: str, success: bool) -> None:
+        """Emit default-view feedback for host UIs.
+
+        Hosts can map this to the same toast presentation used by loader
+        action results.
+        """
+        self.default_view_message.emit(message, success)
 
     def _current_project_name(self) -> str:
         """Return the manager's current project name when available."""
@@ -616,25 +649,50 @@ class AYViewSelector(AYButtonMenu):
             view_name = self._current_view.label or self._current_view.id
             self.view_modified.emit(view_name, modified)
 
-    def _apply_view(self, view: View, emit: bool) -> None:
-        """Apply *view* to the bindings and update the local state."""
+    def _apply_view(self, view: View, emit: bool) -> bool:
+        """Apply *view* to the bindings and update the local state.
+
+        Default views are applied onto the working-view context, so edits
+        continue against the working view.
+        """
+
         self._suspend_modified_state_sync = True
+
+        is_default_view = (
+                not view.working
+                and view.label == DEFAULT_VIEW_LABEL
+        )
+
+        target_view = view
+        if is_default_view:
+            try:
+                working_view = self._manager.get_working_view(self._view_type)
+            except Exception:
+                log.exception(
+                    "Failed to resolve working view for %r", self._view_type
+                )
+                self._suspend_modified_state_sync = False
+                return False
+            target_view = working_view
+            self._close_menu()
+
+        self._current_view = target_view
+
         try:
             self._bindings.apply(view.settings)
         except Exception:
             log.exception("Failed to apply view %r", view.id)
             self._suspend_modified_state_sync = False
-            return
+            return False
 
-        self._current_view = view
-        if self._current_view:
-            self.setToolTip(f"View: {self._current_view.label}")
+        self.setToolTip(f"View: {self._current_view.label}")
 
         if emit:
             self.view_applied.emit(view)
 
         self._suspend_modified_state_sync = False
         self._sync_view_modified_state()
+        return True
 
     def _on_view_save_clicked(self, view: View) -> None:
         self._close_menu()

@@ -196,9 +196,19 @@ class DefaultViewControl:
         """Pull the current studio and project default views from the manager."""
         sel = self._selector
         try:
-            studio = sel._manager.get_default_studio_view(sel._view_type)
-            project = sel._manager.get_default_project_view(sel._view_type)
-            return studio, project
+            self.studio_default_view = sel._manager.get_default_studio_view(sel._view_type)
+            self.project_default_view = sel._manager.get_default_project_view(sel._view_type)
+            print(
+                "[defaults.fetch] view_type=%s studio=%s(%s) project=%s(%s)"
+                % (
+                    sel._view_type,
+                    getattr(self.studio_default_view, "label", None),
+                    getattr(self.studio_default_view, "id", None),
+                    getattr(self.project_default_view, "label", None),
+                    getattr(self.project_default_view, "id", None),
+                )
+            )
+            return self.studio_default_view, self.project_default_view
         except Exception:
             log.exception(
                 "Failed to retrieve default views for %r", sel._view_type
@@ -236,7 +246,10 @@ class DefaultViewControl:
             self.project_default_view = saved
         return saved
 
-    def _unset_default_for_scope(self, scope: Scope) -> None:
+    def _emit_action_message(self, message: str, success: bool = True) -> None:
+        self._selector.emit_default_view_message(message, success)
+
+    def _unset_default_for_scope(self, scope: Scope) -> bool:
         sel = self._selector
         default_view = (
             self.studio_default_view
@@ -244,22 +257,28 @@ class DefaultViewControl:
             else self.project_default_view
         )
         if default_view is None or not default_view.id:
-            return
+            return False
 
         if not self._confirm_unset_default(scope):
-            return
+            return False
 
         try:
             with sel._suspend_auto_apply():
                 sel._manager.delete_view(default_view.id)
         except Exception:
             log.exception("Failed to delete default view %r", default_view.id)
-            return
+            scope_label = "Studio" if scope == Scope.STUDIO else "Project"
+            self._emit_action_message(
+                f"Failed to unset {scope_label.lower()} default view.",
+                success=False,
+            )
+            return False
 
         if scope == Scope.STUDIO:
             self.studio_default_view = None
         else:
             self.project_default_view = None
+        return True
 
     # ------------------------------------------------------------------
     # Studio callbacks
@@ -268,14 +287,46 @@ class DefaultViewControl:
     def on_studio_add_clicked(self, _checked: bool = False) -> None:
         if self._set_default_for_scope(Scope.STUDIO) is not None:
             self._rebuild_studio_control()
+            self._emit_action_message("Studio default view saved.")
+        else:
+            self._emit_action_message(
+                "Failed to save studio default view.", success=False
+            )
 
     def on_studio_close_clicked(self, _checked: bool = False) -> None:
-        self._unset_default_for_scope(Scope.STUDIO)
-        self._rebuild_studio_control()
+        if self._unset_default_for_scope(Scope.STUDIO):
+            self._rebuild_studio_control()
+            self._emit_action_message("Studio default view removed.")
 
     def on_studio_button_clicked(self, _checked: bool = False) -> None:
-        if self._set_default_for_scope(Scope.STUDIO) is not None:
-            self._rebuild_studio_control()
+        self._fetch_default_views()
+        if self.studio_default_view is None:
+            self._emit_action_message(
+                "No studio default view configured.",
+                success=False,
+            )
+            return
+
+        working_view = self._selector._manager.get_working_view(
+            self._selector._view_type
+        )
+        print(
+            "[defaults.click] scope=studio source=%s(%s) working=%s(%s)"
+            % (
+                self.studio_default_view.label,
+                self.studio_default_view.id,
+                getattr(working_view, "label", None),
+                getattr(working_view, "id", None),
+            )
+        )
+
+        if self._selector._apply_view(self.studio_default_view, emit=True):
+            self._emit_action_message("Loaded studio default view.")
+        else:
+            self._emit_action_message(
+                "Failed to load studio default view.",
+                success=False,
+            )
 
     # ------------------------------------------------------------------
     # Project callbacks
@@ -284,14 +335,46 @@ class DefaultViewControl:
     def on_project_add_clicked(self, _checked: bool = False) -> None:
         if self._set_default_for_scope(Scope.PROJECT) is not None:
             self._rebuild_project_control()
+            self._emit_action_message("Project default view saved.")
+        else:
+            self._emit_action_message(
+                "Failed to save project default view.", success=False
+            )
 
     def on_project_close_clicked(self, _checked: bool = False) -> None:
-        self._unset_default_for_scope(Scope.PROJECT)
-        self._rebuild_project_control()
+        if self._unset_default_for_scope(Scope.PROJECT):
+            self._rebuild_project_control()
+            self._emit_action_message("Project default view removed.")
 
     def on_project_button_clicked(self, _checked: bool = False) -> None:
-        if self._set_default_for_scope(Scope.PROJECT) is not None:
-            self._rebuild_project_control()
+        self._fetch_default_views()
+        if self.project_default_view is None:
+            self._emit_action_message(
+                "No project default view configured.",
+                success=False,
+            )
+            return
+
+        working_view = self._selector._manager.get_working_view(
+            self._selector._view_type
+        )
+        print(
+            "[defaults.click] scope=project source=%s(%s) working=%s(%s)"
+            % (
+                self.project_default_view.label,
+                self.project_default_view.id,
+                getattr(working_view, "label", None),
+                getattr(working_view, "id", None),
+            )
+        )
+
+        if self._selector._apply_view(self.project_default_view, emit=True):
+            self._emit_action_message("Loaded project default view.")
+        else:
+            self._emit_action_message(
+                "Failed to load project default view.",
+                success=False,
+            )
 
     def _confirm_unset_default(self, scope: Scope) -> bool:
         """Ask for user confirmation before removing a default view."""

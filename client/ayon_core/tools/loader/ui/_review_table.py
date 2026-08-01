@@ -84,6 +84,7 @@ class ReviewTable(AYContainer):
     """Right-hand panel that shows a paginated table of versions."""
 
     display_type_changed = QtCore.Signal(QtWidgets.QAbstractItemView)
+    default_view_message = QtCore.Signal(str, bool)
 
     def __init__(
         self,
@@ -202,6 +203,12 @@ class ReviewTable(AYContainer):
         )
         self._view_selector.binding_error.connect(
             self._on_view_selector_error
+        )
+        self._view_selector.default_view_message.connect(
+            lambda message, success: self.default_view_message.emit(
+                message,
+                success,
+            )
         )
         self._display_type.display_type_changed.connect(
             self._view_selector.notify_view_modified

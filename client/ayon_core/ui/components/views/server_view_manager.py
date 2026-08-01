@@ -174,6 +174,40 @@ class ServerViewManager(ViewManager):
         self._upsert_cache(parsed)
         return parsed
 
+    def get_default_project_view(self, view_type: str) -> View | None:
+        """Return project default view using the dedicated ``/base`` endpoint."""
+        self._known_types.add(view_type)
+
+        if not self._project_name:
+            return None
+
+        try:
+            resp = ayon_api.get(
+                f"views/{view_type}/base",
+                project_name=self._project_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Failed to fetch project default view for %s", view_type)
+            self.error.emit(f"Failed to fetch project default view: {exc}")
+            return None
+
+        payload = self._extract_data(resp)
+        return self._parse_default_view_payload(payload, view_type, Scope.PROJECT)
+
+    def get_default_studio_view(self, view_type: str) -> View | None:
+        """Return studio default view using the dedicated ``/base`` endpoint."""
+        self._known_types.add(view_type)
+
+        try:
+            resp = ayon_api.get(f"views/{view_type}/base")
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Failed to fetch studio default view for %s", view_type)
+            self.error.emit(f"Failed to fetch studio default view: {exc}")
+            return None
+
+        payload = self._extract_data(resp)
+        return self._parse_default_view_payload(payload, view_type, Scope.STUDIO)
+
     def list_views(self, view_type: str) -> list[View]:
         """Return views for *view_type*, fetching from server on miss.
 
@@ -225,6 +259,9 @@ class ServerViewManager(ViewManager):
                     continue
 
                 candidate: dict[str, Any] = dict(item)
+                is_default_candidate = (
+                    str(candidate.get("label") or "") == "__base__"
+                )
                 try:
                     resp = ayon_api.get(
                         f"views/{view_type}/{view_id}",
@@ -241,6 +278,8 @@ class ServerViewManager(ViewManager):
                 # Do not let blank detail values overwrite valid
                 # summary values from the list response.
                 for key, value in detail_payload.items():
+                    if key == "settings" and not value:
+                        continue
                     if (
                         key in {"id", "label", "viewType"}
                         and (value is None or value == "")
@@ -494,6 +533,50 @@ class ServerViewManager(ViewManager):
         if isinstance(payload.get("data"), dict):
             return payload["data"]
         return payload
+
+    def _parse_default_view_payload(
+        self,
+        payload: Any,
+        view_type: str,
+        scope: Scope,
+    ) -> View | None:
+        """Parse default view payload returned by ``/base`` endpoint."""
+        view_payload = self._extract_view_dict(payload)
+        if not isinstance(view_payload, dict) or not view_payload:
+            return None
+
+        # Error payloads can still be dicts; ignore them.
+        if "id" not in view_payload and "detail" in view_payload:
+            log.debug(
+                "Default %s view for %s is unavailable: %s",
+                scope.value,
+                view_type,
+                view_payload.get("detail"),
+            )
+            return None
+
+        candidate = dict(view_payload)
+        candidate["viewType"] = str(candidate.get("viewType") or view_type)
+        candidate["scope"] = str(candidate.get("scope") or scope.value)
+        candidate["label"] = str(candidate.get("label") or "__base__")
+        candidate["working"] = False
+
+        try:
+            parsed = View.from_payload(candidate)
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "Malformed default %s payload for %s: %r",
+                scope.value,
+                view_type,
+                payload,
+            )
+            return None
+
+        if parsed.id:
+            self._id_to_type[parsed.id] = parsed.view_type
+            self._id_to_scope[parsed.id] = parsed.scope
+        self._upsert_cache(parsed)
+        return parsed
 
     def _upsert_cache(self, view: View) -> None:
         """Insert or replace *view* in the per-type cache in place.
