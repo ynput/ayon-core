@@ -31,12 +31,15 @@ from typing import Any
 from urllib.parse import urlencode
 
 import ayon_api
+from ayon_core.addon import get_bundle_information
 from qtpy.QtCore import QObject  # type: ignore[attr-defined]
 
-from .data_models import View, Scope
+from .data_models import View, Scope, Visibility
 from .view_manager import ViewManager
 
 log = logging.getLogger(__name__)
+
+_POWERPACK_ADDON_NAME = "powerpack"
 
 
 class ServerViewManager(ViewManager):
@@ -45,8 +48,10 @@ class ServerViewManager(ViewManager):
     Endpoints (project-scoped, all take ``?project_name=<p>``):
 
     * ``GET    /api/views/{view_type}``
+    * ``GET    /api/views/{view_type}/working``
     * ``POST   /api/views/{view_type}``
     * ``PATCH  /api/views/{view_type}/{view_id}``
+    * ``POST   /api/addons/powerpack/{version}/views/{view_type}/{view_id}/share``
     * ``DELETE /api/views/{view_type}/{view_id}``
 
     Attributes:
@@ -78,6 +83,7 @@ class ServerViewManager(ViewManager):
         # view_id -> Scope (used by delete_view to decide whether to pass
         # project_name; studio-scoped views must NOT include it).
         self._id_to_scope: dict[str, Scope] = {}
+        self._powerpack_version: str | None = None
 
     # ------------------------------------------------------------------
     # Project scope
@@ -116,6 +122,57 @@ class ServerViewManager(ViewManager):
     # ------------------------------------------------------------------
     # ViewManager API
     # ------------------------------------------------------------------
+
+    def get_working_view(self, view_type: str) -> View | None:
+        """Return the working view for *view_type* using the direct endpoint.
+
+        Uses ``GET /api/views/{view_type}/working`` for faster lookup than
+        scanning ``list_views``.
+
+        Args:
+            view_type: View-type identifier.
+
+        Returns:
+            Parsed working :class:`View`, or ``None`` when not found.
+        """
+        self._known_types.add(view_type)
+
+        if not self._project_name:
+            return None
+
+        try:
+            resp = ayon_api.get(
+                f"views/{view_type}/working",
+                project_name=self._project_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Failed to fetch working view for %s", view_type)
+            self.error.emit(f"Failed to fetch working view: {exc}")
+            return None
+
+        payload = self._extract_data(resp)
+        view_payload = self._extract_view_dict(payload)
+        if not isinstance(view_payload, dict) or not view_payload:
+            return None
+
+        candidate = dict(view_payload)
+        candidate["viewType"] = str(candidate.get("viewType") or view_type)
+
+        try:
+            parsed = View.from_payload(candidate)
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "Malformed working view payload for %s: %r",
+                view_type,
+                payload,
+            )
+            return None
+
+        if parsed.id:
+            self._id_to_type[parsed.id] = parsed.view_type
+            self._id_to_scope[parsed.id] = parsed.scope
+        self._upsert_cache(parsed)
+        return parsed
 
     def list_views(self, view_type: str) -> list[View]:
         """Return views for *view_type*, fetching from server on miss.
@@ -234,6 +291,15 @@ class ServerViewManager(ViewManager):
                 emitting :attr:`error`.
         """
         payload = view.to_payload()
+        access_data = self._normalize_access_payload(payload.get("access"))
+        should_share_access = self._has_positive_access(access_data)
+        if (
+            should_share_access
+            and str(payload.get("visibility", "")) == Visibility.PRIVATE.value
+        ):
+            payload["visibility"] = Visibility.PUBLIC.value
+            view.visibility = Visibility.PUBLIC
+
         is_update = bool(view.id)
         if not is_update:
             payload.pop("id", None)
@@ -280,9 +346,56 @@ class ServerViewManager(ViewManager):
             self._id_to_scope[saved.id] = saved.scope
         self._upsert_cache(saved)
 
+        # Access grants are managed by the dedicated share endpoint.
+        if should_share_access and saved.id:
+            self.patch_view_access(saved.id, access_data)
+
         self.view_saved.emit(saved.id)
         self.views_changed.emit(saved.view_type)
         return saved
+
+    def patch_view_access(self, view_id: str, access_data: dict[str, Any]) -> None:
+        """Patch per-view access data via the share endpoint.
+
+        Args:
+            view_id: Existing view identifier.
+            access_data: Access mapping (e.g. ``{"__everyone__": 20}``).
+        """
+        if not view_id:
+            return
+        if not self._project_name:
+            self.error.emit("Cannot patch view access without project name")
+            return
+
+        view_type = self._id_to_type.get(view_id)
+        if not view_type:
+            self.error.emit(f"Unknown view id for access patch: {view_id}")
+            return
+
+        payload_access = self._normalize_access_payload(access_data)
+        if not payload_access:
+            return
+
+        powerpack_version = self._get_powerpack_version()
+        if not powerpack_version:
+            self.error.emit("Could not resolve powerpack addon version")
+            return
+
+        try:
+            con = ayon_api.get_server_api_connection()
+            con.raw_post(
+                "addons/"
+                f"{_POWERPACK_ADDON_NAME}/{powerpack_version}"
+                f"/views/{view_type}/{view_id}/share",
+                params={"project_name": self._project_name},
+                json={
+                    "visibility": Visibility.PUBLIC.value,
+                    "access": payload_access,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Failed to patch view access for %s", view_id)
+            self.error.emit(f"Failed to patch view access: {exc}")
 
     def delete_view(self, view_id: str) -> None:
         """Delete *view_id* on the server.
@@ -401,3 +514,45 @@ class ServerViewManager(ViewManager):
         else:
             view_list.append(view)
         view_list.sort(key=lambda v: (v.position, v.label.lower()))
+
+    @staticmethod
+    def _normalize_access_payload(raw_access: Any) -> dict[str, int]:
+        """Return a normalized ``access`` payload with integer values."""
+        if not isinstance(raw_access, dict):
+            return {}
+        normalized: dict[str, int] = {}
+        for key, value in raw_access.items():
+            name = str(key).strip()
+            if not name:
+                continue
+            try:
+                normalized[name] = int(value)
+            except (TypeError, ValueError):
+                continue
+        return normalized
+
+    @staticmethod
+    def _has_positive_access(access_data: dict[str, int]) -> bool:
+        """Return True when any access level is above zero."""
+        return any(level > 0 for level in access_data.values())
+
+    def _get_powerpack_version(self) -> str | None:
+        """Return powerpack version from the current session bundle."""
+        if self._powerpack_version:
+            return self._powerpack_version
+
+        try:
+            bundle_info = get_bundle_information()
+        except Exception:  # noqa: BLE001
+            log.exception("Failed to query bundle information")
+            return None
+
+        for addon in bundle_info.addons:
+            if addon.name != _POWERPACK_ADDON_NAME:
+                continue
+            if addon.version:
+                self._powerpack_version = addon.version
+                return self._powerpack_version
+
+        return None
+

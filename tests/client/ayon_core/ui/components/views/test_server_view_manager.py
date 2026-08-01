@@ -14,6 +14,7 @@ from ayon_core.ui.components.views import (
     ServerViewManager,
     View,
     ViewSettings,
+    Visibility,
 )
 
 
@@ -289,6 +290,72 @@ def test_save_view_network_error_emits_and_raises() -> None:
             mgr.save_view(View(label="New", view_type="versions",
                                owner="alice", settings=ViewSettings()))
     assert errors and "boom" in errors[0]
+
+
+def test_save_view_forces_public_when_access_has_positive_values() -> None:
+    mgr = ServerViewManager(project_name="P")
+    view = View(
+        id="v1",
+        label="Shared",
+        view_type="versions",
+        owner="alice",
+        settings=ViewSettings(),
+    )
+    view.visibility = Visibility.PRIVATE
+    view.access = {"__everyone__": 20}
+
+    fake_patch = MagicMock(return_value=_resp({}))
+    conn = MagicMock()
+    conn.raw_post = MagicMock()
+
+    with patch("ayon_core.ui.components.views.server_view_manager"
+               ".ayon_api.patch", fake_patch), \
+         patch("ayon_core.ui.components.views.server_view_manager"
+               ".get_bundle_information",
+               return_value=MagicMock(
+                   addons=[type("Addon", (), {"name": "powerpack", "version": "1.6.3"})()]
+               )), \
+         patch("ayon_core.ui.components.views.server_view_manager"
+               ".ayon_api.get_server_api_connection", return_value=conn):
+        mgr.save_view(view)
+
+    sent_payload = fake_patch.call_args.kwargs
+    assert sent_payload["visibility"] == "public"
+    conn.raw_post.assert_called_once()
+    share_endpoint = conn.raw_post.call_args.args[0]
+    assert "addons/powerpack/1.6.3/views/versions/v1/share" in share_endpoint
+    share_json = conn.raw_post.call_args.kwargs["json"]
+    assert share_json["visibility"] == "public"
+    assert share_json["access"] == {"__everyone__": 20}
+
+
+def test_save_view_does_not_share_when_access_is_non_positive() -> None:
+    mgr = ServerViewManager(project_name="P")
+    view = View(
+        id="v1",
+        label="NoShare",
+        view_type="versions",
+        owner="alice",
+        settings=ViewSettings(),
+        access={"__everyone__": 0},
+    )
+
+    fake_patch = MagicMock(return_value=_resp({}))
+    conn = MagicMock()
+    conn.raw_post = MagicMock()
+
+    with patch("ayon_core.ui.components.views.server_view_manager"
+               ".ayon_api.patch", fake_patch), \
+         patch("ayon_core.ui.components.views.server_view_manager"
+               ".get_bundle_information",
+               return_value=MagicMock(
+                   addons=[type("Addon", (), {"name": "powerpack", "version": "1.6.3"})()]
+               )), \
+         patch("ayon_core.ui.components.views.server_view_manager"
+               ".ayon_api.get_server_api_connection", return_value=conn):
+        mgr.save_view(view)
+
+    conn.raw_post.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
