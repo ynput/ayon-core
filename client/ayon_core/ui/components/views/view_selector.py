@@ -23,7 +23,7 @@ from ..buttons import AYButton, AYButtonMenu
 from ..container import AYContainer
 from ..label import AYLabel
 
-from .data_models import FilterDef, View, Visibility, Scope
+from .data_models import View, ViewSettings, Visibility, Scope
 from .default_view_control import DefaultViewControl
 from .view_bindings import ViewBindings
 from .view_editor import AYViewEditor
@@ -68,9 +68,9 @@ class AYViewSelector(AYButtonMenu):
             the bindings.
         view_saved(View): Emitted after a view has been persisted.
         view_deleted(str): Emitted with the view id after deletion.
-        view_filters_modified(str): Emitted when the active filter no
-            longer matches the loaded view settings. Payload is the
-            current view name.
+        view_modified(str, bool): Emitted when the live UI no longer
+            matches the loaded view settings, or when it returns to the
+            saved state. Payload is ``(current_view_name, modified)``.
         binding_error(str, str): Emitted with ``(stage, message)`` when
             :class:`ViewBindings` reports a non-fatal failure while
             applying or capturing a view.
@@ -79,7 +79,7 @@ class AYViewSelector(AYButtonMenu):
     view_applied = Signal(object)
     view_saved = Signal(object)
     view_deleted = Signal(str)
-    view_filters_modified = Signal(str)
+    view_modified = Signal(str, bool)
     binding_error = Signal(str, str)
 
     def __init__(
@@ -100,7 +100,7 @@ class AYViewSelector(AYButtonMenu):
         self._current_user = current_user
         self._user_access = int(user_access_level)
         self._allow_studio_scope = bool(allow_studio_scope)
-        self._view_filters_modified = False
+        self._view_modified = False
 
         self._current_view: View | None = None
         self._views: list[View] = []
@@ -110,6 +110,7 @@ class AYViewSelector(AYButtonMenu):
         # does not trigger a redundant page-0 refetch.
         self._suppress_auto_apply: bool = False
         self._ensuring_working_view: bool = False
+        self._suspend_modified_state_sync: bool = False
 
         self._dropdown_layout = None  # type: ignore[assignment]
         self._default_view_control = DefaultViewControl(self)
@@ -130,9 +131,7 @@ class AYViewSelector(AYButtonMenu):
 
         # Refresh when the manager changes.
         self._manager.views_changed.connect(self._on_manager_changed)
-        self._bindings.filter_bar.filters_changed.connect(
-            self._sync_view_filters_modified_state
-        )
+        self._connect_modified_state_sources()
 
         # Forward binding errors via the public ``binding_error`` signal so
         # hosts can surface them.  Overrides any pre-existing
@@ -243,7 +242,7 @@ class AYViewSelector(AYButtonMenu):
         working_view_btn = AYButton(
             "Working view",
             variant=AYButton.Variants.Checked
-            if self._view_filters_modified
+            if self._view_modified
                or is_current_view_is_working_view else AYButton.Variants.Text,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
@@ -257,7 +256,7 @@ class AYViewSelector(AYButtonMenu):
         reset_btn = AYButton(
             icon="restart_alt",
             variant=AYButton.Variants.Checked
-            if self._view_filters_modified
+            if self._view_modified
                or is_current_view_is_working_view else AYButton.Variants.Nav_Small,
             tooltip="Reset to default",
         )
@@ -290,7 +289,7 @@ class AYViewSelector(AYButtonMenu):
         is_modified = (
                 self._current_view
                 and view.id == self._current_view.id
-                and self._view_filters_modified
+                and self._view_modified
         )
         variant = AYButton.Variants.Filled\
             if is_modified else AYButton.Variants.Surface
@@ -332,7 +331,7 @@ class AYViewSelector(AYButtonMenu):
         not_modified = (
                 self._current_view
                 and view.id == self._current_view.id
-                and not self._view_filters_modified
+                and not self._view_modified
         )
 
         row.add_widget(self._make_view_label_btn(view,not_modified), stretch=1)
@@ -351,6 +350,16 @@ class AYViewSelector(AYButtonMenu):
     def _on_binding_error(self, stage: str, exc: BaseException) -> None:
         """Forward a :class:`ViewBindings` error via :attr:`binding_error`."""
         self.binding_error.emit(stage, str(exc) or exc.__class__.__name__)
+
+    def _connect_modified_state_sources(self) -> None:
+        """Wire widget signals that alter captured settings."""
+        self._bindings.filter_bar.filters_changed.connect(self.notify_view_modified)
+        self._bindings.table_view.column_state_changed.connect(
+            self.notify_view_modified
+        )
+        self._bindings.table_view.header().sortIndicatorChanged.connect(
+            self.notify_view_modified
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -384,11 +393,19 @@ class AYViewSelector(AYButtonMenu):
         ):
             self._apply_view(working, emit=True)
             return
-        self._sync_view_filters_modified_state()
 
     def current_view(self) -> View | None:
         """Return the currently active view, or ``None``."""
         return self._current_view
+
+    def notify_view_modified(self, *_args) -> None:
+        """Recompute the modified state after a UI settings change.
+
+        Consumer code may connect custom widgets here when they affect
+        :meth:`ViewBindings.capture` but are not part of the built-in
+        table/filter stack.
+        """
+        self._sync_view_modified_state()
 
     # ------------------------------------------------------------------
     # Actions
@@ -567,20 +584,27 @@ class AYViewSelector(AYButtonMenu):
             return refreshed_working
         return working_view
 
-    def _sync_view_filters_modified_state(self):
-        live = self._bindings.capture_filter()
+    def _sync_view_modified_state(self) -> None:
+        """Compare live UI settings against the currently loaded view."""
+        if self._suspend_modified_state_sync:
+            return
+
+        live = self._bindings.capture()
         saved = (
-            self._current_view.settings.filter
-            if self._current_view else FilterDef()
+            self._current_view.settings
+            if self._current_view else ViewSettings()
         )
         modified = live != saved
-        if modified == self._view_filters_modified:
-            return
-        self._view_filters_modified = modified
 
-        # Update the working view
-        if modified:
+        # Keep the working view aligned with every live UI change, even
+        # when the user returns to a previously-saved state.
+        if self._current_view is not None:
             self._update_working_view()
+
+        if modified == self._view_modified:
+            return
+
+        self._view_modified = modified
 
         # Change views icon state to filled if modified and not working view
         if self._current_view and not self._current_view.working:
@@ -588,26 +612,29 @@ class AYViewSelector(AYButtonMenu):
                 AYButton.Variants.Filled if modified else AYButton.Variants.Surface
             )
 
-        if modified and self._current_view:
+        if self._current_view:
             view_name = self._current_view.label or self._current_view.id
-            self.view_filters_modified.emit(view_name)
+            self.view_modified.emit(view_name, modified)
 
     def _apply_view(self, view: View, emit: bool) -> None:
         """Apply *view* to the bindings and update the local state."""
+        self._suspend_modified_state_sync = True
         try:
             self._bindings.apply(view.settings)
         except Exception:
             log.exception("Failed to apply view %r", view.id)
+            self._suspend_modified_state_sync = False
             return
 
         self._current_view = view
         if self._current_view:
             self.setToolTip(f"View: {self._current_view.label}")
 
-        self._sync_view_filters_modified_state()
-
         if emit:
             self.view_applied.emit(view)
+
+        self._suspend_modified_state_sync = False
+        self._sync_view_modified_state()
 
     def _on_view_save_clicked(self, view: View) -> None:
         self._close_menu()
@@ -655,6 +682,7 @@ class AYViewSelector(AYButtonMenu):
                 "Failed to resolve working view for %r", self._view_type
             )
             return
+        working_view.settings = self._bindings.capture()
         with self._suspend_auto_apply():
             self._manager.set_working_view(working_view)
 
@@ -840,6 +868,11 @@ if __name__ == "__main__":  # pragma: no cover
         )
         selector.view_deleted.connect(
             lambda vid: print(f"[demo]  deleted view {vid}")
+        )
+        selector.view_modified.connect(
+            lambda name, modified: print(
+                f"[demo]  view state for {name!r}: {'modified' if modified else 'clean'}"
+            )
         )
 
         outer = AYContainer(

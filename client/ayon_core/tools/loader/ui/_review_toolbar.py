@@ -242,6 +242,27 @@ class DisplayType(AYContainer):
     def display_type(self) -> str:
         return self._display_type
 
+    def set_display_type(self, display_type: str, emit: bool = False) -> None:
+        """Set the active display mode programmatically.
+
+        Args:
+            display_type: ``"table"`` or ``"grid"``.
+            emit: Emit :attr:`display_type_changed` when the value changes.
+        """
+        self._display_type = "grid" if display_type == "grid" else "table"
+
+        self._table_btn.blockSignals(True)
+        self._grid_btn.blockSignals(True)
+
+        self._table_btn.setChecked(self._display_type == "table")
+        self._grid_btn.setChecked(self._display_type == "grid")
+
+        self._table_btn.blockSignals(False)
+        self._grid_btn.blockSignals(False)
+
+        if emit:
+            self.display_type_changed.emit(self._display_type)
+
     def _on_button_clicked(self, button: QtWidgets.QAbstractButton) -> None:
         self._display_type = button.objectName()
         self.display_type_changed.emit(self._display_type)

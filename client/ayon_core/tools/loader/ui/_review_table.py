@@ -203,6 +203,21 @@ class ReviewTable(AYContainer):
         self._view_selector.binding_error.connect(
             self._on_view_selector_error
         )
+        self._display_type.display_type_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._group_by_menu.group_by_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.show_empty_groups_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.card_size_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.featured_version_order_changed.connect(
+            self._view_selector.notify_view_modified
+        )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
         toolbar_lyt.addWidget(self._view_selector, stretch=0)
@@ -459,6 +474,11 @@ class ReviewTable(AYContainer):
         in ``extra`` after a server round-trip — they are applied from
         ``view.settings.grouping`` inside :meth:`_on_view_applied`.
 
+        Supported loader-specific extras:
+            ``gridHeight`` (card width),
+            ``featuredVersionOrder`` (controller order),
+            ``displayType`` (``"table"`` or ``"grid"``).
+
         Args:
             extra: The settings ``extra`` dict from the applied view.
         """
@@ -487,6 +507,10 @@ class ReviewTable(AYContainer):
                     log.debug(
                         "Failed to set featuredVersionOrder: %r", order
                     )
+        if "displayType" in extra:
+            display_type = str(extra["displayType"] or "").strip().lower()
+            if display_type in {"table", "grid"}:
+                self._display_type.set_display_type(display_type, emit=True)
 
     def _capture_view_extras(self) -> dict[str, Any]:
         """Capture loader-specific extras for inclusion in a saved view.
@@ -499,11 +523,15 @@ class ReviewTable(AYContainer):
         duplicated in ``extra`` (``ViewSettings.to_payload`` silently
         drops known keys from ``extra``).
 
+        Captured loader-specific extras include card width, featured
+        version order, and current display type (table or grid).
+
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
         """
         extra: dict[str, Any] = {
             "gridHeight": int(self._card_view.card_width),
+            "displayType": self._display_type.display_type,
         }
         order = self._controller.featured_version_order
         if order:
