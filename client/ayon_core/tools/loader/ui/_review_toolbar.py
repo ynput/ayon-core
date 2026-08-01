@@ -249,14 +249,16 @@ class DisplayType(AYContainer):
             display_type: ``"table"`` or ``"grid"``.
             emit: Emit :attr:`display_type_changed` when the value changes.
         """
-        self._display_type = "grid" if display_type == "grid" else "table"
+        target = "grid" if display_type == "grid" else "table"
+        if target == self._display_type:
+            return
 
+        self._display_type = target
+        table_checked = target == "table"
         self._table_btn.blockSignals(True)
         self._grid_btn.blockSignals(True)
-
-        self._table_btn.setChecked(self._display_type == "table")
-        self._grid_btn.setChecked(self._display_type == "grid")
-
+        self._table_btn.setChecked(table_checked)
+        self._grid_btn.setChecked(not table_checked)
         self._table_btn.blockSignals(False)
         self._grid_btn.blockSignals(False)
 
