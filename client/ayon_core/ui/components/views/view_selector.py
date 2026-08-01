@@ -109,6 +109,7 @@ class AYViewSelector(AYButtonMenu):
         # operations so the manager-driven refresh during save_view
         # does not trigger a redundant page-0 refetch.
         self._suppress_auto_apply: bool = False
+        self._ensuring_working_view: bool = False
 
         self._dropdown_layout = None  # type: ignore[assignment]
         self._default_view_control = DefaultViewControl(self)
@@ -238,11 +239,12 @@ class AYViewSelector(AYButtonMenu):
             layout_spacing=4,
             layout_margin=0,
         )
-
+        is_current_view_is_working_view = view is not None and view.working
         working_view_btn = AYButton(
             "Working view",
             variant=AYButton.Variants.Checked
-            if self._view_filters_modified else AYButton.Variants.Text,
+            if self._view_filters_modified
+               or is_current_view_is_working_view else AYButton.Variants.Text,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
         )
@@ -255,7 +257,8 @@ class AYViewSelector(AYButtonMenu):
         reset_btn = AYButton(
             icon="restart_alt",
             variant=AYButton.Variants.Checked
-            if self._view_filters_modified else AYButton.Variants.Nav_Small,
+            if self._view_filters_modified
+               or is_current_view_is_working_view else AYButton.Variants.Nav_Small,
             tooltip="Reset to default",
         )
         reset_btn.setFixedSize(24, 24)
@@ -373,11 +376,14 @@ class AYViewSelector(AYButtonMenu):
             log.exception("Failed to list views for %r", self._view_type)
             self._views = []
 
-        if self._current_view is None and not self._suppress_auto_apply:
-            working = next((v for v in self._views if v.working), None)
-            if working is not None:
-                self._apply_view(working, emit=True)
-                return
+        working = self._ensure_working_view_exists()
+        if (
+            working is not None
+            and self._current_view is None
+            and not self._suppress_auto_apply
+        ):
+            self._apply_view(working, emit=True)
+            return
         self._sync_view_filters_modified_state()
 
     def current_view(self) -> View | None:
@@ -515,13 +521,53 @@ class AYViewSelector(AYButtonMenu):
         project_name = getattr(self._manager, "project_name", "")
         return str(project_name or "")
 
+    def _ensure_working_view_exists(self) -> View | None:
+        """Return the current working view, creating one when missing."""
+        if self._ensuring_working_view or self._current_view is not None:
+            return None
+
+        existing = next((view for view in self._views if view.working), None)
+        if existing is not None:
+            return existing
+
+        project_name = getattr(self._manager, "project_name", None)
+        if project_name is not None and not str(project_name or ""):
+            return None
+
+        working_view = View(
+            label="Working",
+            settings=self._bindings.capture(),
+            working=True,
+            visibility=Visibility.PRIVATE,
+            view_type=self._view_type,
+            owner=self._current_user,
+            scope=Scope.PROJECT
+        )
+
+        self._ensuring_working_view = True
+        try:
+            with self._suspend_auto_apply():
+                self._manager.set_working_view(working_view)
+        except Exception:
+            log.exception(
+                "Failed to create initial working view for %r",
+                self._view_type,
+            )
+            return None
+        finally:
+            self._ensuring_working_view = False
+
+        refreshed_views = list(self._manager.list_views(self._view_type))
+        refreshed_working = next(
+            (view for view in refreshed_views if view.working),
+            None,
+        )
+        if refreshed_working is not None:
+            self._views = refreshed_views
+            return refreshed_working
+        return working_view
+
     def _sync_view_filters_modified_state(self):
-
-        if self._current_view:
-            self.setToolTip(f"View: {self._current_view.label}")
-        else:
-            self.setToolTip("Working View")
-
         live = self._bindings.capture_filter()
         saved = (
             self._current_view.settings.filter
@@ -555,6 +601,9 @@ class AYViewSelector(AYButtonMenu):
             return
 
         self._current_view = view
+        if self._current_view:
+            self.setToolTip(f"View: {self._current_view.label}")
+
         self._sync_view_filters_modified_state()
 
         if emit:
@@ -594,9 +643,11 @@ class AYViewSelector(AYButtonMenu):
 
         self._apply_view(working_view, emit=True)
 
+        # Change views icon state to normal
+        self.set_variant(AYButton.Variants.Surface)
+        self._close_menu()
+
     def _update_working_view(self) -> None:
-        #TODO: A very first working view will be creating after any view modified
-        # I need to find better place in init to validate working view existence and create one
         try:
             working_view = self._manager.get_working_view(self._view_type)
         except Exception:
@@ -604,18 +655,6 @@ class AYViewSelector(AYButtonMenu):
                 "Failed to resolve working view for %r", self._view_type
             )
             return
-
-        if not working_view:
-            working_view = View(
-                label="Working",
-            )
-
-        working_view.settings = self._bindings.capture()
-        working_view.working = True
-        working_view.visibility = Visibility.PRIVATE
-        working_view.view_type = self._view_type
-        working_view.owner = self._current_user
-
         with self._suspend_auto_apply():
             self._manager.set_working_view(working_view)
 
