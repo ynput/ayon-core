@@ -347,7 +347,7 @@ class DefaultViewControl:
         message_box.setIcon(QMessageBox.Icon.Warning)
         message_box.setWindowTitle(f"Remove {scope_label} view")
         message_box.setText(
-            f"Are you sure want to remove {scope_label.lower()} view?"
+            f"Are you sure you want to remove {scope_label.lower()} view?"
         )
 
         remove_button = message_box.addButton(
