@@ -332,12 +332,6 @@ class ServerViewManager(ViewManager):
         payload = view.to_payload()
         access_data = self._normalize_access_payload(payload.get("access"))
         should_share_access = self._has_positive_access(access_data)
-        if (
-            should_share_access
-            and str(payload.get("visibility", "")) == Visibility.PRIVATE.value
-        ):
-            payload["visibility"] = Visibility.PUBLIC.value
-            view.visibility = Visibility.PUBLIC
 
         is_update = bool(view.id)
         if not is_update:
@@ -387,13 +381,13 @@ class ServerViewManager(ViewManager):
 
         # Access grants are managed by the dedicated share endpoint.
         if should_share_access and saved.id:
-            self.patch_view_access(saved.id, access_data)
+            self.patch_view_access(saved.id, access_data, should_share_access)
 
         self.view_saved.emit(saved.id)
         self.views_changed.emit(saved.view_type)
         return saved
 
-    def patch_view_access(self, view_id: str, access_data: dict[str, Any]) -> None:
+    def patch_view_access(self, view_id: str, access_data: dict[str, Any], should_share_access) -> None:
         """Patch per-view access data via the share endpoint.
 
         Args:
@@ -419,7 +413,7 @@ class ServerViewManager(ViewManager):
         if not powerpack_version:
             self.error.emit("Could not resolve powerpack addon version")
             return
-
+        visibility = Visibility.PUBLIC.value if should_share_access else Visibility.PRIVATE.value
         try:
             con = ayon_api.get_server_api_connection()
             con.raw_post(
@@ -428,7 +422,7 @@ class ServerViewManager(ViewManager):
                 f"/views/{view_type}/{view_id}/share",
                 params={"project_name": self._project_name},
                 json={
-                    "visibility": Visibility.PUBLIC.value,
+                    "visibility": visibility,
                     "access": payload_access,
                 },
             )
