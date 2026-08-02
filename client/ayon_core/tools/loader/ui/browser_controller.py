@@ -190,7 +190,7 @@ class BrowserController(QtCore.QObject):
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
         self.tree_reset_requested.emit()
-        UserPreferences().set("loader.review.last_project", project_name)
+        UserPreferences().set("loader.browser.last_project", project_name)
 
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
@@ -221,7 +221,7 @@ class BrowserController(QtCore.QObject):
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
-        UserPreferences().set("loader.review.last_category", category)
+        UserPreferences().set("loader.browser.last_category", category)
 
     def on_tree_selection_changed(
         self, ids: list[str], names: list[str]

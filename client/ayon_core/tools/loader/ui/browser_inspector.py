@@ -30,7 +30,7 @@ def _str_wrap(text: str) -> str:
 
 
 class BrowserInspector(AYContainer):
-    """A placeholder widget for the review inspector panel."""
+    """A placeholder widget for the browser inspector panel."""
 
     def __init__(
         self,

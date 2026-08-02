@@ -40,9 +40,9 @@ class BrowserWidget(AYContainer):
             **kwargs,
         )
         prefs = UserPreferences()
-        saved_project = prefs.get("loader.review.last_project", "")
+        saved_project = prefs.get("loader.browser.last_project", "")
         saved_category = prefs.get(
-            "loader.review.last_category",
+            "loader.browser.last_category",
             BrowserSlicerCategory.HIERARCHY.value,
         )
 

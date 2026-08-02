@@ -1,4 +1,4 @@
-"""Group-by options, enums, and attribute-icon helpers for the review widget.
+"""Group-by options, enums, and attribute-icon helpers for the browser widget.
 """
 
 from __future__ import annotations
