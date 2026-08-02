@@ -420,10 +420,11 @@ class AYViewSelector(AYButtonMenu):
     def _on_edit_clicked(self, view: View) -> None:
         """Open the editor for an existing view."""
         self._close_menu()
-        view.settings = self._bindings.capture()
+        editable = View.from_payload(view.to_payload())
+        editable.settings = self._bindings.capture()
         user_list = self._get_active_usernames()
         editor = AYViewEditor(
-            view,
+            editable,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
             current_project=self._current_project_name(),
