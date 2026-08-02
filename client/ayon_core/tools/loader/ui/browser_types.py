@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 
-class ReviewCategory(Enum):
+class BrowserSlicerCategory(Enum):
     """Categories for organizing versions in the review widget."""
 
     HIERARCHY = "Hierarchy"

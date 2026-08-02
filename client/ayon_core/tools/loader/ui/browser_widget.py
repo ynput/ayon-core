@@ -1,4 +1,4 @@
-"""Top-level reviews widget combining the slicer panel and version table."""
+"""Top-level browser widget combining the slicer panel and version table."""
 
 from __future__ import annotations
 
@@ -10,19 +10,19 @@ from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
 from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import ReviewController
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.loader.ui.browser_controller import BrowserController
+from ayon_core.tools.loader.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.loader.control import LoaderController
 from ayon_core.tools.utils.user_prefs import UserPreferences
 
-from ._review_slicer import ReviewSlicer
-from ._review_table import ReviewTable
-from .review_inspector import ReviewInspector
+from ._browser_slicer import BrowserSlicer
+from ._browser_table import BrowserTable
+from .browser_inspector import BrowserInspector
 
 log = Logger.get_logger(__name__)
 
 
-class ReviewsWidget(AYContainer):
+class BrowserWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
     default_view_message = QtCore.Signal(str, bool)
@@ -43,14 +43,14 @@ class ReviewsWidget(AYContainer):
         saved_project = prefs.get("loader.review.last_project", "")
         saved_category = prefs.get(
             "loader.review.last_category",
-            ReviewCategory.HIERARCHY.value,
+            BrowserSlicerCategory.HIERARCHY.value,
         )
 
-        self._controller = ReviewController(
+        self._controller = BrowserController(
             loader_controller,
             parent=self,
         )
-        self._slicer = ReviewSlicer(
+        self._slicer = BrowserSlicer(
             self._controller,
             self,
             initial_project=saved_project,
@@ -60,7 +60,7 @@ class ReviewsWidget(AYContainer):
             fetch_children=self._controller.fetch_children
         )
         self._slicer.set_model(self._model)
-        self._table = ReviewTable(self._controller, self)
+        self._table = BrowserTable(self._controller, self)
         self._table.table.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.CustomContextMenu
         )
@@ -73,7 +73,7 @@ class ReviewsWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
-        self._inspector = ReviewInspector(self._controller)
+        self._inspector = BrowserInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
             lambda message, success: self.default_view_message.emit(

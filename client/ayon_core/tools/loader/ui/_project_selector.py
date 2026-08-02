@@ -1,4 +1,4 @@
-"""Project model and selector combo-box for the reviews panel."""
+"""Project model and selector combo-box for the browser panel."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.ui.review_controller import ReviewController
+from ayon_core.tools.loader.ui.browser_controller import BrowserController
 from ayon_core.tools.utils import get_qt_icon
 
 log = Logger.get_logger(__name__)
@@ -23,7 +23,7 @@ class ProjectModel(QtGui.QStandardItemModel):
     IconNameRole = QtCore.Qt.ItemDataRole.UserRole + 2
 
     def __init__(
-        self, controller: ReviewController, *args: Any, **kwargs: Any
+        self, controller: BrowserController, *args: Any, **kwargs: Any
     ) -> None:
         super().__init__(*args, **kwargs)
         self._style_data = get_ayon_style_data("QComboBox", "low")
@@ -67,7 +67,7 @@ class ProjectSelector(AYComboBox):
 
     def __init__(
         self,
-        controller: ReviewController,
+        controller: BrowserController,
         *args: Any,
         initial_project: str = "",
         **kwargs: Any,

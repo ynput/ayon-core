@@ -23,7 +23,7 @@ from ayon_core.ui.components.slider import AYSlider
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.ui.review_group_by import GroupByOption
+from ayon_core.tools.loader.ui.browser_group_by import GroupByOption
 
 log = Logger.get_logger(__name__)
 

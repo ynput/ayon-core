@@ -1,4 +1,4 @@
-"""GraphQL query strings and column-sort mapping for the review widget."""
+"""GraphQL query strings and column-sort mapping for the browser widget."""
 
 from __future__ import annotations
 

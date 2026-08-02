@@ -1,4 +1,4 @@
-"""Thumbnail utilities and lazy-loading widgets for the reviews panel."""
+"""Thumbnail utilities and lazy-loading widgets for the browser panel."""
 
 from __future__ import annotations
 
@@ -15,12 +15,12 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 from ayon_core.lib import Logger, log_timing
 
 if TYPE_CHECKING:
-    from ._review_model import VisibilityAwarePaginatedTableModel
+    from ._browser_model import VisibilityAwarePaginatedTableModel
 
 log = Logger.get_logger(__name__)
 
 
-def _review_card_mapper(row_data: dict) -> dict:
+def _browser_card_mapper(row_data: dict) -> dict:
     """Map a version row dict to the fields expected by AYEntityCard."""
     key: str = (
         f"{row_data.get('project_name', '')}/"

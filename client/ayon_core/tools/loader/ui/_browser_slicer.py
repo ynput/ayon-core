@@ -13,33 +13,33 @@ from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.ui.review_controller import ReviewController
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.loader.ui.browser_controller import BrowserController
+from ayon_core.tools.loader.ui.browser_types import BrowserSlicerCategory
 
 from ._project_selector import ProjectSelector
 
 log = Logger.get_logger(__name__)
 
 
-class ReviewTreeView(AYTreeView):
-    """Tree view used inside the review slicer."""
+class BrowserTreeView(AYTreeView):
+    """Tree view used inside the browser slicer."""
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent, variant=AYTreeView.Variants.Low)
 
 
-class ReviewSlicer(AYContainer):
+class BrowserSlicer(AYContainer):
     """Left-hand panel with project selector, category slicer and tree."""
 
     CATEGORIES = [
         {
-            "text": ReviewCategory.HIERARCHY.value,
+            "text": BrowserSlicerCategory.HIERARCHY.value,
             "short_text": "HIE",
             "icon": "table_rows",
             "color": "#f4f5f5",
         },
         {
-            "text": ReviewCategory.REVIEWS.value,
+            "text": BrowserSlicerCategory.REVIEWS.value,
             "short_text": "REV",
             "icon": "subscriptions",
             "color": "#f4f5f5",
@@ -48,10 +48,10 @@ class ReviewSlicer(AYContainer):
 
     def __init__(
         self,
-        controller: ReviewController,
+        controller: BrowserController,
         *args: Any,
         initial_project: str = "",
-        initial_category: str = ReviewCategory.HIERARCHY.value,
+        initial_category: str = BrowserSlicerCategory.HIERARCHY.value,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -77,7 +77,7 @@ class ReviewSlicer(AYContainer):
         )
         self.add_widget(self._slicer, stretch=0)
 
-        self._tree_view = ReviewTreeView(self)
+        self._tree_view = BrowserTreeView(self)
         self.add_widget(self._tree_view, stretch=0)
 
         self._progress = AsyncTaskQueueMonitor(get_task_queue(), parent=self)

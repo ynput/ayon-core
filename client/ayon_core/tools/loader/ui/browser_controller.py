@@ -1,6 +1,6 @@
-"""Controller for the Reviews widget.
+"""Controller for the Browser widget.
 
-Centralises all business logic and data fetching for the reviews UI.
+Centralizes all business logic and data fetching for the browser UI.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from qtpy import QtCore
 from ayon_core.lib import Logger
 from ayon_core.tools.loader.abstract import ActionItem
 from ayon_core.tools.loader.control import LoaderController
-from ayon_core.tools.loader.ui.review_group_by import (
+from ayon_core.tools.loader.ui.browser_group_by import (
     BUILTIN_GROUPS,
     GROUP_BY_NONE_KEY,
     GROUP_BY_PRODUCT_KEY,
@@ -30,13 +30,13 @@ from ayon_core.tools.loader.ui.review_group_by import (
     GroupBySource,
     build_attribute_groups,
 )
-from ayon_core.tools.loader.ui.review_queries import (
+from ayon_core.tools.loader.ui.browser_queries import (
     COLUMN_TO_SORT_BY,
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
     GET_VERSIONS_QUERY,
 )
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.loader.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils.user_prefs import UserPreferences
 
 # Maximum number of pages to fetch when building product group headers.
@@ -59,10 +59,10 @@ def _timestamp_to_date(timestamp: str) -> str:
     )
 
 
-class ReviewController(QtCore.QObject):
-    """Controller for the Reviews widget.
+class BrowserController(QtCore.QObject):
+    """Controller for the Browsers widget.
 
-    Centralises all business logic and data fetching for the reviews
+    Centralizes all business logic and data fetching for the browser
     UI. Emits signals when state changes so that widgets can react.
     """
 
@@ -81,7 +81,7 @@ class ReviewController(QtCore.QObject):
         super().__init__(parent)
         self._loader_controller = loader_controller
         self._current_project: str = ""
-        self._current_category: str = ReviewCategory.HIERARCHY.value
+        self._current_category: str = BrowserSlicerCategory.HIERARCHY.value
         self._project_info: dict[str, Any] = {}
         self._review_sessions_cache: list[dict[str, Any]] = []
         self._graphql_has_more: bool = False
@@ -208,7 +208,7 @@ class ReviewController(QtCore.QObject):
         self._selected_folder_ids = []
         self._review_session_version_ids = None
 
-        if category == ReviewCategory.REVIEWS.value:
+        if category == BrowserSlicerCategory.REVIEWS.value:
             # Reviews are always flat — drop any grouping/tree state that
             # was active in the Hierarchy view so the table fetch path
             # takes the plain flat-version branch.
@@ -236,7 +236,10 @@ class ReviewController(QtCore.QObject):
         self._selected_folder_ids = list(ids)
         self._review_session_version_ids = None  # always clear first
 
-        if self._current_category == ReviewCategory.REVIEWS.value and ids:
+        if (
+            self._current_category == BrowserSlicerCategory.REVIEWS.value
+            and ids
+        ):
             ids_set: set[str] = set()
             for sid in ids:
                 ids_set.update(self._get_review_session_version_ids(sid))
@@ -302,7 +305,7 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of :class:`TreeNode` instances.
         """
-        if self._current_category == ReviewCategory.HIERARCHY.value:
+        if self._current_category == BrowserSlicerCategory.HIERARCHY.value:
             return self._fetch_products(parent_id)
         return self._fetch_reviews(parent_id)
 
@@ -367,7 +370,7 @@ class ReviewController(QtCore.QObject):
 
         # -- Group-by mode -----------------------------------------------
         if (
-            self._current_category == ReviewCategory.HIERARCHY.value
+            self._current_category == BrowserSlicerCategory.HIERARCHY.value
             and self.group_by_key != GROUP_BY_NONE_KEY
         ):
             # Root level: return group header rows.
@@ -435,7 +438,7 @@ class ReviewController(QtCore.QObject):
         if (
             parent_id is None
             and self._tree_mode
-            and self._current_category == ReviewCategory.HIERARCHY.value
+            and self._current_category == BrowserSlicerCategory.HIERARCHY.value
         ):
             return self._fetch_root_folders(self._selected_folder_ids)
 
@@ -487,7 +490,7 @@ class ReviewController(QtCore.QObject):
 
         # Flat mode.
         folder_ids: list[str] | None = None
-        if self._current_category == ReviewCategory.REVIEWS.value:
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
             version_ids = self._review_session_version_ids  # None = no filter
             if not version_ids:
                 # No review session selected yet — show nothing
@@ -1277,7 +1280,7 @@ class ReviewController(QtCore.QObject):
         Raises:
             ValueError: When *field* is not a known grouping field.
         """
-        if self._current_category == ReviewCategory.REVIEWS.value:
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
             if not self._review_session_version_ids:
                 return set()
 
@@ -1477,7 +1480,7 @@ class ReviewController(QtCore.QObject):
     def _get_review_session_list(self) -> None:
         """Fetch review sessions from the server and cache them as a list.
 
-        Materialises the generator returned by
+        Materializes the generator returned by
         :func:`ayon_api.get_entity_lists` into a plain Python list so that
         the result can be read safely by pool worker threads without the
         generator re-entrancy issue.  Must only be called from the main

@@ -15,10 +15,10 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.tools.loader.abstract import RepreItem
 from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import ReviewController
+from ayon_core.tools.loader.ui.browser_controller import BrowserController
 from ayon_core.tools.utils import get_qt_icon
 
-from ._review_thumbnails import _thumbnail_loader
+from ._browser_thumbnails import _thumbnail_loader
 
 
 def _str_wrap(text: str) -> str:
@@ -29,12 +29,12 @@ def _str_wrap(text: str) -> str:
     return text
 
 
-class ReviewInspector(AYContainer):
+class BrowserInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
 
     def __init__(
         self,
-        controller: ReviewController,
+        controller: BrowserController,
         *args,
         **kwargs,
     ):
@@ -409,7 +409,7 @@ class Representations(AYContainer):
     rows regardless of the mode.
     """
 
-    def __init__(self, controller: ReviewController, *args, **kwargs):
+    def __init__(self, controller: BrowserController, *args, **kwargs):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,

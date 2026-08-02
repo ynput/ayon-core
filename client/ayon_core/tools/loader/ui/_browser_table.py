@@ -23,23 +23,23 @@ from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.ui.review_controller import ReviewController
-from ayon_core.tools.loader.ui.review_group_by import (
+from ayon_core.tools.loader.ui.browser_controller import BrowserController
+from ayon_core.tools.loader.ui.browser_group_by import (
     GROUP_BY_PRODUCT_KEY,
     GroupByOption,
     get_attribute_icon,
 )
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
+from ayon_core.tools.loader.ui.browser_types import BrowserSlicerCategory
 
-from ._review_model import VisibilityAwarePaginatedTableModel
-from ._review_thumbnails import (
+from ._browser_model import VisibilityAwarePaginatedTableModel
+from ._browser_thumbnails import (
     LazyThumbnailWidget,
     PlaceholderThumbnail,
     _make_card_async_fetcher,
-    _review_card_mapper,
+    _browser_card_mapper,
     _thumbnail_loader,
 )
-from ._review_toolbar import Customize, DisplayType, GroupByMenu
+from ._browser_toolbar import Customize, DisplayType, GroupByMenu
 
 log = Logger.get_logger(__name__)
 
@@ -80,7 +80,7 @@ class _ExpansionPhase(Enum):
     SPECULATIVE = "speculative"
 
 
-class ReviewTable(AYContainer):
+class BrowserTable(AYContainer):
     """Right-hand panel that shows a paginated table of versions."""
 
     display_type_changed = QtCore.Signal(QtWidgets.QAbstractItemView)
@@ -88,7 +88,7 @@ class ReviewTable(AYContainer):
 
     def __init__(
         self,
-        controller: ReviewController,
+        controller: BrowserController,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -120,7 +120,7 @@ class ReviewTable(AYContainer):
         _card_fetcher = _make_card_async_fetcher(self._model)
 
         def _card_mapper(row_data: dict) -> dict:
-            data = _review_card_mapper(row_data)
+            data = _browser_card_mapper(row_data)
             data["async_file_cacher"] = _card_fetcher
             return data
 
@@ -143,7 +143,7 @@ class ReviewTable(AYContainer):
         )
         self._group_by_menu.group_by_changed.connect(self._on_group_by_changed)
         self._group_by_menu.setVisible(
-            self._controller.current_category == ReviewCategory.HIERARCHY.value
+            self._controller.current_category == BrowserSlicerCategory.HIERARCHY.value  # noqa: E501
         )
         self._controller.group_by_options_changed.connect(
             self._on_group_by_options_changed
@@ -388,7 +388,7 @@ class ReviewTable(AYContainer):
         Syncs the model's tree-mode flag with the controller — the
         controller has already normalised its own ``group_by_key`` and
         ``tree_mode`` for the new category in
-        :meth:`ReviewController.set_category`.
+        :meth:`BrowserController.set_category`.
 
         Args:
             category: New category value string.
@@ -405,7 +405,7 @@ class ReviewTable(AYContainer):
         self._model.reset_data()
         self._model.set_columns(self._build_columns(category))
         self._group_by_menu.setVisible(
-            category == ReviewCategory.HIERARCHY.value
+            category == BrowserSlicerCategory.HIERARCHY.value
         )
         self._view_selector.set_view_type(BROWSER_VIEW_TYPE)
 
@@ -1037,6 +1037,6 @@ class ReviewTable(AYContainer):
             ),
         ]
 
-        if category == ReviewCategory.HIERARCHY.value:
+        if category == BrowserSlicerCategory.HIERARCHY.value:
             return common + hierarchy + attributes
         return common + review_sessions + attributes

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from ayon_core.ui.components.container import AYContainer
 from qtpy import QtCore, QtGui, QtWidgets
@@ -29,9 +29,13 @@ from .info_widget import InfoWidget
 from .product_group_dialog import ProductGroupDialog
 from .products_widget import ProductsWidget
 from .repres_widget import RepresentationsWidget
-from .reviews_widget import ReviewsWidget
+from .browser_widget import BrowserWidget
 from .search_bar import FilterDefinition, FiltersBar
 from .tasks_widget import LoaderTasksWidget
+
+if TYPE_CHECKING:
+    from ayon_core.tools.loader.control import LoaderActionResult
+
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -255,14 +259,14 @@ class LoaderWindow(AYContainer):
         main_splitter.setStretchFactor(1, 6)
         main_splitter.setStretchFactor(2, 1)
 
-        self.review_wdgt = ReviewsWidget(controller)
-        self.review_wdgt.default_view_message.connect(
+        self.browser_wdgt = BrowserWidget(controller)
+        self.browser_wdgt.default_view_message.connect(
             self._show_toast_message
         )
 
         self._tab = QtWidgets.QTabWidget()
         self._tab.addTab(main_splitter, "Folders")
-        self._tab.addTab(self.review_wdgt, "Reviews")
+        self._tab.addTab(self.browser_wdgt, "Browser")
 
         self.add_widget(self._tab)
 

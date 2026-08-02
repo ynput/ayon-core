@@ -1,4 +1,4 @@
-"""Visibility-aware paginated table model for the reviews panel."""
+"""Visibility-aware paginated table model for the browser panel."""
 
 from __future__ import annotations
 
