@@ -482,29 +482,13 @@ class AYViewSelector(AYButtonMenu):
     def _on_reset_clicked(self) -> None:
         """Reset the current view to the default view for the current scope."""
         ctrl = self._default_view_control
-        if ctrl.studio_default_view:
-            if self._apply_view(ctrl.studio_default_view, emit=True):
-                self.emit_default_view_message(
-                    "Loaded studio default view.",
-                    True,
-                )
-            else:
-                self.emit_default_view_message(
-                    "Failed to load studio default view.",
-                    False,
-                )
-            return
+
         if ctrl.project_default_view:
-            if self._apply_view(ctrl.project_default_view, emit=True):
-                self.emit_default_view_message(
-                    "Loaded project default view.",
-                    True,
-                )
-            else:
-                self.emit_default_view_message(
-                    "Failed to load project default view.",
-                    False,
-                )
+            ctrl.load_project_default_view()
+            return
+
+        if ctrl.studio_default_view:
+            ctrl.load_studio_default_view()
             return
 
         self.emit_default_view_message(
@@ -649,7 +633,7 @@ class AYViewSelector(AYButtonMenu):
             view_name = self._current_view.label or self._current_view.id
             self.view_modified.emit(view_name, modified)
 
-    def _apply_view(self, view: View, emit: bool) -> bool:
+    def _apply_view(self, view: View, emit: bool) -> None:
         """Apply *view* to the bindings and update the local state.
 
         Default views are applied onto the working-view context, so edits
@@ -672,7 +656,7 @@ class AYViewSelector(AYButtonMenu):
                     "Failed to resolve working view for %r", self._view_type
                 )
                 self._suspend_modified_state_sync = False
-                return False
+                return
             target_view = working_view
             self._close_menu()
 
@@ -683,16 +667,17 @@ class AYViewSelector(AYButtonMenu):
         except Exception:
             log.exception("Failed to apply view %r", view.id)
             self._suspend_modified_state_sync = False
-            return False
+            return
 
         self.setToolTip(f"View: {self._current_view.label}")
+
+        self._suspend_modified_state_sync = False
+        self._sync_view_modified_state()
 
         if emit:
             self.view_applied.emit(view)
 
-        self._suspend_modified_state_sync = False
-        self._sync_view_modified_state()
-        return True
+        return
 
     def _on_view_save_clicked(self, view: View) -> None:
         self._close_menu()

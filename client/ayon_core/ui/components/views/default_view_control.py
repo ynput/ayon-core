@@ -141,7 +141,7 @@ class DefaultViewControl:
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
-        studio_btn.clicked.connect(self.on_studio_button_clicked)
+        studio_btn.clicked.connect(self.load_studio_default_view)
         control.add_widget(studio_btn, stretch=1)
 
     def _rebuild_project_control(self) -> None:
@@ -185,7 +185,7 @@ class DefaultViewControl:
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
-        project_btn.clicked.connect(self.on_project_button_clicked)
+        project_btn.clicked.connect(self.load_project_default_view)
         control.add_widget(project_btn, stretch=1)
 
     # ------------------------------------------------------------------
@@ -198,16 +198,6 @@ class DefaultViewControl:
         try:
             self.studio_default_view = sel._manager.get_default_studio_view(sel._view_type)
             self.project_default_view = sel._manager.get_default_project_view(sel._view_type)
-            print(
-                "[defaults.fetch] view_type=%s studio=%s(%s) project=%s(%s)"
-                % (
-                    sel._view_type,
-                    getattr(self.studio_default_view, "label", None),
-                    getattr(self.studio_default_view, "id", None),
-                    getattr(self.project_default_view, "label", None),
-                    getattr(self.project_default_view, "id", None),
-                )
-            )
             return self.studio_default_view, self.project_default_view
         except Exception:
             log.exception(
@@ -298,7 +288,7 @@ class DefaultViewControl:
             self._rebuild_studio_control()
             self._emit_action_message("Studio default view removed.")
 
-    def on_studio_button_clicked(self, _checked: bool = False) -> None:
+    def load_studio_default_view(self, _checked: bool = False) -> None:
         self._fetch_default_views()
         if self.studio_default_view is None:
             self._emit_action_message(
@@ -306,23 +296,10 @@ class DefaultViewControl:
                 success=False,
             )
             return
-
-        working_view = self._selector._manager.get_working_view(
-            self._selector._view_type
-        )
-        print(
-            "[defaults.click] scope=studio source=%s(%s) working=%s(%s)"
-            % (
-                self.studio_default_view.label,
-                self.studio_default_view.id,
-                getattr(working_view, "label", None),
-                getattr(working_view, "id", None),
-            )
-        )
-
-        if self._selector._apply_view(self.studio_default_view, emit=True):
+        try:
+            self._selector._apply_view(self.studio_default_view, emit=True)
             self._emit_action_message("Loaded studio default view.")
-        else:
+        except Exception:
             self._emit_action_message(
                 "Failed to load studio default view.",
                 success=False,
@@ -346,7 +323,7 @@ class DefaultViewControl:
             self._rebuild_project_control()
             self._emit_action_message("Project default view removed.")
 
-    def on_project_button_clicked(self, _checked: bool = False) -> None:
+    def load_project_default_view(self, _checked: bool = False) -> None:
         self._fetch_default_views()
         if self.project_default_view is None:
             self._emit_action_message(
@@ -354,23 +331,10 @@ class DefaultViewControl:
                 success=False,
             )
             return
-
-        working_view = self._selector._manager.get_working_view(
-            self._selector._view_type
-        )
-        print(
-            "[defaults.click] scope=project source=%s(%s) working=%s(%s)"
-            % (
-                self.project_default_view.label,
-                self.project_default_view.id,
-                getattr(working_view, "label", None),
-                getattr(working_view, "id", None),
-            )
-        )
-
-        if self._selector._apply_view(self.project_default_view, emit=True):
+        try:
+            self._selector._apply_view(self.project_default_view, emit=True)
             self._emit_action_message("Loaded project default view.")
-        else:
+        except Exception:
             self._emit_action_message(
                 "Failed to load project default view.",
                 success=False,
