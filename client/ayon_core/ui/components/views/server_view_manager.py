@@ -380,8 +380,7 @@ class ServerViewManager(ViewManager):
         self._upsert_cache(saved)
 
         # Access grants are managed by the dedicated share endpoint.
-        if should_share_access and saved.id:
-            self.patch_view_access(saved.id, access_data, should_share_access)
+        self.patch_view_access(saved.id, access_data, should_share_access)
 
         self.view_saved.emit(saved.id)
         self.views_changed.emit(saved.view_type)
@@ -393,6 +392,8 @@ class ServerViewManager(ViewManager):
         Args:
             view_id: Existing view identifier.
             access_data: Access mapping (e.g. ``{"__everyone__": 20}``).
+            should_share_access: Whether to set the view visibility to
+                public (True) or private (False).
         """
         if not view_id:
             return
@@ -426,6 +427,13 @@ class ServerViewManager(ViewManager):
                     "access": payload_access,
                 },
             )
+            # Update cache with new visibility
+            view_list = self._cache.get(view_type)
+            if view_list is not None:
+                for view in view_list:
+                    if view.id == view_id:
+                        view.visibility = Visibility(visibility)
+                        break
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to patch view access for %s", view_id)
             self.error.emit(f"Failed to patch view access: {exc}")
