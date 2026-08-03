@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from ayon_core.ui.components.buttons import (
     AYButton,
     AYButtonMenu,
@@ -242,7 +244,7 @@ class DisplayType(AYContainer):
     def display_type(self) -> str:
         return self._display_type
 
-    def set_display_type(self, display_type: str, emit: bool = False) -> None:
+    def set_display_type(self, display_type: Literal["table", "grid"], emit: bool = False) -> None:
         """Set the active display mode programmatically.
 
         Args:

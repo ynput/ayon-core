@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Iterator
+from typing import Any, Iterator, Literal
 
 import ayon_api
 from ayon_core.ui.components.card_view import AYCardView
@@ -515,9 +515,8 @@ class ReviewTable(AYContainer):
                         "Failed to set featuredVersionOrder: %r", order
                     )
         if "displayType" in extra:
-            display_type = str(extra["displayType"] or "").strip().lower()
-            if display_type in {"table", "grid"}:
-                self._display_type.set_display_type(display_type, emit=True)
+            display_type: Literal["table", "grid"] = extra["displayType"]
+            self._display_type.set_display_type(display_type, emit=True)
 
     def _capture_view_extras(self) -> dict[str, Any]:
         """Capture loader-specific extras for inclusion in a saved view.
@@ -536,13 +535,9 @@ class ReviewTable(AYContainer):
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
         """
-        extra: dict[str, Any] = {
-            "gridHeight": int(self._card_view.card_width),
-            "displayType": self._display_type.display_type,
-        }
-        order = self._controller.featured_version_order
-        if order:
-            extra["featuredVersionOrder"] = order
+        extra: dict[str, Any] = {"gridHeight": int(self._card_view.card_width),
+                                 "displayType": self._display_type.display_type,
+                                 "featuredVersionOrder": self._controller.featured_version_order}
         return extra
 
     def _on_view_applied(self, view: object) -> None:
