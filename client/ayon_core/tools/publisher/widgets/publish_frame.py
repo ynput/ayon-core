@@ -121,6 +121,10 @@ class PublishFrame(QtWidgets.QWidget):
         validate_btn = ValidateBtn(footer_widget)
         publish_btn = PublishBtn(footer_widget)
 
+        stop_btn.setEnabled(False)
+        validate_btn.setEnabled(False)
+        publish_btn.setEnabled(False)
+
         report_btn.add_action("Go to details", "go_to_report")
         report_btn.add_action("Copy report", "copy_report")
         report_btn.add_action("Export report", "export_report")
