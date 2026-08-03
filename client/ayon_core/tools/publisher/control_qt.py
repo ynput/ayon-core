@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import collections
 from dataclasses import dataclass
+import typing
 
 from qtpy import QtCore
 
-from ayon_core.pipeline.publish.logic import (
-    PublishIterInfo,
-    PublishIterAction,
-    PluginType,
-)
+from ayon_core.pipeline.publish.logic import PublishIterAction
 
 from .control import PublisherController
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.publish.logic import (
+        PublishIterInfo,
+        PluginType,
+    )
 
 
 class MainThreadItem:
