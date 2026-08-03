@@ -483,7 +483,7 @@ class ReviewTable(AYContainer):
 
         Supported loader-specific extras:
             ``gridHeight`` (card width),
-            ``featuredVersionOrder`` (controller order),
+            ``featuredVersionOrder`` (hero/latest version order),
             ``displayType`` (``"table"`` or ``"grid"``).
 
         Args:
