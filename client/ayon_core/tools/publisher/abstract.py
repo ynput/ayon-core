@@ -11,17 +11,7 @@ from typing import (
 )
 import uuid
 
-from ayon_core.tools.common_models import (
-    FolderItem,
-    TaskItem,
-    FolderTypeItem,
-    TaskTypeItem,
-)
 from ayon_core.pipeline.publish import PublishError, KnownPublishError
-from ayon_core.pipeline.publish.logic import (
-    PublishErrorInfo,
-    ActionType,
-)
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
@@ -31,6 +21,14 @@ if TYPE_CHECKING:
         ConvertorItem,
     )
     from ayon_core.pipeline.publish import PublishReport, PublishLogic
+    from ayon_core.pipeline.publish.logic import ActionType, PublishErrorInfo
+
+    from ayon_core.tools.common_models import (
+        FolderItem,
+        TaskItem,
+        FolderTypeItem,
+        TaskTypeItem,
+    )
 
     from .models import CreatorItem, InstanceItem
 
