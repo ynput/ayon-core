@@ -1,22 +1,26 @@
 from __future__ import annotations
 
 import traceback
+import typing
 from typing import Any
-
 
 from ayon_core.lib import env_value_to_bool
 from ayon_core.pipeline.publish.logic import (
-    PublishIterInfo,
     PublishLogic,
-    PublishActionResult,
     PublishFailReason,
 )
-from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
     UIFailInfo,
     UIPublishErrorReport,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.publish.logic import (
+        PublishIterInfo,
+        PublishActionResult,
+    )
+    from ayon_core.pipeline.publish.report import PublishReport
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 
