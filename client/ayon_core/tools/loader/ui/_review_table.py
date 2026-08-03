@@ -516,7 +516,7 @@ class ReviewTable(AYContainer):
                     )
         if "displayType" in extra:
             display_type: Literal["table", "grid"] = extra["displayType"]
-            self._display_type.set_display_type(display_type, emit=True)
+            self._display_type.set_display_type(display_type)
 
     def _capture_view_extras(self) -> dict[str, Any]:
         """Capture loader-specific extras for inclusion in a saved view.
