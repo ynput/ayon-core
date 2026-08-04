@@ -123,7 +123,6 @@ def _init_ipc_server():
         _IPCConnection.server = None
 
     try:
-
         server = IPCServer()
         port = server.start()
         logger.info("IPC server listening on 127.0.0.1:%s", port)
@@ -186,6 +185,7 @@ def _register_ipc_handlers(server: IPCServer):
     #         "server": server,
     #     }
     # )
+
 
 def _shutdown_ipc_server() -> None:
     """Shutdown the IPC server and external UI process."""
