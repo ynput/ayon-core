@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 import typing
 from typing import Any
 
@@ -8,16 +7,13 @@ from qtpy import QtCore
 
 from ayon_core.host.interfaces import WorkfileInfo
 
-from ayon_core.tools.workfiles.abstract import (
-    AbstractWorkfilesFrontend,
-    WorkareaFilepathResult,
-    PublishedWorkfileWrap,
-)
-from ayon_core.tools.workfiles.widgets import WorkfilesToolWindow
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.ipc_api import WaitCallback
 
+# TODO implement 'execute_in_main_thread'
 from .utils import execute_in_main_thread
+from .abstract import AbstractWorkfilesFrontend
+from .widgets import WorkfilesToolWindow
 
 if typing.TYPE_CHECKING:
     from ayon_core.host import PublishedWorkfileInfo
@@ -50,7 +46,7 @@ class WorkerTask(QtCore.QObject, QtCore.QRunnable):
         self.func(*self.args, **self.kwargs)
 
 
-class WorkfilesFrontend(AbstractWorkfilesFrontend):
+class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
     channel_name = "workfiles"
 
     def __init__(self, com_info: CommunicationInfo):
