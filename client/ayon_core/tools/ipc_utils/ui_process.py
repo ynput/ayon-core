@@ -44,6 +44,13 @@ def main():
         host=ipc_host, port=ipc_port, session_token=session_token
     )
 
+    com_info = CommunicationInfo(ipc)
+
+    # TODO figure out how to allow to register custom/different handlers.
+    _loader = IPCLoaderFrontend(com_info)
+    _publisher = IPCPublisherFrontend(com_info)
+    _workfiles = IPCWorkfilesFrontend(com_info)
+
     # Give parent-side server a short startup window before hard failure.
     deadline = time.time() + 10.0
     while not ipc.connect() and time.time() < deadline:
@@ -57,13 +64,6 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     app.aboutToQuit.connect(ipc.disconnect)
     start_main_thread_helper()
-
-    com_info = CommunicationInfo(ipc)
-
-    # TODO figure out how to allow to register custom/different handlers.
-    _loader = IPCLoaderFrontend(com_info)
-    _publisher = IPCPublisherFrontend(com_info)
-    _workfiles = IPCWorkfilesFrontend(com_info)
 
     # Keep the process alive and attempt reconnection.
     def _tick():
