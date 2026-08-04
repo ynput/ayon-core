@@ -306,16 +306,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids, sender
         )
 
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        return self._thumbnails_model.get_folder_thumbnail_ids(
-            project_name, folder_ids
-        )
-
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        return self._thumbnails_model.get_version_thumbnail_ids(
-            project_name, version_ids
-        )
-
     def get_thumbnail_paths(
         self,
         project_name,
