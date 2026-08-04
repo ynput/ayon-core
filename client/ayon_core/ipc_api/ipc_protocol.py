@@ -276,7 +276,7 @@ class ErrorMessage(Message):
         return cls(error_b.decode(encoding="utf-8"))
 
 
-def read_message_from_socket(socket) -> Message | None:
+def read_message_from_socket(socket, lock) -> Message | None:
     """Read a message from a stream and return the appropriate message object."""
     msg_type = MessageType.from_socket(socket)
     if msg_type is None:
@@ -295,12 +295,15 @@ def read_message_from_socket(socket) -> Message | None:
         return HelloAckMessage.from_socket(socket)
 
     if msg_type == MessageType.REQUEST:
-        return RequestMessage.from_socket(socket)
+        with lock:
+            return RequestMessage.from_socket(socket)
 
     if msg_type == MessageType.RESPONSE:
-        return ResponseMessage.from_socket(socket)
+        with lock:
+            return ResponseMessage.from_socket(socket)
 
     if msg_type == MessageType.ERROR:
-        return ErrorMessage.from_socket(socket)
+        with lock:
+            return ErrorMessage.from_socket(socket)
 
     raise ValueError(f"Unknown message type: {msg_type}")

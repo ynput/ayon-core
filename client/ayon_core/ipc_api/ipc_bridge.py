@@ -1,11 +1,11 @@
-"""Blender-side IPC bridge for external UI communication.
+"""DCC-side IPC bridge for external UI communication.
 
 This module implements a TCP server that listens for connections from external
 Qt UI processes. It handles:
 - Session management and authentication
 - Async request processing via main-thread callbacks
-- Event publishing when Blender state changes
-- Graceful handling of Blender unresponsiveness (render/processing)
+- Event publishing when DCC state changes
+- Graceful handling of DCC unresponsiveness (render/processing)
 - Automatic reconnect support
 """
 from __future__ import annotations
@@ -364,7 +364,7 @@ class IPCClientConnection:
         if not self._connected:
             return None
 
-        msg = read_message_from_socket(self.socket)
+        msg = read_message_from_socket(self.socket, self._lock)
         if msg is None:
             self._connected = False
         return msg

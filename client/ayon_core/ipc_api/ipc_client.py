@@ -342,14 +342,16 @@ class IPCClient:
         if not self.socket:
             raise RuntimeError("Not connected")
 
-        self.socket.sendall(msg.to_bytes())
+        with self._lock:
+            self.socket.sendall(msg.to_bytes())
         self.last_heartbeat = time.time()
 
     def _receive_msg(self) -> Message | None:
         if self.socket is None:
             return None
 
-        return read_message_from_socket(self.socket)
+        msg = read_message_from_socket(self.socket, self._lock)
+        return msg
 
     def _receiver_loop(self):
         """Receive and process messages (runs in background thread)."""
