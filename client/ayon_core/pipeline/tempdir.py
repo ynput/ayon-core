@@ -6,6 +6,7 @@ import os
 import tempfile
 from pathlib import Path
 import warnings
+import uuid
 
 from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import Anatomy
@@ -66,9 +67,16 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
         str: path to tempdir
     """
     # use pathlib for creating tempdir
-    return tempfile.mkdtemp(
-        prefix=prefix, suffix=suffix, dir=dirpath
-    )
+    if dirpath is None:
+        dirpath = tempfile.gettempdir()
+
+    base_dir = Path(dirpath)
+    unique_id = str(uuid.uuid4().hex[:8])
+    folder_name = f"{prefix or ''}{unique_id}{suffix or ''}"
+    tmpdir = base_dir / folder_name
+    tmpdir.mkdir(parents=True, exist_ok=False)
+
+    return str(tmpdir)
 
 
 def create_custom_tempdir(project_name, anatomy=None):
