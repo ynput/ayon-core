@@ -9,14 +9,15 @@ from ayon_core.lib.events import QueuedEventSystem
 
 from ayon_core.ipc_api import WaitCallback
 
-# TODO implement 'execute_in_main_thread'
-from .utils import execute_in_main_thread
+from ayon_core.tools.ipc_utils.utils import execute_in_main_thread
+
 from .abstract import AbstractPublisherFrontend
 from .window import PublisherWindow
+from .abstract import CardMessageTypes
 
 if typing.TYPE_CHECKING:
     from ayon_core.lib import IconBase
-    from ayon_core.ipc_api.tools import CommunicationInfo
+    from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.ipc_api import RequestMessage
     from ayon_core.pipeline.create import InstanceContextInfo, ConvertorItem
     from ayon_core.pipeline.publish import PublishReport
@@ -28,7 +29,6 @@ if typing.TYPE_CHECKING:
     )
     from .abstract import (
         CommentDef,
-        CardMessageTypes,
         PublishAttrDefsInfo,
     )
     from .models.create import (

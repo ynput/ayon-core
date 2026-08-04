@@ -121,7 +121,11 @@ class IPCServer:
             channel: Channel name.
             handler: Callable that accepts (request: RequestMessage) -> Any
         """
-        if channel in self.channel_handlers:
+        old_handler = self.channel_handlers.get(channel)
+        if handler is old_handler:
+            return
+
+        if old_handler is not None:
             raise ValueError(
                 f"Handler already registered for channel: {channel}"
             )

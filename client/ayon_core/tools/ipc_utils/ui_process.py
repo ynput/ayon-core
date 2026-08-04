@@ -8,7 +8,6 @@ import time
 import psutil
 
 from ayon_core.ipc_api import IPCClient
-from ayon_core.ipc_api.tools.utils import CommunicationInfo
 from ayon_core.tools.utils import get_ayon_qt_app
 from ayon_core.tools.loader.ipc_frontend_control import IPCLoaderFrontend
 from ayon_core.tools.workfiles.ipc_frontend_control import (
@@ -20,6 +19,7 @@ from ayon_core.tools.publisher.ipc_frontend_control import (
 from ayon_core.tools.ipc_utils.utils import (
     start_main_thread_helper,
     execute_in_main_thread,
+    CommunicationInfo,
 )
 
 # Setup logging
@@ -40,7 +40,9 @@ def main():
         logger.error("Missing IPC bootstrap env vars")
         sys.exit(1)
 
-    ipc = IPCClient(host=ipc_host, port=ipc_port, session_token=session_token)
+    ipc = IPCClient(
+        host=ipc_host, port=ipc_port, session_token=session_token
+    )
 
     # Give parent-side server a short startup window before hard failure.
     deadline = time.time() + 10.0

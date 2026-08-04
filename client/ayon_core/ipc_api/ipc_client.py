@@ -18,7 +18,7 @@ import threading
 import uuid
 from typing import Any, Callable
 
-from ayon_blender.ipc_communication.ipc_protocol import (
+from .ipc_protocol import (
     Message,
     MessageType,
     HelloMessage,

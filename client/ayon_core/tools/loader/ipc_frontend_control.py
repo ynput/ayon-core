@@ -6,16 +6,14 @@ from typing import Any, Callable
 from qtpy import QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
-
 from ayon_core.ipc_api import WaitCallback
+from ayon_core.tools.ipc_utils.utils import execute_in_main_thread
 
-# TODO implement 'execute_in_main_thread'
-from .utils import execute_in_main_thread
 from .abstract import FrontendLoaderController
 from .ui.window import LoaderWindow
 
 if typing.TYPE_CHECKING:
-    from ayon_core.ipc_api.tools import CommunicationInfo
+    from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.ipc_api import RequestMessage
     from ayon_core.tools.common_models import (
         TagItem,

@@ -250,7 +250,6 @@ class IPCHostTools:
                 "Loader backend is not initialized."
                 " Use 'set_loader_backend' to set it."
             )
-        _ensure_external_ui_process()
         cls.execute("loader", "show")
 
     @classmethod
@@ -260,7 +259,6 @@ class IPCHostTools:
                 "Publisher backend is not initialized."
                 " Use 'set_publisher_backend' to set it."
             )
-        _ensure_external_ui_process()
         cls.execute("publisher", "show", {"tab": tab})
 
     @classmethod
@@ -270,8 +268,6 @@ class IPCHostTools:
                 "Workfiles backend is not initialized."
                 " Use 'set_workfiles_backend' to set it."
             )
-
-        _ensure_external_ui_process()
         cls.execute("workfiles", "show")
 
     @classmethod

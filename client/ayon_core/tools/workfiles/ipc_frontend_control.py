@@ -9,18 +9,15 @@ from ayon_core.host.interfaces import WorkfileInfo
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.ipc_api import WaitCallback
+from ayon_core.tools.ipc_utils.utils import execute_in_main_thread
 
-# TODO implement 'execute_in_main_thread'
-from .utils import execute_in_main_thread
 from .abstract import AbstractWorkfilesFrontend
 from .widgets import WorkfilesToolWindow
 
 if typing.TYPE_CHECKING:
     from ayon_core.host import PublishedWorkfileInfo
-    from ayon_core.ipc_api import (
-        CommunicationInfo,
-        RequestMessage,
-    )
+    from ayon_core.ipc_api import RequestMessage
+    from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.tools.common_models import (
         FolderItem,
         TaskItem,
@@ -50,7 +47,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
     channel_name = "workfiles"
 
     def __init__(self, com_info: CommunicationInfo):
-        com_info.client.register_channel_handler(
+        com_info.register_channel_handler(
             self.channel_name, self._handle_request
         )
 
