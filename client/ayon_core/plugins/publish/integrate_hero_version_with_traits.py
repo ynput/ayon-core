@@ -113,6 +113,22 @@ class IntegrateHeroVersionTraits(
                 "traits. Skipping")
             return
 
+        # don't allow both representations
+        # with traits and standard representations
+        if (
+                has_trait_representations(instance)
+                and instance.data.get("representations")
+        ):
+            msg = (
+                f"Instance '{instance.name}' has representations with traits "
+                "but also has standard representations. This is not allowed. "
+                "Please use either representations with traits or "
+                "standard representations, not both."
+            )
+            raise PublishError(
+                msg
+            )
+
         anatomy: Anatomy = instance.context.data["anatomy"]
         project_name = anatomy.project_name
 
