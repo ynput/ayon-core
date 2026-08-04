@@ -50,19 +50,7 @@ class WorkerTask(QtCore.QObject, QtCore.QRunnable):
         self.func(*self.args, **self.kwargs)
 
 
-# TODO validate if can be thread pool on 'BlenderWorkfilesFrontend'
-class Worker(QtCore.QObject):
-    def __init__(self):
-        super().__init__()
-        self._thread_pool = QtCore.QThreadPool()
-        self._thread_pool.setMaxThreadCount(1)
-
-    def do_task(self, task):
-        self._thread_pool.start(task)
-
-
-class BlenderWorkfilesFrontend(AbstractWorkfilesFrontend):
-    window = None
+class WorkfilesFrontend(AbstractWorkfilesFrontend):
     channel_name = "workfiles"
 
     def __init__(self, com_info: CommunicationInfo):
@@ -70,9 +58,11 @@ class BlenderWorkfilesFrontend(AbstractWorkfilesFrontend):
             self.channel_name, self._handle_request
         )
 
+        self._window = None
         self._event_system = QueuedEventSystem()
         self._com_info: CommunicationInfo = com_info
-        self._worker = Worker()
+        self._thread_pool = QtCore.QThreadPool()
+        self._thread_pool.setMaxThreadCount(1)
 
     def _handle_request(self, req: RequestMessage):
         if req.method == "show":
@@ -82,13 +72,13 @@ class BlenderWorkfilesFrontend(AbstractWorkfilesFrontend):
             execute_in_main_thread(self.emit_event, **req.params)
 
     def _show_window(self):
-        if self.window is None:
-            self.window = WorkfilesToolWindow(controller=self)
-            self.window.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
+        if self._window is None:
+            self._window = WorkfilesToolWindow(controller=self)
+            self._window.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
 
-        self.window.show()
-        self.window.raise_()
-        self.window.activateWindow()
+        self._window.show()
+        self._window.raise_()
+        self._window.activateWindow()
 
     def _trigger_method(self, method_name: str, **kwargs) -> Any | None:
         self._trigger(method_name, kwargs, False)
@@ -121,7 +111,7 @@ class BlenderWorkfilesFrontend(AbstractWorkfilesFrontend):
             params,
             callback=response_callback
         )
-        self._worker.do_task(task)
+        self._thread_pool.start(task)
         if not wait:
             return None
 
