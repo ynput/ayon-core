@@ -11,11 +11,6 @@ from .control import BaseWorkfileController
 class IPCWorkfilesBackend(BaseWorkfileController):
     channel_name = "workfiles"
 
-    @abstractmethod
-    def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
-        """Execute a function in the main thread of DCC."""
-        pass
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -63,3 +58,11 @@ class IPCWorkfilesBackend(BaseWorkfileController):
             return self._execute_in_host_main_thread(func, **message.params)
 
         return func(**message.params)
+
+    def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
+        """Execute a function in the main thread of DCC."""
+        if hasattr(self._host, "execute_in_main_thread"):
+            return self._host.execute_in_main_thread(func, **kwargs)
+        raise RuntimeError(
+            "Missing implementation of 'execute_in_main_thread' on host."
+        )

@@ -11,11 +11,6 @@ from .control import LoaderController
 class IPCLoaderBackend(LoaderController):
     channel_name = "loader"
 
-    @abstractmethod
-    def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
-        """Execute a function in the main thread of DCC."""
-        pass
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
@@ -72,3 +67,11 @@ class IPCLoaderBackend(LoaderController):
             return None
 
         return func(**message.params)
+
+    def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
+        """Execute a function in the main thread of DCC."""
+        if hasattr(self._host, "execute_in_main_thread"):
+            return self._host.execute_in_main_thread(func, **kwargs)
+        raise RuntimeError(
+            "Missing implementation of 'execute_in_main_thread' on host."
+        )

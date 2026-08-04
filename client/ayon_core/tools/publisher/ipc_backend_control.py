@@ -11,16 +11,8 @@ from .control import PublisherController
 class IPCPublisherBackend(PublisherController):
     channel_name = "publisher"
 
-    def __init__(self, host=None):
+    def __init__(self, host=None) -> None:
         super().__init__(host=host)
-
-    @abstractmethod
-    def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
-        """Execute a function in the main thread of DCC."""
-        pass
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
 
         self._ipc_server: IPCServer | None = None
 
@@ -64,6 +56,7 @@ class IPCPublisherBackend(PublisherController):
             return None
 
         func = getattr(self, method_name)
+
         if method_name in (
             "save_changes",
             "create",
@@ -91,6 +84,14 @@ class IPCPublisherBackend(PublisherController):
             return None
 
         return func(**message.params)
+
+    def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
+        """Execute a function in the main thread of DCC."""
+        if hasattr(self._host, "execute_in_main_thread"):
+            return self._host.execute_in_main_thread(func, **kwargs)
+        raise RuntimeError(
+            "Missing implementation of 'execute_in_main_thread' on host."
+        )
 
     def _start_publish(self, up_validation: bool) -> None:
         self._publish_model.set_publish_up_validation(up_validation)
