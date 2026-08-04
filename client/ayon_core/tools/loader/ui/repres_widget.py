@@ -367,14 +367,11 @@ class RepresentationsWidget(QtWidgets.QWidget):
         selection_model = self._repre_view.selectionModel()
         model = self._repre_view.model()
         indexes_queue = collections.deque()
-        indexes_queue.extend(selection_model.selectedIndexes())
+        indexes_queue.extend(selection_model.selectedRows())
 
         selected_indexes = []
         while indexes_queue:
             index = indexes_queue.popleft()
-            if index.column() != 0:
-                continue
-
             group_type = model.data(index, GROUP_TYPE_ROLE)
             if group_type is None:
                 selected_indexes.append(index)

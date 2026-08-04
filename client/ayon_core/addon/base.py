@@ -1097,7 +1097,7 @@ class AddonsManager:
         ]
 
         # Convert columns to rows for print
-        rows = list(zip(*cols, strict=True))
+        rows = list(zip(*cols))
         # Top row contains labels
         top_row = rows.pop(0)
         # Last row contains totals
