@@ -11,6 +11,9 @@ from .control import PublisherController
 class IPCPublisherBackend(PublisherController):
     channel_name = "publisher"
 
+    def __init__(self, host=None):
+        super().__init__(host=host)
+
     @abstractmethod
     def _execute_in_host_main_thread(self, func, **kwargs) -> Any:
         """Execute a function in the main thread of DCC."""

@@ -94,13 +94,14 @@ class PublisherController(
     """
     _log = None
 
-    def __init__(self, headless=False):
+    def __init__(self, headless=False, host=None):
         super().__init__()
 
         self._log = None
         self._event_system = self._create_event_system()
-
-        self._host = registered_host()
+        if host is None:
+            host = registered_host()
+        self._host = host
         self._headless = headless
 
         self._settings_model = SettingsModel()
