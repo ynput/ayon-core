@@ -225,8 +225,7 @@ class DefaultViewControl:
         else:
             default_view.settings = sel._bindings.capture()
 
-        with sel._suspend_auto_apply():
-            saved = sel._save_view(default_view)
+        saved = sel._save_view(default_view)
         if saved is None:
             return None
 
@@ -253,8 +252,7 @@ class DefaultViewControl:
             return False
 
         try:
-            with sel._suspend_auto_apply():
-                sel._manager.delete_view(default_view.id)
+            sel._manager.delete_view(default_view.id)
         except Exception:
             log.exception("Failed to delete default view %r", default_view.id)
             scope_label = "Studio" if scope == Scope.STUDIO else "Project"

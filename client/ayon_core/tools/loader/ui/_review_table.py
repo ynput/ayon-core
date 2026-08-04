@@ -661,9 +661,11 @@ class ReviewTable(AYContainer):
         if vp_rect.isEmpty():
             return
 
+        # Skip if table hasn't rendered yet
+        if self._model.rowCount() == 0:
+            return
+
         row_height = self._table_row_height()
-        if row_height <= 0:
-            row_height = 32
         y = vp_rect.top()
         seen: set[QtCore.QPersistentModelIndex] = set()
 

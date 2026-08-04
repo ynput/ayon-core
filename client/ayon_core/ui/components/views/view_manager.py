@@ -107,53 +107,6 @@ class ViewManager(QObject):
                 return view
         return None
 
-    def get_default_project_view(self, view_type: str) -> View | None:
-        """Return the default project view for *view_type*, if any.
-
-        The default project view is identified by web-compatible
-        ``label == "__base__"``, ``scope == "project"``, and not being
-        a working view.
-
-        Args:
-            view_type: The view-type identifier.
-
-        Returns:
-            The default project view with ``label == "__base__"`` and
-            ``scope == "project"`` for *view_type*, or ``None`` when
-            no default project view exists.
-        """
-        return self._get_default_view_for_scope(view_type, Scope.PROJECT)
-
-    def get_default_studio_view(self, view_type: str) -> View | None:
-        """Return the default studio view for *view_type*, if any.
-
-        The default studio view is identified by web-compatible
-        ``label == "__base__"``, ``scope == "studio"``, and not being a
-        working view.
-
-        Args:
-            view_type: The view-type identifier.
-
-        Returns:
-            The default studio view with ``label == "__base__"`` and
-            ``scope == "studio"`` for *view_type*, or ``None`` when
-            no default studio view exists.
-        """
-        return self._get_default_view_for_scope(view_type, Scope.STUDIO)
-
-    def _get_default_view_for_scope(
-        self, view_type: str, scope: Scope
-    ) -> View | None:
-        """Return the default non-working view for *view_type* and *scope*."""
-        for view in self.list_views(view_type):
-            if (
-                not view.working
-                and view.scope == scope
-                and view.label == DEFAULT_VIEW_LABEL
-            ):
-                return view
-        return None
-
     def set_working_view(self, view: View) -> None:
         """Mark *view* as the (sole) working view for its view type.
 

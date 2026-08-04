@@ -35,7 +35,7 @@ from ayon_core.addon import get_bundle_information
 from qtpy.QtCore import QObject  # type: ignore[attr-defined]
 
 from .data_models import View, Scope, Visibility
-from .view_manager import ViewManager
+from .view_manager import ViewManager, DEFAULT_VIEW_LABEL
 
 log = logging.getLogger(__name__)
 
@@ -59,9 +59,9 @@ class ServerViewManager(ViewManager):
     """
 
     def __init__(
-        self,
-        project_name: str,
-        parent: QObject | None = None,
+            self,
+            project_name: str,
+            parent: QObject | None = None,
     ) -> None:
         """Initialise the manager.
 
@@ -77,12 +77,9 @@ class ServerViewManager(ViewManager):
         # All view_types ever requested via list_views (retained after
         # cache clear so set_project can emit per-known-type).
         self._known_types: set[str] = set()
-        # view_id -> view_type (survives list_views; used by delete_view
-        # so it doesn't require a populated per-type cache).
-        self._id_to_type: dict[str, str] = {}
-        # view_id -> Scope (used by delete_view to decide whether to pass
-        # project_name; studio-scoped views must NOT include it).
-        self._id_to_scope: dict[str, Scope] = {}
+        # view_id -> (view_type, scope) (survives list_views; used by
+        # delete_view so it doesn't require a populated per-type cache).
+        self._id_to_view_attributes: dict[str, tuple[str, Scope]] = {}
         self._powerpack_version: str | None = None
 
     # ------------------------------------------------------------------
@@ -108,8 +105,7 @@ class ServerViewManager(ViewManager):
         if project_name == self._project_name:
             return
         self._project_name = project_name
-        self._id_to_type.clear()
-        self._id_to_scope.clear()
+        self._id_to_view_attributes.clear()
         self._cache.clear()
         if self._known_types:
             for vt in sorted(self._known_types):
@@ -150,29 +146,7 @@ class ServerViewManager(ViewManager):
             self.error.emit(f"Failed to fetch working view: {exc}")
             return None
 
-        payload = self._extract_data(resp)
-        view_payload = self._extract_view_dict(payload)
-        if not isinstance(view_payload, dict) or not view_payload:
-            return None
-
-        candidate = dict(view_payload)
-        candidate["viewType"] = str(candidate.get("viewType") or view_type)
-
-        try:
-            parsed = View.from_payload(candidate)
-        except Exception:  # noqa: BLE001
-            log.exception(
-                "Malformed working view payload for %s: %r",
-                view_type,
-                payload,
-            )
-            return None
-
-        if parsed.id:
-            self._id_to_type[parsed.id] = parsed.view_type
-            self._id_to_scope[parsed.id] = parsed.scope
-        self._upsert_cache(parsed)
-        return parsed
+        return View.from_payload(resp.data)
 
     def get_default_project_view(self, view_type: str) -> View | None:
         """Return project default view using the dedicated ``/base`` endpoint."""
@@ -190,9 +164,11 @@ class ServerViewManager(ViewManager):
             log.exception("Failed to fetch project default view for %s", view_type)
             self.error.emit(f"Failed to fetch project default view: {exc}")
             return None
-
-        payload = self._extract_data(resp)
-        return self._parse_default_view_payload(payload, view_type, Scope.PROJECT)
+        if resp.status_code != 200:
+            return None
+        view = View.from_payload(resp.data)
+        self._id_to_view_attributes[view.id] = (view_type, view.scope)
+        return view
 
     def get_default_studio_view(self, view_type: str) -> View | None:
         """Return studio default view using the dedicated ``/base`` endpoint."""
@@ -204,9 +180,11 @@ class ServerViewManager(ViewManager):
             log.exception("Failed to fetch studio default view for %s", view_type)
             self.error.emit(f"Failed to fetch studio default view: {exc}")
             return None
-
-        payload = self._extract_data(resp)
-        return self._parse_default_view_payload(payload, view_type, Scope.STUDIO)
+        if resp.status_code != 200:
+            return None
+        view = View.from_payload(resp.data)
+        self._id_to_view_attributes[view.id] = (view_type, view.scope)
+        return view
 
     def list_views(self, view_type: str) -> list[View]:
         """Return views for *view_type*, fetching from server on miss.
@@ -240,7 +218,8 @@ class ServerViewManager(ViewManager):
             log.exception("Failed to list views for %s", view_type)
             self.error.emit(f"Failed to list views: {exc}")
             return []
-        payload = self._extract_data(resp)
+
+        payload = getattr(resp, "data", None)
         if isinstance(payload, dict):
             items = payload.get("views", payload)
         else:
@@ -250,49 +229,20 @@ class ServerViewManager(ViewManager):
 
         views: list[View] = []
         for item in items:
+            # Skip the default view, should not be listed in the Views UI.
+            if item.get("label") == DEFAULT_VIEW_LABEL:
+                continue
             try:
-                if not isinstance(item, dict):
-                    continue
-
-                view_id = str(item.get("id") or "").strip()
-                if not view_id:
-                    continue
-
-                candidate: dict[str, Any] = dict(item)
-                is_default_candidate = (
-                    str(candidate.get("label") or "") == "__base__"
-                )
                 try:
                     resp = ayon_api.get(
-                        f"views/{view_type}/{view_id}",
+                        f"views/{view_type}/{item.get('id')}",
                         project_name=self._project_name,
                     )
                 except Exception as exc:  # noqa: BLE001
-                    log.exception("Failed to fetch view %s", view_id)
+                    log.exception("Failed to fetch view %s", item.get("id"))
                     self.error.emit(f"Failed to fetch view: {exc}")
                     continue
-
-                raw_detail = self._extract_data(resp)
-                detail_payload = self._extract_view_dict(raw_detail)
-
-                # Do not let blank detail values overwrite valid
-                # summary values from the list response.
-                for key, value in detail_payload.items():
-                    if key == "settings" and not value:
-                        continue
-                    if (
-                        key in {"id", "label", "viewType"}
-                        and (value is None or value == "")
-                    ):
-                        continue
-                    candidate[key] = value
-
-                candidate["viewType"] = str(
-                    candidate.get("viewType") or view_type
-                )
-
-                parsed = View.from_payload(candidate)
-                views.append(parsed)
+                views.append(View.from_payload(resp.data))
             except Exception:  # noqa: BLE001
                 log.exception("Skipping malformed view payload: %r", item)
 
@@ -301,8 +251,7 @@ class ServerViewManager(ViewManager):
         # Populate id-map for delete_view lookups.
         for v in views:
             if v.id:
-                self._id_to_type[v.id] = view_type
-                self._id_to_scope[v.id] = v.scope
+                self._id_to_view_attributes[v.id] = (view_type, v.scope)
         return list(views)
 
     def save_view(self, view: View) -> View:
@@ -375,8 +324,7 @@ class ServerViewManager(ViewManager):
 
         # Update the id-map and per-type cache in-place.
         if saved.id:
-            self._id_to_type[saved.id] = saved.view_type
-            self._id_to_scope[saved.id] = saved.scope
+            self._id_to_view_attributes[saved.id] = (saved.view_type, saved.scope)
         self._upsert_cache(saved)
 
         # Access grants are managed by the dedicated share endpoint.
@@ -401,10 +349,11 @@ class ServerViewManager(ViewManager):
             self.error.emit("Cannot patch view access without project name")
             return
 
-        view_type = self._id_to_type.get(view_id)
-        if not view_type:
+        view_attributes = self._id_to_view_attributes.get(view_id)
+        if not view_attributes:
             self.error.emit(f"Unknown view id for access patch: {view_id}")
             return
+        view_type, _ = view_attributes
 
         payload_access = self._normalize_access_payload(access_data)
         if not payload_access:
@@ -455,12 +404,12 @@ class ServerViewManager(ViewManager):
         if not self._project_name:
             return
 
-        view_type = self._id_to_type.get(view_id)
-        if view_type is None:
+        view_attributes = self._id_to_view_attributes.get(view_id)
+        if view_attributes is None:
             self.error.emit(f"Unknown view id: {view_id}")
             return
 
-        view_scope = self._id_to_scope.get(view_id, Scope.PROJECT)
+        view_type, view_scope = view_attributes
         is_studio = view_scope == Scope.STUDIO
 
         try:
@@ -477,8 +426,7 @@ class ServerViewManager(ViewManager):
             return
 
         # Remove in-place from the per-type cache if populated.
-        self._id_to_type.pop(view_id, None)
-        self._id_to_scope.pop(view_id, None)
+        self._id_to_view_attributes.pop(view_id, None)
         view_list = self._cache.get(view_type)
         if view_list is not None:
             self._cache[view_type] = [v for v in view_list if v.id != view_id]
@@ -524,61 +472,6 @@ class ServerViewManager(ViewManager):
             except Exception:  # noqa: BLE001
                 return None
         return None
-
-    @staticmethod
-    def _extract_view_dict(payload: Any) -> dict[str, Any] | None:
-        """Return a single-view dict from common detail response shapes."""
-        if not isinstance(payload, dict):
-            return None
-        if isinstance(payload.get("view"), dict):
-            return payload["view"]
-        if isinstance(payload.get("data"), dict):
-            return payload["data"]
-        return payload
-
-    def _parse_default_view_payload(
-        self,
-        payload: Any,
-        view_type: str,
-        scope: Scope,
-    ) -> View | None:
-        """Parse default view payload returned by ``/base`` endpoint."""
-        view_payload = self._extract_view_dict(payload)
-        if not isinstance(view_payload, dict) or not view_payload:
-            return None
-
-        # Error payloads can still be dicts; ignore them.
-        if "id" not in view_payload and "detail" in view_payload:
-            log.debug(
-                "Default %s view for %s is unavailable: %s",
-                scope.value,
-                view_type,
-                view_payload.get("detail"),
-            )
-            return None
-
-        candidate = dict(view_payload)
-        candidate["viewType"] = str(candidate.get("viewType") or view_type)
-        candidate["scope"] = str(candidate.get("scope") or scope.value)
-        candidate["label"] = str(candidate.get("label") or "__base__")
-        candidate["working"] = False
-
-        try:
-            parsed = View.from_payload(candidate)
-        except Exception:  # noqa: BLE001
-            log.exception(
-                "Malformed default %s payload for %s: %r",
-                scope.value,
-                view_type,
-                payload,
-            )
-            return None
-
-        if parsed.id:
-            self._id_to_type[parsed.id] = parsed.view_type
-            self._id_to_scope[parsed.id] = parsed.scope
-        self._upsert_cache(parsed)
-        return parsed
 
     def _upsert_cache(self, view: View) -> None:
         """Insert or replace *view* in the per-type cache in place.
