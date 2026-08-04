@@ -58,7 +58,7 @@ def main():
 
     com_info = CommunicationInfo(ipc)
 
-    # TODO figure out how to allow to register custom handlers.
+    # TODO figure out how to allow to register custom/different handlers.
     _loader = IPCLoaderFrontend(com_info)
     _publisher = IPCPublisherFrontend(com_info)
     _workfiles = IPCWorkfilesFrontend(com_info)

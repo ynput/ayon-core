@@ -1,23 +1,19 @@
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
 import subprocess
-import time
 import typing
 from typing import Any
 
 from ayon_core.lib import (
     get_ayon_launcher_args,
     get_launcher_storage_dir,
-    emit_event,
 )
-from ayon_core.pipeline import registered_host
 
-from ayon_core.ipc_api import IPCServer, Message
+from ayon_core.ipc_api import IPCServer
 
 from ayon_core.tools.loader.ipc_backend_control import IPCLoaderBackend
 from ayon_core.tools.publisher.ipc_backend_control import IPCPublisherBackend
@@ -46,7 +42,9 @@ class _ToolBackends:
 class _IPCConnection:
     server: IPCServer | None = None
     ui_process: subprocess.Popen | None = None
-    ui_backends: _ToolBackends | None = None
+    loader_backend: IPCLoaderBackend | None = None
+    publisher_backend: IPCPublisherBackend | None = None
+    workfiles_backend: IPCWorkfilesBackend | None = None
 
 
 def _launch_ui_process(
@@ -169,17 +167,13 @@ def _ensure_external_ui_process():
 
 def _register_ipc_handlers(server: IPCServer):
     """Register request handlers for IPC server."""
-    host = registered_host()
-    ui_backends = _ToolBackends(
-        loader_backend=IPCLoaderBackend(host),
-        publisher_backend=IPCPublisherBackend(host),
-        workfiles_backend=IPCWorkfilesBackend(host),
-    )
-    ui_backends.loader_backend.register_ipc_handler(server)
-    ui_backends.publisher_backend.register_ipc_handler(server)
-    ui_backends.workfiles_backend.register_ipc_handler(server)
-
-    _IPCConnection.ui_backends = ui_backends
+    for backend in (
+        _IPCConnection.loader_backend,
+        _IPCConnection.publisher_backend,
+        _IPCConnection.workfiles_backend,
+    ):
+        if backend is not None:
+            backend.register_ipc_handler(server)
 
     # TODO allow to register custom handlers
     # if hasattr(host, "register_ipc_handlers"):
@@ -251,16 +245,61 @@ class IPCHostTools:
 
     @classmethod
     def show_loader(cls) -> None:
+        if _IPCConnection.loader_backend is None:
+            raise ValueError(
+                "Loader backend is not initialized."
+                " Use 'set_loader_backend' to set it."
+            )
         _ensure_external_ui_process()
         cls.execute("loader", "show")
 
     @classmethod
     def show_publisher(cls, tab: PublisherTab = None) -> None:
+        if _IPCConnection.publisher_backend is None:
+            raise ValueError(
+                "Publisher backend is not initialized."
+                " Use 'set_publisher_backend' to set it."
+            )
         _ensure_external_ui_process()
         cls.execute("publisher", "show", {"tab": tab})
 
     @classmethod
     def show_workfiles(cls) -> None:
+        if _IPCConnection.workfiles_backend is None:
+            raise ValueError(
+                "Workfiles backend is not initialized."
+                " Use 'set_workfiles_backend' to set it."
+            )
+
         _ensure_external_ui_process()
         cls.execute("workfiles", "show")
 
+    @classmethod
+    def set_loader_backend(
+        cls, backend: IPCLoaderBackend | None
+    ) -> None:
+        _IPCConnection.loader_backend = backend
+        if backend is None:
+            return
+        if _IPCConnection.server is not None:
+            backend.register_ipc_handler(_IPCConnection.server)
+
+    @classmethod
+    def set_publisher_backend(
+        cls, backend: IPCPublisherBackend | None
+    ) -> None:
+        _IPCConnection.publisher_backend = backend
+        if backend is None:
+            return
+        if _IPCConnection.server is not None:
+            backend.register_ipc_handler(_IPCConnection.server)
+
+    @classmethod
+    def set_workfiles_backend(
+        cls, backend: IPCWorkfilesBackend | None
+    ) -> None:
+        _IPCConnection.workfiles_backend = backend
+        if backend is None:
+            return
+        if _IPCConnection.server is not None:
+            backend.register_ipc_handler(_IPCConnection.server)
