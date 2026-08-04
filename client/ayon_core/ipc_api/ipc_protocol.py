@@ -1,14 +1,14 @@
-"""IPC protocol definitions for Blender<->Qt UI communication.
+"""IPC protocol definitions for DCC<->Qt UI communication.
 
 This module defines the message protocol used for inter-process communication
-between Blender (server) and external Qt UI processes (clients).
+between DCC (server) and external Qt UI processes (clients).
 
 Protocol is JSON-based with message types:
 - hello: Session negotiation
 - hello_ack: Acknowledgement of session
-- request: Async request from client to Blender
+- request: Async request from client to DCC
 - response: Response to request
-- event: Event published by Blender
+- event: Event published by DCC
 - ping/pong: Keep-alive
 """
 from __future__ import annotations
@@ -170,7 +170,7 @@ class JsonMessage(Message):
 
 
 class RequestMessage(JsonMessage):
-    """Request message from client to Blender."""
+    """Request message from client to DCC."""
 
     def __init__(
         self,
@@ -208,7 +208,7 @@ class RequestMessage(JsonMessage):
 
 
 class ResponseMessage(JsonMessage):
-    """Response message from Blender to client."""
+    """Response message from DCC to client."""
 
     def __init__(
         self,

@@ -36,10 +36,10 @@ ChannelHandler = Callable[["IPCServer", RequestMessage], Any]
 
 
 class IPCServer:
-    """TCP server for IPC communication between Blender and external UIs.
+    """TCP server for IPC communication between DCC and external UIs.
 
-    This is the Blender-side server. It listens for connections and dispatches
-    requests to Blender via main-thread callbacks.
+    This is the DCC-side server. It listens for connections and dispatches
+    requests to DCC via main-thread callbacks.
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 0):
@@ -99,7 +99,7 @@ class IPCServer:
             except Exception:
                 pass
 
-        # Close all client connections
+        # Close client connections
         with self._lock:
             for client in list(self.clients.values()):
                 try:
@@ -150,7 +150,7 @@ class IPCServer:
     def process_requests(self) -> bool:
         """Process pending events and dispatch to clients.
 
-        Should be called from Blender main thread via timer callback.
+        Should be called from DCC main thread via timer callback.
 
         Returns:
             True if there were events to process
@@ -269,7 +269,7 @@ class IPCClientConnection:
                     self._handle_message(msg)
 
                 except socket.timeout:
-                    # Client may be idle for long periods while Blender is busy.
+                    # Client may be idle for long periods while DCC is busy.
                     time.sleep(0.5)
                     continue
 

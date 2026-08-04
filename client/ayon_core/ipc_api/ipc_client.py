@@ -1,12 +1,12 @@
-"""Qt-side IPC client for communicating with Blender.
+"""Qt-side IPC client for communicating with DCC.
 
-This module provides a client for Qt UI processes to communicate with Blender
+This module provides a client for Qt UI processes to communicate with DCC
 via the IPC bridge. Features:
 - Automatic reconnection with backoff
 - Request queuing and idempotency
 - Connection state tracking
 - Event subscription and callbacks
-- Graceful handling of Blender unresponsiveness
+- Graceful handling of DCC unresponsiveness
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ class ConnectionState:
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"
-    BLENDER_BUSY = "blender_busy"
+    DCC_BUSY = "dcc_busy"
 
 
 class PendingRequest:
@@ -86,13 +86,13 @@ class RequestWaitData:
 
 
 class IPCClient:
-    """Client for connecting to Blender IPC bridge from Qt processes.
+    """Client for connecting to DCC IPC bridge from Qt processes.
 
     Handles:
     - Connection and reconnection with exponential backoff
     - Async requests with optional callbacks
     - Event subscriptions
-    - Blender busy state detection
+    - DCC busy state detection
     - Graceful disconnection handling
     """
 
@@ -111,7 +111,7 @@ class IPCClient:
         Args:
             host: Server host (should be 127.0.0.1)
             port: Server port
-            session_token: Authentication token from Blender
+            session_token: Authentication token from DCC
             session_id: Optional session identifier
         """
         self.host = host
@@ -128,14 +128,14 @@ class IPCClient:
 
         self.reconnect_attempts = 0
         self.last_heartbeat = time.time()
-        self.blender_unresponsive_since: float | None = None
+        self.dcc_unresponsive_since: float | None = None
 
         self._lock = threading.RLock()
         self._receiver_thread: threading.Thread | None = None
         self._running = False
 
     def connect(self) -> bool:
-        """Establish connection to Blender IPC server.
+        """Establish connection to DCC IPC server.
 
         Returns:
             True if connection successful, False otherwise
@@ -145,7 +145,7 @@ class IPCClient:
 
         try:
             logger.info(
-                f"Connecting to Blender IPC at {self.host}:{self.port} "
+                f"Connecting to IPC at {self.host}:{self.port} "
                 f"(session: {self.session_id})"
             )
 
@@ -178,10 +178,10 @@ class IPCClient:
             self.connected = True
             self.state = ConnectionState.CONNECTED
             self.reconnect_attempts = 0
-            self.blender_unresponsive_since = None
+            self.dcc_unresponsive_since = None
             self.last_heartbeat = time.time()
 
-            logger.info(f"Connected to Blender (session: {self.session_id})")
+            logger.info(f"Connected to DCC (session: {self.session_id})")
 
             # Start receiver thread if needed (e.g. after reconnect).
             if self._receiver_thread is None or not self._receiver_thread.is_alive():
@@ -206,7 +206,7 @@ class IPCClient:
             return False
 
     def disconnect(self):
-        """Disconnect from Blender."""
+        """Disconnect from DCC."""
         self._running = False
         self.connected = False
         self.state = ConnectionState.DISCONNECTED
@@ -265,11 +265,11 @@ class IPCClient:
         params: dict[str, Any] | None = None,
         callback: Callable[[ResponseMessage], None] | None = None,
     ) -> str:
-        """Send an async request to Blender.
+        """Send an async request to DCC.
 
         Args:
             channel: Channel to which the method belongs.
-            method: Method name to call in Blender.
+            method: Method name to call in DCC.
             params: Parameters for the method.
             callback: Optional callback(ok, result, error_msg).
 
@@ -277,7 +277,7 @@ class IPCClient:
             Request ID
         """
         if not self.connected:
-            error_msg = "Not connected to Blender"
+            error_msg = "Not connected to DCC"
             if callback:
                 callback(
                     ResponseMessage(
@@ -333,9 +333,9 @@ class IPCClient:
         """Check if connected."""
         return self.connected
 
-    def is_blender_busy(self) -> bool:
-        """Check if Blender is detected as busy (unresponsive)."""
-        return self.state == ConnectionState.BLENDER_BUSY
+    def is_dcc_busy(self) -> bool:
+        """Check if DCC is detected as busy (unresponsive)."""
+        return self.state == ConnectionState.DCC_BUSY
 
     def _send_message(self, msg: Message):
         """Send message to server."""
@@ -373,12 +373,12 @@ class IPCClient:
                 except socket.timeout:
                     # Check for pending request timeouts
 
-                    # Check heartbeat (detect Blender busy)
+                    # Check heartbeat (detect DCC busy)
                     if time.time() - self.last_heartbeat > 60:
-                        if self.state != ConnectionState.BLENDER_BUSY:
-                            logger.warning("Blender unresponsive for 60s, marking busy")
-                            self.state = ConnectionState.BLENDER_BUSY
-                            self.blender_unresponsive_since = time.time()
+                        if self.state != ConnectionState.DCC_BUSY:
+                            logger.warning("DCC unresponsive for 60s, marking busy")
+                            self.state = ConnectionState.DCC_BUSY
+                            self.dcc_unresponsive_since = time.time()
                     continue
 
                 except Exception as e:
@@ -401,12 +401,14 @@ class IPCClient:
                 self._handle_response(msg)
             elif msg.type == MessageType.PING:
                 self._send_message(PongMessage())
+            elif msg.type == MessageType.CLOSE:
+                self.disconnect()
             elif msg.type == MessageType.PONG:
                 # Mark as responsive
-                if self.state == ConnectionState.BLENDER_BUSY:
-                    logger.info("Blender responsive again")
+                if self.state == ConnectionState.DCC_BUSY:
+                    logger.info("DCC responsive again")
                     self.state = ConnectionState.CONNECTED
-                    self.blender_unresponsive_since = None
+                    self.dcc_unresponsive_since = None
                 self.last_heartbeat = time.time()
             elif msg.type == MessageType.ERROR:
                 self._handle_error(msg)
