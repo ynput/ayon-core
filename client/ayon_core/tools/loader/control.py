@@ -569,7 +569,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         return QueuedEventSystem()
 
     def _emit_event(self, topic, data=None):
-        self._event_system.emit(topic, data or {}, "controller")
+        self.emit_event(topic, data, "controller")
 
     def _get_project_anatomy(self, project_name):
         if not project_name:
