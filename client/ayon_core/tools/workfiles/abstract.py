@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-import typing
 from typing import Optional, Any
 
-from ayon_core.style import get_default_entity_icon_color
-
-if typing.TYPE_CHECKING:
-    from ayon_core.host import PublishedWorkfileInfo
-
-
+from ayon_core.host import PublishedWorkfileInfo
 
 
 class WorkareaFilepathResult:
