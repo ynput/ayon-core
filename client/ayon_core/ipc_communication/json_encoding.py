@@ -7,6 +7,9 @@ from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     deserialize_attr_def,
 )
+from ayon_core.pipeline.actions import LoaderActionResult
+from ayon_core.pipeline.create import InstanceContextInfo, ConvertorItem
+from ayon_core.pipeline.publish import PublishReport
 from ayon_core.tools.common_models import (
     TagItem,
     ProductTypeIconMapping,
@@ -16,10 +19,8 @@ from ayon_core.tools.common_models import (
     TaskItem,
     FolderTypeItem,
     TaskTypeItem,
+    UserItem,
 )
-from ayon_core.pipeline.create import InstanceContextInfo, ConvertorItem
-from ayon_core.pipeline.publish import PublishReport
-from ayon_core.tools.common_models.users import UserItem
 from ayon_core.tools.loader.abstract import (
     ProductItem,
     ProductTypeItem,
@@ -110,6 +111,12 @@ class DataEncoder(json.JSONEncoder):
             data = obj.to_data()
             data[OBJ_TYPE_ID_KEY] = type_name
             return data
+
+        if isinstance(obj, LoaderActionResult):
+            data = obj.to_json_data()
+            data[OBJ_TYPE_ID_KEY] = type_name
+            return data
+
         return super().default(obj)
 
 
@@ -177,6 +184,9 @@ class DataDecoder(json.JSONDecoder):
 
     def decode_ProductTypeIconMapping(self, obj):
         return ProductTypeIconMapping.from_data(obj)
+
+    def decode_LoaderActionResult(self, obj):
+        return LoaderActionResult.from_json_data(obj)
 
     # Workfiles
     def decode_WorkfileInfo(self, obj):
