@@ -167,7 +167,7 @@ class UIPublishPluginActionItem:
 class UIPublishErrorItem:
     """Data driven publish error item.
 
-    Prepared data container with information about publish error and it's
+    Prepared data container with information about publish error and its
     source plugin.
 
     Can be converted to raw data and recreated should be used for controller
