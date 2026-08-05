@@ -15,13 +15,29 @@ from __future__ import annotations
 
 import json
 import uuid
+import socket
 import struct
+import threading
 from typing import Any
 from enum import Enum
 
 from .json_encoding import DataEncoder, DataDecoder
 
 MAX_PAGE_SIZE, = struct.unpack(">Q", b'\xff\xff\xff\xff\xff\xff\xff\xff')
+
+
+def _recv_exact(sock: socket.socket, size: int) -> bytes | None:
+    """Read exactly specific length of bytes from socket."""
+    if size == 0:
+        return b""
+
+    data = bytearray()
+    while len(data) < size:
+        chunk = sock.recv(size - len(data))
+        if not chunk:
+            return None
+        data.extend(chunk)
+    return bytes(data)
 
 
 class MessageType(int, Enum):
@@ -35,15 +51,11 @@ class MessageType(int, Enum):
     RESPONSE = 7
 
     @classmethod
-    def from_socket(cls, socket) -> MessageType | None:
+    def from_socket(cls, sock: socket.socket) -> MessageType | None:
         """Read the message type from a socket."""
-        msg_type_b = socket.recv(2)
-        if not msg_type_b or len(msg_type_b) != 2:
+        msg_type_b = _recv_exact(sock, 2)
+        if msg_type_b is None:
             return None
-        if len(msg_type_b) != 2:
-            raise ValueError(
-                f"Expected 2 bytes for message type, got {len(msg_type_b)}."
-            )
         msg_type_value = struct.unpack(">H", msg_type_b)[0]
         return cls(msg_type_value)
 
@@ -89,15 +101,23 @@ class HelloMessage(Message):
         return content
 
     @classmethod
-    def from_socket(cls, socket):
+    def from_socket(cls, sock: socket.socket):
         """Deserialize the message from JSON bytes."""
 
-        st_len, version_len, session_id_len = struct.unpack(
-            ">III", socket.recv(12)
-        )
-        session_token_b = socket.recv(st_len)
-        version_b = socket.recv(version_len)
-        session_id_b = socket.recv(session_id_len)
+        lengths_b = _recv_exact(sock, 12)
+        if lengths_b is None:
+            return None
+        st_len, version_len, session_id_len = struct.unpack(">III", lengths_b)
+
+        session_token_b = _recv_exact(sock, st_len)
+        if session_token_b is None:
+            return None
+        version_b = _recv_exact(sock, version_len)
+        if version_b is None:
+            return None
+        session_id_b = _recv_exact(sock, session_id_len)
+        if session_id_b is None:
+            return None
 
         return cls(
             session_token_b.decode(encoding="utf-8"),
@@ -121,11 +141,17 @@ class HelloAckMessage(Message):
         return content
 
     @classmethod
-    def from_socket(cls, socket):
+    def from_socket(cls, sock: socket.socket):
         """Deserialize the message from JSON bytes."""
 
-        sid_len = struct.unpack(">I", socket.recv(4))[0]
-        session_id_b = socket.recv(sid_len)
+        sid_len_b = _recv_exact(sock, 4)
+        if sid_len_b is None:
+            return None
+        sid_len = struct.unpack(">I", sid_len_b)[0]
+
+        session_id_b = _recv_exact(sock, sid_len)
+        if session_id_b is None:
+            return None
 
         return cls(session_id_b.decode(encoding="utf-8"))
 
@@ -138,17 +164,14 @@ class JsonMessage(Message):
         """Serialize the message to JSON bytes."""
         content = super().to_bytes()
         data = self.to_data()
-        json_value = json.dumps(
-            data, cls=DataEncoder
-        ).encode(encoding="utf-8")
-
+        value = json.dumps(data, cls=DataEncoder).encode(encoding="utf-8")
         pages = []
-        while len(json_value) > MAX_PAGE_SIZE:
-            pages.append(json_value[:MAX_PAGE_SIZE])
-            json_value = json_value[MAX_PAGE_SIZE:]
+        while len(value) > MAX_PAGE_SIZE:
+            pages.append(value[:MAX_PAGE_SIZE])
+            value = value[MAX_PAGE_SIZE:]
 
-        if json_value:
-            pages.append(json_value)
+        if value:
+            pages.append(value)
 
         content += struct.pack(">Q", len(pages))
         for page in pages:
@@ -157,14 +180,25 @@ class JsonMessage(Message):
         return content
 
     @classmethod
-    def from_socket(cls, socket):
+    def from_socket(cls, sock: socket.socket):
         """Deserialize the message from JSON bytes."""
-        pages_len, = struct.unpack(">Q", socket.recv(8))
-        json_value = b""
+        pages_len_b = _recv_exact(sock, 8)
+        if pages_len_b is None:
+            return None
+        pages_len, = struct.unpack(">Q", pages_len_b)
+        value = b""
         for _ in range(pages_len):
-            page_len, = struct.unpack(">Q", socket.recv(8))
-            json_value += socket.recv(page_len)
-        json_str = json_value.decode(encoding="utf-8")
+            page_len_b = _recv_exact(sock, 8)
+            if page_len_b is None:
+                return None
+            page_len, = struct.unpack(">Q", page_len_b)
+
+            page_b = _recv_exact(sock, page_len)
+            if page_b is None:
+                return None
+            value += page_b
+
+        json_str = value.decode(encoding="utf-8")
         data = json.loads(json_str, cls=DataDecoder)
         return cls(**data)
 
@@ -269,41 +303,48 @@ class ErrorMessage(Message):
         return content
 
     @classmethod
-    def from_socket(cls, socket):
+    def from_socket(cls, sock: socket.socket):
         """Deserialize the message from JSON bytes."""
-        error_len = struct.unpack(">I", socket.recv(4))[0]
-        error_b = socket.recv(error_len)
+        error_len_b = _recv_exact(sock, 4)
+        if error_len_b is None:
+            return None
+        error_len = struct.unpack(">I", error_len_b)[0]
+
+        error_b = _recv_exact(sock, error_len)
+        if error_b is None:
+            return None
         return cls(error_b.decode(encoding="utf-8"))
 
 
-def read_message_from_socket(socket, lock) -> Message | None:
-    """Read a message from a stream and return the appropriate message object."""
-    msg_type = MessageType.from_socket(socket)
+def read_message_from_socket(
+    sock: socket.socket,
+    lock: threading.Lock,
+) -> Message | None:
+    """Read one full message from stream in a thread-safe way."""
+    msg_type = MessageType.from_socket(sock)
     if msg_type is None:
         return None
 
-    if msg_type == MessageType.PING:
-        return PingMessage()
+    with lock:
+        if msg_type == MessageType.PING:
+            return PingMessage()
 
-    if msg_type == MessageType.PONG:
-        return PongMessage()
+        if msg_type == MessageType.PONG:
+            return PongMessage()
 
-    if msg_type == MessageType.HELLO:
-        return HelloMessage.from_socket(socket)
+        if msg_type == MessageType.HELLO:
+            return HelloMessage.from_socket(sock)
 
-    if msg_type == MessageType.HELLO_ACK:
-        return HelloAckMessage.from_socket(socket)
+        if msg_type == MessageType.HELLO_ACK:
+            return HelloAckMessage.from_socket(sock)
 
-    if msg_type == MessageType.REQUEST:
-        with lock:
-            return RequestMessage.from_socket(socket)
+        if msg_type == MessageType.REQUEST:
+            return RequestMessage.from_socket(sock)
 
-    if msg_type == MessageType.RESPONSE:
-        with lock:
-            return ResponseMessage.from_socket(socket)
+        if msg_type == MessageType.RESPONSE:
+            return ResponseMessage.from_socket(sock)
 
-    if msg_type == MessageType.ERROR:
-        with lock:
-            return ErrorMessage.from_socket(socket)
+        if msg_type == MessageType.ERROR:
+            return ErrorMessage.from_socket(sock)
 
-    raise ValueError(f"Unknown message type: {msg_type}")
+        raise ValueError(f"Unknown message type: {msg_type}")
