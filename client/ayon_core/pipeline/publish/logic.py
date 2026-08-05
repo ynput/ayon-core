@@ -242,18 +242,14 @@ class PublishState:
         if self.finished:
             return False
 
+        if self.fail_reason == PublishFailReason.No:
+            return True
+
         if self.fail_reason == PublishFailReason.ValidationErrors:
             if self.strict_validation_error_handling or self.validated:
                 return False
             return True
-
-        if self.fail_reason in (
-            PublishFailReason.Error,
-            PublishFailReason.BlockingPaths
-        ):
-            return False
-
-        return True
+        return False
 
     def should_stop(self) -> bool:
         if not self.can_continue():
