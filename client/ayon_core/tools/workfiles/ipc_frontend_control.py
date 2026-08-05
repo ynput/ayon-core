@@ -565,6 +565,14 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             sender=sender,
         )
 
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, set[str]]:
+        return self._trigger_getter(
+            "get_my_tasks_entity_ids",
+            project_name=project_name,
+        )
+
     def has_unsaved_changes(self) -> bool:
         """Has host unsaved change in currently running session.
 

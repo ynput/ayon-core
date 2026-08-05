@@ -344,6 +344,22 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
         pass
 
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, set[str]]:
+        """Get entity ids of tasks assigned to the current user for a project.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, set[str]]: Dictionary mapping of folder ids and task ids
+                that a user is assigned to.
+
+        """
+        pass
+
     # Host information
     @abstractmethod
     def get_workfile_extensions(self):
