@@ -63,12 +63,13 @@ class PublishAttrDefsInfo:
 @dataclass
 class UIFailInfo:
     message: str
-    is_unknown_error: bool
+    # Error caused by 'PublishError' exception.
+    is_publish_error: bool
 
     @classmethod
     def from_exception(cls, exc) -> "UIFailInfo":
         if isinstance(exc, PublishError):
-            return cls(exc.message, False)
+            return cls(exc.message, True)
 
         if isinstance(exc, KnownPublishError):
             msg = str(exc)
@@ -77,17 +78,17 @@ class UIFailInfo:
                 "Something went wrong. Send report"
                 " to your supervisor or Ynput team."
             )
-        return cls(msg, True)
+        return cls(msg, False)
 
     def to_data(self) -> dict[str, Any]:
         return {
             "message": self.message,
-            "is_unknown_error": self.is_unknown_error,
+            "is_publish_error": self.is_publish_error,
         }
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "UIFailInfo":
-        return cls(data["message"], data["is_unknown_error"])
+        return cls(data["message"], data["is_publish_error"])
 
 
 @dataclass

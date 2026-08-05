@@ -1856,7 +1856,7 @@ class ReportsWidget(QtWidgets.QWidget):
 
         publish_error_mode = False
         if fail_info is not None:
-            publish_error_mode = not fail_info.is_unknown_error
+            publish_error_mode = fail_info.is_publish_error
         elif has_validation_error:
             publish_error_mode = True
 
