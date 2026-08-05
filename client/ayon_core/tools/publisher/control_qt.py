@@ -114,8 +114,10 @@ class QtPublisherController(PublisherController):
         self._iter_data = _IterData()
         super().reset()
 
-    def _start_publish(self, up_validation: bool) -> None:
-        self._publish_model.set_publish_up_validation(up_validation)
+    def _start_publish(self, stop_after_validation: bool) -> None:
+        self._publish_model.set_stop_after_validation(
+            stop_after_validation
+        )
         self._publish_model.start_publish(wait=False)
         # Make sure '_next_publish_item_process' is only once in
         #   the '_main_thread_processor' loop

@@ -205,7 +205,7 @@ class PublishFailReason(Enum):
 class PublishState:
     """Keep state of PublishLogic at one place."""
     # Publishing should stop at validation stage
-    up_validation: bool = False
+    stop_after_validation: bool = False
     # 'PublishValidationError' won't stop the publishing until the end of
     #   the validation order if set to 'False'. Other exceptions will stop
     #   the publishing.
@@ -257,7 +257,7 @@ class PublishState:
 
         # Stop if validation is over and validation errors happened
         #   or publishing should stop at validation
-        if self.validated and self.up_validation:
+        if self.validated and self.stop_after_validation:
             return True
         return False
 
@@ -497,7 +497,7 @@ class PublishLogic:
         # Everything is ok so try to get new processing item
         return next(self._main_thread_iter)
 
-    def get_publish_up_validation(self) -> bool:
+    def get_stop_after_validation(self) -> bool:
         """Check if publishing will stop after validation.
 
         Returns:
@@ -505,16 +505,16 @@ class PublishLogic:
                 False otherwise.
 
         """
-        return self._publish_state.up_validation
+        return self._publish_state.stop_after_validation
 
-    def set_publish_up_validation(self, value: bool) -> None:
+    def set_stop_after_validation(self, value: bool) -> None:
         """Publishing will stop after validation.
 
         Args:
             value (bool): If True, publishing will stop after validation.
 
         """
-        self._publish_state.up_validation = value
+        self._publish_state.stop_after_validation = value
 
     def set_strict_validation_error_handling(self, value: bool) -> None:
         """Set strict validation error handling.
@@ -846,7 +846,7 @@ class PublishLogic:
             ):
                 self._publish_state.validated = True
                 if (
-                    self._publish_state.up_validation
+                    self._publish_state.stop_after_validation
                     or self.has_validation_errors()
                 ):
                     yield PublishIterInfo(self, PublishIterAction.Stop)

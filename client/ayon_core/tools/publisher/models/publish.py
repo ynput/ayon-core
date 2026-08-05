@@ -47,8 +47,8 @@ class PublishModel:
 
         self._emit_event("publish.reset.finished")
 
-    def set_publish_up_validation(self, value: bool) -> None:
-        self._logic.set_publish_up_validation(value)
+    def set_stop_after_validation(self, value: bool) -> None:
+        self._logic.set_stop_after_validation(value)
 
     def start_publish(self, wait: bool = True) -> None:
         """Run publishing.
