@@ -10,6 +10,7 @@ from ayon_core.lib import env_value_to_bool
 from ayon_core.pipeline.publish.logic import (
     PublishLogic,
     PublishFailReason,
+    PublishIterAction,
 )
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
@@ -81,23 +82,23 @@ class PublishModel:
         func: PublishIterInfo = self._logic.get_next_process_func()
         plugin = func.plugin
         item_label = func.item_label
+        if func.action == PublishIterAction.Continue:
+            if self._publish_state.plugin is not plugin:
+                self._publish_state.plugin = plugin
+                plugin_label = getattr(plugin, "label", None)
+                if not plugin_label:
+                    plugin_label = plugin.__name__
+                self._emit_event(
+                "publish.process.plugin.changed",
+                {"plugin_label": plugin_label}
+                )
 
-        if self._publish_state.plugin is not plugin:
-            self._publish_state.plugin = plugin
-            plugin_label = getattr(plugin, "label", None)
-            if not plugin_label:
-                plugin_label = plugin.__name__
-            self._emit_event(
-            "publish.process.plugin.changed",
-            {"plugin_label": plugin_label}
-            )
-
-        if self._publish_state.item_label != item_label:
-            self._publish_state.item_label = item_label
-            self._emit_event(
-                "publish.process.instance.changed",
-                {"instance_label": item_label}
-            )
+            if self._publish_state.item_label != item_label:
+                self._publish_state.item_label = item_label
+                self._emit_event(
+                    "publish.process.instance.changed",
+                    {"instance_label": item_label}
+                )
 
         func()
         if not self._publish_state.validated and self._logic.has_validated():
