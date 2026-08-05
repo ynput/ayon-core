@@ -17,7 +17,6 @@ import json
 import uuid
 import socket
 import struct
-import threading
 from typing import Any
 from enum import Enum
 
@@ -316,35 +315,31 @@ class ErrorMessage(Message):
         return cls(error_b.decode(encoding="utf-8"))
 
 
-def read_message_from_socket(
-    sock: socket.socket,
-    lock: threading.Lock,
-) -> Message | None:
+def read_message_from_socket(sock: socket.socket) -> Message | None:
     """Read one full message from stream in a thread-safe way."""
     msg_type = MessageType.from_socket(sock)
     if msg_type is None:
         return None
 
-    with lock:
-        if msg_type == MessageType.PING:
-            return PingMessage()
+    if msg_type == MessageType.PING:
+        return PingMessage()
 
-        if msg_type == MessageType.PONG:
-            return PongMessage()
+    if msg_type == MessageType.PONG:
+        return PongMessage()
 
-        if msg_type == MessageType.HELLO:
-            return HelloMessage.from_socket(sock)
+    if msg_type == MessageType.HELLO:
+        return HelloMessage.from_socket(sock)
 
-        if msg_type == MessageType.HELLO_ACK:
-            return HelloAckMessage.from_socket(sock)
+    if msg_type == MessageType.HELLO_ACK:
+        return HelloAckMessage.from_socket(sock)
 
-        if msg_type == MessageType.REQUEST:
-            return RequestMessage.from_socket(sock)
+    if msg_type == MessageType.REQUEST:
+        return RequestMessage.from_socket(sock)
 
-        if msg_type == MessageType.RESPONSE:
-            return ResponseMessage.from_socket(sock)
+    if msg_type == MessageType.RESPONSE:
+        return ResponseMessage.from_socket(sock)
 
-        if msg_type == MessageType.ERROR:
-            return ErrorMessage.from_socket(sock)
+    if msg_type == MessageType.ERROR:
+        return ErrorMessage.from_socket(sock)
 
-        raise ValueError(f"Unknown message type: {msg_type}")
+    raise ValueError(f"Unknown message type: {msg_type}")

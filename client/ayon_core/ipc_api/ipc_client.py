@@ -131,6 +131,8 @@ class IPCClient:
         self.dcc_unresponsive_since: float | None = None
 
         self._lock = threading.RLock()
+        self._send_lock = threading.RLock()
+        self._recv_lock = threading.RLock()
         self._receiver_thread: threading.Thread | None = None
         self._running = False
 
@@ -342,7 +344,7 @@ class IPCClient:
         if not self.socket:
             raise RuntimeError("Not connected")
 
-        with self._lock:
+        with self._send_lock:
             self.socket.sendall(msg.to_bytes())
         self.last_heartbeat = time.time()
 
@@ -350,7 +352,8 @@ class IPCClient:
         if self.socket is None:
             return None
 
-        msg = read_message_from_socket(self.socket, self._lock)
+        with self._recv_lock:
+            msg = read_message_from_socket(self.socket)
         return msg
 
     def _receiver_loop(self):

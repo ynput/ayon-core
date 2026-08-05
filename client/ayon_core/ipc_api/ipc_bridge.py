@@ -224,7 +224,8 @@ class IPCClientConnection:
         self.addr = addr
         self.session_id: str | None = None
         self.authenticated = False
-        self._lock = threading.RLock()
+        self._send_lock = threading.RLock()
+        self._recv_lock = threading.RLock()
         self._connected = True
 
     def handle(self):
@@ -343,7 +344,7 @@ class IPCClientConnection:
 
     def _send_message(self, msg: Message):
         """Send message to client."""
-        with self._lock:
+        with self._send_lock:
             if not self._connected:
                 raise RuntimeError("Client disconnected")
             self.socket.sendall(msg.to_bytes())
@@ -364,19 +365,20 @@ class IPCClientConnection:
         if not self._connected:
             return None
 
-        msg = read_message_from_socket(self.socket, self._lock)
+        with self._recv_lock:
+            msg = read_message_from_socket(self.socket)
+
         if msg is None:
             self._connected = False
         return msg
 
     def close(self):
         """Close the client connection."""
-        with self._lock:
-            self._connected = False
-            try:
-                self.socket.close()
-            except Exception:
-                pass
+        self._connected = False
+        try:
+            self.socket.close()
+        except Exception:
+            pass
 
         # Unregister from server
         if self.session_id:
