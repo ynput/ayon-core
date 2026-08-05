@@ -98,6 +98,19 @@ class PublishErrorInfo:
             )
         return cls(msg, True)
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            message=self.message,
+            is_unknown_error=self.is_unknown_error,
+            description=self.description,
+            title=self.title,
+            detail=self.detail,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishErrorInfo:
+        return cls(**data)
+
 
 class PublishPluginActionItem:
     """Representation of publish plugin action.
@@ -451,7 +464,7 @@ class PublishErrorsReport:
     @classmethod
     def from_data(
         cls, data: dict[str, Any]
-    ) -> "PublishErrorsReport":
+    ) -> PublishErrorsReport:
         """Recreate object from data.
 
         Args:
@@ -460,19 +473,20 @@ class PublishErrorsReport:
 
         Returns:
             PublishErrorsReport: New object based on data.
-        """
 
+        """
         error_items = [
             PublishErrorItem.from_data(error_item)
             for error_item in data["error_items"]
         ]
         plugin_action_items = {}
-        for action_item in data["plugin_action_items"]:
-            item = PublishPluginActionItem.from_data(action_item)
-            action_items = plugin_action_items.setdefault(item.plugin_id, [])
-            action_items.append(item)
-
-        return cls(error_items, plugin_action_items)
+        for plugin_id, action_items in data["plugin_action_items"].items():
+            action_items = plugin_action_items.setdefault(plugin_id, [])
+            for action_item in action_items:
+                item = PublishPluginActionItem.from_data(action_item)
+                action_items.append(item)
+    
+        return PublishErrorsReport(error_items, plugin_action_items)
 
 
 class PublishErrors:

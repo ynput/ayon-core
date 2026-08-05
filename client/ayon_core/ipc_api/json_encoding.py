@@ -1,4 +1,3 @@
-from dataclasses import asdict
 import json
 
 from ayon_core.host.interfaces import WorkfileInfo
@@ -74,7 +73,8 @@ class DataEncoder(json.JSONEncoder):
 
         type_name = type(obj).__name__
         if isinstance(
-            obj, (
+            obj,
+            (
                 ProjectItem,
                 StatusItem,
                 FolderTypeItem,
@@ -82,119 +82,34 @@ class DataEncoder(json.JSONEncoder):
                 ProductTypeItem,
                 FolderItem,
                 TaskItem,
+                UserItem,
+                TagItem,
                 # Loader
                 ProductItem,
                 RepreItem,
                 ActionItem,
+                ProductTypesFilter,
+                ProductTypeIconMapping,
                 # Publisher
                 ConvertorItem,
                 CommentDef,
                 CreatorItem,
                 PublishReport,
                 PublishErrorsReport,
+                PublishAttrDefsInfo,
+                InstanceContextInfo,
+                PublishErrorInfo,
+                InstanceItem,
                 # Workfile
                 WorkfileInfo,
+                WorkareaFilepathResult,
                 PublishedWorkfileInfo,
-            )
+                PublishedWorkfileWrap,
+            ),
         ):
             data = obj.to_data()
             data[OBJ_TYPE_ID_KEY] = type_name
             return data
-
-        if isinstance(obj, UserItem):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "username": obj.username,
-                "full_name": obj.full_name,
-                "email": obj.email,
-                "avatar_url": obj.avatar_url,
-                "active": obj.active,
-            }
-
-        if isinstance(obj, TagItem):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "name": obj.name,
-                "color": obj.color,
-            }
-
-        # Loader
-        if isinstance(obj, ProductTypesFilter):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "product_types": obj.product_types,
-                "is_allow_list": obj.is_allow_list,
-            }
-
-        if isinstance(obj, ProductTypeIconMapping):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "default": obj._default,
-                "definitions": obj._definitions,
-            }
-
-        # Publisher
-        if isinstance(obj, InstanceItem):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "instance_id": obj.id,
-                "creator_identifier": obj.creator_identifier,
-                "label": obj.label,
-                "group_label": obj.group_label,
-                "product_base_type": obj.product_base_type,
-                "product_type": obj.product_type,
-                "product_name": obj.product_name,
-                "variant": obj.variant,
-                "folder_path": obj.folder_path,
-                "task_name": obj.task_name,
-                "is_active": obj.is_active,
-                "is_mandatory": obj.is_mandatory,
-                "has_promised_context": obj.has_promised_context,
-                "parent_instance_id": obj.parent_instance_id,
-                "parent_flags": obj.parent_flags,
-            }
-
-        if isinstance(obj, PublishAttrDefsInfo):
-            data = asdict(obj)
-            data[OBJ_TYPE_ID_KEY] = type_name
-            return data
-
-        if isinstance(obj, InstanceContextInfo):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "folder_path": obj.folder_path,
-                "task_name": obj.task_name,
-                "folder_is_valid": obj.folder_is_valid,
-                "task_is_valid": obj.task_is_valid,
-            }
-
-        if isinstance(obj, PublishErrorInfo):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "message": obj.message,
-                "is_unknown_error": obj.is_unknown_error,
-                "description": obj.description,
-                "title": obj.title,
-                "detail": obj.detail,
-            }
-
-        # Workfiles
-        if isinstance(obj, WorkareaFilepathResult):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "root": obj.root,
-                "filename": obj.filename,
-                "exists": obj.exists,
-                "filepath": obj.filepath,
-            }
-
-        if isinstance(obj, PublishedWorkfileWrap):
-            return {
-                OBJ_TYPE_ID_KEY: type_name,
-                "info": obj.info,
-                "comment": obj.comment,
-            }
-
         return super().default(obj)
 
 
@@ -221,10 +136,10 @@ class DataDecoder(json.JSONDecoder):
         return deserialize_attr_def(obj)
 
     def decode_UserItem(self, obj):
-        return UserItem(**obj)
+        return UserItem.from_data(obj)
 
     def decode_TagItem(self, obj):
-        return TagItem(**obj)
+        return TagItem.from_data(obj)
 
     def decode_ProjectItem(self, obj):
         return ProjectItem.from_data(obj)
@@ -258,10 +173,10 @@ class DataDecoder(json.JSONDecoder):
         return ActionItem.from_data(obj)
 
     def decode_ProductTypesFilter(self, obj):
-        return ProductTypesFilter(**obj)
+        return ProductTypesFilter.from_data(obj)
 
     def decode_ProductTypeIconMapping(self, obj):
-        return ProductTypeIconMapping(obj["default"], obj["definitions"])
+        return ProductTypeIconMapping.from_data(obj)
 
     # Workfiles
     def decode_WorkfileInfo(self, obj):
@@ -271,44 +186,26 @@ class DataDecoder(json.JSONDecoder):
         return PublishedWorkfileInfo.from_data(obj)
 
     def decode_WorkareaFilepathResult(self, obj):
-        return WorkareaFilepathResult(
-            root=obj["root"],
-            filename=obj["filename"],
-            exists=obj["exists"],
-            filepath=obj["filepath"]
-        )
+        return WorkareaFilepathResult.from_data(obj)
 
     def decode_PublishedWorkfileWrap(self, obj):
-        return PublishedWorkfileWrap(
-            info=obj["info"],
-            comment=obj["comment"]
-        )
+        return PublishedWorkfileWrap.from_data(obj)
 
     # Publisher
     def decode_InstanceContextInfo(self, obj):
-        return InstanceContextInfo(
-            folder_path=obj["folder_path"],
-            task_name=obj["task_name"],
-            folder_is_valid=obj["folder_is_valid"],
-            task_is_valid=obj["task_is_valid"],
-        )
+        return InstanceContextInfo.from_data(obj)
 
     def decode_PublishErrorInfo(self, obj):
-        return PublishErrorInfo(
-            message=obj["message"],
-            is_unknown_error=obj["is_unknown_error"],
-            description=obj["description"],
-            title=obj["title"],
-        )
+        return PublishErrorInfo.from_data(obj)
 
     def decode_InstanceItem(self, obj):
-        return InstanceItem(**obj)
+        return InstanceItem.from_data(obj)
 
     def decode_CreatorItem(self, obj):
         return CreatorItem.from_data(obj)
 
     def decode_PublishAttrDefsInfo(self, obj):
-        return PublishAttrDefsInfo(**obj)
+        return PublishAttrDefsInfo.from_data(obj)
 
     def decode_ConvertorItem(self, obj):
         return ConvertorItem.from_data(obj)
@@ -320,21 +217,4 @@ class DataDecoder(json.JSONDecoder):
         return PublishReport.from_data(obj)
 
     def decode_PublishErrorsReport(self, obj):
-        # TODO fix bug in ayon-core where 'from_data' is wrong
-        from ayon_core.tools.publisher.models.publish import (
-            PublishErrorItem,
-            PublishPluginActionItem,
-        )
-
-        error_items = [
-            PublishErrorItem.from_data(error_item)
-            for error_item in obj["error_items"]
-        ]
-        plugin_action_items = {}
-        for plugin_id, action_items in obj["plugin_action_items"].items():
-            action_items = plugin_action_items.setdefault(plugin_id, [])
-            for action_item in action_items:
-                item = PublishPluginActionItem.from_data(action_item)
-                action_items.append(item)
-
-        return PublishErrorsReport(error_items, plugin_action_items)
+        return PublishErrorsReport.from_data(obj)

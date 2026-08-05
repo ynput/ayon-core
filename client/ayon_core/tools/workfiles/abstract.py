@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 import typing
-from typing import Optional
+from typing import Optional, Any
 
 from ayon_core.style import get_default_entity_icon_color
 
@@ -95,7 +95,7 @@ class TaskItem:
         self._label = None
 
     @property
-    def id(self):
+    def id(self) -> str:
         """Alias for task_id.
 
         Returns:
@@ -105,7 +105,7 @@ class TaskItem:
         return self.task_id
 
     @property
-    def label(self):
+    def label(self) -> str:
         """Label of task item for UI.
 
         Returns:
@@ -113,24 +113,24 @@ class TaskItem:
 
         """
         if self._label is None:
-            self._label = "{} ({})".format(self.name, self.task_type)
+            self._label = f"{self.name} ({self.task_type})"
         return self._label
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         """Converts task item to data.
 
         Returns:
             dict[str, Any]: Task item data.
 
         """
-        return {
-            "task_id": self.task_id,
-            "name": self.name,
-            "parent_id": self.parent_id,
-            "task_type": self.task_type,
-            "icon_name": self.icon_name,
-            "icon_color": self.icon_color,
-        }
+        return dict(
+            task_id=self.task_id,
+            name=self.name,
+            parent_id=self.parent_id,
+            task_type=self.task_type,
+            icon_name=self.icon_name,
+            icon_color=self.icon_color,
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -165,16 +165,44 @@ class WorkareaFilepathResult:
         self.exists = exists
         self.filepath = filepath
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            root=self.root,
+            filename=self.filename,
+            exists=self.exists,
+            filepath=self.filepath,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> WorkareaFilepathResult:
+        return cls(**data)
+
 
 class PublishedWorkfileWrap:
     """Wrapper for workfile info that also contains version comment."""
     def __init__(
         self,
-        info: Optional[PublishedWorkfileInfo] = None,
-        comment: Optional[str] = None,
+        info: PublishedWorkfileInfo | None = None,
+        comment: str | None = None,
     ) -> None:
         self.info = info
         self.comment = comment
+
+    def to_data(self) -> dict[str, Any]:
+        info = None
+        if self.info is not None:
+            info = self.info.to_data()
+        return dict(
+            info=info,
+            comment=self.comment,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishedWorkfileWrap:
+        info = data["info"]
+        if info is not None:
+            info = PublishedWorkfileInfo.from_data(info)
+        return cls(info=info, comment=data["comment"])
 
 
 class AbstractWorkfilesCommon(ABC):

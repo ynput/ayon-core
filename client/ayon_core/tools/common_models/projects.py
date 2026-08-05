@@ -13,6 +13,7 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib.icon_definitions import (
     MaterialSymbolsIcon,
     AwesomeFontIcon,
+    get_icon_def_from_data,
 )
 from ayon_core.lib import CacheItem, NestedCacheItem
 
@@ -32,6 +33,7 @@ class AbstractHierarchyController(ABC):
         pass
 
 
+@dataclass
 class StatusItem:
     """Item representing status of project.
 
@@ -43,28 +45,20 @@ class StatusItem:
         state (str): Status state.
 
     """
-    def __init__(
-        self,
-        name: str,
-        color: str,
-        short: str,
-        icon: str,
-        state: str
-    ):
-        self.name: str = name
-        self.color: str = color
-        self.short: str = short
-        self.icon: str = icon
-        self.state: str = state
+    name: str
+    color: str
+    short: str
+    icon: str
+    state: str
 
     def to_data(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "color": self.color,
-            "short": self.short,
-            "icon": self.icon,
-            "state": self.state,
-        }
+        return dict(
+            name=self.name,
+            color=self.color,
+            short=self.short,
+            icon=self.icon,
+            state=self.state,
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -87,7 +81,15 @@ class TagItem:
     name: str
     color: str
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(name=self.name, color=self.color)
 
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> TagItem:
+        return cls(**data)
+
+
+@dataclass
 class FolderTypeItem:
     """Item representing folder type of project.
 
@@ -97,17 +99,12 @@ class FolderTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(self, name, short, icon):
-        self.name = name
-        self.short = short
-        self.icon = icon
+    name: str
+    short: str
+    icon: str
 
     def to_data(self):
-        return {
-            "name": self.name,
-            "short": self.short,
-            "icon": self.icon,
-        }
+        return dict(name=self.name, short=self.short, icon=self.icon)
 
     @classmethod
     def from_data(cls, data):
@@ -122,6 +119,7 @@ class FolderTypeItem:
         )
 
 
+@dataclass
 class TaskTypeItem:
     """Item representing task type of project.
 
@@ -131,25 +129,18 @@ class TaskTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(
-        self,
-        name: str,
-        short: str,
-        icon: str,
-        color: Optional[str],
-    ):
-        self.name = name
-        self.short = short
-        self.icon = icon
-        self.color = color
+    name: str
+    short: str
+    icon: str
+    color: str | None
 
     def to_data(self):
-        return {
-            "name": self.name,
-            "short": self.short,
-            "icon": self.icon,
-            "color": self.color,
-        }
+        return dict(
+            name=self.name,
+            short=self.short,
+            icon=self.icon,
+            color=self.color,
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -167,15 +158,7 @@ class TaskTypeItem:
 
 @dataclass
 class ProjectItem:
-    """Item representing folder entity on a server.
-
-    Folder can be a child of another folder or a project.
-
-    Args:
-        name (str): Project name.
-        active (Union[str, None]): Parent folder id. If 'None' then project
-            is parent.
-    """
+    """Item representing Project entity on a server."""
     name: str
     active: bool
     is_library: bool
@@ -211,15 +194,12 @@ class ProjectItem:
             dict[str, Any]: Folder item data.
         """
 
-        return {
-            "name": self.name,
-            "active": self.active,
-            "is_library": self.is_library,
-            "icon": {
-                "name": self.icon.name,
-                "color": self.icon.color,
-            },
-        }
+        return dict(
+            name=self.name,
+            active=self.active,
+            is_library=self.is_library,
+            icon=self.icon.to_data(),
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -233,7 +213,7 @@ class ProjectItem:
         """
         icon = data["icon"]
         if isinstance(icon, dict):
-            data["icon"] = AwesomeFontIcon(icon["name"], color=icon["color"])
+            data["icon"] = get_icon_def_from_data(icon)
         return cls(**data)
 
 
