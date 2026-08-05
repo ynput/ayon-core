@@ -156,7 +156,7 @@ class PublishErrorInfo:
 def collect_families_from_instances(
     instances: list[pyblish.api.Instance],
     only_active: bool = False,
-) -> list[str]:
+) -> set[str]:
     """Collect all families for passed publish instances.
 
     Args:
@@ -165,7 +165,7 @@ def collect_families_from_instances(
         only_active (bool): Return families only for active instances.
 
     Returns:
-        list[str]: Families available on instances.
+        set[str]: Families available on instances.
 
     """
     all_families = set()
@@ -181,7 +181,7 @@ def collect_families_from_instances(
         for family in families:
             all_families.add(family)
 
-    return list(all_families)
+    return all_families
 
 
 class PublishFailReason(Enum):
@@ -189,7 +189,7 @@ class PublishFailReason(Enum):
 
     Attributes:
         No - Publishing did not fail.
-        BlockingPaths - Strict valodation of crashed publish plugin paths
+        BlockingPaths - Strict validation of crashed publish plugin paths
             during discovery.
         ValidationErrors - Publishing failed because of validation errors.
         Error - An error happened during publishing.
