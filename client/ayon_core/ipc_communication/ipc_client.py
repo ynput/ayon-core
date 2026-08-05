@@ -25,6 +25,7 @@ from .ipc_protocol import (
     RequestMessage,
     ResponseMessage,
     PongMessage,
+    ErrorMessage,
     read_message_from_socket,
 )
 
@@ -422,6 +423,9 @@ class IPCClient:
 
         except Exception as e:
             logger.error(f"Error handling message: {e}")
+
+    def _handle_error(self, req: ErrorMessage) -> None:
+        logger.error("Got error message from server: %s", req.error)
 
     def _handle_request(self, req: RequestMessage):
         """Handle incoming request message."""

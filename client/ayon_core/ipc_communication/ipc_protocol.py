@@ -45,9 +45,9 @@ class MessageType(int, Enum):
     HELLO_ACK = 2
     PING = 3
     PONG = 4
-    ERROR = 5
-    REQUEST = 6
-    RESPONSE = 7
+    REQUEST = 5
+    RESPONSE = 6
+    ERROR = 7
 
     @classmethod
     def from_socket(cls, sock: socket.socket) -> MessageType | None:
@@ -89,15 +89,18 @@ class HelloMessage(Message):
         st_bytes = self.session_token.encode(encoding="utf-8")
         version_bytes = self.version.encode(encoding="utf-8")
         session_id_bytes = self.session_id.encode(encoding="utf-8")
-        content = super().to_bytes()
-        content += struct.pack(
+        output = bytearray()
+        output.extend(super().to_bytes())
+        output.extend(struct.pack(
             ">III",
             len(st_bytes),
             len(version_bytes),
             len(session_id_bytes)
-        )
-        content += st_bytes + version_bytes + session_id_bytes
-        return content
+        ))
+        output.extend(st_bytes)
+        output.extend(version_bytes)
+        output.extend(session_id_bytes)
+        return bytes(output)
 
     @classmethod
     def from_socket(cls, sock: socket.socket):
@@ -135,9 +138,11 @@ class HelloAckMessage(Message):
     def to_bytes(self) -> bytes:
         """Serialize the message to JSON bytes."""
         session_id_b = self.session_id.encode(encoding="utf-8")
-        content = super().to_bytes()
-        content += struct.pack(">I", len(session_id_b)) + session_id_b
-        return content
+        output = bytearray()
+        output.extend(super().to_bytes())
+        output.extend(struct.pack(">I", len(session_id_b)))
+        output.extend(session_id_b)
+        return bytes(output)
 
     @classmethod
     def from_socket(cls, sock: socket.socket):
@@ -161,7 +166,6 @@ class JsonMessage(Message):
 
     def to_bytes(self) -> bytes:
         """Serialize the message to JSON bytes."""
-        content = super().to_bytes()
         data = self.to_data()
         value = json.dumps(data, cls=DataEncoder).encode(encoding="utf-8")
         pages = []
@@ -172,11 +176,14 @@ class JsonMessage(Message):
         if value:
             pages.append(value)
 
-        content += struct.pack(">Q", len(pages))
+        output = bytearray()
+        output.extend(super().to_bytes())
+        output.extend(struct.pack(">Q", len(pages)))
         for page in pages:
-            content += struct.pack(">Q", len(page)) + page
+            output.extend(struct.pack(">Q", len(page)))
+            output.extend(page)
 
-        return content
+        return bytes(output)
 
     @classmethod
     def from_socket(cls, sock: socket.socket):
@@ -185,7 +192,7 @@ class JsonMessage(Message):
         if pages_len_b is None:
             return None
         pages_len, = struct.unpack(">Q", pages_len_b)
-        value = b""
+        value = bytearray()
         for _ in range(pages_len):
             page_len_b = _recv_exact(sock, 8)
             if page_len_b is None:
@@ -195,7 +202,7 @@ class JsonMessage(Message):
             page_b = _recv_exact(sock, page_len)
             if page_b is None:
                 return None
-            value += page_b
+            value.extend(page_b)
 
         json_str = value.decode(encoding="utf-8")
         data = json.loads(json_str, cls=DataDecoder)
@@ -232,12 +239,12 @@ class RequestMessage(JsonMessage):
 
     def to_data(self) -> dict[str, Any]:
         """Serialize the message to JSON bytes."""
-        return {
-            "request_id": self.id,
-            "channel": self.channel,
-            "method": self.method,
-            "params": self.params,
-        }
+        return dict(
+            request_id=self.id,
+            channel=self.channel,
+            method=self.method,
+            params=self.params,
+        )
 
 
 class ResponseMessage(JsonMessage):
@@ -265,12 +272,12 @@ class ResponseMessage(JsonMessage):
 
     def to_data(self) -> dict[str, Any]:
         """Serialize the message to JSON bytes."""
-        return {
-            "request_id": self.request_id,
-            "ok": self.ok,
-            "result": self.result,
-            "error": self.error,
-        }
+        return dict(
+            request_id=self.request_id,
+            ok=self.ok,
+            result=self.result,
+            error=self.error,
+        )
 
 
 class PingMessage(Message):
