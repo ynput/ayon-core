@@ -264,10 +264,6 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """
 
     @abstractmethod
-    def register_event_callback(self, topic: str, callback: Callable):
-        pass
-
-    @abstractmethod
     def is_host_valid(self) -> bool:
         """Host is valid for creation part.
 
