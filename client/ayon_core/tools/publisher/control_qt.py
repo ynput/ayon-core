@@ -106,8 +106,9 @@ class QtPublisherController(PublisherController):
             return
 
         self._item_process_in_loop = True
+        self._publish_model.process_next_iter()
         self._process_main_thread_item(
-            MainThreadItem(self._publish_model.process_next_iter)
+            MainThreadItem(self._next_publish_item_process)
         )
 
     def _process_main_thread_item(self, item):
