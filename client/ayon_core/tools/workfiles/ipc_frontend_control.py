@@ -201,6 +201,14 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         self._event_system.add_callback(topic, callback)
 
+    def get_project_settings(
+        self, project_name: str | None
+    ) -> dict[str, Any]:
+        return self._trigger_getter(
+            "get_project_settings",
+            project_name=project_name,
+        )
+
     def get_user_items_by_name(self) -> dict[str, UserItem]:
         """Get user items available on AYON server.
 
