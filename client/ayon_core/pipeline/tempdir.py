@@ -5,8 +5,8 @@ Temporary folder operations
 import os
 import tempfile
 from pathlib import Path
-import warnings
 import uuid
+import warnings
 
 from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import Anatomy
