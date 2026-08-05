@@ -10,7 +10,6 @@ from ayon_core.lib import env_value_to_bool
 from ayon_core.pipeline.publish.logic import (
     PublishLogic,
     PublishFailReason,
-    PublishIterAction,
 )
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
@@ -78,39 +77,51 @@ class PublishModel:
             while self.is_running():
                 self.process_next_iter()
 
-    def process_next_iter(self) -> None:
+    def process_next_iter(self) -> bool:
+        """Process next iteration of publishing.
+
+        Returns:
+            bool: True if publishing is still running, False if finished.
+
+        """
+        if not self._logic.is_running():
+            self._emit_event("publish.process.stopped")
+            if not self._logic.has_failed() and self._logic.has_finished():
+                self._emit_event("publish.finished")
+            return False
+
         func: PublishIterInfo = self._logic.get_next_process_func()
         plugin = func.plugin
         item_label = func.item_label
-        if func.action == PublishIterAction.Continue:
-            if self._publish_state.plugin is not plugin:
-                self._publish_state.plugin = plugin
-                plugin_label = getattr(plugin, "label", None)
-                if not plugin_label:
-                    plugin_label = plugin.__name__
-                self._emit_event(
-                "publish.process.plugin.changed",
-                {"plugin_label": plugin_label}
-                )
+        if (
+            plugin is not None
+            and self._publish_state.plugin is not plugin
+        ):
+            self._publish_state.plugin = plugin
+            plugin_label = getattr(plugin, "label", None)
+            if not plugin_label:
+                plugin_label = plugin.__name__
+            self._emit_event(
+            "publish.process.plugin.changed",
+            {"plugin_label": plugin_label}
+            )
 
-            if self._publish_state.item_label != item_label:
-                self._publish_state.item_label = item_label
-                self._emit_event(
-                    "publish.process.instance.changed",
-                    {"instance_label": item_label}
-                )
+        if (
+            item_label is not None
+            and self._publish_state.item_label != item_label
+        ):
+            self._publish_state.item_label = item_label
+            self._emit_event(
+                "publish.process.instance.changed",
+                {"instance_label": item_label}
+            )
 
         func()
         if not self._publish_state.validated and self._logic.has_validated():
             self._publish_state.validated = True
             self._emit_event("publish.has_validated")
 
-        if not self.is_running():
-            self._emit_event("publish.process.stopped")
-            if self._logic.has_failed():
-                pass
-            elif self._logic.has_finished():
-                self._emit_event("publish.finished")
+        return True
 
     def stop_publish(self) -> None:
         self._logic.stop_publish()

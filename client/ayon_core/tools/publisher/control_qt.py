@@ -95,21 +95,19 @@ class QtPublisherController(PublisherController):
         # Make sure '_next_publish_item_process' is only once in
         #   the '_main_thread_processor' loop
         if not self._item_process_in_loop:
+            self._item_process_in_loop = True
             self._process_main_thread_item(
                 MainThreadItem(self._next_publish_item_process)
             )
 
     def _next_publish_item_process(self):
-        if not self._publish_model.is_running():
+        if self._publish_model.process_next_iter():
+            self._process_main_thread_item(
+                MainThreadItem(self._next_publish_item_process)
+            )
+        else:
             # This removes '_next_publish_item_process' from loop
             self._item_process_in_loop = False
-            return
-
-        self._item_process_in_loop = True
-        self._publish_model.process_next_iter()
-        self._process_main_thread_item(
-            MainThreadItem(self._next_publish_item_process)
-        )
 
     def _process_main_thread_item(self, item):
         self._main_thread_processor.add_item(item)
