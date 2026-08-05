@@ -623,7 +623,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # add template data for colorspaceData
         if repre.get("colorspaceData"):
-            colorspace = repre["colorspaceData"]["colorspace"]
+            colorspace = repre["colorspaceData"].get("colorspace")
+            display = repre["colorspaceData"].get("display")
+            view = repre["colorspaceData"].get("view")
+            if not colorspace and (display and view):
+                colorspace = f"{display}_{view}"
+            elif not colorspace and not display and view:
+                colorspace = view
             # replace spaces with underscores
             # pipeline.colorspace.parse_colorspace_from_filepath
             # is checking it with underscores too
