@@ -1,0 +1,1205 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=text_edit.html><link rel=next href=tree_view.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.7"><title>tree_model - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.ec1eaa64.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.ab4e12ef.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.ui.components.tree_model class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> tree_model </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <div class=md-nav__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class="md-nav__item md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_2> <label class=md-nav__link for=__nav_2 id=__nav_2_label tabindex> <span class=md-ellipsis> UI Library </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_2_label aria-expanded=false> <label class=md-nav__title for=__nav_2> <span class="md-nav__icon md-icon"></span> UI Library </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../ui.html class=md-nav__link> <span class=md-ellipsis> Overview </span> </a> </li> <li class=md-nav__item> <a href=../../../../../ui_testing.html class=md-nav__link> <span class=md-ellipsis> Testing </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4 checked> <label class=md-nav__link for=__nav_4 id=__nav_4_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_4_label aria-expanded=true> <label class=md-nav__title for=__nav_4> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1 checked> <label class=md-nav__link for=__nav_4_1 id=__nav_4_1_label tabindex=0> <span class=md-ellipsis> client </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_4_1_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1 checked> <label class=md-nav__link for=__nav_4_1_1 id=__nav_4_1_1_label tabindex=0> <span class=md-ellipsis> ayon_core </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_4_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/abstract.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/_compatibility.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../pipeline/actions/inventory.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1_15 checked> <label class=md-nav__link for=__nav_4_1_1_15 id=__nav_4_1_1_15_label tabindex=0> <span class=md-ellipsis> ui </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_4_1_1_15_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1_15> <span class="md-nav__icon md-icon"></span> ui </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../color_utils.html class=md-nav__link> <span class=md-ellipsis> color_utils </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1_15_2 checked> <label class=md-nav__link for=__nav_4_1_1_15_2 id=__nav_4_1_1_15_2_label tabindex=0> <span class=md-ellipsis> components </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_4_1_1_15_2_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1_15_2> <span class="md-nav__icon md-icon"></span> components </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=buttons.html class=md-nav__link> <span class=md-ellipsis> buttons </span> </a> </li> <li class=md-nav__item> <a href=card_view.html class=md-nav__link> <span class=md-ellipsis> card_view </span> </a> </li> <li class=md-nav__item> <a href=check_box.html class=md-nav__link> <span class=md-ellipsis> check_box </span> </a> </li> <li class=md-nav__item> <a href=checkbox_handler.html class=md-nav__link> <span class=md-ellipsis> checkbox_handler </span> </a> </li> <li class=md-nav__item> <a href=combo_box.html class=md-nav__link> <span class=md-ellipsis> combo_box </span> </a> </li> <li class=md-nav__item> <a href=comment.html class=md-nav__link> <span class=md-ellipsis> comment </span> </a> </li> <li class=md-nav__item> <a href=comment_completion.html class=md-nav__link> <span class=md-ellipsis> comment_completion </span> </a> </li> <li class=md-nav__item> <a href=container.html class=md-nav__link> <span class=md-ellipsis> container </span> </a> </li> <li class=md-nav__item> <a href=dropdown.html class=md-nav__link> <span class=md-ellipsis> dropdown </span> </a> </li> <li class=md-nav__item> <a href=entity_card.html class=md-nav__link> <span class=md-ellipsis> entity_card </span> </a> </li> <li class=md-nav__item> <a href=entity_path.html class=md-nav__link> <span class=md-ellipsis> entity_path </span> </a> </li> <li class=md-nav__item> <a href=entity_thumbnail.html class=md-nav__link> <span class=md-ellipsis> entity_thumbnail </span> </a> </li> <li class=md-nav__item> <a href=filter.html class=md-nav__link> <span class=md-ellipsis> filter </span> </a> </li> <li class=md-nav__item> <a href=filterable_list.html class=md-nav__link> <span class=md-ellipsis> filterable_list </span> </a> </li> <li class=md-nav__item> <a href=frame.html class=md-nav__link> <span class=md-ellipsis> frame </span> </a> </li> <li class=md-nav__item> <a href=gallery_dialog.html class=md-nav__link> <span class=md-ellipsis> gallery_dialog </span> </a> </li> <li class=md-nav__item> <a href=label.html class=md-nav__link> <span class=md-ellipsis> label </span> </a> </li> <li class=md-nav__item> <a href=layouts.html class=md-nav__link> <span class=md-ellipsis> layouts </span> </a> </li> <li class=md-nav__item> <a href=line_edit.html class=md-nav__link> <span class=md-ellipsis> line_edit </span> </a> </li> <li class=md-nav__item> <a href=option_action.html class=md-nav__link> <span class=md-ellipsis> option_action </span> </a> </li> <li class=md-nav__item> <a href=order.html class=md-nav__link> <span class=md-ellipsis> order </span> </a> </li> <li class=md-nav__item> <a href=page_button.html class=md-nav__link> <span class=md-ellipsis> page_button </span> </a> </li> <li class=md-nav__item> <a href=qss_override.html class=md-nav__link> <span class=md-ellipsis> qss_override </span> </a> </li> <li class=md-nav__item> <a href=screenshot_capture.html class=md-nav__link> <span class=md-ellipsis> screenshot_capture </span> </a> </li> <li class=md-nav__item> <a href=scroll_area.html class=md-nav__link> <span class=md-ellipsis> scroll_area </span> </a> </li> <li class=md-nav__item> <a href=slicer.html class=md-nav__link> <span class=md-ellipsis> slicer </span> </a> </li> <li class=md-nav__item> <a href=slider.html class=md-nav__link> <span class=md-ellipsis> slider </span> </a> </li> <li class=md-nav__item> <a href=style_mixin.html class=md-nav__link> <span class=md-ellipsis> style_mixin </span> </a> </li> <li class=md-nav__item> <a href=table_filter.html class=md-nav__link> <span class=md-ellipsis> table_filter </span> </a> </li> <li class=md-nav__item> <a href=table_model.html class=md-nav__link> <span class=md-ellipsis> table_model </span> </a> </li> <li class=md-nav__item> <a href=table_view.html class=md-nav__link> <span class=md-ellipsis> table_view </span> </a> </li> <li class=md-nav__item> <a href=tag.html class=md-nav__link> <span class=md-ellipsis> tag </span> </a> </li> <li class=md-nav__item> <a href=tag_selector.html class=md-nav__link> <span class=md-ellipsis> tag_selector </span> </a> </li> <li class=md-nav__item> <a href=task_queue.html class=md-nav__link> <span class=md-ellipsis> task_queue </span> </a> </li> <li class=md-nav__item> <a href=task_queue_monitor.html class=md-nav__link> <span class=md-ellipsis> task_queue_monitor </span> </a> </li> <li class=md-nav__item> <a href=text_box.html class=md-nav__link> <span class=md-ellipsis> text_box </span> </a> </li> <li class=md-nav__item> <a href=text_edit.html class=md-nav__link> <span class=md-ellipsis> text_edit </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> tree_model </span> <span class="md-nav__icon md-icon"></span> </label> <a href=tree_model.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> tree_model </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model class=md-nav__link> <span class=md-ellipsis> tree_model </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel class=md-nav__link> <span class=md-ellipsis> LazyTreeModel </span> </a> <nav class=md-nav aria-label=LazyTreeModel> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.is_loading class=md-nav__link> <span class=md-ellipsis> is_loading </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.canFetchMore class=md-nav__link> <span class=md-ellipsis> canFetchMore </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.columnCount class=md-nav__link> <span class=md-ellipsis> columnCount </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.data class=md-nav__link> <span class=md-ellipsis> data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.fetchMore class=md-nav__link> <span class=md-ellipsis> fetchMore </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.get_node_id class=md-nav__link> <span class=md-ellipsis> get_node_id </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.hasChildren class=md-nav__link> <span class=md-ellipsis> hasChildren </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.index class=md-nav__link> <span class=md-ellipsis> index </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.parent class=md-nav__link> <span class=md-ellipsis> parent </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.reset class=md-nav__link> <span class=md-ellipsis> reset </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.rowCount class=md-nav__link> <span class=md-ellipsis> rowCount </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.TreeNode class=md-nav__link> <span class=md-ellipsis> TreeNode </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=tree_view.html class=md-nav__link> <span class=md-ellipsis> tree_view </span> </a> </li> <li class=md-nav__item> <a href=user_image.html class=md-nav__link> <span class=md-ellipsis> user_image </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../data_models.html class=md-nav__link> <span class=md-ellipsis> data_models </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../drawers/_utils.html class=md-nav__link> <span class=md-ellipsis> drawers </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../image_cache.html class=md-nav__link> <span class=md-ellipsis> image_cache </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../preview_utils/utils.html class=md-nav__link> <span class=md-ellipsis> preview_utils </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../style.html class=md-nav__link> <span class=md-ellipsis> style </span> </a> </li> <li class=md-nav__item> <a href=../style_types.html class=md-nav__link> <span class=md-ellipsis> style_types </span> </a> </li> <li class=md-nav__item> <a href=../utils.html class=md-nav__link> <span class=md-ellipsis> utils </span> </a> </li> <li class=md-nav__item> <a href=../variants.html class=md-nav__link> <span class=md-ellipsis> variants </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../ui_preview/buttons.html class=md-nav__link> <span class=md-ellipsis> ui_preview </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model class=md-nav__link> <span class=md-ellipsis> tree_model </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel class=md-nav__link> <span class=md-ellipsis> LazyTreeModel </span> </a> <nav class=md-nav aria-label=LazyTreeModel> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.is_loading class=md-nav__link> <span class=md-ellipsis> is_loading </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.canFetchMore class=md-nav__link> <span class=md-ellipsis> canFetchMore </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.columnCount class=md-nav__link> <span class=md-ellipsis> columnCount </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.data class=md-nav__link> <span class=md-ellipsis> data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.fetchMore class=md-nav__link> <span class=md-ellipsis> fetchMore </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.get_node_id class=md-nav__link> <span class=md-ellipsis> get_node_id </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.hasChildren class=md-nav__link> <span class=md-ellipsis> hasChildren </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.index class=md-nav__link> <span class=md-ellipsis> index </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.parent class=md-nav__link> <span class=md-ellipsis> parent </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.reset class=md-nav__link> <span class=md-ellipsis> reset </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.LazyTreeModel.rowCount class=md-nav__link> <span class=md-ellipsis> rowCount </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.ui.components.tree_model.TreeNode class=md-nav__link> <span class=md-ellipsis> TreeNode </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <nav class=md-path aria-label=Navigation> <ol class=md-path__list> <li class=md-path__item> <a href=../../../../../index.html class=md-path__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-path__item> <a href=../../__main__.html class=md-path__link> <span class=md-ellipsis> Reference </span> </a> </li> <li class=md-path__item> <a href=../../__main__.html class=md-path__link> <span class=md-ellipsis> client </span> </a> </li> <li class=md-path__item> <a href=../../__main__.html class=md-path__link> <span class=md-ellipsis> ayon_core </span> </a> </li> <li class=md-path__item> <a href=../color_utils.html class=md-path__link> <span class=md-ellipsis> ui </span> </a> </li> <li class=md-path__item> <a href=buttons.html class=md-path__link> <span class=md-ellipsis> components </span> </a> </li> </ol> </nav> <article class="md-content__inner md-typeset"> <h1>tree_model</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.ui.components.tree_model></a> <div class="doc doc-contents first"> <p>Lazy-loading tree model for AYON UI Qt components.</p> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.ui.components.tree_model.LazyTreeModel class="doc doc-heading"> <code>LazyTreeModel</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtCore.QAbstractItemModel>QAbstractItemModel</span></code></p> <p>Qt model that lazily loads children via a callback.</p> <p>Children are fetched on demand using Qt's canFetchMore/fetchMore protocol. The root level is loaded asynchronously on construction.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>fetch_children</code> </td> <td> <code><span title=typing.Callable>Callable</span>[[<span title=str>str</span> | None], <span title=list>list</span>[<a class="autorefs autorefs-internal" title="TreeNode
+
+
+  
+      dataclass
+   (client.ayon_core.ui.components.tree_model.TreeNode)" href=#client.ayon_core.ui.components.tree_model.TreeNode>TreeNode</a>]]</code> </td> <td> <div class=doc-md-description> <p>Callable that takes a parent node ID (<code>None</code> for root) and returns a list of :class:<code>TreeNode</code> instances.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>no_async</code> </td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>When <code>True</code>, children are fetched synchronously on the main thread instead of via the :class:<code>AsyncTaskQueue</code>. Useful in tests to avoid worker-thread/paint-event races.</p> </div> </td> <td> <code>False</code> </td> </tr> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QObject>QObject</span> | None</code> </td> <td> <div class=doc-md-description> <p>Optional parent QObject.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <p>.. warning:: <strong>Async mode and <code>expandAll()</code></strong>: Because root children are fetched asynchronously, calling <code>view.expandAll()</code> immediately after constructing the model will silently expand nothing — <code>hasChildren()</code> returns <code>False</code> until the first fetch completes. Connect to :attr:<code>loading_changed</code> and call <code>expandAll()</code> once it emits <code>False</code>::</p> <pre><code>    model.loading_changed.connect(
+        lambda loading: view.expandAll() if not loading else None
+    )
+</code></pre> <p>Example::</p> <pre><code>def fetch(parent_id):
+    if parent_id is None:
+        return [TreeNode("root", "Root", has_children=True)]
+    return []
+
+model = LazyTreeModel(fetch_children=fetch)
+</code></pre> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>LazyTreeModel</span><span class=p>(</span><span class=n>QAbstractItemModel</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Qt model that lazily loads children via a callback.</span>
+
+<span class=sd>    Children are fetched on demand using Qt&#39;s canFetchMore/fetchMore</span>
+<span class=sd>    protocol. The root level is loaded asynchronously on construction.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        fetch_children: Callable that takes a parent node ID (``None``</span>
+<span class=sd>            for root) and returns a list of :class:`TreeNode` instances.</span>
+<span class=sd>        no_async: When ``True``, children are fetched synchronously on</span>
+<span class=sd>            the main thread instead of via the :class:`AsyncTaskQueue`.</span>
+<span class=sd>            Useful in tests to avoid worker-thread/paint-event races.</span>
+<span class=sd>        parent: Optional parent QObject.</span>
+
+<span class=sd>    .. warning::</span>
+<span class=sd>        **Async mode and ``expandAll()``**: Because root children are</span>
+<span class=sd>        fetched asynchronously, calling ``view.expandAll()`` immediately</span>
+<span class=sd>        after constructing the model will silently expand nothing —</span>
+<span class=sd>        ``hasChildren()`` returns ``False`` until the first fetch</span>
+<span class=sd>        completes.  Connect to :attr:`loading_changed` and call</span>
+<span class=sd>        ``expandAll()`` once it emits ``False``::</span>
+
+<span class=sd>            model.loading_changed.connect(</span>
+<span class=sd>                lambda loading: view.expandAll() if not loading else None</span>
+<span class=sd>            )</span>
+
+<span class=sd>    Example::</span>
+
+<span class=sd>        def fetch(parent_id):</span>
+<span class=sd>            if parent_id is None:</span>
+<span class=sd>                return [TreeNode(&quot;root&quot;, &quot;Root&quot;, has_children=True)]</span>
+<span class=sd>            return []</span>
+
+<span class=sd>        model = LazyTreeModel(fetch_children=fetch)</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>loading_changed</span> <span class=o>=</span> <span class=n>Signal</span><span class=p>(</span><span class=nb>bool</span><span class=p>)</span>  <span class=c1># True while any fetch is in-flight</span>
+    <span class=n>fetch_error</span> <span class=o>=</span> <span class=n>Signal</span><span class=p>(</span><span class=nb>str</span><span class=p>)</span>  <span class=c1># error message when a fetch fails</span>
+    <span class=n>pending_count_changed</span> <span class=o>=</span> <span class=n>Signal</span><span class=p>(</span><span class=nb>int</span><span class=p>)</span>  <span class=c1># number of in-flight fetch tasks</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>fetch_children</span><span class=p>:</span> <span class=n>Callable</span><span class=p>[[</span><span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span><span class=p>],</span> <span class=nb>list</span><span class=p>[</span><span class=n>TreeNode</span><span class=p>]],</span>
+        <span class=n>no_async</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>False</span><span class=p>,</span>
+        <span class=n>parent</span><span class=p>:</span> <span class=n>QObject</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children</span> <span class=o>=</span> <span class=n>fetch_children</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_no_async</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=n>no_async</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_reset_counter</span><span class=p>:</span> <span class=nb>int</span> <span class=o>=</span> <span class=mi>0</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;ltm_</span><span class=si>{</span><span class=nb>id</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span><span class=si>}</span><span class=s2>_v0&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span><span class=p>:</span> <span class=nb>int</span> <span class=o>=</span> <span class=mi>0</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root</span> <span class=o>=</span> <span class=n>_InternalNode</span><span class=p>(</span><span class=n>tree_node</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span>
+        <span class=c1># _all_nodes keeps every node reachable so Python&#39;s GC does not</span>
+        <span class=c1># collect objects that are held only via QModelIndex.internalPointer().</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_all_nodes</span><span class=p>:</span> <span class=nb>set</span><span class=p>[</span><span class=n>_InternalNode</span><span class=p>]</span> <span class=o>=</span> <span class=p>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_root</span><span class=p>}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children_async</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_root</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_update_loading_state</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Emit loading-progress signals based on current pending task</span>
+<span class=sd>        count.&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>pending_count_changed</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>loading_changed</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_index_for_node</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QModelIndex</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the QModelIndex that identifies node (column 0).</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            node: A non-root internal node.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Valid QModelIndex for non-root nodes, invalid for root.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+        <span class=n>parent</span> <span class=o>=</span> <span class=n>node</span><span class=o>.</span><span class=n>parent</span>
+        <span class=n>row</span> <span class=o>=</span> <span class=n>parent</span><span class=o>.</span><span class=n>children</span><span class=o>.</span><span class=n>index</span><span class=p>(</span><span class=n>node</span><span class=p>)</span>  <span class=c1># type: ignore[union-attr]</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>createIndex</span><span class=p>(</span><span class=n>row</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>node</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_children_ready</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span><span class=p>,</span>
+        <span class=n>context_id</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>results</span><span class=p>:</span> <span class=nb>list</span><span class=p>[</span><span class=n>TreeNode</span><span class=p>]</span> <span class=o>|</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Handle fetch results on the main thread.</span>
+
+<span class=sd>        Called via Qt.QueuedConnection from AsyncTaskQueue so it always</span>
+<span class=sd>        executes on the Qt main thread, making it safe to call Qt model</span>
+<span class=sd>        mutation methods.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            node: The node whose children were fetched.</span>
+<span class=sd>            context_id: The context_id active when the task was enqueued.</span>
+<span class=sd>                Used to discard stale results.</span>
+<span class=sd>            results: TreeNode list returned by fetch_children, or None on</span>
+<span class=sd>                error.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=c1># Always release the fetching guard so the node is never stuck</span>
+        <span class=c1># in-flight, even for stale callbacks.</span>
+        <span class=n>node</span><span class=o>.</span><span class=n>is_fetching</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=c1># Discard stale results (model was reset while this task was running).</span>
+        <span class=k>if</span> <span class=n>context_id</span> <span class=o>!=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=ow>or</span> <span class=n>node</span> <span class=ow>not</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_all_nodes</span><span class=p>:</span>
+            <span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                <span class=s2>&quot;Discarding stale fetch result for node </span><span class=si>%r</span><span class=s2> (ctx </span><span class=si>%s</span><span class=s2> vs </span><span class=si>%s</span><span class=s2>)&quot;</span><span class=p>,</span>
+                <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>id</span> <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=k>else</span> <span class=s2>&quot;root&quot;</span><span class=p>,</span>
+                <span class=n>context_id</span><span class=p>,</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>,</span>
+            <span class=p>)</span>
+            <span class=k>return</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>=</span> <span class=nb>max</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>-</span> <span class=mi>1</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>results</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>node_id</span> <span class=o>=</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>id</span> <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=k>else</span> <span class=s2>&quot;root&quot;</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>fetch_error</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span>
+                <span class=sa>f</span><span class=s2>&quot;Failed to fetch children for node </span><span class=si>{</span><span class=n>node_id</span><span class=si>!r}</span><span class=s2>&quot;</span>
+            <span class=p>)</span>
+            <span class=c1># Do NOT set children_loaded=True on error so that the</span>
+            <span class=c1># caller can retry by calling reset().  The node stays in</span>
+            <span class=c1># a &quot;not loaded&quot; state; is_fetching was already cleared</span>
+            <span class=c1># above so a subsequent fetchMore() or reset() can re-try.</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_update_loading_state</span><span class=p>()</span>
+            <span class=k>return</span>
+
+        <span class=n>new_nodes</span> <span class=o>=</span> <span class=p>[</span>
+            <span class=n>_InternalNode</span><span class=p>(</span><span class=n>tree_node</span><span class=o>=</span><span class=n>tn</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=n>node</span><span class=p>)</span> <span class=k>for</span> <span class=n>tn</span> <span class=ow>in</span> <span class=n>results</span>
+        <span class=p>]</span>
+        <span class=k>if</span> <span class=n>new_nodes</span><span class=p>:</span>
+            <span class=n>parent_index</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_index_for_node</span><span class=p>(</span><span class=n>node</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>beginInsertRows</span><span class=p>(</span><span class=n>parent_index</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=nb>len</span><span class=p>(</span><span class=n>new_nodes</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>)</span>
+            <span class=n>node</span><span class=o>.</span><span class=n>children</span> <span class=o>=</span> <span class=n>new_nodes</span>
+            <span class=k>for</span> <span class=n>child</span> <span class=ow>in</span> <span class=n>new_nodes</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_all_nodes</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>child</span><span class=p>)</span>
+            <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span> <span class=o>=</span> <span class=kc>True</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>endInsertRows</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span> <span class=o>=</span> <span class=kc>True</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_loading_state</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_fetch_children_async</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Enqueue an async task to fetch children for *node*.</span>
+
+<span class=sd>        Uses a per-node re-entrancy guard (``node.is_fetching``) to</span>
+<span class=sd>        prevent duplicate tasks.  Results are delivered back on the main</span>
+<span class=sd>        thread via :meth:`_on_children_ready`.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            node: The node whose children to fetch.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_fetching</span> <span class=ow>or</span> <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>node</span><span class=o>.</span><span class=n>is_fetching</span> <span class=o>=</span> <span class=kc>True</span>
+
+        <span class=n>parent_id</span> <span class=o>=</span> <span class=kc>None</span> <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_root</span> <span class=k>else</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>id</span>  <span class=c1># type: ignore[union-attr]</span>
+        <span class=n>ctx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>+=</span> <span class=mi>1</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_loading_state</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_no_async</span><span class=p>:</span>
+            <span class=k>try</span><span class=p>:</span>
+                <span class=n>result</span><span class=p>:</span> <span class=nb>list</span><span class=p>[</span><span class=n>TreeNode</span><span class=p>]</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children</span><span class=p>(</span><span class=n>parent_id</span><span class=p>)</span>
+            <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>
+                <span class=n>log</span><span class=o>.</span><span class=n>exception</span><span class=p>(</span>
+                    <span class=s2>&quot;fetch_children raised for parent_id=</span><span class=si>%r</span><span class=s2>&quot;</span><span class=p>,</span> <span class=n>parent_id</span>
+                <span class=p>)</span>
+                <span class=n>result</span> <span class=o>=</span> <span class=kc>None</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_on_children_ready</span><span class=p>(</span><span class=n>node</span><span class=p>,</span> <span class=n>ctx</span><span class=p>,</span> <span class=n>result</span><span class=p>)</span>
+            <span class=k>return</span>
+
+        <span class=n>task</span> <span class=o>=</span> <span class=n>AsyncTask</span><span class=p>(</span>
+            <span class=n>name</span><span class=o>=</span><span class=sa>f</span><span class=s2>&quot;fetch_children_</span><span class=si>{</span><span class=n>parent_id</span><span class=w> </span><span class=ow>or</span><span class=w> </span><span class=s1>&#39;root&#39;</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>,</span>
+            <span class=n>function</span><span class=o>=</span><span class=k>lambda</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children</span><span class=p>(</span><span class=n>parent_id</span><span class=p>),</span>
+            <span class=n>callback</span><span class=o>=</span><span class=k>lambda</span> <span class=n>result</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>_on_children_ready</span><span class=p>(</span><span class=n>node</span><span class=p>,</span> <span class=n>ctx</span><span class=p>,</span> <span class=n>result</span><span class=p>),</span>
+            <span class=n>priority</span><span class=o>=</span><span class=mi>1</span><span class=p>,</span>
+            <span class=n>context_id</span><span class=o>=</span><span class=n>ctx</span><span class=p>,</span>
+            <span class=n>cancellable</span><span class=o>=</span><span class=kc>True</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=n>get_task_queue</span><span class=p>()</span><span class=o>.</span><span class=n>enqueue</span><span class=p>(</span><span class=n>task</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_node_from_index</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>_InternalNode</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the internal node for a model index.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            index: A valid or invalid QModelIndex.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The corresponding _InternalNode; returns root for invalid</span>
+<span class=sd>            indexes.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_root</span>
+        <span class=k>return</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[return-value]</span>
+
+    <span class=c1># keep old name as alias for backward compatibility</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_node_for_index</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>_InternalNode</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Alias for _node_from_index.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>index</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>row</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>column</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>(),</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QModelIndex</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Create a model index for the given row/column under parent.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            row: Row number under the parent.</span>
+<span class=sd>            column: Column number (always 0).</span>
+<span class=sd>            parent: Parent index.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            A valid QModelIndex, or an invalid one if out of range.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>parent_node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>row</span> <span class=o>&lt;</span> <span class=mi>0</span> <span class=ow>or</span> <span class=n>row</span> <span class=o>&gt;=</span> <span class=nb>len</span><span class=p>(</span><span class=n>parent_node</span><span class=o>.</span><span class=n>children</span><span class=p>):</span>
+            <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+        <span class=n>child_node</span> <span class=o>=</span> <span class=n>parent_node</span><span class=o>.</span><span class=n>children</span><span class=p>[</span><span class=n>row</span><span class=p>]</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>createIndex</span><span class=p>(</span><span class=n>row</span><span class=p>,</span> <span class=n>column</span><span class=p>,</span> <span class=n>child_node</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>parent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QModelIndex</span><span class=p>:</span>  <span class=c1># type: ignore[override]</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the parent index of the given index.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            index: A model index whose parent is requested.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Parent QModelIndex, or an invalid index if parent is root.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+
+        <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[assignment]</span>
+        <span class=n>parent_node</span> <span class=o>=</span> <span class=n>node</span><span class=o>.</span><span class=n>parent</span>
+        <span class=k>if</span> <span class=n>parent_node</span> <span class=ow>is</span> <span class=kc>None</span> <span class=ow>or</span> <span class=n>parent_node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+
+        <span class=c1># grandparent is always non-None for a non-root parent_node</span>
+        <span class=n>grandparent</span> <span class=o>=</span> <span class=n>parent_node</span><span class=o>.</span><span class=n>parent</span>
+        <span class=n>row</span> <span class=o>=</span> <span class=n>grandparent</span><span class=o>.</span><span class=n>children</span><span class=o>.</span><span class=n>index</span><span class=p>(</span><span class=n>parent_node</span><span class=p>)</span>  <span class=c1># type: ignore[union-attr]</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>createIndex</span><span class=p>(</span><span class=n>row</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>parent_node</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>rowCount</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>()</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the number of rows under the given parent.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            parent: The parent index.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Number of loaded children. Returns 0 for nodes whose</span>
+<span class=sd>            children have not been fetched yet; Qt uses hasChildren()</span>
+<span class=sd>            to decide whether to show a disclosure triangle.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=k>return</span> <span class=nb>len</span><span class=p>(</span><span class=n>node</span><span class=o>.</span><span class=n>children</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>columnCount</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>()</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the number of columns (always 1).</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            parent: Unused parent index.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Always 1.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=mi>1</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>data</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span><span class=p>,</span>
+        <span class=n>role</span><span class=p>:</span> <span class=nb>int</span> <span class=o>=</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>object</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return data for the given index and role.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            index: The model index to query.</span>
+<span class=sd>            role: The data role.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The node label for DisplayRole, None otherwise.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[assignment]</span>
+        <span class=k>if</span> <span class=n>role</span> <span class=o>==</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>label</span> <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=k>else</span> <span class=kc>None</span>
+        <span class=k>elif</span> <span class=n>role</span> <span class=o>==</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DecorationRole</span><span class=p>:</span>
+            <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=ow>and</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon</span><span class=p>:</span>
+                <span class=k>return</span> <span class=n>get_icon</span><span class=p>(</span>
+                    <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon</span><span class=p>,</span>
+                    <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon_color</span><span class=p>,</span>
+                    <span class=n>fill</span><span class=o>=</span><span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon_fill</span><span class=p>,</span>
+                <span class=p>)</span>
+        <span class=k>elif</span> <span class=n>role</span> <span class=o>==</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>UserRole</span><span class=p>:</span>
+            <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=ow>and</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>data</span><span class=p>:</span>
+                <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>data</span>
+        <span class=k>return</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>hasChildren</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>()</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return whether the node at parent has or can have children.</span>
+
+<span class=sd>        This is used by Qt to decide whether to draw the disclosure</span>
+<span class=sd>        triangle, even before children are loaded.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            parent: The parent index.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            True if the node has loaded children or has_children is</span>
+<span class=sd>            True on the TreeNode.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+            <span class=k>return</span> <span class=nb>bool</span><span class=p>(</span><span class=n>node</span><span class=o>.</span><span class=n>children</span><span class=p>)</span>
+        <span class=c1># node.tree_node is non-None here (is_root is False)</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span><span class=p>:</span>
+            <span class=k>return</span> <span class=nb>bool</span><span class=p>(</span><span class=n>node</span><span class=o>.</span><span class=n>children</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>has_children</span>  <span class=c1># type: ignore[union-attr]</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>canFetchMore</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return True if more children can be fetched for parent.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            parent: The parent index to check.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            True if the node has potential children but they have not</span>
+<span class=sd>            been loaded yet.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>False</span>
+        <span class=c1># node.tree_node is non-None here (is_root is False)</span>
+        <span class=k>return</span> <span class=p>(</span>  <span class=c1># type: ignore[union-attr]</span>
+            <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>has_children</span> <span class=ow>and</span> <span class=ow>not</span> <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>fetchMore</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Fetch and insert children for the node at parent.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            parent: The parent index whose children should be loaded.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children_async</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_node_id</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return the TreeNode.id for the given model index.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            index: A valid QModelIndex.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            The node&#39;s string ID, or None if the index is invalid.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[assignment]</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>id</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>is_loading</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return True while at least one fetch task is in-flight.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>&gt;</span> <span class=mi>0</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>reset</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Reset the model to its initial state and re-fetch root children.</span>
+
+<span class=sd>        This is the recommended recovery path after a failed root fetch</span>
+<span class=sd>        (i.e. when :attr:`fetch_error` was emitted for the root node).</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>old_ctx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_no_async</span><span class=p>:</span>
+            <span class=n>get_task_queue</span><span class=p>()</span><span class=o>.</span><span class=n>clear_context_tasks</span><span class=p>(</span><span class=n>old_ctx</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_reset_counter</span> <span class=o>+=</span> <span class=mi>1</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;ltm_</span><span class=si>{</span><span class=nb>id</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span><span class=si>}</span><span class=s2>_v</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_reset_counter</span><span class=si>}</span><span class=s2>&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>=</span> <span class=mi>0</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>beginResetModel</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_root</span> <span class=o>=</span> <span class=n>_InternalNode</span><span class=p>(</span><span class=n>tree_node</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_all_nodes</span> <span class=o>=</span> <span class=p>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_root</span><span class=p>}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>endResetModel</span><span class=p>()</span>
+        <span class=c1># Emit loading signals *after* endResetModel so that any slot</span>
+        <span class=c1># connected to loading_changed observes a consistent model state.</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_loading_state</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children_async</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_root</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.is_loading class="doc doc-heading"> <code class="highlight language-python"><span class=n>is_loading</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Return True while at least one fetch task is in-flight.</p> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.canFetchMore class="doc doc-heading"> <code class="highlight language-python"><span class=n>canFetchMore</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return True if more children can be fetched for parent.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>The parent index to check.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>True if the node has potential children but they have not</p> </div> </td> </tr> <tr class=doc-section-item> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>been loaded yet.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>canFetchMore</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return True if more children can be fetched for parent.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        parent: The parent index to check.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        True if the node has potential children but they have not</span>
+<span class=sd>        been loaded yet.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>False</span>
+    <span class=c1># node.tree_node is non-None here (is_root is False)</span>
+    <span class=k>return</span> <span class=p>(</span>  <span class=c1># type: ignore[union-attr]</span>
+        <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>has_children</span> <span class=ow>and</span> <span class=ow>not</span> <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span>
+    <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.columnCount class="doc doc-heading"> <code class="highlight language-python"><span class=n>columnCount</span><span class=p>(</span><span class=n>parent</span><span class=o>=</span><span class=n>QModelIndex</span><span class=p>())</span></code> </h3> <div class="doc doc-contents "> <p>Return the number of columns (always 1).</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>Unused parent index.</p> </div> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span>()</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Always 1.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>columnCount</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>()</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the number of columns (always 1).</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        parent: Unused parent index.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Always 1.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=mi>1</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.data class="doc doc-heading"> <code class="highlight language-python"><span class=n>data</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return data for the given index and role.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>index</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>The model index to query.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>role</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>The data role.</p> </div> </td> <td> <code><span title=qtpy.QtCore.Qt.ItemDataRole.DisplayRole>DisplayRole</span></code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=object>object</span></code> </td> <td> <div class=doc-md-description> <p>The node label for DisplayRole, None otherwise.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>data</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span><span class=p>,</span>
+    <span class=n>role</span><span class=p>:</span> <span class=nb>int</span> <span class=o>=</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>,</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>object</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return data for the given index and role.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        index: The model index to query.</span>
+<span class=sd>        role: The data role.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The node label for DisplayRole, None otherwise.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[assignment]</span>
+    <span class=k>if</span> <span class=n>role</span> <span class=o>==</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>label</span> <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=k>else</span> <span class=kc>None</span>
+    <span class=k>elif</span> <span class=n>role</span> <span class=o>==</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>DecorationRole</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=ow>and</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>get_icon</span><span class=p>(</span>
+                <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon</span><span class=p>,</span>
+                <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon_color</span><span class=p>,</span>
+                <span class=n>fill</span><span class=o>=</span><span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>icon_fill</span><span class=p>,</span>
+            <span class=p>)</span>
+    <span class=k>elif</span> <span class=n>role</span> <span class=o>==</span> <span class=n>Qt</span><span class=o>.</span><span class=n>ItemDataRole</span><span class=o>.</span><span class=n>UserRole</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=ow>and</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>data</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>data</span>
+    <span class=k>return</span> <span class=kc>None</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.fetchMore class="doc doc-heading"> <code class="highlight language-python"><span class=n>fetchMore</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Fetch and insert children for the node at parent.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>The parent index whose children should be loaded.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>fetchMore</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Fetch and insert children for the node at parent.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        parent: The parent index whose children should be loaded.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children_async</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.get_node_id class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_node_id</span><span class=p>(</span><span class=n>index</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return the TreeNode.id for the given model index.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>index</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>A valid QModelIndex.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=str>str</span> | None</code> </td> <td> <div class=doc-md-description> <p>The node's string ID, or None if the index is invalid.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_node_id</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the TreeNode.id for the given model index.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        index: A valid QModelIndex.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        The node&#39;s string ID, or None if the index is invalid.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[assignment]</span>
+    <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>id</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.hasChildren class="doc doc-heading"> <code class="highlight language-python"><span class=n>hasChildren</span><span class=p>(</span><span class=n>parent</span><span class=o>=</span><span class=n>QModelIndex</span><span class=p>())</span></code> </h3> <div class="doc doc-contents "> <p>Return whether the node at parent has or can have children.</p> <p>This is used by Qt to decide whether to draw the disclosure triangle, even before children are loaded.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>The parent index.</p> </div> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span>()</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>True if the node has loaded children or has_children is</p> </div> </td> </tr> <tr class=doc-section-item> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>True on the TreeNode.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>hasChildren</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>()</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return whether the node at parent has or can have children.</span>
+
+<span class=sd>    This is used by Qt to decide whether to draw the disclosure</span>
+<span class=sd>    triangle, even before children are loaded.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        parent: The parent index.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        True if the node has loaded children or has_children is</span>
+<span class=sd>        True on the TreeNode.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+        <span class=k>return</span> <span class=nb>bool</span><span class=p>(</span><span class=n>node</span><span class=o>.</span><span class=n>children</span><span class=p>)</span>
+    <span class=c1># node.tree_node is non-None here (is_root is False)</span>
+    <span class=k>if</span> <span class=n>node</span><span class=o>.</span><span class=n>children_loaded</span><span class=p>:</span>
+        <span class=k>return</span> <span class=nb>bool</span><span class=p>(</span><span class=n>node</span><span class=o>.</span><span class=n>children</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>node</span><span class=o>.</span><span class=n>tree_node</span><span class=o>.</span><span class=n>has_children</span>  <span class=c1># type: ignore[union-attr]</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.index class="doc doc-heading"> <code class="highlight language-python"><span class=n>index</span><span class=p>(</span><span class=n>row</span><span class=p>,</span> <span class=n>column</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=n>QModelIndex</span><span class=p>())</span></code> </h3> <div class="doc doc-contents "> <p>Create a model index for the given row/column under parent.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>row</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Row number under the parent.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>column</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Column number (always 0).</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>Parent index.</p> </div> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span>()</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>A valid QModelIndex, or an invalid one if out of range.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>index</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>row</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+    <span class=n>column</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+    <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>(),</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QModelIndex</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Create a model index for the given row/column under parent.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        row: Row number under the parent.</span>
+<span class=sd>        column: Column number (always 0).</span>
+<span class=sd>        parent: Parent index.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        A valid QModelIndex, or an invalid one if out of range.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>parent_node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>row</span> <span class=o>&lt;</span> <span class=mi>0</span> <span class=ow>or</span> <span class=n>row</span> <span class=o>&gt;=</span> <span class=nb>len</span><span class=p>(</span><span class=n>parent_node</span><span class=o>.</span><span class=n>children</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+    <span class=n>child_node</span> <span class=o>=</span> <span class=n>parent_node</span><span class=o>.</span><span class=n>children</span><span class=p>[</span><span class=n>row</span><span class=p>]</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>createIndex</span><span class=p>(</span><span class=n>row</span><span class=p>,</span> <span class=n>column</span><span class=p>,</span> <span class=n>child_node</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.parent class="doc doc-heading"> <code class="highlight language-python"><span class=n>parent</span><span class=p>(</span><span class=n>index</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Return the parent index of the given index.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>index</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>A model index whose parent is requested.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>Parent QModelIndex, or an invalid index if parent is root.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>parent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QModelIndex</span><span class=p>:</span>  <span class=c1># type: ignore[override]</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the parent index of the given index.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        index: A model index whose parent is requested.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Parent QModelIndex, or an invalid index if parent is root.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+        <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+
+    <span class=n>node</span><span class=p>:</span> <span class=n>_InternalNode</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>internalPointer</span><span class=p>()</span>  <span class=c1># type: ignore[assignment]</span>
+    <span class=n>parent_node</span> <span class=o>=</span> <span class=n>node</span><span class=o>.</span><span class=n>parent</span>
+    <span class=k>if</span> <span class=n>parent_node</span> <span class=ow>is</span> <span class=kc>None</span> <span class=ow>or</span> <span class=n>parent_node</span><span class=o>.</span><span class=n>is_root</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>QModelIndex</span><span class=p>()</span>
+
+    <span class=c1># grandparent is always non-None for a non-root parent_node</span>
+    <span class=n>grandparent</span> <span class=o>=</span> <span class=n>parent_node</span><span class=o>.</span><span class=n>parent</span>
+    <span class=n>row</span> <span class=o>=</span> <span class=n>grandparent</span><span class=o>.</span><span class=n>children</span><span class=o>.</span><span class=n>index</span><span class=p>(</span><span class=n>parent_node</span><span class=p>)</span>  <span class=c1># type: ignore[union-attr]</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>createIndex</span><span class=p>(</span><span class=n>row</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>parent_node</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.reset class="doc doc-heading"> <code class="highlight language-python"><span class=n>reset</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Reset the model to its initial state and re-fetch root children.</p> <p>This is the recommended recovery path after a failed root fetch (i.e. when :attr:<code>fetch_error</code> was emitted for the root node).</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>reset</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Reset the model to its initial state and re-fetch root children.</span>
+
+<span class=sd>    This is the recommended recovery path after a failed root fetch</span>
+<span class=sd>    (i.e. when :attr:`fetch_error` was emitted for the root node).</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>old_ctx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_no_async</span><span class=p>:</span>
+        <span class=n>get_task_queue</span><span class=p>()</span><span class=o>.</span><span class=n>clear_context_tasks</span><span class=p>(</span><span class=n>old_ctx</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_reset_counter</span> <span class=o>+=</span> <span class=mi>1</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=o>=</span> <span class=sa>f</span><span class=s2>&quot;ltm_</span><span class=si>{</span><span class=nb>id</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span><span class=si>}</span><span class=s2>_v</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_reset_counter</span><span class=si>}</span><span class=s2>&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_pending_tasks</span> <span class=o>=</span> <span class=mi>0</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>beginResetModel</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_root</span> <span class=o>=</span> <span class=n>_InternalNode</span><span class=p>(</span><span class=n>tree_node</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_all_nodes</span> <span class=o>=</span> <span class=p>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_root</span><span class=p>}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>endResetModel</span><span class=p>()</span>
+    <span class=c1># Emit loading signals *after* endResetModel so that any slot</span>
+    <span class=c1># connected to loading_changed observes a consistent model state.</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_update_loading_state</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_fetch_children_async</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_root</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.ui.components.tree_model.LazyTreeModel.rowCount class="doc doc-heading"> <code class="highlight language-python"><span class=n>rowCount</span><span class=p>(</span><span class=n>parent</span><span class=o>=</span><span class=n>QModelIndex</span><span class=p>())</span></code> </h3> <div class="doc doc-contents "> <p>Return the number of rows under the given parent.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span> | <span title=qtpy.QtCore.QPersistentModelIndex>QPersistentModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>The parent index.</p> </div> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span>()</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Number of loaded children. Returns 0 for nodes whose</p> </div> </td> </tr> <tr class=doc-section-item> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>children have not been fetched yet; Qt uses hasChildren()</p> </div> </td> </tr> <tr class=doc-section-item> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>to decide whether to show a disclosure triangle.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>rowCount</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>:</span> <span class=n>QModelIndex</span> <span class=o>|</span> <span class=n>QPersistentModelIndex</span> <span class=o>=</span> <span class=n>QModelIndex</span><span class=p>()</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return the number of rows under the given parent.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        parent: The parent index.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Number of loaded children. Returns 0 for nodes whose</span>
+<span class=sd>        children have not been fetched yet; Qt uses hasChildren()</span>
+<span class=sd>        to decide whether to show a disclosure triangle.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>node</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_node_from_index</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+    <span class=k>return</span> <span class=nb>len</span><span class=p>(</span><span class=n>node</span><span class=o>.</span><span class=n>children</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.ui.components.tree_model.TreeNode class="doc doc-heading"> <code>TreeNode</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p>Represents a single node in a lazy-loaded tree.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.components.tree_model.TreeNode.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Unique identifier for this node.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.components.tree_model.TreeNode.label>label</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Display label shown in the view.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.components.tree_model.TreeNode.has_children>has_children</span></code></td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>Whether this node can have children.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.components.tree_model.TreeNode.icon>icon</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Optional icon name or path.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.ui.components.tree_model.TreeNode.data>data</span></code></td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Arbitrary extra data associated with this node.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/ui/components/tree_model.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>25</span>
+<span class=normal>26</span>
+<span class=normal>27</span>
+<span class=normal>28</span>
+<span class=normal>29</span>
+<span class=normal>30</span>
+<span class=normal>31</span>
+<span class=normal>32</span>
+<span class=normal>33</span>
+<span class=normal>34</span>
+<span class=normal>35</span>
+<span class=normal>36</span>
+<span class=normal>37</span>
+<span class=normal>38</span>
+<span class=normal>39</span>
+<span class=normal>40</span>
+<span class=normal>41</span>
+<span class=normal>42</span>
+<span class=normal>43</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>TreeNode</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Represents a single node in a lazy-loaded tree.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        id: Unique identifier for this node.</span>
+<span class=sd>        label: Display label shown in the view.</span>
+<span class=sd>        has_children: Whether this node can have children.</span>
+<span class=sd>        icon: Optional icon name or path.</span>
+<span class=sd>        data: Arbitrary extra data associated with this node.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=nb>id</span><span class=p>:</span> <span class=nb>str</span>
+    <span class=n>label</span><span class=p>:</span> <span class=nb>str</span>
+    <span class=n>has_children</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=n>icon</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span>
+    <span class=n>icon_color</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=s2>&quot;#f4f5f5&quot;</span>
+    <span class=n>icon_fill</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=n>data</span><span class=p>:</span> <span class=nb>dict</span> <span class=o>=</span> <span class=n>field</span><span class=p>(</span><span class=n>default_factory</span><span class=o>=</span><span class=nb>dict</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"annotate": null, "base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.d7400e89.min.js></script> </body> </html>
