@@ -103,7 +103,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._task_id = None
         self._last_version = None
         self._template_key = None
-        self._comment_value = None
+        self._comment_value = ""
         self._version_value = None
         self._ext_value = None
         self._filename = None
