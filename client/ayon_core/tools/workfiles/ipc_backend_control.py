@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any
 
-from ayon_core.ipc_api import IPCServer, RequestMessage
+from ayon_core.ipc_communication import IPCServer, RequestMessage
 
 from .control import BaseWorkfileController
 

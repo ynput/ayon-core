@@ -13,7 +13,7 @@ from ayon_core.lib import (
     get_launcher_storage_dir,
 )
 
-from ayon_core.ipc_api import IPCServer
+from ayon_core.ipc_communication import IPCServer
 
 from ayon_core.tools.loader.ipc_backend_control import IPCLoaderBackend
 from ayon_core.tools.publisher.ipc_backend_control import IPCPublisherBackend

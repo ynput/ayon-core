@@ -8,7 +8,7 @@ from qtpy import QtCore
 from ayon_core.host.interfaces import WorkfileInfo
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.ipc_api import WaitCallback
+from ayon_core.ipc_communication import WaitCallback
 from ayon_core.tools.ipc_utils.utils import execute_in_main_thread
 
 from .abstract import AbstractWorkfilesFrontend
@@ -16,7 +16,7 @@ from .widgets import WorkfilesToolWindow
 
 if typing.TYPE_CHECKING:
     from ayon_core.host import PublishedWorkfileInfo
-    from ayon_core.ipc_api import RequestMessage
+    from ayon_core.ipc_communication import RequestMessage
     from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.tools.common_models import (
         FolderItem,

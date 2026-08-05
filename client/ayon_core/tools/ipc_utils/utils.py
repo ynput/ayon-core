@@ -10,7 +10,11 @@ from ayon_core.lib import Logger
 
 if typing.TYPE_CHECKING:
     from typing import Any, Callable
-    from ayon_core.ipc_api import ResponseMessage, RequestMessage, IPCClient
+    from ayon_core.ipc_communication import (
+        ResponseMessage,
+        RequestMessage,
+        IPCClient,
+    )
 
 PLATFORM_NAME = platform.system().lower()
 

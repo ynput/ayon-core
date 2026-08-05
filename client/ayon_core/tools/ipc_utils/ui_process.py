@@ -7,7 +7,7 @@ import time
 
 import psutil
 
-from ayon_core.ipc_api import IPCClient
+from ayon_core.ipc_communication import IPCClient
 from ayon_core.tools.utils import get_ayon_qt_app
 from ayon_core.tools.loader.ipc_frontend_control import IPCLoaderFrontend
 from ayon_core.tools.workfiles.ipc_frontend_control import (

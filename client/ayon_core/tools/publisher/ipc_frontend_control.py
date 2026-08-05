@@ -7,7 +7,7 @@ from qtpy import QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
 
-from ayon_core.ipc_api import WaitCallback
+from ayon_core.ipc_communication import WaitCallback
 
 from ayon_core.tools.ipc_utils.utils import execute_in_main_thread
 
@@ -18,7 +18,7 @@ from .abstract import CardMessageTypes
 if typing.TYPE_CHECKING:
     from ayon_core.lib import IconBase
     from ayon_core.tools.ipc_utils.utils import CommunicationInfo
-    from ayon_core.ipc_api import RequestMessage
+    from ayon_core.ipc_communication import RequestMessage
     from ayon_core.pipeline.create import InstanceContextInfo, ConvertorItem
     from ayon_core.pipeline.publish import PublishReport
     from ayon_core.tools.common_models import (
