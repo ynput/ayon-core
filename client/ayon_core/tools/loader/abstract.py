@@ -5,7 +5,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterable, Any, Optional, Union
 
-from ayon_core.lib.icon_definitions import IconBase, AwesomeFontIcon
+from ayon_core.lib.icon_definitions import (
+    IconBase,
+    AwesomeFontIcon,
+    get_icon_def_from_data,
+)
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     deserialize_attr_defs,
@@ -129,6 +133,7 @@ class ProductItem:
         return cls(**data)
 
 
+@dataclass
 class VersionItem:
     """Version item.
 
@@ -238,42 +243,38 @@ class VersionItem:
         return cls(**data)
 
 
+@dataclass
 class RepreItem:
     """Representation item.
 
-    Args:
+    Attributes:
         representation_id (str): Representation id.
         representation_name (str): Representation name.
-        representation_icon (dict[str, Any]): Representation icon definition.
+        representation_icon (IconBase): Representation icon definition.
         product_name (str): Product name.
         folder_label (str): Folder label.
     """
 
-    def __init__(
-        self,
-        representation_id,
-        representation_name,
-        representation_icon,
-        product_name,
-        folder_label
-    ):
-        self.representation_id = representation_id
-        self.representation_name = representation_name
-        self.representation_icon = representation_icon
-        self.product_name = product_name
-        self.folder_label = folder_label
+    representation_id: str
+    representation_name: str
+    representation_icon: IconBase
+    product_name: str
+    folder_label: str
 
-    def to_data(self):
-        return {
-            "representation_id": self.representation_id,
-            "representation_name": self.representation_name,
-            "representation_icon": self.representation_icon,
-            "product_name": self.product_name,
-            "folder_label": self.folder_label,
-        }
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            representation_id=self.representation_id,
+            representation_name=self.representation_name,
+            representation_icon=self.representation_icon.to_data(),
+            product_name=self.product_name,
+            folder_label=self.folder_label,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> RepreItem:
+        data["representation_icon"] = get_icon_def_from_data(
+            data["representation_icon"]
+        )
         return cls(**data)
 
 
