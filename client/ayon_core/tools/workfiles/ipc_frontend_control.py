@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any
+from typing import Any, Callable
 
 from qtpy import QtCore
 
@@ -130,7 +130,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             )
         return response.result
 
-    def is_host_valid(self):
+    def is_host_valid(self) -> bool:
         """Host is valid for workfiles tool work.
 
         Returns:
@@ -139,7 +139,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         return self._trigger_getter("is_host_valid")
 
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> str:
         """Project name from current context of host.
 
         Returns:
@@ -148,18 +148,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         return self._trigger_getter("get_current_project_name")
 
-    def get_workfile_extensions(self):
-        """Get possible workfile extensions.
-
-        Defined by host implementation.
-
-        Returns:
-            Iterable[str]: List of extensions.
-
-        """
-        return self._trigger_getter("get_workfile_extensions")
-
-    def is_save_enabled(self):
+    def is_save_enabled(self) -> bool:
         """Is workfile save enabled.
 
         Returns:
@@ -168,7 +157,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         return self._trigger_getter("is_save_enabled")
 
-    def set_save_enabled(self, enabled):
+    def set_save_enabled(self, enabled: bool) -> None:
         """Enable or disabled workfile save.
 
         Args:
@@ -189,10 +178,17 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         return self._trigger_getter("get_window_subtitle")
 
-    def emit_event(self, topic, data, source):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None,
+        source: str | None,
+    ) -> None:
         self._event_system.emit(topic, data, source)
 
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(
+        self, topic: str, callback: Callable
+    ) -> None:
         """Register event callback.
 
         Listen for events with given topic.
@@ -214,7 +210,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         return self._trigger_getter("get_user_items_by_name")
 
-    def get_folder_type_items(self, project_name, sender=None):
+    def get_folder_type_items(
+        self, project_name: str, sender: str | None = None,
+    ) -> list[FolderTypeItem]:
         """Folder type items for a project.
 
         This function may trigger events with topics
@@ -237,7 +235,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             sender=sender,
         )
 
-    def get_task_type_items(self, project_name, sender=None):
+    def get_task_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
         """Task type items for a project.
 
         This function may trigger events with topics
@@ -261,33 +261,33 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         )
 
     # Host information
-    def get_workfile_extensions(self):
+    def get_workfile_extensions(self) -> list[str]:
         """Each host can define extensions that can be used for workfile.
 
         Returns:
-            List[str]: File extensions that can be used as workfile for
+            list[str]: File extensions that can be used as workfile for
                 current host.
 
         """
         return self._trigger_getter("get_workfile_extensions")
 
     # Selection information
-    def get_selected_folder_id(self):
+    def get_selected_folder_id(self) -> str | None:
         """Currently selected folder id.
 
         Returns:
-            Union[str, None]: Folder id or None if no folder is selected.
+            str | None: Folder id or None if no folder is selected.
 
         """
         return self._trigger_getter("get_selected_folder_id")
 
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: str | None) -> None:
         """Change selected folder.
 
         This deselects currently selected task.
 
         Args:
-            folder_id (Union[str, None]): Folder id or None if no folder
+            folder_id (str | None): Folder id or None if no folder
                 is selected.
 
         """
@@ -296,30 +296,35 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             folder_id=folder_id,
         )
 
-    def get_selected_task_id(self):
+    def get_selected_task_id(self) -> str | None:
         """Currently selected task id.
 
         Returns:
-            Union[str, None]: Task id or None if no folder is selected.
+            str | None: Task id or None if no folder is selected.
 
         """
         return self._trigger_getter("get_selected_task_id")
 
-    def get_selected_task_name(self):
+    def get_selected_task_name(self) -> str | None:
         """Currently selected task name.
 
         Returns:
-            Union[str, None]: Task name or None if no folder is selected.
+            str | None: Task name or None if no folder is selected.
+
         """
         return self._trigger_getter("get_selected_task_name")
 
-    def set_selected_task(self, task_id, task_name):
+    def set_selected_task(
+        self,
+        task_id: str | None,
+        task_name: str | None,
+    ) -> None:
         """Change selected task.
 
         Args:
-            task_id (Union[str, None]): Task id or None if no task
+            task_id (str | None): Task id or None if no task
                 is selected.
-            task_name (Union[str, None]): Task name or None if no task
+            task_name (str | None): Task name or None if no task
                 is selected.
 
         """
@@ -329,24 +334,27 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             task_name=task_name,
         )
 
-    def get_selected_workfile_path(self):
+    def get_selected_workfile_path(self) -> str | None:
         """Currently selected workarea workile.
 
         Returns:
-            Union[str, None]: Selected workfile path.
+            str | None: Selected workfile path.
 
         """
         return self._trigger_getter("get_selected_workfile_path")
 
     def set_selected_workfile_path(
-        self, rootless_path, path, workfile_entity_id
+        self,
+        rootless_path: str | None,
+        path: str | None,
+        workfile_entity_id: str | None,
     ):
         """Change selected workfile path.
 
         Args:
-            rootless_path (Union[str, None]): Selected workfile rootless path.
-            path (Union[str, None]): Selected workfile path.
-            workfile_entity_id (Union[str, None]): Workfile entity id.
+            rootless_path (str | None): Selected workfile rootless path.
+            path (str | None): Selected workfile path.
+            workfile_entity_id (str | None): Workfile entity id.
 
         """
         self._trigger_method(
@@ -356,21 +364,23 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             workfile_entity_id=workfile_entity_id,
         )
 
-    def get_selected_representation_id(self):
+    def get_selected_representation_id(self) -> str | None:
         """Currently selected workfile representation id.
 
         Returns:
-            Union[str, None]: Representation id or None if no representation
+            str | None: Representation id or None if no representation
                 is selected.
 
         """
         return self._trigger_getter("get_selected_representation_id")
 
-    def set_selected_representation_id(self, representation_id):
+    def set_selected_representation_id(
+        self, representation_id: str | None
+    ) -> None:
         """Change selected representation.
 
         Args:
-            representation_id (Union[str, None]): Selected workfile
+            representation_id (str | None): Selected workfile
                 representation id.
 
         """
@@ -379,22 +389,22 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             representation_id=representation_id,
         )
 
-    def get_selected_context(self):
+    def get_selected_context(self) -> dict[str, str | None]:
         """Obtain selected context.
 
         Returns:
-            dict[str, Union[str, None]]: Selected context.
+            dict[str, str | None]: Selected context.
 
         """
         return self._trigger_getter("get_selected_context")
 
     def set_expected_selection(
         self,
-        folder_id,
-        task_name,
-        workfile_name=None,
-        representation_id=None
-    ):
+        folder_id: str,
+        task_name: str,
+        workfile_name: str | None = None,
+        representation_id: str | None = None
+    ) -> None:
         """Define what should be selected in UI.
 
         Expected selection provide a way to define/change selection of
@@ -421,7 +431,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             representation_id=representation_id,
         )
 
-    def get_expected_selection_data(self):
+    def get_expected_selection_data(self) -> dict[str, Any]:
         """Data of expected selection.
 
         TODOs:
@@ -433,7 +443,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         return self._trigger_getter("get_expected_selection_data")
 
-    def expected_folder_selected(self, folder_id):
+    def expected_folder_selected(self, folder_id: str) -> bool:
         """Expected folder was selected in UI.
 
         Args:
@@ -445,7 +455,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             folder_id=folder_id,
         )
 
-    def expected_task_selected(self, folder_id, task_name):
+    def expected_task_selected(
+        self, folder_id: str, task_name: str
+    ) -> bool:
         """Expected task was selected in UI.
 
         Args:
@@ -460,8 +472,11 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         )
 
     def expected_representation_selected(
-        self, folder_id, task_name, representation_id
-    ):
+        self,
+        folder_id: str,
+        task_name: str,
+        representation_id: str,
+    ) -> bool:
         """Expected representation was selected in UI.
 
         Args:
@@ -525,7 +540,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         )
 
     def get_task_items(
-        self, project_name: str, folder_id: str, sender: str,
+        self, project_name: str, folder_id: str, sender: str | None,
     ) -> list[TaskItem]:
         """Task items.
 
@@ -602,7 +617,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             sender=sender,
         )
 
-    def get_workarea_save_as_data(self, folder_id, task_id):
+    def get_workarea_save_as_data(
+        self, folder_id: str, task_id: str
+    ) -> dict[str, Any]:
         """Prepare data for Save As operation.
 
         Todos:
@@ -624,12 +641,12 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
 
     def fill_workarea_filepath(
         self,
-        folder_id,
-        task_id,
-        extension,
-        use_last_version,
-        version,
-        comment,
+        folder_id: str,
+        task_id: str,
+        extension: str,
+        use_last_version: bool,
+        version: int,
+        comment: str,
     ) -> WorkareaFilepathResult:
         """Calculate workfile path for passed context.
 
@@ -696,7 +713,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             representation_id=representation_id,
         )
 
-    def get_workfile_info(self, folder_id, task_id, rootless_path):
+    def get_workfile_info(
+        self, folder_id: str, task_id: str, rootless_path: str
+    ) -> WorkfileInfo | None:
         """Workfile info from database.
 
         Args:
@@ -705,7 +724,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             rootless_path (str): Workfile path.
 
         Returns:
-            Optional[WorkfileInfo]: Workfile info or None if was passed
+            WorkfileInfo | None: Workfile info or None if was passed
                 invalid context.
 
         """
@@ -718,12 +737,12 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
 
     def save_workfile_info(
         self,
-        task_id,
-        rootless_path,
-        version=None,
-        comment=None,
-        description=None,
-    ):
+        task_id: str,
+        rootless_path: str,
+        version: int | None = None,
+        comment: str | None = None,
+        description: str | None = None,
+    ) -> None:
         """Save workfile info to database.
 
         At this moment the only information which can be saved about
@@ -749,7 +768,7 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             description=description,
         )
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset everything, models, ui etc.
 
         Triggers 'controller.reset.started' event at the beginning and
@@ -758,7 +777,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         self._trigger_method("reset")
 
-    def open_workfile(self, folder_id, task_id, filepath):
+    def open_workfile(
+        self, folder_id: str, task_id: str, filepath: str
+    ) -> None:
         """Open a workfile for context.
 
         Args:
@@ -774,22 +795,22 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             filepath=filepath,
         )
 
-    def save_current_workfile(self):
+    def save_current_workfile(self) -> None:
         """Save state of current workfile."""
 
         self._trigger_method("save_current_workfile")
 
     def save_as_workfile(
         self,
-        folder_id,
-        task_id,
-        rootless_workdir,
-        workdir,
-        filename,
-        version,
-        comment,
-        description,
-    ):
+        folder_id: str,
+        task_id: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str,
+        description: str,
+    ) -> None:
         """Save current state of workfile to workarea.
 
         Args:
@@ -799,9 +820,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
             filename (str): Workarea filename.
             template_key (str): Template key used to get the workdir
                 and filename.
-            version (Optional[int]): Version of workfile.
-            comment (Optional[str]): User's comment (subversion).
-            description (Optional[str]): Workfile description.
+            version (int): Version of workfile.
+            comment (str): User's comment (subversion).
+            description (str): Workfile description.
 
         """
         self._trigger_method(
@@ -818,17 +839,17 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
 
     def copy_workfile_representation(
         self,
-        representation_id,
-        representation_filepath,
-        folder_id,
-        task_id,
-        workdir,
-        filename,
-        rootless_workdir,
-        version,
-        comment,
-        description,
-    ):
+        representation_id: str,
+        representation_filepath: str,
+        folder_id: str,
+        task_id: str,
+        workdir: str,
+        filename: str,
+        rootless_workdir: str,
+        version: int,
+        comment: str,
+        description: str,
+    ) -> None:
         """Action to copy published workfile representation to workarea.
 
         Triggers 'copy_representation.started' event on start and
@@ -863,16 +884,16 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
 
     def duplicate_workfile(
         self,
-        folder_id,
-        task_id,
-        src_filepath,
-        rootless_workdir,
-        workdir,
-        filename,
-        description,
-        version,
-        comment
-    ):
+        folder_id: str,
+        task_id: str,
+        src_filepath: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        description: str,
+        version: int,
+        comment: str,
+    ) -> None:
         """Duplicate workfile.
 
         Workfiles is not opened when done.
