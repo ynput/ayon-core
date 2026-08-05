@@ -123,6 +123,7 @@ from .plugin_tools import (
 from .path_tools import (
     format_file_size,
     collect_frames,
+    get_collections,
     create_hard_link,
     version_up,
     get_version_from_path,
@@ -229,6 +230,7 @@ __all__ = [
 
     "format_file_size",
     "collect_frames",
+    "get_collections",
     "create_hard_link",
     "version_up",
     "get_version_from_path",
