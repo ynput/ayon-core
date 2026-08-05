@@ -1,20 +1,10 @@
 from __future__ import annotations
 
 import collections
-from dataclasses import dataclass
-import typing
 
 from qtpy import QtCore
 
-from ayon_core.pipeline.publish.logic import PublishIterAction
-
 from .control import PublisherController
-
-if typing.TYPE_CHECKING:
-    from ayon_core.pipeline.publish.logic import (
-        PublishIterInfo,
-        PluginType,
-    )
 
 
 class MainThreadItem:
@@ -76,21 +66,6 @@ class MainThreadProcess(QtCore.QObject):
         self.stop()
 
 
-@dataclass
-class _IterData:
-    """Store iteration data for a single publish process.
-
-    Changes of the value do trigger an event (not handled by this class).
-
-    """
-    # Store the label of the current item being processed
-    item_label: str = ""
-    # Store the current plugin being processed
-    plugin: PluginType | None = None
-    # Store whether the publish process has been validated
-    validated: bool = False
-
-
 class QtPublisherController(PublisherController):
     def __init__(self, *args, **kwargs):
         self._main_thread_processor = MainThreadProcess()
@@ -106,12 +81,10 @@ class QtPublisherController(PublisherController):
         # Capture if '_next_publish_item_process' is in
         #   '_main_thread_processor' loop
         self._item_process_in_loop = False
-        self._iter_data = _IterData()
 
     def reset(self):
         self._main_thread_processor.clear()
         self._item_process_in_loop = False
-        self._iter_data = _IterData()
         super().reset()
 
     def _start_publish(self, stop_after_validation: bool) -> None:
