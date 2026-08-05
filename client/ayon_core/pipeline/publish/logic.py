@@ -650,7 +650,9 @@ class PublishLogic:
     def set_comment(self, comment: str) -> None:
         # Ignore change of comment when publishing started
         if self._publish_state.started:
-            return
+            raise ValueError(
+                "Cannot change comment when publishing started."
+            )
         self._pyblish_context.data["comment"] = comment
         self._publish_state.comment_is_set = True
 
