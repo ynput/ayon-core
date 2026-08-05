@@ -130,57 +130,12 @@ class QtPublisherController(PublisherController):
         if not self._publish_model.is_running():
             # This removes '_next_publish_item_process' from loop
             self._item_process_in_loop = False
-            self._publish_model.process_stopped()
             return
 
         self._item_process_in_loop = True
-        iter_info = self._publish_model.get_next_process_func()
         self._process_main_thread_item(
-            MainThreadItem(self._process_iter_info, iter_info)
+            MainThreadItem(self._publish_model.process_next_iter)
         )
-
-    def _process_iter_info(self, iter_info: PublishIterInfo):
-        item_label = iter_info.item_label
-        plugin = iter_info.plugin
-        if (
-            plugin is not None
-            and plugin is not self._iter_data.plugin
-        ):
-            self._iter_data.plugin = plugin
-            plugin_label = getattr(plugin, "label", None)
-            if not plugin_label:
-                plugin_label = plugin.__name__
-
-            self._emit_event(
-                "publish.process.plugin.changed",
-                {"plugin_label": plugin_label},
-            )
-
-        if (
-            item_label is not None
-            and item_label != self._iter_data.item_label
-        ):
-            self._iter_data.item_label = item_label
-            self._emit_event(
-                "publish.process.instance.changed",
-                {"instance_label": item_label},
-            )
-
-        iter_info()
-        if (
-            not self._iter_data.validated
-            and self._publish_model.has_validated()
-        ):
-            self._iter_data.validated = True
-            self._emit_event("publish.has_validated")
-
-        if iter_info.action is PublishIterAction.Stop:
-            self._publish_model.process_stopped()
-            self._item_process_in_loop = False
-        else:
-            self._process_main_thread_item(
-                MainThreadItem(self._next_publish_item_process)
-            )
 
     def _process_main_thread_item(self, item):
         self._main_thread_processor.add_item(item)

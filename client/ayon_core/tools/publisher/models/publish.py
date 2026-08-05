@@ -4,6 +4,8 @@ import traceback
 import typing
 from typing import Any
 
+import pyblish
+
 from ayon_core.lib import env_value_to_bool
 from ayon_core.pipeline.publish.logic import (
     PublishLogic,
@@ -25,6 +27,12 @@ if typing.TYPE_CHECKING:
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 
 
+class CurrentPublishState:
+    plugin: pyblish.api.Plugin | None = None
+    item_label: str | None = None
+    validated: bool = False
+
+
 class PublishModel:
     def __init__(self, controller: AbstractPublisherBackend):
         self._controller = controller
@@ -35,6 +43,8 @@ class PublishModel:
             env_value_to_bool("AYON_PUBLISHER_PRINT_LOGS", default=False)
         )
 
+        self._publish_state = CurrentPublishState()
+
     def reset(self):
         create_context = self._controller.get_create_context()
 
@@ -44,6 +54,7 @@ class PublishModel:
         self._logic.set_log_to_console(
             env_value_to_bool("AYON_PUBLISHER_PRINT_LOGS", default=False)
         )
+        self._publish_state = CurrentPublishState()
 
         self._emit_event("publish.reset.finished")
 
@@ -62,47 +73,43 @@ class PublishModel:
         self._emit_event("publish.process.started")
 
         self._logic.start_publish(wait=False)
-        if not wait:
-            return
+        if wait:
+            while self.is_running():
+                self.process_next_iter()
 
-        plugin = None
-        item_label = None
-        validated = False
-        while self.is_running():
-            func: PublishIterInfo = self.get_next_process_func()
-            if plugin is not func.plugin:
-                plugin = func.plugin
-                plugin_label = getattr(plugin, "label", None)
-                if not plugin_label:
-                    plugin_label = plugin.__name__
-                self._emit_event(
-                "publish.process.plugin.changed",
-                {"plugin_label": plugin_label}
-                )
+    def process_next_iter(self) -> None:
+        func: PublishIterInfo = self._logic.get_next_process_func()
+        plugin = func.plugin
+        item_label = func.item_label
 
-            if item_label != func.item_label:
-                item_label = func.item_label
-                self._emit_event(
-                    "publish.process.instance.changed",
-                    {"instance_label": item_label}
-                )
+        if self._publish_state.plugin is not plugin:
+            self._publish_state.plugin = plugin
+            plugin_label = getattr(plugin, "label", None)
+            if not plugin_label:
+                plugin_label = plugin.__name__
+            self._emit_event(
+            "publish.process.plugin.changed",
+            {"plugin_label": plugin_label}
+            )
 
-            func()
-            if not validated and self._logic.has_validated():
-                validated = True
-                self._emit_event("publish.has_validated")
+        if self._publish_state.item_label != item_label:
+            self._publish_state.item_label = item_label
+            self._emit_event(
+                "publish.process.instance.changed",
+                {"instance_label": item_label}
+            )
 
-        self.process_stopped()
+        func()
+        if not self._publish_state.validated and self._logic.has_validated():
+            self._publish_state.validated = True
+            self._emit_event("publish.has_validated")
 
-    def process_stopped(self):
-        self._emit_event("publish.process.stopped")
-        if self._logic.has_failed():
-            pass
-        elif self._logic.has_finished():
-            self._emit_event("publish.finished")
-
-    def get_next_process_func(self) -> PublishIterInfo:
-        return self._logic.get_next_process_func()
+        if not self.is_running():
+            self._emit_event("publish.process.stopped")
+            if self._logic.has_failed():
+                pass
+            elif self._logic.has_finished():
+                self._emit_event("publish.finished")
 
     def stop_publish(self) -> None:
         self._logic.stop_publish()
