@@ -265,6 +265,19 @@ class ProductTypeIconMapping:
             }
         return self._definitions_by_name
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            default=self._default,
+            definitions=self._definitions,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ProductTypeIconMapping:
+        return cls(
+            default=data["default"],
+            definitions=data["definitions"],
+        )
+
 
 def _get_project_items_from_entity(
     projects: list[dict[str, Any]]
@@ -285,7 +298,7 @@ def _get_project_items_from_entity(
     ]
 
 
-class ProjectsModel(object):
+class ProjectsModel:
     def __init__(self, controller):
         self._projects_cache = CacheItem(default_factory=list)
         self._projects_by_name = NestedCacheItem(
