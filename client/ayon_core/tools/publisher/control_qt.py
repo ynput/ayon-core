@@ -115,7 +115,7 @@ class QtPublisherController(PublisherController):
         super().reset()
 
     def _start_publish(self, stop_after_validation: bool) -> None:
-        self._publish_model.set_stop_after_validation(
+        self._publish_model.set_publish_stop_after_validation(
             stop_after_validation
         )
         self._publish_model.start_publish(wait=False)
