@@ -70,10 +70,11 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
     if dirpath is None:
         dirpath = tempfile.gettempdir()
 
-    base_dir = Path(dirpath)
-    unique_id = str(uuid.uuid4().hex[:8])
-    folder_name = f"{prefix or ''}{unique_id}{suffix or ''}"
-    tmpdir = base_dir / folder_name
+    unique_id = uuid.uuid4().hex[:8]
+    folder_name = f"{prefix}{unique_id}{suffix}"
+
+    # Use 'pathlib.Path.mkdir' to inherit permissions
+    tmpdir = Path(dirpath) / folder_name
     tmpdir.mkdir(parents=True, exist_ok=False)
 
     return str(tmpdir)
