@@ -81,7 +81,7 @@ class UIFailInfo:
 
     def to_data(self) -> dict[str, Any]:
         return {
-            "mesasge": self.message,
+            "message": self.message,
             "is_unknown_error": self.is_unknown_error,
         }
 
