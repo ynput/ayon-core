@@ -91,6 +91,14 @@ class IPCPublisherFrontend(AbstractPublisherFrontend):
     def get_window_subtitle(self) -> str | None:
         return self._trigger_getter("get_window_subtitle")
 
+    def get_project_settings(
+        self, project_name: str | None
+    ) -> dict[str, Any]:
+        return self._trigger_getter(
+            "get_project_settings",
+            project_name=project_name,
+        )
+
     def get_current_project_name(self) -> str | None:
         return self._trigger_getter("get_current_project_name")
 
