@@ -115,10 +115,7 @@ class IntegrateHeroVersionTraits(
 
         # don't allow both representations
         # with traits and standard representations
-        if (
-                has_trait_representations(instance)
-                and instance.data.get("representations")
-        ):
+        if instance.data.get("representations"):
             msg = (
                 f"Instance '{instance.name}' has representations with traits "
                 "but also has standard representations. This is not allowed. "
