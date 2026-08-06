@@ -424,6 +424,22 @@ class PublishLogic:
         publish_discover_result: DiscoverResult | None = None,
         project_settings: dict[str, Any] | None = None,
     ) -> None:
+        """Reset publish logic with given parameters.
+
+        Args:
+            project_name (str): Name of the project.
+            context (pyblish.api.Context | None): Pyblish context to use.
+                If None, a new context will be created.
+            plugins (list[PluginType] | None): List of publish plugins to use.
+                If None, plugins will be discovered.
+            targets (list[str] | None): List of publish targets to use.
+                If None, all registered targets will be used.
+            create_context (CreateContext | None): Create context to use.
+                If None, a new create context will be created if possible.
+            publish_discover_result (DiscoverResult | None): Discover result
+                for publish plugins. If None, plugins will be discovered.
+
+        """
         if plugins is not None and publish_discover_result is None:
             publish_discover_result = DiscoverResult(pyblish.api.Plugin)
             publish_discover_result.plugins = plugins
@@ -443,6 +459,16 @@ class PublishLogic:
         context: pyblish.api.Context | None = None,
         targets: list[str] | None = None,
     ) -> None:
+        """Reset publish logic with given create context.
+
+        Args:
+            create_context (CreateContext): Create context to use.
+            context (pyblish.api.Context | None): Pyblish context to use.
+                If None, a new context will be created.
+            targets (list[str] | None): List of publish targets to use.
+                If None, all registered targets will be used.
+
+        """
         self._reset(
             create_context.project_name,
             publish_context=context,
@@ -470,6 +496,7 @@ class PublishLogic:
         return plugin.id
 
     def get_pyblish_context(self) -> pyblish.api.Context:
+        """Get pyblish context used for publishing."""
         return self._pyblish_context
 
     pyblish_context: pyblish.api.Context = property(get_pyblish_context)
@@ -554,23 +581,48 @@ class PublishLogic:
         self._publish_state.is_running = False
 
     def is_running(self) -> bool:
-        """Check if publishing is currently running."""
+        """Check if publishing is currently meant to be running.
+
+        It is possible that publishing is currently in process of stopping,
+            but this method will return False.
+
+        Returns:
+            bool: True if publishing is currently meant to be running,
+                False otherwise.
+
+        """
         return self._publish_state.is_running
 
     def has_started(self) -> bool:
-        """Check if publishing has started."""
+        """Publishing has started."""
         return self._publish_state.started
 
     def has_finished(self) -> bool:
-        """Check if publishing successfully finished."""
+        """Publishing has successfully finished.
+
+        Returns:
+            bool: True if publishing has successfully finished,
+                False otherwise.
+
+        """
         return self._publish_state.finished
 
     def has_validated(self) -> bool:
-        """Validation order passed."""
+        """Validation order passed.
+
+        Returns:
+            bool: True if validation order passed, False otherwise.
+
+        """
         return self._publish_state.validated
 
     def publish_can_continue(self) -> bool:
-        """Publishing can continue."""
+        """Publishing can continue.
+
+        Returns:
+            bool: True if publishing still can continue, False otherwise.
+
+        """
         return self._publish_state.can_continue()
 
     def get_progress(self) -> int:
@@ -614,15 +666,15 @@ class PublishLogic:
         return self._publish_state.fail_reason
 
     def get_publish_report(self) -> PublishReport:
-        """Extract report for current state of publishing."""
+        """Get report for the current state of publishing."""
         self._publish_report.update_publish_instances(self._pyblish_context)
         return self._publish_report.get_report()
 
     def get_publish_report_data(self) -> dict[str, Any]:
-        """Get publish report data for current state of publishing.
+        """Extract publish report data for the current state of publishing.
 
         This method should be used if report data are being stored to a file.
-            It does mark current plugin as 'passed' for UI.
+            It does mark the current plugin as 'passed' for UI report viewer.
 
         Returns:
             dict[str, Any]: Publish report data.
