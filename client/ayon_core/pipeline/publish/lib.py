@@ -1294,7 +1294,7 @@ def main_cli_publish(
         )
         sys.exit(1)
 
-    logic.start_publish(wait=True)
+    logic.publish()
     if logic.has_failed():
         sys.exit(1)
 
@@ -1333,7 +1333,7 @@ def run_publish(
     if report.blocking_crashed_paths:
         return report
 
-    logic.start_publish(wait=True)
+    logic.publish()
 
     return logic.get_publish_report()
 

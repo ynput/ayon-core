@@ -42,6 +42,7 @@ class PublishModel:
         self._logic.set_log_to_console(
             env_value_to_bool("AYON_PUBLISHER_PRINT_LOGS", default=False)
         )
+        self._publish_iter = None
 
         self._publish_state = CurrentPublishState()
 
@@ -54,6 +55,7 @@ class PublishModel:
         self._logic.set_log_to_console(
             env_value_to_bool("AYON_PUBLISHER_PRINT_LOGS", default=False)
         )
+        self._publish_iter = None
         self._publish_state = CurrentPublishState()
 
         self._emit_event("publish.reset.finished")
@@ -71,11 +73,10 @@ class PublishModel:
             return
 
         self._emit_event("publish.process.started")
-
-        self._logic.start_publish(wait=False)
+        self._publish_iter = self._logic.publish_iter()
         if wait:
-            while self.is_running():
-                self.process_next_iter()
+            for info in self._publish_iter:
+                info()
 
     def process_next_iter(self) -> bool:
         """Process next iteration of publishing.
@@ -84,13 +85,15 @@ class PublishModel:
             bool: True if publishing is still running, False if finished.
 
         """
-        if not self._logic.is_running():
+        func: PublishIterInfo | None = None
+        if self._publish_iter is not None:
+            func = next(self._publish_iter, None)
+        if func is None:
             self._emit_event("publish.process.stopped")
             if not self._logic.has_failed() and self._logic.has_finished():
                 self._emit_event("publish.finished")
             return False
 
-        func: PublishIterInfo = self._logic.get_next_process_func()
         plugin = func.plugin
         item_label = func.item_label
         if (

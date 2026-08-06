@@ -212,9 +212,9 @@ class PublishState:
     strict_validation_error_handling: bool = True
     comment_is_set: bool = False
 
-    # Publishing sarted
+    # Publishing started -> can prevent some actions
     started: bool = False
-    # Publishing is in progress
+    # Publishing is in progress -> can be used to stop/pause publishing
     is_running: bool = False
     # Publishing is over validation order
     validated: bool = False
@@ -233,7 +233,8 @@ class PublishState:
     def can_continue(self) -> bool:
         """Check if publishing can continue.
 
-        This does not check if publishing should stop at validation stage.
+        Does not respect 'is_running' value as this should tell if it can be
+            continued even though is currently paused.
 
         Returns:
             bool: Can publishing continue.
@@ -262,11 +263,6 @@ class PublishState:
         return False
 
 
-class PublishIterAction(Enum):
-    Stop = auto()
-    Continue = auto()
-
-
 @dataclass
 class PublishIterInfo:
     """Information about next processing function in publishing.
@@ -277,34 +273,28 @@ class PublishIterInfo:
         currently processed plugin and instance, also has to trigger the
         process in between UI updates, but in main thread.
 
-    Attributes 'plugin', 'instance' and 'item_label' are set only if 'action'
-        is set to 'PublishIterAction.Continue'.
+    Attributes 'plugin', 'instance' and 'item_label'.
 
     Attributes:
         logic (PublishLogic): PublishLogic that defined the next processing
             function.
-        action (PublishIterAction): Action to be performed.
-        plugin (PluginType | None): Currently processed plugin.
+        plugin (PluginType): Currently processed plugin.
         instance (pyblish.api.Instance | None): Currently processed instance.
-        item_label (str | None): Label of currently processed item. Can be
+        item_label (str): Label of currently processed item. Can be
             plugin or instance label.
 
     """
     logic: "PublishLogic"
-    action: PublishIterAction
-    plugin: PluginType | None = None
-    instance: pyblish.api.Instance | None = None
-    item_label: str | None = None
+    plugin: PluginType
+    instance: pyblish.api.Instance | None
+    item_label: str
 
-    def __call__(self):
-        if self.action == PublishIterAction.Stop:
-            self.logic.stop_publish()
-            return
-
-        if self.plugin is None:
-            raise ValueError("Plugin is None but action is Continue")
-
+    def __call__(self) -> None:
         self.logic._process_plugin(self.plugin, self.instance)
+
+
+if typing.TYPE_CHECKING:
+    PublishIterGen = Generator[PublishIterInfo | None, None, None]
 
 
 @dataclass
@@ -340,6 +330,33 @@ class PublishActionResult:
 #     return any(host in plugin.hosts for host in hosts)
 
 
+class _PublishIterator:
+    """Iterator for PublishLogic.
+
+    Allows to "pause" iteration and continue later.
+    """
+    def __init__(self) -> None:
+        self._iter: PublishIterGen | None = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> PublishIterInfo:
+        if self._iter is None:
+            raise StopIteration
+
+        for item in self._iter:
+            if item is not None:
+                return item
+            raise StopIteration
+        raise StopIteration
+
+    def update_iter(
+        self, publish_iter: PublishIterGen
+    ) -> None:
+        self._iter = publish_iter
+
+
 class PublishLogic:
     """Wrapper for publising logic.
 
@@ -364,9 +381,7 @@ class PublishLogic:
         self._publish_report: PublishReportMaker = PublishReportMaker()
 
         # Plugin iterator
-        self._main_thread_iter: Generator[PublishIterInfo, None, None] = (
-            self._default_iterator()
-        )
+        self._publish_iterator: _PublishIterator = _PublishIterator()
 
     def reset(
         self,
@@ -455,47 +470,16 @@ class PublishLogic:
         """
         yield from self._publish_plugins
 
-    def start_publish(self, wait: bool = True) -> None:
-        """Run publishing.
+    def publish(self) -> None:
+        for info in self.publish_iter():
+            info()
 
-        Make sure all changes are saved before method is called (Call
-        'save_changes' and check output).
-        """
-        if self._publish_state.is_running:
-            return
-
-        if self._publish_state.should_stop():
-            return
-
+    def publish_iter(self) -> Generator[PublishIterInfo, None, None]:
+        """Publish iteration generator."""
         self._publish_state.is_running = True
         self._publish_state.started = True
-
-        if wait:
-            while self.is_running():
-                func = self.get_next_process_func()
-                func()
-
-    def get_next_process_func(self) -> PublishIterInfo:
-        """Get the next processing function to execute with some metadata.
-
-        Returns:
-            PublishIterInfo: Information about the next processing function.
-                Can be used as function.
-
-        Raises:
-            ValueError: If publishing is not running.
-
-        """
-        # Raise error if this function is called when publishing
-        #   is not running
-        if not self._publish_state.is_running:
-            raise ValueError("Publish is not running")
-
-        if self._publish_state.should_stop():
-            return PublishIterInfo(self, PublishIterAction.Stop)
-
-        # Everything is ok so try to get new processing item
-        return next(self._main_thread_iter)
+        for item in self._publish_iterator:
+            yield item
 
     def get_stop_after_validation(self) -> bool:
         """Check if publishing will stop after validation.
@@ -812,22 +796,9 @@ class PublishLogic:
         if blocking_crashed_paths:
             self._publish_state.fail_reason = PublishFailReason.BlockingPaths
 
-        self._main_thread_iter = self._publish_iterator()
+        self._publish_iterator.update_iter(self._inner_publish_iter())
 
-    def _default_iterator(self) -> Generator[PublishIterInfo, None, None]:
-        """Iterator used on initialization.
-
-        Should be replaced by real iterator when 'reset' is called.
-
-        Returns:
-            collections.abc.Generator[PublishIterInfo]: Generator with partial
-                functions that should be called in main thread.
-
-        """
-        while True:
-            yield PublishIterInfo(self, PublishIterAction.Stop)
-
-    def _publish_iterator(self) -> Generator[PublishIterInfo, None, None]:
+    def _inner_publish_iter(self) -> PublishIterGen:
         """Main logic center of publishing.
 
         Iterator returns `PublishIterInfo` objects with callbacks that should
@@ -837,9 +808,21 @@ class PublishLogic:
         has passed etc.
 
         Also stops publishing, if should stop on validation.
-        """
 
+        Yields:
+            PublishIterInfo: Information about next processing function in
+                publishing.
+            None: If publishing should stop, yields None to indicate
+                that publishing should stop.
+
+        """
         for idx, plugin in enumerate(self._publish_plugins):
+            if self._publish_state.should_stop():
+                self.stop_publish()
+
+            while not self.is_running():
+                yield None
+
             plugin_id = self.get_publish_plugin_id(plugin)
             self._publish_state.progress = idx
 
@@ -853,7 +836,8 @@ class PublishLogic:
                     self._publish_state.stop_after_validation
                     or self.has_validation_errors()
                 ):
-                    yield PublishIterInfo(self, PublishIterAction.Stop)
+                    self.stop_publish()
+                    yield None
 
             # Add plugin to publish report
             self._publish_report.add_plugin_iter(
@@ -876,6 +860,9 @@ class PublishLogic:
                     continue
 
                 for instance in instances:
+                    while not self.is_running():
+                        yield None
+
                     if instance.data.get("publish") is False:
                         continue
 
@@ -885,7 +872,6 @@ class PublishLogic:
                     )
                     yield PublishIterInfo(
                         self,
-                        PublishIterAction.Continue,
                         plugin,
                         instance,
                         item_label,
@@ -908,7 +894,6 @@ class PublishLogic:
                 )
                 yield PublishIterInfo(
                     self,
-                    PublishIterAction.Continue,
                     plugin,
                     None,
                     item_label,
@@ -920,7 +905,9 @@ class PublishLogic:
         self._publish_state.finished = True
         self._publish_state.progress = self._publish_state.max_progress
 
-        yield PublishIterInfo(self, PublishIterAction.Stop)
+        self.stop_publish()
+        while True:
+            yield None
 
     @contextmanager
     def _log_manager(self, plugin: PluginType):
