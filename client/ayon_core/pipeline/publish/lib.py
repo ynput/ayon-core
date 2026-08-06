@@ -1314,7 +1314,15 @@ def run_publish(
     """Start publishing.
 
     Args:
+        project_name (str): Name of the project in which publishing
+            should run.
+        context (pyblish.api.Context | None): Pyblish context.
+        plugins (list[PluginType] | None): List of pyblish plugins.
         targets (list[str] | None): List of pyblish targets.
+        create_context (CreateContext | None): Prepared CreateContext object.
+        publish_discover_result (DiscoverResult | None): Result of
+            publish discovery.
+        project_settings (dict[str, Any] | None): Settings for the project.
 
     """
     from ayon_core.pipeline.publish import PublishLogic
