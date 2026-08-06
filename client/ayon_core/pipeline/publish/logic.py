@@ -762,9 +762,11 @@ class PublishLogic:
         crashed_file_paths = publish_discover_result.crashed_file_paths
 
         if publish_targets is None:
-            publish_targets = set(pyblish.logic.registered_targets())
-            publish_targets.add("default")
-            publish_targets = list(publish_targets)
+            publish_targets = pyblish.logic.registered_targets()
+
+        publish_targets = list(publish_targets)
+        if "default" not in publish_targets:
+            publish_targets.append("default")
 
         plugins_by_targets = pyblish.logic.plugins_by_targets(
             discovered_publish_plugins, publish_targets
