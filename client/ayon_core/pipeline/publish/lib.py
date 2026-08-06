@@ -1329,10 +1329,6 @@ def run_publish(
         publish_discover_result=publish_discover_result,
         project_settings=project_settings,
     )
-    report = logic.get_publish_report()
-    if report.blocking_crashed_paths:
-        return report
-
     logic.publish()
 
     return logic.get_publish_report()
