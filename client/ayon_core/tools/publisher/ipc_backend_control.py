@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import Any
 
 from ayon_core.ipc_communication import IPCServer, RequestMessage

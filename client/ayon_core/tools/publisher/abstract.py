@@ -8,7 +8,6 @@ from typing import (
     List,
     Tuple,
     Any,
-    Callable,
     Union,
     Iterable,
     TYPE_CHECKING,
