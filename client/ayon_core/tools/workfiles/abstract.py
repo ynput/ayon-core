@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-import typing
-from typing import Optional
+from typing import Optional, Any
 
+from ayon_core.host import PublishedWorkfileInfo
 from ayon_core.style import get_default_entity_icon_color
-
-if typing.TYPE_CHECKING:
-    from ayon_core.host import PublishedWorkfileInfo
 
 
 class FolderItem:
@@ -165,16 +162,44 @@ class WorkareaFilepathResult:
         self.exists = exists
         self.filepath = filepath
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            root=self.root,
+            filename=self.filename,
+            exists=self.exists,
+            filepath=self.filepath,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> WorkareaFilepathResult:
+        return cls(**data)
+
 
 class PublishedWorkfileWrap:
     """Wrapper for workfile info that also contains version comment."""
     def __init__(
         self,
-        info: Optional[PublishedWorkfileInfo] = None,
-        comment: Optional[str] = None,
+        info: PublishedWorkfileInfo | None = None,
+        comment: str | None = None,
     ) -> None:
         self.info = info
         self.comment = comment
+
+    def to_data(self) -> dict[str, Any]:
+        info = None
+        if self.info is not None:
+            info = self.info.to_data()
+        return dict(
+            info=info,
+            comment=self.comment,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishedWorkfileWrap:
+        info = data["info"]
+        if info is not None:
+            info = PublishedWorkfileInfo.from_data(info)
+        return cls(info=info, comment=data["comment"])
 
 
 class AbstractWorkfilesCommon(ABC):
