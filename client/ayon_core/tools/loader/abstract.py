@@ -2,9 +2,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Any, Optional, Union
+from dataclasses import dataclass
+from typing import Iterable, Any, Optional
 
-from ayon_core.lib.icon_definitions import IconBase, AwesomeFontIcon
+from ayon_core.lib.icon_definitions import (
+    IconBase,
+    AwesomeFontIcon,
+    get_icon_def_from_data,
+)
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     deserialize_attr_defs,
@@ -17,6 +22,7 @@ from ayon_core.tools.common_models import (
 )
 
 
+@dataclass
 class ProductTypeItem:
     """Item representing product type.
 
@@ -24,29 +30,22 @@ class ProductTypeItem:
         name (str): Product type name.
         icon (dict[str, Any]): Product type icon definition.
     """
-
-    def __init__(self, name: str, icon: dict[str, Any]):
-        self.name = name
-        self.icon = icon
+    name: str
+    icon: dict[str, Any]
 
     def to_data(self):
-        return {
-            "name": self.name,
-            "icon": self.icon,
-        }
+        return dict(name=self.name, icon=self.icon)
 
     @classmethod
     def from_data(cls, data):
         return cls(**data)
 
 
+@dataclass
 class ProductBaseTypeItem:
     """Item representing the product base type."""
-
-    def __init__(self, name: str, icon: AwesomeFontIcon):
-        """Initialize product base type item."""
-        self.name = name
-        self.icon = icon
+    name: str
+    icon: AwesomeFontIcon
 
     def to_data(self) -> dict[str, Any]:
         """Convert item to data dictionary.
@@ -81,61 +80,48 @@ class ProductBaseTypeItem:
         return cls(**data)
 
 
+@dataclass
 class ProductItem:
     """Product item with it versions.
 
-    Args:
+    Attributes:
         product_id (str): Product id.
         product_type (str): Product type.
         product_name (str): Product name.
         product_icon (dict[str, Any]): Product icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
-        group_name (Union[str, None]): Group name.
+        group_name (str | None]): Group name.
         folder_id (str): Folder id.
         folder_label (str): Folder label.
         version_items (dict[str, VersionItem]): Version items by id.
     """
-
-    def __init__(
-        self,
-        product_id: str,
-        product_type: str,
-        product_base_type: str,
-        product_name: str,
-        product_icon: dict[str, Any],
-        group_name: Union[str, None],
-        folder_id: str,
-        folder_label: str,
-        version_items: dict[str, VersionItem],
-        product_in_scene: bool,
-    ):
-        self.product_id = product_id
-        self.product_type = product_type
-        self.product_base_type = product_base_type
-        self.product_name = product_name
-        self.product_icon = product_icon
-        self.product_in_scene = product_in_scene
-        self.group_name = group_name
-        self.folder_id = folder_id
-        self.folder_label = folder_label
-        self.version_items = version_items
+    product_id: str
+    product_type: str
+    product_base_type: str
+    product_name: str
+    product_icon: dict[str, Any]
+    group_name: str | None
+    folder_id: str
+    folder_label: str
+    version_items: dict[str, VersionItem]
+    product_in_scene: bool
 
     def to_data(self) -> dict[str, Any]:
-        return {
-            "product_id": self.product_id,
-            "product_type": self.product_type,
-            "product_base_type": self.product_base_type,
-            "product_name": self.product_name,
-            "product_icon": self.product_icon,
-            "product_in_scene": self.product_in_scene,
-            "group_name": self.group_name,
-            "folder_id": self.folder_id,
-            "folder_label": self.folder_label,
-            "version_items": {
+        return dict(
+            product_id=self.product_id,
+            product_type=self.product_type,
+            product_base_type=self.product_base_type,
+            product_name=self.product_name,
+            product_icon=self.product_icon,
+            product_in_scene=self.product_in_scene,
+            group_name=self.group_name,
+            folder_id=self.folder_id,
+            folder_label=self.folder_label,
+            version_items={
                 version_id: version_item.to_data()
                 for version_id, version_item in self.version_items.items()
             },
-        }
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -147,66 +133,48 @@ class ProductItem:
         return cls(**data)
 
 
+@dataclass
 class VersionItem:
     """Version item.
 
     Object have implemented comparison operators to be sortable.
 
-    Args:
+    Attributes:
         version_id (str): Version id.
         version (int): Version. Can be negative when is hero version.
         is_hero (bool): Is hero version.
         product_id (str): Product id.
-        task_id (Union[str, None]): Task id.
-        thumbnail_id (Union[str, None]): Thumbnail id.
-        published_time (Union[str, None]): Published time in format
+        task_id (str | None): Task id.
+        thumbnail_id (str | None): Thumbnail id.
+        published_time (str | None): Published time in format
             '%Y%m%dT%H%M%SZ'.
-        status (Union[str, None]): Status name.
-        tags (Union[list[str], None]): Tags.
-        author (Union[str, None]): Author.
-        frame_range (Union[str, None]): Frame range.
-        duration (Union[int, None]): Duration.
-        handles (Union[str, None]): Handles.
-        step (Union[int, None]): Step.
-        comment (Union[str, None]): Comment.
-        source (Union[str, None]): Source.
-    """
+        status (str | None): Status name.
+        tags (list[str] | None): Tags.
+        author (str | None): Author.
+        frame_range (str | None): Frame range.
+        duration (int | None): Duration.
+        handles (str | None): Handles.
+        step (int | None): Step.
+        comment (str | None): Comment.
+        source (str | None): Source.
 
-    def __init__(
-        self,
-        version_id: str,
-        version: int,
-        is_hero: bool,
-        product_id: str,
-        task_id: Optional[str],
-        thumbnail_id: Optional[str],
-        published_time: Optional[str],
-        tags: Optional[list[str]],
-        author: Optional[str],
-        status: Optional[str],
-        frame_range: Optional[str],
-        duration: Optional[int],
-        handles: Optional[str],
-        step: Optional[int],
-        comment: Optional[str],
-        source: Optional[str],
-    ):
-        self.version_id = version_id
-        self.product_id = product_id
-        self.task_id = task_id
-        self.thumbnail_id = thumbnail_id
-        self.version = version
-        self.is_hero = is_hero
-        self.published_time = published_time
-        self.author = author
-        self.tags = tags
-        self.status = status
-        self.frame_range = frame_range
-        self.duration = duration
-        self.handles = handles
-        self.step = step
-        self.comment = comment
-        self.source = source
+    """
+    version_id: str
+    version: int
+    is_hero: bool
+    product_id: str
+    task_id: str | None
+    thumbnail_id: str | None
+    published_time: str | None
+    tags: list[str] | None
+    author: str | None
+    status: str | None
+    frame_range: str | None
+    duration: int | None
+    handles: str | None
+    step: int | None
+    comment: str | None
+    source: str | None
 
     def __eq__(self, other):
         if not isinstance(other, VersionItem):
@@ -251,69 +219,66 @@ class VersionItem:
         return self.__eq__(other) or self.__lt__(other)
 
     def to_data(self) -> dict[str, Any]:
-        return {
-            "version_id": self.version_id,
-            "product_id": self.product_id,
-            "task_id": self.task_id,
-            "thumbnail_id": self.thumbnail_id,
-            "version": self.version,
-            "is_hero": self.is_hero,
-            "published_time": self.published_time,
-            "author": self.author,
-            "tags": self.tags,
-            "status": self.status,
-            "frame_range": self.frame_range,
-            "duration": self.duration,
-            "handles": self.handles,
-            "step": self.step,
-            "comment": self.comment,
-            "source": self.source,
-        }
+        return dict(
+            version_id=self.version_id,
+            product_id=self.product_id,
+            task_id=self.task_id,
+            thumbnail_id=self.thumbnail_id,
+            version=self.version,
+            is_hero=self.is_hero,
+            published_time=self.published_time,
+            author=self.author,
+            tags=self.tags,
+            status=self.status,
+            frame_range=self.frame_range,
+            duration=self.duration,
+            handles=self.handles,
+            step=self.step,
+            comment=self.comment,
+            source=self.source,
+        )
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> VersionItem:
         return cls(**data)
 
 
+@dataclass
 class RepreItem:
     """Representation item.
 
-    Args:
+    Attributes:
         representation_id (str): Representation id.
         representation_name (str): Representation name.
-        representation_icon (dict[str, Any]): Representation icon definition.
+        representation_icon (IconBase): Representation icon definition.
         product_name (str): Product name.
         folder_label (str): Folder label.
     """
 
-    def __init__(
-        self,
-        representation_id,
-        representation_name,
-        representation_icon,
-        product_name,
-        folder_label
-    ):
-        self.representation_id = representation_id
-        self.representation_name = representation_name
-        self.representation_icon = representation_icon
-        self.product_name = product_name
-        self.folder_label = folder_label
+    representation_id: str
+    representation_name: str
+    representation_icon: IconBase
+    product_name: str
+    folder_label: str
 
-    def to_data(self):
-        return {
-            "representation_id": self.representation_id,
-            "representation_name": self.representation_name,
-            "representation_icon": self.representation_icon,
-            "product_name": self.product_name,
-            "folder_label": self.folder_label,
-        }
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            representation_id=self.representation_id,
+            representation_name=self.representation_name,
+            representation_icon=self.representation_icon.to_data(),
+            product_name=self.product_name,
+            folder_label=self.folder_label,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> RepreItem:
+        data["representation_icon"] = get_icon_def_from_data(
+            data["representation_icon"]
+        )
         return cls(**data)
 
 
+@dataclass
 class ActionItem:
     """Action item that can be triggered.
 
@@ -323,34 +288,23 @@ class ActionItem:
     Args:
         identifier (str): Action identifier.
         label (str): Action label.
-        group_label (Optional[str]): Group label.
+        group_label (str | None): Group label.
         icon (IconBase | dict[str, Any] | None): Action icon definition.
-        tooltip (Optional[str]): Action tooltip.
+        tooltip (str | None): Action tooltip.
         order (int): Action order.
-        data (Optional[dict[str, Any]]): Additional action data.
-        options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
+        data (dict[str, Any] | None): Additional action data.
+        options (list[AbstractAttrDef] | None):
             Action options. Note: 'qargparse' is considered as deprecated.
 
     """
-    def __init__(
-        self,
-        identifier: str,
-        label: str,
-        group_label: Optional[str],
-        icon: IconBase | dict[str, Any] | None,
-        tooltip: Optional[str],
-        order: int,
-        data: Optional[dict[str, Any]],
-        options: Optional[list],
-    ):
-        self.identifier = identifier
-        self.label = label
-        self.group_label = group_label
-        self.icon = icon
-        self.tooltip = tooltip
-        self.data = data
-        self.order = order
-        self.options = options
+    identifier: str
+    label: str
+    group_label: str | None
+    icon: IconBase | dict[str, Any] | None
+    tooltip: str | None
+    order: int
+    data: dict[str, Any] | None
+    options: list[AbstractAttrDef] | None
 
     def _options_to_data(self):
         options = self.options
@@ -369,16 +323,16 @@ class ActionItem:
 
     def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
-        return {
-            "identifier": self.identifier,
-            "label": self.label,
-            "group_label": self.group_label,
-            "icon": self.icon,
-            "tooltip": self.tooltip,
-            "order": self.order,
-            "data": self.data,
-            "options": options,
-        }
+        return dict(
+            identifier=self.identifier,
+            label=self.label,
+            group_label=self.group_label,
+            icon=self.icon,
+            tooltip=self.tooltip,
+            order=self.order,
+            data=self.data,
+            options=options,
+        )
 
     @classmethod
     def from_data(cls, data) -> "ActionItem":
@@ -389,14 +343,24 @@ class ActionItem:
         return cls(**data)
 
 
+@dataclass
 class ProductTypesFilter:
     """Product types filter.
 
     Defines the filtering for product types.
     """
-    def __init__(self, product_types: list[str], is_allow_list: bool):
-        self.product_types: list[str] = product_types
-        self.is_allow_list: bool = is_allow_list
+    product_types: list[str]
+    is_allow_list: bool
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            product_types=self.product_types,
+            is_allow_list=self.is_allow_list,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ProductTypesFilter:
+        return cls(**data)
 
 
 class _BaseLoaderController(ABC):
