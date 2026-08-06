@@ -8,6 +8,7 @@ import traceback
 from pathlib import Path
 
 import click
+import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
@@ -195,6 +196,19 @@ def interactive():
 
 
 @main_cli.command()
+def browser():
+    """Show Browser tool."""
+    from ayon_core.tools.loader.ui import LoaderWindow
+    from ayon_core.tools.utils import get_ayon_qt_app
+
+    app = get_ayon_qt_app()
+    browser_window = LoaderWindow()
+    browser_window.setWindowTitle("AYON Browser")
+    browser_window.show()
+    app.exec_()
+
+
+@main_cli.command()
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
 def version(build):
@@ -228,6 +242,79 @@ def create_project_structure(
 
     print(f">>> Creating project folder structure for project '{project}'.")
     create_project_folders(project)
+
+
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+@click.option(
+    "--event_id",
+    type=str,
+    help="Id of the event carrying the version ids",
+    default=None)
+@click.option(
+    "--version_ids",
+    type=str,
+    help="Comma separated version ids",
+    default=None)
+def deliver(
+    project, event_id, version_ids
+):
+    """Launch delivery action for selected versions.
+
+    The version ids can be passed either directly via '--version_ids' (legacy)
+    or via an event using '--event_id'. Exactly one of the two must be
+    provided.
+
+    Args:
+        project (str): The name of the project.
+        event_id (str): Id of the event carrying the version ids.
+        version_ids (str): Comma separated version ids.
+
+    """
+
+    print(f">>> Launching browser for Delivery action '{project}'.")
+
+    log = Logger.get_logger("delivery")
+
+    try:
+        from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
+        # must be here because no module qargparse
+        from ayon_core.tools.utils.lib import get_qt_app
+
+        _app = get_qt_app()
+        list_entity_label = None
+        if event_id:
+            event = ayon_api.get_event(event_id)
+
+            # either version_ids or list_id can be in payload
+            version_ids = event["payload"].get("version_ids")
+            list_id = event["payload"].get("list_id")
+            if not version_ids and not list_id:
+                raise ValueError("No version_ids or list_id in payload.")
+            if list_id:
+                list_entity = ayon_api.get_entity_list_rest(project, list_id)
+                if not list_entity:
+                    raise ValueError(
+                        f"Entity list '{list_id}' was not found.")
+                list_entity_label = list_entity["label"]
+                # get all version entities belonging to the list
+                version_ids = [
+                    version["entityId"] for version in list_entity["items"]]
+        elif version_ids:
+            version_ids = version_ids.split(",")
+        else:
+            raise ValueError("Missing option '--version_ids' or '--event_id'")
+
+        dialog = DeliveryOptionsDialog(
+            project, version_ids, list_entity_label=list_entity_label, log=log
+        )
+        dialog.exec_()
+    except Exception:
+        log.warning("Failed to deliver versions.", exc_info=True)
 
 
 def _set_global_environments() -> None:

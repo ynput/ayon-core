@@ -22,7 +22,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import PublishError
 from ayon_core.pipeline.publish.input_versions import serialize_input_versions
 
 if typing.TYPE_CHECKING:
@@ -346,6 +346,9 @@ def create_skeleton_instance(
 
     if data.get("renderlayer"):
         instance_skeleton_data["renderlayer"] = data["renderlayer"]
+
+    if data.get("status"):
+        instance_skeleton_data["status"] = data["status"]
 
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
@@ -685,9 +688,10 @@ def create_instances_for_aov(
         len(instance.data.get("attachTo", [])) > 0
         and len(instance.data.get("expectedFiles")[0].keys()) != 1
     ):
-        raise KnownPublishError(
-            "attaching multiple AOVs or renderable cameras to "
-            "product is not supported yet.")
+        raise PublishError(
+            "Attaching multiple AOVs or renderable cameras to"
+            " product is not supported yet."
+        )
 
     additional_data = {
         "renderProducts": instance.data["renderProducts"],
@@ -949,6 +953,8 @@ def _create_instances_for_aov(
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_files_to_render(
                 collections[0], aov_frames_to_render)
+            if len(collected_files) == 1:
+                collected_files = collected_files[0]
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))

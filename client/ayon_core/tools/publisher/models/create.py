@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import re
 import copy
@@ -17,10 +19,14 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     AbstractAttrDef,
     EnumDef,
+    UIDef,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.lib.attribute_definitions import UIDef
-from ayon_core.lib import is_func_signature_supported
+from ayon_core.lib import (
+    is_func_signature_supported,
+    IconBase,
+    get_icon_def_from_data,
+)
 from ayon_core.pipeline.create import (
     BaseCreator,
     AutoCreator,
@@ -38,6 +44,7 @@ from ayon_core.pipeline.create import (
 )
 
 from ayon_core.tools.publisher.abstract import (
+    PublishAttrDefsInfo,
     AbstractPublisherBackend,
     CardMessageTypes,
 )
@@ -120,7 +127,7 @@ class CreatorItem:
         product_base_type: str,
         label: str,
         group_label: str,
-        icon: Union[str, Dict[str, Any], None],
+        icon: IconBase | dict[str, Any] | str | None,
         description: Union[str, None],
         detailed_description: Union[str, None],
         default_variant: Union[str, None],
@@ -136,7 +143,7 @@ class CreatorItem:
         self.product_base_type: str = product_base_type
         self.label: str = label
         self.group_label: str = group_label
-        self.icon: Union[str, Dict[str, Any], None] = icon
+        self.icon: IconBase | dict[str, Any] | str | None = icon
         self.description: Union[str, None] = description
         self.detailed_description: Union[bool, None] = detailed_description
         self.default_variant: Union[bool, None] = default_variant
@@ -224,6 +231,10 @@ class CreatorItem:
             pre_create_attributes_defs = serialize_attr_defs(
                 self.pre_create_attributes_defs
             )
+        icon = self.icon
+        if isinstance(icon, IconBase):
+            icon = icon.to_data()
+            icon["__iconBase__"] = True
 
         return {
             "identifier": self.identifier,
@@ -245,6 +256,10 @@ class CreatorItem:
 
     @classmethod
     def from_data(cls, data: Dict[str, Any]) -> "CreatorItem":
+        icon = data["icon"]
+        if isinstance(icon, dict) and icon.pop("__iconBase__", False):
+            data["icon"] = get_icon_def_from_data(icon)
+
         pre_create_attributes_defs = data["pre_create_attributes_defs"]
         if pre_create_attributes_defs is not None:
             data["pre_create_attributes_defs"] = deserialize_attr_defs(
@@ -927,15 +942,37 @@ class CreateModel:
             instance_ids, plugin_name, key, _DEFAULT_VALUE
         )
 
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        self._create_context.trigger_pre_create_button_callback(
+            identifier, button_name
+        )
+
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        self._create_context.trigger_create_button_callback(
+            button_name, instance_ids
+        )
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        self._create_context.trigger_publish_button_callback(
+            plugin_name, button_name, instance_ids
+        )
+
     def get_publish_attribute_definitions(
         self,
         instance_ids: List[str],
         include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+    ) -> list[PublishAttrDefsInfo]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
@@ -953,6 +990,7 @@ class CreateModel:
 
         all_defs_by_plugin_name = {}
         all_plugin_values = {}
+        instance_ids_by_name = {}
         for item in _tmp_items:
             item_id = None
             if isinstance(item, CreatedInstance):
@@ -968,8 +1006,13 @@ class CreateModel:
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_values = all_plugin_values.setdefault(plugin_name, {})
+                instance_ids = instance_ids_by_name.get(plugin_name)
+                if instance_ids is None:
+                    instance_ids = set()
+                    instance_ids_by_name[plugin_name] = instance_ids
+                instance_ids.add(item_id)
 
+                plugin_values = all_plugin_values.setdefault(plugin_name, {})
                 plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
@@ -989,11 +1032,15 @@ class CreateModel:
             plugin_name = plugin.__name__
             if plugin_name not in all_defs_by_plugin_name:
                 continue
-            output.append((
-                plugin_name,
-                attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values[plugin_name],
-            ))
+            instance_ids = instance_ids_by_name[plugin_name]
+            output.append(
+                PublishAttrDefsInfo(
+                    plugin_name,
+                    attr_defs_by_plugin_name[plugin_name],
+                    all_plugin_values[plugin_name],
+                    instance_ids,
+                )
+            )
         return output
 
     def get_thumbnail_paths_for_instances(

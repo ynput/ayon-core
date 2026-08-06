@@ -3,6 +3,10 @@ import collections
 import qtawesome
 from qtpy import QtGui, QtCore
 
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 
@@ -308,11 +312,10 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         status_item = self._last_project_statuses.get(status_name)
         if status_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": status_item.icon,
-                "color": status_item.color,
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                status_item.icon,
+                color=status_item.color,
+            ))
 
         if icon is None:
             icon = QtGui.QIcon()
@@ -332,10 +335,10 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     def _get_group_icon(self):
         if self._group_icon is None:
-            self._group_icon = qtawesome.icon(
+            self._group_icon = get_qt_icon(AwesomeFontIcon(
                 "fa.object-group",
                 color=get_default_entity_icon_color()
-            )
+            ))
         return self._group_icon
 
     def _get_group_model_item(self, group_name):

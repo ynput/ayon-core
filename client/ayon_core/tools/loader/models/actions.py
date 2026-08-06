@@ -263,14 +263,14 @@ class LoaderActionsModel:
             loader (LoaderPlugin): Plugin class.
 
         Returns:
-            Union[dict[str, Any], None]: Icon definition based on
+            IconBase | dict[str, Any] | None: Icon definition based on
                 loader plugin.
         """
 
+        icon = getattr(loader, "icon", None)
         # Support font-awesome icons using the `.icon` and `.color`
         # attributes on plug-ins.
-        icon = getattr(loader, "icon", None)
-        if icon is not None and not isinstance(icon, dict):
+        if isinstance(icon, str):
             icon = {
                 "type": "awesome-font",
                 "name": icon,

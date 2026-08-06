@@ -1,6 +1,7 @@
 from pydantic import validator
 from typing import Any
 
+from ayon_server.enum import EnumItem
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
@@ -9,8 +10,45 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
+from ayon_server.lib.postgres import Postgres
+from ayon_server.settings.anatomy import Anatomy
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
+from ayon_server.helpers.anatomy import get_project_anatomy
+
+try:
+    # Available since AYON server 1.15.13 or 1.16.0 (not released yet)
+    from ayon_server.enum.resolvers import StatusesEnumResolver
+    from ayon_server.enum import EnumRegistry
+    if not hasattr(StatusesEnumResolver, "for_type"):
+        StatusesEnumResolver = None
+except ImportError:
+    StatusesEnumResolver = None
+
+
+async def _get_anatomy(project_name: str | None = None) -> Anatomy:
+    if project_name:
+        return await get_project_anatomy(project_name)
+
+    query = "SELECT * FROM anatomy_presets WHERE is_primary is TRUE"
+    async for row in Postgres.iterate(query):
+        return Anatomy(**row["data"])
+    return Anatomy()
+
+
+async def _version_statuses_enum(project_name: str | None = None):
+    if StatusesEnumResolver is not None:
+        return await EnumRegistry.resolve(
+            "statuses",
+            project_name=project_name,
+            entity_type="version",
+        )
+    anatomy = await _get_anatomy(project_name)
+    return [
+        status.name
+        for status in anatomy.statuses
+        if "version" in status.scope
+    ]
 
 
 def _handle_missing_frames_enum():
@@ -20,6 +58,27 @@ def _handle_missing_frames_enum():
         {"value": "previous_version", "label": "Use previous version"},
         {"value": "only_rendered", "label": "Use only rendered"},
     ]
+
+
+async def folder_attributes_enum() -> list[EnumItem]:
+    result: list[EnumItem] = []
+
+    res = await Postgres.fetch(
+        """
+        SELECT name, data FROM attributes
+        WHERE $1 && scope
+        ORDER BY COALESCE(data->>'title', name) ASC
+        """,
+        ["folder"],
+    )
+    for name, data in res:
+        result.append(
+            EnumItem(
+                value=name,
+                label=data.get("title") or name,
+            )
+        )
+    return result
 
 
 class EnabledModel(BaseSettingsModel):
@@ -54,6 +113,15 @@ class CollectHierarchyModel(BaseSettingsModel):
         True,
         title="Edit shot attributes on update"
     )
+    skip_shot_attributes_on_update: list[str] = SettingsField(
+        default_factory=list,
+        title="Skip shot attributes on update",
+        description=(
+            "Attributes set here will not be updated on the folder entities if"
+            " *Edit shot attributes on update* was enabled."
+        ),
+        enum_resolver=folder_attributes_enum,
+    )
 
 
 class CollectSceneVersionModel(BaseSettingsModel):
@@ -79,6 +147,10 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
+
+
+class CollectVersionTagsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
 
 
 def usd_contribution_layer_types():
@@ -157,6 +229,15 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " 'Department Layer Orders' list to get a sensible order."
         ),
     )
+    contribution_target_product: str = SettingsField(
+        "usdAsset",
+        title="Target Product",
+        description=(
+            "The default destination product name to apply the contribution to"
+            " when matching this profile."
+            " Usually e.g. 'usdAsset' or 'usdShot'."
+        ),
+    )
     contribution_apply_as_variant: bool = SettingsField(
         True,
         title="Apply as variant",
@@ -166,13 +247,30 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " for shot contributions."
         ),
     )
-    contribution_target_product: str = SettingsField(
-        "usdAsset",
-        title="Target Product",
+    contribution_variant_set_name: str = SettingsField(
+        "{layer}",
+        title="Variant Set name",
         description=(
-            "The default destination product name to apply the contribution to"
-            " when matching this profile."
-            " Usually e.g. 'usdAsset' or 'usdShot'."
+            "The default variant set name for instances matching this profile."
+        ),
+    )
+    contribution_variant: str = SettingsField(
+        "{variant}",
+        title="Variant Name",
+        description=(
+            "The default variant name for instances matching this profile."
+        ),
+    )
+    contribution_variant_is_default: bool = SettingsField(
+        False,
+        title="Set as default variant selection",
+        description=(
+            "Whether to set this instance's variant name as the "
+            "default selected variant name for the variant set.\n"
+            "It is always expected to be enabled for only one "
+            "variant name in the variant set.\n"
+            "The behavior is unpredictable if multiple instances "
+            "for the same variant set have this enabled."
         ),
     )
 
@@ -199,6 +297,111 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
         return value
+
+
+def list_type_enum():
+    return [
+        {"label": "Generic", "value": "generic"},
+        {"label": "Review Session", "value": "review-session"},
+    ]
+
+
+def list_folder_scope_def():
+    return [
+        {"label": "Scope folder to all views", "value": "all"},
+        {"label": "Scope to the list type", "value": "list_type"},
+    ]
+
+
+class EntityListFolderModel(BaseSettingsModel):
+    """Folder must have label and can be scoped to views.
+
+    Scope of the folder can be defined for all views or use just the view
+        matching list type of created list. In case the list folder already
+        exists the settings are not used and we just make sure the list can
+        be seen under the folder.
+
+    """
+    _layout = "expanded"
+    label: str = SettingsField(
+        "",
+        title="Folder label",
+        description=(
+            "The label of the folder to create. "
+            "Anatomy formattable template for the name."
+        ),
+    )
+    # Don't use explicit scope enum, rather ask if the folder should be seen
+    #   everywhere or just in the list type matching created list.
+    scope_def: str = SettingsField(
+        "all",
+        enum_resolver=list_folder_scope_def,
+        title="Scope",
+    )
+
+
+class CollectVersionToListProfileModel(BaseSettingsModel):
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+        description="The host names to match this profile to.",
+        section="Filter",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+        description="The task names to match this profile to.",
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description=(
+            "The product base types to match this profile to. When matched,"
+            " the settings below would apply to the instance as default"
+            " attributes."
+        )
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names",
+        description="The product names to match this profile to.",
+    )
+    list_name: str = SettingsField(
+        "{folder[name]}",
+        title="List Name",
+        description="Anatomy formattable template for the name.",
+        section="List configuration",
+    )
+    list_type: str = SettingsField(
+        "generic",
+        title="List type",
+        description="Define what type of list this profile represents.",
+        enum_resolver=list_type_enum,
+    )
+    list_folders: list[EntityListFolderModel] = SettingsField(
+        default_factory=list,
+        title="List folders",
+        description="Folder hierarchy formed from top to bottom.",
+    )
+
+
+class CollectVersionToListModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    profiles: list[CollectVersionToListProfileModel] = SettingsField(
+        default_factory=list,
+        title="Profiles",
+    )
 
 
 class ResolutionOptionsModel(BaseSettingsModel):
@@ -357,7 +560,7 @@ class ExtractThumbnailFFmpegModel(BaseSettingsModel):
     )
     output: list[str] = SettingsField(
         default_factory=list,
-        title="FFmpeg input arguments"
+        title="FFmpeg output arguments"
     )
 
 
@@ -1111,6 +1314,40 @@ class PreIntegrateThumbnailsModel(BaseSettingsModel):
     )
 
 
+class CollectStatusProfile(BaseSettingsModel):
+    _layout = "expanded"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    artist_can_change: bool = SettingsField(
+        True,
+        title="Artist can change",
+        description=(
+            "Allow the artist to change the status in the publisher UI. "
+            "This does not affect if the status is set or not, just if "
+            "it is editable in UI."
+        )
+    )
+    default_status: str = SettingsField(
+        title="Default status",
+        enum_resolver=_version_statuses_enum
+    )
+
+
 class IntegrateProductGroupProfile(BaseSettingsModel):
     product_base_types: list[str] = SettingsField(
         default_factory=list,
@@ -1130,6 +1367,14 @@ class IntegrateProductGroupProfile(BaseSettingsModel):
         title="Task names",
     )
     template: str = SettingsField("", title="Template")
+
+
+class CollectStatusModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
+    status_profiles: list[CollectStatusProfile] = SettingsField(
+        default_factory=list,
+        title="Status profiles"
+    )
 
 
 class IntegrateProductGroupModel(BaseSettingsModel):
@@ -1216,6 +1461,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectCommentPIModel,
         title="Collect comment per instance",
     )
+    CollectStatus: CollectStatusModel = SettingsField(
+        default_factory=CollectStatusModel,
+        title="Collect Status"
+    )
     CollectFramesFixDef: CollectFramesFixDefModel = SettingsField(
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
@@ -1226,6 +1475,10 @@ class PublishPuginsModel(BaseSettingsModel):
             title="Collect USD Layer Contributions",
         )
     )
+    CollectVersionToList: CollectVersionToListModel = SettingsField(
+        default_factory=CollectVersionToListModel,
+        title="Collect Version to List",
+    )
     CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
         default_factory=CollectExplicitResolutionModel,
         title="Collect Explicit Resolution"
@@ -1233,6 +1486,13 @@ class PublishPuginsModel(BaseSettingsModel):
     CollectHierarchy: CollectHierarchyModel = SettingsField(
         default_factory=CollectHierarchyModel,
         title="Collect Hierarchy"
+    )
+    CollectVersionTags: CollectVersionTagsModel = SettingsField(
+        title="Collect Version Tags",
+        description=(
+            "Provides a selectable list of tags for the user in the"
+            " publisher."
+        )
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -1361,6 +1621,10 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": False,
         "families": []
     },
+    "CollectStatus": {
+        "enabled": False,
+        "status_profiles": [],
+    },
     "CollectFramesFixDef": {
         "enabled": True,
         "rewrite_version_enable": True
@@ -1388,8 +1652,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "model",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["look"],
@@ -1397,8 +1664,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "look",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["groom"],
@@ -1406,8 +1676,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "groom",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["rig"],
@@ -1415,8 +1688,11 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "rig",
+                "contribution_target_product": "usdAsset",
                 "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
             {
                 "product_base_types": ["usd"],
@@ -1424,10 +1700,17 @@ DEFAULT_PUBLISH_VALUES = {
                 "task_names": [],
                 "contribution_enabled": True,
                 "contribution_layer": "assembly",
+                "contribution_target_product": "usdShot",
                 "contribution_apply_as_variant": False,
-                "contribution_target_product": "usdShot"
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_is_default": False,
             },
         ]
+    },
+    "CollectVersionToList": {
+        "enabled": False,
+        "profiles": []
     },
     "CollectExplicitResolution": {
         "enabled": True,
@@ -1438,6 +1721,10 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectHierarchy": {
         "edit_shot_attributes_on_update": True,
+        "skip_shot_attributes_on_update": [],
+    },
+    "CollectVersionTags": {
+        "enabled": False
     },
     "ValidateEditorialAssetName": {
         "enabled": True,

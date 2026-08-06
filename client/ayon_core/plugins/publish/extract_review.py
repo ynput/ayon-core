@@ -31,7 +31,7 @@ from ayon_core.lib.transcoding import (
 )
 from ayon_core.pipeline import get_temp_dir
 from ayon_core.pipeline.publish import (
-    KnownPublishError,
+    PublishError,
     get_publish_instance_label,
 )
 from ayon_core.pipeline.publish.lib import (
@@ -147,29 +147,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
     label = "Extract Review"
     order = pyblish.api.ExtractorOrder + 0.02
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "blender",
-        "houdini",
-        "max",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "batchdelivery",
-        "photoshop",
-        "substancepainter",
-        "workflow",
-    ]
 
     settings_category = "core"
     # Supported extensions
@@ -190,11 +167,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if not instance.data.get("review", True):
             return
 
+        orig_representations = tuple(instance.data["representations"])
+
         # Run processing
         self.main_process(instance)
 
         # Make sure cleanup happens and pop representations with "delete" tag.
-        for repre in tuple(instance.data["representations"]):
+        for repre in orig_representations:
             tags = repre.get("tags") or []
             # Representation is not marked to be deleted
             if "delete" not in tags:
@@ -510,8 +489,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     files,
                 )[0]
                 if len(collections) != 1:
-                    raise KnownPublishError(
-                        "Multiple collections {} found.".format(collections))
+                    raise PublishError(
+                        "Found multiple collections, expected one."
+                        f" {collections}"
+                    )
 
                 collection = collections[0]
 
@@ -566,9 +547,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     ]
                     frame_start = min(collection.indexes)
                     frame_end = max(collection.indexes)
-                    # modify range for burnins
-                    instance.data["frameStart"] = frame_start
-                    instance.data["frameEnd"] = frame_end
                     temp_data.frame_start = frame_start
                     temp_data.frame_end = frame_end
 
@@ -1161,9 +1139,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 is done.
 
         Raises:
-            KnownPublishError: if more than one collection is obtained.
-        """
+            PublishError: if more than one collection is obtained.
 
+        """
         # Prepare which hole is filled with what frame
         #   - the frame is filled only with already existing frames
         prev_frame = next(iter(collection.indexes))
@@ -1182,8 +1160,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
             hole_fpath = os.path.join(staging_dir, col_format % hole_frame)
             src_fpath = os.path.join(staging_dir, col_format % src_frame)
             if not os.path.isfile(src_fpath):
-                raise KnownPublishError(
-                    "Missing previously detected file: {}".format(src_fpath))
+                raise PublishError(
+                    f"Missing previously detected file: {src_fpath}"
+                )
 
             copyfile(src_fpath, hole_fpath)
             added_files[hole_frame] = hole_fpath
