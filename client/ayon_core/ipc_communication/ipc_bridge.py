@@ -72,7 +72,9 @@ class IPCServer:
             Port number the server is listening on
         """
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.setsockopt(
+            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+        )
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
         actual_host, actual_port = self.server_socket.getsockname()
@@ -166,7 +168,7 @@ class IPCServer:
                         client.send_message(request)
                     except Exception:
                         logger.warning(
-                            f"Failed to send event to client",
+                            "Failed to send event to client",
                             exc_info=True
                         )
                 processed = True
@@ -178,7 +180,8 @@ class IPCServer:
         threads = []
         while self.running:
             try:
-                # Accept connections with timeout to allow check of self.running
+                # Accept connections with timeout to allow check
+                #   of self.running
                 self.server_socket.settimeout(1.0)
                 try:
                     client_socket, addr = self.server_socket.accept()
@@ -256,7 +259,9 @@ class IPCClientConnection:
                     self.server.clients[msg.session_id] = self
                 ack = HelloAckMessage(session_id=msg.session_id)
                 self._send_message(ack)
-                logger.info(f"Client {self.addr} authenticated: {self.session_id}")
+                logger.info(
+                    f"Client {self.addr} authenticated: {self.session_id}"
+                )
                 break
 
             # Main message loop

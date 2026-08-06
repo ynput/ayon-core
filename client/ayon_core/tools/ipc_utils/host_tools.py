@@ -81,11 +81,13 @@ def _launch_ui_process(
         python_path.insert(0, str(runtime_dir))
         env["PYTHONPATH"] = os.pathsep.join(python_path)
 
-    # NOTE This is temporary solution which does show the process terminal
+    # NOTE This is for dev purposes (shows the process terminal)
     # return subprocess.Popen(
     #     launch_args,
     #     env=env,
-    #     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+    #     creationflags=(
+    #         subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+    #     ),
     # )
     return subprocess.Popen(
         launch_args,
@@ -142,7 +144,7 @@ def _init_ipc_server():
 
 
 def _ensure_external_ui_process():
-    """Ensure external UI process is running when external UI mode is enabled."""
+    """Ensure external UI process is running."""
     if not _is_ipc_server_healthy():
         _init_ipc_server()
 

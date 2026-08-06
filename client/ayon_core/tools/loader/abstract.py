@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Iterable, Any, Optional, Union
+from typing import Iterable, Any, Optional
 
 from ayon_core.lib.icon_definitions import (
     IconBase,
