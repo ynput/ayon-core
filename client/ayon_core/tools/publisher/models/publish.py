@@ -18,7 +18,7 @@ from ayon_core.tools.publisher.abstract import (
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.publish.logic import (
-        PublishIterInfo,
+        PublishIterTask,
         PublishActionResult,
     )
     from ayon_core.pipeline.publish.report import PublishReport
@@ -75,8 +75,8 @@ class PublishModel:
         self._emit_event("publish.process.started")
         self._publish_iter = self._logic.publish_iter()
         if wait:
-            for info in self._publish_iter:
-                info()
+            for task in self._publish_iter:
+                task()
 
     def process_next_iter(self) -> bool:
         """Process next iteration of publishing.
@@ -85,17 +85,18 @@ class PublishModel:
             bool: True if publishing is still running, False if finished.
 
         """
-        func: PublishIterInfo | None = None
+        task: PublishIterTask | None = None
         if self._publish_iter is not None:
-            func = next(self._publish_iter, None)
-        if func is None:
+            task = next(self._publish_iter, None)
+
+        if task is None:
             self._emit_event("publish.process.stopped")
             if not self._logic.has_failed() and self._logic.has_finished():
                 self._emit_event("publish.finished")
             return False
 
-        plugin = func.plugin
-        item_label = func.item_label
+        plugin = task.plugin
+        item_label = task.item_label
         if (
             plugin is not None
             and self._publish_state.plugin is not plugin
@@ -119,7 +120,7 @@ class PublishModel:
                 {"instance_label": item_label}
             )
 
-        func()
+        task()
         if not self._publish_state.validated and self._logic.has_validated():
             self._publish_state.validated = True
             self._emit_event("publish.has_validated")

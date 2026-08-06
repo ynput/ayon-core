@@ -234,8 +234,8 @@ class PublishState:
     def can_continue(self) -> bool:
         """Check if publishing can continue.
 
-        Does not respect 'is_running' value as this should tell if it can be
-            continued even though is currently paused.
+        Does not respect 'is_running' and 'stop_after_validation' values
+            as this should tell if publishing can be continued.
 
         Returns:
             bool: Can publishing continue.
@@ -254,6 +254,7 @@ class PublishState:
         return False
 
     def should_stop(self) -> bool:
+        """Check if publishing should stop."""
         if not self.can_continue():
             return True
 
@@ -265,7 +266,7 @@ class PublishState:
 
 
 @dataclass
-class PublishIterInfo:
+class PublishIterTask:
     """Information about next processing function in publishing.
 
     Holds reference to PublishLogic that defined the next processing function.
@@ -297,7 +298,7 @@ class PublishIterInfo:
 
 
 if typing.TYPE_CHECKING:
-    PublishIterGen = Generator[PublishIterInfo | None, None, None]
+    PublishIterGen = Generator[PublishIterTask | None, None, None]
 
 
 @dataclass
@@ -344,13 +345,13 @@ class _PublishIterator:
     def __iter__(self):
         return self
 
-    def __next__(self) -> PublishIterInfo:
+    def __next__(self) -> PublishIterTask:
         if self._iter is None:
             raise StopIteration
 
-        for item in self._iter:
-            if item is not None:
-                return item
+        for task in self._iter:
+            if task is not None:
+                return task
             raise StopIteration
         raise StopIteration
 
@@ -532,18 +533,18 @@ class PublishLogic:
         for info in self.publish_iter():
             info()
 
-    def publish_iter(self) -> Generator[PublishIterInfo, None, None]:
+    def publish_iter(self) -> Generator[PublishIterTask, None, None]:
         """Publish iteration generator.
 
         Yields:
-            PublishIterInfo: Information about next processing function in
+            PublishIterTask: Information about next processing function in
                 publishing. Can be called to process the next function.
 
         """
         self._publish_state.is_running = True
         self._publish_state.started = True
-        for item in self._publish_iterator:
-            yield item
+        for task in self._publish_iterator:
+            yield task
 
     def get_stop_after_validation(self) -> bool:
         """Check if publishing will stop after validation.
@@ -893,7 +894,7 @@ class PublishLogic:
     def _inner_publish_iter(self) -> PublishIterGen:
         """Main logic center of publishing.
 
-        Iterator returns `PublishIterInfo` objects with callbacks that should
+        Iterator returns `PublishIterTask` objects with callbacks that should
         be processed in main thread (threaded in future?). Cares about
         changing states of currently processed publish plugin and instance.
         Also change state of processed orders like validation order
@@ -902,7 +903,7 @@ class PublishLogic:
         Also stops publishing, if should stop on validation.
 
         Yields:
-            PublishIterInfo: Information about next processing function in
+            PublishIterTask: Information about next processing function in
                 publishing.
             None: If publishing should stop, yields None to indicate
                 that publishing should stop.
@@ -966,16 +967,16 @@ class PublishLogic:
                         instance.data.get("label")
                         or instance.data["name"]
                     )
-                    info = PublishIterInfo(
+                    task = PublishIterTask(
                         self,
                         plugin,
                         instance,
                         item_label,
                     )
-                    yield info
+                    yield task
 
-                    if not info.executed:
-                        raise ValueError("Previous item did not execute")
+                    if not task.executed:
+                        raise ValueError("Previous task did not execute")
 
             else:
                 families = collect_families_from_instances(
@@ -993,15 +994,15 @@ class PublishLogic:
                     or self._pyblish_context.data.get("name")
                     or "Context"
                 )
-                item = PublishIterInfo(
+                task = PublishIterTask(
                     self,
                     plugin,
                     None,
                     item_label,
                 )
-                yield item
-                if not item.executed:
-                    raise ValueError("Previous item did not execute")
+                yield task
+                if not task.executed:
+                    raise ValueError("Previous task did not execute")
 
             self._publish_report.set_plugin_passed(plugin_id)
 
