@@ -6,7 +6,6 @@ import sys
 import copy
 from typing import Iterable, Any
 
-import clique
 import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
