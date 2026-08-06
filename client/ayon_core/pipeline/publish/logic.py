@@ -600,6 +600,9 @@ class PublishLogic:
     def has_finished(self) -> bool:
         """Publishing has successfully finished.
 
+        It is not possible that 'has_finished' is True and 'has_failed'
+            is True at the same time.
+
         Returns:
             bool: True if publishing has successfully finished,
                 False otherwise.
