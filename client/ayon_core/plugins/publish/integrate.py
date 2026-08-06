@@ -614,10 +614,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # required representation keys
         files = repre["files"]
-        #  a single frame should be str in representation[files]
-        if isinstance(files, (list, tuple)) and len(files) == 1:
-            files: str = files[0]
-
         template_data["representation"] = repre["name"]
         template_data["ext"] = repre["ext"]
 
