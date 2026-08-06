@@ -97,7 +97,7 @@ class OpenTaskPath(LauncherAction):
     def open_in_explorer(path):
         platform_name = platform.system().lower()
         if platform_name == "windows":
-            args = ["start", path]
+            args = ["start", "", path]
         elif platform_name == "darwin":
             args = ["open", "-R", path]
         elif platform_name == "linux":
