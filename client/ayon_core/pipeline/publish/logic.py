@@ -288,8 +288,10 @@ class PublishIterInfo:
     plugin: PluginType
     instance: pyblish.api.Instance | None
     item_label: str
+    executed: bool = False
 
     def __call__(self) -> None:
+        self.executed = True
         self.logic._process_plugin(self.plugin, self.instance)
 
 
@@ -475,7 +477,13 @@ class PublishLogic:
             info()
 
     def publish_iter(self) -> Generator[PublishIterInfo, None, None]:
-        """Publish iteration generator."""
+        """Publish iteration generator.
+
+        Yields:
+            PublishIterInfo: Information about next processing function in
+                publishing. Can be called to process the next function.
+
+        """
         self._publish_state.is_running = True
         self._publish_state.started = True
         for item in self._publish_iterator:
@@ -815,6 +823,10 @@ class PublishLogic:
             None: If publishing should stop, yields None to indicate
                 that publishing should stop.
 
+        Raises:
+            ValueError: If a previous item did not execute and the next one
+                was requested.
+
         """
         for idx, plugin in enumerate(self._publish_plugins):
             if self._publish_state.should_stop():
@@ -870,12 +882,17 @@ class PublishLogic:
                         instance.data.get("label")
                         or instance.data["name"]
                     )
-                    yield PublishIterInfo(
+                    info = PublishIterInfo(
                         self,
                         plugin,
                         instance,
                         item_label,
                     )
+                    yield info
+
+                    if not info.executed:
+                        raise ValueError("Previous item did not execute")
+
             else:
                 families = collect_families_from_instances(
                     self._pyblish_context, only_active=True
@@ -892,12 +909,15 @@ class PublishLogic:
                     or self._pyblish_context.data.get("name")
                     or "Context"
                 )
-                yield PublishIterInfo(
+                item = PublishIterInfo(
                     self,
                     plugin,
                     None,
                     item_label,
                 )
+                yield item
+                if not item.executed:
+                    raise ValueError("Previous item did not execute")
 
             self._publish_report.set_plugin_passed(plugin_id)
 
