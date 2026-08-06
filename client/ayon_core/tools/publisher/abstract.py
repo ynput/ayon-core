@@ -61,7 +61,9 @@ class PublishAttrDefsInfo:
 
 class AbstractPublisherCommon(ABC):
     @abstractmethod
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(
+        self, topic: str, callback: Callable
+    ) -> None:
         """Register event callback.
 
         Listen for events with given topic.
@@ -242,10 +244,6 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
             Optional[str]: Window subtitle.
 
         """
-
-    @abstractmethod
-    def register_event_callback(self, topic: str, callback: Callable):
-        pass
 
     @abstractmethod
     def is_host_valid(self) -> bool:
