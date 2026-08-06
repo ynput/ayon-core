@@ -29,6 +29,8 @@ from ayon_core.tools.common_models import (
 )
 
 if TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
+
     from .models import CreatorItem, PublishErrorInfo, InstanceItem
 
 
@@ -268,6 +270,18 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """
 
         pass
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
 
     @abstractmethod
     def get_task_items_by_folder_paths(

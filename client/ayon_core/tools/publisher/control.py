@@ -4,6 +4,7 @@ import os
 import logging
 import tempfile
 import shutil
+import typing
 from typing import Union, Optional, Any
 
 import ayon_api
@@ -31,6 +32,9 @@ from .abstract import (
     CardMessageTypes,
     CommentDef,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class PublisherController(
@@ -232,6 +236,9 @@ class PublisherController(
 
     def get_project_settings(self, project_name: str | None) -> dict:
         return self._settings_model.get_settings(project_name)
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
 
     def get_project_entity(self, project_name):
         return self._projects_model.get_project_entity(project_name)

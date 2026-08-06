@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import typing
 from typing import Optional
 
 from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
@@ -23,6 +24,9 @@ from .models import (
     ActionsModel,
     WorkfilesModel,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()
 
@@ -129,6 +133,9 @@ class BaseLauncherController(
     # Project settings for applications actions
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
+    
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
 
     # Entity for backend
     def get_project_entity(self, project_name):
