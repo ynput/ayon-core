@@ -1267,7 +1267,7 @@ def main_cli_publish(
     discover_result = publish_plugins_discover()
     print(discover_result.get_report(only_errors=False))
 
-    logic = PublishLogic()
+    logic = PublishLogic(reset=False)
     logic.reset(
         project_name=context["project_name"],
         publish_discover_result=discover_result,
@@ -1319,7 +1319,7 @@ def run_publish(
     """
     from ayon_core.pipeline.publish import PublishLogic
 
-    logic = PublishLogic()
+    logic = PublishLogic(reset=False)
     logic.reset(
         project_name,
         context=context,

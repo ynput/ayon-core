@@ -37,7 +37,7 @@ class PublishModel:
     def __init__(self, controller: AbstractPublisherBackend):
         self._controller = controller
 
-        self._logic: PublishLogic = PublishLogic()
+        self._logic: PublishLogic = PublishLogic(reset=False)
         self._logic.set_strict_validation_error_handling(False)
         self._logic.set_log_to_console(
             env_value_to_bool("AYON_PUBLISHER_PRINT_LOGS", default=False)

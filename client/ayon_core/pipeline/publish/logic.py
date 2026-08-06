@@ -27,6 +27,7 @@ from .report import (
 )
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.create import CreateContext
+
     from .typing import PluginType, ActionType
 
 # Define constant for plugin orders offset
@@ -365,8 +366,13 @@ class PublishLogic:
     This class is used to manage publishing logic. Can be used to run
         publishing and then create publish report.
 
+    Args:
+        reset (bool): Reset publish logic with current context
+            on initialization. If False, an explicit reset has to be called
+            before publishing.
+
     """
-    def __init__(self) -> None:
+    def __init__(self, *, reset=True) -> None:
         self._log_handler: MessageHandler = MessageHandler()
 
         self._log_to_console: bool = True
@@ -384,6 +390,29 @@ class PublishLogic:
 
         # Plugin iterator
         self._publish_iterator: _PublishIterator = _PublishIterator()
+
+        if reset:
+            self.reset_with_current_context()
+
+    def reset_with_current_context(self) -> None:
+        """Reset publish logic with current context."""
+        from ayon_core.pipeline.create import CreateContext
+        from ayon_core.pipeline.context_tools import (
+            registered_host,
+            get_current_project_name,
+        )
+
+        host = registered_host()
+        create_context = None
+        if host is not None:
+            create_context = CreateContext(host)
+
+        if create_context is not None:
+            self.reset_from_create_context(create_context)
+            return
+
+        project_name = get_current_project_name()
+        self.reset(project_name)
 
     def reset(
         self,
