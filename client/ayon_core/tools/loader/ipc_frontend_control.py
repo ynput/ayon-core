@@ -290,7 +290,7 @@ class IPCLoaderFrontend(FrontendLoaderController):
         self,
         project_name: str,
         version_ids: list[str] | set[str],
-        sender: str | None=None
+        sender: str | None = None,
     ) -> dict[str, int]:
         return self._trigger_getter(
             "get_versions_representation_count",

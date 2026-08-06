@@ -187,7 +187,10 @@ class IPCClient:
             logger.info(f"Connected to DCC (session: {self.session_id})")
 
             # Start receiver thread if needed (e.g. after reconnect).
-            if self._receiver_thread is None or not self._receiver_thread.is_alive():
+            if (
+                self._receiver_thread is None
+                or not self._receiver_thread.is_alive()
+            ):
                 self._running = True
                 self._receiver_thread = threading.Thread(
                     target=self._receiver_loop, daemon=True
@@ -221,7 +224,10 @@ class IPCClient:
                 pass
             self.socket = None
 
-        if self._receiver_thread and self._receiver_thread is not threading.current_thread():
+        if (
+            self._receiver_thread
+            and self._receiver_thread is not threading.current_thread()
+        ):
             self._receiver_thread.join(timeout=5)
         self._receiver_thread = None
 
@@ -230,7 +236,9 @@ class IPCClient:
         if self.connected:
             return
 
-        delay_index = min(self.reconnect_attempts, len(self.RECONNECT_DELAYS) - 1)
+        delay_index = min(
+            self.reconnect_attempts, len(self.RECONNECT_DELAYS) - 1
+        )
         delay = self.RECONNECT_DELAYS[delay_index]
 
         logger.info(
@@ -314,7 +322,7 @@ class IPCClient:
             logger.debug(f"Sent request {request_id}: {method}")
             return request_id
         except Exception as e:
-            logger.error(f"Failed to send request", exc_info=True)
+            logger.error("Failed to send request", exc_info=True)
             with self._lock:
                 self.pending_requests.pop(request_id, None)
             if callback is not None:
@@ -382,14 +390,18 @@ class IPCClient:
                     # Check heartbeat (detect DCC busy)
                     if time.time() - self.last_heartbeat > 60:
                         if self.state != ConnectionState.DCC_BUSY:
-                            logger.warning("DCC unresponsive for 60s, marking busy")
+                            logger.warning(
+                                "DCC unresponsive for 60s, marking busy"
+                            )
                             self.state = ConnectionState.DCC_BUSY
                             self.dcc_unresponsive_since = time.time()
                     continue
 
                 except Exception as e:
                     if self._running:
-                        logger.error(f"Receiver loop error: {e}", exc_info=True)
+                        logger.error(
+                            f"Receiver loop error: {e}", exc_info=True
+                        )
                     self.connected = False
                     self.state = ConnectionState.DISCONNECTED
                     break
@@ -438,8 +450,10 @@ class IPCClient:
 
         try:
             handler(req)
-        except Exception as e:
-            logger.error(f"Error in request handler for channel {channel}: {e}")
+        except Exception as exc:
+            logger.error(
+                f"Error in request handler for channel {channel}: {exc}"
+            )
 
     def _handle_response(self, resp: ResponseMessage):
         """Handle response message."""
@@ -458,9 +472,3 @@ class IPCClient:
                 callback(resp)
             except Exception as e:
                 logger.error(f"Error in response callback: {e}")
-
-
-
-
-
-

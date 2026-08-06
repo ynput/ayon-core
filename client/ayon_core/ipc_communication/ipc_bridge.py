@@ -274,8 +274,11 @@ class IPCClientConnection:
                     time.sleep(0.5)
                     continue
 
-        except Exception as e:
-            logger.error(f"Error handling client {self.addr}: {e}", exc_info=True)
+        except Exception:
+            logger.error(
+                f"Error handling client {self.addr}.",
+                exc_info=True
+            )
         finally:
             self.close()
 
@@ -292,8 +295,8 @@ class IPCClientConnection:
             else:
                 logger.warning(f"Unexpected message type: {msg.type}")
 
-        except Exception as e:
-            logger.error(f"Error handling message: {e}")
+        except Exception:
+            logger.error("Error handling message", exc_info=True)
 
     def _handle_request(self, req: RequestMessage):
         """Handle incoming request."""
@@ -324,23 +327,24 @@ class IPCClientConnection:
             )
             try:
                 self._send_message(response)
-            except Exception as e:
-                logger.error(f"Failed to send response", exc_info=True)
-        except Exception as e:
+            except Exception:
+                logger.error("Failed to send response", exc_info=True)
+        except Exception as exc:
             logger.error(
                 f"Handler error for {req.channel} {req.method}",
                 exc_info=True,
             )
             try:
-                # Keep request_id so client can finish matching pending request.
+                # Keep request_id so client can finish matching
+                #   pending request.
                 self._send_message(ResponseMessage(
                     request_id=req.id,
                     ok=False,
                     result=None,
-                    error=str(e),
+                    error=str(exc),
                 ))
-            except Exception as e:
-                logger.error(f"Failed to send response", exc_info=True)
+            except Exception:
+                logger.error("Failed to send response", exc_info=True)
 
     def _send_message(self, msg: Message):
         """Send message to client."""
