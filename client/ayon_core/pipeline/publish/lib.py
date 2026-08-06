@@ -1302,7 +1302,7 @@ def main_cli_publish(
 
 
 def run_publish(
-    project_name: str,
+    project_name: str | None = None,
     *,
     context: pyblish.api.Context | None = None,
     plugins: list[PluginType] | None = None,
@@ -1314,8 +1314,8 @@ def run_publish(
     """Start publishing.
 
     Args:
-        project_name (str): Name of the project in which publishing
-            should run.
+        project_name (str | None): Name of the project in which publishing
+            should run. 'get_current_project_name' is used when not provided.
         context (pyblish.api.Context | None): Pyblish context.
         plugins (list[PluginType] | None): List of pyblish plugins.
         targets (list[str] | None): List of pyblish targets.
@@ -1325,7 +1325,14 @@ def run_publish(
         project_settings (dict[str, Any] | None): Settings for the project.
 
     """
+    from ayon_core.pipeline import get_current_project_name
     from ayon_core.pipeline.publish import PublishLogic
+
+    if project_name is None:
+        project_name = get_current_project_name()
+
+    if project_name is None:
+        raise ValueError("Missing project name.")
 
     logic = PublishLogic(reset=False)
     logic.reset(
