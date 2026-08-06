@@ -485,8 +485,8 @@ class PublishErrorsReport:
             for action_item in action_items:
                 item = PublishPluginActionItem.from_data(action_item)
                 action_items.append(item)
-    
-        return PublishErrorsReport(error_items, plugin_action_items)
+
+        return cls(error_items, plugin_action_items)
 
 
 class PublishErrors:
