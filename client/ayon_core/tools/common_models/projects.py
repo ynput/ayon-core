@@ -245,7 +245,7 @@ class ProductTypeIconMapping:
             return icon.copy()
         return icon
 
-    def _get_default_def(self) -> dict[str, str]:
+    def _get_default_def(self) -> MaterialSymbolsIcon:
         if self._default_def is None:
             self._default_def = MaterialSymbolsIcon(
                 self._default.get("icon", "deployed_code"),
@@ -254,7 +254,7 @@ class ProductTypeIconMapping:
 
         return self._default_def
 
-    def _get_defs_by_name(self) -> dict[str, dict[str, str]]:
+    def _get_defs_by_name(self) -> dict[str, MaterialSymbolsIcon]:
         if self._definitions_by_name is None:
             self._definitions_by_name = {
                 product_base_type_def["name"]: MaterialSymbolsIcon(
@@ -426,7 +426,7 @@ class ProjectsModel:
             sender (Union[str, None]): Name of sender who asked for items.
 
         Returns:
-            list[FolderType]: Folder type items for project.
+            list[FolderTypeItem]: Folder type items for project.
 
         """
         return self._get_project_items(
