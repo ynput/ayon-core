@@ -12,7 +12,6 @@ from ayon_core.pipeline.publish.logic import (
     PublishFailReason,
 )
 from ayon_core.tools.publisher.abstract import (
-    AbstractPublisherBackend,
     UIFailInfo,
     UIPublishErrorReport,
 )
@@ -23,6 +22,7 @@ if typing.TYPE_CHECKING:
         PublishActionResult,
     )
     from ayon_core.pipeline.publish.report import PublishReport
+    from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 

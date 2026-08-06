@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets, QtCore
+import typing
 
-from ayon_core.tools.publisher.abstract import (
-    AbstractPublisherFrontend,
-    UIFailInfo,
-)
+from qtpy import QtWidgets, QtCore
 
 from .widgets import (
     StopBtn,
@@ -14,6 +11,12 @@ from .widgets import (
     PublishBtn,
     PublishReportBtn,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.publisher.abstract import (
+        AbstractPublisherFrontend,
+        UIFailInfo,
+    )
 
 
 class PublishFrame(QtWidgets.QWidget):

@@ -81,10 +81,10 @@ class UIFailInfo:
         return cls(msg, False)
 
     def to_data(self) -> dict[str, Any]:
-        return {
-            "message": self.message,
-            "is_publish_error": self.is_publish_error,
-        }
+        return dict(
+            message=self.message,
+            is_publish_error=self.is_publish_error,
+        )
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "UIFailInfo":
@@ -300,15 +300,15 @@ class UIPublishErrorReport:
 
     def to_data(self) -> dict[str, Any]:
         """Serialize object to json supported dictionary."""
-        return {
-            "id": self.id,
-            "plugin_id": self.plugin_id,
-            "title": self.title,
-            "error_items": [ei.to_data() for ei in self.error_items],
-            "plugin_action_items": [
+        return dict(
+            id=self.id,
+            plugin_id=self.plugin_id,
+            title=self.title,
+            error_items=[ei.to_data() for ei in self.error_items],
+            plugin_action_items=[
                 ai.to_data() for ai in self.plugin_action_items
             ],
-        }
+        )
 
     @classmethod
     def from_data(cls, data: dict[str, Any]):
