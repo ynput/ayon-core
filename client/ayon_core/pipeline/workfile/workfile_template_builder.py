@@ -728,10 +728,10 @@ class AbstractTemplateBuilder(ABC):
             or create_first_version is None
         ):
             preset = self.get_template_preset()
-            if not preset.has_valid_path():
-                if preset.path is None:
-                    return
+            if preset.path is None:
+                return
 
+            if not preset.has_valid_path():
                 raise TemplateLoadFailed(
                     f"Template path '{preset.path}' does not exist."
                 )
