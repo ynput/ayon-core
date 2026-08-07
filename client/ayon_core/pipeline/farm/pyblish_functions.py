@@ -514,7 +514,7 @@ def prepare_representations(
         if ext in skip_integration_repre_list:
             rep["tags"].append("delete")
 
-        if ext in slate_representation_ext:
+        if ext == slate_representation_ext:
             rep["tags"].append("slate-frame")
 
         if skeleton_data.get("multipartExr", False):
