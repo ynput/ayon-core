@@ -1128,7 +1128,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         return attributes
 
     def get_file_collections(
-            self, files: list[str]) -> list[clique.Collection]:
+            self, files: list[str]
+        ) -> tuple[list[clique.Collection], list[str]]:
         """Get collections from list of files from representation
         data using clique.
 
@@ -1136,13 +1137,26 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             files (list[str]): list of sequence file paths
 
         Returns:
-            list[clique.Collection]: list of collections assembled from
-            the files
+            tuple[list[clique.Collection], list[str]]: tuple of collections
+            and remainders from clique.
         """
         pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
-        return clique.assemble(
+        minimum_items = 1 if len(files) == 1 else 2
+
+        collections, remainders = clique.assemble(
             files,
-            minimum_items=1 if len(files) == 1 else 2,
+            minimum_items=minimum_items,
             assume_padded_when_ambiguous=True,
             patterns=[pattern]
         )
+
+        # If custom pattern yields no collections,
+        # retry default clique parsing.
+        if not collections:
+            collections, remainders = clique.assemble(
+                files,
+                minimum_items=minimum_items,
+                assume_padded_when_ambiguous=True
+            )
+
+        return collections, remainders
