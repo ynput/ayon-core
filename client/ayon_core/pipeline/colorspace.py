@@ -25,6 +25,7 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.publish import repre_get, repre_set
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
@@ -1284,7 +1285,7 @@ def set_colorspace_data_to_representation(
     """
     log = log or Logger.get_logger(__name__)
 
-    file_ext = representation["ext"]
+    file_ext = repre_get(representation, "ext", "")
 
     # check if `file_ext` in lower case is in CachedData.allowed_exts
     if file_ext.lstrip(".").lower() not in CachedData.allowed_exts:
@@ -1309,7 +1310,7 @@ def set_colorspace_data_to_representation(
     project_settings = context_data["project_settings"]
 
     # get one filename
-    filename = representation["files"]
+    filename = repre_get(representation, "files")
     if isinstance(filename, list):
         filename = filename[0]
 
@@ -1332,7 +1333,7 @@ def set_colorspace_data_to_representation(
         }
 
         # update data key
-        representation["colorspaceData"] = colorspace_data
+        repre_set(representation, "colorspaceData", colorspace_data)
 
 
 def get_display_view_colorspace_name(config_path, display, view):

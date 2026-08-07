@@ -1,4 +1,5 @@
 import os
+from ayon_core.pipeline.publish import repre_get
 
 
 def get_published_workfile_instance(context):
@@ -53,8 +54,8 @@ def from_published_scene(instance, replace_in_path=True):
     # determine published path from Anatomy.
     template_data = workfile_instance.data.get("anatomyData")
     rep = workfile_instance.data["representations"][0]
-    template_data["representation"] = rep.get("name")
-    template_data["ext"] = rep.get("ext")
+    template_data["representation"] = repre_get(rep, "name")
+    template_data["ext"] = repre_get(rep, "ext")
     template_data["comment"] = None
 
     anatomy = instance.context.data['anatomy']

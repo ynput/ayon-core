@@ -17,6 +17,7 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline import publish
+from ayon_core.pipeline.publish.representation import repre_get, repre_set
 
 
 class ExtractOTIOTrimmingVideo(publish.Extractor):
@@ -38,12 +39,14 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
         # get corresponding representation
         for _repre in representations:
-            if "trim" not in _repre.get("tags", []):
+            _repre_tags = repre_get(_repre, "tags")
+            if "trim" not in _repre_tags:
                 continue
 
-            input_file = _repre["files"]
+            input_file = repre_get(_repre, "files")
+            staging_dir = repre_get(_repre, "stagingDir")
             input_file_path = os.path.normpath(os.path.join(
-                _repre["stagingDir"], input_file
+                staging_dir, input_file
             ))
             self.log.debug("input_file_path: {}".format(input_file_path))
 
@@ -54,9 +57,12 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             # prepare new representation data
             repre_data = deepcopy(_repre)
             # remove tags as we dont need them
-            repre_data.pop("tags")
-            repre_data["stagingDir"] = self.staging_dir
-            repre_data["files"] = new_file
+            if isinstance(repre_data, dict):
+                repre_data.pop("tags", None)
+            else:
+                repre_set(repre_data, "tags", None)
+            repre_set(repre_data, "stagingDir", self.staging_dir)
+            repre_set(repre_data, "files", new_file)
 
             # romove `trim` tagged representation
             representations.remove(_repre)

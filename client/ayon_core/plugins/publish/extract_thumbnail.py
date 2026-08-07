@@ -26,6 +26,7 @@ from ayon_core.lib.transcoding import (
 )
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
+from ayon_core.pipeline.publish import repre_get, repre_set
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
@@ -124,7 +125,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Make sure cleanup happens to representations which are having both
         # tags `delete` and `need_thumbnail`
         for repre in tuple(instance.data.get("representations", [])):
-            tags = repre.get("tags") or []
+            tags = repre_get(repre, "tags") or []
             # skip representations which are going to be published on farm
             if "publish_on_farm" in tags:
                 continue
@@ -208,8 +209,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             # Reset for each iteration to handle cases where multiple
             # reviewable thumbnails are needed
             repre_thumb_created = False
-            repre_files = repre["files"]
-            src_staging = os.path.normpath(repre["stagingDir"])
+            repre_files = repre_get(repre, "files")
+            src_staging = os.path.normpath(repre_get(repre, "stagingDir"))
             if not isinstance(repre_files, (list, tuple)):
                 # convert any video file to frame so oiio doesn't need to
                 # read video file (it is slow) and also we are having control
@@ -234,7 +235,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             else:
                 repre_files_thumb = copy.deepcopy(repre_files)
                 # exclude first frame if slate in representation tags
-                if "slate-frame" in repre.get("tags", []):
+                if "slate-frame" in (repre_get(repre, "tags") or []):
                     repre_files_thumb = repre_files_thumb[1:]
                 file_index = int(
                     float(len(repre_files_thumb)) * thumbnail_def.duration_split  # noqa: E501
@@ -247,7 +248,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             filename = os.path.splitext(input_file)[0]
             jpeg_file = filename + "_thumb.jpg"
             full_output_path = os.path.join(dst_staging, jpeg_file)
-            colorspace_data = repre.get("colorspaceData")
+            colorspace_data = repre_get(repre, "colorspaceData")
 
             # NOTE We should find out what is happening here. Why don't we
             #   use oiiotool all the time if it is available? Only possible
@@ -299,7 +300,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
             thumbnail_created = True
             if len(explicit_repres) > 1:
-                repre_name = "thumbnail_{}".format(repre["outputName"])
+                repre_name = "thumbnail_{}".format(
+                    repre_get(repre, "outputName")
+                )
             else:
                 repre_name = "thumbnail"
 
@@ -339,8 +342,13 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
             if explicit_repres:
                 # this key will then align assetVersion ftrack thumbnail sync
-                new_repre["outputName"] = (
-                    repre.get("outputName") or repre["name"])
+                repre_output_name = repre_get(repre, "outputName")
+                repre_name = repre_get(repre, "name")
+                repre_set(
+                    new_repre,
+                    "outputName",
+                    repre_output_name or repre_name
+                )
                 self.log.debug(
                     "Adding explicit thumbnail representation: {}".format(
                         new_repre))
@@ -364,7 +372,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     def _already_has_thumbnail(self, repres):
         for repre in repres:
             self.log.debug("repre {}".format(repre))
-            if repre["name"] == "thumbnail":
+            if repre_get(repre, "name") == "thumbnail":
                 return True
         return False
 
@@ -376,8 +384,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # `need_thumbnail` in tags and add them to filtered_repres
         need_thumb_repres = [
             repre for repre in src_repres
-            if "need_thumbnail" in repre.get("tags", [])
-            if "publish_on_farm" not in repre.get("tags", [])
+            if "need_thumbnail" in (repre_get(repre, "tags") or [])
+            if "publish_on_farm" not in (repre_get(repre, "tags") or [])
         ]
         if not need_thumb_repres:
             return []
@@ -398,17 +406,17 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         for repre in src_repres:
             self.log.debug(repre)
-            tags = repre.get("tags") or []
+            tags = repre_get(repre, "tags") or []
 
             if "publish_on_farm" in tags:
                 # only process representations with are going
                 # to be published locally
                 continue
 
-            if not repre.get("files"):
+            if not repre_get(repre, "files"):
                 self.log.debug((
                     "Representation \"{}\" doesn't have files. Skipping"
-                ).format(repre["name"]))
+                ).format(repre_get(repre, "name")))
                 continue
 
             if "review" in tags:
@@ -428,7 +436,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             bool: whether the representation has the valid image content
         """
         # Get first file's extension
-        first_file = repre["files"]
+        first_file = repre_get(repre, "files")
         if isinstance(first_file, (list, tuple)):
             first_file = first_file[0]
 
@@ -473,7 +481,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             self.log.debug("Unable to find representation OCIO file.")
             return False
 
-        colorspace_data: dict = repre["colorspaceData"]
+        colorspace_data: dict = repre_get(repre, "colorspaceData") or {}
+        if not colorspace_data:
+            self.log.debug("Missing representation colorspaceData.")
+            return False
 
         self.log.info(f"Extracting thumbnail {dst_path}")
         resolution_arg = self._get_resolution_args(

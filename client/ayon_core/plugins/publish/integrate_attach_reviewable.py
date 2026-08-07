@@ -4,6 +4,7 @@ from typing import List
 
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import OptionalPyblishPluginMixin
+from ayon_core.pipeline.publish.representation import repre_get, repre_set
 
 
 class AttachReviewables(
@@ -98,7 +99,10 @@ class AttachReviewables(
                 "Marking representation as deleted because it was "
                 f"attached to other instances instead: {repre}"
             )
-            repre.setdefault("tags", []).append("delete")
+            tags = repre_get(repre, "tags") or []
+            if "delete" not in tags:
+                tags.append("delete")
+            repre_set(repre, "tags", tags)
 
         # Stop integrator from trying to integrate this instance
         if attach_to:

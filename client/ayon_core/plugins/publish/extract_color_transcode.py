@@ -8,6 +8,7 @@ from ayon_core.pipeline import (
     publish,
     get_temp_dir
 )
+from ayon_core.pipeline.publish import repre_get, repre_set
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 from ayon_core.lib import is_oiio_supported
@@ -107,7 +108,10 @@ class ExtractOIIOTranscode(publish.Extractor):
         project_settings = instance.context.data["project_settings"]
         review_layers = get_default_reviewable_layers(project_settings)
         for idx, repre in enumerate(list(repres)):
-            self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
+            self.log.debug("repre ({}): `{}`".format(
+                idx + 1,
+                repre_get(repre, "name"))
+            )
             if not self._repre_is_valid(repre, profile):
                 continue
 
@@ -146,12 +150,12 @@ class ExtractOIIOTranscode(publish.Extractor):
                 output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
-                original_staging_dir = new_repre["stagingDir"]
+                original_staging_dir = repre_get(repre, "stagingDir")
                 new_staging_dir = get_temp_dir(
                     project_name=instance.context.data["projectName"],
                     use_local_temp=True,
                 )
-                new_repre["stagingDir"] = new_staging_dir
+                repre_set(new_repre, "stagingDir", new_staging_dir)
 
                 output_extension = output_def["extension"]
                 output_extension = output_extension.replace('.', '')
@@ -177,13 +181,13 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 # both could be already collected by DCC,
                 # but could be overwritten when transcoding
+                colorspace_data = repre_get(new_repre, "colorspaceData")
                 if target_view:
-                    new_repre["colorspaceData"]["view"] = target_view
+                    colorspace_data["view"] = target_view
                 if target_display:
-                    new_repre["colorspaceData"]["display"] = target_display
+                    colorspace_data["display"] = target_display
                 if target_colorspace:
-                    new_repre["colorspaceData"]["colorspace"] = \
-                        target_colorspace
+                    colorspace_data["colorspace"] = target_colorspace
 
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
@@ -250,7 +254,8 @@ class ExtractOIIOTranscode(publish.Extractor):
                     break
 
                 # cleanup temporary transcoded files
-                for file_name in new_repre["files"]:
+                files_to_cleanup = repre_get(new_repre, "files")
+                for file_name in files_to_cleanup:
                     transcoded_file_path = os.path.join(new_staging_dir,
                                                         file_name)
                     instance.context.data["cleanupFullPaths"].append(
@@ -258,30 +263,32 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 custom_tags = output_def.get("custom_tags")
                 if custom_tags:
-                    if new_repre.get("custom_tags") is None:
-                        new_repre["custom_tags"] = []
-                    new_repre["custom_tags"].extend(custom_tags)
+                    if repre_get(new_repre, "custom_tags") is None:
+                        repre_set(new_repre, "custom_tags", [])
+                    repre_get(new_repre, "custom_tags").extend(custom_tags)
 
                 # Add additional tags from output definition to representation
-                if new_repre.get("tags") is None:
-                    new_repre["tags"] = []
+                if repre_get(new_repre, "tags") is None:
+                    repre_set(new_repre, "tags", [])
                 for tag in output_def["tags"]:
-                    if tag not in new_repre["tags"]:
-                        new_repre["tags"].append(tag)
+                    if tag not in repre_get(new_repre, "tags"):
+                        repre_get(new_repre, "tags").append(tag)
 
                     if tag == "review":
                         added_review = True
 
                 # If there is only 1 file outputted then convert list to
                 # string, because that'll indicate that it is not a sequence.
-                if len(new_repre["files"]) == 1:
-                    new_repre["files"] = new_repre["files"][0]
+                if len(repre_get(new_repre, "files")) == 1:
+                    repre_set(
+                        new_repre, "files", repre_get(new_repre, "files")[0]
+                    )
 
                 # If the source representation has "review" tag, but it's not
                 # part of the output definition tags, then both the
                 # representations will be transcoded in ExtractReview and
                 # their outputs will clash in integration.
-                if "review" in repre.get("tags", []):
+                if "review" in repre_get(repre, "tags"):
                     added_review = True
 
                 new_representations.append(new_repre)
@@ -292,7 +299,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                     repre, profile, added_review
                 )
 
-            tags = repre.get("tags") or []
+            tags = repre_get(repre, "tags") or []
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
 
@@ -326,12 +333,12 @@ class ExtractOIIOTranscode(publish.Extractor):
             output_extension (str): extension from output definition
         """
         if output_name != "passthrough":
-            new_repre["name"] = output_name
+            repre_set(new_repre, "name", output_name)
         if not output_extension:
             return
 
-        new_repre["ext"] = output_extension
-        new_repre["outputName"] = output_name
+        repre_set(new_repre, "ext", output_extension)
+        repre_set(new_repre, "outputName", output_name)
 
         renamed_files = []
         for file_name in files_to_convert:
@@ -339,7 +346,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             file_name = '{}.{}'.format(file_name,
                                        output_extension)
             renamed_files.append(file_name)
-        new_repre["files"] = renamed_files
+        repre_set(new_repre, "files", renamed_files)
 
     def _translate_to_sequence(self, files_to_convert):
         """Returns original individual filepaths or list of clique.Collection.
@@ -424,21 +431,21 @@ class ExtractOIIOTranscode(publish.Extractor):
             bool: False if can't be processed else True.
         """
 
-        if repre.get("ext") not in self.supported_exts:
+        if repre_get(repre, "ext") not in self.supported_exts:
             self.log.debug((
                 "Representation '{}' has unsupported extension: '{}'. Skipped."
-            ).format(repre["name"], repre.get("ext")))
+            ).format(repre_get(repre, "name"), repre_get(repre, "ext")))
             return False
 
-        if not repre.get("files"):
+        if not repre_get(repre, "files"):
             self.log.debug((
                 "Representation '{}' has empty files. Skipped."
-            ).format(repre["name"]))
+            ).format(repre_get(repre, "name")))
             return False
 
-        if not repre.get("colorspaceData"):
+        if not repre_get(repre, "colorspaceData"):
             self.log.debug("Representation '{}' has no colorspace data. "
-                           "Skipped.".format(repre["name"]))
+                           "Skipped.".format(repre_get(repre, "name")))
             return False
 
         representations_names = profile["representation_names"]
@@ -447,7 +454,7 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not representations_names:
             return True
 
-        repre_name = repre["name"]
+        repre_name = repre_get(repre, "name")
 
         # check if any of representation patterns match in repre_name
         for r_pattern in representations_names:
@@ -458,14 +465,15 @@ class ExtractOIIOTranscode(publish.Extractor):
 
     def _mark_original_repre_for_deletion(self, repre, profile, added_review):
         """If new transcoded representation created, delete old."""
-        if not repre.get("tags"):
-            repre["tags"] = []
+        tags = repre_get(repre, "tags") or []
+        if repre_get(repre, "tags") is None:
+            repre_set(repre, "tags", tags)
 
         delete_original = profile["delete_original"]
 
         if delete_original:
-            if "delete" not in repre["tags"]:
-                repre["tags"].append("delete")
+            if "delete" not in tags:
+                tags.append("delete")
 
-        if added_review and "review" in repre["tags"]:
-            repre["tags"].remove("review")
+        if added_review and "review" in tags:
+            tags.remove("review")

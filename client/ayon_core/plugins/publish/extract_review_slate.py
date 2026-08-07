@@ -15,7 +15,7 @@ from ayon_core.lib import (
     get_ffmpeg_format_args,
 )
 from ayon_core.pipeline import publish
-from ayon_core.pipeline.publish import PublishError
+from ayon_core.pipeline.publish import PublishError, repre_get, repre_set
 
 
 class ExtractReviewSlate(publish.Extractor):
@@ -63,16 +63,15 @@ class ExtractReviewSlate(publish.Extractor):
 
         for idx, repre in enumerate(inst_data["representations"]):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre))
-
-            p_tags = repre.get("tags", [])
+            p_tags = repre_get(repre, "tags") or []
             if "slate-frame" not in p_tags:
                 continue
 
             # get repre file
-            stagingdir = repre["stagingDir"]
-            input_file = "{0}".format(repre["files"])
-            input_path = os.path.join(
-                os.path.normpath(stagingdir), repre["files"])
+            stagingdir = repre_get(repre, "stagingDir")
+            repre_file = repre_get(repre, "files")
+            input_file = "{0}".format(repre_file)
+            input_path = os.path.join(os.path.normpath(stagingdir), repre_file)
             self.log.debug("__ input_path: {}".format(input_path))
 
             streams = get_ffprobe_streams(
@@ -361,11 +360,13 @@ class ExtractReviewSlate(publish.Extractor):
                 concat_args, logger=self.log
             )
 
-            self.log.debug("__ repre[tags]: {}".format(repre["tags"]))
+            self.log.debug(
+                "__ repre[tags]: {}".format(repre_get(repre, "tags"))
+            )
             repre_update = {
                 "files": output_file,
-                "name": repre["name"],
-                "tags": [x for x in repre["tags"] if x != "delete"]
+                "name": repre_get(repre, "name"),
+                "tags": [x for x in repre_get(repre, "tags") if x != "delete"]
             }
             inst_data["representations"][idx].update(repre_update)
             self.log.debug(
@@ -379,7 +380,7 @@ class ExtractReviewSlate(publish.Extractor):
 
         # Remove any representations tagged for deletion.
         for repre in inst_data.get("representations", []):
-            tags = repre.get("tags", [])
+            tags = repre_get(repre, "tags") or []
             if "delete" not in tags:
                 continue
             if "need_thumbnail" in tags:
@@ -603,12 +604,13 @@ class ExtractReviewSlate(publish.Extractor):
         codec_args = []
 
         # Get one filename of representation files
-        filename = repre["files"]
+        filename = repre_get(repre, "files")
         # If files is list then pick first filename in list
         if isinstance(filename, (tuple, list)):
             filename = filename[0]
         # Get full path to the file
-        full_input_path = os.path.join(repre["stagingDir"], filename)
+        staging_dir = repre_get(repre, "stagingDir")
+        full_input_path = os.path.join(staging_dir, filename)
 
         try:
             # Get information about input file via ffprobe tool
@@ -620,7 +622,7 @@ class ExtractReviewSlate(publish.Extractor):
             )
             return codec_args
 
-        source_ffmpeg_cmd = repre.get("ffmpeg_cmd")
+        source_ffmpeg_cmd = repre_get(repre, "ffmpeg_cmd")
         format_args = get_ffmpeg_format_args(ffprobe_data, source_ffmpeg_cmd)
         codec_args = get_ffmpeg_codec_args(
             ffprobe_data, source_ffmpeg_cmd, logger=self.log

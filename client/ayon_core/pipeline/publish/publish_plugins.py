@@ -20,6 +20,7 @@ from .lib import (
     get_errored_plugins_from_context,
     get_instance_staging_dir,
 )
+from .representation import Representation
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.create import CreateContext, CreatedInstance
@@ -433,6 +434,42 @@ class Extractor(pyblish.api.InstancePlugin):
         """
 
         return get_instance_staging_dir(instance)
+
+    def add_representation(self, instance, repre_data: dict) -> None:
+        """Add representation data
+
+        Args:
+            instance (pyblish.api.Instance): Instance to which representation
+                is added.
+            repre_data (dict): Representation data to add. Should contain
+                at least 'name', 'ext' and 'files' keys.
+
+        """
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
+
+        representation = Representation(
+            name=repre_data["name"],
+            ext=repre_data["ext"],
+            stagingDir=self.staging_dir(instance),
+            resolutionWidth=repre_data.get("resolutionWidth"),
+            resolutionHeight=repre_data.get("resolutionHeight"),
+            udim=repre_data.get("udim"),
+            tags=repre_data.get("tags"),
+            custom_tags=repre_data.get("custom_tags"),
+            colorspaceData=repre_data.get("colorspaceData"),
+            fps=repre_data.get("fps"),
+            outputName=repre_data.get("outputName"),
+            originalBasename=repre_data.get("originalBasename"),
+            data=repre_data.get("data")
+        )
+        files = repre_data["files"]
+        if isinstance(files, (list, tuple)):
+            representation.set_sequence(list(files))
+        else:
+            representation.set_single_file(files)
+
+        instance.data["representations"].append(representation)
 
 
 class ColormanagedPyblishPluginMixin(object):

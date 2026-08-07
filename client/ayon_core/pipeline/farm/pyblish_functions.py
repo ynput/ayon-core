@@ -22,7 +22,11 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
-from ayon_core.pipeline.publish import PublishError
+from ayon_core.pipeline.publish import (
+    PublishError,
+    repre_get,
+    repre_set,
+)
 from ayon_core.pipeline.publish.input_versions import serialize_input_versions
 
 if typing.TYPE_CHECKING:
@@ -189,19 +193,26 @@ def get_transferable_representations(instance):
     to_transfer = []
 
     for representation in instance.data.get("representations", []):
-        if "publish_on_farm" not in representation.get("tags", []):
+        repre_tags = repre_get(representation, "tags", [])
+        if "publish_on_farm" not in repre_tags:
             continue
 
-        trans_rep = representation.copy()
+        trans_rep = copy.deepcopy(representation)
 
         # remove publish_on_farm from representations tags
-        trans_rep["tags"].remove("publish_on_farm")
+        trans_rep_tags = repre_get(trans_rep, "tags", [])
+        trans_rep_tags.remove("publish_on_farm")
+        repre_set(trans_rep, "tags", trans_rep_tags)
 
-        staging_dir = trans_rep.get("stagingDir")
+        staging_dir = repre_get(trans_rep, "stagingDir", "")
 
         if staging_dir:
             try:
-                trans_rep["stagingDir"] = remap_source(staging_dir, anatomy)
+                repre_set(
+                    trans_rep,
+                    "stagingDir",
+                    remap_source(staging_dir, anatomy)
+                )
             except ValueError:
                 log.warning(
                     ("Could not find root path for remapping \"{}\". "
@@ -439,7 +450,10 @@ def prepare_representations(
     representations = []
     slate_representation_ext = skeleton_data.get("slateRepresentationExt", [])
     host_name = os.environ.get("AYON_HOST_NAME", "")
-    collections, remainders = clique.assemble(exp_files)
+    collections, remainders = clique.assemble(
+        exp_files,
+        patterns=[clique.PATTERNS["frames"]]
+    )
 
     if frames_to_render is not None:
         frames_to_render = convert_frames_str_to_list(frames_to_render)
@@ -569,7 +583,7 @@ def prepare_representations(
         already_there = False
         for repre in skeleton_data.get("representations", []):
             # might be added explicitly before by publish_on_farm
-            already_there = repre.get("files") == rep["files"]
+            already_there = repre_get(repre, "files", "") == rep["files"]
             if already_there:
                 log.debug("repre {} already_there".format(repre))
                 break

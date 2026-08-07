@@ -30,6 +30,8 @@ from ayon_core.lib.file_transaction import (
 from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
+    repre_get,
+    repre_set,
 )
 from ayon_core.pipeline import is_product_base_type_supported
 from ayon_core.pipeline.anatomy import (
@@ -198,7 +200,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Filter representations
         filtered_repres = []
         for repre in repres:
-            if "delete" in repre.get("tags", []):
+            if "delete" in (repre_get(repre, "tags") or []):
                 continue
             filtered_repres.append(repre)
 
@@ -597,12 +599,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         instance
     ):
         # pre-flight validations
-        if repre["ext"].startswith("."):
+        extension = repre_get(repre, "ext")
+        if extension.startswith("."):
             raise PublishError(
-                f"Extension must not start with a dot '.': {repre['ext']}"
+                f"Extension must not start with a dot '.': {extension}"
             )
 
-        repre_transfers = repre.get("transfers")
+        repre_transfers = repre_get(repre, "transfers")
         if repre_transfers:
             raise PublishError(
                 "Representation is not allowed to have transfers"
@@ -614,23 +617,24 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         template_data = copy.deepcopy(instance.data["anatomyData"])
 
         # required representation keys
-        files = repre["files"]
-        template_data["representation"] = repre["name"]
-        template_data["ext"] = repre["ext"]
+        files = repre_get(repre, "files")
+        template_data["representation"] = repre_get(repre, "name")
+        template_data["ext"] = repre_get(repre, "ext")
 
         # allow overwriting existing version
         template_data["version"] = version_entity["version"]
 
         # add template data for colorspaceData
-        if repre.get("colorspaceData"):
-            colorspace = repre["colorspaceData"]["colorspace"]
+        colorspace_data = repre_get(repre, "colorspaceData")
+        if colorspace_data:
+            colorspace = colorspace_data["colorspace"]
             # replace spaces with underscores
             # pipeline.colorspace.parse_colorspace_from_filepath
             # is checking it with underscores too
             colorspace = colorspace.replace(" ", "_")
             template_data["colorspace"] = colorspace
 
-        stagingdir = repre.get("stagingDir")
+        stagingdir = repre_get(repre, "stagingDir")
         if not stagingdir:
             # Fall back to instance staging dir if not explicitly
             # set for representation in the instance
@@ -656,7 +660,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         }.items():
             # Allow to take value from representation
             # if not found also consider instance.data
-            value = repre.get(key)
+            value = repre_get(repre, key)
             if value is None:
                 value = instance.data.get(key)
 
@@ -667,7 +671,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         path_template_obj = publish_template["path"]
         template = path_template_obj.template.replace("\\", "/")
 
-        is_udim = bool(repre.get("udim"))
+        is_udim = bool(repre_get(repre, "udim"))
 
         # handle publish in place
         if "{originalDirname}" in template:
@@ -759,7 +763,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # frame indices from the source collection.
                 # In case source are published in place we need to
                 # skip renumbering
-                repre_frame_start = repre.get("frameStart")
+                repre_frame_start = repre_get(repre, "frameStart")
                 explicit_frames = instance.data.get("hasExplicitFrames", False)
                 if not explicit_frames and repre_frame_start is not None:
                     index_frame_start = int(repre_frame_start)
@@ -827,7 +831,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Manage anatomy template data
             template_data.pop("frame", None)
             if is_udim:
-                template_data["udim"] = repre["udim"][0]
+                template_data["udim"] = repre_get(repre, "udim")[0]
             # Construct destination filepath from template
             template_filled = path_template_obj.format_strict(template_data)
             repre_context = template_filled.used_values
@@ -860,7 +864,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             }
 
         # Use previous representation's id if there is a name match
-        existing = existing_repres_by_name.get(repre["name"].lower())
+        repre_name = repre_get(repre, "name")
+        existing = existing_repres_by_name.get(repre_name.lower())
         repre_id = None
         if existing:
             repre_id = existing["id"]
@@ -870,7 +875,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # TODO we should probably store all integrated files
         #   related to the representation?
         published_path = transfers[0][1]
-        repre["published_path"] = published_path
+        repre_set(repre, "published_path", published_path)
 
         # todo: `repre` is not the actual `representation` entity
         #       we should simplify/clarify difference between data above
@@ -880,18 +885,20 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         )
         attributes = {"path": published_path, "template": template}
         data = {"context": repre_context}
-        for key, value in repre.get("data", {}).items():
+        data_from_repre = repre_get(repre, "data") or {}
+        for key, value in data_from_repre.items():
             if key in attr_defs:
                 attributes[key] = value
             else:
                 data[key] = value
 
         # add colorspace data if any exists on representation
-        if repre.get("colorspaceData"):
-            data["colorspaceData"] = repre["colorspaceData"]
+        colorspace_data = repre_get(repre, "colorspaceData")
+        if colorspace_data:
+            data["colorspaceData"] = colorspace_data
 
         repre_doc = new_representation_entity(
-            repre["name"],
+            repre_name,
             version_entity["id"],
             # files are filled afterwards
             [],

@@ -11,6 +11,7 @@ from ayon_core.lib import (
     ToolNotFoundError,
 )
 from ayon_core.pipeline import PublishError
+from ayon_core.pipeline.publish.representation import repre_get, repre_set
 
 
 class ExtractScanlineExr(pyblish.api.InstancePlugin):
@@ -30,25 +31,25 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
 
         for repre in representations:
             self.log.debug(
-                "Processing representation {}".format(repre.get("name")))
-            tags = repre.get("tags", [])
+                "Processing representation {}".format(repre_get(repre, "name")))
+            tags = repre_get(repre, "tags", [])
             if "toScanline" not in tags:
                 self.log.debug(" - missing toScanline tag")
                 continue
 
             # run only on exrs
-            if repre.get("ext") != "exr":
+            if repre_get(repre, "ext") != "exr":
                 self.log.debug("- not EXR files")
                 continue
 
-            if not isinstance(repre['files'], (list, tuple)):
-                input_files = [repre['files']]
+            if not isinstance(repre_get(repre, "files"), (list, tuple)):
+                input_files = [repre_get(repre, "files")]
                 self.log.debug("We have a single frame")
             else:
-                input_files = repre['files']
+                input_files = repre_get(repre, "files")
                 self.log.debug("We have a sequence")
 
-            stagingdir = os.path.normpath(repre.get("stagingDir"))
+            stagingdir = os.path.normpath(repre_get(repre, "stagingDir"))
 
             try:
                 oiio_tool_args = get_oiio_tool_args("oiiotool")
@@ -84,9 +85,10 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
                         self.log.warning("Unable to delete temp file")
                         self.log.warning(e)
 
-            repre['name'] = 'exr'
+            repre_set(repre, "name", "exr")
             try:
-                repre['tags'].remove('toScanline')
+                repre_get(repre, "tags", []).remove("toScanline")
+
             except ValueError:
                 # no `toScanline` tag present
                 pass
