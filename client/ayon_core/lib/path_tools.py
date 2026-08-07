@@ -40,24 +40,6 @@ def create_hard_link(src_path, dst_path):
     os.link(src_path, dst_path)
 
 
-def get_collections(files: list[str]) -> list[clique.Collection]:
-    """Get collections from list of sequence files using clique.
-
-    Args:
-        files (list[str]): list of sequence file paths
-
-    Returns:
-        list[clique.Collection]: list of collections assembled from the files
-    """
-    pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
-    return clique.assemble(
-        files,
-        minimum_items=1 if len(files) == 1 else 2,
-        assume_padded_when_ambiguous=True,
-        patterns=[pattern]
-    )
-
-
 def collect_frames(files):
     """Returns dict of source path and its frame, if from sequence
 
