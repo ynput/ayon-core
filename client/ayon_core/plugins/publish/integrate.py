@@ -740,7 +740,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, _remainders = self._get_collections_for_repre_files(files)
+            src_collections, _remainder = (
+                self._get_collections_for_repre_files(files)
+            )
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -808,7 +810,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
-            dst_collection = self._get_collections_for_repre_files(dst_filepaths)[0][0]
+            dst_collection = self._get_collections_for_repre_files(
+                dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
             if len(src_collection.indexes) != len(dst_collection.indexes):
                 raise PublishError(
