@@ -1152,7 +1152,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # If custom pattern yields no collections,
         # retry default clique parsing.
-        if not collections:
+        if not collections and len(files) > 1:
             collections, remainders = clique.assemble(
                 files,
                 minimum_items=minimum_items,
