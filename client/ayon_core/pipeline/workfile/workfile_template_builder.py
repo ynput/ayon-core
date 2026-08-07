@@ -151,7 +151,7 @@ class TemplatePreset:
             bool: Preset has set path to an existing file.
 
         """
-        return self.path and os.path.exists(self.path)
+        return self.path is not None and os.path.exists(self.path)
 
 
 class AbstractTemplateBuilder(ABC):
@@ -729,8 +729,9 @@ class AbstractTemplateBuilder(ABC):
         ):
             preset = self.get_template_preset()
             if not preset.has_valid_path():
-                return
-
+                raise TemplateLoadFailed(
+                    f"Template path '{preset.path}' does not exist."
+                )
             template_path: str = preset.path
             if keep_placeholders is None:
                 keep_placeholders: bool = preset.keep_placeholder
