@@ -729,9 +729,8 @@ class AbstractTemplateBuilder(ABC):
         ):
             preset = self.get_template_preset()
             if not preset.has_valid_path():
-                raise TemplateLoadFailed(
-                    f"Template path '{preset.path}' does not exist."
-                )
+                return
+
             template_path: str = preset.path
             if keep_placeholders is None:
                 keep_placeholders: bool = preset.keep_placeholder
