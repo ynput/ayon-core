@@ -576,9 +576,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             return
 
-        src_collections, remainders = (
-            self._get_collections_for_repre_files(files)
-        )
+        src_collections, remainders = self.get_file_collections(files)
         if len(files) < 2 or len(src_collections) != 1 or remainders:
             raise PublishError((
                 "Files of representation does not contain proper"
@@ -707,7 +705,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Find out first frame string value
             first_index_padded = None
             if not is_udim and is_sequence_representation:
-                col = self._get_collections_for_repre_files(files)[0][0]
+                col = self.get_file_collections(files)[0][0]
                 sorted_frames = tuple(sorted(col.indexes))
                 # First frame used for end value
                 first_frame = sorted_frames[0]
@@ -742,9 +740,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, _remainder = (
-                self._get_collections_for_repre_files(files)
-            )
+            src_collections, _remainder = self.get_file_collections(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -812,8 +808,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
-            dst_collection = self._get_collections_for_repre_files(
-                dst_filepaths)[0][0]
+            dst_collection = self.get_file_collections(dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
             if len(src_collection.indexes) != len(dst_collection.indexes):
                 raise PublishError(
@@ -1132,7 +1127,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             context.data["ayonAttributes"] = attributes
         return attributes
 
-    def _get_collections_for_repre_files(
+    def get_file_collections(
             self, files: list[str]) -> list[clique.Collection]:
         """Get collections from list of files from representation
         data using clique.
