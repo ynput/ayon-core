@@ -576,7 +576,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             return
 
-        src_collections, remainders = self._get_collections_for_repre_files(files)
+        src_collections, remainders = (
+            self._get_collections_for_repre_files(files)
+        )
         if len(files) < 2 or len(src_collections) != 1 or remainders:
             raise PublishError((
                 "Files of representation does not contain proper"
