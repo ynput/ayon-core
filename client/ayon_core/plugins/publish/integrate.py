@@ -1142,7 +1142,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         """
         pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
         minimum_items = 1 if len(files) == 1 else 2
-
+        if minimum_items > 1:
+            self.log.debug(f"Handling single file: {files}")
+        else:
+            self.log.debug(f"Handling sequence files: {files}")
         collections, remainders = clique.assemble(
             files,
             minimum_items=minimum_items,
