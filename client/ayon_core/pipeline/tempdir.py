@@ -68,7 +68,7 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
     """
     # use pathlib for creating tempdir
     if dirpath is None:
-        dirpath = tempfile.gettempdir()
+        return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
 
     # Use 'pathlib.Path.mkdir' to inherit permissions
     dirpath_p = Path(dirpath)
