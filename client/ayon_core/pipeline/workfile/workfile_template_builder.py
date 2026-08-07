@@ -728,6 +728,9 @@ class AbstractTemplateBuilder(ABC):
             or create_first_version is None
         ):
             preset = self.get_template_preset()
+            # Path may e.g. be none if there's no active workfile template
+            # set for current text, which would indicate it's just disabled.
+            # In that case, do nothing
             if preset.path is None:
                 return
 
