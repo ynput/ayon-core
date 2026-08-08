@@ -577,7 +577,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             return
 
         src_collections, remainders = self.get_file_collections(files)
-        if len(files) < 2 or len(src_collections) != 1 or remainders:
+        if len(src_collections) != 1 or remainders:
             raise PublishError((
                 "Files of representation does not contain proper"
                 " sequence files.\nCollected collections: {}"
@@ -688,6 +688,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             template_data["originalDirname"] = without_root
 
         is_sequence_representation = isinstance(files, (list, tuple))
+        if is_sequence_representation:
+            self.log.debug(
+                f"Handling sequence representation {repre['name']}: {files}"
+            )
+        else:
+            self.log.debug(
+                f"Handling single file representation {repre['name']}: {files}"
+            )
         self._validate_repre_files(files, is_sequence_representation)
 
         # Output variables of conditions below:
@@ -1142,10 +1150,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         """
         pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
         minimum_items = 1 if len(files) == 1 else 2
-        if minimum_items > 1:
-            self.log.debug(f"Handling single file: {files}")
-        else:
-            self.log.debug(f"Handling sequence files: {files}")
         collections, remainders = clique.assemble(
             files,
             minimum_items=minimum_items,
