@@ -18,6 +18,7 @@ from ayon_core.lib.attribute_definitions import (
 )
 
 if TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.host import AbstractHost
     from ayon_core.pipeline.create import (
@@ -430,10 +431,6 @@ class AbstractPublisherCommon(ABC):
         pass
 
     @abstractmethod
-    def get_project_settings(self, project_name: str | None) -> dict:
-        pass
-
-    @abstractmethod
     def host_context_has_changed(self) -> bool:
         """Host context changed after last reset.
 
@@ -486,6 +483,10 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def get_create_context(self) -> CreateContext:
         pass
 
@@ -535,10 +536,6 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """
 
     @abstractmethod
-    def register_event_callback(self, topic: str, callback: Callable) -> None:
-        pass
-
-    @abstractmethod
     def is_host_valid(self) -> bool:
         """Host is valid for creation part.
 
@@ -561,6 +558,18 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         """
         pass
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
 
     @abstractmethod
     def get_task_items_by_folder_paths(

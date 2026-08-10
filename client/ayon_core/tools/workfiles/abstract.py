@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+import typing
 from typing import Optional, Any
 
 from ayon_core.host import PublishedWorkfileInfo
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class WorkareaFilepathResult:
@@ -295,6 +299,18 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
+    @abstractmethod
     def get_user_items_by_name(self):
         """Get user items available on AYON server.
 
@@ -340,6 +356,22 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Returns:
             list[TaskTypeItem]: Task type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, set[str]]:
+        """Get entity ids of tasks assigned to the current user for a project.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, set[str]]: Dictionary mapping of folder ids and task ids
+                that a user is assigned to.
 
         """
         pass
