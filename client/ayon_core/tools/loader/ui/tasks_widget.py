@@ -16,6 +16,7 @@ from ayon_core.tools.utils.tasks_widget import (
     ITEM_NAME_ROLE,
     PARENT_ID_ROLE,
     TASK_TYPE_ROLE,
+    TASK_TYPE_ORDER_ROLE,
     TasksProxyModel,
 )
 from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
@@ -204,6 +205,7 @@ class LoaderTasksQtModel(TasksQtModel):
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
+            item.setData(task_item.task_type_order, TASK_TYPE_ORDER_ROLE)
             item.setData(folder_id, PARENT_ID_ROLE)
             item.setData(folder_label, FOLDER_LABEL_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
@@ -346,6 +348,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         selection_model.selectionChanged.connect(self._on_selection_change)
 
         tasks_model.refreshed.connect(self._on_model_refresh)
+        tasks_model.project_changed.connect(self._on_tasks_project_change)
 
         self._controller = controller
         self._tasks_view = tasks_view
@@ -394,8 +397,11 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         self._tasks_model.set_context(project_name, folder_ids)
 
     def _on_model_refresh(self):
-        self._tasks_proxy_model.sort(0)
+        self._update_task_type_sorting()
         self.refreshed.emit()
+
+    def _on_tasks_project_change(self):
+        self._update_task_type_sorting()
 
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
@@ -413,3 +419,24 @@ class LoaderTasksWidget(QtWidgets.QWidget):
     def _on_selection_change(self):
         item_ids = self._get_selected_item_ids()
         self._controller.set_selected_tasks(item_ids)
+
+    def _update_task_type_sorting(self):
+        project_name = self._tasks_model.get_last_project_name()
+        if project_name is None:
+            return
+
+        mode = self._controller.get_task_sorting_mode(project_name)
+        if mode == "type":
+            use_task_type_sorting = True
+        elif mode == "name":
+            use_task_type_sorting = False
+        else:
+            use_task_type_sorting = False
+            self.log.warning(
+                f"Unknown sort type '{mode}' falling to 'type'"
+            )
+
+        self._tasks_proxy_model.set_task_type_sorting_enabled(
+            use_task_type_sorting
+        )
+        self._tasks_proxy_model.sort(0)
