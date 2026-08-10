@@ -5,7 +5,6 @@ import tempfile
 import platform
 import shutil
 
-import clique
 import pyblish.api
 
 from ayon_core import resources, AYON_CORE_ROOT
@@ -22,7 +21,8 @@ from ayon_core.lib import (
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.pipeline.publish.lib import (
     add_repre_files_for_cleanup,
-    get_default_reviewable_layers
+    get_default_reviewable_layers,
+    get_file_collections,
 )
 
 
@@ -619,7 +619,7 @@ class ExtractBurnin(publish.Extractor):
         # - not used if input is not a sequence
         first_frame = None
         if is_sequence:
-            collections, _ = self.get_file_collections(input_filenames)
+            collections, _ = get_file_collections(input_filenames)
             if not collections:
                 is_sequence = False
             else:
@@ -851,36 +851,3 @@ class ExtractBurnin(publish.Extractor):
         self.log.debug("scriptpath: {}".format(scriptpath))
 
         return scriptpath
-
-    def get_file_collections(
-            self, files: list[str]
-        ) -> tuple[list[clique.Collection], list[str]]:
-        """Get collections from list of files from representation
-        data using clique.
-
-        Args:
-            files (list[str]): list of sequence file paths
-
-        Returns:
-            tuple[list[clique.Collection], list[str]]: tuple of collections
-            and remainders from clique.
-        """
-        pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
-        minimum_items = 1 if len(files) == 1 else 2
-        collections, remainders = clique.assemble(
-            files,
-            minimum_items=minimum_items,
-            assume_padded_when_ambiguous=True,
-            patterns=[pattern]
-        )
-
-        # If custom pattern yields no collections,
-        # retry default clique parsing.
-        if not collections and len(files) > 1:
-            collections, remainders = clique.assemble(
-                files,
-                minimum_items=minimum_items,
-                assume_padded_when_ambiguous=True
-            )
-
-        return collections, remainders

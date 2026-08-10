@@ -6,7 +6,6 @@ import sys
 import copy
 from typing import Iterable, Any
 
-import clique
 import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
@@ -31,6 +30,7 @@ from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
 )
+from ayon_core.pipeline.publish.lib import get_file_collections
 from ayon_core.pipeline import is_product_base_type_supported
 from ayon_core.pipeline.anatomy import (
     Anatomy,
@@ -576,7 +576,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             return
 
-        src_collections, remainders = self.get_file_collections(files)
+        src_collections, remainders = get_file_collections(files)
         if len(src_collections) != 1 or remainders:
             raise PublishError((
                 "Files of representation does not contain proper"
@@ -713,7 +713,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Find out first frame string value
             first_index_padded = None
             if not is_udim and is_sequence_representation:
-                col = self.get_file_collections(files)[0][0]
+                col = get_file_collections(files)[0][0]
                 sorted_frames = tuple(sorted(col.indexes))
                 # First frame used for end value
                 first_frame = sorted_frames[0]
@@ -748,7 +748,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, _remainder = self.get_file_collections(files)
+            src_collections, _remainder = get_file_collections(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -816,7 +816,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
-            dst_collection = self.get_file_collections(dst_filepaths)[0][0]
+            dst_collection = get_file_collections(dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
             if len(src_collection.indexes) != len(dst_collection.indexes):
                 raise PublishError(
@@ -1134,36 +1134,3 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 attributes[key] = get_attributes_for_type(key)
             context.data["ayonAttributes"] = attributes
         return attributes
-
-    def get_file_collections(
-            self, files: list[str]
-        ) -> tuple[list[clique.Collection], list[str]]:
-        """Get collections from list of files from representation
-        data using clique.
-
-        Args:
-            files (list[str]): list of sequence file paths
-
-        Returns:
-            tuple[list[clique.Collection], list[str]]: tuple of collections
-            and remainders from clique.
-        """
-        pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
-        minimum_items = 1 if len(files) == 1 else 2
-        collections, remainders = clique.assemble(
-            files,
-            minimum_items=minimum_items,
-            assume_padded_when_ambiguous=True,
-            patterns=[pattern]
-        )
-
-        # If custom pattern yields no collections,
-        # retry default clique parsing.
-        if not collections and len(files) > 1:
-            collections, remainders = clique.assemble(
-                files,
-                minimum_items=minimum_items,
-                assume_padded_when_ambiguous=True
-            )
-
-        return collections, remainders

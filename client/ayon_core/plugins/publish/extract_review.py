@@ -9,7 +9,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 import tempfile
 
-import clique
 import pyblish.api
 
 from ayon_core.lib import (
@@ -19,7 +18,8 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline.publish.lib import (
-    fill_sequence_gaps_with_previous_version
+    fill_sequence_gaps_with_previous_version,
+    get_file_collections,
 )
 from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
@@ -485,7 +485,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 self.log.debug("Checking sequence to fill gaps in sequence..")
 
                 files = temp_data.origin_repre["files"]
-                collections, _ = self.get_file_collections(files)
+                collections, _ = get_file_collections(files)
                 if len(collections) != 1:
                     raise PublishError(
                         "Found multiple collections, expected one."
@@ -704,7 +704,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         if input_is_sequence and repre["files"]:
             # Calculate first frame that should be used
-            cols, _ = self.get_file_collections(repre["files"])
+            cols, _ = get_file_collections(repre["files"])
             input_frames = list(sorted(cols[0].indexes))
             first_sequence_frame = input_frames[0]
             # WARNING: This is an issue as we don't know if first frame
@@ -1185,7 +1185,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         dst_staging_dir = new_repre["stagingDir"]
 
         if temp_data.input_is_sequence:
-            collections, _ = self.get_file_collections(repre["files"])
+            collections, _ = get_file_collections(repre["files"])
             full_input_path = os.path.join(
                 src_staging_dir,
                 collections[0].format("{head}{padding}{tail}")
@@ -1899,39 +1899,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
         vf_back = "-vf " + ",".join(vf_fixed)
 
         return vf_back
-
-    def get_file_collections(
-            self, files: list[str]
-        ) -> tuple[list[clique.Collection], list[str]]:
-        """Get collections from list of files from representation
-        data using clique.
-
-        Args:
-            files (list[str]): list of sequence file paths
-
-        Returns:
-            tuple[list[clique.Collection], list[str]]: tuple of collections
-            and remainders from clique.
-        """
-        pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
-        minimum_items = 1 if len(files) == 1 else 2
-        collections, remainders = clique.assemble(
-            files,
-            minimum_items=minimum_items,
-            assume_padded_when_ambiguous=True,
-            patterns=[pattern]
-        )
-
-        # If custom pattern yields no collections,
-        # retry default clique parsing.
-        if not collections and len(files) > 1:
-            collections, remainders = clique.assemble(
-                files,
-                minimum_items=minimum_items,
-                assume_padded_when_ambiguous=True
-            )
-
-        return collections, remainders
 
 
 class _OverscanValue(ABC):
