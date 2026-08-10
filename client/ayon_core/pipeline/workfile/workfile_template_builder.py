@@ -1166,10 +1166,7 @@ class AbstractTemplateBuilder(ABC):
             logger=self.log
         )
         if not profile:
-            raise TemplateProfileNotFound(
-                f"No matching profile found for task '{task_name}' "
-                f"of type '{task_type}' with host '{self.host_name}'"
-            )
+            return TemplatePreset()
 
         path = profile["path"]
         # resolve path from ayon entity url
