@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import typing
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
@@ -10,6 +14,9 @@ from ayon_core.tools.utils import (
     GoToCurrentButton,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class CreateSelectionModel(object):
@@ -125,8 +132,8 @@ class CreateHierarchyController:
     def get_project_name(self):
         return self._controller.get_current_project_name()
 
-    def get_project_settings(self, project_name):
-        return self._controller.get_project_settings(project_name)
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._controller.get_task_sorting_mode(project_name)
 
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
