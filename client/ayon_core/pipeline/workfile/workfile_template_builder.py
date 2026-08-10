@@ -667,6 +667,11 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
+        if not preset.profile:
+            raise TemplateProfileNotFound(
+                "No matching profile found for current context."
+            )
+
         if not preset.has_valid_path():
             raise TemplateLoadFailed(
                 f"Template path '{preset.path}' does not exist."
