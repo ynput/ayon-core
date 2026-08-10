@@ -11,12 +11,7 @@ from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
 )
-
 from ayon_core.pipeline.publish import PublishError, KnownPublishError
-from ayon_core.lib.attribute_definitions import (
-    serialize_attr_defs,
-    deserialize_attr_defs,
-)
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models.settings import TaskSortMode
