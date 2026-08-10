@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import typing
 from typing import Iterable, Any, Optional, Union
 
 from ayon_core.lib.icon_definitions import IconBase, AwesomeFontIcon
@@ -15,6 +16,9 @@ from ayon_core.tools.common_models import (
     TagItem,
     ProductTypeIconMapping,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class ProductTypeItem:
@@ -528,6 +532,18 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             Optional[str]: Window subtitle.
+
+        """
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
 
         """
 
