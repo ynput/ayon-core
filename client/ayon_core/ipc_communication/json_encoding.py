@@ -33,8 +33,8 @@ from ayon_core.tools.publisher.models.create import (
     CreatorItem,
 )
 from ayon_core.tools.publisher.models.publish import (
-    PublishErrorsReport,
-    PublishErrorInfo,
+    UIPublishErrorReport,
+    UIFailInfo,
 )
 from ayon_core.tools.publisher.abstract import (
     CommentDef,
@@ -96,10 +96,10 @@ class DataEncoder(json.JSONEncoder):
                 CommentDef,
                 CreatorItem,
                 PublishReport,
-                PublishErrorsReport,
+                UIPublishErrorReport,
+                UIFailInfo,
                 PublishAttrDefsInfo,
                 InstanceContextInfo,
-                PublishErrorInfo,
                 InstanceItem,
                 # Workfile
                 WorkfileInfo,
@@ -205,8 +205,11 @@ class DataDecoder(json.JSONDecoder):
     def decode_InstanceContextInfo(self, obj):
         return InstanceContextInfo.from_data(obj)
 
-    def decode_PublishErrorInfo(self, obj):
-        return PublishErrorInfo.from_data(obj)
+    def decode_UIPublishErrorReport(self, obj):
+        return UIPublishErrorReport.from_data(obj)
+
+    def decode_UIFailInfo(self, obj):
+        return UIFailInfo.from_data(obj)
 
     def decode_InstanceItem(self, obj):
         return InstanceItem.from_data(obj)
@@ -225,6 +228,3 @@ class DataDecoder(json.JSONDecoder):
 
     def decode_PublishReport(self, obj):
         return PublishReport.from_data(obj)
-
-    def decode_PublishErrorsReport(self, obj):
-        return PublishErrorsReport.from_data(obj)
