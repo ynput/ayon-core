@@ -125,6 +125,9 @@ class CreateHierarchyController:
     def get_project_name(self):
         return self._controller.get_current_project_name()
 
+    def get_project_settings(self, project_name):
+        return self._controller.get_project_settings(project_name)
+
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
 
