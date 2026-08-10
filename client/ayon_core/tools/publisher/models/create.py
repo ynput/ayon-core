@@ -107,11 +107,11 @@ class CreatorUIItem:
         )
 
     def to_data(self) -> dict[str, Any]:
-        return {
-            "product_type": self.product_type,
-            "label": self.label,
-            "filtered": self.filtered,
-        }
+        return dict(
+            product_type=self.product_type,
+            label=self.label,
+            filtered=self.filtered,
+        )
 
 
 class CreatorItem:
