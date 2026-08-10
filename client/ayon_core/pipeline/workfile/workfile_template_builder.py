@@ -735,7 +735,7 @@ class AbstractTemplateBuilder(ABC):
                 return
 
             if not preset.has_valid_path():
-                raise TemplateLoadFailed(
+                raise TemplateProfileNotFound(
                     f"Template path '{preset.path}' does not exist."
                 )
             template_path: str = preset.path
