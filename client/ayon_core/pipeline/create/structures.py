@@ -6,7 +6,7 @@ from uuid import uuid4
 from dataclasses import dataclass
 from enum import Enum
 import typing
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Iterator, Iterable
 
 from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
@@ -150,6 +150,104 @@ class InstanceMember:
             "label": label,
             "callback": callback
         })
+
+
+class InstanceFamilies:
+    """Helper class to handle families of an instance.
+
+    Works with families as with set of strings. Changes are tracked and
+        instance is notified about changes.
+
+    Args:
+        instance (CreatedInstance): Instance to which families belong.
+        families (list[str] | set[str] | None): Current families of
+            the instance.
+
+    """
+    def __init__(
+        self,
+        instance: CreatedInstance,
+        families: list[str] | set[str] | None,
+    ) -> None:
+        if families is None:
+            families = set()
+        elif isinstance(families, list):
+            families = set(families)
+        elif not isinstance(families, set):
+            families = set()
+
+        self.origin_data = families.copy()
+        self.families = families
+        self._instance = instance
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.families)
+
+    def __contains__(self, family: str) -> bool:
+        return family in self.families
+
+    def __add__(self, other: Any) -> set[str]:
+        if isinstance(other, str):
+            return self.families.union({other})
+        if isinstance(other, InstanceFamilies):
+            return self.families.union(other.families)
+        return self.families.union(set(other))
+
+    def __iadd__(self, other: Any) -> InstanceFamilies:
+        if isinstance(other, str):
+            other = {other}
+        self.extend(other)
+        return self
+
+    def mark_as_stored(self) -> None:
+        self.origin_data = self.families.copy()
+
+    def data_to_store(self) -> list[str]:
+        self.origin_data = self.families.copy()
+        return list(self.families)
+
+    def set(self, value: Any) -> None:
+        if isinstance(value, InstanceFamilies):
+            self.families = value.families.copy()
+        elif isinstance(value, (list, set, tuple)):
+            self.families = set(value)
+        elif isinstance(value, str):
+            self.families = {value}
+        else:
+            raise TypeError(
+                f"Got invalid type for families '{type(value)}'."
+            )
+
+    def add(self, family: str) -> None:
+        if family in self.families:
+            return
+        self.families.add(family)
+        self._instance.families_changed(self.families.copy())
+
+    def remove(self, *families: str) -> None:
+        removed = set()
+        for family in families:
+            if family not in self.families:
+                continue
+            self.families.remove(family)
+            removed.add(family)
+
+        if removed:
+            self._instance.families_changed(self.families.copy())
+
+    def extend(self, families: Iterable[str]) -> None:
+        added = set()
+        for family in families:
+            if family not in self.families:
+                added.add(family)
+                self.families.add(family)
+
+        if added:
+            self._instance.families_changed(self.families.copy())
+
+    def append(self, family: str) -> None:
+        """Backwards compatibility."""
+        self.add(family)
 
 
 class AttributeValues:
@@ -624,6 +722,7 @@ class CreatedInstance:
 
         # Pop dictionary values that will be converted to objects to be able
         #   catch changes
+        orig_families = data.pop("families", None)
         orig_creator_attributes = data.pop("creator_attributes", None) or {}
         orig_publish_attributes = data.pop("publish_attributes", None) or {}
 
@@ -666,6 +765,9 @@ class CreatedInstance:
                 data.pop(key)
 
         self._data["variant"] = self._data.get("variant") or ""
+
+        self._data["families"] = InstanceFamilies(self, orig_families)
+
         # Stored creator specific attribute values
         # {key: value}
         creator_values = copy.deepcopy(orig_creator_attributes)
@@ -677,6 +779,7 @@ class CreatedInstance:
         self._data["publish_attributes"] = PublishAttributes(
             self, orig_publish_attributes
         )
+
         if data:
             self._data.update(data)
 
@@ -715,6 +818,10 @@ class CreatedInstance:
                 return
             # Raise exception if key is immutable and value has changed
             raise ImmutableKeyError(key)
+
+        if key == "families":
+            self.families.set(value)
+            return
 
         if key in self._data and self._data[key] == value:
             return
@@ -789,6 +896,7 @@ class CreatedInstance:
         output = copy.deepcopy(self._orig_data)
         output["creator_attributes"] = self.creator_attributes.origin_data
         output["publish_attributes"] = self.publish_attributes.origin_data
+        output["families"] = self.families.origin_data
         return output
 
     @property
@@ -916,15 +1024,24 @@ class CreatedInstance:
         orig_keys = set(self._orig_data.keys())
         for key, value in self._data.items():
             orig_keys.discard(key)
-            if key in ("creator_attributes", "publish_attributes"):
+            if key in (
+                "creator_attributes",
+                "publish_attributes",
+                "families",
+            ):
                 continue
             self._orig_data[key] = copy.deepcopy(value)
 
         for key in orig_keys:
             self._orig_data.pop(key)
 
+        self.families.mark_as_stored()
         self.creator_attributes.mark_as_stored()
         self.publish_attributes.mark_as_stored()
+
+    @property
+    def families(self) -> InstanceFamilies:
+        return self._data["families"]
 
     @property
     def creator_attributes(self) -> CreatorAttributeValues:
@@ -970,7 +1087,11 @@ class CreatedInstance:
 
         output = collections.OrderedDict()
         for key, value in self._data.items():
-            if key in ("creator_attributes", "publish_attributes"):
+            if key in (
+                "creator_attributes",
+                "publish_attributes",
+                "families",
+            ):
                 continue
             output[key] = value
 
@@ -978,6 +1099,7 @@ class CreatedInstance:
             creator_attributes = self.creator_attributes.data_to_store()
         else:
             creator_attributes = copy.deepcopy(self.creator_attributes)
+        output["families"] = self.families.data_to_store()
         output["creator_attributes"] = creator_attributes
         output["publish_attributes"] = self.publish_attributes.data_to_store()
 
@@ -1058,6 +1180,17 @@ class CreatedInstance:
             data=instance_data,
             creator=creator,
             transient_data=transient_data,
+        )
+
+    def families_changed(self, families: set[str]) -> None:
+        """A value changed.
+
+        Args:
+            families (set[str]): New families.
+
+        """
+        self._create_context.instance_values_changed(
+            self.id, {"families": families}
         )
 
     def attribute_value_changed(self, key, changes):
