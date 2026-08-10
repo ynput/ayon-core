@@ -26,7 +26,7 @@ if typing.TYPE_CHECKING:
 
 
 CURRENT_DIR = Path(__file__).parent
-SRIPT_PATH = CURRENT_DIR / "ui_process.py"
+SRIPT_PATH = CURRENT_DIR / "default_run.py"
 
 logger = logging.getLogger(__name__)
 
