@@ -463,10 +463,9 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             return []
 
         # Validate type of stored representations
-        if not isinstance(repres, (list, tuple)):
             raise TypeError(
                 "Instance 'representations' must be a list, "
-                f"got: {type(repres)} {repres}".format
+                f"got: {type(repres)} {repres}"
             )
 
         # Filter representations
