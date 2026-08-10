@@ -3,148 +3,12 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 import typing
-from typing import Optional
+from typing import Optional, Any
 
-from ayon_core.style import get_default_entity_icon_color
+from ayon_core.host import PublishedWorkfileInfo
 
 if typing.TYPE_CHECKING:
-    from ayon_core.host import PublishedWorkfileInfo
     from ayon_core.tools.common_models.settings import TaskSortMode
-
-
-class FolderItem:
-    """Item representing folder entity on a server.
-
-    Folder can be a child of another folder or a project.
-
-    Args:
-        entity_id (str): Folder id.
-        parent_id (Union[str, None]): Parent folder id. If 'None' then project
-            is parent.
-        name (str): Name of folder.
-        label (str): Folder label.
-        icon_name (str): Name of icon from font awesome.
-        icon_color (str): Hex color string that will be used for icon.
-
-    """
-    def __init__(
-        self, entity_id, parent_id, name, label, icon_name, icon_color
-    ):
-        self.entity_id = entity_id
-        self.parent_id = parent_id
-        self.name = name
-        self.icon_name = icon_name or "fa.folder"
-        self.icon_color = icon_color or get_default_entity_icon_color()
-        self.label = label or name
-
-    def to_data(self):
-        """Converts folder item to data.
-
-        Returns:
-            dict[str, Any]: Folder item data.
-
-        """
-        return {
-            "entity_id": self.entity_id,
-            "parent_id": self.parent_id,
-            "name": self.name,
-            "label": self.label,
-            "icon_name": self.icon_name,
-            "icon_color": self.icon_color,
-        }
-
-    @classmethod
-    def from_data(cls, data):
-        """Re-creates folder item from data.
-
-        Args:
-            data (dict[str, Any]): Folder item data.
-
-        Returns:
-            FolderItem: Folder item.
-
-        """
-        return cls(**data)
-
-
-class TaskItem:
-    """Task item representing task entity on a server.
-
-    Task is child of a folder.
-
-    Task item has label that is used for display in UI. The label is by
-        default using task name and type.
-
-    Args:
-        task_id (str): Task id.
-        name (str): Name of task.
-        task_type (str): Type of task.
-        parent_id (str): Parent folder id.
-        icon_name (str): Name of icon from font awesome.
-        icon_color (str): Hex color string that will be used for icon.
-
-    """
-    def __init__(
-        self, task_id, name, task_type, parent_id, icon_name, icon_color
-    ):
-        self.task_id = task_id
-        self.name = name
-        self.task_type = task_type
-        self.parent_id = parent_id
-        self.icon_name = icon_name or "fa.male"
-        self.icon_color = icon_color or get_default_entity_icon_color()
-        self._label = None
-
-    @property
-    def id(self):
-        """Alias for task_id.
-
-        Returns:
-            str: Task id.
-
-        """
-        return self.task_id
-
-    @property
-    def label(self):
-        """Label of task item for UI.
-
-        Returns:
-            str: Label of task item.
-
-        """
-        if self._label is None:
-            self._label = "{} ({})".format(self.name, self.task_type)
-        return self._label
-
-    def to_data(self):
-        """Converts task item to data.
-
-        Returns:
-            dict[str, Any]: Task item data.
-
-        """
-        return {
-            "task_id": self.task_id,
-            "name": self.name,
-            "parent_id": self.parent_id,
-            "task_type": self.task_type,
-            "icon_name": self.icon_name,
-            "icon_color": self.icon_color,
-        }
-
-    @classmethod
-    def from_data(cls, data):
-        """Re-create task item from data.
-
-        Args:
-            data (dict[str, Any]): Task item data.
-
-        Returns:
-            TaskItem: Task item.
-
-        """
-        return cls(**data)
 
 
 class WorkareaFilepathResult:
@@ -166,16 +30,44 @@ class WorkareaFilepathResult:
         self.exists = exists
         self.filepath = filepath
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            root=self.root,
+            filename=self.filename,
+            exists=self.exists,
+            filepath=self.filepath,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> WorkareaFilepathResult:
+        return cls(**data)
+
 
 class PublishedWorkfileWrap:
     """Wrapper for workfile info that also contains version comment."""
     def __init__(
         self,
-        info: Optional[PublishedWorkfileInfo] = None,
-        comment: Optional[str] = None,
+        info: PublishedWorkfileInfo | None = None,
+        comment: str | None = None,
     ) -> None:
         self.info = info
         self.comment = comment
+
+    def to_data(self) -> dict[str, Any]:
+        info = None
+        if self.info is not None:
+            info = self.info.to_data()
+        return dict(
+            info=info,
+            comment=self.comment,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> PublishedWorkfileWrap:
+        info = data["info"]
+        if info is not None:
+            info = PublishedWorkfileInfo.from_data(info)
+        return cls(info=info, comment=data["comment"])
 
 
 class AbstractWorkfilesCommon(ABC):
