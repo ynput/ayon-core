@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+import typing
 from typing import Optional, Any
 
 from ayon_core.host import PublishedWorkfileInfo
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class WorkareaFilepathResult:
@@ -293,6 +297,18 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         """
         pass
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
 
     @abstractmethod
     def get_user_items_by_name(self):

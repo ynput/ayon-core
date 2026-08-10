@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import typing
 from typing import Optional, Any
 
 from ayon_core.addon import AddonsManager
@@ -12,6 +13,9 @@ from ayon_core.tools.common_models import (
     TaskItem,
     TaskTypeItem,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 @dataclass
@@ -160,6 +164,18 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 
 
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
     @abstractmethod
     def get_grouped_host_names(self) -> list[str | None]:
         """Get list of host names that will group workfiles."""

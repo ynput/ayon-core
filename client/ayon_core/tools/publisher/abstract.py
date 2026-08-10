@@ -1,37 +1,38 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
-from typing import (
-    Optional,
-    Dict,
-    List,
-    Tuple,
-    Any,
-    Union,
-    Iterable,
-    TYPE_CHECKING,
-)
+import collections
+from dataclasses import dataclass, asdict, field
+import typing
+from typing import Any, Callable, Iterable
+import uuid
+
 from ayon_core.lib.attribute_definitions import (
-    AbstractAttrDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
-from ayon_core.host import AbstractHost
-from ayon_core.pipeline.publish import PublishReport
-from ayon_core.pipeline.create import (
-    CreateContext,
-    ConvertorItem,
-)
-from ayon_core.tools.common_models import (
-    FolderItem,
-    TaskItem,
-    FolderTypeItem,
-    TaskTypeItem,
-)
 
-if TYPE_CHECKING:
-    from .models import CreatorItem, PublishErrorInfo, InstanceItem
+from ayon_core.pipeline.publish import PublishError, KnownPublishError
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
+    from ayon_core.lib import AbstractAttrDef
+    from ayon_core.host import AbstractHost
+    from ayon_core.pipeline.create import (
+        CreateContext,
+        ConvertorItem,
+    )
+    from ayon_core.pipeline.publish import PublishReport, PublishLogic
+    from ayon_core.pipeline.publish.logic import ActionType, PublishErrorInfo
+
+    from ayon_core.tools.common_models import (
+        FolderItem,
+        TaskItem,
+        FolderTypeItem,
+        TaskTypeItem,
+    )
+
+    from .models import CreatorItem, InstanceItem
 
 
 @dataclass
@@ -78,9 +79,278 @@ class PublishAttrDefsInfo:
         )
 
 
+@dataclass
+class UIFailInfo:
+    message: str
+    # Error caused by 'PublishError' exception.
+    is_publish_error: bool
+
+    @classmethod
+    def from_exception(cls, exc) -> "UIFailInfo":
+        if isinstance(exc, PublishError):
+            return cls(exc.message, True)
+
+        if isinstance(exc, KnownPublishError):
+            msg = str(exc)
+        else:
+            msg = (
+                "Something went wrong. Send report"
+                " to your supervisor or Ynput team."
+            )
+        return cls(msg, False)
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            message=self.message,
+            is_publish_error=self.is_publish_error,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "UIFailInfo":
+        return cls(data["message"], data["is_publish_error"])
+
+
+@dataclass
+class UIPublishPluginActionItem:
+    """Representation of publish plugin action.
+
+    Data driven object which is used as proxy for controller and UI.
+
+    Attributes:
+        action_id (str): Action id.
+        plugin_id (str): Plugin id.
+        active (bool): Action is active.
+        on_filter (Literal["all", "notProcessed", "processed", "failed",
+            "warning", "failedOrWarning", "succeeded"]): Actions have 'on'
+            attribute which define  when can be action triggered
+            (e.g. 'all', 'failed', ...).
+        label (str): Action's label.
+        icon (str | None) Action's icon.
+
+    """
+    action_id: str
+    plugin_id: str
+    active: bool
+    on_filter: str
+    label: str
+    icon: str | None
+
+    @classmethod
+    def from_action(
+        cls, action: ActionType, plugin_id: str
+    ) -> "UIPublishPluginActionItem":
+        label = action.label or action.__name__
+        icon = getattr(action, "icon", None)
+        return cls(
+            action_id=action.id,
+            plugin_id=plugin_id,
+            active=action.active,
+            on_filter="all",
+            label=label,
+            icon=icon,
+        )
+
+    @classmethod
+    def from_data(
+        cls, data: dict[str, str | bool | None]
+    ) -> "UIPublishPluginActionItem":
+        """Create object from data.
+
+        Args:
+            data (dict[str, str | bool | None]): Data used to recreate
+                object.
+
+        Returns:
+            UIPublishPluginActionItem: Object created using data.
+
+        """
+        return cls(**data)
+
+    def to_data(self) -> dict[str, str | bool | None]:
+        """Serialize object to dictionary.
+
+        Returns:
+            dict[str, str | bool | None]: Serialized object.
+
+        """
+        return {
+            "action_id": self.action_id,
+            "plugin_id": self.plugin_id,
+            "active": self.active,
+            "on_filter": self.on_filter,
+            "label": self.label,
+            "icon": self.icon
+        }
+
+
+@dataclass
+class UIPublishErrorItem:
+    """Data driven publish error item.
+
+    Prepared data container with information about publish error and its
+    source plugin.
+
+    Can be converted to raw data and recreated should be used for controller
+    and UI connection.
+
+    Args:
+        instance_id (str | None): Pyblish instance id to which is
+            publish error connected.
+        instance_label (str | None): Prepared instance label.
+        plugin_id (str): Pyblish plugin id which triggered the publish
+            error. Id is generated using 'PublishPluginsProxy'.
+        is_context_plugin (bool): Error happened on context.
+        is_validation_error (bool): Error is a validation error.
+        title (str | None): Error title.
+        description (str | None): Error description.
+        detail (str): Error detail.
+
+    """
+    instance_id: str | None
+    instance_label: str | None
+    plugin_id: str
+    is_context_plugin: bool
+    is_validation_error: bool
+    title: str | None
+    description: str | None
+    detail: str | None
+
+    @classmethod
+    def from_error_item(
+        cls, error_info: PublishErrorInfo
+    ) -> "UIPublishErrorItem":
+        """Create new object based on resukt from controller.
+
+        Returns:
+            PublishErrorItem: New object with filled data.
+        """
+        return cls(
+            instance_id=error_info.instance_id,
+            instance_label=error_info.instance_label,
+            plugin_id=error_info.plugin_id,
+            is_context_plugin=error_info.is_context_plugin,
+            is_validation_error=error_info.is_validation_error,
+            title=error_info.title,
+            description=error_info.description,
+            detail=error_info.detail,
+        )
+
+    def to_data(self) -> dict[str, str | bool | None]:
+        """Serialize object to dictionary.
+
+        Returns:
+            dict[str, str | bool | None]: Serialized object data.
+
+        """
+        return {
+            "instance_id": self.instance_id,
+            "instance_label": self.instance_label,
+            "plugin_id": self.plugin_id,
+            "is_context_plugin": self.is_context_plugin,
+            "is_validation_error": self.is_validation_error,
+            "title": self.title,
+            "description": self.description,
+            "detail": self.detail,
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
+
+
+@dataclass
+class UIPublishErrorReport:
+    plugin_id: str
+    title: str
+    error_items: list[UIPublishErrorItem]
+    plugin_action_items: list[UIPublishPluginActionItem]
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+
+    @classmethod
+    def get_items_grouped_by_title(
+        cls, logic: PublishLogic
+    ) -> list[UIPublishErrorReport]:
+        """Group errors by plugin and their titles.
+
+        Items are grouped by plugin and title -> same title from different
+        plugin is different item. Items are ordered by plugin order.
+
+        Returns:
+            list[dict[str, Any]]: List where each item title, instance
+                information related to title and possible plugin actions.
+        """
+        ordered_plugin_ids = []
+        error_items_by_plugin_id = collections.defaultdict(list)
+        for error_item in logic.iter_all_error_info():
+            plugin_id = error_item.plugin_id
+            if plugin_id not in ordered_plugin_ids:
+                ordered_plugin_ids.append(plugin_id)
+            ui_error_item = UIPublishErrorItem.from_error_item(error_item)
+            error_items_by_plugin_id[plugin_id].append(ui_error_item)
+
+        grouped_error_items = []
+        for plugin_id in ordered_plugin_ids:
+            plugin = logic.get_publish_plugin_by_id(plugin_id)
+            plugin_action_items = [
+                UIPublishPluginActionItem.from_action(
+                    action, plugin_id
+                )
+                for action in logic.get_publish_plugin_actions(plugin)
+            ]
+            error_items = error_items_by_plugin_id[plugin_id]
+
+            titles = []
+            error_items_by_title = collections.defaultdict(list)
+            for error_item in error_items:
+                title = error_item.title
+                if title not in titles:
+                    titles.append(error_item.title)
+                error_items_by_title[title].append(error_item)
+
+            for title in titles:
+                item = UIPublishErrorReport(
+                    plugin_id=plugin_id,
+                    title=title,
+                    error_items=error_items_by_title[title],
+                    plugin_action_items=plugin_action_items,
+                )
+                grouped_error_items.append(item)
+        return grouped_error_items
+
+    def to_data(self) -> dict[str, Any]:
+        """Serialize object to json supported dictionary."""
+        return dict(
+            id=self.id,
+            plugin_id=self.plugin_id,
+            title=self.title,
+            error_items=[ei.to_data() for ei in self.error_items],
+            plugin_action_items=[
+                ai.to_data() for ai in self.plugin_action_items
+            ],
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]):
+        """Recreate object from data serialized using 'to_data'."""
+
+        return cls(
+            id=data["id"],
+            plugin_id=data["plugin_id"],
+            title=data["title"],
+            error_items=[
+                UIPublishErrorItem.from_data(ei)
+                for ei in data["error_items"]
+            ],
+            plugin_action_items=[
+                UIPublishPluginActionItem.from_data(ai)
+                for ai in data["plugin_action_items"]
+            ],
+        )
+
+
 class AbstractPublisherCommon(ABC):
     @abstractmethod
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(self, topic: str, callback: Callable) -> None:
         """Register event callback.
 
         Listen for events with given topic.
@@ -89,22 +359,22 @@ class AbstractPublisherCommon(ABC):
             topic (str): Name of topic.
             callback (Callable): Callback that will be called when event
                 is triggered.
-        """
 
+        """
         pass
 
     @abstractmethod
     def emit_event(
         self, topic: str,
-        data: Optional[Dict[str, Any]] = None,
-        source: Optional[str] = None
-    ):
+        data: dict[str, Any] | None = None,
+        source: str | None = None
+    ) -> None:
         """Emit event.
 
         Args:
             topic (str): Event topic used for callbacks filtering.
-            data (Optional[dict[str, Any]]): Event data.
-            source (Optional[str]): Event source.
+            data (dict[str, Any] | None): Event data.
+            source (str | None): Event source.
 
         """
         pass
@@ -113,8 +383,8 @@ class AbstractPublisherCommon(ABC):
     def emit_card_message(
         self,
         message: str,
-        message_type: Optional[str] = CardMessageTypes.standard
-    ):
+        message_type: str | None = CardMessageTypes.standard
+    ) -> None:
         """Emit a card message which can have a lifetime.
 
         This is for UI purposes. Method can be extended to more arguments
@@ -123,38 +393,38 @@ class AbstractPublisherCommon(ABC):
         Args:
             message (str): Message that will be shown.
             message_type (Optional[str]): Message type.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_current_project_name(self) -> Union[str, None]:
+    def get_current_project_name(self) -> str | None:
         """Current context project name.
 
         Returns:
             str: Name of project.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_current_folder_path(self) -> Union[str, None]:
+    def get_current_folder_path(self) -> str | None:
         """Current context folder path.
 
         Returns:
-            Union[str, None]: Folder path.
+            str | None: Folder path.
 
         """
         pass
 
     @abstractmethod
-    def get_current_task_name(self) -> Union[str, None]:
+    def get_current_task_name(self) -> str | None:
         """Current context task name.
 
         Returns:
-            Union[str, None]: Name of task.
-        """
+            str | None: Name of task.
 
+        """
         pass
 
     @abstractmethod
@@ -165,18 +435,18 @@ class AbstractPublisherCommon(ABC):
 
         Returns:
             bool: Context has changed.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         """Reset whole controller.
 
         This should reset create context, publish context and all variables
         that are related to it.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -210,6 +480,10 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def get_create_context(self) -> CreateContext:
         pass
 
@@ -219,46 +493,42 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         project_name: str,
         folder_id: str,
         task_name: str,
-        sender: Optional[str] = None
-    ) -> Union[TaskItem, None]:
-        pass
-
-    @abstractmethod
-    def get_project_settings(self, project_name: str | None) -> dict:
+        sender: str | None = None
+    ) -> TaskItem | None:
         pass
 
     @abstractmethod
     def get_project_entity(
         self, project_name: str
-    ) -> Union[Dict[str, Any], None]:
+    ) -> dict[str, Any] | None:
         pass
 
     @abstractmethod
     def get_folder_entity(
         self, project_name: str, folder_id: str
-    ) -> Union[Dict[str, Any], None]:
+    ) -> dict[str, Any] | None:
         pass
 
     @abstractmethod
     def get_folder_item_by_path(
         self, project_name: str, folder_path: str
-    ) -> Union[FolderItem, None]:
+    ) -> FolderItem | None:
         pass
 
     @abstractmethod
     def get_task_entity(
         self, project_name: str, task_id: str
-    ) -> Union[Dict[str, Any], None]:
+    ) -> dict[str, Any] | None:
         pass
 
 
 class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
-    def get_window_subtitle(self) -> Optional[str]:
+    def get_window_subtitle(self) -> str | None:
         """Get window subtitle.
 
         Returns:
-            Optional[str]: Window subtitle.
+            str | None: Window subtitle.
 
         """
 
@@ -276,44 +546,56 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_context_title(self) -> Union[str, None]:
+    def get_context_title(self) -> str | None:
         """Get context title for artist shown at the top of main window.
 
         Returns:
-            Union[str, None]: Context title for window or None. In case of None
+            str | None: Context title for window or None. In case of None
                 a warning is displayed (not nice for artists).
-        """
 
+        """
         pass
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
 
     @abstractmethod
     def get_task_items_by_folder_paths(
         self, folder_paths: Iterable[str]
-    ) -> Dict[str, List[TaskItem]]:
+    ) -> dict[str, list[TaskItem]]:
         pass
 
     @abstractmethod
     def get_folder_items(
-        self, project_name: str, sender: Optional[str] = None
-    ) -> List[FolderItem]:
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderItem]:
         pass
 
     @abstractmethod
     def get_task_items(
-        self, project_name: str, folder_id: str, sender: Optional[str] = None
-    ) -> List[TaskItem]:
+        self, project_name: str, folder_id: str, sender: str | None = None
+    ) -> list[TaskItem]:
         pass
 
     @abstractmethod
     def get_folder_type_items(
-        self, project_name: str, sender: Optional[str] = None
-    ) -> List[FolderTypeItem]:
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
         pass
 
     @abstractmethod
     def get_task_type_items(
-        self, project_name: str, sender: Optional[str] = None
-    ) -> List[TaskTypeItem]:
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
         pass
 
     @abstractmethod
@@ -330,7 +612,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
+    def get_folder_id_from_path(self, folder_path: str) -> str | None:
         """Get folder id from folder path."""
         pass
 
@@ -351,11 +633,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     # --- Create ---
     @abstractmethod
-    def get_creator_items(self) -> Dict[str, "CreatorItem"]:
+    def get_creator_items(self) -> dict[str, CreatorItem]:
         """Creator items by identifier.
 
         Returns:
-            Dict[str, CreatorItem]: Creator items that will be shown to user.
+            dict[str, CreatorItem]: Creator items that will be shown to user.
 
         """
         pass
@@ -363,14 +645,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_creator_item_by_id(
         self, identifier: str
-    ) -> Optional["CreatorItem"]:
+    ) -> CreatorItem | None:
         """Get creator item by identifier.
 
         Args:
             identifier (str): Create plugin identifier.
 
         Returns:
-            Optional[CreatorItem]: Creator item or None.
+            CreatorItem | None: Creator item or None.
 
         """
         pass
@@ -378,7 +660,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_creator_icon(
         self, identifier: str
-    ) -> Union[str, Dict[str, Any], None]:
+    ) -> str | dict[str, Any] | None:
         """Receive creator's icon by identifier.
 
         Todos:
@@ -388,78 +670,78 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
             identifier (str): Creator's identifier.
 
         Returns:
-            Union[str, None]: Creator's icon string.
-        """
+            str | dict[str, Any] | None: Creator's icon string.
 
+        """
         pass
 
     @abstractmethod
-    def get_convertor_items(self) -> Dict[str, ConvertorItem]:
+    def get_convertor_items(self) -> dict[str, ConvertorItem]:
         """Convertor items by identifier.
 
         Returns:
-            Dict[str, ConvertorItem]: Convertor items that can be triggered
+            dict[str, ConvertorItem]: Convertor items that can be triggered
                 by user.
 
         """
         pass
 
     @abstractmethod
-    def get_instance_items(self) -> List["InstanceItem"]:
+    def get_instance_items(self) -> list[InstanceItem]:
         """Collected/created instances.
 
         Returns:
-            List[InstanceItem]: List of created instances.
+            list[InstanceItem]: List of created instances.
 
         """
         pass
 
     @abstractmethod
     def get_instance_items_by_id(
-        self, instance_ids: Optional[Iterable[str]] = None
-    ) -> Dict[str, Union["InstanceItem", None]]:
+        self, instance_ids: Iterable[str] | None = None
+    ) -> dict[str, InstanceItem | None]:
         pass
 
     @abstractmethod
     def get_instances_context_info(
-        self, instance_ids: Optional[Iterable[str]] = None
+        self, instance_ids: Iterable[str] | None = None
     ):
         pass
 
     @abstractmethod
     def set_instances_context_info(
-        self, changes_by_instance_id: Dict[str, Dict[str, Any]]
-    ):
+        self, changes_by_instance_id: dict[str, dict[str, Any]]
+    ) -> None:
         pass
 
     @abstractmethod
     def set_instances_active_state(
-        self, active_state_by_id: Dict[str, bool]
-    ):
+        self, active_state_by_id: dict[str, bool]
+    ) -> None:
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path: str) -> List[str]:
+    def get_existing_product_names(self, folder_path: str) -> list[str]:
         pass
 
     @abstractmethod
     def get_creator_attribute_definitions(
         self, instance_ids: Iterable[str]
-    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
+    ) -> list[tuple[AbstractAttrDef, dict[str, dict[str, Any]]]]:
         pass
 
     @abstractmethod
     def set_instances_create_attr_values(
         self, instance_ids: Iterable[str], key: str, value: Any
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
     def revert_instances_create_attr_values(
         self,
-        instance_ids: List["Union[str, None]"],
+        instance_ids: list[str | None],
         key: str,
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
@@ -477,16 +759,16 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         plugin_name: str,
         key: str,
         value: Any
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
     def revert_instances_publish_attr_values(
         self,
-        instance_ids: List["Union[str, None]"],
+        instance_ids: list[str | None],
         plugin_name: str,
         key: str,
-    ):
+    ) -> None:
         pass
 
     @abstractmethod
@@ -518,9 +800,9 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         creator_identifier: str,
         product_type: str,
         variant: str,
-        folder_path: Union[str, None],
-        task_name: Union[str, None],
-        instance_id: Optional[str] = None
+        folder_path: str | None,
+        task_name: str | None,
+        instance_id: str | None = None
     ):
         """Get product name based on passed data.
 
@@ -529,12 +811,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
                 responsible for product name creation.
             product_type (str): Product type.
             variant (str): Variant value from user's input.
-            folder_path (str): Folder path for which is instance created.
-            task_name (str): Name of task for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when product
+            folder_path (str | None): Folder path for which
+                is instance created.
+            task_name (str | None): Name of task for which
+                is instance created.
+            instance_id (str | None): Existing instance id when product
                 name is updated.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -542,33 +826,32 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         self,
         creator_identifier: str,
         product_name: str,
-        instance_data: Dict[str, Any],
-        options: Dict[str, Any],
-    ):
+        instance_data: dict[str, Any],
+        options: dict[str, Any],
+    ) -> None:
         """Trigger creation by creator identifier.
 
         Should also trigger refresh of instances.
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
-            product_type (str): Product type.
             product_name (str): Calculated product name.
-            instance_data (Dict[str, Any]): Base instance data with variant,
+            instance_data (dict[str, Any]): Base instance data with variant,
                 folder path and task name.
-            options (Dict[str, Any]): Data from pre-create attributes.
+            options (dict[str, Any]): Data from pre-create attributes.
+
         """
-
         pass
 
     @abstractmethod
-    def trigger_convertor_items(self, convertor_identifiers: List[str]):
+    def trigger_convertor_items(
+        self, convertor_identifiers: list[str]
+    ) -> None:
         pass
 
     @abstractmethod
-    def remove_instances(self, instance_ids: Iterable[str]):
+    def remove_instances(self, instance_ids: Iterable[str]) -> None:
         """Remove list of instances from create context."""
-        # TODO expect instance ids
-
         pass
 
     @abstractmethod
@@ -579,42 +862,39 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: Save was successful.
-        """
 
+        """
         pass
 
     # --- Publish ---
     @abstractmethod
-    def publish(self):
+    def publish(self) -> None:
         """Trigger publishing without any order limitations."""
-
         pass
 
     @abstractmethod
-    def validate(self):
+    def validate(self) -> None:
         """Trigger publishing which will stop after validation order."""
-
         pass
 
     @abstractmethod
-    def stop_publish(self):
+    def stop_publish(self) -> None:
         """Stop publishing can be also used to pause publishing.
 
         Pause of publishing is possible only if all plugins successfully
         finished.
         """
-
         pass
 
     @abstractmethod
-    def run_action(self, plugin_id: str, action_id: str):
+    def run_action(self, plugin_id: str, action_id: str) -> None:
         """Trigger pyblish action on a plugin.
 
         Args:
             plugin_id (str): Publish plugin id.
             action_id (str): Publish action id.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -623,8 +903,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: If publishing finished and all plugins were iterated.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -633,8 +913,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: If publishing finished and all plugins were iterated.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -643,8 +923,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: If publishing is in progress.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -658,7 +938,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def publish_can_continue(self):
+    def publish_can_continue(self) -> bool:
         """Publish has still plugins to process and did not crash yet.
 
         Returns:
@@ -669,12 +949,12 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def publish_has_crashed(self) -> bool:
-        """Publishing crashed for any reason.
+        """Publishing crashed with an error during process iteration.
 
         Returns:
             bool: Publishing crashed.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -683,8 +963,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             bool: Validation error was raised during validation.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -703,16 +983,16 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             int: Number that can be used as 100% of publish progress bar.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_publish_error_info(self) -> Optional["PublishErrorInfo"]:
+    def get_publish_fail_info(self) -> UIFailInfo | None:
         """Current error message which cause fail of publishing.
 
         Returns:
-            Optional[PublishErrorInfo]: Error info or None.
+            UIFailInfo | None: Error info or None.
 
         """
         pass
@@ -726,7 +1006,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_errors_report(self):
+    def get_publish_errors_reports(self) -> list[UIPublishErrorReport]:
         pass
 
     @abstractmethod
@@ -734,27 +1014,27 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def set_comment(self, comment: str):
+    def set_comment(self, comment: str) -> None:
         """Set comment on pyblish context.
 
         Set "comment" key on current pyblish.api.Context data.
 
         Args:
             comment (str): Artist's comment.
-        """
 
+        """
         pass
 
     @abstractmethod
     def get_thumbnail_paths_for_instances(
-        self, instance_ids: List[str]
-    ) -> Dict[str, Union[str, None]]:
+        self, instance_ids: list[str]
+    ) -> dict[str, str | None]:
         pass
 
     @abstractmethod
     def set_thumbnail_paths_for_instances(
-        self, thumbnail_path_mapping: Dict[str, Optional[str]]
-    ):
+        self, thumbnail_path_mapping: dict[str, str | None]
+    ) -> None:
         pass
 
     @abstractmethod
@@ -763,12 +1043,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             str: Path to a directory.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def clear_thumbnail_temp_dir_path(self):
+    def clear_thumbnail_temp_dir_path(self) -> None:
         """Remove content of thumbnail temp directory."""
-
         pass
