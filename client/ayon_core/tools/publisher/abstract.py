@@ -13,6 +13,10 @@ from ayon_core.lib.attribute_definitions import (
 )
 
 from ayon_core.pipeline.publish import PublishError, KnownPublishError
+from ayon_core.lib.attribute_definitions import (
+    serialize_attr_defs,
+    deserialize_attr_defs,
+)
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models.settings import TaskSortMode
@@ -173,14 +177,14 @@ class UIPublishPluginActionItem:
             dict[str, str | bool | None]: Serialized object.
 
         """
-        return {
-            "action_id": self.action_id,
-            "plugin_id": self.plugin_id,
-            "active": self.active,
-            "on_filter": self.on_filter,
-            "label": self.label,
-            "icon": self.icon
-        }
+        return dict(
+            action_id=self.action_id,
+            plugin_id=self.plugin_id,
+            active=self.active,
+            on_filter=self.on_filter,
+            label=self.label,
+            icon=self.icon
+        )
 
 
 @dataclass
@@ -242,16 +246,16 @@ class UIPublishErrorItem:
             dict[str, str | bool | None]: Serialized object data.
 
         """
-        return {
-            "instance_id": self.instance_id,
-            "instance_label": self.instance_label,
-            "plugin_id": self.plugin_id,
-            "is_context_plugin": self.is_context_plugin,
-            "is_validation_error": self.is_validation_error,
-            "title": self.title,
-            "description": self.description,
-            "detail": self.detail,
-        }
+        return dict(
+            instance_id=self.instance_id,
+            instance_label=self.instance_label,
+            plugin_id=self.plugin_id,
+            is_context_plugin=self.is_context_plugin,
+            is_validation_error=self.is_validation_error,
+            title=self.title,
+            description=self.description,
+            detail=self.detail,
+        )
 
     @classmethod
     def from_data(cls, data):
