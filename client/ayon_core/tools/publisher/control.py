@@ -80,17 +80,8 @@ class PublisherController(
         "publish.process.stopped" - Publishing stopped/paused process.
         "publish.process.plugin.changed" - Plugin state has changed.
         "publish.process.instance.changed" - Instance state has changed.
-        "publish.has_validated.changed" - Attr 'publish_has_validated'
-            changed.
-        "publish.is_running.changed" - Attr 'publish_is_running' changed.
-        "publish.has_crashed.changed" - Attr 'publish_has_crashed' changed.
-        "publish.publish_error.changed" - Attr 'publish_error'
-        "publish.has_validation_errors.changed" - Attr
-            'has_validation_errors' changed.
-        "publish.max_progress.changed" - Attr 'publish_max_progress'
-            changed.
-        "publish.progress.changed" - Attr 'publish_progress' changed.
-        "publish.finished.changed" - Attr 'publish_has_finished' changed.
+        "publish.has_validated" - Publishing validated.
+        "publish.finished" - Publishing finished.
 
     Args:
         headless (bool): Headless publishing. ATM not implemented or used.
@@ -598,7 +589,7 @@ class PublisherController(
         return self._publish_model.has_validated()
 
     def publish_has_crashed(self):
-        return self._publish_model.is_crashed()
+        return self._publish_model.has_crashed()
 
     def publish_has_validation_errors(self):
         return self._publish_model.has_validation_errors()
@@ -612,8 +603,8 @@ class PublisherController(
     def get_publish_progress(self):
         return self._publish_model.get_progress()
 
-    def get_publish_error_info(self):
-        return self._publish_model.get_error_info()
+    def get_publish_fail_info(self):
+        return self._publish_model.get_publish_fail_info()
 
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
@@ -624,10 +615,10 @@ class PublisherController(
     def store_publish_report(self, filepath: str) -> None:
         self._publish_model.store_publish_report(filepath)
 
-    def get_publish_errors_report(self):
-        return self._publish_model.get_publish_errors_report()
+    def get_publish_errors_reports(self):
+        return self._publish_model.get_publish_errors_reports()
 
-    def set_comment(self, comment):
+    def set_comment(self, comment: str) -> None:
         """Set comment from ui to pyblish context.
 
         This should be called always before publishing is started but should
@@ -637,7 +628,7 @@ class PublisherController(
 
         self._publish_model.set_comment(comment)
 
-    def publish(self):
+    def publish(self) -> None:
         """Run publishing.
 
         Make sure all changes are saved before method is called (Call
@@ -645,7 +636,7 @@ class PublisherController(
         """
         self._start_publish(False)
 
-    def validate(self):
+    def validate(self) -> None:
         """Run publishing and stop after Validation.
 
         Make sure all changes are saved before method is called (Call
@@ -653,21 +644,23 @@ class PublisherController(
         """
         self._start_publish(True)
 
-    def stop_publish(self):
+    def stop_publish(self) -> None:
         """Stop publishing process (any reason)."""
         self._publish_model.stop_publish()
 
-    def run_action(self, plugin_id, action_id):
+    def run_action(self, plugin_id: str, action_id: str) -> None:
         self._publish_model.run_action(plugin_id, action_id)
 
     def _create_event_system(self):
         return QueuedEventSystem()
 
-    def _emit_event(self, topic, data=None):
+    def _emit_event(self, topic: str, data: dict | None = None) -> None:
         self.emit_event(topic, data, "controller")
 
-    def _start_publish(self, up_validation):
-        self._publish_model.set_publish_up_validation(up_validation)
+    def _start_publish(self, stop_after_validation: bool) -> None:
+        self._publish_model.set_publish_stop_after_validation(
+            stop_after_validation
+        )
         self._publish_model.start_publish(wait=True)
 
     def get_comment_def(self) -> CommentDef:
