@@ -98,12 +98,7 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
             )
 
             instance = instance_change["instance"]
-            # recalculate only if context changes
-            if (
-                "task" not in instance_change
-                and "folderPath" not in instance_change
-                and not custom_frame_change
-            ):
+            if not custom_frame_change:
                 continue
 
             if not cls.instance_matches_plugin_families(instance):
