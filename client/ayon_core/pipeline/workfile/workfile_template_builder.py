@@ -736,8 +736,11 @@ class AbstractTemplateBuilder(ABC):
             # Path may e.g. be none if there's no active workfile template
             # set for current context, which would indicate it's just disabled.
             # In that case, do nothing
-            if preset.path is None:
-                return
+
+            if not preset.profile:
+                raise TemplateProfileNotFound(
+                    "No matching profile found for current context."
+                )
 
             if not preset.has_valid_path():
                 raise TemplateLoadFailed(
