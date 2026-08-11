@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Any, Callable
 
 from qtpy import QtWidgets, QtCore
 
@@ -16,6 +17,12 @@ from ayon_core.tools.utils import (
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import (
+        FolderTypeItem,
+        TaskTypeItem,
+        FolderItem,
+        TaskItem,
+    )
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -30,7 +37,7 @@ class CreateSelectionModel(object):
 
     event_source = "publisher.create.selection.model"
 
-    def __init__(self, controller: "CreateHierarchyController"):
+    def __init__(self, controller: CreateHierarchyController) -> None:
         self._controller: CreateHierarchyController = controller
 
         self._project_name = None
@@ -41,7 +48,7 @@ class CreateSelectionModel(object):
     def get_selected_project_name(self):
         return self._project_name
 
-    def set_selected_project(self, project_name):
+    def set_selected_project(self, project_name: str | None) -> None:
         if project_name == self._project_name:
             return
 
@@ -52,10 +59,10 @@ class CreateSelectionModel(object):
             self.event_source
         )
 
-    def get_selected_folder_id(self):
+    def get_selected_folder_id(self) -> str | None:
         return self._folder_id
 
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: str | None) -> None:
         if folder_id == self._folder_id:
             return
 
@@ -69,13 +76,15 @@ class CreateSelectionModel(object):
             self.event_source
         )
 
-    def get_selected_task_name(self):
+    def get_selected_task_name(self) -> str | None:
         return self._task_name
 
-    def get_selected_task_id(self):
+    def get_selected_task_id(self) -> str | None:
         return self._task_id
 
-    def set_selected_task(self, task_id, task_name):
+    def set_selected_task(
+        self, task_id: str, task_name: str
+    ) -> None:
         if task_id == self._task_id:
             return
 
@@ -106,7 +115,7 @@ class CreateHierarchyController:
         controller (PublisherController): Publisher controller.
 
     """
-    def __init__(self, controller: AbstractPublisherFrontend):
+    def __init__(self, controller: AbstractPublisherFrontend) -> None:
         self._event_system = QueuedEventSystem()
         self._controller: AbstractPublisherFrontend = controller
         self._selection_model = CreateSelectionModel(self)
@@ -116,81 +125,107 @@ class CreateHierarchyController:
 
     # Events system
     @property
-    def event_system(self):
+    def event_system(self) -> QueuedEventSystem:
         return self._event_system
 
-    def emit_event(self, topic, data=None, source=None):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
         """Use implemented event system to trigger event."""
 
         if data is None:
             data = {}
         self.event_system.emit(topic, data, source)
 
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(self, topic: str, callback: Callable) -> None:
         self.event_system.add_callback(topic, callback)
 
-    def get_project_name(self):
+    def get_project_name(self) -> str | None:
         return self._controller.get_current_project_name()
 
     def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
         return self._controller.get_task_sorting_mode(project_name)
 
-    def get_folder_items(self, project_name, sender=None):
+    def get_folder_items(
+        self, project_name: str, sender: str | None = None
+    ) -> dict[str, FolderItem]:
         return self._controller.get_folder_items(project_name, sender)
 
-    def get_task_items(self, project_name, folder_id, sender=None):
+    def get_task_items(
+        self, project_name: str, folder_id: str, sender: str | None = None
+    ) -> list[TaskItem]:
         return self._controller.get_task_items(
             project_name, folder_id, sender
         )
 
-    def get_folder_type_items(self, project_name, sender=None):
+    def get_folder_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
         return self._controller.get_folder_type_items(
             project_name, sender
         )
 
-    def get_task_type_items(self, project_name, sender=None):
+    def get_task_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
         return self._controller.get_task_type_items(
             project_name, sender
         )
 
     # Selection model
-    def set_selected_project(self, project_name):
+    def set_selected_project(
+        self, project_name: str
+    ):
         self._selection_model.set_selected_project(project_name)
 
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: str | None) -> None:
         self._selection_model.set_selected_folder(folder_id)
 
-    def set_selected_task(self, task_id, task_name):
+    def set_selected_task(self, task_id: str, task_name: str) -> None:
         self._selection_model.set_selected_task(task_id, task_name)
 
     # Expected selection
-    def get_expected_selection_data(self):
+    def get_expected_selection_data(self) -> dict[str, Any]:
         return self._expected_selection.get_expected_selection_data()
 
-    def set_expected_selection(self, project_name, folder_id, task_name):
+    def set_expected_selection(
+        self,
+        project_name: str,
+        folder_id: str | None,
+        task_name: str | None,
+    ) -> None:
         self._expected_selection.set_expected_selection(
             project_name, folder_id, task_name
         )
 
-    def expected_folder_selected(self, folder_id):
-        self._expected_selection.expected_folder_selected(folder_id)
+    def expected_folder_selected(self, folder_id: str) -> bool:
+        return self._expected_selection.expected_folder_selected(folder_id)
 
-    def expected_task_selected(self, folder_id, task_name):
-        self._expected_selection.expected_task_selected(folder_id, task_name)
+    def expected_task_selected(self, folder_id: str, task_name: str) -> bool:
+        return self._expected_selection.expected_task_selected(
+            folder_id, task_name
+        )
 
 
 class CreateContextWidget(QtWidgets.QWidget):
     folder_changed = QtCore.Signal()
     task_changed = QtCore.Signal()
 
-    def __init__(self, controller: AbstractPublisherFrontend, parent):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
-        self._enabled = True
-        self._last_project_name = None
-        self._last_folder_id = None
-        self._last_selected_task_name = None
+        self._enabled: bool = True
+        self._last_project_name: str | None = None
+        self._last_folder_id: str | None = None
+        self._last_selected_task_name: str | None = None
 
         headers_widget = QtWidgets.QWidget(self)
 
@@ -237,34 +272,36 @@ class CreateContextWidget(QtWidgets.QWidget):
         self._tasks_widget = tasks_widget
         self._hierarchy_controller = hierarchy_controller
 
-    def get_selected_folder_id(self):
+    def get_selected_folder_id(self) -> str | None:
         return self._folders_widget.get_selected_folder_id()
 
-    def get_selected_folder_path(self):
+    def get_selected_folder_path(self) -> str | None:
         return self._folders_widget.get_selected_folder_path()
 
-    def get_selected_task_name(self):
+    def get_selected_task_name(self) -> str | None:
         return self._tasks_widget.get_selected_task_name()
 
-    def get_selected_task_type(self):
+    def get_selected_task_type(self) -> str | None:
         return self._tasks_widget.get_selected_task_type()
 
-    def update_current_context_btn(self):
+    def update_current_context_btn(self) -> None:
         # Hide set current folder if there is no one
         folder_path = self._controller.get_current_folder_path()
         self._current_context_btn.setVisible(bool(folder_path))
 
-    def set_selected_context(self, folder_id, task_name):
+    def set_selected_context(
+        self, folder_id: str | None, task_name: str | None
+    ) -> None:
         self._hierarchy_controller.set_expected_selection(
             self._controller.get_current_project_name(),
             folder_id,
             task_name
         )
 
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return self._enabled
 
-    def set_enabled(self, enabled):
+    def set_enabled(self, enabled: bool) -> None:
         if enabled is self._enabled:
             return
 
@@ -286,7 +323,7 @@ class CreateContextWidget(QtWidgets.QWidget):
                 self._last_selected_task_name
             )
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._last_project_name = self._controller.get_current_project_name()
         folder_id = self._last_folder_id
         task_name = self._last_selected_task_name
@@ -306,16 +343,16 @@ class CreateContextWidget(QtWidgets.QWidget):
             self._filters_widget.is_my_tasks_checked()
         )
 
-    def _clear_selection(self):
+    def _clear_selection(self) -> None:
         self._folders_widget.set_selected_folder(None)
 
-    def _on_folder_change(self):
+    def _on_folder_change(self) -> None:
         self.folder_changed.emit()
 
-    def _on_task_change(self):
+    def _on_task_change(self) -> None:
         self.task_changed.emit()
 
-    def _on_current_context_click(self):
+    def _on_current_context_click(self) -> None:
         folder_path = self._controller.get_current_folder_path()
         task_name = self._controller.get_current_task_name()
         folder_id = self._controller.get_folder_id_from_path(folder_path)

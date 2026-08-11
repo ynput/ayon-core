@@ -3,21 +3,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import collections
 from dataclasses import dataclass, asdict, field
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    TYPE_CHECKING,
-)
+import typing
+from typing import Any, Callable, Iterable
 import uuid
 
-from ayon_core.pipeline.publish import PublishError, KnownPublishError
 from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+from ayon_core.pipeline.publish import PublishError, KnownPublishError
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models.settings import TaskSortMode
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.host import AbstractHost
@@ -370,7 +366,7 @@ class AbstractPublisherCommon(ABC):
     def emit_event(
         self, topic: str,
         data: dict[str, Any] | None = None,
-        source: str | None = None
+        source: str | None = None,
     ) -> None:
         """Emit event.
 
@@ -386,7 +382,7 @@ class AbstractPublisherCommon(ABC):
     def emit_card_message(
         self,
         message: str,
-        message_type: str | None = CardMessageTypes.standard
+        message_type: str = CardMessageTypes.standard
     ) -> None:
         """Emit a card message which can have a lifetime.
 
@@ -395,8 +391,7 @@ class AbstractPublisherCommon(ABC):
 
         Args:
             message (str): Message that will be shown.
-            message_type (Optional[str]): Message type.
-
+            message_type (str): Message type.
         """
         pass
 
@@ -573,14 +568,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def get_task_items_by_folder_paths(
-        self, folder_paths: Iterable[str]
+        self, folder_paths: set[str]
     ) -> dict[str, list[TaskItem]]:
         pass
 
     @abstractmethod
     def get_folder_items(
         self, project_name: str, sender: str | None = None
-    ) -> list[FolderItem]:
+    ) -> dict[str, FolderItem]:
         pass
 
     @abstractmethod
