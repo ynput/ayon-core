@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
@@ -29,13 +28,6 @@ CURRENT_DIR = Path(__file__).parent
 SRIPT_PATH = CURRENT_DIR / "default_run.py"
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class _ToolBackends:
-    loader_backend: IPCLoaderBackend
-    publisher_backend: IPCPublisherBackend
-    workfiles_backend: IPCWorkfilesBackend
 
 
 # IPC and external UI process management
