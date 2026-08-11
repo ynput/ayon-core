@@ -1,7 +1,10 @@
-import inspect
+from __future__ import annotations
+
 from abc import ABCMeta
+from dataclasses import dataclass
+import inspect
 import typing
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 import pyblish.api
 import pyblish.logic
@@ -496,3 +499,103 @@ class ColormanagedPyblishPluginMixin(object):
             colorspace,
             log=self.log
         )
+
+
+@dataclass
+class _RefreshInfo:
+    keys: set[str]
+
+
+def refresh_instance_attributes(
+    keys: str | set[str] | list[str],
+) -> Callable:
+    """Helper for refreshing attribute definitions on key change.
+
+    This helper does handle only instance key changes and can update only
+        instance attribute definitions.
+
+    This might be very inefficient if there are many instances that do change
+        the keys frequently.
+
+    ```example
+    @refresh_instance_attributes("families")
+    class MyPlugin(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
+        families = ["my_family"]
+
+        @classmethod
+        def get_attribute_defs(cls):
+            return [TextDef("my_attr", label="My Attribute")]
+
+    ```
+    """
+    if isinstance(keys, list):
+        keys = set(keys)
+    elif isinstance(keys, str):
+        keys = {keys}
+    elif not isinstance(keys, set):
+        raise TypeError("keys must be a set or list")
+
+    refresh_info = _RefreshInfo(keys=keys)
+
+    def inner_func(
+        plugin: type[AYONPyblishPluginMixin]
+    ) -> type[AYONPyblishPluginMixin]:
+        if not issubclass(plugin, AYONPyblishPluginMixin):
+            raise TypeError(
+                "Decorator 'refresh_attributes' can be used only on"
+                " subclasses of AYONPyblishPluginMixin."
+            )
+
+        plugin_name = plugin.__name__
+
+        orig_register_create_context_callbacks = (
+            plugin.register_create_context_callbacks
+        )
+
+        def on_values_changed(event):
+            create_context: CreateContext = event["create_context"]
+            for instance_change in event["changes"]:
+                instance: CreatedInstance | None = instance_change["instance"]
+                if instance is None:
+                    continue
+
+                value_changes = instance_change["changes"]
+                if not any(
+                    key in value_changes
+                    for key in refresh_info.keys
+                ):
+                    continue
+
+                attr_values = instance.publish_attributes.get(plugin_name)
+
+                instance_attr_defs = plugin.get_attr_defs_for_instance(
+                    create_context, instance
+                )
+                # Attribute values and attribute definitions are the same,
+                #   no need to update.
+                if not attr_values and not instance_attr_defs:
+                    continue
+
+                if (
+                    attr_values is not None
+                    and attr_values.attr_defs == instance_attr_defs
+                ):
+                    continue
+
+                # Update attribute definitions for the instance
+                instance.set_publish_plugin_attr_defs(
+                    plugin_name, instance_attr_defs
+                )
+
+        def _custom_register_create_context_callbacks(
+            cls, create_context
+        ):
+            orig_register_create_context_callbacks(create_context)
+            create_context.add_value_changed_callback(on_values_changed)
+
+        plugin.register_create_context_callbacks = classmethod(
+            _custom_register_create_context_callbacks
+        )
+        return plugin
+
+    return inner_func
