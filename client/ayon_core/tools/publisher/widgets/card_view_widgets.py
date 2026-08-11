@@ -22,7 +22,6 @@ Only one item can be selected at a time.
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from enum import Enum, auto
 import re
 import typing
 

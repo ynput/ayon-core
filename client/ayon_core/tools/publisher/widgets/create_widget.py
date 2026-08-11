@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import collections
 import typing
-from typing import Union
 
 from qtpy import QtWidgets, QtCore, QtGui
 
