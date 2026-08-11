@@ -13,19 +13,18 @@ from .abstract import FrontendLoaderController
 from .ui.window import LoaderWindow
 
 if typing.TYPE_CHECKING:
-    from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.ipc_communication import RequestMessage
+    from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.tools.common_models import (
         TagItem,
         ProductTypeIconMapping,
         ProjectItem,
         StatusItem,
-    )
-    from ayon_core.tools.common_models import (
         FolderItem,
         TaskItem,
         FolderTypeItem,
         TaskTypeItem,
+        TaskSortMode,
     )
 
     from .abstract import (
@@ -119,6 +118,11 @@ class IPCLoaderFrontend(FrontendLoaderController):
         return self._trigger_getter(
             "expected_folder_selected",
             folder_id=folder_id,
+        )
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._trigger_getter(
+            "get_task_sorting_mode", project_name=project_name
         )
 
     def get_project_items(

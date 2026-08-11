@@ -24,6 +24,7 @@ if typing.TYPE_CHECKING:
         FolderTypeItem,
         TaskTypeItem,
         UserItem,
+        TaskSortMode,
     )
     from ayon_core.tools.workfiles.abstract import (
         WorkareaFilepathResult,
@@ -201,12 +202,9 @@ class IPCWorkfilesFrontend(AbstractWorkfilesFrontend):
         """
         self._event_system.add_callback(topic, callback)
 
-    def get_project_settings(
-        self, project_name: str | None
-    ) -> dict[str, Any]:
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
         return self._trigger_getter(
-            "get_project_settings",
-            project_name=project_name,
+            "get_task_sorting_mode", project_name=project_name
         )
 
     def get_user_items_by_name(self) -> dict[str, UserItem]:
