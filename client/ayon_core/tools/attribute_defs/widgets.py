@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import copy
-import typing
-from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -36,15 +34,12 @@ from ayon_core.tools.utils import NiceCheckbox
 from ._constants import REVERT_TO_DEFAULT_LABEL
 from .files_widget import FilesWidget
 
-if typing.TYPE_CHECKING:
-    from typing import Union
-
 
 def create_widget_for_attr_def(
     attr_def: AbstractAttrDef,
-    parent: Optional[QtWidgets.QWidget] = None,
-    handle_revert_to_default: Optional[bool] = True,
-):
+    parent: QtWidgets.QWidget | None = None,
+    handle_revert_to_default: bool = True,
+) -> BaseAttrDefWidget:
     widget = _create_widget_for_attr_def(
         attr_def, parent, handle_revert_to_default
     )
@@ -60,11 +55,12 @@ def _create_widget_for_attr_def(
     attr_def: AbstractAttrDef,
     parent: QtWidgets.QWidget | None,
     handle_revert_to_default: bool,
-):
+) -> BaseAttrDefWidget:
     if not isinstance(attr_def, AbstractAttrDef):
-        raise TypeError("Unexpected type \"{}\" expected \"{}\"".format(
-            str(type(attr_def)), AbstractAttrDef
-        ))
+        raise TypeError(
+            f"Unexpected type \"{type(attr_def)}\""
+            " expected subclass of \"AbstractAttrDef\"."
+        )
 
     cls = None
     if isinstance(attr_def, NumberDef):
@@ -304,7 +300,7 @@ class BaseAttrDefWidget(QtWidgets.QWidget):
         self,
         attr_def: AbstractAttrDef,
         parent: QtWidgets.QWidget | None,
-        handle_revert_to_default: Optional[bool] = True,
+        handle_revert_to_default: bool = True,
     ):
         super().__init__(parent)
 
