@@ -11,6 +11,8 @@ from ayon_core.lib import (
     get_ayon_launcher_args,
     get_launcher_storage_dir,
 )
+from ayon_core.host import AbstractHost
+from ayon_core.pipeline import registered_host
 
 from ayon_core.ipc_communication import IPCServer
 
@@ -201,8 +203,19 @@ def _shutdown_ipc_server() -> None:
 
 class IPCHostTools:
     @classmethod
-    def init(cls):
+    def init(cls, host: AbstractHost | None = None):
         """Initialize the IPC server and external process."""
+        if host is None:
+            host = registered_host()
+
+        if host is not None:
+            if _IPCConnection.loader_backend is None:
+                _IPCConnection.loader_backend = IPCLoaderBackend(host)
+            if _IPCConnection.publisher_backend is None:
+                _IPCConnection.publisher_backend = IPCPublisherBackend(host)
+            if _IPCConnection.workfiles_backend is None:
+                _IPCConnection.workfiles_backend = IPCWorkfilesBackend(host)
+
         _init_ipc_server()
 
     @classmethod
