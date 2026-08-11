@@ -16,7 +16,7 @@ from .window import PublisherWindow
 from .abstract import CardMessageTypes
 
 if typing.TYPE_CHECKING:
-    from ayon_core.lib import IconBase
+    from ayon_core.lib import IconBase, AbstractAttrDef
     from ayon_core.tools.ipc_utils.utils import CommunicationInfo
     from ayon_core.ipc_communication import RequestMessage
     from ayon_core.pipeline.create import InstanceContextInfo, ConvertorItem
@@ -35,9 +35,11 @@ if typing.TYPE_CHECKING:
     from .models.create import (
         InstanceItem,
         CreatorItem,
-        AbstractAttrDef,
     )
-    from .models.publish import PublishErrorInfo
+    from .abstract import (
+        UIPublishErrorReport,
+        UIFailInfo,
+    )
 
 
 class WorkerTask(QtCore.QObject, QtCore.QRunnable):
@@ -445,8 +447,11 @@ class IPCPublisherFrontend(AbstractPublisherFrontend):
     def get_publish_max_progress(self) -> int:
         return self._trigger_getter("get_publish_max_progress")
 
-    def get_publish_error_info(self) -> PublishErrorInfo | None:
-        return self._trigger_getter("get_publish_error_info")
+    def get_publish_errors_reports(self) -> list[UIPublishErrorReport]:
+        return self._trigger_getter("get_publish_errors_reports")
+
+    def get_publish_fail_info(self) -> UIFailInfo | None:
+        return self._trigger_getter("get_publish_fail_info")
 
     def get_publish_report(self) -> PublishReport:
         return self._trigger_getter("get_publish_report")
