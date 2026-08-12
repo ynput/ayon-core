@@ -515,7 +515,7 @@ class PublisherWindow(QtWidgets.QDialog):
         super().leaveEvent(event)
         self._update_create_overlay_visibility()
 
-    def eventFilter(self, obj, event) -> None:
+    def eventFilter(self, obj, event) -> bool:
         if event.type() == QtCore.QEvent.MouseMove:
             self._update_create_overlay_visibility(event.globalPos())
         return super().eventFilter(obj, event)
@@ -1220,7 +1220,7 @@ class ErrorsMessageBox(ErrorMessageBox):
     def _create_top_widget(self, parent_widget):
         return None
 
-    def _get_report_data(self) -> None:
+    def _get_report_data(self) -> list[str]:
         output = []
         for info in self._failed_info:
             item_label = info.get("label")
