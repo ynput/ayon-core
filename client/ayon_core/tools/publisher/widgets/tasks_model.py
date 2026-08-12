@@ -1,11 +1,20 @@
-from typing import Optional
+from __future__ import annotations
+
+import typing
 
 from qtpy import QtCore, QtGui
 
-from ayon_core.lib.icon_definitions import MaterialSymbolsIcon, AwesomeFontIcon
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import TaskTypeItem, TaskItem
+
 
 TASK_NAME_ROLE = QtCore.Qt.UserRole + 1
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -30,31 +39,33 @@ class TasksModel(QtGui.QStandardItemModel):
     def __init__(
         self,
         controller: AbstractPublisherFrontend,
-        allow_empty_task: Optional[bool] = False
-    ):
+        allow_empty_task: bool = False
+    ) -> None:
         super().__init__()
 
-        self._allow_empty_task = allow_empty_task
+        self._allow_empty_task: bool = allow_empty_task
         self._controller: AbstractPublisherFrontend = controller
-        self._items_by_name = {}
-        self._folder_paths = []
-        self._task_names_by_folder_path = {}
+        self._items_by_name: dict[str, QtGui.QStandardItem] = {}
+        self._folder_paths: set[str] = set()
+        self._task_names_by_folder_path: dict[str, set[str]] = {}
 
-    def set_folder_paths(self, folder_paths):
+    def set_folder_paths(self, folder_paths: set[str]) -> None:
         """Set folders context."""
         self._folder_paths = folder_paths
         self.reset()
 
     @staticmethod
-    def get_intersection_of_tasks(task_names_by_folder_path):
+    def get_intersection_of_tasks(
+        task_names_by_folder_path: dict[str, set[str]]
+    ) -> set[str]:
         """Calculate intersection of task names from passed data.
 
         Example:
         ```
         # Passed `task_names_by_folder_path`
         {
-            "/folder_1": ["compositing", "animation"],
-            "/folder_2": ["compositing", "editorial"]
+            "/folder_1": {"compositing", "animation"},
+            "/folder_2": {"compositing", "editorial"}
         }
         ```
         Result:
@@ -65,6 +76,7 @@ class TasksModel(QtGui.QStandardItemModel):
 
         Args:
             task_names_by_folder_path (dict): Task names in iterable by parent.
+
         """
         tasks = None
         for task_names in task_names_by_folder_path.values():
@@ -75,9 +87,12 @@ class TasksModel(QtGui.QStandardItemModel):
 
             if not tasks:
                 break
+
         return tasks or set()
 
-    def is_task_name_valid(self, folder_path, task_name):
+    def is_task_name_valid(
+        self, folder_path: str, task_name: str | None
+    ) -> bool:
         """Is task name available for folder.
 
         Todos:
@@ -85,8 +100,8 @@ class TasksModel(QtGui.QStandardItemModel):
 
         Args:
             folder_path (str): Fodler path where should look for task.
-            task_name (str): Name of task which should be available in folder
-                tasks.
+            task_name (str | None): Name of task which should be available
+                in folder tasks.
         """
         if folder_path not in self._task_names_by_folder_path:
             return False
@@ -99,7 +114,7 @@ class TasksModel(QtGui.QStandardItemModel):
             return True
         return False
 
-    def reset(self):
+    def reset(self) -> None:
         """Update model by current context."""
         if not self._folder_paths:
             self._items_by_name = {}
@@ -108,13 +123,13 @@ class TasksModel(QtGui.QStandardItemModel):
             root_item.removeRows(0, self.rowCount())
             return
 
-        task_items_by_folder_path = (
+        task_items_by_folder_path: dict[str, list[TaskItem]] = (
             self._controller.get_task_items_by_folder_paths(
                 self._folder_paths
             )
         )
 
-        task_names_by_folder_path = {
+        task_names_by_folder_path: dict[str, set[str]] = {
             folder_path: {item.name for item in task_items}
             for folder_path, task_items in task_items_by_folder_path.items()
         }
@@ -146,7 +161,7 @@ class TasksModel(QtGui.QStandardItemModel):
                 self._controller.get_current_project_name()
             )
         }
-        type_item_by_task_name = {}
+        type_item_by_task_name: dict[str, TaskTypeItem] = {}
         for task_items in task_items_by_folder_path.values():
             for task_item in task_items:
                 task_name = task_item.name
@@ -171,11 +186,15 @@ class TasksModel(QtGui.QStandardItemModel):
             if not task_name:
                 continue
 
-            icon = icon_name = icon_color = None
-            task_type_item = type_item_by_task_name.get(task_name)
+            task_type_item: TaskTypeItem | None = type_item_by_task_name.get(
+                task_name
+            )
+            icon_name = icon_color = None
             if task_type_item is not None:
                 icon_name = task_type_item.icon
                 icon_color = task_type_item.color
+
+            icon = None
             if icon_name:
                 if not icon_color:
                     icon_color = get_default_entity_icon_color()

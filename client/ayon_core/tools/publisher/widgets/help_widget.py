@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 try:
     import commonmark
 except Exception:
@@ -11,7 +13,7 @@ from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 class HelpButton(QtWidgets.QPushButton):
     """Button used to trigger help dialog."""
 
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
         self.setObjectName("CreateDialogHelpButton")
         self.setText("?")
@@ -20,7 +22,7 @@ class HelpButton(QtWidgets.QPushButton):
 class HelpWidget(QtWidgets.QWidget):
     """Widget showing help for single functionality."""
 
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         # TODO add hints what to help with?
@@ -39,7 +41,7 @@ class HelpWidget(QtWidgets.QWidget):
 
         self.set_detailed_text()
 
-    def set_detailed_text(self, text=None):
+    def set_detailed_text(self, text: str | None = None) -> None:
         if not text:
             text = "We didn't prepare help for this part..."
 
@@ -58,7 +60,7 @@ class HelpDialog(QtWidgets.QDialog):
 
     def __init__(
         self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
-    ):
+    ) -> None:
         super().__init__(parent)
 
         self.setWindowTitle("Help dialog")
@@ -76,13 +78,13 @@ class HelpDialog(QtWidgets.QDialog):
 
         self._help_content = help_content
 
-    def _on_help_request(self, event):
+    def _on_help_request(self, event) -> None:
         message = event.get("message")
         self.set_detailed_text(message)
 
-    def set_detailed_text(self, text=None):
+    def set_detailed_text(self, text: str | None = None) -> None:
         self._help_content.set_detailed_text(text)
 
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         super().showEvent(event)
         self.resize(self.default_width, self.default_height)
