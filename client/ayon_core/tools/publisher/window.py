@@ -1217,9 +1217,6 @@ class ErrorsMessageBox(ErrorMessageBox):
         footer_layout = self._footer_widget.layout()
         footer_layout.setContentsMargins(5, 5, 5, 5)
 
-    def _create_top_widget(self, parent_widget):
-        return None
-
     def _get_report_data(self) -> list[str]:
         output = []
         for info in self._failed_info:
