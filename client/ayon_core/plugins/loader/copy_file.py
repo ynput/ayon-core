@@ -1,5 +1,9 @@
-import os
 import collections
+import ctypes
+import os
+import platform
+import shutil
+import subprocess
 
 from typing import Optional, Any
 
@@ -89,7 +93,25 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         path = get_representation_path_with_anatomy(
             repre, selection.get_project_anatomy()
         )
+        if not path:
+            return LoaderActionResult(
+                "Failed to get file path for representation.",
+                success=False,
+            )
+
         self.log.info(f"Added file path to clipboard: {path}")
+
+        if action == "copy-path":
+            # Set to Clipboard
+            if self._copy_filepath(str(path)):
+                return LoaderActionResult(
+                    "Path stored to clipboard...",
+                    success=True,
+                )
+            return LoaderActionResult(
+                "Failed to store path to clipboard...",
+                success=False,
+            )
 
         clipboard = QtWidgets.QApplication.clipboard()
         if not clipboard:
@@ -119,3 +141,125 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             "File added to clipboard...",
             success=True,
         )
+
+    def _copy_filepath(self, path: str) -> bool:
+        if not path:
+            return False
+
+        def _macos_copy() -> bool:
+            process = subprocess.Popen(
+                "pbcopy",
+                env={"LANG": "en_US.UTF-8"},
+                stdin=subprocess.PIPE,
+            )
+            process.communicate(path.encode("utf-8"))
+            return True
+
+        def _windows_copy() -> bool:
+            if shutil.which("clip.exe"):
+                process = subprocess.Popen(
+                    ["clip.exe"],
+                    stdin=subprocess.PIPE,
+                    close_fds=True,
+                )
+                process.communicate(input=path.encode("utf-8"))
+                return True
+
+            GMEM_MOVEABLE = 0x0002
+            CF_UNICODETEXT = 13
+            text_bytes = path.encode("utf-8")
+            size = len(text_bytes)
+
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+
+            # Correct signatures (important on 64-bit)
+            user32.OpenClipboard.argtypes = [ctypes.c_void_p]
+            user32.OpenClipboard.restype = ctypes.c_int
+            user32.EmptyClipboard.argtypes = []
+            user32.EmptyClipboard.restype = ctypes.c_int
+            user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+            user32.SetClipboardData.restype = ctypes.c_void_p
+            user32.CloseClipboard.argtypes = []
+            user32.CloseClipboard.restype = ctypes.c_int
+
+            kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+            kernel32.GlobalAlloc.restype = ctypes.c_void_p
+            kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+            kernel32.GlobalLock.restype = ctypes.c_void_p
+            kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+            kernel32.GlobalUnlock.restype = ctypes.c_int
+            kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+            kernel32.GlobalFree.restype = ctypes.c_void_p
+
+            if not user32.OpenClipboard(None):
+                return False
+            try:
+                if not user32.EmptyClipboard():
+                    return False
+
+                h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, size)
+                if not h_mem:
+                    return False
+
+                try:
+                    ptr = kernel32.GlobalLock(h_mem)
+                    if not ptr:
+                        return False
+                    try:
+                        ctypes.memmove(ptr, text_bytes, size)
+                    finally:
+                        kernel32.GlobalUnlock(h_mem)
+
+                    if not user32.SetClipboardData(CF_UNICODETEXT, h_mem):
+                        return False
+                finally:
+                    kernel32.GlobalFree(h_mem)
+
+                return True
+            finally:
+                user32.CloseClipboard()
+
+        def _linux_copy() -> bool:
+            args = None
+            if shutil.which("xclip"):
+                args = ["xclip", "-selection", "clipboard"]
+
+            elif shutil.which("xsel"):
+                args = ["xsel", "-b", "-i"]
+
+            elif shutil.which("wl-copy"):
+                args = ["wl-copy"]
+
+            elif shutil.which("klipper") and shutil.which("qdbus"):
+                subprocess.run(
+                    [
+                        "qdbus",
+                        "org.kde.klipper",
+                        "/klipper",
+                        "setClipboardContents",
+                        path.encode("utf-8"),
+                    ],
+                    close_fds=True,
+                )
+                return True
+
+            if args is None:
+                return False
+
+            process = subprocess.Popen(
+                args,
+                stdin=subprocess.PIPE,
+                close_fds=True,
+            )
+            process.communicate(input=path.encode("utf-8"))
+            return True
+
+        platform_name = platform.system().lower()
+        if platform_name == "windows":
+            return _windows_copy()
+        elif platform_name == "darwin":
+            return _macos_copy()
+        elif platform_name == "linux":
+            return _linux_copy()
+        return False
