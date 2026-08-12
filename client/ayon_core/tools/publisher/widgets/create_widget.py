@@ -13,7 +13,7 @@ from ayon_core.pipeline.create import (
     TaskNotSetError,
 )
 
-from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.abstract import SubtaskProduct
 from ayon_core.tools.publisher.constants import (
     VARIANT_TOOLTIP,
     CREATOR_IDENTIFIER_ROLE,
@@ -24,7 +24,7 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
-from ayon_core.tools.utils import HintedLineEdit
+from ayon_core.tools.utils import HintedLineEdit, ListView
 
 from .thumbnail_widget import ThumbnailWidget
 from .widgets import (
@@ -35,7 +35,14 @@ from .create_context_widgets import CreateContextWidget
 from .precreate_widget import PreCreateWidget
 
 if typing.TYPE_CHECKING:
-    from ayon_core.tools.publisher.abstract import CreatorItem
+    from ayon_core.tools.publisher.abstract import (
+        CreatorItem,
+        AbstractPublisherFrontend,
+    )
+
+SUBTASK_PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 1
+SUBTASK_PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 2
+SUBTASK_PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 3
 
 
 class ResizeControlWidget(QtWidgets.QWidget):
@@ -114,12 +121,54 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
 
 
 class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._subset_product: SubtaskProduct | None = None
+
+    def set_subset_product_filter(
+        self, subset_product: SubtaskProduct | None
+    ) -> None:
+        if subset_product is self._subset_product:
+            return
+        self._subset_product = subset_product
+        if self.rowCount() == 0:
+            return
+
+        first = self.index(0, 0)
+        last = self.index(self.rowCount() - 1, 0)
+        # UserRole - 1 is role under which are stored flags
+        self.dataChanged.emit(first, last, [QtCore.Qt.UserRole - 1])
+
+    def flags(self, source_index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlags:
+        flags = super().flags(source_index)
+        if not source_index.isValid():
+            return flags
+
+        if self._subset_product is None:
+            return flags
+
+        product_base_type = source_index.data(PRODUCT_BASE_TYPE_ROLE)
+        if product_base_type != self._subset_product.product_base_type:
+            return flags & ~QtCore.Qt.ItemIsEnabled
+
+        return flags
+
     def lessThan(self, left, right):
         l_show_order = left.data(CREATOR_SORT_ROLE)
         r_show_order = right.data(CREATOR_SORT_ROLE)
         if l_show_order == r_show_order:
             return super().lessThan(left, right)
         return l_show_order < r_show_order
+
+
+class SubtaskProductsView(ListView):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.set_deselectable(True)
+
+    def sizeHint(self):
+        return super().minimumSizeHint()
 
 
 class CreateWidget(QtWidgets.QWidget):
@@ -161,6 +210,11 @@ class CreateWidget(QtWidgets.QWidget):
 
         creators_view_widget = QtWidgets.QWidget(creators_splitter)
 
+        subtask_products_view = SubtaskProductsView(creators_view_widget)
+        subtask_products_model = QtGui.QStandardItemModel()
+        subtask_products_view.setModel(subtask_products_model)
+        subtask_products_view.setVisible(False)
+
         creator_view_label = QtWidgets.QLabel(
             "Choose publish type", creators_view_widget
         )
@@ -173,6 +227,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         creators_view_layout = QtWidgets.QVBoxLayout(creators_view_widget)
         creators_view_layout.setContentsMargins(0, 0, 0, 0)
+        creators_view_layout.addWidget(subtask_products_view, 0)
         creators_view_layout.addWidget(creator_view_label, 0)
         creators_view_layout.addWidget(creators_view, 1)
 
@@ -272,6 +327,9 @@ class CreateWidget(QtWidgets.QWidget):
         creator_basics_widget.resized.connect(self._on_creator_basics_resize)
         variant_widget.returnPressed.connect(self._on_create)
         variant_widget.textChanged.connect(self._on_variant_change)
+        subtask_products_view.selectionModel().currentChanged.connect(
+            self._on_subtask_product_change
+        )
         creators_view.selectionModel().currentChanged.connect(
             self._on_creator_item_change
         )
@@ -290,6 +348,10 @@ class CreateWidget(QtWidgets.QWidget):
             "create.context.pre.create.attrs.changed",
             self._pre_create_attr_changed
         )
+        controller.register_event_callback(
+            "create.context.removed.instance",
+            self._on_instances_removed
+        )
 
         self._main_splitter_widget = main_splitter_widget
 
@@ -300,6 +362,9 @@ class CreateWidget(QtWidgets.QWidget):
         self.product_name_input = product_name_input
 
         self._variant_widget = variant_widget
+
+        self._subtask_products_view = subtask_products_view
+        self._subtask_products_model = subtask_products_model
 
         self._creators_model = creators_model
         self._creators_sort_model = creators_sort_model
@@ -316,6 +381,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._first_show = True
         self._last_thumbnail_path = None
 
+        self._current_subtask_product = None
         self._last_current_context_folder_path = None
         self._last_current_context_task = None
         self._use_current_context = True
@@ -400,6 +466,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._context_widget.refresh()
         self._refresh_product_name()
 
+        self._refresh_subtask_products()
         # Then refresh creators which may trigger callbacks using refreshed
         #   data
         self._refresh_creators()
@@ -433,12 +500,9 @@ class CreateWidget(QtWidgets.QWidget):
             prereq_available = False
             creator_btn_tooltips.append("Context is not selected")
 
-        if prereq_available != self._prereq_available:
-            self._prereq_available = prereq_available
-
-            self._create_btn.setEnabled(prereq_available)
-
-            self._variant_widget.setEnabled(prereq_available)
+        self._prereq_available = prereq_available
+        self._create_btn.setEnabled(prereq_available)
+        self._variant_widget.setEnabled(prereq_available)
 
         tooltip = ""
         if creator_btn_tooltips:
@@ -467,6 +531,57 @@ class CreateWidget(QtWidgets.QWidget):
         self._product_names = product_names
         if product_names is None:
             self.product_name_input.setText("< Folder is not set >")
+
+    def _refresh_subtask_products(self) -> None:
+        folder_id = self._get_folder_id()
+        task_name = self._get_task_name()
+        subtask_products = []
+        if folder_id and task_name:
+            subtask_products = self._controller.get_subtask_products(
+                folder_id, task_name
+            )
+
+        root_item = self._subtask_products_model.invisibleRootItem()
+        if not subtask_products:
+            root_item.removeRows(0, root_item.rowCount())
+            self._subtask_products_view.setVisible(False)
+            self._current_subtask_product = None
+            return
+
+        self._subtask_products_view.setVisible(True)
+
+        # Refresh creators and add their product base types to list
+        existing_items = {}
+        for row in range(root_item.rowCount()):
+            item = root_item.child(row, 0)
+            product_name = item.data(SUBTASK_PRODUCT_NAME_ROLE)
+            existing_items[product_name] = item
+
+        new_items = []
+        for subtask_product in subtask_products:
+            item = existing_items.pop(subtask_product.product_name, None)
+            if item is None:
+                item = QtGui.QStandardItem(subtask_product.product_name)
+                item.setFlags(
+                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+                )
+                new_items.append(item)
+
+            for value, role in (
+                (subtask_product.product_name, SUBTASK_PRODUCT_NAME_ROLE),
+                (subtask_product.product_type, SUBTASK_PRODUCT_TYPE_ROLE),
+                (
+                    subtask_product.product_base_type,
+                    SUBTASK_PRODUCT_BASE_TYPE_ROLE
+                ),
+            ):
+                item.setData(value, role)
+
+        for item in existing_items.values():
+            root_item.removeRow(item.row())
+
+        if new_items:
+            root_item.appendRows(new_items)
 
     def _refresh_creators(self) -> None:
         # Refresh creators and add their product base types to list
@@ -564,6 +679,7 @@ class CreateWidget(QtWidgets.QWidget):
     def _on_task_change(self) -> None:
         if self._context_change_is_enabled():
             self._invalidate_prereq_deffered()
+        self._refresh_subtask_products()
 
     def _on_thumbnail_create(self, thumbnail_path: str) -> None:
         self._last_thumbnail_path = thumbnail_path
@@ -572,7 +688,50 @@ class CreateWidget(QtWidgets.QWidget):
     def _on_thumbnail_clear(self) -> None:
         self._last_thumbnail_path = None
 
-    def _on_creator_item_change(self, new_index, _old_index):
+    def _on_subtask_product_change(self, new_index, _old_index) -> None:
+        item = None
+        if new_index.isValid():
+            product_name = new_index.data(SUBTASK_PRODUCT_NAME_ROLE)
+            product_base_type = new_index.data(SUBTASK_PRODUCT_BASE_TYPE_ROLE)
+            product_type = new_index.data(SUBTASK_PRODUCT_TYPE_ROLE)
+            item = SubtaskProduct(
+                product_name, product_base_type, product_type
+            )
+
+        self._current_subtask_product = item
+        self._creators_sort_model.set_subset_product_filter(item)
+
+        if item is not None:
+            self.product_name_input.setText(item.product_name)
+            self._variant_widget.setEnabled(False)
+            self._variant_widget.setText("")
+            self._set_variant_state_property("")
+        else:
+            # Re-set creator item to update variant and product name
+            identifier = self._selected_creator_identifier
+            product_type = self._selected_product_type
+            if self._selected_creator_identifier is None:
+                index = self._creators_sort_model.index(0, 0)
+                identifier = index.data(CREATOR_IDENTIFIER_ROLE)
+                product_type = index.data(PRODUCT_TYPE_ROLE)
+
+            self._set_creator_by_identifier(identifier, product_type)
+            # Run invalidation of pre-requirements to update state
+            #   of variant input and create button
+            self._invalidate_prereq()
+
+        if item is not None:
+            creator_index = QtCore.QModelIndex()
+            # Select first creator with matching product base type
+            for row in range(self._creators_sort_model.rowCount()):
+                index = self._creators_sort_model.index(row, 0)
+                flags = self._creators_sort_model.flags(index)
+                if flags & QtCore.Qt.ItemIsEnabled:
+                    creator_index = index
+                    break
+            self._creators_view.setCurrentIndex(creator_index)
+
+    def _on_creator_item_change(self, new_index, _old_index) -> None:
         identifier = None
         product_type = None
         if new_index.isValid():
@@ -627,8 +786,12 @@ class CreateWidget(QtWidgets.QWidget):
         if not creator_item:
             self._selected_creator_identifier = None
             self._selected_product_type = None
-            self._set_context_enabled(False)
+            if self._current_subtask_product is None:
+                self._set_context_enabled(False)
+            self._create_btn.setEnabled(False)
             return
+
+        self._create_btn.setEnabled(True)
 
         self._selected_creator_identifier = creator_item.identifier
         self._selected_product_type = product_type
@@ -664,6 +827,9 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _on_variant_change(self, variant_value: str | None = None) -> None:
         if not self._prereq_available:
+            return
+
+        if self._current_subtask_product is not None:
             return
 
         # This should probably never happen?
@@ -783,6 +949,9 @@ class CreateWidget(QtWidgets.QWidget):
             self._creator_basics_widget.sizeHint().height()
         )
 
+    def _on_instances_removed(self):
+        self._refresh_subtask_products()
+
     def _on_create(self) -> None:
         indexes = self._creators_view.selectedIndexes()
         if not indexes or len(indexes) > 1:
@@ -793,9 +962,6 @@ class CreateWidget(QtWidgets.QWidget):
 
         index = indexes[0]
         creator_identifier = index.data(CREATOR_IDENTIFIER_ROLE)
-        product_type = index.data(PRODUCT_TYPE_ROLE)
-        product_base_type = index.data(PRODUCT_BASE_TYPE_ROLE)
-        variant = self._variant_widget.text()
         # Care about product name only if context change is enabled
         product_name = None
         folder_path = None
@@ -804,6 +970,18 @@ class CreateWidget(QtWidgets.QWidget):
             product_name = self.product_name_input.text()
             folder_path = self._get_folder_path()
             task_name = self._get_task_name()
+
+        variant = self._variant_widget.text()
+        if self._current_subtask_product is None:
+            product_type = index.data(PRODUCT_TYPE_ROLE)
+            product_base_type = index.data(PRODUCT_BASE_TYPE_ROLE)
+
+        else:
+            product_name = self._current_subtask_product.product_name
+            product_type = self._current_subtask_product.product_type
+            product_base_type = (
+                self._current_subtask_product.product_base_type
+            )
 
         pre_create_data = self._pre_create_widget.current_value()
         if index.data(CREATOR_THUMBNAIL_ENABLED_ROLE):
@@ -828,12 +1006,17 @@ class CreateWidget(QtWidgets.QWidget):
             pre_create_data
         )
 
-        if success:
-            self._set_creator_by_identifier(
-                self._selected_creator_identifier,
-                self._selected_product_type,
-            )
-            self._variant_widget.setText(variant)
-            self._controller.emit_card_message("Creation finished...")
-            self._last_thumbnail_path = None
-            self._thumbnail_widget.set_current_thumbnails()
+        if not success:
+            return
+
+        # TODO handle case when subtask product was selected
+        # - probably select next one?
+        self._refresh_subtask_products()
+        self._set_creator_by_identifier(
+            self._selected_creator_identifier,
+            self._selected_product_type,
+        )
+        self._variant_widget.setText(variant)
+        self._controller.emit_card_message("Creation finished...")
+        self._last_thumbnail_path = None
+        self._thumbnail_widget.set_current_thumbnails()
