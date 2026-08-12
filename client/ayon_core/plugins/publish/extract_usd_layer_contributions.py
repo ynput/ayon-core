@@ -74,7 +74,14 @@ class VariantContribution(_BaseContribution):
     # Variant
     variant_set_name: str
     variant_name: str
-    variant_is_default: bool  # Whether to author variant selection opinion
+    variant_default_policy: str  # Policy controlling variant selection opinion
+
+
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_missing": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set"
+}
 
 
 def get_representation_path_in_publish_context(
@@ -349,13 +356,25 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # Define contribution
         in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
+            variant_default_policy = attr_values.get(
+                "contribution_variant_default_policy"
+            )
+            if variant_default_policy is None:
+                # Support data created before the boolean was replaced by the
+                # policy enum.
+                variant_default_policy = CONTRIBUTION_VARIANT_DEFAULT_POLICY[
+                    "always"
+                    if attr_values.get("contribution_variant_is_default", False)
+                    else "if_missing"
+                ]
+
             contribution = VariantContribution(
                 instance=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
-                variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
+                variant_default_policy=variant_default_policy,
                 order=in_layer_order
             )
         else:
@@ -536,6 +555,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "task_names": create_context.get_current_task_name()
         }
         profile = filter_profiles(cls.profiles, filtering_criteria)
+
         if not profile:
             profile = {
                 "contribution_enabled": True,
@@ -544,8 +564,20 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
             }
+        elif "contribution_variant_default_policy" not in profile:
+            # Support profiles created before the boolean was replaced by the
+            # policy enum.
+            profile = profile.copy()
+            profile["contribution_variant_default_policy"] = (
+                CONTRIBUTION_VARIANT_DEFAULT_POLICY[
+                    "always"
+                    if profile.get("contribution_variant_is_default", False)
+                    else "if_missing"
+                ]
+            )
 
         # Define defaults
         default_target_product: str = profile["contribution_target_product"]
@@ -654,18 +686,27 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     label="Variant Name",
                     default=profile["contribution_variant"],
                     visible=variant_visible),
-            BoolDef("contribution_variant_is_default",
-                    label="Set as default variant selection",
-                    tooltip=(
-                        "Whether to set this instance's variant name as the "
-                        "default selected variant name for the variant set.\n"
-                        "It is always expected to be enabled for only one "
-                        "variant name in the variant set.\n"
-                        "The behavior is unpredictable if multiple instances "
-                        "for the same variant set have this enabled."
-                    ),
-                    default=profile["contribution_variant_is_default"],
-                    visible=variant_visible),
+            EnumDef(
+                "contribution_variant_default_policy",
+                label="Set as default variant selection",
+                tooltip=(
+                    "Controls whether this contribution's variant name is "
+                    "authored as the selected default for the variant set.\n"
+                    "'Do not set' leaves the variant selection unchanged.\n"
+                    "'Set as default if no current default' sets it only when "
+                    "the variant set has no default selection yet.\n"
+                    "'Set as default' always sets it as the default and may "
+                    "override a selection authored by another contribution.\n"
+                    "When multiple contributions use 'Set as default', "
+                    "the final result depends on their contribution order."
+                ),
+                items=CONTRIBUTION_VARIANT_DEFAULT_POLICY.values(),
+                default=profile.get(
+                    "contribution_variant_default_policy",
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                ),
+                visible=variant_visible,
+            ),
             UISeparatorDef("usd_container_settings3"),
         ]
 
@@ -790,8 +831,15 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 # Set default variant selection
                 variant_set_name = contribution.variant_set_name
                 variant_name = contribution.variant_name
-                if contribution.variant_is_default or \
-                        variant_set_name not in prim_spec.variantSelections:
+                if (
+                    contribution.variant_default_policy
+                    == CONTRIBUTION_VARIANT_DEFAULT_POLICY["always"]
+                    or (
+                        contribution.variant_default_policy
+                        == CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"]
+                        and variant_set_name not in prim_spec.variantSelections
+                    )
+                ):
                     prim_spec.variantSelections[variant_set_name] = variant_name  # noqa: E501
 
             elif isinstance(contribution, SublayerContribution):
