@@ -706,7 +706,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}', "
                     "the final result depends on their contribution order."
                 ),
-                items=CONTRIBUTION_VARIANT_DEFAULT_POLICY.values(),
+                items=list(CONTRIBUTION_VARIANT_DEFAULT_POLICY.values()),
                 default=profile.get(
                     "contribution_variant_default_policy",
                     CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
