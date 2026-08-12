@@ -47,6 +47,7 @@ from ayon_core.tools.publisher.abstract import (
     PublishAttrDefsInfo,
     AbstractPublisherBackend,
     CardMessageTypes,
+    SubtaskProduct,
 )
 
 CREATE_EVENT_SOURCE = "publisher.create.model"
@@ -1092,6 +1093,72 @@ class CreateModel:
                 "mapping": thumbnail_path_mapping
             }
         )
+
+    def get_subtask_products(
+        self, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        project_name = self._controller.get_current_project_name()
+        if project_name is None:
+            return []
+
+        # TODO implement how to get subtask products for the given context.
+        subtask_products = [
+            SubtaskProduct(
+                "ynterestingMain",
+                "nothing",
+                "biiiiig",
+            ),
+            SubtaskProduct(
+                "workfileMain",
+                "workfile",
+                "workfile",
+            ),
+            SubtaskProduct(
+                "testMain",
+                "test",
+                "test",
+            ),
+            SubtaskProduct(
+                "test2Main",
+                "test2",
+                "test2",
+            ),
+        ]
+        if not subtask_products:
+            return []
+
+        # Filter subtask products based on existing instances
+        # - skip products that are already created in the scene
+        folder_item = self._controller.get_folder_item(
+            project_name, folder_id
+        )
+        context_instances = [
+            instance
+            for instance in self._create_context.instances
+            if (
+                instance["folderPath"] == folder_item.path
+                and instance["task"] == task_name
+            )
+        ]
+        if not context_instances:
+            return subtask_products
+
+        filtered_subtask_products = []
+        for subset_product in subtask_products:
+            pt = subset_product.product_type
+            pbt = subset_product.product_base_type
+            matching_instance = next((
+                instance
+                for instance in context_instances
+                if (
+                    instance.product_type == pt
+                    and instance.product_base_type == pbt
+                )
+            ), None)
+            if matching_instance is None:
+                filtered_subtask_products.append(subset_product)
+
+        return filtered_subtask_products
 
     def _emit_event(
         self,

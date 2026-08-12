@@ -347,6 +347,13 @@ class UIPublishErrorReport:
         )
 
 
+@dataclass
+class SubtaskProduct:
+    product_name: str
+    product_base_type: str
+    product_type: str
+
+
 class AbstractPublisherCommon(ABC):
     @abstractmethod
     def register_event_callback(self, topic: str, callback: Callable) -> None:
@@ -505,6 +512,12 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
     def get_folder_entity(
         self, project_name: str, folder_id: str
     ) -> dict[str, Any] | None:
+        pass
+
+    @abstractmethod
+    def get_folder_item(
+        self, project_name: str, folder_id: str
+    ) -> FolderItem | None:
         pass
 
     @abstractmethod
@@ -1049,3 +1062,9 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     def clear_thumbnail_temp_dir_path(self) -> None:
         """Remove content of thumbnail temp directory."""
         pass
+
+    @abstractmethod
+    def get_subtask_products(
+        self, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        """Get subtask products for a given folder and task."""
