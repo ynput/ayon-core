@@ -29,7 +29,11 @@ from .tasks_model import TasksModel
 from .widgets import ClickableLineEdit, MultipleItemWidget
 
 if typing.TYPE_CHECKING:
+    from typing import Literal
+
     from ayon_core.tools.publisher.abstract import InstanceItem
+
+    StyleState = Literal["", "invalid"]
 
 
 class FoldersFields(BaseClickableFrame):
@@ -82,12 +86,20 @@ class FoldersFields(BaseClickableFrame):
         self._name_input = name_input
         self._icon_btn = icon_btn
 
-        self._origin_value = []
-        self._origin_selection = []
-        self._selected_items = []
+        self._origin_value = set()
+        self._origin_selection = set()
+        self._selected_items = set()
         self._has_value_changed = False
         self._is_valid = True
         self._multiselection_text = None
+
+    def set_multiselection_text(self, text: str) -> None:
+        """Change text for multiselection of different folders.
+
+        When there are selected multiple instances at once and they don't have
+        same folder in context.
+        """
+        self._multiselection_text = text
 
     def _on_dialog_finish(self, result):
         if not result:
@@ -97,7 +109,7 @@ class FoldersFields(BaseClickableFrame):
         if folder_path is None:
             return
 
-        self._selected_items = [folder_path]
+        self._selected_items = {folder_path}
         self._has_value_changed = (
             self._origin_value != self._selected_items
         )
@@ -110,41 +122,33 @@ class FoldersFields(BaseClickableFrame):
         self._dialog.set_selected_folders(self._selected_items)
         self._dialog.open()
 
-    def set_multiselection_text(self, text):
-        """Change text for multiselection of different folders.
-
-        When there are selected multiple instances at once and they don't have
-        same folder in context.
-        """
-        self._multiselection_text = text
-
-    def _set_is_valid(self, valid):
+    def _set_is_valid(self, valid: bool) -> None:
         if valid == self._is_valid:
             return
         self._is_valid = valid
-        state = ""
+        state: StyleState = ""
         if not valid:
             state = "invalid"
         self._set_state_property(state)
 
-    def _set_state_property(self, state):
+    def _set_state_property(self, state: StyleState) -> None:
         set_style_property(self, "state", state)
         set_style_property(self._name_input, "state", state)
         set_style_property(self._icon_btn, "state", state)
 
-    def is_valid(self):
+    def is_valid(self) -> bool:
         """Is folder valid."""
         return self._is_valid
 
-    def has_value_changed(self):
+    def has_value_changed(self) -> bool:
         """Value of folder has changed."""
         return self._has_value_changed
 
-    def get_selected_items(self):
+    def get_selected_items(self) -> set[str]:
         """Selected folder paths."""
-        return list(self._selected_items)
+        return set(self._selected_items)
 
-    def set_text(self, text):
+    def set_text(self, text: str) -> None:
         """Set text in text field.
 
         Does not change selected items (folders).
@@ -152,22 +156,24 @@ class FoldersFields(BaseClickableFrame):
         self._name_input.setText(text)
         self._name_input.end(False)
 
-    def set_selected_items(self, folder_paths=None):
+    def set_selected_items(
+        self, folder_paths: set[str] | None = None
+    ) -> None:
         """Set folder paths for selection of instances.
 
         Passed folder paths are validated and if there are 2 or more different
         folder paths then multiselection text is shown.
 
         Args:
-            folder_paths (list, tuple, set, NoneType): List of folder paths.
+            folder_paths (set[str] | None): Set of folder paths.
 
         """
         if folder_paths is None:
-            folder_paths = []
+            folder_paths = set()
 
         self._has_value_changed = False
-        self._origin_value = list(folder_paths)
-        self._selected_items = list(folder_paths)
+        self._origin_value = set(folder_paths)
+        self._selected_items = set(folder_paths)
         is_valid = self._controller.are_folder_paths_valid(folder_paths)
         if not folder_paths:
             self.set_text("")
@@ -183,11 +189,11 @@ class FoldersFields(BaseClickableFrame):
 
         self._set_is_valid(is_valid)
 
-    def reset_to_origin(self):
+    def reset_to_origin(self) -> None:
         """Change to folder paths set with last `set_selected_items` call."""
         self.set_selected_items(self._origin_value)
 
-    def confirm_value(self):
+    def confirm_value(self) -> None:
         self._origin_value = copy.deepcopy(self._selected_items)
         self._has_value_changed = False
 
@@ -356,7 +362,7 @@ class TasksCombobox(QtWidgets.QComboBox):
         """
         return list(self._selected_items)
 
-    def set_folder_paths(self, folder_paths):
+    def set_folder_paths(self, folder_paths: set[str]) -> None:
         """Set folder paths for which should show tasks."""
         self._ignore_index_change = True
 
