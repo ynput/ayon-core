@@ -144,6 +144,7 @@ default_help() {
   echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
   echo -e "  ${BWhite}run${RST}             ${BCyan}Run a uv command in the repository environment${RST}"
+  echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests (optional tests excluded)${RST}"
   echo -e "  ${BWhite}run-tests --optional${RST} ${BCyan}Run ayon-core tests including optional tests${RST}"
   echo ""
 }
