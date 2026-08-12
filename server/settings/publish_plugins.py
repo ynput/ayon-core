@@ -26,6 +26,21 @@ except ImportError:
     StatusesEnumResolver = None
 
 
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_missing": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set",
+}
+
+
+def contribution_variant_default_policy_enum():
+    """Return the available variant default policies for the settings UI."""
+    return [
+        {"value": label, "label": label}
+        for label in CONTRIBUTION_VARIANT_DEFAULT_POLICY.values()
+    ]
+
+
 async def _get_anatomy(project_name: str | None = None) -> Anatomy:
     if project_name:
         return await get_project_anatomy(project_name)
@@ -262,14 +277,18 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
         ),
     )
     contribution_variant_default_policy: str = SettingsField(
-        "Set as default if no current default",
+        CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
         title="Set as default variant selection",
+        enum_resolver=contribution_variant_default_policy_enum,
         description=(
             "Controls whether this contribution's variant name is authored "
-            "as the selected default for the variant set. Use 'Do not set' "
-            "to leave the variant selection unchanged, 'Set as default if "
-            "no current default' to set it only when no selection exists, "
-            "or 'Set as default' to always override the current selection."
+            "as the selected default for the variant set. Use "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' to leave the "
+            "variant selection unchanged, "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_missing']}' to set "
+            "it only when no selection exists, or "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' to always "
+            "override the current selection."
         ),
     )
 
@@ -1656,7 +1675,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "Set as default if no current default",
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
             },
             {
                 "product_base_types": ["look"],
@@ -1669,7 +1688,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "Set as default if no current default",
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
             },
             {
                 "product_base_types": ["groom"],
@@ -1682,7 +1701,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "Set as default if no current default",
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
             },
             {
                 "product_base_types": ["rig"],
@@ -1695,7 +1714,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "Set as default if no current default",
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
             },
             {
                 "product_base_types": ["usd"],
@@ -1708,7 +1727,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "Set as default if no current default",
+                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
             },
         ]
     },

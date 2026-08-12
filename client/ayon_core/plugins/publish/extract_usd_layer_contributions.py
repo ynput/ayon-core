@@ -692,12 +692,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 tooltip=(
                     "Controls whether this contribution's variant name is "
                     "authored as the selected default for the variant set.\n"
-                    "'Do not set' leaves the variant selection unchanged.\n"
-                    "'Set as default if no current default' sets it only when "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' leaves "
+                    "the variant selection unchanged.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_missing']}' "
+                    "sets it only when "
                     "the variant set has no default selection yet.\n"
-                    "'Set as default' always sets it as the default and may "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' always "
+                    "sets it as the default and may "
                     "override a selection authored by another contribution.\n"
-                    "When multiple contributions use 'Set as default', "
+                    f"When multiple contributions use "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}', "
                     "the final result depends on their contribution order."
                 ),
                 items=CONTRIBUTION_VARIANT_DEFAULT_POLICY.values(),
