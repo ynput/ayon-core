@@ -36,8 +36,8 @@ CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
 def contribution_variant_default_policy_enum():
     """Return the available variant default policies for the settings UI."""
     return [
-        {"value": label, "label": label}
-        for label in CONTRIBUTION_VARIANT_DEFAULT_POLICY.values()
+        {"value": value, "label": label}
+        for value, label in CONTRIBUTION_VARIANT_DEFAULT_POLICY.items()
     ]
 
 
@@ -277,7 +277,7 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
         ),
     )
     contribution_variant_default_policy: str = SettingsField(
-        CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+        "if_missing",
         title="Set as default variant selection",
         enum_resolver=contribution_variant_default_policy_enum,
         description=(
@@ -1675,7 +1675,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
             },
             {
                 "product_base_types": ["look"],
@@ -1688,7 +1688,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
             },
             {
                 "product_base_types": ["groom"],
@@ -1701,7 +1701,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
             },
             {
                 "product_base_types": ["rig"],
@@ -1714,7 +1714,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
             },
             {
                 "product_base_types": ["usd"],
@@ -1727,7 +1727,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
             },
         ]
     },

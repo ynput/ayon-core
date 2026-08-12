@@ -362,13 +362,13 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             if variant_default_policy is None:
                 # Support data created before the boolean was replaced by the
                 # policy enum.
-                variant_default_policy = CONTRIBUTION_VARIANT_DEFAULT_POLICY[
+                variant_default_policy = (
                     "always"
                     if attr_values.get(
                         "contribution_variant_is_default", False
                     )
                     else "if_missing"
-                ]
+                )
 
             contribution = VariantContribution(
                 instance=instance,
@@ -567,18 +567,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
             }
         elif "contribution_variant_default_policy" not in profile:
             # Support profiles created before the boolean was replaced by the
             # policy enum.
             profile = profile.copy()
             profile["contribution_variant_default_policy"] = (
-                CONTRIBUTION_VARIANT_DEFAULT_POLICY[
-                    "always"
-                    if profile.get("contribution_variant_is_default", False)
-                    else "if_missing"
-                ]
+                "always"
+                if profile.get("contribution_variant_is_default", False)
+                else "if_missing"
             )
 
         # Define defaults
@@ -706,10 +704,10 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}', "
                     "the final result depends on their contribution order."
                 ),
-                items=list(CONTRIBUTION_VARIANT_DEFAULT_POLICY.values()),
+                items=CONTRIBUTION_VARIANT_DEFAULT_POLICY,
                 default=profile.get(
                     "contribution_variant_default_policy",
-                    CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"],
+                    "if_missing",
                 ),
                 visible=variant_visible,
             ),
@@ -839,10 +837,10 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 variant_name = contribution.variant_name
                 if (
                     contribution.variant_default_policy
-                    == CONTRIBUTION_VARIANT_DEFAULT_POLICY["always"]
+                    == "always"
                     or (
                         contribution.variant_default_policy
-                        == CONTRIBUTION_VARIANT_DEFAULT_POLICY["if_missing"]
+                        == "if_missing"
                         and variant_set_name not in prim_spec.variantSelections
                     )
                 ):
