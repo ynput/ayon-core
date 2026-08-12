@@ -719,7 +719,9 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path: str) -> set[str] | None:
+    def get_existing_product_names(
+        self, folder_path: str | None
+    ) -> set[str] | None:
         pass
 
     @abstractmethod
