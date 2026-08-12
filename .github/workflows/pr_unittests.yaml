@@ -34,4 +34,4 @@ jobs:
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ./tools/manage.sh run-tests
+        run: ./tools/manage.sh run-tests --optional

@@ -144,7 +144,7 @@ default_help() {
   echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
   echo -e "  ${BWhite}run${RST}             ${BCyan}Run a uv command in the repository environment${RST}"
-  echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests${RST}"
+  echo -e "  ${BWhite}run-tests --optional${RST} ${BCyan}Run ayon-core tests including optional tests${RST}"
   echo ""
 }
 
@@ -172,8 +172,12 @@ run_command () {
 run_tests () {
   echo -e "${BIGreen}>>>${RST} Running tests..."
   shift;  # will remove first arg ("run-tests") from the "$@"
+  local test_marker="not server and not optional"
+  if [ "$1" = "--optional" ]; then
+    test_marker="not server"
+  fi
   uv sync --extra test
-  uv run pytest ./tests -m "not server"
+  uv run pytest ./tests -m "$test_marker"
 }
 
 main () {

@@ -66,7 +66,7 @@ mypy_path = "$MYPY_CONFIG_FILE_DIR/client"
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "INFO"
-addopts = "-ra -q"
+addopts = "-ra -q -m 'not optional'"
 testpaths = [
     "client/ayon_core/tests",
     "tests/client/ayon_core/ui",
@@ -82,4 +82,5 @@ markers = [
     "cli: CLI tests",
     "slow: Slow tests",
     "server: Tests that require a running AYON server",
+    "optional: Tests excluded from the default test run",
 ]
