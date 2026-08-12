@@ -237,7 +237,7 @@ class BaseAnatomy(object):
         if not root_templates:
             return None
 
-        return root_templates[0].format(**{"root": self.roots})
+        return root_templates[0].format_map({"root": self.roots})
 
     def root_names_from_templates(self, templates):
         """Extract root names form anatomy templates.
@@ -287,7 +287,7 @@ class BaseAnatomy(object):
             str: formatted path
         """
         # NOTE does not care if there are different keys than "root"
-        return template_path.format(**{"root": self.roots})
+        return template_path.format_map({"root": self.roots})
 
     @classmethod
     def fill_root_with_path(cls, rootless_path, root_path):
@@ -359,7 +359,7 @@ class BaseAnatomy(object):
             )
 
         data = self.root_environmets_fill_data(template)
-        return rootless_path.format(**data)
+        return rootless_path.format_map(data)
 
     def _project_entity_to_anatomy_data(self, project_entity):
         """Convert project document to anatomy data.

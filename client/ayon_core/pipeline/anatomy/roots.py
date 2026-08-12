@@ -190,7 +190,7 @@ class AnatomyRoot(FormatObject):
         else:
             fill_data = {self.name: self.value}
 
-        return template.format(**{"root": fill_data})
+        return template.format_map({"root": fill_data})
 
     def find_root_template_from_path(self, path):
         """Replaces known root value with formattable key in path.
@@ -329,7 +329,7 @@ class AnatomyRoots:
             raise ValueError("Roots are not set. Can't find path.")
 
         if "{root" in path:
-            path = path.format(**{"root": roots})
+            path = path.format_map({"root": roots})
             # If `dst_platform` is not specified then return else continue.
             if not dst_platform:
                 return path

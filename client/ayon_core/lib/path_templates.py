@@ -760,7 +760,7 @@ class FormattingPart:
             parent_fill_data[used_keys[-1]] = value
 
         template = f"{{{field_name}{self._format_spec}{self._conversion}}}"
-        formatted_value = template.format(**root_fill_data)
+        formatted_value = template.format_map(root_fill_data)
         used_key = key
         if keys_to_value is not None:
             used_key = self.keys_to_template_base(keys_to_value)
