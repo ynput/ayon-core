@@ -364,7 +364,9 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 # policy enum.
                 variant_default_policy = CONTRIBUTION_VARIANT_DEFAULT_POLICY[
                     "always"
-                    if attr_values.get("contribution_variant_is_default", False)
+                    if attr_values.get(
+                        "contribution_variant_is_default", False
+                    )
                     else "if_missing"
                 ]
 
@@ -697,8 +699,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_missing']}' "
                     "sets it only when "
                     "the variant set has no default selection yet.\n"
-                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' always "
-                    "sets it as the default and may "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' always"
+                    " sets it as the default and may "
                     "override a selection authored by another contribution.\n"
                     f"When multiple contributions use "
                     f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}', "
