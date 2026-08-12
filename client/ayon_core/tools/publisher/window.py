@@ -47,9 +47,7 @@ from .widgets import (
 )
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
-
-    TabIdentifier = Literal["create", "publish", "details", "report"]
+    from .widgets.typing import TabIdentifier
 
 
 class PublisherWindow(QtWidgets.QDialog):
@@ -685,8 +683,8 @@ class PublisherWindow(QtWidgets.QDialog):
         Args:
             tab (TabIdentifier): Identifier of tab which will be selected
                 on show (after reset).
-        """
 
+        """
         self._tab_on_reset = tab
 
     def set_current_tab(self, tab: TabIdentifier) -> None:

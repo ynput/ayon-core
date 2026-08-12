@@ -1,18 +1,26 @@
 from __future__ import annotations
 
+import typing
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import set_style_property
+
+if typing.TYPE_CHECKING:
+    from .typing import TabIdentifier
 
 
 class PublisherTabBtn(QtWidgets.QPushButton):
     tab_clicked = QtCore.Signal(str)
 
     def __init__(
-        self, identifier: str, label: str, parent: QtWidgets.QWidget
+        self,
+        identifier: TabIdentifier,
+        label: str,
+        parent: QtWidgets.QWidget,
     ) -> None:
         super().__init__(label, parent)
-        self._identifier: str = identifier
+        self._identifier: TabIdentifier = identifier
         self._active: bool = False
 
         self.clicked.connect(self._on_click)
@@ -21,7 +29,7 @@ class PublisherTabBtn(QtWidgets.QPushButton):
         self.tab_clicked.emit(self.identifier)
 
     @property
-    def identifier(self) -> str:
+    def identifier(self) -> TabIdentifier:
         return self._identifier
 
     def activate(self) -> None:
@@ -55,18 +63,15 @@ class PublisherTabsWidget(QtWidgets.QFrame):
 
         self._btns_layout = btns_layout
 
-        self._current_identifier: str | None = None
+        self._current_identifier: TabIdentifier | None = None
         self._buttons_by_identifier: dict[str, PublisherTabBtn] = {}
 
-    def is_current_tab(self, identifier: str) -> bool:
-        # if isinstance(identifier, int):
-        #     identifier = self.get_tab_by_index(identifier)
-        #
-        # if isinstance(identifier, PublisherTabBtn):
-        #     identifier = identifier.identifier
+    def is_current_tab(self, identifier: TabIdentifier) -> bool:
         return self._current_identifier == identifier
 
-    def add_tab(self, label: str, identifier: str) -> PublisherTabBtn:
+    def add_tab(
+        self, label: str, identifier: TabIdentifier
+    ) -> PublisherTabBtn:
         button = PublisherTabBtn(identifier, label, self)
         button.tab_clicked.connect(self._on_tab_click)
         self._btns_layout.addWidget(button, 0)
@@ -76,21 +81,7 @@ class PublisherTabsWidget(QtWidgets.QFrame):
             self.set_current_tab(identifier)
         return button
 
-    def get_tab_by_index(self, index: int) -> PublisherTabBtn | None:
-        if 0 >= index < self._btns_layout.count():
-            item = self._btns_layout.itemAt(index)
-            return item.widget()
-        return None
-
-    def set_current_tab(
-        self, identifier: str | int | PublisherTabBtn
-    ) -> None:
-        if isinstance(identifier, int):
-            identifier = self.get_tab_by_index(identifier)
-
-        if isinstance(identifier, PublisherTabBtn):
-            identifier = identifier.identifier
-
+    def set_current_tab(self, identifier: TabIdentifier) -> None:
         if identifier == self._current_identifier:
             return
 
@@ -107,8 +98,8 @@ class PublisherTabsWidget(QtWidgets.QFrame):
         new_btn.activate()
         self.tab_changed.emit(old_identifier, identifier)
 
-    def current_tab(self) -> str | None:
+    def current_tab(self) -> TabIdentifier | None:
         return self._current_identifier
 
-    def _on_tab_click(self, identifier: str) -> None:
+    def _on_tab_click(self, identifier: TabIdentifier) -> None:
         self.set_current_tab(identifier)
