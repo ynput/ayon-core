@@ -221,7 +221,7 @@ function Run-Tests {
         $TestMarker
     )
     & uv sync --extra test
-    & uv $RunArgs
+    & uv $RunArgs @TestArguments
 }
 
 function Write-Help {
