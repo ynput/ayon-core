@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import ctypes
 import os
@@ -17,16 +19,29 @@ from ayon_core.pipeline.actions import (
     LoaderActionResult,
 )
 
+def _run_command(
+    args: list[str],
+    payload: bytes | None = None,
+    env: dict[str, str] | None = None
+) -> bool:
+    if payload is None:
+        process = subprocess.Popen(args, close_fds=True, env=env)
+        process.wait()
+        return process.returncode == 0
+
+    process = subprocess.Popen(
+        args,
+        env=env,
+        stdin=subprocess.PIPE,
+        close_fds=True,
+    )
+    process.communicate(input=payload)
+    return process.returncode == 0
+
 
 def _windows_copy(path: str, copy_path: bool) -> bool:
     if copy_path and shutil.which("clip.exe"):
-        process = subprocess.Popen(
-            ["clip.exe"],
-            stdin=subprocess.PIPE,
-            close_fds=True,
-        )
-        process.communicate(input=path.encode("utf-8"))
-        return True
+        return _run_command(["clip.exe"], path.encode("utf-8"))
 
     from ctypes import wintypes
 
@@ -118,6 +133,56 @@ def _windows_copy(path: str, copy_path: bool) -> bool:
         return True
     finally:
         user32.CloseClipboard()
+
+
+def _macos_copy(path: str, copy_path: bool) -> bool:
+    if copy_path:
+        return _run_command(
+            ["pbcopy"],
+            path.encode("utf-8"),
+            env={"LANG": "en_US.UTF-8"},
+        )
+
+    escaped_path = path.replace('"', '\\"')
+    script = f'set the clipboard to (POSIX file "{escaped_path}")'
+    return _run_command(["osascript", "-e", script])
+
+
+def _linux_copy(path: str, copy_path: bool) -> bool:
+    if copy_path:
+        payload = path.encode("utf-8")
+    else:
+        file_uri = Path(path).resolve().as_uri()
+        payload = (file_uri + "\n").encode("utf-8")
+
+    if shutil.which("wl-copy"):
+        args = ["wl-copy"]
+        if not copy_path:
+            args.extend(["--type", "text/uri-list"])
+        return _run_command(args, payload)
+
+    if shutil.which("xclip"):
+        args = ["xclip", "-selection", "clipboard"]
+        if not copy_path:
+            args.extend(["-t", "text/uri-list"])
+        return _run_command(args, payload)
+
+    if not copy_path:
+        return False
+
+    if shutil.which("xsel"):
+        return _run_command(["xsel", "-b", "-i"], payload)
+
+    if shutil.which("klipper") and shutil.which("qdbus"):
+        return _run_command([
+            "qdbus",
+            "org.kde.klipper",
+            "/klipper",
+            "setClipboardContents",
+            path.encode("utf-8"),
+        ])
+
+    return False
 
 
 class CopyFileActionPlugin(LoaderActionPlugin):
@@ -238,104 +303,24 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         if not os.path.exists(normalized_path):
             return False
 
-        
-
-        def _macos_copy() -> bool:
-            escaped_path = normalized_path.replace('"', '\\"')
-            script = f'set the clipboard to (POSIX file "{escaped_path}")'
-            result = subprocess.run(
-                ["osascript", "-e", script],
-                close_fds=True,
-                check=False,
-            )
-            return result.returncode == 0
-
-        def _linux_copy() -> bool:
-            file_uri = Path(normalized_path).resolve().as_uri()
-            payload = (file_uri + "\n").encode("utf-8")
-
-            if shutil.which("wl-copy"):
-                process = subprocess.Popen(
-                    ["wl-copy", "--type", "text/uri-list"],
-                    stdin=subprocess.PIPE,
-                    close_fds=True,
-                )
-                process.communicate(input=payload)
-                return process.returncode == 0
-
-            if shutil.which("xclip"):
-                process = subprocess.Popen(
-                    ["xclip", "-selection", "clipboard", "-t", "text/uri-list"],
-                    stdin=subprocess.PIPE,
-                    close_fds=True,
-                )
-                process.communicate(input=payload)
-                return process.returncode == 0
-
-            return False
-
         platform_name = platform.system().lower()
         if platform_name == "windows":
             return _windows_copy(normalized_path, copy_path=False)
         if platform_name == "darwin":
-            return _macos_copy()
+            return _macos_copy(normalized_path, copy_path=False)
         if platform_name == "linux":
-            return _linux_copy()
+            return _linux_copy(normalized_path, copy_path=False)
         return False
 
     def _copy_filepath(self, path: str) -> bool:
         if not path:
             return False
 
-        def _macos_copy() -> bool:
-            process = subprocess.Popen(
-                "pbcopy",
-                env={"LANG": "en_US.UTF-8"},
-                stdin=subprocess.PIPE,
-            )
-            process.communicate(path.encode("utf-8"))
-            return True
-
-        def _linux_copy() -> bool:
-            args = None
-            if shutil.which("xclip"):
-                args = ["xclip", "-selection", "clipboard"]
-
-            elif shutil.which("xsel"):
-                args = ["xsel", "-b", "-i"]
-
-            elif shutil.which("wl-copy"):
-                args = ["wl-copy"]
-
-            elif shutil.which("klipper") and shutil.which("qdbus"):
-                subprocess.run(
-                    [
-                        "qdbus",
-                        "org.kde.klipper",
-                        "/klipper",
-                        "setClipboardContents",
-                        path.encode("utf-8"),
-                    ],
-                    close_fds=True,
-                )
-                return True
-
-            if args is None:
-                return False
-
-            process = subprocess.Popen(
-                args,
-                stdin=subprocess.PIPE,
-                close_fds=True,
-            )
-            process.communicate(input=path.encode("utf-8"))
-            return True
-
         platform_name = platform.system().lower()
         if platform_name == "windows":
             return _windows_copy(path, copy_path=True)
         elif platform_name == "darwin":
-            return _macos_copy()
+            return _macos_copy(path, copy_path=True)
         elif platform_name == "linux":
-            return _linux_copy()
+            return _linux_copy(path, copy_path=True)
         return False
