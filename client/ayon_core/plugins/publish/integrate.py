@@ -67,6 +67,7 @@ class _PreparedRepresentation:
 class _PreparedInstance:
     instance: pyblish.api.Instance
     prepared_representations: list[_PreparedRepresentation]
+    operations: OperationsSession
     existing_repres_by_name: dict[str, dict[str, Any]]
     resource_destinations: set[str]
     anatomy: Anatomy
@@ -213,18 +214,17 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             log=self.log,
             allow_queue_replacements=False,
         )
-        operations = OperationsSession()
         try:
             prepared_instances = self._prepare_instances(
-                context, instances, operations, file_transactions
+                context, instances, file_transactions
             )
-            operations.commit()
+            self._commit_instance_operations(prepared_instances)
             self.log.debug("Integrating source files to destination ...")
             file_transactions.process()
             self._prepare_representation_operations(
-                context, prepared_instances, operations
+                context, prepared_instances
             )
-            operations.commit()
+            self._commit_instance_operations(prepared_instances)
         except DuplicateDestinationError as exc:
             file_transactions.rollback()
             raise PublishError(str(exc)).with_traceback(sys.exc_info()[2])
@@ -235,9 +235,35 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
 
         file_transactions.finalize()
 
-    def _commit_if_full(self, operations: OperationsSession) -> None:
-        if len(operations) >= self.operations_chunk_size:
-            operations.commit()
+    def _commit_instance_operations(
+        self, prepared_instances: list[_PreparedInstance]
+    ) -> None:
+        """Commit all operations sessions in chunks to avoid payload size
+        issues. However, enforce that all operations of a single instance are
+        committed together to avoid partial commits.
+        """
+        combined = OperationsSession()
+        for prepared_instance in prepared_instances:
+            operations = prepared_instance.operations
+            if not len(operations):
+                continue
+
+            # If the single instance has more operations than the chunk
+            # size, commit it directly
+            if len(operations) > self.operations_chunk_size:
+                operations.commit()
+                continue
+
+            # If the combined session is too large, commit existing stack of
+            # operations before adding new operations
+            if (
+                len(combined) + len(operations) > self.operations_chunk_size
+            ):
+                combined.commit()
+
+            combined.extend(operations._operations)
+            operations.clear()
+        combined.commit()
 
     def _prepare_instances(
         self,
@@ -245,7 +271,6 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         instances: list[tuple[
             pyblish.api.Instance, list[PublishRepresentation]
         ]],
-        operations: OperationsSession,
         file_transactions: FileTransaction,
     ) -> list[_PreparedInstance]:
         project_name = context.data["projectName"]
@@ -264,20 +289,29 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             for product in products
         }
 
+        # Keep track of operations per instance, so if we need to chunk the
+        # OperationsSession we can ensure to still commit all operations for a
+        # single instance together
+        operations_by_instance_id: dict[str, OperationsSession] = {
+            instance.id: OperationsSession()
+            for instance, _ in instances
+        }
         product_entities = {}
+        product_operations: dict[tuple[str, str], OperationsSession] = {}
         for instance, _ in instances:
             key = (
                 instance.data["folderEntity"]["id"],
                 instance.data["productName"],
             )
             if key not in product_entities:
+                operations = operations_by_instance_id[instance.id]
                 product_entities[key] = self.prepare_product(
                     instance,
                     operations,
                     project_name,
                     existing_product_entity=products_by_key.get(key),
                 )
-                self._commit_if_full(operations)
+                product_operations[key] = operations
 
         product_ids = {product["id"] for product in products}
         version_numbers = {
@@ -304,6 +338,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             product_entity = product_entities[product_key]
             version_key = (product_entity["id"], instance.data["version"])
             if version_key not in version_entities:
+                operations = product_operations[product_key]
                 version_entities[version_key] = self.prepare_version(
                     instance,
                     operations,
@@ -311,7 +346,6 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                     project_name,
                     existing_version=versions_by_key.get(version_key),
                 )
-                self._commit_if_full(operations)
 
         existing_version_ids = {version["id"] for version in versions}
         representations = []
@@ -343,6 +377,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 filtered_repres,
                 file_transactions,
                 repres_by_version.get(version_entity["id"], {}),
+                operations_by_instance_id[instance.id],
             ))
         return prepared_instances
 
@@ -352,6 +387,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         filtered_repres: list[PublishRepresentation],
         file_transactions: FileTransaction,
         existing_repres_by_name: dict[str, dict[str, Any]],
+        operations: OperationsSession,
     ) -> _PreparedInstance:
         instance_stagingdir = instance.data.get("stagingDir")
         template_name = self.get_template_name(instance)
@@ -391,6 +427,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         return _PreparedInstance(
             instance=instance,
             prepared_representations=prepared_representations,
+            operations=operations,
             existing_repres_by_name=existing_repres_by_name,
             resource_destinations=resource_destinations,
             anatomy=anatomy,
@@ -401,7 +438,6 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         self,
         context: pyblish.api.Context,
         prepared_instances: list[_PreparedInstance],
-        operations: OperationsSession,
     ) -> None:
         project_name = context.data["projectName"]
         for prepared_instance in prepared_instances:
@@ -424,29 +460,27 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 repre_entity["files"] = repre_files
                 update_data = prepared.repre_update_data
                 if update_data is None:
-                    operations.create_entity(
+                    prepared_instance.operations.create_entity(
                         project_name, "representation", repre_entity
                     )
                 else:
                     update_data["files"] = repre_files
-                    operations.update_entity(
+                    prepared_instance.operations.update_entity(
                         project_name,
                         "representation",
                         repre_entity["id"],
                         update_data,
                     )
                 new_repre_names_low.add(repre_entity["name"].lower())
-                self._commit_if_full(operations)
 
             if not instance.data.get("append", False):
                 for name, existing in (
                     prepared_instance.existing_repres_by_name.items()
                 ):
                     if name not in new_repre_names_low:
-                        operations.delete_entity(
+                        prepared_instance.operations.delete_entity(
                             project_name, "representation", existing["id"]
                         )
-                        self._commit_if_full(operations)
 
             instance.data["published_representations"] = {
                 p.representation["id"]: p.to_dict()
@@ -1053,7 +1087,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             source = self.get_rootless_path(anatomy, source)
         self.log.debug("Source: {}".format(source))
 
-        version_data = {
+        version_data: dict[str, Any] = {
             "families": get_instance_families(instance),
             "time": context.data["time"],
             "author": context.data["user"],
