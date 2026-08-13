@@ -168,7 +168,13 @@ class SubtaskProductsView(ListView):
         self.set_deselectable(True)
 
     def sizeHint(self):
-        return super().minimumSizeHint()
+        hint = super().sizeHint()
+        row_height = self.sizeHintForRow(0)
+        if row_height <= 0:
+            row_height = 20
+        height = row_height * 6 + self.frameWidth() * 2
+        hint.setHeight(height)
+        return hint
 
 
 class CreateWidget(QtWidgets.QWidget):
