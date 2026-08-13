@@ -130,7 +130,6 @@ class AYViewEditor(QDialog):
                 "short_text": "Project",
             }
         ]
-        #TODO: its not working as expected, need to check
         if self._allow_studio_scope:
             scope_items.append(
                 {"text": "All Projects", "short_text": "All Projects"}
