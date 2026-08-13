@@ -619,7 +619,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "outputDef": output_def,
                 "ffmpeg_cmd": subprcs_cmd
             })
-
             # Force to pop these key if are in new repre
             new_repre.pop("thumbnail", None)
             if "clean_name" in new_repre.get("tags", []):
@@ -1239,7 +1238,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
-            and "sequence" in output_def["tags"]
+            and temp_data.output_frame_end >= temp_data.output_frame_start
         )
         if output_is_sequence:
             new_repre_files = []
