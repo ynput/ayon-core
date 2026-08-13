@@ -60,10 +60,6 @@ class IPCPublisherBackend(PublisherController):
             "save_changes",
             "create",
             "trigger_convertor_items",
-        ):
-            return self._execute_in_host_main_thread(func, **message.params)
-
-        if method_name in (
             "set_instances_context_info",
             "set_instances_active_state",
             "set_instances_create_attr_values",
@@ -79,8 +75,7 @@ class IPCPublisherBackend(PublisherController):
             "stop_publish",
             "run_action",
         ):
-            self._execute_in_host_main_thread(func, **message.params)
-            return None
+            return self._execute_in_host_main_thread(func, **message.params)
 
         return func(**message.params)
 
