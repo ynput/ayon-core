@@ -4,7 +4,7 @@ import os
 import platform
 from collections import defaultdict
 from operator import attrgetter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal
 
 import pyblish.api
 try:
@@ -74,7 +74,9 @@ class VariantContribution(_BaseContribution):
     # Variant
     variant_set_name: str
     variant_name: str
-    variant_default_policy: str  # Policy controlling variant selection opinion
+    variant_default_policy: Literal[
+        "if_not_set", "always", "never"
+    ]  # Policy controlling variant selection opinion
 
 
 CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
