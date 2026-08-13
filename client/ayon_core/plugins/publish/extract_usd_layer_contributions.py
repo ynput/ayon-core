@@ -835,12 +835,10 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 # Set default variant selection
                 variant_set_name = contribution.variant_set_name
                 variant_name = contribution.variant_name
-                if (
-                    contribution.variant_default_policy
-                    == "always"
+                policy = contribution.variant_default_policy
+                if (policy == "always"
                     or (
-                        contribution.variant_default_policy
-                        == "if_missing"
+                        policy == "if_missing"
                         and variant_set_name not in prim_spec.variantSelections
                     )
                 ):
