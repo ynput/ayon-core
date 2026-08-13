@@ -92,13 +92,13 @@ class IPCPublisherBackend(PublisherController):
             "Missing implementation of 'execute_in_main_thread' on host."
         )
 
-    def _start_publish(self, up_validation: bool) -> None:
-        self._publish_model.set_publish_up_validation(up_validation)
+    def _start_publish(self, stop_after_validation: bool) -> None:
+        self._publish_model.set_publish_stop_after_validation(
+            stop_after_validation
+        )
         self._publish_model.start_publish(wait=False)
         self._execute_in_host_main_thread(self._next_process)
 
     def _next_process(self) -> None:
-        if self._publish_model.is_running():
-            func = self._publish_model.get_next_process_func()
-            func()
+        if self._publish_model.process_next_iter():
             self._execute_in_host_main_thread(self._next_process)
