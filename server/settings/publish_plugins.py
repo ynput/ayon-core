@@ -27,7 +27,7 @@ except ImportError:
 
 
 CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
-    "if_missing": "Set as default if no current default",
+    "if_not_set": "Set as default if no current default",
     "always": "Set as default",
     "never": "Do not set",
 }
@@ -277,7 +277,7 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
         ),
     )
     contribution_variant_default_policy: str = SettingsField(
-        "if_missing",
+        "if_not_set",
         title="Set as default variant selection",
         enum_resolver=contribution_variant_default_policy_enum,
         description=(
@@ -285,7 +285,7 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             "as the selected default for the variant set. Use "
             f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' to leave the "
             "variant selection unchanged, "
-            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_missing']}' to set "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' to set "
             "it only when no selection exists, or "
             f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' to always "
             "override the current selection."
@@ -1675,7 +1675,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "if_missing",
+                    "if_not_set",
             },
             {
                 "product_base_types": ["look"],
@@ -1688,7 +1688,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "if_missing",
+                    "if_not_set",
             },
             {
                 "product_base_types": ["groom"],
@@ -1701,7 +1701,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "if_missing",
+                    "if_not_set",
             },
             {
                 "product_base_types": ["rig"],
@@ -1714,7 +1714,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "if_missing",
+                    "if_not_set",
             },
             {
                 "product_base_types": ["usd"],
@@ -1727,7 +1727,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "if_missing",
+                    "if_not_set",
             },
         ]
     },

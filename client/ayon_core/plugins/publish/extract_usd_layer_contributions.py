@@ -78,7 +78,7 @@ class VariantContribution(_BaseContribution):
 
 
 CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
-    "if_missing": "Set as default if no current default",
+    "if_not_set": "Set as default if no current default",
     "always": "Set as default",
     "never": "Do not set"
 }
@@ -367,7 +367,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     if attr_values.get(
                         "contribution_variant_is_default", False
                     )
-                    else "if_missing"
+                    else "if_not_set"
                 )
 
             contribution = VariantContribution(
@@ -567,7 +567,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
                 "contribution_variant_default_policy":
-                    "if_missing",
+                    "if_not_set",
             }
         elif "contribution_variant_default_policy" not in profile:
             # Support profiles created before the boolean was replaced by the
@@ -576,7 +576,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             profile["contribution_variant_default_policy"] = (
                 "always"
                 if profile.get("contribution_variant_is_default", False)
-                else "if_missing"
+                else "if_not_set"
             )
 
         # Define defaults
@@ -694,7 +694,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     "authored as the selected default for the variant set.\n"
                     f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' leaves "
                     "the variant selection unchanged.\n"
-                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_missing']}' "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' "
                     "sets it only when "
                     "the variant set has no default selection yet.\n"
                     f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' always"
@@ -707,7 +707,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 items=CONTRIBUTION_VARIANT_DEFAULT_POLICY,
                 default=profile.get(
                     "contribution_variant_default_policy",
-                    "if_missing",
+                    "if_not_set",
                 ),
                 visible=variant_visible,
             ),
@@ -838,7 +838,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 policy = contribution.variant_default_policy
                 if (policy == "always"
                     or (
-                        policy == "if_missing"
+                        policy == "if_not_set"
                         and variant_set_name not in prim_spec.variantSelections
                     )
                 ):

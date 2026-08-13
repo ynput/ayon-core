@@ -305,7 +305,7 @@ def _convert_usd_contribution_variant_default_policy(overrides):
 
         is_default = profile.pop("contribution_variant_is_default")
         profile["contribution_variant_default_policy"] = (
-            "always" if is_default else "if_missing"
+            "always" if is_default else "if_not_set"
         )
 
 
