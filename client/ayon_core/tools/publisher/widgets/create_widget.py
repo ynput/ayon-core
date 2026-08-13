@@ -908,6 +908,10 @@ class CreateWidget(QtWidgets.QWidget):
             creator_item.create_allow_thumbnail
         )
 
+        # Ignore variant input changes if subtask product is selected
+        if self._current_subtask_product is not None:
+            return
+
         default_variants = creator_item.default_variants
         if not default_variants:
             default_variants = [DEFAULT_VARIANT_VALUE]
