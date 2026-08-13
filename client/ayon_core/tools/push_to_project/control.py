@@ -154,6 +154,9 @@ class PushToContextController:
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
 
+    def get_task_sorting_mode(self, project_name):
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 

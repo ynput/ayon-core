@@ -3,17 +3,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import collections
 from dataclasses import dataclass, asdict, field
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    TYPE_CHECKING,
-)
+import typing
+from typing import Any, Callable, Iterable
 import uuid
 
+from ayon_core.lib.attribute_definitions import (
+    serialize_attr_defs,
+    deserialize_attr_defs,
+)
 from ayon_core.pipeline.publish import PublishError, KnownPublishError
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.host import AbstractHost
     from ayon_core.pipeline.create import (
@@ -38,11 +39,11 @@ class CommentDef:
     """Comment attribute definition."""
     minimum_chars_required: int
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> CommentDef:
         return cls(**data)
 
 
@@ -58,6 +59,23 @@ class PublishAttrDefsInfo:
     attr_defs: list[AbstractAttrDef]
     values: dict[str, list[tuple[str, Any, Any]]]
     instance_ids: list[str | None]
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            plugin_name=self.plugin_name,
+            attr_defs=serialize_attr_defs(self.attr_defs),
+            values=self.values,
+            instance_ids=self.instance_ids,
+        )
+
+    @classmethod
+    def from_data(cls, data) -> PublishAttrDefsInfo:
+        return cls(
+            plugin_name=data["plugin_name"],
+            attr_defs=deserialize_attr_defs(data["attr_defs"]),
+            values=data["values"],
+            instance_ids=data["instance_ids"],
+        )
 
 
 @dataclass
@@ -154,14 +172,14 @@ class UIPublishPluginActionItem:
             dict[str, str | bool | None]: Serialized object.
 
         """
-        return {
-            "action_id": self.action_id,
-            "plugin_id": self.plugin_id,
-            "active": self.active,
-            "on_filter": self.on_filter,
-            "label": self.label,
-            "icon": self.icon
-        }
+        return dict(
+            action_id=self.action_id,
+            plugin_id=self.plugin_id,
+            active=self.active,
+            on_filter=self.on_filter,
+            label=self.label,
+            icon=self.icon
+        )
 
 
 @dataclass
@@ -223,16 +241,16 @@ class UIPublishErrorItem:
             dict[str, str | bool | None]: Serialized object data.
 
         """
-        return {
-            "instance_id": self.instance_id,
-            "instance_label": self.instance_label,
-            "plugin_id": self.plugin_id,
-            "is_context_plugin": self.is_context_plugin,
-            "is_validation_error": self.is_validation_error,
-            "title": self.title,
-            "description": self.description,
-            "detail": self.detail,
-        }
+        return dict(
+            instance_id=self.instance_id,
+            instance_label=self.instance_label,
+            plugin_id=self.plugin_id,
+            is_context_plugin=self.is_context_plugin,
+            is_validation_error=self.is_validation_error,
+            title=self.title,
+            description=self.description,
+            detail=self.detail,
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -348,7 +366,7 @@ class AbstractPublisherCommon(ABC):
     def emit_event(
         self, topic: str,
         data: dict[str, Any] | None = None,
-        source: str | None = None
+        source: str | None = None,
     ) -> None:
         """Emit event.
 
@@ -364,7 +382,7 @@ class AbstractPublisherCommon(ABC):
     def emit_card_message(
         self,
         message: str,
-        message_type: str | None = CardMessageTypes.standard
+        message_type: str = CardMessageTypes.standard
     ) -> None:
         """Emit a card message which can have a lifetime.
 
@@ -373,8 +391,7 @@ class AbstractPublisherCommon(ABC):
 
         Args:
             message (str): Message that will be shown.
-            message_type (Optional[str]): Message type.
-
+            message_type (str): Message type.
         """
         pass
 
@@ -406,10 +423,6 @@ class AbstractPublisherCommon(ABC):
             str | None: Name of task.
 
         """
-        pass
-
-    @abstractmethod
-    def get_project_settings(self, project_name: str | None) -> dict:
         pass
 
     @abstractmethod
@@ -465,6 +478,10 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
     def get_create_context(self) -> CreateContext:
         pass
 
@@ -514,10 +531,6 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """
 
     @abstractmethod
-    def register_event_callback(self, topic: str, callback: Callable) -> None:
-        pass
-
-    @abstractmethod
     def is_host_valid(self) -> bool:
         """Host is valid for creation part.
 
@@ -542,15 +555,27 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
+    @abstractmethod
     def get_task_items_by_folder_paths(
-        self, folder_paths: Iterable[str]
+        self, folder_paths: set[str]
     ) -> dict[str, list[TaskItem]]:
         pass
 
     @abstractmethod
     def get_folder_items(
         self, project_name: str, sender: str | None = None
-    ) -> list[FolderItem]:
+    ) -> dict[str, FolderItem]:
         pass
 
     @abstractmethod
@@ -694,7 +719,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path: str) -> list[str]:
+    def get_existing_product_names(self, folder_path: str) -> set[str] | None:
         pass
 
     @abstractmethod
