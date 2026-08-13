@@ -876,8 +876,8 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 if repre_context is None:
                     repre_context = dst.used_values
 
+            repre_context: dict[str, Any]
             if not is_udim and first_index_padded is not None:
-                assert repre_context is not None
                 repre_context["frame"] = first_index_padded
 
         elif is_sequence_representation:
@@ -942,14 +942,13 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             # Make sure context contains frame
             # NOTE: Frame would not be available only if template does not
             #   contain '{frame}' in template -> Do we want support it?
+            repre_context: dict[str, Any]
             if not is_udim:
-                assert repre_context is not None
                 repre_context["frame"] = first_index_padded
 
             # store renderlayer in context if it exists
             # to be later used for example by delivery templates
             if instance.data.get("renderlayer"):
-                assert repre_context is not None
                 repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
