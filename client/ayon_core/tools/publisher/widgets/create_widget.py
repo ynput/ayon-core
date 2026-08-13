@@ -216,10 +216,23 @@ class CreateWidget(QtWidgets.QWidget):
 
         creators_view_widget = QtWidgets.QWidget(creators_splitter)
 
-        subtask_products_view = SubtaskProductsView(creators_view_widget)
+        subtask_products_widget = QtWidgets.QWidget(creators_view_widget)
+        subtask_products_widget.setVisible(False)
+
+        subtask_products_label = QtWidgets.QLabel(
+            "Expected products", subtask_products_widget
+        )
+
+        subtask_products_view = SubtaskProductsView(subtask_products_widget)
         subtask_products_model = QtGui.QStandardItemModel()
         subtask_products_view.setModel(subtask_products_model)
-        subtask_products_view.setVisible(False)
+
+        subtask_products_layout = QtWidgets.QVBoxLayout(
+            subtask_products_widget
+        )
+        subtask_products_layout.setContentsMargins(0, 0, 0, 0)
+        subtask_products_layout.addWidget(subtask_products_label, 0)
+        subtask_products_layout.addWidget(subtask_products_view, 1)
 
         creator_view_label = QtWidgets.QLabel(
             "Choose publish type", creators_view_widget
@@ -233,7 +246,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         creators_view_layout = QtWidgets.QVBoxLayout(creators_view_widget)
         creators_view_layout.setContentsMargins(0, 0, 0, 0)
-        creators_view_layout.addWidget(subtask_products_view, 0)
+        creators_view_layout.addWidget(subtask_products_widget, 0)
         creators_view_layout.addWidget(creator_view_label, 0)
         creators_view_layout.addWidget(creators_view, 1)
 
@@ -369,6 +382,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._variant_widget = variant_widget
 
+        self._subtask_products_widget = subtask_products_widget
         self._subtask_products_view = subtask_products_view
         self._subtask_products_model = subtask_products_model
 
@@ -550,11 +564,11 @@ class CreateWidget(QtWidgets.QWidget):
         root_item = self._subtask_products_model.invisibleRootItem()
         if not subtask_products:
             root_item.removeRows(0, root_item.rowCount())
-            self._subtask_products_view.setVisible(False)
+            self._subtask_products_widget.setVisible(False)
             self._current_subtask_product = None
             return
 
-        self._subtask_products_view.setVisible(True)
+        self._subtask_products_widget.setVisible(True)
 
         # Refresh creators and add their product base types to list
         existing_items = {}
