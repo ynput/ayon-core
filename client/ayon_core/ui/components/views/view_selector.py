@@ -421,13 +421,13 @@ class AYViewSelector(AYButtonMenu):
         self._close_menu()
         editable = View.from_payload(view.to_payload())
         editable.settings = self._bindings.capture()
-        user_list = self._get_active_usernames()
+        usernames_and_groups = self._get_usernames_and_groups()
         editor = AYViewEditor(
             editable,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
             current_project=self._current_project_name(),
-            user_list=user_list,
+            usernames_and_groups=usernames_and_groups,
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -448,13 +448,13 @@ class AYViewSelector(AYButtonMenu):
         self._close_menu()
         new_view = View(view_type=self._view_type)
         new_view.settings = self._bindings.capture()
-        user_list = self._get_active_usernames()
+        usernames_and_groups = self._get_usernames_and_groups()
         editor = AYViewEditor(
             new_view,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
             current_project=self._current_project_name(),
-            user_list=user_list,
+            usernames_and_groups=usernames_and_groups,
             parent=self,
         )
         if editor.exec() != QDialog.DialogCode.Accepted:
@@ -510,16 +510,24 @@ class AYViewSelector(AYButtonMenu):
         if not view_type or view_type == self._view_type:
             self.refresh()
 
-    def _get_active_usernames(self) -> list[str]:
+    def _get_usernames_and_groups(self) -> dict[str, list[str]]:
         """Fetch active project users and return unique usernames."""
         project_name = getattr(self._manager, "project_name", "")
         if not project_name:
-            return []
+            return {"users": [], "groups": []}
+        users = []
+        groups = []
         try:
             users = ayon_api.get_users(project_name=project_name) or []
         except Exception:  # noqa: BLE001
             log.exception("Failed to fetch users for project %r", project_name)
-            return []
+
+        try:
+            group_data = ayon_api.get(f"/accessGroups/{project_name}").data
+            groups = [group.get('name') for group in group_data]
+        except Exception:
+            log.exception("Failed to fetch project groups")
+
 
         usernames: list[str] = []
         seen: set[str] = set()
@@ -533,7 +541,7 @@ class AYViewSelector(AYButtonMenu):
                 continue
             seen.add(name)
             usernames.append(name)
-        return usernames
+        return {"users": usernames, "groups": groups}
 
     # ------------------------------------------------------------------
     # Helpers

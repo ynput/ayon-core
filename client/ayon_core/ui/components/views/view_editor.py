@@ -71,7 +71,7 @@ class AYViewEditor(QDialog):
         current_user: str = "",
         current_project: str = "",
         allow_studio_scope: bool = False,
-        user_list: list | None = None,
+        usernames_and_groups: dict[str, list[str]] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         self._dialog_mode = (
@@ -90,7 +90,7 @@ class AYViewEditor(QDialog):
 
         self._view = view
         self._current_user = current_user
-        self._user_list = user_list or []
+        self.usernames_and_groups = usernames_and_groups or {"users": [], "groups": []}
         self._current_project = current_project
         self._allow_studio_scope = bool(allow_studio_scope)
         self._delete_requested = False
@@ -209,21 +209,23 @@ class AYViewEditor(QDialog):
         self._populate_access_rows()
 
     def _update_user_dropdown(self) -> None:
+        #TODO: update replace user: and group: with avatars
         """Update dropdown to show only users/groups not yet added."""
         added_keys = set(self._access_dict.keys())
-
+ 
         items = []
-        if self._user_list:
-            for user in self._user_list:
+        users = self.usernames_and_groups.get("users", [])
+        groups = self.usernames_and_groups.get("groups", [])
+        if users:
+            for user in users:
                 user_key = f"user:{user}"
                 if user_key not in added_keys:
-                    items.append({"text": f"{user}"})
-
-            # Add group option if not already added
-            group_key = "group:artist"
+                    items.append({"text": f"{user_key}"})
+ 
+        for group in groups:
+            group_key = f"group:{group}"
             if group_key not in added_keys:
-                items.append({"text": "group:artist"})
-
+                items.append({"text": f"{group_key}"})
         if not items:
             items.append({"text": "No more users to add"})
 
@@ -235,10 +237,7 @@ class AYViewEditor(QDialog):
         if not selected_text or selected_text == "No more users to add":
             return
 
-        if selected_text.startswith("group:"):
-            access_key = selected_text
-        else:
-            access_key = f"user:{selected_text}"
+        access_key = selected_text
 
         self._add_access_row(access_key, 10)  # Default to Viewer access
         self._update_user_dropdown()
