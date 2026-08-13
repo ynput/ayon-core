@@ -598,9 +598,6 @@ class CreateWidget(QtWidgets.QWidget):
             item = existing_items.pop(subtask_product.product_name, None)
             if item is None:
                 item = QtGui.QStandardItem(subtask_product.product_name)
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-                )
                 new_items.append(item)
 
             for value, role in (
@@ -614,7 +611,14 @@ class CreateWidget(QtWidgets.QWidget):
                 ),
             ):
                 item.setData(value, role)
-            icon = icon_created if subtask_product.created else icon_missing
+
+            icon = icon_created
+            flags = QtCore.Qt.ItemIsEnabled
+            if not subtask_product.created:
+                icon = icon_missing
+                flags |= QtCore.Qt.ItemIsSelectable
+
+            item.setFlags(flags)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
         for item in existing_items.values():
@@ -624,6 +628,54 @@ class CreateWidget(QtWidgets.QWidget):
             root_item.appendRows(new_items)
 
         self._subtask_products_proxy_model.sort(0)
+
+        self._update_subtask_selection()
+
+    def _update_subtask_selection(self) -> None:
+        selected_index = next(
+            iter(self._subtask_products_view.selectedIndexes()),
+            None
+        )
+
+        if (
+            selected_index is not None
+            and not selected_index.flags() & QtCore.Qt.ItemIsSelectable
+        ):
+            selected_index = None
+
+        if self._current_subtask_product is None:
+            if selected_index is not None:
+                self._on_subtask_product_change(
+                    selected_index, QtCore.QModelIndex()
+                )
+            return
+
+        if selected_index is not None:
+            self._on_subtask_product_change(
+                selected_index, QtCore.QModelIndex()
+            )
+            return
+        next_selection = None
+        for row in range(self._subtask_products_proxy_model.rowCount()):
+            index = self._subtask_products_proxy_model.index(row, 0)
+            if not index.flags() & QtCore.Qt.ItemIsSelectable:
+                continue
+
+            product_name = index.data(SUBTASK_PRODUCT_NAME_ROLE)
+            if product_name == self._current_subtask_product.product_name:
+                next_selection = index
+                break
+
+            if next_selection is None:
+                next_selection = index
+
+        if next_selection is None:
+            next_selection = QtCore.QModelIndex()
+
+        self._subtask_products_view.setCurrentIndex(next_selection)
+        self._on_subtask_product_change(
+            next_selection, QtCore.QModelIndex()
+        )
 
     def _refresh_creators(self) -> None:
         # Refresh creators and add their product base types to list
@@ -732,7 +784,10 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _on_subtask_product_change(self, new_index, _old_index) -> None:
         item = None
-        if new_index.isValid():
+        if (
+            new_index.isValid()
+            and new_index.flags() & QtCore.Qt.ItemIsSelectable
+        ):
             product_name = new_index.data(SUBTASK_PRODUCT_NAME_ROLE)
             product_base_type = new_index.data(SUBTASK_PRODUCT_BASE_TYPE_ROLE)
             product_type = new_index.data(SUBTASK_PRODUCT_TYPE_ROLE)
