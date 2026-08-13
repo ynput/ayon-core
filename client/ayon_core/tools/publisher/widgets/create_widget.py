@@ -6,6 +6,7 @@ import typing
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib import MaterialSymbolsIcon
 from ayon_core.pipeline.create import (
     PRODUCT_NAME_ALLOWED_SYMBOLS,
     PRE_CREATE_THUMBNAIL_KEY,
@@ -24,7 +25,7 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
-from ayon_core.tools.utils import HintedLineEdit, ListView
+from ayon_core.tools.utils import HintedLineEdit, ListView, get_qt_icon
 
 from .thumbnail_widget import ThumbnailWidget
 from .widgets import (
@@ -43,6 +44,8 @@ if typing.TYPE_CHECKING:
 SUBTASK_PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 1
 SUBTASK_PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 2
 SUBTASK_PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 3
+SUBTASK_PRODUCT_CREATED_ROLE = QtCore.Qt.UserRole + 4
+SUBTASK_PRODUCT_SORT_ROLE = QtCore.Qt.UserRole + 5
 
 
 class ResizeControlWidget(QtWidgets.QWidget):
@@ -225,7 +228,13 @@ class CreateWidget(QtWidgets.QWidget):
 
         subtask_products_view = SubtaskProductsView(subtask_products_widget)
         subtask_products_model = QtGui.QStandardItemModel()
-        subtask_products_view.setModel(subtask_products_model)
+        subtask_products_proxy_model = QtCore.QSortFilterProxyModel(
+            subtask_products_view
+        )
+        subtask_products_proxy_model.setSourceModel(subtask_products_model)
+        subtask_products_proxy_model.setSortRole(SUBTASK_PRODUCT_SORT_ROLE)
+        subtask_products_proxy_model.setDynamicSortFilter(True)
+        subtask_products_view.setModel(subtask_products_proxy_model)
 
         subtask_products_layout = QtWidgets.QVBoxLayout(
             subtask_products_widget
@@ -385,6 +394,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._subtask_products_widget = subtask_products_widget
         self._subtask_products_view = subtask_products_view
         self._subtask_products_model = subtask_products_model
+        self._subtask_products_proxy_model = subtask_products_proxy_model
 
         self._creators_model = creators_model
         self._creators_sort_model = creators_sort_model
@@ -568,6 +578,12 @@ class CreateWidget(QtWidgets.QWidget):
             self._current_subtask_product = None
             return
 
+        icon_created = get_qt_icon(
+            MaterialSymbolsIcon("check_circle", color="#37DFAC")
+        )
+        icon_missing = get_qt_icon(
+            MaterialSymbolsIcon("pending", color="#515661")
+        )
         self._subtask_products_widget.setVisible(True)
 
         # Refresh creators and add their product base types to list
@@ -578,7 +594,7 @@ class CreateWidget(QtWidgets.QWidget):
             existing_items[product_name] = item
 
         new_items = []
-        for subtask_product in subtask_products:
+        for idx, subtask_product in enumerate(subtask_products):
             item = existing_items.pop(subtask_product.product_name, None)
             if item is None:
                 item = QtGui.QStandardItem(subtask_product.product_name)
@@ -588,20 +604,26 @@ class CreateWidget(QtWidgets.QWidget):
                 new_items.append(item)
 
             for value, role in (
+                (idx, SUBTASK_PRODUCT_SORT_ROLE),
                 (subtask_product.product_name, SUBTASK_PRODUCT_NAME_ROLE),
                 (subtask_product.product_type, SUBTASK_PRODUCT_TYPE_ROLE),
+                (subtask_product.created, SUBTASK_PRODUCT_CREATED_ROLE),
                 (
                     subtask_product.product_base_type,
                     SUBTASK_PRODUCT_BASE_TYPE_ROLE
                 ),
             ):
                 item.setData(value, role)
+            icon = icon_created if subtask_product.created else icon_missing
+            item.setData(icon, QtCore.Qt.DecorationRole)
 
         for item in existing_items.values():
             root_item.removeRow(item.row())
 
         if new_items:
             root_item.appendRows(new_items)
+
+        self._subtask_products_proxy_model.sort(0)
 
     def _refresh_creators(self) -> None:
         # Refresh creators and add their product base types to list
@@ -714,8 +736,12 @@ class CreateWidget(QtWidgets.QWidget):
             product_name = new_index.data(SUBTASK_PRODUCT_NAME_ROLE)
             product_base_type = new_index.data(SUBTASK_PRODUCT_BASE_TYPE_ROLE)
             product_type = new_index.data(SUBTASK_PRODUCT_TYPE_ROLE)
+            created = new_index.data(SUBTASK_PRODUCT_CREATED_ROLE)
             item = SubtaskProduct(
-                product_name, product_base_type, product_type
+                product_name,
+                product_base_type,
+                product_type,
+                created,
             )
 
         self._current_subtask_product = item

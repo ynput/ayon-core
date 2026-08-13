@@ -1143,7 +1143,6 @@ class CreateModel:
         if not context_instances:
             return subtask_products
 
-        filtered_subtask_products = []
         for subset_product in subtask_products:
             pt = subset_product.product_type
             pbt = subset_product.product_base_type
@@ -1155,10 +1154,10 @@ class CreateModel:
                     and instance.product_base_type == pbt
                 )
             ), None)
-            if matching_instance is None:
-                filtered_subtask_products.append(subset_product)
+            if matching_instance is not None:
+                subset_product.created = True
 
-        return filtered_subtask_products
+        return subtask_products
 
     def _emit_event(
         self,

@@ -218,7 +218,7 @@ class UIPublishErrorItem:
     def from_error_item(
         cls, error_info: PublishErrorInfo
     ) -> "UIPublishErrorItem":
-        """Create new object based on resukt from controller.
+        """Create new object based on result from controller.
 
         Returns:
             PublishErrorItem: New object with filled data.
@@ -352,6 +352,7 @@ class SubtaskProduct:
     product_name: str
     product_base_type: str
     product_type: str
+    created: bool = False
 
 
 class AbstractPublisherCommon(ABC):
