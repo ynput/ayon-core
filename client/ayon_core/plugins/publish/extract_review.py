@@ -1238,6 +1238,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
+            and self.input_is_sequence(repre)
             and temp_data.output_frame_end >= temp_data.output_frame_start
         )
         if output_is_sequence:
