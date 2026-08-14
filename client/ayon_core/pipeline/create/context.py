@@ -757,14 +757,6 @@ class CreateContext:
             )
 
         for creator_class in report.plugins:
-            creator_identifier = creator_class.identifier
-            if creator_identifier in creators:
-                self.log.warning(
-                    "Duplicate Creator identifier: '%s'. Using first Creator "
-                    "and skipping: %s", creator_identifier, creator_class
-                )
-                continue
-
             # Filter by host name
             if (
                 creator_class.host_name
@@ -785,6 +777,14 @@ class CreateContext:
                 self.log.error(
                     f"Failed to initialize plugin: {creator_class}",
                     exc_info=True
+                )
+                continue
+
+            creator_identifier = creator.identifier
+            if creator_identifier in creators:
+                self.log.warning(
+                    "Duplicate Creator identifier: '%s'. Using first Creator "
+                    "and skipping: %s", creator_identifier, creator_class
                 )
                 continue
 
