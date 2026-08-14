@@ -98,20 +98,20 @@ class CreatorUIItem:
         self.label = label
         self.filtered = filtered
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            product_type=self.product_type,
+            label=self.label,
+            filtered=self.filtered,
+        )
+
     @classmethod
-    def from_data(cls, data) -> "CreatorUIItem":
+    def from_data(cls, data) -> CreatorUIItem:
         return CreatorUIItem(
             data["product_type"],
             data["label"],
             data["filtered"],
         )
-
-    def to_data(self) -> dict[str, Any]:
-        return {
-            "product_type": self.product_type,
-            "label": self.label,
-            "filtered": self.filtered,
-        }
 
 
 class CreatorItem:
@@ -285,12 +285,12 @@ class InstanceItem:
         product_type: str,
         product_name: str,
         variant: str,
-        folder_path: Optional[str],
-        task_name: Optional[str],
+        folder_path: str | None,
+        task_name: str | None,
         is_active: bool,
         is_mandatory: bool,
         has_promised_context: bool,
-        parent_instance_id: Optional[str],
+        parent_instance_id: str | None,
         parent_flags: int,
     ):
         self._instance_id: str = instance_id
@@ -301,12 +301,12 @@ class InstanceItem:
         self._product_type: str = product_type
         self._product_name: str = product_name
         self._variant: str = variant
-        self._folder_path: Optional[str] = folder_path
-        self._task_name: Optional[str] = task_name
+        self._folder_path: str | None = folder_path
+        self._task_name: str | None = task_name
         self._is_active: bool = is_active
         self._is_mandatory: bool = is_mandatory
         self._has_promised_context: bool = has_promised_context
-        self._parent_instance_id: Optional[str] = parent_instance_id
+        self._parent_instance_id: str | None = parent_instance_id
         self._parent_flags: int = parent_flags
 
     @property
@@ -404,6 +404,29 @@ class InstanceItem:
             instance.parent_instance_id,
             instance.parent_flags,
         )
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            instance_id=self._instance_id,
+            creator_identifier=self._creator_identifier,
+            label=self._label,
+            group_label=self._group_label,
+            product_base_type=self._product_base_type,
+            product_type=self._product_type,
+            product_name=self._product_name,
+            variant=self._variant,
+            folder_path=self._folder_path,
+            task_name=self._task_name,
+            is_active=self._is_active,
+            is_mandatory=self._is_mandatory,
+            has_promised_context=self._has_promised_context,
+            parent_instance_id=self._parent_instance_id,
+            parent_flags=self._parent_flags,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> InstanceItem:
+        return cls(**data)
 
 
 def _merge_attr_defs(

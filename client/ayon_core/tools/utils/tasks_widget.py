@@ -638,16 +638,35 @@ class TasksWidget(QtWidgets.QWidget):
             return
 
         use_task_type_sorting = False
-        if hasattr(self._controller, "get_project_settings"):
-            settings = self._controller.get_project_settings(project_name)
-            use_task_type_sorting = (
-                settings["core"]["tools"]["general"]["use_task_type_sorting"]
-            )
+        if hasattr(self._controller, "get_task_sorting_mode"):
+            mode = self._controller.get_task_sorting_mode(project_name)
+            if mode == "type":
+                use_task_type_sorting = True
+            elif mode == "name":
+                pass
+            else:
+                self.log.warning(
+                    f"Unknown sort type '{mode}' falling to 'type'"
+                )
+
         else:
+            use_task_type_sorting = False
+            conclusion = "The sorting will be disabled."
+            if hasattr(self._controller, "get_project_settings"):
+                settings = self._controller.get_project_settings(project_name)
+                use_task_type_sorting = (
+                    settings
+                    ["core"]
+                    ["tools"]
+                    ["general"]
+                    ["use_task_type_sorting"]
+                )
+                conclusion = "Using DEPRECATED approach to get the value."
+
             self.log.warning(
                 f"Controller '{self._controller}' doesn't have"
-                " 'get_project_settings' method, task type"
-                " sorting will be disabled."
+                " 'get_task_sorting_mode' method."
+                f" {conclusion}."
             )
 
         self._tasks_proxy_model.set_task_type_sorting_enabled(
