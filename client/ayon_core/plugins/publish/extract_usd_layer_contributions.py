@@ -4,7 +4,7 @@ import os
 import platform
 from collections import defaultdict
 from operator import attrgetter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal
 
 import pyblish.api
 try:
@@ -49,6 +49,13 @@ from ayon_core.pipeline import publish, PublishError
 # individual publishes instead of requiring to republish each contribution
 # all the time at the same time
 BUILD_INTO_LAST_VERSIONS = True
+
+USDContributionURI = Literal[
+    "filepath",
+    "ayon_entity_uri",
+    "ayon_entity_uri_latest",
+    "ayon_entity_uri_latest_approved",
+]
 
 
 @dataclasses.dataclass
@@ -142,57 +149,69 @@ def get_representation_path_in_publish_context(
 
 
 def get_instance_uri_path(
-        instance,
-        resolve=True
-):
+    instance: pyblish.api.Instance,
+    uri_mode: USDContributionURI = "filepath"
+) -> str:
     """Return path for instance's usd representation"""
     context = instance.context
-    folder_path = instance.data["folderPath"]
-    product_name = instance.data["productName"]
-    project_name = context.data["projectName"]
-    version_name = instance.data["version"]
+    project_name: str = context.data["projectName"]
+    folder_path: str = instance.data["folderPath"]
+    product_name: str = instance.data["productName"]
+    version: int = instance.data["version"]
+    representation_name: str = "usd"
 
-    # Get the layer's published path
-    path = construct_ayon_entity_uri(
-        project_name=project_name,
-        folder_path=folder_path,
-        product=product_name,
-        version=version_name,
-        representation_name="usd"
-    )
-
-    # Resolve contribution path
-    # TODO: Remove this when Asset Resolver is used
-    if resolve:
-        query = parse_ayon_entity_uri(path)
-        names = {
-            "project_name": query["project"],
-            "folder_path": query["folderPath"],
-            "product_name": query["product"],
-            "version_name": query["version"],
-            "representation_name": query["representation"],
-        }
-
-        # We want to resolve the paths live from the publishing context
-        path = get_representation_path_in_publish_context(context, **names)
-        if path:
-            return path
-
-        # If for whatever reason we were unable to retrieve from the context
-        # then get the path from an existing database entry
-        path = get_representation_path_by_names(
-            anatomy=context.data["anatomy"],
-            **names
+    # Handle AYON entity URI modes
+    if uri_mode != "filepath":
+        uri_version: int | str = version
+        if uri_mode == "ayon_entity_uri_latest":
+            uri_version = "latest"
+        elif uri_mode == "ayon_entity_uri_latest_approved":
+            uri_version = "latestDone"
+        return construct_ayon_entity_uri(
+            project_name=project_name,
+            folder_path=folder_path,
+            product=product_name,
+            version=uri_version,
+            representation_name=representation_name
         )
-        if not path:
-            raise RuntimeError(f"Unable to resolve publish path for: {names}")
 
-        # Ensure `None` for now is also a string
-        path = str(path)
-        if platform.system().lower() == "windows":
-            path = path.replace("\\", "/")
+    # Resolve the layer's published path.
+    names = {
+        "project_name": project_name,
+        "folder_path": folder_path,
+        "product_name": product_name,
+        "version_name": version,
+        "representation_name": representation_name,
+    }
+
+    # We want to resolve the paths live from the publishing context.
+    path = get_representation_path_in_publish_context(context, **names)
+    if path:
+        return path
+
+    # If for whatever reason we were unable to retrieve from the context
+    # then get the path from an existing database entry.
+    path = get_representation_path_by_names(
+        anatomy=context.data["anatomy"],
+        **names
+    )
+    if not path:
+        raise RuntimeError(f"Unable to resolve publish path for: {names}")
+
+    # Ensure `None` for now is also a string.
+    path = str(path)
+    if platform.system().lower() == "windows":
+        path = path.replace("\\", "/")
 
     return path
+
+
+def _layer_contents(layer: Sdf.Layer | None) -> str | None:
+    """Return a stable serialized representation of an SDF layer."""
+    if layer is None:
+        return None
+    layer: Sdf.Layer
+    return layer.ExportToString()
 
 
 def get_last_publish(instance, representation="usd"):
@@ -722,7 +741,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
     settings_category = "core"
 
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
     enforce_default_prim = False
 
     def process(self, instance):
@@ -734,6 +753,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
         path = get_last_publish(instance)
         if path and BUILD_INTO_LAST_VERSIONS:
             sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
+            original_contents = _layer_contents(sdf_layer)
 
             # If enabled in settings, ignore any default prim specified on
             # older publish versions and always publish with the AYON
@@ -748,11 +768,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
             default_prim = get_standard_default_prim_name(folder_path)
             sdf_layer = Sdf.Layer.CreateAnonymous()
             set_layer_defaults(sdf_layer, default_prim=default_prim)
+            original_contents = None
 
         contributions = instance.data.get("usd_contributions", [])
         for contribution in sorted(contributions, key=attrgetter("order")):
-            path = get_instance_uri_path(contribution.instance,
-                                         resolve=not self.use_ayon_entity_uri)
+            path = get_instance_uri_path(
+                contribution.instance,
+                uri_mode=self.use_ayon_entity_uri
+            )
             if isinstance(contribution, VariantContribution):
                 # Add contribution as a reference inside a variant
                 self.log.debug(f"Adding variant: {contribution}")
@@ -812,6 +835,18 @@ class ExtractUSDLayerContribution(publish.Extractor):
             else:
                 raise TypeError(f"Unsupported contribution: {contribution}")
 
+        # Only publish if there are changes compared to last version,
+        # otherwise do not generate a new file.
+        if (
+            original_contents is not None
+            and original_contents == _layer_contents(sdf_layer)
+        ):
+            self.log.info(
+                "USD contribution layer is unchanged; skipping publish."
+            )
+            instance.data["publish"] = False
+            return
+
         # Save the file
         staging_dir = self.staging_dir(instance)
         filename = f"{instance.name}.usd"
@@ -836,6 +871,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
             ref: "Sdf.Reference"
 
             uri = ref.customData.get("ayon_uri")
+            if not uri or not parse_ayon_entity_uri(uri):
+                uri = ref.customData.get("ayon_entity_uri")
             if uri and self.instance_match_ayon_uri(instance, uri):
                 self.log.debug("Removing existing reference: %s", ref)
                 remove_indices.add(index)
@@ -896,7 +933,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
 
     settings_category = "core"
 
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
 
     def process(self, instance):
 
@@ -909,14 +946,18 @@ class ExtractUSDAssetContribution(publish.Extractor):
         # Use existing asset and add to it, or initialize a new asset layer
         path = get_last_publish(instance)
         payload_layer = None
+        original_asset_contents = None
+        original_payload_contents = None
         if path and BUILD_INTO_LAST_VERSIONS:
             # If there's a payload file, put it in the payload instead
             folder = os.path.dirname(path)
             payload_path = os.path.join(folder, "payload.usd")
             if os.path.exists(payload_path):
                 payload_layer = Sdf.Layer.OpenAsAnonymous(payload_path)
+                original_payload_contents = _layer_contents(payload_layer)
 
             asset_layer = Sdf.Layer.OpenAsAnonymous(path)
+            original_asset_contents = _layer_contents(asset_layer)
         else:
             # If no existing publish of this product exists then we initialize
             # the layer as either a default asset or shot structure.
@@ -974,8 +1015,10 @@ class ExtractUSDAssetContribution(publish.Extractor):
             layer_id = layer_instance.data["usd_layer_id"]
             order = layer_instance.data["usd_layer_order"]
 
-            path = get_instance_uri_path(instance=layer_instance,
-                                         resolve=not self.use_ayon_entity_uri)
+            path = get_instance_uri_path(
+                instance=layer_instance,
+                uri_mode=self.use_ayon_entity_uri
+            )
             add_ordered_sublayer(target_layer,
                                  contribution_path=path,
                                  layer_id=layer_id,
@@ -984,6 +1027,16 @@ class ExtractUSDAssetContribution(publish.Extractor):
                                  # us to later detect whether another path
                                  # has the same layer id, so we can replace it.
                                  add_sdf_arguments_metadata=True)
+        if (
+            original_asset_contents is not None
+            and original_asset_contents == _layer_contents(asset_layer)
+            and original_payload_contents == _layer_contents(payload_layer)
+        ):
+            self.log.info(
+                "USD asset contribution is unchanged; skipping publish."
+            )
+            instance.data["publish"] = False
+            return
 
         # Save the file
         staging_dir = self.staging_dir(instance)
