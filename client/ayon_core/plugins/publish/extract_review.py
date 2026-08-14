@@ -800,7 +800,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not value:
                 continue
             try:
-                value = value.format(**fill_data)
+                value = value.format_map(fill_data)
             except Exception:
                 self.log.warning(
                     "Failed to format ffmpeg argument: {}".format(value),
