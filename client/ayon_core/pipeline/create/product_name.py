@@ -167,7 +167,8 @@ def _get_product_name_old(
         "product": {
             "type": product_type,
             "basetype": product_base_type or product_type,
-        }
+        },
+        "host": host_name,
     }
 
     if dynamic_data:
@@ -469,7 +470,8 @@ def get_product_name(
         "product": {
             "type": product_type,
             "basetype": product_base_type,
-        }
+        },
+        "host": host_name,
     }
     if folder_entity:
         fill_pairs["folder"] = {
