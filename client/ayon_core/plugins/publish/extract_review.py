@@ -58,6 +58,7 @@ class TempData:
         resolution_height: int,
         origin_repre: dict[str, Any],
         input_is_sequence: bool,
+        input_is_single_image: bool,
         first_sequence_frame: int,
         input_allow_bg: bool,
         with_audio: bool,
@@ -89,6 +90,7 @@ class TempData:
         self.resolution_height = resolution_height
         self.origin_repre = origin_repre
         self.input_is_sequence = input_is_sequence
+        self.input_is_single_image = input_is_single_image
         self.first_sequence_frame = first_sequence_frame
         self.input_allow_bg = input_allow_bg
         self.with_audio = with_audio
@@ -719,8 +721,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
+
+            input_is_single_image = ext.lower() in self.video_exts
         else:
             ext = os.path.splitext(repre["files"])[1].replace(".", "")
+            input_is_single_image = True
 
         return TempData(
             fps=float(instance.data["fps"]),
@@ -737,6 +742,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             resolution_height=instance.data.get("resolutionHeight"),
             origin_repre=repre,
             input_is_sequence=input_is_sequence,
+            input_is_single_image=input_is_single_image,
             first_sequence_frame=first_sequence_frame,
             input_allow_bg=input_allow_bg,
             with_audio=with_audio,
@@ -1238,8 +1244,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
-            and self.input_is_sequence(repre)
-            and temp_data.output_frame_end >= temp_data.output_frame_start
+            and not temp_data.input_is_single_image
         )
         if output_is_sequence:
             new_repre_files = []
