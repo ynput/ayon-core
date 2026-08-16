@@ -537,7 +537,7 @@ class AYViewSelector(AYButtonMenu):
             if not bool(user.get("active", False)):
                 continue
             name = str(user.get("name") or "").strip()
-            if not name or name in seen:
+            if not name or name in seen or name==self._current_user:
                 continue
             seen.add(name)
             usernames.append(name)

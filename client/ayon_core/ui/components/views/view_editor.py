@@ -22,7 +22,6 @@ from qtpy.QtWidgets import (
     QDialog,
     QWidget,
     QHBoxLayout,
-    QLabel,
 )
 
 from ...style_types import get_ayon_style
@@ -30,7 +29,7 @@ from ..buttons import AYButton
 from ..combo_box import AYComboBox
 from ..container import AYContainer
 from ..label import AYLabel
-from ..layouts import AYVBoxLayout
+from ..layouts import AYVBoxLayout, AYHBoxLayout
 from ..line_edit import AYLineEdit
 from .data_models import Scope, View, Visibility
 
@@ -111,16 +110,17 @@ class AYViewEditor(QDialog):
         """Create the form and button row."""
         root = AYVBoxLayout(self, spacing=0, margin=0)
 
-        self._form = AYContainer(
-            layout=AYContainer.Layout.Form,
-            variant=AYContainer.Variants.Default,
-            layout_spacing=(16, 16),
-            layout_margin=16,
+        static_layout = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            layout_margin=20,
+            layout_spacing=12,
         )
+
+        static_layout.add_widget(AYLabel("View name"))
 
         # view name field — required.
         self._view_name_edit = AYLineEdit(placeholder="View name")
-        self._form.add_row("View name", self._view_name_edit)
+        static_layout.add_widget(self._view_name_edit)
 
         # Scope combo (project / all projects).
         self._scope_combo = AYComboBox()
@@ -135,17 +135,43 @@ class AYViewEditor(QDialog):
                 {"text": "All Projects", "short_text": "All Projects"}
             )
         self._scope_combo.update_items(scope_items)
-        self._form.add_row("Scope", self._scope_combo)
+        static_layout.add_widget(AYLabel("Scope"))
+        static_layout.add_widget(self._scope_combo)
 
         # User/group selector dropdown
         self._user_selector = AYComboBox()
         self._update_user_dropdown()
-        self._form.add_row(
-            "Add people or access groups",
-            self._user_selector
-        )
+
+        static_layout.add_widget(AYLabel("People with access"))
+        static_layout.add_widget(self._user_selector)
+
         self._user_selector.activated.connect(self._on_user_selected)
 
+        self._form = AYContainer(
+            layout=AYContainer.Layout.Form,
+            variant=AYContainer.Variants.Default,
+            layout_spacing=(16, 16),
+            layout_margin=16,
+        )
+
+        # Owner row
+        self._owner_label = AYLabel("-")
+        self._form.add_row("Owner", self._owner_label)
+
+        # Everyone row
+        self._everyone_combo = AYComboBox()
+        access_items = [
+            {"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES
+        ]
+        self._everyone_combo.update_items(access_items)
+
+        def on_everyone_changed(idx: int) -> None:
+            self._access_dict["__everyone__"] = ACCESS_LEVEL_VALUES[idx]
+
+        self._everyone_combo.currentIndexChanged.connect(on_everyone_changed)
+        self._form.add_row("Everyone", self._everyone_combo)
+
+        root.addWidget(static_layout)
         root.addWidget(self._form)
         root.addStretch()
 
@@ -205,6 +231,20 @@ class AYViewEditor(QDialog):
 
         # Load access data from view
         self._access_dict = dict(view.access) if view.access else {}
+
+        # Update Owner
+        owner_name = self._view.owner or self._current_user or "-"
+        self._owner_label.setText(owner_name)
+
+        # Update Everyone
+        everyone_level = self._access_dict.get("__everyone__", 0)
+        if everyone_level not in ACCESS_LEVEL_VALUES:
+            everyone_level = 0
+        self._access_dict["__everyone__"] = everyone_level
+        self._everyone_combo.setCurrentIndex(
+            ACCESS_LEVEL_VALUES.index(everyone_level)
+        )
+
         self._populate_access_rows()
 
     def _update_user_dropdown(self) -> None:
@@ -268,14 +308,13 @@ class AYViewEditor(QDialog):
         self._populate_access_rows()
         self._update_user_dropdown()
 
-    def _render_dynamic_access_row(self, key: str, access_level: int) -> None:
-        """Render a single dynamic access row without mutating _access_dict."""
+    def _render_access_row(self, key: str, access_level: int) -> None:
+        """Render a single access row"""
         row_widget = QWidget(self._form)
-        row_layout = QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.setSpacing(8)
+        row_layout = AYHBoxLayout(row_widget, margin=0, spacing=0)
 
-        access_combo = AYComboBox()
+        access_combo = AYComboBox(show_chevron=True)
+        access_combo.setMinimumWidth(120)
         access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
         access_combo.update_items(access_items)
 
@@ -289,7 +328,7 @@ class AYViewEditor(QDialog):
         access_combo.currentIndexChanged.connect(on_access_changed)
         row_layout.addWidget(access_combo)
 
-        remove_btn = AYButton("", icon="close")
+        remove_btn = AYButton("", icon="close", variant=AYButton.Variants.Nav)
         remove_btn.clicked.connect(lambda: self._remove_access_row(key))
         row_layout.addWidget(remove_btn)
         row_layout.addStretch()
@@ -304,38 +343,16 @@ class AYViewEditor(QDialog):
             widget.deleteLater()
         self._access_row_widgets.clear()
 
-        # Clear access-related rows that were added dynamically
-        # (Owner, Everyone, and user/group rows)
+        # keeping Owner (row 0) and Everyone (row 1)
         layout = self._form.layout()
-        while layout.rowCount() > 3:
-            layout.removeRow(3)
+        while layout.rowCount() > 2:
+            layout.removeRow(2)
 
-        # Add Owner row
-        owner_name = self._view.owner or self._current_user or "-"
-        self._form.add_row("Owner", QLabel(owner_name))
-
-        # Add Everyone row
-        everyone_combo = AYComboBox()
-        access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
-        everyone_combo.update_items(access_items)
-
-        everyone_level = self._access_dict.get("__everyone__", 0)
-        if everyone_level not in ACCESS_LEVEL_VALUES:
-            everyone_level = 0
-        everyone_combo.setCurrentIndex(ACCESS_LEVEL_VALUES.index(everyone_level))
-        self._access_dict["__everyone__"] = everyone_level
-
-        def on_everyone_changed(idx: int) -> None:
-            self._access_dict["__everyone__"] = ACCESS_LEVEL_VALUES[idx]
-
-        everyone_combo.currentIndexChanged.connect(on_everyone_changed)
-        self._form.add_row("Everyone", everyone_combo)
-
-        # Add dynamic user/group rows
+        # Add user/group rows
         for key in sorted(self._access_dict.keys()):
             if key == "__everyone__":
                 continue
-            self._render_dynamic_access_row(key, int(self._access_dict[key]))
+            self._render_access_row(key, int(self._access_dict[key]))
 
     # ------------------------------------------------------------------
     # Accept handling
