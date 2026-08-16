@@ -20,6 +20,8 @@ from enum import IntEnum
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
+    QSizePolicy,
+    QSpacerItem,
     QWidget,
     QHBoxLayout,
 )
@@ -28,6 +30,7 @@ from ...style_types import get_ayon_style
 from ..buttons import AYButton
 from ..combo_box import AYComboBox
 from ..container import AYContainer
+from ..searchable_combo_box import AYSearchableComboBox
 from ..label import AYLabel
 from ..layouts import AYVBoxLayout, AYHBoxLayout
 from ..line_edit import AYLineEdit
@@ -70,7 +73,7 @@ class AYViewEditor(QDialog):
         current_user: str = "",
         current_project: str = "",
         allow_studio_scope: bool = False,
-        usernames_and_groups: dict[str, list[str]] | None = None,
+        usernames_and_groups: dict[str, list] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         self._dialog_mode = (
@@ -89,7 +92,10 @@ class AYViewEditor(QDialog):
 
         self._view = view
         self._current_user = current_user
-        self.usernames_and_groups = usernames_and_groups or {"users": [], "groups": []}
+        self.usernames_and_groups = usernames_and_groups or {
+            "users": [],
+            "groups": [],
+        }
         self._current_project = current_project
         self._allow_studio_scope = bool(allow_studio_scope)
         self._delete_requested = False
@@ -139,24 +145,29 @@ class AYViewEditor(QDialog):
         static_layout.add_widget(self._scope_combo)
 
         # User/group selector dropdown
-        self._user_selector = AYComboBox()
-        self._update_user_dropdown()
+        self._user_selector = AYSearchableComboBox(
+            placeholder="Add people or access groups"
+        )
 
         static_layout.add_widget(AYLabel("People with access"))
         static_layout.add_widget(self._user_selector)
 
-        self._user_selector.activated.connect(self._on_user_selected)
-
-        self._form = AYContainer(
-            layout=AYContainer.Layout.Form,
-            variant=AYContainer.Variants.Default,
-            layout_spacing=(16, 16),
-            layout_margin=16,
-        )
+        self._user_selector.item_selected.connect(self._on_user_selected)
 
         # Owner row
         self._owner_label = AYLabel("-")
-        self._form.add_row("Owner", self._owner_label)
+        owner_row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=4,
+            layout_margin=0,
+        )
+        owner_row.add_widget(self._owner_label)
+        owner_row.addStretch()
+        owner_row.add_widget(AYLabel("Owner", dim=True))
+        owner_row.layout().addSpacerItem(
+            QSpacerItem(32, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+        )
+        static_layout.add_widget(owner_row)
 
         # Everyone row
         self._everyone_combo = AYComboBox()
@@ -164,15 +175,35 @@ class AYViewEditor(QDialog):
             {"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES
         ]
         self._everyone_combo.update_items(access_items)
+        self._everyone_combo.setFixedWidth(120)
 
         def on_everyone_changed(idx: int) -> None:
             self._access_dict["__everyone__"] = ACCESS_LEVEL_VALUES[idx]
 
         self._everyone_combo.currentIndexChanged.connect(on_everyone_changed)
-        self._form.add_row("Everyone", self._everyone_combo)
+
+        everyone_row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=4,
+            layout_margin=0,
+        )
+        everyone_row.add_widget(AYLabel("Everyone"))
+        everyone_row.addStretch()
+        everyone_row.add_widget(self._everyone_combo)
+        everyone_row.layout().addSpacerItem(
+            QSpacerItem(32, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+        )
+        static_layout.add_widget(everyone_row)
+
+        # Dynamic user/group access rows
+        self._access_rows_container = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            layout_spacing=4,
+            layout_margin=0,
+        )
+        static_layout.add_widget(self._access_rows_container)
 
         root.addWidget(static_layout)
-        root.addWidget(self._form)
         root.addStretch()
 
         # Button row - positioned at bottom with Delete on left, Save on right
@@ -246,6 +277,7 @@ class AYViewEditor(QDialog):
         )
 
         self._populate_access_rows()
+        self._update_user_dropdown()
 
     def _update_user_dropdown(self) -> None:
         #TODO: update replace user: and group: with avatars
@@ -257,26 +289,24 @@ class AYViewEditor(QDialog):
         groups = self.usernames_and_groups.get("groups", [])
         if users:
             for user in users:
-                user_key = f"user:{user}"
+                user_name = user.get("name", "")
+                user_full_name = user.get("fullName", "") or user_name
+                user_key = f"user:{user_name}"
                 if user_key not in added_keys:
-                    items.append({"text": f"{user_key}"})
- 
+                    label = f"{user_full_name}({user_name})"
+                    items.append({"key": user_key, "label": label})
+
         for group in groups:
             group_key = f"group:{group}"
             if group_key not in added_keys:
-                items.append({"text": f"{group_key}"})
-        if not items:
-            items.append({"text": "No more users to add"})
+                items.append({"key": group_key, "label": group.capitalize()})
 
-        self._user_selector.update_items(items)
+        self._user_selector.set_items(items)
 
-    def _on_user_selected(self, index: int) -> None:
+    def _on_user_selected(self, access_key: str) -> None:
         """Handle user selection from dropdown."""
-        selected_text = self._user_selector.itemText(index).strip()
-        if not selected_text or selected_text == "No more users to add":
+        if not access_key:
             return
-
-        access_key = selected_text
 
         self._add_access_row(access_key, 10)  # Default to Viewer access
         self._update_user_dropdown()
@@ -310,11 +340,14 @@ class AYViewEditor(QDialog):
 
     def _render_access_row(self, key: str, access_level: int) -> None:
         """Render a single access row"""
-        row_widget = QWidget(self._form)
-        row_layout = AYHBoxLayout(row_widget, margin=0, spacing=0)
+        row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=4,
+            layout_margin=0,
+        )
 
         access_combo = AYComboBox(show_chevron=True)
-        access_combo.setMinimumWidth(120)
+        access_combo.setFixedWidth(120)
         access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
         access_combo.update_items(access_items)
 
@@ -326,15 +359,18 @@ class AYViewEditor(QDialog):
             self._access_dict[key] = ACCESS_LEVEL_VALUES[idx]
 
         access_combo.currentIndexChanged.connect(on_access_changed)
-        row_layout.addWidget(access_combo)
 
         remove_btn = AYButton("", icon="close", variant=AYButton.Variants.Nav)
+        remove_btn.setFixedWidth(32)
         remove_btn.clicked.connect(lambda: self._remove_access_row(key))
-        row_layout.addWidget(remove_btn)
-        row_layout.addStretch()
 
-        self._form.add_row(key, row_widget)
-        self._access_row_widgets[key] = row_widget
+        row.add_widget(AYLabel(key))
+        row.addStretch()
+        row.add_widget(access_combo)
+        row.add_widget(remove_btn)
+
+        self._access_rows_container.add_widget(row)
+        self._access_row_widgets[key] = row
 
     def _populate_access_rows(self) -> None:
         """Populate access control rows from _access_dict."""
@@ -343,10 +379,7 @@ class AYViewEditor(QDialog):
             widget.deleteLater()
         self._access_row_widgets.clear()
 
-        # keeping Owner (row 0) and Everyone (row 1)
-        layout = self._form.layout()
-        while layout.rowCount() > 2:
-            layout.removeRow(2)
+        self._access_rows_container.clear()
 
         # Add user/group rows
         for key in sorted(self._access_dict.keys()):

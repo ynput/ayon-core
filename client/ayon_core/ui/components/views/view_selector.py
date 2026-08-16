@@ -510,7 +510,7 @@ class AYViewSelector(AYButtonMenu):
         if not view_type or view_type == self._view_type:
             self.refresh()
 
-    def _get_usernames_and_groups(self) -> dict[str, list[str]]:
+    def _get_usernames_and_groups(self) -> dict[str, list]:
         """Fetch active project users and return unique usernames."""
         project_name = getattr(self._manager, "project_name", "")
         if not project_name:
@@ -520,7 +520,8 @@ class AYViewSelector(AYButtonMenu):
         try:
             users = ayon_api.get_users(project_name=project_name) or []
         except Exception:  # noqa: BLE001
-            log.exception("Failed to fetch users for project %r", project_name)
+            log.exception("Failed to fetch users for project %r",
+                          project_name)
 
         try:
             group_data = ayon_api.get(f"/accessGroups/{project_name}").data
@@ -528,8 +529,7 @@ class AYViewSelector(AYButtonMenu):
         except Exception:
             log.exception("Failed to fetch project groups")
 
-
-        usernames: list[str] = []
+        users_data: list[dict[str, str]] = []
         seen: set[str] = set()
         for user in users:
             if not isinstance(user, dict):
@@ -537,11 +537,14 @@ class AYViewSelector(AYButtonMenu):
             if not bool(user.get("active", False)):
                 continue
             name = str(user.get("name") or "").strip()
-            if not name or name in seen or name==self._current_user:
+            if not name or name in seen or name == self._current_user:
                 continue
+
+            full_name = user.get("ownAttrib", {}).get("fullName", "") or name
+
             seen.add(name)
-            usernames.append(name)
-        return {"users": usernames, "groups": groups}
+            users_data.append({"name": name, "fullName": full_name})
+        return {"users": users_data, "groups": groups}
 
     # ------------------------------------------------------------------
     # Helpers
