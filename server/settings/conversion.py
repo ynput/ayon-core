@@ -316,7 +316,7 @@ def _convert_publish_plugins(overrides):
         return
     _convert_validate_version_0_3_3(overrides["publish"])
     _convert_oiio_transcode_0_4_5(overrides["publish"])
-    _convert_usd_contribution_variant_default_policy(overrides)
+    _convert_usd_contribution_variant_default_policy_1_9_11(overrides)
 
 
 def _convert_extract_thumbnail(overrides, version: VersionInfo):
