@@ -574,6 +574,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
+            if "contribution_variant_is_default" in publish_attributes:
+                contribution_variant_is_default = publish_attributes.pop(
+                    "contribution_variant_is_default"
+                )
+
+                publish_attributes["contribution_variant_default_policy"] = (
+                    "always"
+                    if contribution_variant_is_default
+                    else "if_not_set"
+                )
 
         visible = publish_attributes.get("contribution_enabled", True)
         variant_visible = visible and publish_attributes.get(
