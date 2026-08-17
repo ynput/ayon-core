@@ -293,8 +293,10 @@ def _convert_usd_contribution_variant_default_policy(overrides):
         overrides
         .get("publish", {})
         .get("CollectUSDLayerContributions", {})
-        .get("profiles", [])
+        .get("profiles")
     )
+    if not profiles:
+        return
 
     for profile in profiles:
         if "contribution_variant_default_policy" in profile:
