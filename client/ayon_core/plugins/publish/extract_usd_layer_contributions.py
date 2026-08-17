@@ -819,7 +819,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 variant_set_name = contribution.variant_set_name
                 variant_name = contribution.variant_name
                 policy = contribution.variant_default_policy
-                if (policy == "always"
+                if (
+                    policy == "always"
                     or (
                         policy == "if_not_set"
                         and variant_set_name not in prim_spec.variantSelections
