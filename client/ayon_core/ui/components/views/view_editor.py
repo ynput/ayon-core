@@ -283,25 +283,39 @@ class AYViewEditor(QDialog):
         #TODO: update replace user: and group: with avatars
         """Update dropdown to show only users/groups not yet added."""
         added_keys = set(self._access_dict.keys())
- 
+
         items = []
         users = self.usernames_and_groups.get("users", [])
         groups = self.usernames_and_groups.get("groups", [])
+
         if users:
             for user in users:
                 user_name = user.get("name", "")
                 user_full_name = user.get("fullName", "") or user_name
                 user_key = f"user:{user_name}"
                 if user_key not in added_keys:
-                    label = f"{user_full_name}({user_name})"
-                    items.append({"key": user_key, "label": label})
+                    items.append({
+                        "key": user_key,
+                        "label": user_full_name,
+                        "identifier": user_name,
+                        "type": "user"
+                    })
 
         for group in groups:
             group_key = f"group:{group}"
             if group_key not in added_keys:
-                items.append({"key": group_key, "label": group.capitalize()})
+                items.append({
+                    "key": group_key,
+                    "label": group.capitalize(),
+                    "identifier": "group",
+                    "type": "group"
+                })
 
-        self._user_selector.set_items(items)
+        # Set items
+        self._user_selector.set_items_with_builder(
+            items,
+            row_builder=self._build_access_list_row
+        )
 
     def _on_user_selected(self, access_key: str) -> None:
         """Handle user selection from dropdown."""
@@ -364,7 +378,8 @@ class AYViewEditor(QDialog):
         remove_btn.setFixedWidth(32)
         remove_btn.clicked.connect(lambda: self._remove_access_row(key))
 
-        row.add_widget(AYLabel(key))
+        label_widget = self._build_access_row_label(key)
+        row.add_widget(label_widget, stretch=1)
         row.addStretch()
         row.add_widget(access_combo)
         row.add_widget(remove_btn)
@@ -386,6 +401,77 @@ class AYViewEditor(QDialog):
             if key == "__everyone__":
                 continue
             self._render_access_row(key, int(self._access_dict[key]))
+
+    @staticmethod
+    def _build_access_list_row(row, entry: dict) -> None:
+        """Build custom identifier widgets for a dropdown row.
+
+        This row builder is used with :meth:`AYSearchableComboBox.set_items_with_builder`
+        to add identifier labels and spacers to user/group rows.
+
+        Args:
+            row: The _ItemRow widget to customize.
+            entry: The item dict containing metadata.
+        """
+        if "identifier" in entry:
+            identifier = entry.get("identifier", "")
+            # Add spacer item with stretch
+            row.layout().addSpacerItem(
+                QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+            )
+            # Add identifier label (dim)
+            id_label = AYLabel(f"({identifier})", dim=True)
+            row.add_custom_widget(id_label, stretch=0)
+
+    def _build_access_row_label(self, key: str) -> AYContainer | AYLabel:
+        """Build formatted label widget for access control row.
+
+        For users: Shows "Full Name" with "(username)" in dim text
+        For groups: Shows capitalized group name
+
+        Args:
+            key: The access key (e.g., "user:name" or "group:name")
+
+        Returns:
+            AYContainer with formatted widgets for users, or AYLabel for groups
+        """
+        #TODO: Fix spacing in label_container to match it with webUI
+        if key.startswith("user:"):
+            # Extract username from key
+            user_name = key.replace("user:", "")
+
+            # Find the full name from usernames_and_groups
+            for user in self.usernames_and_groups.get("users", []):
+                if user.get("name") == user_name:
+                    user_full_name = user.get("fullName", "") or user_name
+
+                    # Create container: "Full Name (username)"
+                    label_container = AYContainer(
+                        layout=AYContainer.Layout.HBox,
+                        layout_spacing=0,
+                        layout_margin=0,
+                    )
+                    label_container.add_widget(
+                        AYLabel(user_full_name),
+                        stretch=0
+                    )
+                    label_container.add_widget(
+                        AYLabel(f"({user_name})", dim=True),
+                        stretch=0
+                    )
+                    return label_container
+
+            # Fallback if user not found
+            return AYLabel(key)
+
+        elif key.startswith("group:"):
+            # Extract group name from key and capitalize
+            group_name = key.replace("group:", "")
+            return AYLabel(group_name.capitalize())
+
+        else:
+            # Fallback for other key types
+            return AYLabel(key)
 
     # ------------------------------------------------------------------
     # Accept handling

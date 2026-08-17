@@ -39,15 +39,16 @@ from ..style_types import get_ayon_style
 from .dropdown import AYDropdownPopup
 from .frame import AYFrame
 from .label import AYLabel
-from .layouts import AYHBoxLayout, AYVBoxLayout
+from .layouts import AYVBoxLayout
 from .line_edit import AYLineEdit
 from .scroll_area import AYScrollArea
 from .style_mixin import StyleMixin
+from .container import AYContainer
 
 log = logging.getLogger(__name__)
 
 
-class _ItemRow(QWidget):
+class _ItemRow(AYContainer):
     """Clickable row displaying an item label in the dropdown.
 
     Emits :attr:`clicked` with the item's key when pressed.
@@ -57,8 +58,6 @@ class _ItemRow(QWidget):
     """
 
     clicked = Signal(str)
-    _HEIGHT = 32
-    _HOVER_COLOR = QColor(255, 255, 255, 20)
 
     def __init__(
         self,
@@ -66,22 +65,24 @@ class _ItemRow(QWidget):
         label: str,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(
+            parent=parent,
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=8,
+            layout_margin=4,
+            variant=AYFrame.Variants.Low,
+        )
 
         self._key = key
         self._label_text = label
-        self._hovered = False
-
-        row_lyt = AYHBoxLayout(self, margin=4, spacing=8)
 
         self._label = AYLabel(label, parent=self)
         self._label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )
 
-        row_lyt.addWidget(self._label, 1)
+        self.add_widget(self._label, stretch=1)
 
-        self.setFixedHeight(self._HEIGHT)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
@@ -98,22 +99,21 @@ class _ItemRow(QWidget):
         """Display label used for filtering."""
         return self._label_text
 
+    def add_custom_widget(self, widget: QWidget, stretch: int = 0) -> None:
+        """Add a custom widget to the row layout.
+
+        Args:
+            widget: The widget to add.
+            stretch: Layout stretch factor (default 0).
+        """
+        self.add_widget(widget, stretch=stretch)
+
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: N802
         super().paintEvent(event)
-        if self._hovered:
+        if self.underMouse():
             painter = QPainter(self)
-            painter.fillRect(self.rect(), self._HOVER_COLOR)
+            painter.fillRect(self.rect(), QColor(255, 255, 255, 20))
             painter.end()
-
-    def enterEvent(self, event) -> None:  # noqa: ANN001
-        self._hovered = True
-        self.update()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event) -> None:  # noqa: ANN001
-        self._hovered = False
-        self.update()
-        super().leaveEvent(event)
 
     def mousePressEvent(self, event) -> None:  # noqa: ANN001
         if event.button() == Qt.MouseButton.LeftButton:
@@ -229,6 +229,10 @@ class AYSearchableComboBox(StyleMixin, QWidget):
     The :class:`AYLineEdit` acts as the search input — typing filters the
     dropdown items in real-time with no second search field inside the popup.
 
+    This component is designed to be generic and extensible. Applications can
+    customize row rendering with :meth:`set_items_with_builder` or access
+    existing rows through :meth:`get_rows`.
+
     Signals:
         item_selected: Emitted with the chosen item key string.
 
@@ -273,6 +277,61 @@ class AYSearchableComboBox(StyleMixin, QWidget):
                 plain strings (used as both key and label).
         """
         self._dropdown.set_items(items)
+
+    def get_rows(self) -> list[tuple[str, str, "QWidget"]]:
+        """Return the list of all item rows.
+
+        Returns:
+            List of (key, label, row_widget) tuples for custom widget manipulation.
+        """
+        return self._dropdown.all_items
+
+    def set_items_with_builder(
+        self,
+        items: list[dict[str, str] | str],
+        row_builder=None,
+    ) -> None:
+        """Set items and optionally apply a custom row builder function.
+
+        This method provides a convenient way to customize row rendering
+        without manually calling :meth:`get_rows` and iterating.
+
+        Args:
+            items: A list of dicts with ``key`` and ``label`` keys, or
+                plain strings (used as both key and label).
+            row_builder: Optional callable that receives (row, entry) and
+                adds custom widgets to the row. Called for each item that
+                has metadata beyond basic key/label.
+
+        Example::
+
+            def customize_row(row, entry):
+                if "extra_data" in entry:
+                    label = AYLabel(entry["extra_data"], dim=True)
+                    row.add_custom_widget(label)
+
+            items = [
+                {"key": "k1", "label": "Item 1", "extra_data": "Extra"},
+                {"key": "k2", "label": "Item 2", "extra_data": "More"},
+            ]
+            combo.set_items_with_builder(items, row_builder=customize_row)
+        """
+        # Set items normally
+        self.set_items(items)
+
+        # Apply custom builder if provided
+        if row_builder is None:
+            return
+
+        # Create a dict mapping keys to items for quick lookup
+        items_by_key = {
+            item["key"]: item for item in items if isinstance(item, dict)
+        }
+
+        # Apply builder to rows that have metadata
+        for key, label, row in self.get_rows():
+            if key in items_by_key:
+                row_builder(row, items_by_key[key])
 
     def clear(self) -> None:
         """Clear the line-edit and reset the dropdown filter."""
