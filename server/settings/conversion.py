@@ -287,7 +287,7 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
             }
 
 
-def _convert_usd_contribution_variant_default_policy(overrides):
+def _convert_usd_contribution_variant_default_policy_1_9_11(overrides):
     """Convert the USD contribution default boolean to a policy enum."""
     profiles = (
         overrides
