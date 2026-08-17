@@ -361,16 +361,6 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             variant_default_policy = attr_values.get(
                 "contribution_variant_default_policy"
             )
-            if variant_default_policy is None:
-                # Support data created before the boolean was replaced by the
-                # policy enum.
-                variant_default_policy = (
-                    "always"
-                    if attr_values.get(
-                        "contribution_variant_is_default", False
-                    )
-                    else "if_not_set"
-                )
 
             contribution = VariantContribution(
                 instance=instance,
