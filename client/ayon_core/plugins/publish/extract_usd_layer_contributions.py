@@ -561,15 +561,6 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 "contribution_variant_default_policy":
                     "if_not_set",
             }
-        elif "contribution_variant_default_policy" not in profile:
-            # Support profiles created before the boolean was replaced by the
-            # policy enum.
-            profile = profile.copy()
-            profile["contribution_variant_default_policy"] = (
-                "always"
-                if profile.get("contribution_variant_is_default", False)
-                else "if_not_set"
-            )
 
         # Define defaults
         default_target_product: str = profile["contribution_target_product"]
