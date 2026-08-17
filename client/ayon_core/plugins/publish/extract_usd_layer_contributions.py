@@ -344,7 +344,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "contribution_variant_set_name",
             "contribution_variant"
         ]:
-            attr_values[key] = attr_values[key].format(**data)
+            attr_values[key] = attr_values[key].format_map(data)
 
         # Define contribution
         in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
