@@ -382,8 +382,20 @@ class DetailsWidget(QtWidgets.QWidget):
         self._set_logs(filtered_logs)
 
     def _set_logs(self, logs: list[ReportLog]) -> None:
-        lines = []
-        for log in logs:
+        self._output_widget.clear()
+        cursor = QtGui.QTextCursor(self._output_widget.document())
+        default_fmt = self._output_widget.currentCharFormat()
+        prefix_fmt = QtGui.QTextCharFormat(default_fmt)
+        prefix_fmt.setForeground(QtGui.QColor("#7F8C8D"))
+
+        def _add_entry(idx, entry_prefix, entry):
+            if idx > 0:
+                cursor.insertBlock()
+            if entry_prefix:
+                cursor.insertText(entry_prefix, prefix_fmt)
+            cursor.insertText(entry, default_fmt)
+
+        for idx, log in enumerate(logs):
             timestamp = ""
             if self._show_timestamp and log.created is not None:
                 timestamp = (
@@ -394,28 +406,26 @@ class DetailsWidget(QtWidgets.QWidget):
                 )
 
             if log.type == "record":
-                message = f"{timestamp}{log.levelname}: {log.message}"
-
-                lines.append(message)
+                _add_entry(idx, f"{timestamp}{log.levelname}: ", log.message)
                 exc_info = log.exc_info
                 if exc_info:
-                    lines.append(exc_info)
+                    _add_entry(idx + 1, "", exc_info)
 
             elif log.type == "error":
-                lines.append(f"{timestamp}TRACEBACK:\n{log.traceback}")
+                _add_entry(idx, f"{timestamp}TRACEBACK: ", log.traceback)
 
             else:
                 print(log.type)
 
-        text = "\n".join(lines)
-        self._output_widget.setPlainText(text)
+        cursor.select(QtGui.QTextCursor.Document)
+        fmt = QtGui.QTextBlockFormat()
         if self._show_timestamp:
-            cursor = QtGui.QTextCursor(self._output_widget.document())
-            cursor.select(QtGui.QTextCursor.Document)
-            fmt = QtGui.QTextBlockFormat()
             fmt.setLeftMargin(20)
             fmt.setTextIndent(-20)
-            cursor.mergeBlockFormat(fmt)
+        else:
+            fmt.setLeftMargin(0)
+            fmt.setTextIndent(0)
+        cursor.mergeBlockFormat(fmt)
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
