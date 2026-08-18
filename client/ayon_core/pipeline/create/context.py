@@ -22,7 +22,7 @@ import pyblish.api
 import ayon_api
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import is_func_signature_supported
+from ayon_core.lib import is_func_signature_supported, ButtonDef
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IWorkfileHost, IPublishHost
@@ -43,6 +43,7 @@ from .exceptions import (
 )
 from .changes import TrackChangesItem
 from .structures import (
+    ButtonCallbackInfo,
     PublishAttributes,
     ConvertorItem,
     InstanceContextInfo,
@@ -162,10 +163,6 @@ class CreateContext:
     Context itself also can store data related to whole creation (workfile).
     - those are mainly for Context publish plugins
 
-    Todos:
-        Don't use 'AvalonMongoDB'. It's used only to keep track about current
-            context which should be handled by host.
-
     Args:
         host (IPublishHost): Host implementation which handles implementation
             and global metadata.
@@ -229,7 +226,7 @@ class CreateContext:
         self.creator_discover_result = None
         self.convertor_discover_result = None
         # Discovered creators
-        self.creators = {}
+        self.creators: dict[str, "BaseCreator"] = {}
         # Prepare categories of creators
         self.autocreators = {}
         # Manual creators
@@ -874,12 +871,157 @@ class CreateContext:
                     publish_attributes.update(output)
 
         for plugin in self.plugins_with_defs:
-            attr_defs = plugin.get_attr_defs_for_context(self)
+            try:
+                attr_defs = plugin.get_attr_defs_for_context(self)
+            except Exception:
+                self.log.error(
+                    "Failed to get attribute definitions"
+                    f" from plugin '{plugin.__name__}'.",
+                    exc_info=True
+                )
+                continue
+
             if not attr_defs:
                 continue
             self._publish_attributes.set_publish_plugin_attr_defs(
                 plugin.__name__, attr_defs
             )
+
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        """Trigger pre-create button callback.
+
+        Args:
+            identifier (str): Creator identifier.
+            button_name (str): Button name.
+
+        Raises:
+            ValueError if create plugin was not found, does not support
+                pre-create attributes, or button was not found.
+
+        """
+        create_plugin = self.creators.get(identifier)
+        if create_plugin is None:
+            return
+
+        if not hasattr(create_plugin, "get_pre_create_attr_defs"):
+            return
+
+        pre_create_attributes = create_plugin.get_pre_create_attr_defs()
+        for attr_def in pre_create_attributes:
+            if attr_def.key == button_name:
+                attr_def.trigger()
+                return
+
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+        *,
+        identifier: str | None = None,
+    ) -> None:
+        """Trigger pre-create button callback.
+
+        Args:
+            button_name (str): Button name.
+            instance_ids (list[str]): List of instance ids for which
+                the button will be triggered. The button will be triggered
+                only for instances that have the button.
+            identifier (str | None): Creator identifier. If None,
+                the button will be triggered for all creators.
+
+        """
+        info_by_identifier = {}
+        for instance_id in instance_ids:
+            instance = self.instances_by_id.get(instance_id)
+            if instance is None:
+                continue
+
+            plugin_id = instance.creator_identifier
+            if identifier is not None and plugin_id != identifier:
+                continue
+
+            attr_def = instance.creator_attributes.get_attr_def(button_name)
+            if not isinstance(attr_def, ButtonDef):
+                continue
+
+            info = info_by_identifier.get(plugin_id)
+            if info is None:
+                info = {
+                    "attr_def": attr_def,
+                    "instance_ids": []
+                }
+                info_by_identifier[plugin_id] = info
+
+            info["instance_ids"].append(instance_id)
+
+        for info in info_by_identifier.values():
+            attr_def = info["attr_def"]
+
+            callback_info = ButtonCallbackInfo(
+                create_context=self,
+                instance_ids=info["instance_ids"],
+            )
+            callback = attr_def.get_callback()
+            if is_func_signature_supported(callback, callback_info):
+                callback(callback_info)
+            else:
+                callback()
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        """Trigger the publish plugin button callback.
+
+        Args:
+            plugin_name (str): Plugin name.
+            button_name (str): Button name.
+            instance_ids (list[str | None]): List of instance ids for which
+                the button will be triggered. The button will be triggered
+                only for instances that have the button. 'None' is used for
+                context selection.
+
+        """
+        filtered_instance_ids = []
+        attr_def = None
+        for instance_id in instance_ids:
+            if instance_id is None:
+                publish_attributes = self.publish_attributes
+            else:
+                instance = self.get_instance_by_id(instance_id)
+                if instance is None:
+                    continue
+                publish_attributes = instance.publish_attributes
+
+            plugin_attributes = publish_attributes.get(plugin_name)
+            if not plugin_attributes:
+                continue
+
+            _attr_def = plugin_attributes.get_attr_def(button_name)
+            if not isinstance(_attr_def, ButtonDef):
+                continue
+
+            if attr_def is None:
+                attr_def = _attr_def
+
+            filtered_instance_ids.append(instance_id)
+
+        if attr_def is None:
+            return
+
+        info = ButtonCallbackInfo(
+            create_context=self,
+            instance_ids=filtered_instance_ids,
+        )
+        callback = attr_def.get_callback()
+        if is_func_signature_supported(callback, info):
+            callback(info)
+        else:
+            callback()
 
     def add_instances_added_callback(
         self, callback: Callable

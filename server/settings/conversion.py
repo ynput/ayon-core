@@ -1,5 +1,6 @@
 import re
 import copy
+import json
 from typing import Any
 
 from semver import VersionInfo
@@ -286,19 +287,62 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
             }
 
 
+def _convert_usd_contribution_variant_default_policy_1_9_11(overrides):
+    """Convert the USD contribution default boolean to a policy enum."""
+    profiles = (
+        overrides
+        .get("publish", {})
+        .get("CollectUSDLayerContributions", {})
+        .get("profiles")
+    )
+    if not profiles:
+        return
+
+    for profile in profiles:
+        if "contribution_variant_default_policy" in profile:
+            continue
+
+        if "contribution_variant_is_default" not in profile:
+            continue
+
+        is_default = profile.pop("contribution_variant_is_default")
+        profile["contribution_variant_default_policy"] = (
+            "always" if is_default else "if_not_set"
+        )
+
+
 def _convert_publish_plugins(overrides):
     if "publish" not in overrides:
         return
     _convert_validate_version_0_3_3(overrides["publish"])
     _convert_oiio_transcode_0_4_5(overrides["publish"])
+    _convert_usd_contribution_variant_default_policy_1_9_11(overrides)
 
 
-def _convert_extract_thumbnail(overrides):
+def _convert_extract_thumbnail(overrides, version: VersionInfo):
     """ExtractThumbnail config settings did change to profiles."""
+
+    if (version.major, version.minor, version.patch) >= (1, 7, 0):
+        return
+
     extract_thumbnail_overrides = (
-        overrides.get("publish", {}).get("ExtractThumbnail")
+        overrides.get("publish", {}).get("ExtractThumbnail", {})
     )
-    if extract_thumbnail_overrides is None:
+    if not extract_thumbnail_overrides:
+        return
+
+    # Check if there are legacy overrides to the root keys
+    keys = (
+        "product_names",
+        "integrate_thumbnail",
+        "target_size",
+        "duration_split",
+        "oiiotool_defaults",
+        "ffmpeg_args",
+    )
+    if not any(
+        key in extract_thumbnail_overrides for key in keys
+    ):
         return
 
     base_value = {
@@ -316,14 +360,7 @@ def _convert_extract_thumbnail(overrides):
         },
         "ffmpeg_args": {"input": ["-apply_trc gamma22"], "output": []},
     }
-    for key in (
-        "product_names",
-        "integrate_thumbnail",
-        "target_size",
-        "duration_split",
-        "oiiotool_defaults",
-        "ffmpeg_args",
-    ):
+    for key in keys:
         if key in extract_thumbnail_overrides:
             base_value[key] = extract_thumbnail_overrides.pop(key)
 
@@ -362,6 +399,35 @@ def _convert_burnin_offset_1_8_6(
         burnin_options["x_offset"] = max(y_offset - bg_padding, 0)
 
 
+def _fix_duplicates_extract_thumbnail(overrides, version: VersionInfo):
+    """Fix issue where settings conversion may have duplicated the base
+    profile each time on settings copy due to bug in
+    `_convert_extract_thumbnail` implementation."""
+    if (version.major, version.minor, version.patch) > (1, 9, 8):
+        # Nothing to fix anymore
+        return
+
+    extract_thumbnail_overrides = (
+        overrides.get("publish", {})
+        .get("ExtractThumbnail", {})
+    )
+    profiles: list[dict] = extract_thumbnail_overrides.get("profiles", [])
+    if not profiles:
+        return
+
+    processed_profiles: set[str] = set()
+    non_duplicate_profiles = []
+    for profile in list(profiles):
+        profile_hash = json.dumps(profile, sort_keys=True)
+        if profile_hash in processed_profiles:
+            # Skip duplicate
+            continue
+        processed_profiles.add(profile_hash)
+        non_duplicate_profiles.append(profile)
+
+    extract_thumbnail_overrides["profiles"] = non_duplicate_profiles
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
@@ -372,8 +438,9 @@ def convert_settings_overrides(
     _convert_product_name_templates_1_6_5(overrides)
     _convert_product_name_templates_1_7_0(overrides)
     _convert_publish_plugins(overrides)
-    _convert_extract_thumbnail(overrides)
+    _convert_extract_thumbnail(overrides, version)
     _convert_product_base_types_1_8_0(overrides)
     _convert_unify_profile_keys_1_8_0(overrides)
     _convert_burnin_offset_1_8_6(overrides, version)
+    _fix_duplicates_extract_thumbnail(overrides, version)
     return overrides

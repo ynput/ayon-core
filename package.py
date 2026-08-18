@@ -1,6 +1,6 @@
 name = "core"
 title = "Core"
-version = "1.9.7+dev"
+version = "1.9.10+dev"
 
 client_dir = "ayon_core"
 
@@ -19,4 +19,5 @@ ayon_compatible_addons = {
     "harmony": ">0.4.0",
     "fusion": ">=0.3.3",
     "openrv": ">=1.0.2",
+    "traypublisher": ">=0.3.0",
 }

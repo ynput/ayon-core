@@ -513,7 +513,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             for value, new_values in zip(values, new_listed_keys):
                 sub_value[last_item_key] = value
                 try:
-                    value = key.format(**sub_value)
+                    value = key.format_map(sub_value)
                 except (TypeError, KeyError, ValueError):
                     value = MISSING_KEY_VALUE
                 new_values[key] = value
@@ -790,7 +790,7 @@ def prepare_fill_values(burnin_template, data):
                     "values": key_value,
                     "keys": keys}
             else:
-                fill_values[orig_key] = orig_key.format(**data)
+                fill_values[orig_key] = orig_key.format_map(data)
         except (KeyError, TypeError):
             missing_keys.add(orig_key)
             continue
@@ -989,7 +989,7 @@ def burnins_from_data(
             args = [align, frame_start, frame_end, source_timecode]
             if not value.startswith(SOURCE_TIMECODE_KEY):
                 value_items = value.split(SOURCE_TIMECODE_KEY)
-                text = value_items[0].format(**data)
+                text = value_items[0].format_map(data)
                 args.append(text)
 
             burnin.add_timecode(*args)
@@ -999,13 +999,13 @@ def burnins_from_data(
             args = [align, frame_start, frame_end, frame_start_tc]
             if not value.startswith(TIMECODE_KEY):
                 value_items = value.split(TIMECODE_KEY)
-                text = value_items[0].format(**data)
+                text = value_items[0].format_map(data)
                 args.append(text)
 
             burnin.add_timecode(*args)
             continue
 
-        text = value.format(**data)
+        text = value.format_map(data)
 
         burnin.add_text(text, align, frame_start, frame_end)
 

@@ -1,6 +1,7 @@
 from pydantic import validator
 from typing import Any
 
+from ayon_server.enum import EnumItem
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
@@ -9,19 +10,54 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
+from ayon_server.lib.postgres import Postgres
 from ayon_server.settings.anatomy import Anatomy
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
 from ayon_server.helpers.anatomy import get_project_anatomy
 
+try:
+    # Available since AYON server 1.15.13 or 1.16.0 (not released yet)
+    from ayon_server.enum.resolvers import StatusesEnumResolver
+    from ayon_server.enum import EnumRegistry
+    if not hasattr(StatusesEnumResolver, "for_type"):
+        StatusesEnumResolver = None
+except ImportError:
+    StatusesEnumResolver = None
+
+
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_not_set": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set",
+}
+
+
+def contribution_variant_default_policy_enum():
+    """Return the available variant default policies for the settings UI."""
+    return [
+        {"value": value, "label": label}
+        for value, label in CONTRIBUTION_VARIANT_DEFAULT_POLICY.items()
+    ]
+
 
 async def _get_anatomy(project_name: str | None = None) -> Anatomy:
-    if not project_name:
-        return Anatomy()
-    return await get_project_anatomy(project_name)
+    if project_name:
+        return await get_project_anatomy(project_name)
+
+    query = "SELECT * FROM anatomy_presets WHERE is_primary is TRUE"
+    async for row in Postgres.iterate(query):
+        return Anatomy(**row["data"])
+    return Anatomy()
 
 
 async def _version_statuses_enum(project_name: str | None = None):
+    if StatusesEnumResolver is not None:
+        return await EnumRegistry.resolve(
+            "statuses",
+            project_name=project_name,
+            entity_type="version",
+        )
     anatomy = await _get_anatomy(project_name)
     return [
         status.name
@@ -37,6 +73,27 @@ def _handle_missing_frames_enum():
         {"value": "previous_version", "label": "Use previous version"},
         {"value": "only_rendered", "label": "Use only rendered"},
     ]
+
+
+async def folder_attributes_enum() -> list[EnumItem]:
+    result: list[EnumItem] = []
+
+    res = await Postgres.fetch(
+        """
+        SELECT name, data FROM attributes
+        WHERE $1 && scope
+        ORDER BY COALESCE(data->>'title', name) ASC
+        """,
+        ["folder"],
+    )
+    for name, data in res:
+        result.append(
+            EnumItem(
+                value=name,
+                label=data.get("title") or name,
+            )
+        )
+    return result
 
 
 class EnabledModel(BaseSettingsModel):
@@ -71,6 +128,15 @@ class CollectHierarchyModel(BaseSettingsModel):
         True,
         title="Edit shot attributes on update"
     )
+    skip_shot_attributes_on_update: list[str] = SettingsField(
+        default_factory=list,
+        title="Skip shot attributes on update",
+        description=(
+            "Attributes set here will not be updated on the folder entities if"
+            " *Edit shot attributes on update* was enabled."
+        ),
+        enum_resolver=folder_attributes_enum,
+    )
 
 
 class CollectSceneVersionModel(BaseSettingsModel):
@@ -96,6 +162,10 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
+
+
+class CollectVersionTagsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
 
 
 def usd_contribution_layer_types():
@@ -206,16 +276,19 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             "The default variant name for instances matching this profile."
         ),
     )
-    contribution_variant_is_default: bool = SettingsField(
-        False,
+    contribution_variant_default_policy: str = SettingsField(
+        "if_not_set",
         title="Set as default variant selection",
+        enum_resolver=contribution_variant_default_policy_enum,
         description=(
-            "Whether to set this instance's variant name as the "
-            "default selected variant name for the variant set.\n"
-            "It is always expected to be enabled for only one "
-            "variant name in the variant set.\n"
-            "The behavior is unpredictable if multiple instances "
-            "for the same variant set have this enabled."
+            "Controls whether this contribution's variant name is authored "
+            "as the selected default for the variant set. Use "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' to leave the "
+            "variant selection unchanged, "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' to set "
+            "it only when no selection exists, or "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' to always "
+            "override the current selection."
         ),
     )
 
@@ -1432,6 +1505,13 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectHierarchyModel,
         title="Collect Hierarchy"
     )
+    CollectVersionTags: CollectVersionTagsModel = SettingsField(
+        title="Collect Version Tags",
+        description=(
+            "Provides a selectable list of tags for the user in the"
+            " publisher."
+        )
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1594,7 +1674,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["look"],
@@ -1606,7 +1687,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["groom"],
@@ -1618,7 +1700,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["rig"],
@@ -1630,7 +1713,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["usd"],
@@ -1642,7 +1726,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
         ]
     },
@@ -1659,6 +1744,10 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectHierarchy": {
         "edit_shot_attributes_on_update": True,
+        "skip_shot_attributes_on_update": [],
+    },
+    "CollectVersionTags": {
+        "enabled": False
     },
     "ValidateEditorialAssetName": {
         "enabled": True,

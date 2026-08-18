@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import re
 import copy
@@ -43,6 +44,7 @@ from ayon_core.pipeline.create import (
 )
 
 from ayon_core.tools.publisher.abstract import (
+    PublishAttrDefsInfo,
     AbstractPublisherBackend,
     CardMessageTypes,
 )
@@ -96,20 +98,20 @@ class CreatorUIItem:
         self.label = label
         self.filtered = filtered
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            product_type=self.product_type,
+            label=self.label,
+            filtered=self.filtered,
+        )
+
     @classmethod
-    def from_data(cls, data) -> "CreatorUIItem":
+    def from_data(cls, data) -> CreatorUIItem:
         return CreatorUIItem(
             data["product_type"],
             data["label"],
             data["filtered"],
         )
-
-    def to_data(self) -> dict[str, Any]:
-        return {
-            "product_type": self.product_type,
-            "label": self.label,
-            "filtered": self.filtered,
-        }
 
 
 class CreatorItem:
@@ -283,12 +285,12 @@ class InstanceItem:
         product_type: str,
         product_name: str,
         variant: str,
-        folder_path: Optional[str],
-        task_name: Optional[str],
+        folder_path: str | None,
+        task_name: str | None,
         is_active: bool,
         is_mandatory: bool,
         has_promised_context: bool,
-        parent_instance_id: Optional[str],
+        parent_instance_id: str | None,
         parent_flags: int,
     ):
         self._instance_id: str = instance_id
@@ -299,12 +301,12 @@ class InstanceItem:
         self._product_type: str = product_type
         self._product_name: str = product_name
         self._variant: str = variant
-        self._folder_path: Optional[str] = folder_path
-        self._task_name: Optional[str] = task_name
+        self._folder_path: str | None = folder_path
+        self._task_name: str | None = task_name
         self._is_active: bool = is_active
         self._is_mandatory: bool = is_mandatory
         self._has_promised_context: bool = has_promised_context
-        self._parent_instance_id: Optional[str] = parent_instance_id
+        self._parent_instance_id: str | None = parent_instance_id
         self._parent_flags: int = parent_flags
 
     @property
@@ -402,6 +404,29 @@ class InstanceItem:
             instance.parent_instance_id,
             instance.parent_flags,
         )
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            instance_id=self._instance_id,
+            creator_identifier=self._creator_identifier,
+            label=self._label,
+            group_label=self._group_label,
+            product_base_type=self._product_base_type,
+            product_type=self._product_type,
+            product_name=self._product_name,
+            variant=self._variant,
+            folder_path=self._folder_path,
+            task_name=self._task_name,
+            is_active=self._is_active,
+            is_mandatory=self._is_mandatory,
+            has_promised_context=self._has_promised_context,
+            parent_instance_id=self._parent_instance_id,
+            parent_flags=self._parent_flags,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> InstanceItem:
+        return cls(**data)
 
 
 def _merge_attr_defs(
@@ -940,15 +965,37 @@ class CreateModel:
             instance_ids, plugin_name, key, _DEFAULT_VALUE
         )
 
+    def trigger_pre_create_button_callback(
+        self, identifier: str, button_name: str
+    ) -> None:
+        self._create_context.trigger_pre_create_button_callback(
+            identifier, button_name
+        )
+
+    def trigger_create_button_callback(
+        self,
+        button_name: str,
+        instance_ids: list[str],
+    ) -> None:
+        self._create_context.trigger_create_button_callback(
+            button_name, instance_ids
+        )
+
+    def trigger_publish_button_callback(
+        self,
+        plugin_name: str,
+        button_name: str,
+        instance_ids: list[str | None],
+    ) -> None:
+        self._create_context.trigger_publish_button_callback(
+            plugin_name, button_name, instance_ids
+        )
+
     def get_publish_attribute_definitions(
         self,
         instance_ids: List[str],
         include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+    ) -> list[PublishAttrDefsInfo]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
@@ -966,6 +1013,7 @@ class CreateModel:
 
         all_defs_by_plugin_name = {}
         all_plugin_values = {}
+        instance_ids_by_name = {}
         for item in _tmp_items:
             item_id = None
             if isinstance(item, CreatedInstance):
@@ -981,8 +1029,13 @@ class CreateModel:
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_values = all_plugin_values.setdefault(plugin_name, {})
+                instance_ids = instance_ids_by_name.get(plugin_name)
+                if instance_ids is None:
+                    instance_ids = set()
+                    instance_ids_by_name[plugin_name] = instance_ids
+                instance_ids.add(item_id)
 
+                plugin_values = all_plugin_values.setdefault(plugin_name, {})
                 plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
@@ -1002,11 +1055,15 @@ class CreateModel:
             plugin_name = plugin.__name__
             if plugin_name not in all_defs_by_plugin_name:
                 continue
-            output.append((
-                plugin_name,
-                attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values[plugin_name],
-            ))
+            instance_ids = instance_ids_by_name[plugin_name]
+            output.append(
+                PublishAttrDefsInfo(
+                    plugin_name,
+                    attr_defs_by_plugin_name[plugin_name],
+                    all_plugin_values[plugin_name],
+                    instance_ids,
+                )
+            )
         return output
 
     def get_thumbnail_paths_for_instances(

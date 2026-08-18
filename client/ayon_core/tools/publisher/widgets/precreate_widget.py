@@ -1,12 +1,29 @@
+from __future__ import annotations
+
+from typing import Any
+
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.lib import AbstractAttrDef, ButtonDef, UILabelDef
+from ayon_core.tools.attribute_defs import (
+    BaseAttrDefWidget,
+    create_widget_for_attr_def,
+)
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    INPUTS_LAYOUT_HSPACING,
+    INPUTS_LAYOUT_VSPACING,
+)
 
-from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
+from .utils import PreCreateButtonCallback
 
 
 class PreCreateWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         # Precreate attribute defininitions of Creator
@@ -15,7 +32,7 @@ class PreCreateWidget(QtWidgets.QWidget):
         scroll_area.setWidget(contet_widget)
         scroll_area.setWidgetResizable(True)
 
-        attributes_widget = AttributesWidget(contet_widget)
+        attributes_widget = AttributesWidget(controller, contet_widget)
         contet_layout = QtWidgets.QVBoxLayout(contet_widget)
         contet_layout.setContentsMargins(0, 0, 0, 0)
         contet_layout.addWidget(attributes_widget, 0)
@@ -63,11 +80,13 @@ class PreCreateWidget(QtWidgets.QWidget):
     def set_creator_item(self, creator_item):
         attr_defs = []
         creator_selected = False
+        plugin_id = None
         if creator_item is not None:
             creator_selected = True
+            plugin_id = creator_item.identifier
             attr_defs = creator_item.pre_create_attributes_defs
 
-        self._attributes_widget.set_attr_defs(attr_defs)
+        self._attributes_widget.set_attr_defs(plugin_id, attr_defs)
 
         attr_defs_available = len(attr_defs) > 0
         self._scroll_area.setVisible(attr_defs_available)
@@ -78,7 +97,11 @@ class PreCreateWidget(QtWidgets.QWidget):
 
 
 class AttributesWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         layout = QtWidgets.QGridLayout(self)
@@ -88,11 +111,11 @@ class AttributesWidget(QtWidgets.QWidget):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
-        self._layout = layout
+        self._controller: AbstractPublisherFrontend = controller
+        self._layout: QtWidgets.QGridLayout = layout
+        self._widgets: list[BaseAttrDefWidget] = []
 
-        self._widgets = []
-
-    def current_value(self):
+    def current_value(self) -> dict[str, Any]:
         output = {}
         for widget in self._widgets:
             attr_def = widget.attr_def
@@ -100,7 +123,7 @@ class AttributesWidget(QtWidgets.QWidget):
                 output[attr_def.key] = widget.current_value()
         return output
 
-    def clear_attr_defs(self):
+    def clear_attr_defs(self) -> None:
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()
@@ -110,21 +133,42 @@ class AttributesWidget(QtWidgets.QWidget):
 
         self._widgets = []
 
-    def set_attr_defs(self, attr_defs):
+    def set_attr_defs(
+        self,
+        plugin_id: str | None,
+        attr_defs: list[AbstractAttrDef],
+    ) -> None:
         self.clear_attr_defs()
+        if plugin_id is None:
+            return
 
         row = 0
         for attr_def in attr_defs:
+            if isinstance(attr_def, ButtonDef):
+                inner_callback = PreCreateButtonCallback(
+                    self._controller,
+                    attr_def.key,
+                    plugin_id,
+                )
+                attr_def = attr_def.clone()
+                attr_def.set_callback(inner_callback)
             widget = create_widget_for_attr_def(attr_def, self)
 
             expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
                 expand_cols = 1
 
             col_num = 2 - expand_cols
 
-            if attr_def.is_value_def and attr_def.label:
-                label_widget = QtWidgets.QLabel(attr_def.label, self)
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
+
+            if label:
+                label_widget = QtWidgets.QLabel(label, self)
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
