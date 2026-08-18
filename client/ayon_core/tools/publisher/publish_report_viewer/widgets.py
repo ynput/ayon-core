@@ -321,21 +321,41 @@ class DetailsWidget(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
+        header_widget = QtWidgets.QWidget(self)
+
+        timestamp_check = NiceCheckbox(parent=header_widget)
+        timestamp_check.setChecked(True)
+        timestamp_label = QtWidgets.QLabel("Show timestamps", header_widget)
+
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(5, 5, 5, 5)
+        header_layout.addWidget(timestamp_check, 0)
+        header_layout.addWidget(timestamp_label, 0)
+        header_layout.addStretch(1)
+
         output_widget = ZoomPlainText(self)
         output_widget.setObjectName("PublishLogConsole")
         output_widget.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(output_widget)
+        layout.setSpacing(0)
+        layout.addWidget(header_widget, 0)
+        layout.addWidget(output_widget, 1)
+
+        timestamp_check.stateChanged.connect(self._on_timestamp_check)
 
         self._is_active: bool = True
-        self._show_timestamp: bool = True
         self._need_refresh: bool = False
+
+        self._timestamp_check = timestamp_check
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
         self._plugin_filter: set[str] = set()
+
+    def _on_timestamp_check(self):
+        self._update_logs()
 
     def clear(self) -> None:
         self._output_widget.setPlainText("")
@@ -382,6 +402,8 @@ class DetailsWidget(QtWidgets.QWidget):
         self._set_logs(filtered_logs)
 
     def _set_logs(self, logs: list[ReportLog]) -> None:
+        show_timestamp = self._timestamp_check.isChecked()
+
         self._output_widget.clear()
         cursor = QtGui.QTextCursor(self._output_widget.document())
         default_fmt = self._output_widget.currentCharFormat()
@@ -397,7 +419,7 @@ class DetailsWidget(QtWidgets.QWidget):
 
         for idx, log in enumerate(logs):
             timestamp = ""
-            if self._show_timestamp and log.created is not None:
+            if show_timestamp and log.created is not None:
                 timestamp = (
                     arrow
                     .get(log.created)
@@ -419,7 +441,7 @@ class DetailsWidget(QtWidgets.QWidget):
 
         cursor.select(QtGui.QTextCursor.Document)
         fmt = QtGui.QTextBlockFormat()
-        if self._show_timestamp:
+        if show_timestamp:
             fmt.setLeftMargin(20)
             fmt.setTextIndent(-20)
         else:
