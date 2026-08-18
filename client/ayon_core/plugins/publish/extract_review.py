@@ -1304,15 +1304,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            offset_seconds = 0
+            offset_seconds = audio.get("offset") or 0
             if offset_seconds > 0:
-                audio_in_args.append(
-                    "-ss {}".format(offset_seconds)
-                )
+                delay_ms = int(round(offset_seconds * 1000))
+                audio_filters.append("adelay={}|{}".format(delay_ms, delay_ms))
 
             elif offset_seconds < 0:
                 audio_in_args.append(
-                    "-itsoffset {}".format(abs(offset_seconds))
+                    "-ss {}".format(abs(offset_seconds))
                 )
 
             # Audio duration is offset from `-ss`
