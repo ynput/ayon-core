@@ -78,11 +78,11 @@ def get_supported_ffmpeg_options(mode: str = "long") -> set[str]:
     options: set[str] = set()
     for line in result.stdout.splitlines():
         option = line.lstrip()
+        if not option.startswith("-"):
+            continue
         option = option.split(" ", maxsplit=1)[0]  # remove description
         option = option.split("[", maxsplit=1)[0]  # remove stream_specifier
         if not option:
-            continue
-        if not option.startswith("-"):
             continue
 
         options.add(option)
