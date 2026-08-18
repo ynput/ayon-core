@@ -458,7 +458,7 @@ class AYViewEditor(QDialog):
             id_label = AYLabel(f"({identifier})", dim=True)
             row.add_custom_widget(id_label, stretch=0)
 
-    def _build_access_row_label(self, key: str) -> AYContainer | AYLabel:
+    def _build_access_row_label(self, key: str) -> AYContainer:
         """Build formatted label widget for access control row.
 
         For users: Shows avatar with "Full Name" and "(username)" in dim text
@@ -468,83 +468,92 @@ class AYViewEditor(QDialog):
             key: The access key (e.g., "user:name" or "group:name")
 
         Returns:
-            AYContainer with formatted widgets for users, or AYLabel for groups
+            AYContainer with formatted widgets for the access row.
         """
-        #TODO: Fix spacing in row container to match it with webUI
         if key.startswith("user:"):
             # Extract username from key
             user_name = key.replace("user:", "")
 
             # Find the full name from usernames_and_groups
+            user_full_name = user_name
             for user in self.usernames_and_groups.get("users", []):
                 if user.get("name") == user_name:
                     user_full_name = user.get("fullName", "") or user_name
+                    break
 
-                    # Create container with avatar and text
-                    user_row_container = AYContainer(
-                        layout=AYContainer.Layout.HBox,
-                        layout_spacing=8,
-                        layout_margin=0,
-                    )
-
-                    # Add Avatar
-                    avatar = AYUserImage(
-                        name=user_name,
-                        full_name=user_full_name,
-                        size=24,
-                        outline=False,
-                        parent=user_row_container,
-                    )
-                    avatar.setSizePolicy(
-                        QSizePolicy.Fixed,
-                        QSizePolicy.Fixed,
-                    )
-                    user_row_container.add_widget(avatar, stretch=0)
-
-                    # Add full name and username
-                    user_row_container.add_widget(
-                        AYLabel(user_full_name),
-                        stretch=0
-                    )
-                    user_row_container.add_widget(
-                        AYLabel(f"({user_name})", dim=True),
-                        stretch=0
-                    )
-
-                    return user_row_container
-
-            # Fallback if user not found
-            return AYLabel(key)
-
-        elif key.startswith("group:"):
-            # Extract group name from key and capitalize
-            group_name = key.replace("group:", "")
-            
-            # Create container with groups icon and name
-            group_row_container = AYContainer(
+            # Create container with avatar and text
+            user_row_container = AYContainer(
                 layout=AYContainer.Layout.HBox,
-                layout_spacing=0,
+                layout_spacing=8,
                 layout_margin=0,
             )
-            
-            # Add groups icon
-            group_icon = AYLabel(
-                icon="shield_person",
-                icon_size=24,
+
+            # Add Avatar
+            avatar = AYUserImage(
+                name=user_name,
+                full_name=user_full_name,
+                size=24,
+                outline=False,
+                parent=user_row_container,
             )
-            group_row_container.add_widget(group_icon, stretch=0)
-            
-            # Add group name
-            group_row_container.add_widget(
-                AYLabel(group_name.capitalize()),
+            avatar.setSizePolicy(
+                QSizePolicy.Fixed,
+                QSizePolicy.Fixed,
+            )
+            user_row_container.add_widget(avatar, stretch=0)
+
+            # Add full name
+            user_row_container.add_widget(
+                AYLabel(user_full_name),
                 stretch=0
             )
+            user_row_container.add_widget(
+                AYLabel(f"({user_name})", dim=True),
+                stretch=0
+            )
+            user_row_container.layout().addSpacerItem(
+                QSpacerItem(
+                    0,
+                    0,
+                    QSizePolicy.Expanding,
+                    QSizePolicy.Minimum,
+                )
+            )
 
-            return group_row_container
+            return user_row_container
 
-        else:
-            # Fallback for other key types
-            return AYLabel(key)
+        # Group access row
+        group_name = key.replace("group:", "")
+
+        # Create container with groups icon and name
+        group_row_container = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=8,
+            layout_margin=0,
+        )
+
+        # Add groups icon
+        group_icon = AYLabel(
+            icon="shield_person",
+            icon_size=24,
+        )
+        group_row_container.add_widget(group_icon, stretch=0)
+
+        # Add group name
+        group_row_container.add_widget(
+            AYLabel(group_name.capitalize()),
+            stretch=0
+        )
+        group_row_container.layout().addSpacerItem(
+            QSpacerItem(
+                0,
+                0,
+                QSizePolicy.Expanding,
+                QSizePolicy.Minimum,
+            )
+        )
+
+        return group_row_container
 
     # ------------------------------------------------------------------
     # Accept handling
