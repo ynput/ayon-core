@@ -17,8 +17,8 @@ Cache strategy on mutation:
   ``views_changed`` emission costs nothing extra.
 * ``delete_view`` — removes the entry from the cached list in place.
 * ``set_project`` — clears both the per-type cache and the id-map;
-  emits ``views_changed`` once per previously-known view type so
-  listeners can refresh.
+  emits :attr:`project_changed` with the new project name so listeners
+  can refresh.
 
 ``ayon_api`` exceptions are caught, logged, and surfaced through the
 inherited :attr:`error` signal.
@@ -74,9 +74,6 @@ class ServerViewManager(ViewManager):
         self._project_name = project_name
         # view_type -> sorted list of views (per-type list cache)
         self._cache: dict[str, list[View]] = {}
-        # All view_types ever requested via list_views (retained after
-        # cache clear so set_project can emit per-known-type).
-        self._known_types: set[str] = set()
         # view_id -> (view_type, scope) (survives list_views; used by
         # delete_view so it doesn't require a populated per-type cache).
         self._id_to_view_attributes: dict[str, tuple[str, Scope]] = {}
@@ -94,9 +91,8 @@ class ServerViewManager(ViewManager):
     def set_project(self, project_name: str) -> None:
         """Rebind the manager to a different project.
 
-        Clears both caches and emits :attr:`views_changed` for every
-        previously-known view type so listeners can refetch.  When no
-        types are known yet, emits ``""`` as a sentinel.
+        Clears both caches and emits :attr:`project_changed` with the
+        new project name so listeners can refresh.
 
         Args:
             project_name: Target project name.  No-op when the same as
@@ -107,13 +103,7 @@ class ServerViewManager(ViewManager):
         self._project_name = project_name
         self._id_to_view_attributes.clear()
         self._cache.clear()
-        if self._known_types:
-            for vt in sorted(self._known_types):
-                self.views_changed.emit(vt)
-        else:
-            # No view types have been requested yet; emit the sentinel
-            # so consumers that listen for "" can still react.
-            self.views_changed.emit("")
+        self.project_changed.emit(project_name)
 
     # ------------------------------------------------------------------
     # ViewManager API
@@ -131,8 +121,6 @@ class ServerViewManager(ViewManager):
         Returns:
             Parsed working :class:`View`, or ``None`` when not found.
         """
-        self._known_types.add(view_type)
-
         if not self._project_name:
             return None
 
@@ -150,8 +138,6 @@ class ServerViewManager(ViewManager):
 
     def get_default_project_view(self, view_type: str) -> View | None:
         """Return project default view using the dedicated ``/base`` endpoint."""
-        self._known_types.add(view_type)
-
         if not self._project_name:
             return None
 
@@ -172,8 +158,6 @@ class ServerViewManager(ViewManager):
 
     def get_default_studio_view(self, view_type: str) -> View | None:
         """Return studio default view using the dedicated ``/base`` endpoint."""
-        self._known_types.add(view_type)
-
         try:
             resp = ayon_api.get(f"views/{view_type}/base")
         except Exception as exc:  # noqa: BLE001
@@ -200,8 +184,6 @@ class ServerViewManager(ViewManager):
             Sorted list of :class:`View` instances.  Empty list on
             network or parse error.
         """
-        self._known_types.add(view_type)
-
         # Skip the network call when no project is set.
         if not self._project_name:
             return []

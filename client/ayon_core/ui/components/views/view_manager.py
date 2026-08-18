@@ -37,6 +37,8 @@ class ViewManager(QObject):
             ``save_view``.
         view_deleted(str): Emitted with the view id after a successful
             ``delete_view``.
+        project_changed(str): Emitted with the new project name when the
+            manager is rebound to a different project.
         error(str): Emitted with an error message when an operation
             fails (subclasses may emit this instead of raising).
     """
@@ -44,6 +46,7 @@ class ViewManager(QObject):
     views_changed = Signal(str)
     view_saved = Signal(str)
     view_deleted = Signal(str)
+    project_changed = Signal(str)
     error = Signal(str)
 
     def __init__(self, parent: QObject | None = None) -> None:

@@ -133,6 +133,7 @@ class AYViewSelector(AYButtonMenu):
 
         # Refresh when the manager changes.
         self._manager.views_changed.connect(self._on_manager_changed)
+        self._manager.project_changed.connect(self._on_project_changed)
         self._connect_modified_state_sources()
 
         # Forward binding errors via the public ``binding_error`` signal so
@@ -501,14 +502,18 @@ class AYViewSelector(AYButtonMenu):
         )
 
     def _on_manager_changed(self, view_type: str) -> None:
-        """Refresh when the manager signals a change for our type.
-
-        An empty *view_type* is treated as a sentinel meaning "all types
-        changed" (emitted by :class:`ServerViewManager` when it switches
-        project before any view type has been listed).
-        """
-        if not view_type or view_type == self._view_type:
+        """Refresh when the manager signals a change for our type."""
+        if view_type == self._view_type:
             self.refresh()
+
+    def _on_project_changed(self, project_name: str) -> None:
+        """Reset state and refresh when the manager switches project.
+        clear active view belongs to the old project so the new
+        project's working view can be auto-applied.
+        """
+        self._current_view = None
+        self._clear_modified()
+        self.refresh()
 
     def _get_usernames_and_groups(self) -> dict[str, list]:
         """Fetch active project users and return unique usernames."""
