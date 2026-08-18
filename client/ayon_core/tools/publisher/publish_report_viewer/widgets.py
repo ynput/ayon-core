@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from math import ceil
+import typing
+
+import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
@@ -12,10 +15,7 @@ from ayon_core.tools.utils import (
     paint_image_with_color,
     get_qt_icon,
 )
-from ayon_core.pipeline.publish.report import (
-    PublishReport,
-    PublishPluginReportInfo,
-)
+from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
 
@@ -30,6 +30,12 @@ from .model import (
     PluginsModel,
     PluginProxyModel
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.publish.report import (
+        ReportLog,
+        PublishPluginReportInfo,
+    )
 
 FILEPATH_ROLE = QtCore.Qt.UserRole + 1
 TRACEBACK_ROLE = QtCore.Qt.UserRole + 2
@@ -323,6 +329,7 @@ class DetailsWidget(QtWidgets.QWidget):
         layout.addWidget(output_widget)
 
         self._is_active: bool = True
+        self._show_timestamp: bool = True
         self._need_refresh: bool = False
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
@@ -373,11 +380,20 @@ class DetailsWidget(QtWidgets.QWidget):
 
         self._set_logs(filtered_logs)
 
-    def _set_logs(self, logs):
+    def _set_logs(self, logs: list[ReportLog]) -> None:
         lines = []
         for log in logs:
+            timestamp = ""
+            if self._show_timestamp and log.created is not None:
+                timestamp = (
+                    arrow
+                    .get(log.created)
+                    .to("local")
+                    .format("YYYY/MM/DD HH:mm:ss ")
+                )
+
             if log.type == "record":
-                message = f"{log.levelname}: {log.message}"
+                message = f"{timestamp}{log.levelname}: {log.message}"
 
                 lines.append(message)
                 exc_info = log.exc_info
@@ -385,7 +401,7 @@ class DetailsWidget(QtWidgets.QWidget):
                     lines.append(exc_info)
 
             elif log.type == "error":
-                lines.append(log.traceback)
+                lines.append(f"{timestamp} TRACEBACK:\n{log.traceback}")
 
             else:
                 print(log.type)
