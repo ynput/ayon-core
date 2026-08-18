@@ -34,6 +34,7 @@ from ..searchable_combo_box import AYSearchableComboBox
 from ..label import AYLabel
 from ..layouts import AYVBoxLayout, AYHBoxLayout
 from ..line_edit import AYLineEdit
+from ..user_image import AYUserImage
 from .data_models import Scope, View, Visibility
 
 log = logging.getLogger(__name__)
@@ -155,13 +156,22 @@ class AYViewEditor(QDialog):
         self._user_selector.item_selected.connect(self._on_user_selected)
 
         # Owner row
+        self._owner_avatar = AYUserImage(
+            name="",
+            full_name="",
+            size=24,
+            outline=False,
+        )
+        self._owner_avatar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._owner_label = AYLabel("-")
+        
         owner_row = AYContainer(
             layout=AYContainer.Layout.HBox,
-            layout_spacing=4,
+            layout_spacing=8,
             layout_margin=0,
         )
-        owner_row.add_widget(self._owner_label)
+        owner_row.add_widget(self._owner_avatar, stretch=0)
+        owner_row.add_widget(self._owner_label, stretch=0)
         owner_row.addStretch()
         owner_row.add_widget(AYLabel("Owner", dim=True))
         owner_row.layout().addSpacerItem(
@@ -184,10 +194,12 @@ class AYViewEditor(QDialog):
 
         everyone_row = AYContainer(
             layout=AYContainer.Layout.HBox,
-            layout_spacing=4,
+            layout_spacing=8,
             layout_margin=0,
         )
-        everyone_row.add_widget(AYLabel("Everyone"))
+        everyone_icon = AYLabel(icon="groups", icon_size=24)
+        everyone_row.add_widget(everyone_icon, stretch=0)
+        everyone_row.add_widget(AYLabel("Everyone"), stretch=0)
         everyone_row.addStretch()
         everyone_row.add_widget(self._everyone_combo)
         everyone_row.layout().addSpacerItem(
@@ -266,6 +278,11 @@ class AYViewEditor(QDialog):
         # Update Owner
         owner_name = self._view.owner or self._current_user or "-"
         self._owner_label.setText(owner_name)
+        
+        # Recreate owner avatar with updated name
+        self._owner_avatar._name = owner_name
+        self._owner_avatar._full_name = owner_name
+        self._owner_avatar.set_image()
 
         # Update Everyone
         everyone_level = self._access_dict.get("__everyone__", 0)
@@ -280,7 +297,6 @@ class AYViewEditor(QDialog):
         self._update_user_dropdown()
 
     def _update_user_dropdown(self) -> None:
-        #TODO: update replace user: and group: with avatars
         """Update dropdown to show only users/groups not yet added."""
         added_keys = set(self._access_dict.keys())
 
@@ -402,19 +418,38 @@ class AYViewEditor(QDialog):
                 continue
             self._render_access_row(key, int(self._access_dict[key]))
 
-    @staticmethod
-    def _build_access_list_row(row, entry: dict) -> None:
+    def _build_access_list_row(self, row, entry: dict) -> None:
         """Build custom identifier widgets for a dropdown row.
 
         This row builder is used with :meth:`AYSearchableComboBox.set_items_with_builder`
-        to add identifier labels and spacers to user/group rows.
+        to add avatar and identifier labels to user/group rows.
 
         Args:
             row: The _ItemRow widget to customize.
             entry: The item dict containing metadata.
         """
+        entry_type = entry.get("type", "")
+        identifier = entry.get("identifier", "")
+        label = entry.get("label", "")
+
+        # Insert avatar/icon at the beginning for users and groups
+        if entry_type == "user":
+            avatar = AYUserImage(
+                name=identifier,
+                full_name=label,
+                size=20,
+                outline=False,
+            )
+            avatar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            row.layout().insertWidget(0, avatar)
+        elif entry_type == "group":
+            group_icon = AYLabel(
+                icon="shield_person",
+                icon_size=20,
+            )
+            row.layout().insertWidget(0, group_icon)
+
         if "identifier" in entry:
-            identifier = entry.get("identifier", "")
             # Add spacer item with stretch
             row.layout().addSpacerItem(
                 QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -426,7 +461,7 @@ class AYViewEditor(QDialog):
     def _build_access_row_label(self, key: str) -> AYContainer | AYLabel:
         """Build formatted label widget for access control row.
 
-        For users: Shows "Full Name" with "(username)" in dim text
+        For users: Shows avatar with "Full Name" and "(username)" in dim text
         For groups: Shows capitalized group name
 
         Args:
@@ -435,7 +470,7 @@ class AYViewEditor(QDialog):
         Returns:
             AYContainer with formatted widgets for users, or AYLabel for groups
         """
-        #TODO: Fix spacing in label_container to match it with webUI
+        #TODO: Fix spacing in row container to match it with webUI
         if key.startswith("user:"):
             # Extract username from key
             user_name = key.replace("user:", "")
@@ -445,21 +480,38 @@ class AYViewEditor(QDialog):
                 if user.get("name") == user_name:
                     user_full_name = user.get("fullName", "") or user_name
 
-                    # Create container: "Full Name (username)"
-                    label_container = AYContainer(
+                    # Create container with avatar and text
+                    user_row_container = AYContainer(
                         layout=AYContainer.Layout.HBox,
-                        layout_spacing=0,
+                        layout_spacing=8,
                         layout_margin=0,
                     )
-                    label_container.add_widget(
+
+                    # Add Avatar
+                    avatar = AYUserImage(
+                        name=user_name,
+                        full_name=user_full_name,
+                        size=24,
+                        outline=False,
+                        parent=user_row_container,
+                    )
+                    avatar.setSizePolicy(
+                        QSizePolicy.Fixed,
+                        QSizePolicy.Fixed,
+                    )
+                    user_row_container.add_widget(avatar, stretch=0)
+
+                    # Add full name and username
+                    user_row_container.add_widget(
                         AYLabel(user_full_name),
                         stretch=0
                     )
-                    label_container.add_widget(
+                    user_row_container.add_widget(
                         AYLabel(f"({user_name})", dim=True),
                         stretch=0
                     )
-                    return label_container
+
+                    return user_row_container
 
             # Fallback if user not found
             return AYLabel(key)
@@ -467,7 +519,28 @@ class AYViewEditor(QDialog):
         elif key.startswith("group:"):
             # Extract group name from key and capitalize
             group_name = key.replace("group:", "")
-            return AYLabel(group_name.capitalize())
+            
+            # Create container with groups icon and name
+            group_row_container = AYContainer(
+                layout=AYContainer.Layout.HBox,
+                layout_spacing=0,
+                layout_margin=0,
+            )
+            
+            # Add groups icon
+            group_icon = AYLabel(
+                icon="shield_person",
+                icon_size=24,
+            )
+            group_row_container.add_widget(group_icon, stretch=0)
+            
+            # Add group name
+            group_row_container.add_widget(
+                AYLabel(group_name.capitalize()),
+                stretch=0
+            )
+
+            return group_row_container
 
         else:
             # Fallback for other key types
