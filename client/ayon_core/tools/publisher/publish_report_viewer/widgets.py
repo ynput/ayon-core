@@ -240,12 +240,13 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         self._widgets_by_filepath[filepath] = (widget, index)
 
 
-class ZoomPlainText(QtWidgets.QPlainTextEdit):
+class ZoomPlainText(QtWidgets.QTextEdit):
     min_point_size = 1.0
     max_point_size = 200.0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setAcceptRichText(False)
 
         anim_timer = QtCore.QTimer()
         anim_timer.setInterval(20)
@@ -401,13 +402,20 @@ class DetailsWidget(QtWidgets.QWidget):
                     lines.append(exc_info)
 
             elif log.type == "error":
-                lines.append(f"{timestamp} TRACEBACK:\n{log.traceback}")
+                lines.append(f"{timestamp}TRACEBACK:\n{log.traceback}")
 
             else:
                 print(log.type)
 
         text = "\n".join(lines)
         self._output_widget.setPlainText(text)
+        if self._show_timestamp:
+            cursor = QtGui.QTextCursor(self._output_widget.document())
+            cursor.select(QtGui.QTextCursor.Document)
+            fmt = QtGui.QTextBlockFormat()
+            fmt.setLeftMargin(20)
+            fmt.setTextIndent(-20)
+            cursor.mergeBlockFormat(fmt)
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
