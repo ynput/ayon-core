@@ -358,9 +358,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # Define contribution
         in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
-            variant_default_policy = attr_values.get(
-                "contribution_variant_default_policy"
-            )
+            variant_default_policy = attr_values[
+                "contribution_variant_default_policy"]
 
             contribution = VariantContribution(
                 instance=instance,
