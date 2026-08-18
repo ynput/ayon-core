@@ -38,7 +38,7 @@ class _DummyPathTemplate(str):
 
     def format_strict(self, data: dict) -> _DummyFormattedTemplate:
         return _DummyFormattedTemplate(
-            self.format(**data),
+            self.format_map(data),
             {
                 key: value
                 for key, value in data.items()

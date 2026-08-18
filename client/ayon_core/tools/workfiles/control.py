@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import typing
 from typing import Optional
 
 import ayon_api
@@ -24,6 +25,9 @@ from .abstract import (
     PublishedWorkfileWrap,
 )
 from .models import SelectionModel, WorkfilesModel
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()
 
@@ -299,6 +303,9 @@ class BaseWorkfileController(
     # Current context
     def get_host_name(self):
         return self._host.name
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
 
     def get_current_project_name(self):
         return self._current_project_name
