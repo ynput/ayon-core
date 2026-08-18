@@ -575,6 +575,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
 
+        # Convert legacy attribute value
         if "contribution_variant_is_default" in publish_attributes:
             contribution_variant_is_default = publish_attributes.pop(
                 "contribution_variant_is_default"
