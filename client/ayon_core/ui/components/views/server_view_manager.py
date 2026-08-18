@@ -78,6 +78,7 @@ class ServerViewManager(ViewManager):
         # delete_view so it doesn't require a populated per-type cache).
         self._id_to_view_attributes: dict[str, tuple[str, Scope]] = {}
         self._powerpack_version: str | None = None
+        self._powerpack_resolved: bool = False
 
     # ------------------------------------------------------------------
     # Project scope
@@ -498,7 +499,7 @@ class ServerViewManager(ViewManager):
 
     def _get_powerpack_version(self) -> str | None:
         """Return powerpack version from the current session bundle."""
-        if self._powerpack_version:
+        if self._powerpack_resolved:
             return self._powerpack_version
 
         try:
@@ -507,6 +508,7 @@ class ServerViewManager(ViewManager):
             log.exception("Failed to query bundle information")
             return None
 
+        self._powerpack_resolved = True
         for addon in bundle_info.addons:
             if addon.name != _POWERPACK_ADDON_NAME:
                 continue
