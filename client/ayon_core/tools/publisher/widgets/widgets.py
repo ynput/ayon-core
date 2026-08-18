@@ -1,5 +1,8 @@
-import os
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 import functools
+import os
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
@@ -21,6 +24,13 @@ from .icons import (
 )
 
 FA_PREFIXES = ["", "fa.", "fa5.", "fa5b.", "fa5s.", "ei.", "mdi."]
+
+
+@dataclass
+class InstancesSelection:
+    instance_ids: set[str] = field(default_factory=set)
+    context_selected: bool = False
+    convertor_identifiers: set[str] = field(default_factory=set)
 
 
 def parse_icon_def(
@@ -335,13 +345,13 @@ class AbstractInstanceView(QtWidgets.QWidget):
         """
         self.refreshed = refreshed
 
-    def refresh(self):
+    def refresh(self) -> None:
         """Refresh instances in the view from current `CreatedContext`."""
-        raise NotImplementedError((
-            "{} Method 'refresh' is not implemented."
-        ).format(self.__class__.__name__))
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'refresh' is not implemented."
+        )
 
-    def has_items(self):
+    def has_items(self) -> bool:
         """View has at least one item.
 
         This is more a question for controller but is called from widget
@@ -349,53 +359,55 @@ class AbstractInstanceView(QtWidgets.QWidget):
 
         Returns:
             bool: There is at least one instance or conversion item.
+
         """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'has_items'"
+            " is not implemented."
+        )
 
-        raise NotImplementedError((
-            "{} Method 'has_items' is not implemented."
-        ).format(self.__class__.__name__))
-
-    def get_selected_items(self):
+    def get_selected_items(self) -> InstancesSelection:
         """Selected instances required for callbacks.
 
         Example: When delete button is clicked to know what should be deleted.
+
         """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'get_selected_items'"
+            " is not implemented."
+        )
 
-        raise NotImplementedError((
-            "{} Method 'get_selected_items' is not implemented."
-        ).format(self.__class__.__name__))
-
-    def set_selected_items(
-        self, instance_ids, context_selected, convertor_identifiers
-    ):
+    def set_selected_items(self, selection: InstancesSelection) -> None:
         """Change selection for instances and context.
 
         Used to applying selection from one view to other.
 
         Args:
-            instance_ids (List[str]): Selected instance ids.
-            context_selected (bool): Context is selected.
-            convertor_identifiers (List[str]): Selected convertor identifiers.
+            selection (InstancesSelection): Selected instances and context.
 
         """
-        raise NotImplementedError((
-            "{} Method 'set_selected_items' is not implemented."
-        ).format(self.__class__.__name__))
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'set_selected_items'"
+            " is not implemented."
+        )
 
-    def set_active_toggle_enabled(self, enabled):
+    def set_active_toggle_enabled(self, enabled: bool) -> None:
         """Instances are disabled for changing enabled state.
 
         Active state should stay the same until is "unset".
 
         Args:
             enabled (bool): Instance state can be changed.
+
         """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'set_active_toggle_enabled'"
+            " is not implemented."
+        )
 
-        raise NotImplementedError((
-            "{} Method 'set_active_toggle_enabled' is not implemented."
-        ).format(self.__class__.__name__))
-
-    def refresh_instance_states(self, instance_ids=None):
+    def refresh_instance_states(
+        self, instance_ids: set[str] | None = None
+    ) -> None:
         """Refresh instance states.
 
         Args:

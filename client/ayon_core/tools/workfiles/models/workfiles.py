@@ -216,7 +216,7 @@ class WorkfilesModel:
             anatomy=self._controller.project_anatomy,
             project_settings=self._controller.project_settings,
             rootless_path=rootless_path,
-            representation_path=representation_filepath,
+            src_representation_path=representation_filepath,
             workfile_entities=self.get_workfile_entities(task_id),
             src_anatomy=self._controller.project_anatomy,
         )
