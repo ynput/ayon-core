@@ -317,6 +317,98 @@ class ZoomPlainText(QtWidgets.QTextEdit):
             self._scheduled_scalings += 1
 
 
+class _LogFiller:
+    _color_mapping = (
+        ("TRACEBACK", QtGui.QColor(255, 74, 74)),
+        ("CRITICAL", QtGui.QColor(255, 79, 117)),
+        ("ERROR", QtGui.QColor(255, 77, 88)),
+        ("WARNING", QtGui.QColor(255, 186, 102)),
+        ("INFO", QtGui.QColor(102, 171, 255)),
+        ("DEBUG", QtGui.QColor(127, 140, 141)),
+        ("", QtGui.QColor(127, 140, 141)),
+        ("NOTSET", QtGui.QColor(127, 140, 141)),
+    )
+
+    def __init__(
+        self,
+        output_widget: QtWidgets.QTextEdit,
+        logs: list[ReportLog],
+        show_timestamp: bool,
+    ) -> None:
+        self.output_widget = output_widget
+        self.show_timestamp = show_timestamp
+        self.logs = logs
+        self.first_line = True
+        self.cursor = None
+        default_format = QtGui.QTextCharFormat(
+            self.output_widget.currentCharFormat()
+        )
+        prefix_fmts = {}
+        for key, color in self._color_mapping:
+            fmt = QtGui.QTextCharFormat(default_format)
+            fmt.setForeground(color)
+            prefix_fmts[key] = fmt
+
+        self.default_fmt = default_format
+        self.prefix_fmts = prefix_fmts
+
+    def _add_entry(
+        self, message: str, timestamp: str = "", log_level: str = ""
+    ) -> None:
+        if not self.first_line:
+            self.cursor.insertBlock()
+        self.first_line = False
+        if timestamp or log_level:
+            fmt = self.prefix_fmts.get(log_level, self.default_fmt)
+            self.cursor.insertText(
+                f"{timestamp}{log_level}: ", fmt
+            )
+        self.cursor.insertText(message, self.default_fmt)
+
+    def fill(self) -> None:
+        self.output_widget.clear()
+        # Create copy of a document to avoid live updates in UI
+        src_doc = self.output_widget.document()
+        document = QtGui.QTextDocument()
+        document.setDefaultStyleSheet(src_doc.defaultStyleSheet())
+        document.setDefaultFont(src_doc.defaultFont())
+        document.setDefaultTextOption(
+            QtGui.QTextOption(src_doc.defaultTextOption())
+        )
+        self.cursor = QtGui.QTextCursor(document)
+
+        for log in self.logs:
+            timestamp = ""
+            if self.show_timestamp and log.created is not None:
+                timestamp = (
+                    arrow
+                    .get(log.created)
+                    .to("local")
+                    .format("YYYY/MM/DD HH:mm:ss ")
+                )
+
+            if log.type == "record":
+                self._add_entry(log.message, timestamp, log.levelname)
+                exc_info = log.exc_info
+                if exc_info:
+                    self._add_entry(exc_info)
+
+            elif log.type == "error":
+                self._add_entry(
+                    log.traceback, timestamp, "TRACEBACK"
+                )
+
+            else:
+                print(log.type)
+
+        self.cursor.select(QtGui.QTextCursor.Document)
+        fmt = QtGui.QTextBlockFormat()
+        fmt.setLeftMargin(20)
+        fmt.setTextIndent(-20)
+        self.cursor.mergeBlockFormat(fmt)
+        self.output_widget.setDocument(document)
+
+
 class DetailsWidget(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
@@ -399,58 +491,11 @@ class DetailsWidget(QtWidgets.QWidget):
             )
         ]
 
-        self._set_logs(filtered_logs)
-
-    def _set_logs(self, logs: list[ReportLog]) -> None:
         show_timestamp = self._timestamp_check.isChecked()
-
-        self._output_widget.clear()
-        # Create copy of a document to avoid live updates in UI
-        document = self._output_widget.document().clone()
-        cursor = QtGui.QTextCursor(document)
-        default_fmt = self._output_widget.currentCharFormat()
-        prefix_fmt = QtGui.QTextCharFormat(default_fmt)
-        prefix_fmt.setForeground(QtGui.QColor("#7F8C8D"))
-
-        def _add_entry(idx, entry_prefix, entry):
-            if idx > 0:
-                cursor.insertBlock()
-            if entry_prefix:
-                cursor.insertText(entry_prefix, prefix_fmt)
-            cursor.insertText(entry, default_fmt)
-
-        for idx, log in enumerate(logs):
-            timestamp = ""
-            if show_timestamp and log.created is not None:
-                timestamp = (
-                    arrow
-                    .get(log.created)
-                    .to("local")
-                    .format("YYYY/MM/DD HH:mm:ss ")
-                )
-
-            if log.type == "record":
-                _add_entry(idx, f"{timestamp}{log.levelname}: ", log.message)
-                exc_info = log.exc_info
-                if exc_info:
-                    _add_entry(idx, f"{timestamp}", exc_info)
-
-            elif log.type == "error":
-                _add_entry(idx, f"{timestamp}TRACEBACK:\n", log.traceback)
-
-            else:
-                print(log.type)
-
-        cursor.select(QtGui.QTextCursor.Document)
-        fmt = QtGui.QTextBlockFormat()
-        if show_timestamp:
-            fmt.setLeftMargin(20)
-            fmt.setTextIndent(-20)
-        else:
-            fmt.setLeftMargin(0)
-            fmt.setTextIndent(0)
-        cursor.mergeBlockFormat(fmt)
-        self._output_widget.setDocument(document)
+        filler = _LogFiller(
+            self._output_widget, filtered_logs, show_timestamp
+        )
+        filler.fill()
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
