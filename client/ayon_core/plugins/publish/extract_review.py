@@ -1338,6 +1338,23 @@ class ExtractReview(pyblish.api.InstancePlugin):
             audio_out_args.append("-filter_complex amerge")
             audio_out_args.append("-ac {}".format(len(audio_inputs)))
 
+        # Resample audio to ensure block duration from AAC
+        # encoder never exceeds one video frame duration.
+        # Pick the lowest video standard rate satisfying this constraint.
+        # For non-AAC codecs, this has no negative effect.
+
+        # TODO: Replace with once https://trac.ffmpeg.org/ticket/11668 is fixed
+        # audio_filters.append("apad")
+        # audio_out_args.append("-shortest")
+
+        standard_audio_rates = (48000, 96000, 192000)
+        min_audio_rate = 1024 * temp_data.fps  # 1 AAC block = 1024 samples
+        sample_rate = next(
+            (rate for rate in standard_audio_rates if rate > min_audio_rate),
+            standard_audio_rates[-1]
+        )
+        audio_out_args.append("-ar {}".format(sample_rate))
+
         return audio_in_args, audio_filters, audio_out_args
 
     def get_letterbox_filters(
