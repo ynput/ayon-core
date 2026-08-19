@@ -287,6 +287,30 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
             }
 
 
+def _convert_usd_contribution_variant_default_policy_1_9_11(overrides):
+    """Convert the USD contribution default boolean to a policy enum."""
+    profiles = (
+        overrides
+        .get("publish", {})
+        .get("CollectUSDLayerContributions", {})
+        .get("profiles")
+    )
+    if not profiles:
+        return
+
+    for profile in profiles:
+        if "contribution_variant_default_policy" in profile:
+            continue
+
+        if "contribution_variant_is_default" not in profile:
+            continue
+
+        is_default = profile.pop("contribution_variant_is_default")
+        profile["contribution_variant_default_policy"] = (
+            "always" if is_default else "if_not_set"
+        )
+
+
 def _convert_usd_contribution_uri_modes_1_9_11(
     publish_overrides,
     version: VersionInfo
@@ -316,6 +340,7 @@ def _convert_publish_plugins(overrides, version: VersionInfo):
         return
     _convert_validate_version_0_3_3(overrides["publish"])
     _convert_oiio_transcode_0_4_5(overrides["publish"])
+    _convert_usd_contribution_variant_default_policy_1_9_11(overrides)
     _convert_usd_contribution_uri_modes_1_9_11(overrides["publish"], version)
 
 

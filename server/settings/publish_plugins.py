@@ -26,6 +26,21 @@ except ImportError:
     StatusesEnumResolver = None
 
 
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_not_set": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set",
+}
+
+
+def contribution_variant_default_policy_enum():
+    """Return the available variant default policies for the settings UI."""
+    return [
+        {"value": value, "label": label}
+        for value, label in CONTRIBUTION_VARIANT_DEFAULT_POLICY.items()
+    ]
+
+
 async def _get_anatomy(project_name: str | None = None) -> Anatomy:
     if project_name:
         return await get_project_anatomy(project_name)
@@ -261,16 +276,19 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             "The default variant name for instances matching this profile."
         ),
     )
-    contribution_variant_is_default: bool = SettingsField(
-        False,
+    contribution_variant_default_policy: str = SettingsField(
+        "if_not_set",
         title="Set as default variant selection",
+        enum_resolver=contribution_variant_default_policy_enum,
         description=(
-            "Whether to set this instance's variant name as the "
-            "default selected variant name for the variant set.\n"
-            "It is always expected to be enabled for only one "
-            "variant name in the variant set.\n"
-            "The behavior is unpredictable if multiple instances "
-            "for the same variant set have this enabled."
+            "Controls whether this contribution's variant name is authored "
+            "as the selected default for the variant set. Use "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' to leave the "
+            "variant selection unchanged, "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' to set "
+            "it only when no selection exists, or "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' to always "
+            "override the current selection."
         ),
     )
 
@@ -1675,7 +1693,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["look"],
@@ -1687,7 +1706,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["groom"],
@@ -1699,7 +1719,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["rig"],
@@ -1711,7 +1732,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["usd"],
@@ -1723,7 +1745,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
         ]
     },
