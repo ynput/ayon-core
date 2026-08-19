@@ -532,9 +532,11 @@ class ReviewTable(AYContainer):
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
         """
-        extra: dict[str, Any] = {"gridHeight": int(self._card_view.card_width),
-                                 "displayType": self._display_type.display_type,
-                                 "featuredVersionOrder": self._controller.featured_version_order}
+        extra: dict[str, Any] = {
+            "gridHeight": int(self._card_view.card_width),
+            "displayType": self._display_type.display_type,
+            "featuredVersionOrder": self._controller.featured_version_order
+        }
         return extra
 
     def _on_view_applied(self, view: object) -> None:
