@@ -26,6 +26,9 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 
+# Default access level used when a payload does not specify one.
+DEFAULT_ACCESS_LEVEL: int = 30
+
 # Settings keys that are first-class fields on ViewSettings.
 # Any other key found in the payload's "settings" dict is round-tripped
 # inside ``ViewSettings.extra`` so newer app versions can still emit
@@ -371,13 +374,6 @@ class ViewSettings:
 # ---------------------------------------------------------------------------
 # View
 # ---------------------------------------------------------------------------
-
-VIEWER_ACCESS_LEVEL: int = 10
-EDITOR_ACCESS_LEVEL: int = 20
-ADMIN_ACCESS_LEVEL: int = 30
-
-# Default access level used when a payload does not specify one.
-DEFAULT_ACCESS_LEVEL: int = ADMIN_ACCESS_LEVEL
 
 
 @dataclass
