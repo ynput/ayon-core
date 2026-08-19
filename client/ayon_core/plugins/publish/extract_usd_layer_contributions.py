@@ -161,7 +161,11 @@ def get_instance_uri_path(
     representation_name: str = "usd"
 
     # Handle AYON entity URI modes
-    if uri_mode != "filepath":
+    if uri_mode in {
+        "ayon_entity_uri",
+        "ayon_entity_uri_latest",
+        "ayon_entity_uri_latest_approved",
+    }:
         uri_version: int | str = version
         if uri_mode == "ayon_entity_uri_latest":
             uri_version = "latest"
