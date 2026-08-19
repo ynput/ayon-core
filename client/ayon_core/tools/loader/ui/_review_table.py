@@ -205,10 +205,7 @@ class ReviewTable(AYContainer):
             self._on_view_selector_error
         )
         self._view_selector.default_view_message.connect(
-            lambda message, success: self.default_view_message.emit(
-                message,
-                success,
-            )
+            self.default_view_message
         )
         self._display_type.display_type_changed.connect(
             self._view_selector.notify_view_modified

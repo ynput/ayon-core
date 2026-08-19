@@ -76,10 +76,7 @@ class ReviewsWidget(AYContainer):
         self._inspector = ReviewInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
-            lambda message, success: self.default_view_message.emit(
-                message,
-                success,
-            )
+            self.default_view_message
         )
         self._inspector.set_view(self._table.active_view)
         self._build()
