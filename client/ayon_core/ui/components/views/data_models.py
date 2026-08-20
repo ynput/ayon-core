@@ -397,8 +397,8 @@ class View:
         access_level: Required access level (0–30, step 10) for editing
             public views.  Components store the value and gate UI via
             :meth:`can_edit`.
-        access: Free-form per-user/per-group access dict, preserved
-            verbatim for the consumer to interpret.
+        access: Per-user/per-group access dict mapping names to
+            integer access levels.
     """
 
     id: str = ""
@@ -411,7 +411,7 @@ class View:
     working: bool = False
     position: int = 0
     access_level: int = DEFAULT_ACCESS_LEVEL
-    access: dict[str, Any] = field(default_factory=dict)
+    access: dict[str, int] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod

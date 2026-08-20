@@ -477,7 +477,7 @@ class ServerViewManager(ViewManager):
         view_list.sort(key=lambda v: (v.position, v.label.lower()))
 
     @staticmethod
-    def _normalize_access_payload(raw_access: Any) -> dict[str, int]:
+    def _normalize_access_payload(raw_access: dict[str, Any]) -> dict[str, int]:
         """Return a normalized ``access`` payload with integer values."""
         if not isinstance(raw_access, dict):
             return {}
