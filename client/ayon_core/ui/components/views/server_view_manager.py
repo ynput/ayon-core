@@ -488,8 +488,10 @@ class ServerViewManager(ViewManager):
                 continue
             try:
                 normalized[name] = int(value)
-            except (TypeError, ValueError):
-                continue
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Access value for '{name}' must be an int, got {value!r}"
+                ) from exc
         return normalized
 
     @staticmethod
