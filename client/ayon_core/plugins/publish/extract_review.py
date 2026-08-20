@@ -1304,7 +1304,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            offset_seconds = audio.get("offset", 0)
+            if not audio.get("offset"):
+                self.log.warning(
+                    "Ignored deprecated audio input attribute 'offset'. "
+                    "Use 'offset_in_seconds' instead."
+                )
+
+            offset_seconds = audio.get("offset_in_seconds", 0)
             # Delay audio start to match its timeline position.
             if offset_seconds > 0:
                 # "all=1" applies to every channel (mono, stereo, 5.1…).
