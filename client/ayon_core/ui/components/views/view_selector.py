@@ -295,10 +295,10 @@ class AYViewSelector(AYButtonMenu):
                 and self._view_modified
         )
         variant = AYButton.Variants.Filled\
-            if is_modified else AYButton.Variants.Surface
+            if is_modified else AYButton.Variants.Nav
         btn = AYButton(icon="save",
                        variant=variant,
-                       tooltip="Save view…")
+                       tooltip="Save view settings from current view")
         btn.setFixedSize(24, 24)
         btn.clicked.connect(
             lambda _checked=False, v=view: self._on_view_save_clicked(v)
@@ -318,7 +318,7 @@ class AYViewSelector(AYButtonMenu):
             icon="more_horiz",
             variant=AYButton.Variants.Checked
             if not_modified else AYButton.Variants.Nav_Small,
-            tooltip="Edit view…")
+            tooltip="Edit view")
         btn.setFixedSize(24, 24)
         btn.clicked.connect(lambda _checked=False, v=view: self._on_edit_clicked(v))
         return btn
