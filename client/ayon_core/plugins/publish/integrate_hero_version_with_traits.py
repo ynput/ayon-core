@@ -101,7 +101,9 @@ class IntegrateHeroVersionTraits(
     def apply_settings(cls, settings):
         # Inherit settings from IntegrateHeroVersion so that essentially
         # the enabled state is shared between the two plugins.
-        integrate_hero_settings = settings["publish"]["IntegrateHeroVersion"]
+        integrate_hero_settings = (
+            settings["core"]["publish"]["IntegrateHeroVersion"]
+        )
         for option, value in integrate_hero_settings.items():
             cls.log.debug(
                 "Plugin %s - Attr: %s -> %s",
