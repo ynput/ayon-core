@@ -230,7 +230,7 @@ def _partial_format(
         output = value
         for match in re.findall(r_token, value):
             try:
-                output = re.sub(match, match.format(**data), output)
+                output = re.sub(match, match.format_map(data), output)
             except (KeyError, ValueError, IndexError):
                 continue
     return output

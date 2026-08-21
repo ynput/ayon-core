@@ -361,8 +361,8 @@ class PushToContextController:
             "task": task_name
         })
         try:
-            product_s = template_s.format(**fill_data)
-            product_e = template_e.format(**fill_data)
+            product_s = template_s.format_map(fill_data)
+            product_e = template_e.format_map(fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""
