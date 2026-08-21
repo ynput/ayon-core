@@ -65,7 +65,7 @@ from .lib import (
     get_default_reviewable_layers,
 )
 from .report import PublishReport
-
+from .logic import PublishLogic, PublishActionResult
 from .abstract_expected_files import ExpectedFiles
 from .abstract_collect_render import (
     RenderInstance,
@@ -120,6 +120,9 @@ __all__ = (
     "main_cli_publish",
 
     "PublishReport",
+
+    "PublishLogic",
+    "PublishActionResult",
 
     "ExpectedFiles",
 

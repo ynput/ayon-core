@@ -45,12 +45,14 @@ from .checkbox_handler import (
     CheckboxHandler,
 )
 from .comment_completion import (
+    USER_MENTION_LINK_PATTERN,
     apply_code_block_backgrounds,
     format_comment_on_change,
     on_completer_activated,
     on_completer_key_press,
     on_completer_text_changed,
     setup_user_completer,
+    strip_user_mention_display,
 )
 from .container import AYContainer, AYFrame
 from .gallery_dialog import GalleryDialog
@@ -239,6 +241,9 @@ class AYCommentField(AYTextEdit):
         self._num_lines = num_lines
         self._read_only: bool = read_only
         self._user_list: list[User] = user_list or []
+        self._user_full_name_by_username = {
+            user.name: user.full_name for user in self._user_list
+        }
         self._data = model
         self._bg_color = None
         self._checkbox_handler: CheckboxHandler | None = None
@@ -322,11 +327,32 @@ class AYCommentField(AYTextEdit):
                 self._adjust_height_to_content()
             return
 
-        self.document().setMarkdown(md, MD_DIALECT)
+        display_md = self._inject_user_mention_display(md)
+        self.document().setMarkdown(display_md, MD_DIALECT)
         apply_code_block_backgrounds(self)
 
         if self._read_only:
             self._adjust_height_to_content()
+
+    def _inject_user_mention_display(self, md: str) -> str:
+        """Convert user mention links to plain @mentions.
+
+        Args:
+            md: Markdown text with links like [label](user:id)
+
+        Returns:
+            str: Text with links replaced by @full_name (or the original link
+                if the user is not found).
+        """
+        def repl(match) -> str:
+            username = match.group("username")
+            full_name = self._user_full_name_by_username.get(username)
+            if full_name:
+                return f"@{full_name}"
+            # Fallback: keep the original link if user lookup fails
+            return match.group(0)
+
+        return USER_MENTION_LINK_PATTERN.sub(repl, md)
 
     def _setup_checkbox_handler(self) -> None:
         """Initialize checkbox handler if not already done."""
@@ -353,7 +379,8 @@ class AYCommentField(AYTextEdit):
         """
         if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
             return self._checkbox_handler.to_markdown()
-        return self.document().toMarkdown(MD_DIALECT)
+        rendered_md = self.document().toMarkdown(MD_DIALECT)
+        return strip_user_mention_display(rendered_md, self._user_list)
 
     def _on_text_changed(self) -> None:
         """Handle text changes to show/hide completer."""

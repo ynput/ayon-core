@@ -85,8 +85,7 @@ def pretty_timestamp(t, now=None):
     if isinstance(t, float):
         dt = datetime.fromtimestamp(t)
     else:
-        # Parse the time format as if it is `str` result from
-        # `pyblish.lib.time()` which usually is stored in Avalon database.
+        # Parse the time from datetime format
         try:
             t = time.strptime(t, "%Y%m%dT%H%M%SZ")
         except ValueError as e:

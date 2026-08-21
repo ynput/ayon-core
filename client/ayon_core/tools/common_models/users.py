@@ -1,4 +1,7 @@
-from typing import Optional
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Optional
 
 import ayon_api
 
@@ -7,23 +10,16 @@ from ayon_core.lib import NestedCacheItem, get_ayon_username
 NOT_SET = object()
 
 
+@dataclass
 class UserItem:
-    def __init__(
-        self,
-        username,
-        full_name,
-        email,
-        avatar_url,
-        active,
-    ):
-        self.username = username
-        self.full_name = full_name
-        self.email = email
-        self.avatar_url = avatar_url
-        self.active = active
+    username: str
+    full_name: str | None
+    email: str | None
+    avatar_url: str | None
+    active: bool
 
     @classmethod
-    def from_entity_data(cls, user_data):
+    def from_entity_data(cls, user_data: dict[str, Any]) -> UserItem:
         return cls(
             user_data["name"],
             user_data["attrib"]["fullName"],
@@ -31,6 +27,19 @@ class UserItem:
             user_data["attrib"]["avatarUrl"],
             user_data["active"],
         )
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            username=self.username,
+            full_name=self.full_name,
+            email=self.email,
+            avatar_url=self.avatar_url,
+            active=self.active,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> UserItem:
+        return cls(**data)
 
 
 class UsersModel:

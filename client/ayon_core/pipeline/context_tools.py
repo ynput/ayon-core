@@ -228,7 +228,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
         ) or []
         for path in project_plugins:
             try:
-                path = str(path.format(**os.environ))
+                path = str(path.format_map(os.environ))
             except KeyError:
                 pass
 
@@ -258,7 +258,7 @@ def uninstall_host():
 
     deregister_host()
 
-    log.info("Successfully uninstalled Avalon!")
+    log.info("Successfully uninstalled AYON!")
 
 
 def is_installed():
