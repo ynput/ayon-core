@@ -107,6 +107,13 @@ class IntegrateHeroVersionTraits(
         if not self.is_active(instance.data):
             return
 
+        if not instance.data.get("published_representations"):
+            self.log.debug(
+                "Instance has no published representations. "
+                "Skipping hero version with traits integration."
+            )
+            return
+
         if not has_trait_representations(instance):
             self.log.debug(
                 f"Instance '{instance.name}' has no representations with "
