@@ -1304,7 +1304,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            if not audio.get("offset"):
+            if audio.get("offset"):
                 self.log.warning(
                     "Ignored deprecated audio input attribute 'offset'. "
                     "Use 'offset_in_seconds' instead."
