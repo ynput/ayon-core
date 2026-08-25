@@ -1359,7 +1359,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             (rate for rate in standard_audio_rates if rate > min_audio_rate),
             standard_audio_rates[-1]
         )
-        audio_out_args.append("-ar {}".format(sample_rate))
+        audio_out_args.append(f"-ar {sample_rate}")
 
         return audio_in_args, audio_filters, audio_out_args
 
