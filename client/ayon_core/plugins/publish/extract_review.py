@@ -1304,6 +1304,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
+            # 'offset' was set only by maya addon and it used frame offset
+            #     instead of seconds offset. To prevent issues the value is
+            #     ignored and logged as skipped.
             if audio.get("offset"):
                 self.log.warning(
                     "Ignored deprecated audio input attribute 'offset'. "
