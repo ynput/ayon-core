@@ -112,10 +112,10 @@ class Logger:
     # Is static class initialized
     initialized = False
     _init_lock = threading.Lock()
+    _root_logger = None
 
     # Logging level - AYON_LOG_LEVEL
     log_level = None
-    logger_names: set[str] = set()
 
     # Data same for all record documents
     process_data = None
@@ -127,26 +127,17 @@ class Logger:
         if not cls.initialized:
             cls.initialize()
 
-        if not name:
-            name = "__main__"
-        cls.logger_names.add(name)
-        logger = logging.getLogger(name)
-
+        logger = logging.getLogger(name or "__main__")
         logger.setLevel(cls.log_level)
-
-        add_console_handler = True
-
-        for handler in logger.handlers:
-            if isinstance(handler, LogStreamHandler):
-                add_console_handler = False
-
-        if add_console_handler:
-            logger.addHandler(cls._get_console_handler())
-
-        # Do not propagate logs to root logger
-        logger.propagate = False
+        logger.parent = cls._root_logger
 
         return logger
+
+    @classmethod
+    def get_root_logger(cls) -> logging.Logger:
+        if not cls.initialized:
+            cls.initialize()
+        return cls._root_logger
 
     @classmethod
     def _get_console_handler(cls):
@@ -184,6 +175,11 @@ class Logger:
             else:
                 log_level = 20
         cls.log_level = int(log_level)
+        root_logger = logging.getLogger("AYON")
+        root_logger.propagate = False
+        root_logger.setLevel(cls.log_level)
+        root_logger.addHandler(cls._get_console_handler())
+        cls._root_logger = root_logger
 
         # Mark as initialized
         cls.initialized = True
