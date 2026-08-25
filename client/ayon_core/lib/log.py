@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import os
-import sys
+import copy
 import getpass
 import logging
+import os
 import platform
 import socket
+import sys
 import time
 import threading
-import copy
 import warnings
 
 from . import Terminal
