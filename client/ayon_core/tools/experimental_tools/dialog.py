@@ -58,19 +58,12 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
         content_layout = QtWidgets.QVBoxLayout()
         content_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Separator line
-        separator_widget = QtWidgets.QWidget(self)
-        separator_widget.setObjectName("Separator")
-        separator_widget.setMinimumHeight(2)
-        separator_widget.setMaximumHeight(2)
-
         tool_btns_widget = QtWidgets.QWidget(self)
 
         tool_btns_layout = QtWidgets.QVBoxLayout(tool_btns_widget)
         tool_btns_layout.setContentsMargins(0, 0, 0, 0)
         tool_btns_layout.addLayout(content_layout)
         tool_btns_layout.addStretch(1)
-        tool_btns_layout.addWidget(separator_widget, 0)
 
         experimental_tools = ExperimentalTools(
             parent_widget=parent, refresh=False
