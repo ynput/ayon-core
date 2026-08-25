@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import getpass
@@ -113,6 +115,7 @@ class Logger:
 
     # Logging level - AYON_LOG_LEVEL
     log_level = None
+    logger_names: set[str] = set()
 
     # Data same for all record documents
     process_data = None
@@ -124,7 +127,10 @@ class Logger:
         if not cls.initialized:
             cls.initialize()
 
-        logger = logging.getLogger(name or "__main__")
+        if not name:
+            name = "__main__"
+        cls.logger_names.add(name)
+        logger = logging.getLogger(name)
 
         logger.setLevel(cls.log_level)
 
