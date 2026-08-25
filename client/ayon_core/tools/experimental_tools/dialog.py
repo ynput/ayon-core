@@ -29,7 +29,7 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
         self.setWindowTitle("AYON Experimental tools")
         icon = QtGui.QIcon(app_icon_path())
         self.setWindowIcon(icon)
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(220)
         self.setStyleSheet(load_stylesheet())
 
         # Widgets for cases there are not available experimental tools
