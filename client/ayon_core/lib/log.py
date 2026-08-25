@@ -9,6 +9,7 @@ import socket
 import time
 import threading
 import copy
+import warnings
 
 from . import Terminal
 
@@ -93,6 +94,19 @@ class LogFormatter(logging.Formatter):
         return out
 
 
+def _deprecated_getter(func):
+    def _get_logger_deprecate(cls, name: str | None = None) -> logging.Logger:
+        if name is None:
+            warnings.warn(
+                "DEPRECATION: 'Logger.get_logger' without passed name is"
+                " deprecated and will be removed in future versions.",
+                stacklevel=2,
+            )
+            name = "__main__"
+        return func(cls, name)
+    return _get_logger_deprecate
+
+
 class Logger:
     DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
     DBG = "  - { %(name)s }: [ %(message)s ] "
@@ -123,7 +137,8 @@ class Logger:
     _process_name = None
 
     @classmethod
-    def get_logger(cls, name=None):
+    @_deprecated_getter
+    def get_logger(cls, name: str) -> logging.Logger:
         if not cls.initialized:
             cls.initialize()
 
