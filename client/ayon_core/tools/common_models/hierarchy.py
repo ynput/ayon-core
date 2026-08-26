@@ -50,6 +50,35 @@ class FolderItem:
     folder_type: str
     label: str
 
+    def to_data(self) -> dict[str, str | None]:
+        """Converts folder item to data.
+
+        Returns:
+            dict[str, str | None]: Folder item data.
+
+        """
+        return dict(
+            entity_id=self.entity_id,
+            parent_id=self.parent_id,
+            name=self.name,
+            path=self.path,
+            folder_type=self.folder_type,
+            label=self.label,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, str | None]) -> FolderItem:
+        """Re-creates folder item from data.
+
+        Args:
+            data (dict[str, str | None]): Folder item data.
+
+        Returns:
+            FolderItem: Folder item.
+
+        """
+        return cls(**data)
+
     @classmethod
     def from_hierarchy_item(cls, item: dict[str, Any]) -> FolderItem:
         """Creates folder item from hierarchy item.
@@ -83,35 +112,6 @@ class FolderItem:
             folder_type=entity["folderType"],
             label=entity["label"] or name,
         )
-
-    def to_data(self) -> dict[str, str | None]:
-        """Converts folder item to data.
-
-        Returns:
-            dict[str, str | None]: Folder item data.
-
-        """
-        return dict(
-            entity_id=self.entity_id,
-            parent_id=self.parent_id,
-            name=self.name,
-            path=self.path,
-            folder_type=self.folder_type,
-            label=self.label,
-        )
-
-    @classmethod
-    def from_data(cls, data: dict[str, str | None]) -> FolderItem:
-        """Re-creates folder item from data.
-
-        Args:
-            data (dict[str, str | None]): Folder item data.
-
-        Returns:
-            FolderItem: Folder item.
-
-        """
-        return cls(**data)
 
 
 @dataclass
