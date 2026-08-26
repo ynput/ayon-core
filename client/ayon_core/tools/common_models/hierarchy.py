@@ -34,7 +34,7 @@ class FolderItem:
     Folder can be a child of another folder or a project.
 
     Attributes:
-        entity_id (str): Folder id.
+        folder_id (str): Folder id.
         parent_id (str | None): Parent folder id. If 'None' then project
             is parent.
         name (str): Name of folder.
@@ -43,12 +43,17 @@ class FolderItem:
         label (str): Folder label.
 
     """
-    entity_id: str
+    folder_id: str
     parent_id: str | None
     name: str
     path: str
     folder_type: str
     label: str
+
+    @property
+    def entity_id(self) -> str:
+        """Alias for folder_id."""
+        return self.folder_id
 
     @classmethod
     def from_hierarchy_item(cls, item: dict[str, Any]) -> FolderItem:
@@ -64,7 +69,7 @@ class FolderItem:
         path_parts.insert(0, "")
         path = "/".join(path_parts)
         return FolderItem(
-            entity_id=item["id"],
+            folder_id=item["id"],
             parent_id=item["parentId"],
             name=name,
             path=path,
@@ -76,7 +81,7 @@ class FolderItem:
     def from_entity(cls, entity: dict[str, Any]) -> FolderItem:
         name = entity["name"]
         return FolderItem(
-            entity_id=entity["id"],
+            folder_id=entity["id"],
             parent_id=entity["parentId"],
             name=name,
             path=entity["path"],
@@ -92,7 +97,7 @@ class FolderItem:
 
         """
         return dict(
-            entity_id=self.entity_id,
+            folder_id=self.folder_id,
             parent_id=self.parent_id,
             name=self.name,
             path=self.path,
