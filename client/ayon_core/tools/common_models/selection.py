@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from typing import Any
+
+
 class _ExampleController:
     def emit_event(self, topic, data, **kwargs):
         pass
@@ -25,50 +30,50 @@ class HierarchyExpectedSelection:
         Require '_ExampleController' as abstraction?
 
     Args:
-        controller (Any): Controller object. ('_ExampleController')
+        controller (object): Controller object. ('_ExampleController')
         handle_project (bool): Project can be considered as can have expected
             selection.
         handle_folder (bool): Folder can be considered as can have expected
             selection.
         handle_task (bool): Task can be considered as can have expected
             selection.
-    """
 
+    """
     def __init__(
         self,
         controller,
-        handle_project=True,
-        handle_folder=True,
-        handle_task=True
-    ):
-        self._project_name = None
-        self._folder_id = None
-        self._task_name = None
+        handle_project: bool = True,
+        handle_folder: bool = True,
+        handle_task: bool = True,
+    ) -> None:
+        self._project_name: str | None = None
+        self._folder_id: str | None = None
+        self._task_name: str | None = None
 
-        self._project_selected = True
-        self._folder_selected = True
-        self._task_selected = True
+        self._project_selected: bool = True
+        self._folder_selected: bool = True
+        self._task_selected: bool = True
 
         self._controller = controller
 
-        self._handle_project = handle_project
-        self._handle_folder = handle_folder
-        self._handle_task = handle_task
+        self._handle_project: bool = handle_project
+        self._handle_folder: bool = handle_folder
+        self._handle_task: bool = handle_task
 
     def set_expected_selection(
         self,
-        project_name=None,
-        folder_id=None,
-        task_name=None
-    ):
+        project_name: str | None = None,
+        folder_id: str | None = None,
+        task_name: str | None = None,
+    ) -> None:
         """Sets expected selection.
 
         Args:
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_name (Optional[str]): Task name.
-        """
+            project_name (str | None): Project name.
+            folder_id (str | None): Folder id.
+            task_name (str | None): Task name.
 
+        """
         self._project_name = project_name
         self._folder_id = folder_id
         self._task_name = task_name
@@ -78,7 +83,7 @@ class HierarchyExpectedSelection:
         self._task_selected = not self._handle_task
         self._emit_change()
 
-    def get_expected_selection_data(self):
+    def get_expected_selection_data(self) -> dict[str, dict[str, Any]]:
         project_current = False
         folder_current = False
         task_current = False
@@ -110,47 +115,49 @@ class HierarchyExpectedSelection:
 
         return data
 
-    def is_expected_project_selected(self, project_name):
+    def is_expected_project_selected(self, project_name: str) -> bool:
         if not self._handle_project:
             return True
         return project_name == self._project_name and self._project_selected
 
-    def is_expected_folder_selected(self, folder_id):
+    def is_expected_folder_selected(self, folder_id: str) -> bool:
         if not self._handle_folder:
             return True
         return folder_id == self._folder_id and self._folder_selected
 
-    def expected_project_selected(self, project_name):
+    def expected_project_selected(self, project_name: str) -> bool:
         """UI selected requested project.
 
         Other entity types can be requested for selection.
 
         Args:
             project_name (str): Name of project.
-        """
 
+        """
         if project_name != self._project_name:
             return False
         self._project_selected = True
         self._emit_change()
         return True
 
-    def expected_folder_selected(self, folder_id):
+    def expected_folder_selected(self, folder_id: str) -> bool:
         """UI selected requested folder.
 
         Other entity types can be requested for selection.
 
         Args:
             folder_id (str): Folder id.
-        """
 
+        """
         if folder_id != self._folder_id:
             return False
         self._folder_selected = True
         self._emit_change()
         return True
 
-    def expected_task_selected(self, folder_id, task_name):
+    def expected_task_selected(
+        self, folder_id: str, task_name: str
+    ) -> bool:
         """UI selected requested task.
 
         Other entity types can be requested for selection.
@@ -161,8 +168,8 @@ class HierarchyExpectedSelection:
         Args:
             folder_id (str): Folder id.
             task_name (str): Task name.
-        """
 
+        """
         if self._folder_id != folder_id:
             return False
 
@@ -172,7 +179,7 @@ class HierarchyExpectedSelection:
         self._emit_change()
         return True
 
-    def _emit_change(self):
+    def _emit_change(self) -> None:
         self._controller.emit_event(
             "expected_selection_changed",
             self.get_expected_selection_data(),
