@@ -93,7 +93,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         controller (AbstractWorkfilesFrontend): The control object.
     """
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, enable_ext_selection=True):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
@@ -196,6 +196,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input.text_changed.connect(self._on_comment_change)
         extension_combobox.currentIndexChanged.connect(
             self._on_extension_change)
+        if enable_ext_selection is False:
+            extension_combobox.setEnabled(False)
 
         btn_ok.pressed.connect(self._on_ok_pressed)
         btn_cancel.pressed.connect(self._on_cancel_pressed)

@@ -99,7 +99,8 @@ class FilesWidget(QtWidgets.QWidget):
 
         published_widget.save_as_requested.connect(self._on_save_as_request)
         published_btn_copy_n_open.clicked.connect(
-            self._on_published_save_clicked)
+            lambda: self._on_published_save_clicked(
+                enanble_ext_selection=False))
         published_btn_change_context.clicked.connect(
             self._on_published_change_context_clicked)
         published_btn_cancel.clicked.connect(
@@ -166,14 +167,18 @@ class FilesWidget(QtWidgets.QWidget):
         self._workarea_widget.set_text_filter(text_filter)
         self._published_widget.set_text_filter(text_filter)
 
-    def _exec_save_as_dialog(self):
+    def _exec_save_as_dialog(self, enable_ext_selection=True):
         """Show SaveAs dialog using currently selected context.
 
         Returns:
             Union[dict[str, Any], None]: Result of the dialog.
         """
 
-        dialog = SaveAsDialog(self._controller, self)
+        dialog = SaveAsDialog(
+            self._controller,
+            self,
+            enable_ext_selection=enable_ext_selection
+        )
         dialog.update_context()
         dialog.exec_()
         return dialog.get_result()
