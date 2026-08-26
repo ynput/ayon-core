@@ -151,7 +151,7 @@ class TemplatePreset:
             bool: Preset has set path to an existing file.
 
         """
-        return self.path and os.path.exists(self.path)
+        return self.path and os.path.exists(os.path.normpath(self.path))
 
 
 class AbstractTemplateBuilder(ABC):
