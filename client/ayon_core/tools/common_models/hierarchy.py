@@ -43,17 +43,12 @@ class FolderItem:
         label (str): Folder label.
 
     """
-    folder_id: str
+    entity_id: str
     parent_id: str | None
     name: str
     path: str
     folder_type: str
     label: str
-
-    @property
-    def entity_id(self) -> str:
-        """Alias for folder_id."""
-        return self.folder_id
 
     @classmethod
     def from_hierarchy_item(cls, item: dict[str, Any]) -> FolderItem:
@@ -69,7 +64,7 @@ class FolderItem:
         path_parts.insert(0, "")
         path = "/".join(path_parts)
         return FolderItem(
-            folder_id=item["id"],
+            entity_id=item["id"],
             parent_id=item["parentId"],
             name=name,
             path=path,
@@ -81,7 +76,7 @@ class FolderItem:
     def from_entity(cls, entity: dict[str, Any]) -> FolderItem:
         name = entity["name"]
         return FolderItem(
-            folder_id=entity["id"],
+            entity_id=entity["id"],
             parent_id=entity["parentId"],
             name=name,
             path=entity["path"],
@@ -97,7 +92,7 @@ class FolderItem:
 
         """
         return dict(
-            folder_id=self.folder_id,
+            entity_id=self.entity_id,
             parent_id=self.parent_id,
             name=self.name,
             path=self.path,
@@ -133,7 +128,7 @@ class TaskItem:
         name (str): Name of task.
         name (str | None): Task label.
         task_type (str): Type of task.
-        folder_id (str): Parent folder id.
+        parent_id (str): Parent folder id.
         tags (list[str]): List of tags assigned to task.
         full_label (str): Full label of task. Is filled automatically.
 
@@ -143,7 +138,7 @@ class TaskItem:
     label: str
     task_type: str
     task_type_order: int
-    folder_id: str
+    parent_id: str
     tags: list[str]
     full_label: str = ""
 
@@ -161,16 +156,6 @@ class TaskItem:
         """
         return self.task_id
 
-    @property
-    def parent_id(self):
-        """Alias for folder_id.
-
-        Returns:
-            str: Folder id.
-
-        """
-        return self.folder_id
-
     def to_data(self) -> dict[str, Any]:
         """Converts task item to data.
 
@@ -182,7 +167,7 @@ class TaskItem:
             task_id=self.task_id,
             name=self.name,
             label=self.label,
-            folder_id=self.folder_id,
+            parent_id=self.parent_id,
             task_type=self.task_type,
             task_type_order=self.task_type_order,
             tags=self.tags.copy(),
@@ -222,7 +207,7 @@ class TaskItem:
             label=entity["label"],
             task_type=entity["type"],
             task_type_order=task_type_order,
-            folder_id=entity["folderId"],
+            parent_id=entity["folderId"],
             tags=entity["tags"],
         )
 
