@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import collections
 import contextlib
+from dataclasses import dataclass
 import time
 from typing import Any
 
@@ -21,61 +22,94 @@ class AbstractHierarchyController(ABC):
         pass
 
 
+@dataclass
 class FolderItem:
     """Item representing folder entity on a server.
 
     Folder can be a child of another folder or a project.
 
-    Args:
+    Attributes:
         entity_id (str): Folder id.
         parent_id (str | None): Parent folder id. If 'None' then project
             is parent.
         name (str): Name of folder.
         path (str): Folder path.
         folder_type (str): Type of folder.
-        label (str | None): Folder label.
+        label (str): Folder label.
+
     """
+    entity_id: str
+    parent_id: str | None
+    name: str
+    path: str
+    folder_type: str
+    label: str
 
-    def __init__(
-        self, entity_id, parent_id, name, path, folder_type, label
-    ):
-        self.entity_id = entity_id
-        self.parent_id = parent_id
-        self.name = name
-        self.path = path
-        self.folder_type = folder_type
-        self.label = label or name
+    @classmethod
+    def from_hierarchy_item(cls, item: dict[str, Any]) -> FolderItem:
+        """Creates folder item from hierarchy item.
 
-    def to_data(self):
+        Args:
+            item (dict[str, Any]): Hierarchy item.
+
+        """
+        name = item["name"]
+        path_parts = list(item["parents"])
+        path_parts.append(name)
+        path_parts.insert(0, "")
+        path = "/".join(path_parts)
+        return FolderItem(
+            entity_id=item["id"],
+            parent_id=item["parentId"],
+            name=name,
+            path=path,
+            folder_type=item["folderType"],
+            label=item["label"] or name,
+        )
+
+    @classmethod
+    def from_entity(cls, entity: dict[str, Any]) -> FolderItem:
+        name = entity["name"]
+        return FolderItem(
+            entity_id=entity["id"],
+            parent_id=entity["parentId"],
+            name=name,
+            path=entity["path"],
+            folder_type=entity["folderType"],
+            label=entity["label"] or name,
+        )
+
+    def to_data(self) -> dict[str, str | None]:
         """Converts folder item to data.
 
         Returns:
-            dict[str, Any]: Folder item data.
-        """
+            dict[str, str | None]: Folder item data.
 
-        return {
-            "entity_id": self.entity_id,
-            "parent_id": self.parent_id,
-            "name": self.name,
-            "path": self.path,
-            "folder_type": self.folder_type,
-            "label": self.label,
-        }
+        """
+        return dict(
+            entity_id=self.entity_id,
+            parent_id=self.parent_id,
+            name=self.name,
+            path=self.path,
+            folder_type=self.folder_type,
+            label=self.label,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, str | None]) -> FolderItem:
         """Re-creates folder item from data.
 
         Args:
-            data (dict[str, Any]): Folder item data.
+            data (dict[str, str | None]): Folder item data.
 
         Returns:
             FolderItem: Folder item.
-        """
 
+        """
         return cls(**data)
 
 
+@dataclass
 class TaskItem:
     """Task item representing task entity on a server.
 
@@ -89,28 +123,23 @@ class TaskItem:
         name (str): Name of task.
         name (str | None): Task label.
         task_type (str): Type of task.
-        parent_id (str): Parent folder id.
+        folder_id (str): Parent folder id.
+        tags (list[str]): List of tags assigned to task.
+        full_label (str): Full label of task. Is filled automatically.
+
     """
+    task_id: str
+    name: str
+    label: str
+    task_type: str
+    task_type_order: int
+    folder_id: str
+    tags: list[str]
+    full_label: str = ""
 
-    def __init__(
-        self,
-        task_id: str,
-        name: str,
-        label: str | None,
-        task_type: str,
-        task_type_order: int,
-        parent_id: str,
-        tags: list[str],
-    ):
-        self.task_id = task_id
-        self.name = name
-        self.label = label
-        self.task_type = task_type
-        self.task_type_order = task_type_order
-        self.parent_id = parent_id
-        self.tags = tags
-
-        self._full_label = None
+    def __post_init__(self):
+        if not self.full_label:
+            self.full_label = f"{self.label} ({self.task_type})"
 
     @property
     def id(self):
@@ -118,42 +147,40 @@ class TaskItem:
 
         Returns:
             str: Task id.
-        """
 
+        """
         return self.task_id
 
     @property
-    def full_label(self):
-        """Label of task item for UI.
+    def parent_id(self):
+        """Alias for folder_id.
 
         Returns:
-            str: Label of task item.
+            str: Folder id.
+
         """
+        return self.folder_id
 
-        if self._full_label is None:
-            label = self.label or self.name
-            self._full_label = f"{label} ({self.task_type})"
-        return self._full_label
-
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         """Converts task item to data.
 
         Returns:
             dict[str, Any]: Task item data.
-        """
 
-        return {
-            "task_id": self.task_id,
-            "name": self.name,
-            "label": self.label,
-            "parent_id": self.parent_id,
-            "task_type": self.task_type,
-            "task_type_order": self.task_type_order,
-            "tags": self.tags,
-        }
+        """
+        return dict(
+            task_id=self.task_id,
+            name=self.name,
+            label=self.label,
+            folder_id=self.folder_id,
+            task_type=self.task_type,
+            task_type_order=self.task_type_order,
+            tags=self.tags.copy(),
+            full_label=self.full_label,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> TaskItem:
         """Re-create task item from data.
 
         Args:
@@ -161,9 +188,33 @@ class TaskItem:
 
         Returns:
             TaskItem: Task item.
-        """
 
+        """
         return cls(**data)
+
+    @classmethod
+    def from_entity(
+        cls, entity: dict[str, Any], task_type_order: int
+    ) -> TaskItem:
+        """Re-create task item from data.
+
+        Args:
+            entity (dict[str, Any]): Task entity.
+            task_type_order (int): Task type order.
+
+        Returns:
+            TaskItem: Task item.
+
+        """
+        return cls(
+            task_id=entity["id"],
+            name=entity["name"],
+            label=entity["label"],
+            task_type=entity["type"],
+            task_type_order=task_type_order,
+            folder_id=entity["folderId"],
+            tags=entity["tags"],
+        )
 
 
 def _get_task_items_from_tasks(
