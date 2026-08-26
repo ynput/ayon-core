@@ -7,12 +7,12 @@ import qtawesome
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.widgets import (
-    OptionalMenu,
     OptionalAction,
     OptionDialog,
 )
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.loader.abstract import ActionItem
+from ayon_core.ui.components import AYMenu
 
 
 def _actions_sorter(item: tuple[ActionItem, str, str]):
@@ -39,19 +39,20 @@ def show_actions_menu(
     selected_options = None
 
     if not action_items:
-        menu = QtWidgets.QMenu(parent)
+        menu = AYMenu(parent)
         action = _get_no_loader_action(menu, one_item_selected)
         menu.addAction(action)
         menu.exec_(global_point)
         return selected_action_item, selected_options
 
-    menu = OptionalMenu(parent)
+    menu = AYMenu(parent)
 
     action_items_with_labels = []
     for action_item in action_items:
         action_items_with_labels.append(
             (action_item, action_item.group_label, action_item.label)
         )
+    # print("action_items_with_labels", action_items_with_labels)
 
     group_menu_by_label = {}
     action_items_by_id = {}
@@ -60,13 +61,24 @@ def show_actions_menu(
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
+        icon_name = (
+            action_item.icon.name
+            if hasattr(action_item.icon, "name")
+            else action_item.icon.get("name")
+            if isinstance(action_item.icon, dict)
+            else None
+        )
+        if icon_name and "." in icon_name:
+            icon_name = icon_name.split(".")[-1]
+
+        # print(f"action_item.icon {action_item.icon}")
         icon = get_qt_icon(action_item.icon)
         use_option = bool(item_options)
         action = OptionalAction(
             action_item.label,
-            icon,
+            icon_name,
             use_option,
-            menu
+            menu,
         )
         if use_option:
             # Add option box tip
@@ -83,7 +95,7 @@ def show_actions_menu(
         if group_label:
             group_menu = group_menu_by_label.get(group_label)
             if group_menu is None:
-                group_menu = OptionalMenu(group_label, menu)
+                group_menu = QtWidgets.QMenu(group_label, parent=menu)
                 if icon is not None:
                     group_menu.setIcon(icon)
                 menu.addMenu(group_menu)
@@ -155,6 +167,6 @@ def _get_no_loader_action(menu, one_item_selected):
     msg = "No compatible loaders for {}".format(submsg)
     icon = qtawesome.icon(
         "fa.exclamation",
-        color=QtGui.QColor(255, 51, 0)
+        color=QtGui.QColor(255, 51, 0),
     )
     return QtWidgets.QAction(icon, ("*" + msg), menu)
