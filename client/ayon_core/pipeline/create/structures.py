@@ -176,8 +176,8 @@ class InstanceFamilies:
         elif not isinstance(families, set):
             families = set()
 
-        self.origin_data = families.copy()
-        self.families = families
+        self.origin_data: set[str] = families.copy()
+        self.families: set[str] = families
         self._instance = instance
 
     def __iter__(self) -> Iterator[str]:
@@ -203,10 +203,10 @@ class InstanceFamilies:
         self.origin_data = self.families.copy()
 
     def data_to_store(self) -> list[str]:
-        self.origin_data = self.families.copy()
-        return list(self.families)
+        return sorted(self.families)
 
     def set(self, value: Any) -> None:
+        old = self.families.copy()
         if isinstance(value, InstanceFamilies):
             self.families = value.families.copy()
         elif isinstance(value, (list, set, tuple)):
@@ -217,6 +217,9 @@ class InstanceFamilies:
             raise TypeError(
                 f"Got invalid type for families '{type(value)}'."
             )
+
+        if old != self.families:
+            self._instance.families_changed(self.families.copy())
 
     def add(self, family: str) -> None:
         if family in self.families:
