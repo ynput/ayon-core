@@ -1191,7 +1191,7 @@ class AbstractTemplateBuilder(ABC):
             create_first_version = True
 
         if resolved_path:
-             resolved_path = os.path.normpath(resolved_path)
+            resolved_path = os.path.normpath(resolved_path)
 
         return TemplatePreset(
             path=resolved_path,
