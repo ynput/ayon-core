@@ -34,7 +34,7 @@ class FolderItem:
     Folder can be a child of another folder or a project.
 
     Attributes:
-        folder_id (str): Folder id.
+        entity_id (str): Folder id.
         parent_id (str | None): Parent folder id. If 'None' then project
             is parent.
         name (str): Name of folder.
