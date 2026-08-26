@@ -222,7 +222,6 @@ class TaskItem:
         )
 
 
-
 class HierarchyModel:
     """Model for project hierarchy items.
 
@@ -329,7 +328,6 @@ class HierarchyModel:
         })
         return output
 
-    # TODO validate passed in type for 'folder_paths'
     def get_folder_items_by_paths(
         self, project_name: str, folder_paths: set[str] | list[str]
     ) -> dict[str, FolderItem | None]:
@@ -409,7 +407,7 @@ class HierarchyModel:
 
         """
         items = self.get_folder_items_by_paths(
-            project_name, [folder_path]
+            project_name, {folder_path}
         )
         return items.get(folder_path)
 
@@ -451,7 +449,6 @@ class HierarchyModel:
             self._refresh_tasks_cache(project_name, folder_id, sender)
         return task_cache.get_data()
 
-    # TODO validate type passed in for 'folder_ids'
     def get_folder_entities(
         self, project_name: str | None, folder_ids: set[str] | list[str]
     ) -> dict[str, dict[str, Any]]:
@@ -494,12 +491,13 @@ class HierarchyModel:
         output = self.get_folder_entities(project_name, {folder_id})
         return output[folder_id]
 
-    # TODO validate type passed in for 'task_ids'
     def get_task_entities(
         self, project_name: str | None, task_ids: set[str] | list[str]
     ) -> dict[str, dict[str, Any]]:
         output = {}
-        task_ids = set(task_ids)
+        if not isinstance(task_ids, set):
+            task_ids = set(task_ids)
+
         if not project_name or not task_ids:
             return output
 
