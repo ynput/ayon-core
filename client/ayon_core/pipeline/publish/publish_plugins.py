@@ -533,7 +533,10 @@ def refresh_instance_attributes(
     elif isinstance(keys, str):
         keys = {keys}
     elif not isinstance(keys, set):
-        raise TypeError("keys must be a set or list")
+        raise TypeError(
+            "Expected str, set[str] or list[str] for 'keys'."
+            f" Got {type(keys)}."
+        )
 
     refresh_info = _RefreshInfo(keys=keys)
 
