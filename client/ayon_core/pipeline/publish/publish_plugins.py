@@ -238,7 +238,7 @@ class AYONPyblishPluginMixin:
             return False
 
         families = [instance.product_base_type]
-        families.extend(instance.families.data_to_store())
+        families.extend(instance.families)
         for _ in pyblish.logic.plugins_by_families([cls], families):
             return True
         return False
