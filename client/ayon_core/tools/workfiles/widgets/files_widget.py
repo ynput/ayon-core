@@ -99,8 +99,8 @@ class FilesWidget(QtWidgets.QWidget):
 
         published_widget.save_as_requested.connect(self._on_save_as_request)
         published_btn_copy_n_open.clicked.connect(
-            lambda: self._on_published_save_clicked(
-                enanble_ext_selection=False))
+            lambda: self._on_published_save_clicked(False)
+        )
         published_btn_change_context.clicked.connect(
             self._on_published_change_context_clicked)
         published_btn_cancel.clicked.connect(
@@ -319,8 +319,8 @@ class FilesWidget(QtWidgets.QWidget):
         self._update_published_btns_state()
         self._update_workarea_btns_state()
 
-    def _on_published_save_clicked(self):
-        result = self._exec_save_as_dialog()
+    def _on_published_save_clicked(self, enanble_ext_selection=True):
+        result = self._exec_save_as_dialog(enanble_ext_selection)
         if result is None:
             return
 
