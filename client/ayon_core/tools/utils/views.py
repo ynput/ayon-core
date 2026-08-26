@@ -113,11 +113,21 @@ class ListView(QtWidgets.QListView):
     def mousePressEvent(self, event):
         if self._deselectable:
             index = self.indexAt(event.pos())
+            sel_model = self.selectionModel()
+            if (
+                index.isValid()
+                and sel_model.isSelected(index)
+                and len(sel_model.selectedRows()) == 1
+            ):
+                index = QtCore.QModelIndex()
+
             if not index.isValid():
                 # clear the selection
                 self.clearSelection()
                 # clear the current index
                 self.setCurrentIndex(QtCore.QModelIndex())
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
