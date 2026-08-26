@@ -204,7 +204,7 @@ class TaskItem:
         return cls(
             task_id=entity["id"],
             name=entity["name"],
-            label=entity["label"],
+            label=entity["label"] or entity["name"],
             task_type=entity["type"],
             task_type_order=task_type_order,
             parent_id=entity["folderId"],
