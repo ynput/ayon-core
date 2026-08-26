@@ -5,7 +5,7 @@ import collections
 import contextlib
 from dataclasses import dataclass
 import time
-from typing import Any
+from typing import Any, Generator
 
 import ayon_api
 
@@ -18,7 +18,12 @@ HIERARCHY_MODEL_SENDER = "hierarchy.model"
 
 class AbstractHierarchyController(ABC):
     @abstractmethod
-    def emit_event(self, topic, data, source):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] = None,
+        source: str | None = None,
+    ) -> None:
         pass
 
 
@@ -217,64 +222,8 @@ class TaskItem:
         )
 
 
-def _get_task_items_from_tasks(
-    task_type_items: list[TaskTypeItem],
-    tasks: list[dict[str, Any]]
-) -> list[TaskItem]:
-    """
 
-    Returns:
-        TaskItem: Task item.
-
-    """
-    task_types = {
-        task_type.name: index
-        for index, task_type in enumerate(task_type_items)
-    }
-    output = []
-    for task in tasks:
-        folder_id = task["folderId"]
-        task_type_order = task_types[task["type"]]
-        output.append(TaskItem(
-            task["id"],
-            task["name"],
-            task["label"],
-            task["type"],
-            task_type_order,
-            folder_id,
-            task["tags"],
-        ))
-    return output
-
-
-def _get_folder_item_from_hierarchy_item(item):
-    name = item["name"]
-    path_parts = list(item["parents"])
-    path_parts.append(name)
-    path = "/" + "/".join(path_parts)
-    return FolderItem(
-        item["id"],
-        item["parentId"],
-        name,
-        path,
-        item["folderType"],
-        item["label"]
-    )
-
-
-def _get_folder_item_from_entity(entity):
-    name = entity["name"]
-    return FolderItem(
-        entity["id"],
-        entity["parentId"],
-        name,
-        entity["path"],
-        entity["folderType"],
-        entity["label"] or name
-    )
-
-
-class HierarchyModel(object):
+class HierarchyModel:
     """Model for project hierarchy items.
 
     Hierarchy items are folders and tasks. Folders can have as parent another
@@ -302,7 +251,7 @@ class HierarchyModel(object):
         self._tasks_refreshing = set()
         self._controller = controller
 
-    def reset(self):
+    def reset(self) -> None:
         self._tags_by_entity_type.reset()
         self._folders_items.reset()
         self._folders_by_id.reset()
@@ -312,16 +261,18 @@ class HierarchyModel(object):
 
         self._entity_ids_by_assignee.reset()
 
-    def refresh_project(self, project_name):
+    def refresh_project(self, project_name: str) -> None:
         """Force to refresh folder items for a project.
 
         Args:
             project_name (str): Name of project to refresh.
-        """
 
+        """
         self._refresh_folders_cache(project_name)
 
-    def get_folder_items(self, project_name, sender):
+    def get_folder_items(
+        self, project_name: str, sender: str | None
+    ) -> dict[str, FolderItem]:
         """Get folder items by project name.
 
         The folders are cached per project name. If the cache is not valid
@@ -329,17 +280,19 @@ class HierarchyModel(object):
 
         Args:
             project_name (str): Name of project where to look for folders.
-            sender (Union[str, None]): Who requested the folder ids.
+            sender (str | None): Who requested the folder ids.
 
         Returns:
             dict[str, FolderItem]: Folder items by id.
-        """
 
+        """
         if not self._folders_items[project_name].is_valid:
             self._refresh_folders_cache(project_name, sender)
         return self._folders_items[project_name].get_data()
 
-    def get_folder_items_by_id(self, project_name, folder_ids):
+    def get_folder_items_by_id(
+        self, project_name: str, folder_ids: set[str] | list[str]
+    ) -> dict[str, FolderItem | None]:
         """Get folder items by ids.
 
         This function will query folders if they are not in cache. But the
@@ -347,19 +300,22 @@ class HierarchyModel(object):
 
         Args:
             project_name (str): Name of project where to look for folders.
-            folder_ids (Iterable[str]): Folder ids.
+            folder_ids (set[str] | list[str]): Folder ids.
 
         Returns:
-            dict[str, Union[FolderItem, None]]: Folder items by id.
-        """
+            dict[str, FolderItem | None]: Folder items by id.
 
-        folder_ids = set(folder_ids)
+        """
+        if not isinstance(folder_ids, set):
+            folder_ids = set(folder_ids)
+
         if self._folders_items[project_name].is_valid:
             cache_data = self._folders_items[project_name].get_data()
             return {
                 folder_id: cache_data.get(folder_id)
                 for folder_id in folder_ids
             }
+
         folders = ayon_api.get_folders(
             project_name,
             folder_ids=folder_ids,
@@ -368,12 +324,15 @@ class HierarchyModel(object):
         # Make sure all folder ids are in output
         output = {folder_id: None for folder_id in folder_ids}
         output.update({
-            folder["id"]: _get_folder_item_from_entity(folder)
+            folder["id"]: FolderItem.from_entity(folder)
             for folder in folders
         })
         return output
 
-    def get_folder_items_by_paths(self, project_name, folder_paths):
+    # TODO validate passed in type for 'folder_paths'
+    def get_folder_items_by_paths(
+        self, project_name: str, folder_paths: set[str] | list[str]
+    ) -> dict[str, FolderItem | None]:
         """Get folder items by ids.
 
         This function will query folders if they are not in cache. But the
@@ -381,14 +340,17 @@ class HierarchyModel(object):
 
         Args:
             project_name (str): Name of project where to look for folders.
-            folder_paths (Iterable[str]): Folder paths.
+            folder_paths (set[str] | list[str]): Folder paths.
 
         Returns:
-            dict[str, Union[FolderItem, None]]: Folder items by id.
-        """
+            dict[str, FolderItem | None]: Folder items by path.
 
-        folder_paths = set(folder_paths)
-        output = {folder_path: None for folder_path in folder_paths}
+        """
+        if not isinstance(folder_paths, set):
+            folder_paths = set(folder_paths)
+        output: dict[str, FolderItem | None] = {
+            folder_path: None for folder_path in folder_paths
+        }
         if not folder_paths:
             return output
 
@@ -405,11 +367,13 @@ class HierarchyModel(object):
         )
         # Make sure all folder ids are in output
         for folder in folders:
-            item = _get_folder_item_from_entity(folder)
+            item = FolderItem.from_entity(folder)
             output[item.path] = item
         return output
 
-    def get_folder_item(self, project_name, folder_id):
+    def get_folder_item(
+        self, project_name: str, folder_id: str
+    ) -> FolderItem | None:
         """Get folder item by id.
 
         This function will query folder if they is not in cache. But the
@@ -420,14 +384,17 @@ class HierarchyModel(object):
             folder_id (str): Folder id.
 
         Returns:
-            Union[FolderItem, None]: Folder item.
+            FolderItem | None: Folder item.
+
         """
         items = self.get_folder_items_by_id(
-            project_name, [folder_id]
+            project_name, {folder_id}
         )
         return items.get(folder_id)
 
-    def get_folder_item_by_path(self, project_name, folder_path):
+    def get_folder_item_by_path(
+        self, project_name: str, folder_path: str
+    ) -> FolderItem | None:
         """Get folder item by path.
 
         This function will query folder if they is not in cache. But the
@@ -438,7 +405,7 @@ class HierarchyModel(object):
             folder_path (str): Folder path.
 
         Returns:
-            Union[FolderItem, None]: Folder item.
+            FolderItem | None: Folder item.
 
         """
         items = self.get_folder_items_by_paths(
@@ -447,18 +414,22 @@ class HierarchyModel(object):
         return items.get(folder_path)
 
     def get_task_item_by_name(
-        self, project_name, folder_id, task_name, sender
-    ):
+        self,
+        project_name: str,
+        folder_id: str,
+        task_name: str,
+        sender: str | None,
+    ) -> TaskItem | None:
         """Get task item by name and folder id.
 
         Args:
             project_name (str): Project name.
             folder_id (str): Folder id.
             task_name (str): Task name.
-            sender (Union[str, None]): Who requested the task item.
+            sender (str | None): Who requested the task item.
 
         Returns:
-            Optional[TaskItem]: Task item found by name and folder id.
+            TaskItem | None: Task item found by name and folder id.
 
         """
         for task_item in self.get_task_items(project_name, folder_id, sender):
@@ -466,7 +437,12 @@ class HierarchyModel(object):
                 return task_item
         return None
 
-    def get_task_items(self, project_name, folder_id, sender):
+    def get_task_items(
+        self,
+        project_name: str | None,
+        folder_id: str | None,
+        sender: str | None,
+    ) -> list[TaskItem]:
         if not project_name or not folder_id:
             return []
 
@@ -475,19 +451,24 @@ class HierarchyModel(object):
             self._refresh_tasks_cache(project_name, folder_id, sender)
         return task_cache.get_data()
 
-    def get_folder_entities(self, project_name, folder_ids):
+    # TODO validate type passed in for 'folder_ids'
+    def get_folder_entities(
+        self, project_name: str | None, folder_ids: set[str] | list[str]
+    ) -> dict[str, dict[str, Any]]:
         """Get folder entities by ids.
 
         Args:
-            project_name (str): Project name.
-            folder_ids (Iterable[str]): Folder ids.
+            project_name (str | None): Project name.
+            folder_ids (set[str] | list[str]): Folder ids.
 
         Returns:
-            dict[str, Any]: Folder entities by id.
-        """
+            dict[str, dict[str, Any]]: Folder entities by id.
 
+        """
         output = {}
-        folder_ids = set(folder_ids)
+        if not isinstance(folder_ids, set):
+            folder_ids = set(folder_ids)
+
         if not project_name or not folder_ids:
             return output
 
@@ -500,17 +481,23 @@ class HierarchyModel(object):
                 folder_ids_to_query.add(folder_id)
             else:
                 output[folder_id] = None
+
         self._query_folder_entities(project_name, folder_ids_to_query)
         for folder_id in folder_ids_to_query:
             cache = self._folders_by_id[project_name][folder_id]
             output[folder_id] = cache.get_data()
         return output
 
-    def get_folder_entity(self, project_name, folder_id):
+    def get_folder_entity(
+        self, project_name: str, folder_id: str
+    ) -> dict[str, Any] | None:
         output = self.get_folder_entities(project_name, {folder_id})
         return output[folder_id]
 
-    def get_task_entities(self, project_name, task_ids):
+    # TODO validate type passed in for 'task_ids'
+    def get_task_entities(
+        self, project_name: str | None, task_ids: set[str] | list[str]
+    ) -> dict[str, dict[str, Any]]:
         output = {}
         task_ids = set(task_ids)
         if not project_name or not task_ids:
@@ -531,13 +518,15 @@ class HierarchyModel(object):
             output[task_id] = cache.get_data()
         return output
 
-    def get_task_entity(self, project_name, task_id):
+    def get_task_entity(
+        self, project_name: str, task_id: str
+    ) -> dict[str, Any] | None:
         output = self.get_task_entities(project_name, {task_id})
         return output[task_id]
 
     def get_entity_ids_for_assignees(
-        self, project_name: str, assignees: list[str]
-    ):
+        self, project_name: str, assignees: set[str] | list[str]
+    ) -> dict[str, set[str]]:
         folder_ids = set()
         task_ids = set()
         output = {
@@ -609,7 +598,9 @@ class HierarchyModel(object):
         return cache.get_data()
 
     @contextlib.contextmanager
-    def _folder_refresh_event_manager(self, project_name, sender):
+    def _folder_refresh_event_manager(
+        self, project_name: str, sender: str | None
+    ) -> Generator[None, None, None]:
         self._folders_refreshing.add(project_name)
         self._controller.emit_event(
             "folders.refresh.started",
@@ -629,8 +620,8 @@ class HierarchyModel(object):
 
     @contextlib.contextmanager
     def _task_refresh_event_manager(
-        self, project_name, folder_id, sender
-    ):
+        self, project_name: str, folder_id: str, sender: str | None
+    ) -> Generator[None, None, None]:
         self._tasks_refreshing.add(folder_id)
         self._controller.emit_event(
             "tasks.refresh.started",
@@ -656,7 +647,9 @@ class HierarchyModel(object):
             )
             self._tasks_refreshing.discard(folder_id)
 
-    def _refresh_folders_cache(self, project_name, sender=None):
+    def _refresh_folders_cache(
+        self, project_name: str, sender: str | None = None
+    ) -> None:
         if project_name in self._folders_refreshing:
             return
 
@@ -664,20 +657,22 @@ class HierarchyModel(object):
             folder_items = self._query_folders(project_name)
             self._folders_items[project_name].update_data(folder_items)
 
-    def _query_folders(self, project_name):
+    def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
         hierarchy = ayon_api.get_folders_hierarchy(project_name)
 
         folder_items = {}
         hierachy_queue = collections.deque(hierarchy["hierarchy"])
         while hierachy_queue:
             item = hierachy_queue.popleft()
-            folder_item = _get_folder_item_from_hierarchy_item(item)
+            folder_item = FolderItem.from_hierarchy_item(item)
             folder_items[folder_item.entity_id] = folder_item
             hierachy_queue.extend(item["children"] or [])
         return folder_items
 
-    def _query_folder_entities(self, project_name, folder_ids):
-        if not project_name or not folder_ids:
+    def _query_folder_entities(
+        self, project_name: str, folder_ids: set[str]
+    ) -> None:
+        if not folder_ids:
             return
         project_cache = self._folders_by_id[project_name]
         folders = ayon_api.get_folders(project_name, folder_ids=folder_ids)
@@ -685,8 +680,10 @@ class HierarchyModel(object):
             folder_id = folder["id"]
             project_cache[folder_id].update_data(folder)
 
-    def _query_task_entities(self, project_name, task_ids):
-        if not project_name or not task_ids:
+    def _query_task_entities(
+        self, project_name: str, task_ids: set[str]
+    ) -> None:
+        if not task_ids:
             return
 
         project_cache = self._tasks_by_id[project_name]
@@ -695,7 +692,9 @@ class HierarchyModel(object):
             task_id = task["id"]
             project_cache[task_id].update_data(task)
 
-    def _refresh_tasks_cache(self, project_name, folder_id, sender=None):
+    def _refresh_tasks_cache(
+        self, project_name: str, folder_id: str, sender: str | None = None
+    ) -> None:
         if folder_id in self._tasks_refreshing:
             while folder_id in self._tasks_refreshing:
                 time.sleep(0.01)
@@ -707,11 +706,23 @@ class HierarchyModel(object):
         ):
             cache.update_data(self._query_tasks(project_name, folder_id))
 
-    def _query_tasks(self, project_name, folder_id):
+    def _query_tasks(
+        self, project_name: str, folder_id: str
+    ) -> list[TaskItem]:
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
             fields={"id", "name", "label", "folderId", "type", "tags"}
         ))
-        task_type_items = self._controller.get_task_type_items(project_name)
-        return _get_task_items_from_tasks(task_type_items, tasks)
+        task_type_items: list[TaskTypeItem] = (
+            self._controller.get_task_type_items(project_name)
+        )
+
+        order_by_task_type = {
+            task_type.name: index
+            for index, task_type in enumerate(task_type_items)
+        }
+        return [
+            TaskItem.from_entity(task, order_by_task_type[task["type"]])
+            for task in tasks
+        ]
