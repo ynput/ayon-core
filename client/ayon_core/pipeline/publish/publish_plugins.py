@@ -549,6 +549,17 @@ def refresh_instance_attributes(
                 " subclasses of AYONPyblishPluginMixin."
             )
 
+        # Store refresh info on the plugin class to avoid unnecessary
+        #   callbacks. Just use existing callback if already registered.
+        _plugin_info: _RefreshInfo | None = getattr(
+            plugin, "__refresh_instance_info__", None
+        )
+        if _plugin_info is not None:
+            _plugin_info.keys.update(refresh_info.keys)
+            return plugin
+
+        setattr(plugin, "__refresh_instance_info__", refresh_info)
+
         plugin_name = plugin.__name__
 
         orig_register_create_context_callbacks = (
