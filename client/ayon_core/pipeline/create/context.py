@@ -56,7 +56,6 @@ if typing.TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.lib.events import EventCallback, Event
     from ayon_core.host import AbstractHost
-    from ayon_core.pipeline import AYONPyblishPluginMixin
     from ayon_core.pipeline.publish.typing import (
         PublishPluginType,
         AYONPublishPluginType,
