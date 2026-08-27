@@ -32,8 +32,10 @@ from .vendor_bin_utils import (
     find_executable,
     get_oiio_tools_path,
     get_oiio_tool_args,
+    get_ffmpeg_supported_options,
     get_ffmpeg_tool_path,
     get_ffmpeg_tool_args,
+    is_ffmpeg_supported_option,
     is_oiio_supported,
 )
 

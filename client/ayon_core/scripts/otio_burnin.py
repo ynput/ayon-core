@@ -28,6 +28,7 @@ from ayon_core.lib import (
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
     convert_ffprobe_fps_value,
+    is_ffmpeg_supported_option,
     StringTemplate,
 )
 
@@ -47,51 +48,6 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
-
-
-@functools.lru_cache
-def get_supported_ffmpeg_options(mode: str = "long") -> set[str]:
-    """Get all the options supported by the current FFmpeg version.
-
-    Args:
-        mode: Which version of the help message to parse
-            Can be "long", "full" or "" (for short)
-            Default is "long"
-
-    Returns:
-        set[str]: All the options supported by the current FFmpeg version.
-
-    """
-    result = subprocess.run(
-        [
-            *FFMPEG_EXE_ARGS,
-            "-h",
-            mode,
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=False,
-    )
-
-    options: set[str] = set()
-    for line in result.stdout.splitlines():
-        option = line.lstrip()
-        if not option.startswith("-"):
-            continue
-        option = option.split(" ", maxsplit=1)[0]  # remove description
-        option = option.split("[", maxsplit=1)[0]  # remove stream_specifier
-        if not option:
-            continue
-
-        options.add(option)
-
-    return options
-
-
-def ffmpeg_supports_option(option: str) -> bool:
-    """True if the current version of ffmpeg supports the given option."""
-    return option in get_supported_ffmpeg_options()
 
 
 def _get_text_width_fonttools(
@@ -694,7 +650,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
                 filters_path = temp.name
 
             # "-filter_script" was removed in FFmpeg 9 in favor of "-/filter"
-            if ffmpeg_supports_option("-filter_script"):
+            if is_ffmpeg_supported_option("-filter_script"):
                 filters = f'-filter_script:v "{filters_path}"'
             else:
                 filters = f'-/filter:v "{filters_path}"'
