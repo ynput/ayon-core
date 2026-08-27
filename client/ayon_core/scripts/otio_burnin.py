@@ -65,7 +65,6 @@ def get_supported_ffmpeg_options(mode: str = "long") -> set[str]:
     result = subprocess.run(
         [
             *FFMPEG_EXE_ARGS,
-            "-hide_banner",
             "-h",
             mode,
         ],
