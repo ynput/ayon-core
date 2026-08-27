@@ -169,9 +169,6 @@ class WorkfilesModel:
             self._update_workfile_info(
                 task_id, rootless_path, description
             )
-            self._update_current_context(
-                folder_id, folder_entity["path"], task_entity["name"]
-            )
 
         except Exception:
             failed = True
@@ -233,9 +230,6 @@ class WorkfilesModel:
             )
             self._update_workfile_info(
                 task_id, rootless_path, description
-            )
-            self._update_current_context(
-                folder_id, folder_entity["path"], task_entity["name"]
             )
 
         except Exception:
@@ -720,14 +714,6 @@ class WorkfilesModel:
         self._host.open_workfile_with_context(
             filepath, folder_entity, task_entity, prepared_data=prepared_data
         )
-        self._update_current_context(
-            folder_id, folder_entity["path"], task_entity["name"]
-        )
-
-    def _update_current_context(self, folder_id, folder_path, task_name):
-        self._current_folder_id = folder_id
-        self._current_folder_path = folder_path
-        self._current_task_name = task_name
 
     # --- Workarea ---
     def _reset_workarea_file_items(self, task_id: str) -> None:
