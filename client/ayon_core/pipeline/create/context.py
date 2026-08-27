@@ -56,7 +56,11 @@ if typing.TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.lib.events import EventCallback, Event
     from ayon_core.host import AbstractHost
-    from ayon_core.pipeline.publish.typing import PublishPluginType
+    from ayon_core.pipeline import AYONPyblishPluginMixin
+    from ayon_core.pipeline.publish.typing import (
+        PublishPluginType,
+        AYONPublishPluginType,
+    )
 
     from .structures import CreatedInstance
     from .creator_plugins import BaseCreator, ProductConvertorPlugin
@@ -246,7 +250,7 @@ class CreateContext:
         self.publish_discover_result: DiscoverResult | None = None
         self.publish_plugins_mismatch_targets: list[PublishPluginType] = []
         self.publish_plugins: list[PublishPluginType] = []
-        self.plugins_with_defs: list[PublishPluginType] = []
+        self.plugins_with_defs: list[AYONPublishPluginType] = []
 
         # Helpers for validating context of collected instances
         #   - they can be validation for multiple instances at one time
@@ -2630,7 +2634,7 @@ class CreateContext:
                     )
 
             for plugin in self.plugins_with_defs:
-                attr_defs = None
+                attr_defs: list[AbstractAttrDef] | None = None
                 try:
                     attr_defs = plugin.get_attr_defs_for_instance(
                         self, instance
