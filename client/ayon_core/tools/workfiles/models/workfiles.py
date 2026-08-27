@@ -77,14 +77,14 @@ class WorkfilesModel:
         )
 
         # Published workfiles
-        self._repre_by_id = {}
-        self._version_comment_by_id = {}
+        self._repre_by_id: dict[str, dict[str, Any]] = {}
+        self._version_comment_by_id: dict[str, str | None] = {}
         self._published_workfile_items_cache = NestedCacheItem(
             levels=1, default_factory=list
         )
 
         # Entities
-        self._workfile_entities_by_task_id = {}
+        self._workfile_entities_by_task_id: dict[str, dict[str, Any]] = {}
 
     def reset(self):
         self._base_data = None
@@ -101,10 +101,12 @@ class WorkfilesModel:
         self._workfile_entities_by_task_id = {}
 
     # Host functionality
-    def get_current_workfile(self):
+    def get_current_workfile(self) -> str | None:
         return self._host.get_current_workfile()
 
-    def open_workfile(self, folder_id, task_id, filepath):
+    def open_workfile(
+        self, folder_id: str, task_id: str, filepath: str
+    ) -> None:
         self._emit_event("open_workfile.started")
 
         failed = False
@@ -120,21 +122,21 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
-    def save_current_workfile(self):
+    def save_current_workfile(self) -> None:
         current_file = self.get_current_workfile()
         self._host.save_workfile(current_file)
 
     def save_as_workfile(
         self,
-        folder_id,
-        task_id,
-        rootless_workdir,
-        workdir,
-        filename,
-        version,
-        comment,
-        description,
-    ):
+        folder_id: str,
+        task_id: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._emit_event("save_as.started")
 
         filepath = os.path.join(workdir, filename)
@@ -181,17 +183,17 @@ class WorkfilesModel:
 
     def copy_workfile_representation(
         self,
-        representation_id,
-        representation_filepath,
-        folder_id,
-        task_id,
-        workdir,
-        filename,
-        rootless_workdir,
-        version,
-        comment,
-        description,
-    ):
+        representation_id: str,
+        representation_filepath: str,
+        folder_id: str,
+        task_id: str,
+        workdir: str,
+        filename: str,
+        rootless_workdir: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._emit_event("copy_representation.started")
 
         project_name = self._project_name
@@ -245,16 +247,16 @@ class WorkfilesModel:
 
     def duplicate_workfile(
         self,
-        folder_id,
-        task_id,
-        src_filepath,
-        rootless_workdir,
-        workdir,
-        filename,
-        version,
-        comment,
-        description
-    ):
+        folder_id: str,
+        task_id: str,
+        src_filepath: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._emit_event("workfile_duplicate.started")
 
         project_name = self._controller.get_current_project_name()
@@ -296,7 +298,9 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
-    def get_workfile_entities(self, task_id: str):
+    def get_workfile_entities(
+        self, task_id: str | None
+    ) -> list[dict[str, Any]]:
         if not task_id:
             return []
         workfile_entities = self._workfile_entities_by_task_id.get(task_id)
@@ -344,15 +348,15 @@ class WorkfilesModel:
         )
 
     def get_workarea_dir_by_context(
-        self, folder_id: str, task_id: str
+        self, folder_id: str | None, task_id: str | None
     ) -> str | None:
         """Workarea dir for passed context.
 
         The directory path is based on project anatomy templates.
 
         Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
 
         Returns:
             str | None: Workarea dir path or None for invalid context.
