@@ -1,16 +1,28 @@
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+import os
 import typing
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 from ayon_core.host import PublishedWorkfileInfo
 
 if typing.TYPE_CHECKING:
-    from ayon_core.tools.common_models.settings import TaskSortMode
+    from ayon_core.pipeline import Anatomy
+
+    from ayon_core.host import WorkfileInfo
+    from ayon_core.tools.common_models import (
+        UserItem,
+        FolderTypeItem,
+        TaskTypeItem,
+        TaskSortMode,
+        FolderItem,
+        TaskItem,
+    )
 
 
+@dataclass
 class WorkareaFilepathResult:
     """Result of workarea file formatting.
 
@@ -22,13 +34,14 @@ class WorkareaFilepathResult:
             from root and filename.
 
     """
-    def __init__(self, root, filename, exists, filepath=None):
-        if not filepath and root and filename:
-            filepath = os.path.join(root, filename)
-        self.root = root
-        self.filename = filename
-        self.exists = exists
-        self.filepath = filepath
+    root: str
+    filename: str
+    exists: bool
+    filepath: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.filepath and self.root and self.filename:
+            self.filepath = os.path.join(self.root, self.filename)
 
     def to_data(self) -> dict[str, Any]:
         return dict(
@@ -43,15 +56,11 @@ class WorkareaFilepathResult:
         return cls(**data)
 
 
+@dataclass
 class PublishedWorkfileWrap:
     """Wrapper for workfile info that also contains version comment."""
-    def __init__(
-        self,
-        info: PublishedWorkfileInfo | None = None,
-        comment: str | None = None,
-    ) -> None:
-        self.info = info
-        self.comment = comment
+    info: PublishedWorkfileInfo | None = None
+    comment: str | None = None
 
     def to_data(self) -> dict[str, Any]:
         info = None
@@ -72,7 +81,7 @@ class PublishedWorkfileWrap:
 
 class AbstractWorkfilesCommon(ABC):
     @abstractmethod
-    def is_host_valid(self):
+    def is_host_valid(self) -> bool:
         """Host is valid for workfiles tool work.
 
         Returns:
@@ -82,19 +91,19 @@ class AbstractWorkfilesCommon(ABC):
         pass
 
     @abstractmethod
-    def get_workfile_extensions(self):
+    def get_workfile_extensions(self) -> list[str]:
         """Get possible workfile extensions.
 
         Defined by host implementation.
 
         Returns:
-            Iterable[str]: List of extensions.
+            list[str]: List of extensions.
 
         """
         pass
 
     @abstractmethod
-    def is_save_enabled(self):
+    def is_save_enabled(self) -> bool:
         """Is workfile save enabled.
 
         Returns:
@@ -104,7 +113,7 @@ class AbstractWorkfilesCommon(ABC):
         pass
 
     @abstractmethod
-    def set_save_enabled(self, enabled):
+    def set_save_enabled(self, enabled: bool) -> None:
         """Enable or disabled workfile save.
 
         Args:
@@ -117,7 +126,7 @@ class AbstractWorkfilesCommon(ABC):
 class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
     # Current context
     @abstractmethod
-    def get_host_name(self):
+    def get_host_name(self) -> str:
         """Name of host.
 
         Returns:
@@ -127,7 +136,7 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> str:
         """Project name from current context of host.
 
         Returns:
@@ -137,45 +146,47 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_current_folder_id(self):
+    def get_current_folder_id(self) -> str | None:
         """Folder id from current context of host.
 
         Returns:
-            Union[str, None]: Folder id or None if host does not have
+            str | None: Folder id or None if host does not have
                 any context.
 
         """
         pass
 
     @abstractmethod
-    def get_current_task_name(self):
+    def get_current_task_name(self) -> str | None:
         """Task name from current context of host.
 
         Returns:
-            Union[str, None]: Task name or None if host does not have
+            str | None: Task name or None if host does not have
                 any context.
 
         """
         pass
 
     @abstractmethod
-    def get_current_workfile(self):
+    def get_current_workfile(self) -> str | None:
         """Current workfile from current context of host.
 
         Returns:
-            Union[str, None]: Path to workfile or None if host does
+            str | None: Path to workfile or None if host does
                 not have opened specific file.
 
         """
         pass
 
     @abstractmethod
-    def get_project_settings(self, project_name: str | None) -> dict:
+    def get_project_settings(
+        self, project_name: str | None
+    ) -> dict[str, Any]:
         pass
 
     @property
     @abstractmethod
-    def project_anatomy(self):
+    def project_anatomy(self) -> Anatomy:
         """Project anatomy for current project.
 
         Returns:
@@ -186,7 +197,7 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
 
     @property
     @abstractmethod
-    def project_settings(self):
+    def project_settings(self) -> dict[str, Any]:
         """Project settings for current project.
 
         Returns:
@@ -196,20 +207,22 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_project_entity(self, project_name):
+    def get_project_entity(self, project_name: str) -> dict[str, Any] | None:
         """Get project entity by name.
 
         Args:
             project_name (str): Project name.
 
         Returns:
-            dict[str, Any]: Project entity data.
+            dict[str, Any] | None: Project entity if is found.
 
         """
         pass
 
     @abstractmethod
-    def get_folder_entity(self, project_name, folder_id):
+    def get_folder_entity(
+        self, project_name: str, folder_id: str
+    ) -> dict[str, Any] | None:
         """Get folder entity by id.
 
         Args:
@@ -217,13 +230,15 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
             folder_id (str): Folder id.
 
         Returns:
-            dict[str, Any]: Folder entity data.
+            dict[str, Any] | None: Folder entity data.
 
         """
         pass
 
     @abstractmethod
-    def get_task_entity(self, project_name, task_id):
+    def get_task_entity(
+        self, project_name: str, task_id: str
+    ) -> dict[str, Any] | None:
         """Get task entity by id.
 
         Args:
@@ -231,13 +246,13 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
             task_id (str): Task id.
 
         Returns:
-            dict[str, Any]: Task entity data.
+            dict[str, Any] | None: Task entity data.
 
         """
         pass
 
     @abstractmethod
-    def get_workfile_entities(self, task_id: str):
+    def get_workfile_entities(self, task_id: str) -> list[dict[str, Any]]:
         """Workfile entities for given task.
 
         Args:
@@ -250,7 +265,12 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def emit_event(self, topic, data=None, source=None):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
         """Emit event.
 
         Args:
@@ -276,16 +296,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     """
 
     @abstractmethod
-    def get_window_subtitle(self) -> Optional[str]:
+    def get_window_subtitle(self) -> str | None:
         """Get window subtitle.
 
         Returns:
-            Optional[str]: Window subtitle.
+            str | None: Window subtitle.
 
         """
 
     @abstractmethod
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(self, topic: str, callback: Callable) -> None:
         """Register event callback.
 
         Listen for events with given topic.
@@ -311,17 +331,19 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
 
     @abstractmethod
-    def get_user_items_by_name(self):
+    def get_user_items_by_name(self) -> dict[str, UserItem]:
         """Get user items available on AYON server.
 
         Returns:
-            Dict[str, UserItem]: User items by username.
+            dict[str, UserItem]: User items by username.
 
         """
         pass
 
     @abstractmethod
-    def get_folder_type_items(self, project_name, sender=None):
+    def get_folder_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
         """Folder type items for a project.
 
         This function may trigger events with topics
@@ -341,7 +363,9 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_task_type_items(self, project_name, sender=None):
+    def get_task_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
         """Task type items for a project.
 
         This function may trigger events with topics
@@ -376,122 +400,117 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
         pass
 
-    # Host information
-    @abstractmethod
-    def get_workfile_extensions(self):
-        """Each host can define extensions that can be used for workfile.
-
-        Returns:
-            List[str]: File extensions that can be used as workfile for
-                current host.
-
-        """
-        pass
-
     # Selection information
     @abstractmethod
-    def get_selected_folder_id(self):
+    def get_selected_folder_id(self) -> str | None:
         """Currently selected folder id.
 
         Returns:
-            Union[str, None]: Folder id or None if no folder is selected.
+            str | None: Folder id or None if no folder is selected.
 
         """
         pass
 
     @abstractmethod
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: str | None) -> None:
         """Change selected folder.
 
         This deselects currently selected task.
 
         Args:
-            folder_id (Union[str, None]): Folder id or None if no folder
+            folder_id (str | None): Folder id or None if no folder
                 is selected.
 
         """
         pass
 
     @abstractmethod
-    def get_selected_task_id(self):
+    def get_selected_task_id(self) -> str | None:
         """Currently selected task id.
 
         Returns:
-            Union[str, None]: Task id or None if no folder is selected.
+            str | None: Task id or None if no folder is selected.
 
         """
         pass
 
     @abstractmethod
-    def get_selected_task_name(self):
+    def get_selected_task_name(self) -> str | None:
         """Currently selected task name.
 
         Returns:
-            Union[str, None]: Task name or None if no folder is selected.
-        """
+            str | None: Task name or None if no folder is selected.
 
+        """
         pass
 
     @abstractmethod
-    def set_selected_task(self, task_id, task_name):
+    def set_selected_task(
+        self, task_id: str | None, task_name: str | None
+    ) -> None:
         """Change selected task.
 
         Args:
-            task_id (Union[str, None]): Task id or None if no task
+            task_id (str | None): Task id or None if no task
                 is selected.
-            task_name (Union[str, None]): Task name or None if no task
+            task_name (str | None): Task name or None if no task
                 is selected.
 
         """
         pass
 
     @abstractmethod
-    def get_selected_workfile_path(self):
+    def get_selected_workfile_path(self) -> str | None:
         """Currently selected workarea workile.
 
         Returns:
-            Union[str, None]: Selected workfile path.
+            str | None: Selected workfile path.
 
         """
         pass
 
     @abstractmethod
     def set_selected_workfile_path(
-        self, rootless_path, path, workfile_entity_id
-    ):
+        self,
+        rootless_path: str | None,
+        path: str | None,
+        workfile_entity_id: str | None,
+    ) -> None:
         """Change selected workfile path.
 
         Args:
-            rootless_path (Union[str, None]): Selected workfile rootless path.
-            path (Union[str, None]): Selected workfile path.
-            workfile_entity_id (Union[str, None]): Workfile entity id.
+            rootless_path (str | None): Selected workfile rootless path.
+            path (str | None): Selected workfile path.
+            workfile_entity_id (str | None): Workfile entity id.
 
         """
         pass
 
     @abstractmethod
-    def get_selected_representation_id(self):
+    def get_selected_representation_id(self) -> str | None:
         """Currently selected workfile representation id.
 
         Returns:
-            Union[str, None]: Representation id or None if no representation
+            str | None: Representation id or None if no representation
                 is selected.
 
         """
         pass
 
     @abstractmethod
-    def set_selected_representation_id(self, representation_id):
+    def set_selected_representation_id(
+        self, representation_id: str | None
+    ) -> None:
         """Change selected representation.
 
         Args:
-            representation_id (Union[str, None]): Selected workfile
+            representation_id (str | None): Selected workfile
                 representation id.
 
         """
         pass
 
-    def get_selected_context(self):
+    def get_selected_context(self) -> dict[str, str | None]:
         """Obtain selected context.
 
         Returns:
@@ -512,11 +531,11 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def set_expected_selection(
         self,
-        folder_id,
-        task_name,
-        workfile_name=None,
-        representation_id=None
-    ):
+        folder_id: str,
+        task_name: str,
+        workfile_name: str | None = None,
+        representation_id: str | None = None
+    ) -> None:
         """Define what should be selected in UI.
 
         Expected selection provide a way to define/change selection of
@@ -529,16 +548,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Args:
             folder_id (str): Folder id.
             task_name (str): Task name.
-            workfile_name (Optional[str]): Workfile name. Used for workarea
+            workfile_name (str | None): Workfile name. Used for workarea
                 files UI element.
-            representation_id (Optional[str]): Representation id. Used for
+            representation_id (str | None): Representation id. Used for
                 published filed UI element.
 
         """
         pass
 
     @abstractmethod
-    def get_expected_selection_data(self):
+    def get_expected_selection_data(self) -> dict[str, Any]:
         """Data of expected selection.
 
         TODOs:
@@ -551,7 +570,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def expected_folder_selected(self, folder_id):
+    def expected_folder_selected(self, folder_id: str) -> None:
         """Expected folder was selected in UI.
 
         Args:
@@ -561,7 +580,9 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def expected_task_selected(self, folder_id, task_name):
+    def expected_task_selected(
+        self, folder_id: str, task_name: str
+    ) -> None:
         """Expected task was selected in UI.
 
         Args:
@@ -573,8 +594,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
     @abstractmethod
     def expected_representation_selected(
-        self, folder_id, task_name, representation_id
-    ):
+        self, folder_id: str, task_name: str, representation_id: str
+    ) -> None:
         """Expected representation was selected in UI.
 
         Args:
@@ -586,7 +607,9 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def expected_workfile_selected(self, folder_id, task_name, workfile_name):
+    def expected_workfile_selected(
+        self, folder_id: str, task_name: str, workfile_name: str
+    ) -> None:
         """Expected workfile was selected in UI.
 
         Args:
@@ -598,14 +621,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def go_to_current_context(self):
+    def go_to_current_context(self) -> None:
         """Set expected selection to current context."""
 
         pass
 
     # Model functions
     @abstractmethod
-    def get_folder_items(self, project_name, sender):
+    def get_folder_items(
+        self, project_name: str, sender: str | None = None
+    ) -> dict[str, FolderItem]:
         """Folder items to visualize project hierarchy.
 
         This function may trigger events 'folders.refresh.started' and
@@ -614,17 +639,22 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Args:
             project_name (str): Project name for which are folders requested.
-            sender (str): Who requested folder items.
+            sender (str | None): Who requested folder items.
 
         Returns:
-            list[FolderItem]: Minimum possible information needed
+            dict[str, FolderItem]: Minimum possible information needed
                 for visualisation of folder hierarchy.
 
         """
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_id, sender):
+    def get_task_items(
+        self,
+        project_name: str,
+        folder_id: str,
+        sender: str | None = None,
+    ) -> list[TaskItem]:
         """Task items.
 
         This function may trigger events 'tasks.refresh.started' and
@@ -634,7 +664,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Args:
             project_name (str): Project name for which are tasks requested.
             folder_id (str): Folder ID for which are tasks requested.
-            sender (str): Who requested folder items.
+            sender (str | None): Who requested folder items.
 
         Returns:
             list[TaskItem]: Minimum possible information needed
@@ -644,17 +674,19 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def has_unsaved_changes(self):
+    def has_unsaved_changes(self) -> bool | None:
         """Has host unsaved change in currently running session.
 
         Returns:
-            bool: Has unsaved changes.
+            bool | None: Has unsaved changes or None if unknown.
 
         """
         pass
 
     @abstractmethod
-    def get_workarea_dir_by_context(self, folder_id, task_id):
+    def get_workarea_dir_by_context(
+        self, folder_id: str, task_id: str
+    ) -> str | None:
         """Get workarea directory by context.
 
         Args:
@@ -662,13 +694,18 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             task_id (str): Task id.
 
         Returns:
-            str: Workarea directory.
+            str | None: Workarea directory.
 
         """
         pass
 
     @abstractmethod
-    def get_workarea_file_items(self, folder_id, task_name, sender=None):
+    def get_workarea_file_items(
+        self,
+        folder_id: str,
+        task_name: str,
+        sender: str | None = None,
+    ) -> list[WorkfileInfo]:
         """Get workarea file items.
 
         Args:
@@ -683,7 +720,9 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workarea_save_as_data(self, folder_id, task_id):
+    def get_workarea_save_as_data(
+        self, folder_id: str, task_id: str
+    ) -> dict[str, Any]:
         """Prepare data for Save As operation.
 
         Todos:
@@ -702,12 +741,12 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def fill_workarea_filepath(
         self,
-        folder_id,
-        task_id,
-        extension,
-        use_last_version,
-        version,
-        comment,
+        folder_id: str,
+        task_id: str,
+        extension: str,
+        use_last_version: bool,
+        version: int,
+        comment: str | None,
     ):
         """Calculate workfile path for passed context.
 
@@ -717,7 +756,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             extension (str): File extension.
             use_last_version (bool): Use last version.
             version (int): Version used if 'use_last_version' if 'False'.
-            comment (str): User's comment (subversion).
+            comment (str | None): User's comment (subversion).
 
         Returns:
             WorkareaFilepathResult: Result of the operation.
@@ -726,12 +765,14 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_published_file_items(self, folder_id: str, task_id: str):
+    def get_published_file_items(
+        self, folder_id: str, task_id: str
+    ) -> list[PublishedWorkfileInfo]:
         """Get published file items.
 
         Args:
             folder_id (str): Folder id.
-            task_id (Union[str, None]): Task id.
+            task_id (str): Task id.
 
         Returns:
             list[PublishedWorkfileInfo]: List of published file items.
@@ -742,14 +783,14 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def get_published_workfile_info(
         self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
+        folder_id: str | None,
+        representation_id: str | None,
     ) -> PublishedWorkfileWrap:
         """Get published workfile info by representation ID.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            representation_id (Optional[str]): Representation id.
+            folder_id (str | None): Folder id.
+            representation_id (str | None): Representation id.
 
         Returns:
             PublishedWorkfileWrap: Published workfile info or None
@@ -759,7 +800,9 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workfile_info(self, folder_id, task_id, rootless_path):
+    def get_workfile_info(
+        self, folder_id: str, task_id: str, rootless_path: str
+    ) -> WorkfileInfo | None:
         """Workfile info from database.
 
         Args:
@@ -768,7 +811,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             rootless_path (str): Workfile path.
 
         Returns:
-            Optional[WorkfileInfo]: Workfile info or None if was passed
+            WorkfileInfo | None: Workfile info or None if was passed
                 invalid context.
 
         """
@@ -777,12 +820,12 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def save_workfile_info(
         self,
-        task_id,
-        rootless_path,
-        version=None,
-        comment=None,
-        description=None,
-    ):
+        task_id: str,
+        rootless_path: str,
+        version: int | None = None,
+        comment: str | None = None,
+        description: str | None = None,
+    ) -> None:
         """Save workfile info to database.
 
         At this moment the only information which can be saved about
@@ -794,16 +837,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Args:
             task_id (str): Task id.
             rootless_path (str): Rootless workfile path.
-            version (Optional[int]): Version of workfile.
-            comment (Optional[str]): User's comment (subversion).
-            description (Optional[str]): Workfile description.
+            version (int): Version of workfile.
+            comment (str | None): User's comment (subversion).
+            description (str | None): Workfile description.
 
         """
         pass
 
     # General commands
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         """Reset everything, models, ui etc.
 
         Triggers 'controller.reset.started' event at the beginning and
@@ -814,7 +857,9 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
     # Controller actions
     @abstractmethod
-    def open_workfile(self, folder_id, task_id, filepath):
+    def open_workfile(
+        self, folder_id: str, task_id: str, filepath: str
+    ) -> None:
         """Open a workfile for context.
 
         Args:
@@ -826,7 +871,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def save_current_workfile(self):
+    def save_current_workfile(self) -> None:
         """Save state of current workfile."""
 
         pass
@@ -834,27 +879,26 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def save_as_workfile(
         self,
-        folder_id,
-        task_id,
-        rootless_workdir,
-        workdir,
-        filename,
-        version,
-        comment,
-        description,
-    ):
+        folder_id: str,
+        task_id: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         """Save current state of workfile to workarea.
 
         Args:
             folder_id (str): Folder id.
             task_id (str): Task id.
             rootless_workdir (str): Workarea directory.
+            workdir (str): Workarea directory.
             filename (str): Workarea filename.
-            template_key (str): Template key used to get the workdir
-                and filename.
-            version (Optional[int]): Version of workfile.
-            comment (Optional[str]): User's comment (subversion).
-            description (Optional[str]): Workfile description.
+            version (int | None): Version of workfile.
+            comment (str | None): User's comment (subversion).
+            description (str | None): Workfile description.
 
         """
         pass
@@ -862,17 +906,17 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def copy_workfile_representation(
         self,
-        representation_id,
-        representation_filepath,
-        folder_id,
-        task_id,
-        workdir,
-        filename,
-        rootless_workdir,
-        version,
-        comment,
-        description,
-    ):
+        representation_id: str,
+        representation_filepath: str,
+        folder_id: str,
+        task_id: str,
+        workdir: str,
+        filename: str,
+        rootless_workdir: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         """Action to copy published workfile representation to workarea.
 
         Triggers 'copy_representation.started' event on start and
@@ -887,8 +931,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             filename (str): Workarea filename.
             rootless_workdir (str): Rootless workdir.
             version (int): Workfile version.
-            comment (str): User's comment (subversion).
-            description (str): Description note.
+            comment (str | None): User's comment (subversion).
+            description (str | None): Description note.
 
         """
         pass
@@ -896,16 +940,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def duplicate_workfile(
         self,
-        folder_id,
-        task_id,
-        src_filepath,
-        rootless_workdir,
-        workdir,
-        filename,
-        description,
-        version,
-        comment
-    ):
+        folder_id: str,
+        task_id: str,
+        src_filepath: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         """Duplicate workfile.
 
         Workfiles is not opened when done.
