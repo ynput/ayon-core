@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import os
 import typing
-from typing import Optional, Any, Callable
+from typing import Any, Callable
 
 from ayon_core.host import PublishedWorkfileInfo
 
@@ -275,8 +275,8 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
 
         Args:
             topic (str): Event topic used for callbacks filtering.
-            data (Optional[dict[str, Any]]): Event data.
-            source (Optional[str]): Event source.
+            data (dict[str, Any] | None): Event data.
+            source (str | None): Event source.
 
         """
         pass
@@ -514,7 +514,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """Obtain selected context.
 
         Returns:
-            dict[str, Union[str, None]]: Selected context.
+            dict[str, str | None]: Selected context.
 
         """
         return {
@@ -711,7 +711,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Args:
             folder_id (str): Folder id.
             task_name (str): Task name.
-            sender (Optional[str]): Who requested workarea file items.
+            sender (str | None): Who requested workarea file items.
 
         Returns:
             list[WorkfileInfo]: List of workarea file items.
