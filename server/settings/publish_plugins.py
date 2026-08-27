@@ -1566,6 +1566,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=IntegrateHeroVersionModel,
         title="Integrate Hero Version"
     )
+    IntegrateHeroVersionTraits: IntegrateHeroVersionModel = SettingsField(
+        default_factory=ValidateBaseModel,
+        title="Integrate Hero version with representation traits"
+    )
     AttachReviewables: EnabledModel = SettingsField(
         default_factory=EnabledModel,
         title="Attach Reviewables",
