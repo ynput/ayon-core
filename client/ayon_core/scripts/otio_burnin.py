@@ -650,7 +650,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
                 filters_path = temp.name
 
             # "-filter_script" was removed in FFmpeg 9 in favor of "-/filter"
-            if is_ffmpeg_supported_option("-filter_script"):
+            if is_ffmpeg_supported_option("filter_script"):
                 filters = f'-filter_script:v "{filters_path}"'
             else:
                 filters = f'-/filter:v "{filters_path}"'

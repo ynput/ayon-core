@@ -495,6 +495,7 @@ def get_ffmpeg_supported_options(mode: str = "long") -> set[str]:
             continue
         option = option.split(" ", maxsplit=1)[0]  # remove description
         option = option.split("[", maxsplit=1)[0]  # remove stream_specifier
+        option = option.lstrip("-")
         if not option:
             continue
 
