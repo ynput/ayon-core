@@ -479,9 +479,8 @@ def get_ffmpeg_supported_options(mode: str = "long") -> set[str]:
         set[str]: All the options supported by the current FFmpeg version.
 
     """
-    ffmpeg = get_ffmpeg_tool_path("ffmpeg")
     result = subprocess.run(
-        [ffmpeg, "-h", mode],
+        get_ffmpeg_tool_args("ffmpeg", "-h", mode),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
