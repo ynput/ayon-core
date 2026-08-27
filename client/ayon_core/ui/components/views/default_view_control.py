@@ -18,6 +18,7 @@ from ..buttons import AYButton
 from ..container import AYContainer
 
 from .data_models import View, Visibility, Scope
+from .data_models import FilterDef, GroupingDef, ViewSettings
 from .view_manager import DEFAULT_VIEW_LABEL
 
 if TYPE_CHECKING:
@@ -193,11 +194,15 @@ class DefaultViewControl:
     # ------------------------------------------------------------------
 
     def _fetch_default_views(self) -> tuple[View | None, View | None]:
-        """Pull the current studio and project default views from the manager."""
+        """Pull current studio and project default views from manager."""
         sel = self._selector
         try:
-            self.studio_default_view = sel._manager.get_default_studio_view(sel._view_type)
-            self.project_default_view = sel._manager.get_default_project_view(sel._view_type)
+            self.studio_default_view = sel._manager.get_default_studio_view(
+                sel._view_type
+            )
+            self.project_default_view = sel._manager.get_default_project_view(
+                sel._view_type
+            )
             return self.studio_default_view, self.project_default_view
         except Exception:
             log.exception(
@@ -337,6 +342,16 @@ class DefaultViewControl:
                 "Failed to load project default view.",
                 success=False,
             )
+
+    def make_default_view_settings(self):
+        """
+        Apply the default view settings to the selector's bindings.
+        """
+        default_view = ViewSettings()
+        self._selector._bindings.apply(default_view)
+        self._selector._clear_modified()
+        self._selector._close_menu()
+        self._emit_action_message("Reset to defaults.")
 
     def _confirm_unset_default(self, scope: Scope) -> bool:
         """Ask for user confirmation before removing a default view."""

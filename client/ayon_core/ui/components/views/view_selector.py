@@ -496,6 +496,10 @@ class AYViewSelector(AYButtonMenu):
             ctrl.load_studio_default_view()
             return
 
+        if ctrl.make_default_view_settings:
+            ctrl.make_default_view_settings()
+            return
+
         self.emit_default_view_message(
             "No default view configured.",
             False,
