@@ -503,7 +503,7 @@ def get_ffmpeg_supported_options(mode: str = "long") -> set[str]:
     return options
 
 
-def is_ffmpeg_supported_option(option: str) -> bool:
+def is_ffmpeg_option_supported(option: str) -> bool:
     """True if the current version of ffmpeg supports the given option."""
     return option in get_ffmpeg_supported_options()
 
