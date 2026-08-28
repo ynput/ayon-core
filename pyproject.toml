@@ -33,7 +33,9 @@ dependencies = [
     "numpy >=2.4.3",
     "qtpy >=2.4.3",
     "pyside6 >=6.8.3",
-    "Pillow ==9.5.0"
+    "Pillow ==9.5.0",
+    "structlog>=26.1.0",
+    "rich>=15.0.0",
 ]
 
 [project.optional-dependencies]
@@ -68,6 +70,7 @@ log_cli = true
 log_cli_level = "INFO"
 addopts = "-ra -q"
 testpaths = [
+    "tests/ayon_core",
     "client/ayon_core/tests",
     "tests/client/ayon_core/ui",
 ]
@@ -82,4 +85,10 @@ markers = [
     "cli: CLI tests",
     "slow: Slow tests",
     "server: Tests that require a running AYON server",
+]
+
+[tool.ty.environment]
+extra-paths = [
+    "client",
+    "tests/client/ayon_core/ui",
 ]

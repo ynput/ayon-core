@@ -3,7 +3,7 @@
 """AYON lib functions."""
 
 from .terminal import Terminal
-from .log import Logger
+from .log import Logger, configure_logger
 from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
@@ -154,6 +154,7 @@ terminal = Terminal
 
 __all__ = [
     "Logger",
+    "configure_logger",
 
     "StrEnum",
 
