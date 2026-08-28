@@ -524,7 +524,7 @@ class ActionsModel:
                 uri = f"{ayon_url}/{path}"
 
             if not webbrowser.open_new_tab(uri):
-                payload.error_message = "Failed to open web browser."
+                response.error_message = "Failed to open web browser."
 
         elif response_type == "form":
             p_submit_icon: str | None = payload["submit_icon"] or None
