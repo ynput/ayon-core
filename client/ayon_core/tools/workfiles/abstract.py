@@ -837,7 +837,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Args:
             task_id (str): Task id.
             rootless_path (str): Rootless workfile path.
-            version (int): Version of workfile.
+            version (int | None): Version of workfile.
             comment (str | None): User's comment (subversion).
             description (str | None): Workfile description.
 
