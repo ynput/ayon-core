@@ -1,8 +1,10 @@
-import os
-import uuid
+from __future__ import annotations
+
 from dataclasses import dataclass, asdict
+import os
+from typing import Any
+import uuid
 from urllib.parse import urlencode, urlparse
-from typing import Any, Optional
 import webbrowser
 
 import ayon_api
@@ -38,19 +40,19 @@ class WebactionForm:
     fields: list[dict[str, Any]]
     title: str
     submit_label: str
-    submit_icon: str
+    submit_icon: dict[str, str] | None
     cancel_label: str
-    cancel_icon: str
+    cancel_icon: dict[str, str] | None
 
 
 @dataclass
 class WebactionResponse:
     response_type: str
     success: bool
-    message: Optional[str] = None
-    clipboard_text: Optional[str] = None
-    form: Optional[WebactionForm] = None
-    error_message: Optional[str] = None
+    message: str | None = None
+    clipboard_text: str | None = None
+    form: WebactionForm | None = None
+    error_message: str | None = None
 
 
 def get_action_icon(action):
@@ -112,7 +114,7 @@ class ActionsModel:
         self._variant = get_settings_variant()
 
     @staticmethod
-    def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
+    def calculate_full_label(label: str, variant_label: str | None) -> str:
         """Calculate full label from label and variant_label."""
         if variant_label:
             return " ".join([label, variant_label])
@@ -136,18 +138,18 @@ class ActionsModel:
 
     def get_action_items(
         self,
-        project_name: Optional[str],
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        workfile_id: Optional[str],
+        project_name: str | None,
+        folder_id: str | None,
+        task_id: str | None,
+        workfile_id: str | None,
     ) -> list[ActionItem]:
         """Get actions for project.
 
         Args:
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
-            workfile_id (Optional[str]): Workfile id.
+            project_name (str | None): Project name.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
+            workfile_id (str | None): Workfile id.
 
         Returns:
             list[ActionItem]: List of actions.
@@ -515,17 +517,26 @@ class ActionsModel:
         elif response_type == "redirect":
             # NOTE unused 'newTab' key because we always have to
             #   open new tab from desktop app.
-            if not webbrowser.open_new_tab(payload["uri"]):
+            uri = payload["uri"]
+            if not urlparse(uri).scheme:
+                ayon_url = ayon_api.get_base_url().rstrip("/")
+                path = uri.lstrip("/")
+                uri = f"{ayon_url}/{path}"
+
+            if not webbrowser.open_new_tab(uri):
                 payload.error_message = "Failed to open web browser."
 
         elif response_type == "form":
-            submit_icon = payload["submit_icon"] or None
-            cancel_icon = payload["cancel_icon"] or None
-            if submit_icon:
-                submit_icon = MaterialSymbolsIcon(submit_icon)
+            p_submit_icon: str | None = payload["submit_icon"] or None
+            p_cancel_icon: str | None = payload["cancel_icon"] or None
 
-            if cancel_icon:
-                cancel_icon = MaterialSymbolsIcon(cancel_icon)
+            submit_icon: dict[str, str] | None = None
+            if p_submit_icon:
+                submit_icon = MaterialSymbolsIcon(p_submit_icon).to_data()
+
+            cancel_icon: dict[str, str] | None = None
+            if p_cancel_icon:
+                cancel_icon = MaterialSymbolsIcon(p_cancel_icon).to_data()
 
             response.form = WebactionForm(
                 fields=payload["fields"],
