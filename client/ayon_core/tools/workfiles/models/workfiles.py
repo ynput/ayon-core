@@ -342,10 +342,10 @@ class WorkfilesModel:
             comment,
             description,
         )
-
-        self._update_file_description(
-            task_id, rootless_path, description
-        )
+        if description is not None:
+            self._update_file_description(
+                task_id, rootless_path, description
+            )
 
     def get_workarea_dir_by_context(
         self, folder_id: str | None, task_id: str | None
