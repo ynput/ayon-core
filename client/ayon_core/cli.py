@@ -403,7 +403,7 @@ def _cleanup_project_args():
 
 
 def main(*args, **kwargs):
-    logger = structlog.getLogger("main")
+    logger = structlog.get_logger("main")
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
