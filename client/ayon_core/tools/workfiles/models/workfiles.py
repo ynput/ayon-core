@@ -3,7 +3,7 @@ import os
 import copy
 import platform
 import typing
-from typing import Optional, Any
+from typing import Any
 
 import ayon_api
 
@@ -44,9 +44,7 @@ from ayon_core.tools.workfiles.abstract import (
 )
 
 if typing.TYPE_CHECKING:
-    from ayon_core.pipeline import Anatomy
-
-_NOT_SET = object()
+    from ayon_core.pipeline.anatomy import Anatomy, AnatomyTemplateResult
 
 
 class WorkfilesModel:
@@ -56,7 +54,7 @@ class WorkfilesModel:
         self,
         host: IWorkfileHost,
         controller: AbstractWorkfilesBackend
-    ):
+    ) -> None:
         self._host: IWorkfileHost = host
         self._controller: AbstractWorkfilesBackend = controller
 
@@ -64,29 +62,29 @@ class WorkfilesModel:
         extensions = None
         if controller.is_host_valid():
             extensions = controller.get_workfile_extensions()
-        self._extensions: Optional[set[str]] = extensions
+        self._extensions: list[str] | None = extensions
 
-        self._current_username = _NOT_SET
+        self._current_username: str | None = None
 
         # Workarea
-        self._base_data = None
-        self._fill_data_by_folder_id = {}
-        self._task_data_by_folder_id = {}
-        self._workdir_by_context = {}
-        self._workarea_file_items_mapping = {}
+        self._base_data: dict[str, Any] | None = None
+        self._fill_data_by_folder_id: dict[str, dict[str, Any]] = {}
+        self._task_data_by_folder_id: dict[str, dict[str, Any]] = {}
+        self._workdir_by_context: dict[str, dict[str, str]] = {}
+        self._workarea_file_items_mapping: dict[str, dict] = {}
         self._workarea_file_items_cache = NestedCacheItem(
             levels=1, default_factory=list
         )
 
         # Published workfiles
-        self._repre_by_id = {}
-        self._version_comment_by_id = {}
+        self._repre_by_id: dict[str, dict[str, Any]] = {}
+        self._version_comment_by_id: dict[str, str | None] = {}
         self._published_workfile_items_cache = NestedCacheItem(
             levels=1, default_factory=list
         )
 
         # Entities
-        self._workfile_entities_by_task_id = {}
+        self._workfile_entities_by_task_id: dict[str, list[dict[str, Any]]] = {}  # noqa: E501
 
     def reset(self):
         self._base_data = None
@@ -103,10 +101,12 @@ class WorkfilesModel:
         self._workfile_entities_by_task_id = {}
 
     # Host functionality
-    def get_current_workfile(self):
+    def get_current_workfile(self) -> str | None:
         return self._host.get_current_workfile()
 
-    def open_workfile(self, folder_id, task_id, filepath):
+    def open_workfile(
+        self, folder_id: str, task_id: str, filepath: str
+    ) -> None:
         self._emit_event("open_workfile.started")
 
         failed = False
@@ -122,21 +122,21 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
-    def save_current_workfile(self):
+    def save_current_workfile(self) -> None:
         current_file = self.get_current_workfile()
         self._host.save_workfile(current_file)
 
     def save_as_workfile(
         self,
-        folder_id,
-        task_id,
-        rootless_workdir,
-        workdir,
-        filename,
-        version,
-        comment,
-        description,
-    ):
+        folder_id: str,
+        task_id: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._emit_event("save_as.started")
 
         filepath = os.path.join(workdir, filename)
@@ -171,9 +171,6 @@ class WorkfilesModel:
             self._update_workfile_info(
                 task_id, rootless_path, description
             )
-            self._update_current_context(
-                folder_id, folder_entity["path"], task_entity["name"]
-            )
 
         except Exception:
             failed = True
@@ -186,17 +183,17 @@ class WorkfilesModel:
 
     def copy_workfile_representation(
         self,
-        representation_id,
-        representation_filepath,
-        folder_id,
-        task_id,
-        workdir,
-        filename,
-        rootless_workdir,
-        version,
-        comment,
-        description,
-    ):
+        representation_id: str,
+        representation_filepath: str,
+        folder_id: str,
+        task_id: str,
+        workdir: str,
+        filename: str,
+        rootless_workdir: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._emit_event("copy_representation.started")
 
         project_name = self._project_name
@@ -236,9 +233,6 @@ class WorkfilesModel:
             self._update_workfile_info(
                 task_id, rootless_path, description
             )
-            self._update_current_context(
-                folder_id, folder_entity["path"], task_entity["name"]
-            )
 
         except Exception:
             failed = True
@@ -253,16 +247,16 @@ class WorkfilesModel:
 
     def duplicate_workfile(
         self,
-        folder_id,
-        task_id,
-        src_filepath,
-        rootless_workdir,
-        workdir,
-        filename,
-        version,
-        comment,
-        description
-    ):
+        folder_id: str,
+        task_id: str,
+        src_filepath: str,
+        rootless_workdir: str,
+        workdir: str,
+        filename: str,
+        version: int,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._emit_event("workfile_duplicate.started")
 
         project_name = self._controller.get_current_project_name()
@@ -304,7 +298,9 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
-    def get_workfile_entities(self, task_id: str):
+    def get_workfile_entities(
+        self, task_id: str | None
+    ) -> list[dict[str, Any]]:
         if not task_id:
             return []
         workfile_entities = self._workfile_entities_by_task_id.get(task_id)
@@ -318,10 +314,10 @@ class WorkfilesModel:
 
     def get_workfile_info(
         self,
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        rootless_path: Optional[str]
-    ):
+        folder_id: str | None,
+        task_id: str | None,
+        rootless_path: str | None,
+    ) -> WorkfileInfo | None:
         if not folder_id or not task_id or not rootless_path:
             return None
 
@@ -335,10 +331,10 @@ class WorkfilesModel:
         self,
         task_id: str,
         rootless_path: str,
-        version: Optional[int],
-        comment: Optional[str],
-        description: Optional[str],
-    ):
+        version: int | None,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         self._save_workfile_info(
             task_id,
             rootless_path,
@@ -352,18 +348,18 @@ class WorkfilesModel:
         )
 
     def get_workarea_dir_by_context(
-        self, folder_id: str, task_id: str
-    ) -> Optional[str]:
+        self, folder_id: str | None, task_id: str | None
+    ) -> str | None:
         """Workarea dir for passed context.
 
         The directory path is based on project anatomy templates.
 
         Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
 
         Returns:
-            Optional[str]: Workarea dir path or None for invalid context.
+            str | None: Workarea dir path or None for invalid context.
 
         """
         if not folder_id or not task_id:
@@ -383,12 +379,14 @@ class WorkfilesModel:
         folder_mapping[task_id] = workdir
         return workdir
 
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(
+        self, folder_id: str | None, task_id: str | None
+    ) -> list[WorkfileInfo]:
         """Workfile items for passed context from workarea.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
 
         Returns:
             list[WorkfileInfo]: List of file items matching workarea of passed
@@ -398,7 +396,7 @@ class WorkfilesModel:
         return self._cache_file_items(folder_id, task_id)
 
     def get_workarea_save_as_data(
-        self, folder_id: Optional[str], task_id: Optional[str]
+        self, folder_id: str | None, task_id: str | None
     ) -> dict[str, Any]:
         folder_entity = None
         task_entity = None
@@ -438,7 +436,7 @@ class WorkfilesModel:
 
         extensions = self._extensions
         if not current_ext and extensions:
-            current_ext = tuple(extensions)[0]
+            current_ext = extensions[0]
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
@@ -548,13 +546,13 @@ class WorkfilesModel:
         )
 
     def get_published_file_items(
-        self, folder_id: Optional[str], task_id: Optional[str]
+        self, folder_id: str | None, task_id: str | None
     ) -> list[PublishedWorkfileInfo]:
         """Published workfiles for passed context.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
 
         Returns:
             list[PublishedWorkfileInfo]: List of files for published workfiles.
@@ -636,14 +634,14 @@ class WorkfilesModel:
 
     def get_published_workfile_info(
         self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
+        folder_id: str | None,
+        representation_id: str | None,
     ) -> PublishedWorkfileWrap:
         """Get published workfile info by representation ID.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            representation_id (Optional[str]): Representation id.
+            folder_id (str | None): Folder id.
+            representation_id (str | None): Representation id.
 
         Returns:
             PublishedWorkfileWrap: Published workfile info or None
@@ -670,24 +668,26 @@ class WorkfilesModel:
     def _host_name(self) -> str:
         return self._host.name
 
-    def _emit_event(self, topic, data=None):
+    def _emit_event(
+        self, topic: str, data: dict[str, Any] | None = None
+    ) -> None:
         self._controller.emit_event(topic, data, "workfiles")
 
     def _get_current_username(self) -> str:
-        if self._current_username is _NOT_SET:
+        if self._current_username is None:
             self._current_username = get_ayon_username()
         return self._current_username
 
     def _get_published_workfile_version_comment(
         self, representation_id: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get version comment for published workfile.
 
         Args:
             representation_id (str): Representation id.
 
         Returns:
-            Optional[str]: Version comment or None.
+            str | None: Version comment or None.
 
         """
         if not representation_id:
@@ -698,7 +698,9 @@ class WorkfilesModel:
         return self._version_comment_by_id.get(repre["versionId"])
 
     # --- Host ---
-    def _open_workfile(self, folder_id: str, task_id: str, filepath: str):
+    def _open_workfile(
+        self, folder_id: str, task_id: str, filepath: str
+    ) -> None:
         # TODO move to workfiles pipeline
         project_name = self._project_name
         project_entity = self._controller.get_project_entity(project_name)
@@ -716,17 +718,9 @@ class WorkfilesModel:
         self._host.open_workfile_with_context(
             filepath, folder_entity, task_entity, prepared_data=prepared_data
         )
-        self._update_current_context(
-            folder_id, folder_entity["path"], task_entity["name"]
-        )
-
-    def _update_current_context(self, folder_id, folder_path, task_name):
-        self._current_folder_id = folder_id
-        self._current_folder_path = folder_path
-        self._current_task_name = task_name
 
     # --- Workarea ---
-    def _reset_workarea_file_items(self, task_id: str):
+    def _reset_workarea_file_items(self, task_id: str) -> None:
         cache: CacheItem = self._workarea_file_items_cache[task_id]
         cache.set_invalid()
         self._workarea_file_items_mapping.pop(task_id, None)
@@ -785,7 +779,7 @@ class WorkfilesModel:
         return base_data
 
     def _cache_file_items(
-        self, folder_id: Optional[str], task_id: Optional[str]
+        self, folder_id: str | None, task_id: str | None
     ) -> list[WorkfileInfo]:
         if not folder_id or not task_id:
             return []
@@ -879,8 +873,8 @@ class WorkfilesModel:
         )
 
     def _get_workdir(
-        self, anatomy: "Anatomy", template_key: str, fill_data: dict[str, Any]
-    ):
+        self, anatomy: Anatomy, template_key: str, fill_data: dict[str, Any]
+    ) -> AnatomyTemplateResult:
         directory_template = anatomy.get_template_item(
             "work", template_key, "directory"
         )
@@ -891,7 +885,7 @@ class WorkfilesModel:
         task_id: str,
         rootless_path: str,
         description: str,
-    ):
+    ) -> None:
         self._update_file_description(task_id, rootless_path, description)
         self._reset_workarea_file_items(task_id)
 
@@ -913,7 +907,7 @@ class WorkfilesModel:
 
     def _update_file_description(
         self, task_id: str, rootless_path: str, description: str
-    ):
+    ) -> None:
         mapping = self._workarea_file_items_mapping.get(task_id)
         if not mapping:
             return
@@ -926,10 +920,10 @@ class WorkfilesModel:
         self,
         task_id: str,
         rootless_path: str,
-        version: Optional[int],
-        comment: Optional[str],
-        description: Optional[str],
-    ):
+        version: int | None,
+        comment: str | None,
+        description: str | None,
+    ) -> None:
         workfile_entity = save_workfile_info(
             self._controller.get_current_project_name(),
             task_id,
