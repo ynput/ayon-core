@@ -52,11 +52,15 @@ class ModuleInfo:
     filepath: str
     module: types.ModuleType
 
+    # Backwards compatibility - added 27/08/2026
     def __iter__(self):
-        # Backwards compatibility - added 27/08/2026
-        # - yield data as tuple for unpacking
+        # Yield data as tuple for unpacking
         yield self.filepath
         yield self.module
+
+    def __getitem__(self, index: int) -> str | types.ModuleType:
+        # Allow index access
+        return [self.filepath, self.module][index]
 
 
 @dataclass
@@ -64,11 +68,15 @@ class CrashedModuleInfo:
     filepath: str
     exc_info: tuple
 
+    # Backwards compatibility - added 27/08/2026
     def __iter__(self):
-        # Backwards compatibility - added 27/08/2026
-        # - yield data as tuple for unpacking
+        # Yield data as tuple for unpacking
         yield self.filepath
         yield self.exc_info
+
+    def __getitem__(self, index: int) -> str | tuple:
+        # Allow index access
+        return [self.filepath, self.exc_info][index]
 
 
 @dataclass
@@ -82,11 +90,17 @@ class ModulesResult:
     def add_crashed_module(self, path: str, exc_info: tuple) -> None:
         self.crashed.append(CrashedModuleInfo(path, exc_info))
 
+    # Backwards compatibility - added 27/08/2026
     def __iter__(self):
-        # Backwards compatibility - added 27/08/2026
-        # - yield data as tuple for unpacking
+        # Yield data as tuple for unpacking
         yield self.modules
         yield self.crashed
+
+    def __getitem__(
+        self, index: int
+    ) -> list[ModuleInfo] | list[CrashedModuleInfo]:
+        # Allow index access
+        return [self.modules, self.crashed][index]
 
 
 def modules_from_path(dir_path: str) -> ModulesResult:
