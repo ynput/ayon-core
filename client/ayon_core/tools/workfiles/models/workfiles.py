@@ -436,7 +436,7 @@ class WorkfilesModel:
 
         extensions = self._extensions
         if not current_ext and extensions:
-            current_ext = tuple(extensions)[0]
+            current_ext = extensions[0]
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
