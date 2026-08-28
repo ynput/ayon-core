@@ -165,7 +165,7 @@ class BaseWorkfileController(
         self._project_anatomy: Anatomy | None = None
         self._event_system: QueuedEventSystem = QueuedEventSystem()
         self._log: logging.Logger = Logger.get_logger("WorkfilesUI")
-        self._username: str = NOT_SET
+        self._username: str | object = NOT_SET
 
         self._current_project_name: str | None = None
         self._current_folder_path: str | None = None
@@ -517,7 +517,7 @@ class BaseWorkfileController(
         task_id: str,
         rootless_path: str,
         version: int | None = None,
-        comment: str | None = "",
+        comment: str | None = None,
         description: str | None = None,
     ) -> None:
         self._workfiles_model.save_workfile_info(

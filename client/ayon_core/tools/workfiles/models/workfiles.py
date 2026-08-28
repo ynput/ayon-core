@@ -62,7 +62,7 @@ class WorkfilesModel:
         extensions = None
         if controller.is_host_valid():
             extensions = controller.get_workfile_extensions()
-        self._extensions: set[str] | None = extensions
+        self._extensions: list[str] | None = extensions
 
         self._current_username: str | None = None
 
@@ -84,7 +84,7 @@ class WorkfilesModel:
         )
 
         # Entities
-        self._workfile_entities_by_task_id: dict[str, dict[str, Any]] = {}
+        self._workfile_entities_by_task_id: dict[str, list[dict[str, Any]]] = {}  # noqa: E501
 
     def reset(self):
         self._base_data = None

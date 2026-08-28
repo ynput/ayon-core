@@ -531,8 +531,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     @abstractmethod
     def set_expected_selection(
         self,
-        folder_id: str,
-        task_name: str,
+        folder_id: str | None,
+        task_name: str | None,
         workfile_name: str | None = None,
         representation_id: str | None = None
     ) -> None:
@@ -546,8 +546,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Triggers 'expected_selection.changed' event.
 
         Args:
-            folder_id (str): Folder id.
-            task_name (str): Task name.
+            folder_id (str | None): Folder id.
+            task_name (str | None): Task name.
             workfile_name (str | None): Workfile name. Used for workarea
                 files UI element.
             representation_id (str | None): Representation id. Used for
@@ -896,7 +896,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             rootless_workdir (str): Workarea directory.
             workdir (str): Workarea directory.
             filename (str): Workarea filename.
-            version (int | None): Version of workfile.
+            version (int): Version of workfile.
             comment (str | None): User's comment (subversion).
             description (str | None): Workfile description.
 
