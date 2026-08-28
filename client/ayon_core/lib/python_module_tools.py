@@ -111,7 +111,7 @@ def modules_from_path(dir_path: str) -> ModulesResult:
 
     Returns:
         ModulesResult: Contains successfully imported modules and
-            tuples of path and exception for crashed modules.
+            information about paths that failed to import.
 
     """
     result = ModulesResult()
