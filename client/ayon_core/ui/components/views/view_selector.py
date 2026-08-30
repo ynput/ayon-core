@@ -122,10 +122,11 @@ class AYViewSelector(AYButtonMenu):
             icon="view_quilt",
             variant=AYButton.Variants.Surface,
             tooltip="Views",
+            width=32,
+            height=32,
             parent=parent,
         )
         self.setObjectName("AYViewSelector")
-        self.setFixedSize(32, 32)
 
         # Rebuild the menu contents each time it opens, since the view
         # list may change between openings.
