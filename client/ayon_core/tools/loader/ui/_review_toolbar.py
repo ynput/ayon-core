@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from ayon_core.ui.components.buttons import (
     AYButton,
     AYButtonMenu,
@@ -241,6 +243,27 @@ class DisplayType(AYContainer):
     @property
     def display_type(self) -> str:
         return self._display_type
+
+    def set_display_type(self, display_type: Literal["table", "grid"]) -> None:
+        """Set the active display mode programmatically.
+
+        Args:
+            display_type: ``"table"`` or ``"grid"``.
+        """
+        target = "grid" if display_type == "grid" else "table"
+        if target == self._display_type:
+            return
+
+        self._display_type = target
+        table_checked = target == "table"
+        self._table_btn.blockSignals(True)
+        self._grid_btn.blockSignals(True)
+        self._table_btn.setChecked(table_checked)
+        self._grid_btn.setChecked(not table_checked)
+        self._table_btn.blockSignals(False)
+        self._grid_btn.blockSignals(False)
+
+        self.display_type_changed.emit(self._display_type)
 
     def _on_button_clicked(self, button: QtWidgets.QAbstractButton) -> None:
         self._display_type = button.objectName()

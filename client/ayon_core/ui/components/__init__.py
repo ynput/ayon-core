@@ -7,6 +7,7 @@ design system.
 from .buttons import AYButton
 from .check_box import AYCheckBox
 from .combo_box import AYComboBox
+from .searchable_combo_box import AYSearchableComboBox
 from .container import AYContainer
 from .label import AYLabel
 from .layouts import AYGridLayout, AYHBoxLayout, AYVBoxLayout
@@ -39,6 +40,7 @@ __all__ = (
     "AYButton",
     "AYCheckBox",
     "AYComboBox",
+    "AYSearchableComboBox",
     "AYContainer",
     "AYLabel",
     "AYHBoxLayout",

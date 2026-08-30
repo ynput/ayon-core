@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Iterator
+from typing import Any, Iterator, Literal
 
 import ayon_api
 from ayon_core.ui.components.card_view import AYCardView
@@ -43,7 +43,7 @@ from ._review_toolbar import Customize, DisplayType, GroupByMenu
 
 log = Logger.get_logger(__name__)
 
-VIEW_TYPE_VERSIONS = "versions"
+BROWSER_VIEW_TYPE = "desktop.browser"
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -84,6 +84,7 @@ class ReviewTable(AYContainer):
     """Right-hand panel that shows a paginated table of versions."""
 
     display_type_changed = QtCore.Signal(QtWidgets.QAbstractItemView)
+    default_view_message = QtCore.Signal(str, bool)
 
     def __init__(
         self,
@@ -188,22 +189,44 @@ class ReviewTable(AYContainer):
         self._view_selector = AYViewSelector(
             bindings=self._view_bindings,
             manager=self._view_manager,
-            view_type=VIEW_TYPE_VERSIONS,
+            view_type=BROWSER_VIEW_TYPE,
             current_user=_get_current_user(),
             user_access_level=50,
             allow_studio_scope=False,
             parent=self,
         )
+        self._view_selector.setToolTip("Views")
         self._view_selector.view_applied.connect(self._on_view_applied)
+        self._view_selector.view_deleted.connect(
+            lambda _: self._table_filter.set_active_criteria([])
+        )
         self._view_selector.binding_error.connect(
             self._on_view_selector_error
         )
+        self._view_selector.default_view_message.connect(
+            self.default_view_message
+        )
+        self._display_type.display_type_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._group_by_menu.group_by_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.show_empty_groups_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.card_size_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.featured_version_order_changed.connect(
+            self._view_selector.notify_view_modified
+        )
 
         toolbar_lyt = AYHBoxLayout(self, margin=0, spacing=4)
+        toolbar_lyt.addWidget(self._view_selector, stretch=0)
         toolbar_lyt.addWidget(self._table_filter, stretch=1)
         toolbar_lyt.addWidget(self._group_by_menu, stretch=0)
         toolbar_lyt.addWidget(self._display_type, stretch=0)
-        toolbar_lyt.addWidget(self._view_selector, stretch=0)
         toolbar_lyt.addWidget(self._customize, stretch=0)
         self.add_layout(toolbar_lyt, stretch=0)
 
@@ -380,6 +403,7 @@ class ReviewTable(AYContainer):
         self._group_by_menu.setVisible(
             category == ReviewCategory.HIERARCHY.value
         )
+        self._view_selector.set_view_type(BROWSER_VIEW_TYPE)
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -453,6 +477,11 @@ class ReviewTable(AYContainer):
         in ``extra`` after a server round-trip — they are applied from
         ``view.settings.grouping`` inside :meth:`_on_view_applied`.
 
+        Supported loader-specific extras:
+            ``gridHeight`` (card width),
+            ``featuredVersionOrder`` (hero/latest version order),
+            ``displayType`` (``"table"`` or ``"grid"``).
+
         Args:
             extra: The settings ``extra`` dict from the applied view.
         """
@@ -481,6 +510,9 @@ class ReviewTable(AYContainer):
                     log.debug(
                         "Failed to set featuredVersionOrder: %r", order
                     )
+        if "displayType" in extra:
+            display_type: Literal["table", "grid"] = extra["displayType"]
+            self._display_type.set_display_type(display_type)
 
     def _capture_view_extras(self) -> dict[str, Any]:
         """Capture loader-specific extras for inclusion in a saved view.
@@ -493,15 +525,17 @@ class ReviewTable(AYContainer):
         duplicated in ``extra`` (``ViewSettings.to_payload`` silently
         drops known keys from ``extra``).
 
+        Captured loader-specific extras include card width, featured
+        version order, and current display type (table or grid).
+
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
         """
         extra: dict[str, Any] = {
             "gridHeight": int(self._card_view.card_width),
+            "displayType": self._display_type.display_type,
+            "featuredVersionOrder": self._controller.featured_version_order
         }
-        order = self._controller.featured_version_order
-        if order:
-            extra["featuredVersionOrder"] = order
         return extra
 
     def _on_view_applied(self, view: object) -> None:
@@ -623,6 +657,10 @@ class ReviewTable(AYContainer):
         vp = self._table.viewport()
         vp_rect = vp.rect()
         if vp_rect.isEmpty():
+            return
+
+        # Skip if table hasn't rendered yet
+        if self._model.rowCount() == 0:
             return
 
         row_height = self._table_row_height()
@@ -930,12 +968,6 @@ class ReviewTable(AYContainer):
 
         hierarchy = [
             TableColumn(
-                "entityType",
-                "Entity Type",
-                width=_w("Entity Type"),
-                icon="layers",
-            ),
-            TableColumn(
                 "productType",
                 "Product Type",
                 width=_w("Product Type"),
@@ -945,6 +977,7 @@ class ReviewTable(AYContainer):
                 "folderName",
                 "Folder Name",
                 width=_w("Folder Name"),
+                filterable=False,
                 icon="folder",
             ),
             TableColumn("author", "Author", width=_w("Author"), icon="person"),
@@ -983,12 +1016,6 @@ class ReviewTable(AYContainer):
                 "Task Type",
                 width=_w("Task Type"),
                 icon="task_alt",
-            ),
-            TableColumn(
-                "entityType",
-                "Entity Type",
-                width=_w("Entity Type"),
-                icon="layers",
             ),
             TableColumn("author", "Author", width=_w("Author"), icon="person"),
             TableColumn(

@@ -256,6 +256,9 @@ class LoaderWindow(AYContainer):
         main_splitter.setStretchFactor(2, 1)
 
         self.review_wdgt = ReviewsWidget(controller)
+        self.review_wdgt.default_view_message.connect(
+            self._show_toast_message
+        )
 
         self._tab = QtWidgets.QTabWidget()
         self._tab.addTab(main_splitter, "Folders")

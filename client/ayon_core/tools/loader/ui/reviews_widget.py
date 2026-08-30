@@ -25,6 +25,8 @@ log = Logger.get_logger(__name__)
 class ReviewsWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
+    default_view_message = QtCore.Signal(str, bool)
+
     def __init__(
         self,
         loader_controller: LoaderController,
@@ -73,6 +75,9 @@ class ReviewsWidget(AYContainer):
         )
         self._inspector = ReviewInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
+        self._table.default_view_message.connect(
+            self.default_view_message
+        )
         self._inspector.set_view(self._table.active_view)
         self._build()
 

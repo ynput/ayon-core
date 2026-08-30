@@ -33,6 +33,8 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         contrast_color: QColor | None = None,
         label_alignment: Qt.AlignmentFlag | None = None,
         fixed_width: bool | None = None,
+        width: int | None = None,
+        height: int | None = None,
         **kwargs,
     ):
         # style params
@@ -44,8 +46,16 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         self._tooltip = tooltip
         self._icon = icon
         self._icon_on = icon_on or icon
+        self._icon_color_override = icon_color
         self._icon_fill = icon_fill
         self._contrast_color = contrast_color
+        self._explicit_width: int | None = (
+            int(width) if width is not None else None
+        )
+        self._explicit_height: int | None = (
+            int(height) if height is not None else None
+        )
+        self._default_fixed_width = False
 
         super().__init__(*args, **kwargs)
         self.setCheckable(checkable)
@@ -53,14 +63,69 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         self._style = get_ayon_style()
         self._style_data = get_ayon_style_data("QPushButton", variant.value)
         self._style_data.set_context(self)
+        self._refresh_icon_style_values()
 
+        if self._icon:
+            self.set_icon(self._icon)
+
+        if self._tooltip:
+            self.setToolTip(self._tooltip)
+
+        self._label_alignment = label_alignment
+
+        self._name_id = ""
+        if name_id:
+            self.setObjectName(name_id)
+            self._name_id = name_id
+
+        use_fixed_width = (
+            (not bool(self.text()))  # only fixed when icon-only
+            if fixed_width is None
+            else fixed_width
+        )
+        self._default_fixed_width = use_fixed_width
+        self._update_size_policy()
+
+        self.setStyle(get_ayon_style())
+
+        if (
+            self._explicit_width is not None
+            or self._explicit_height is not None
+        ):
+            self._sync_size_to_hint()
+
+    def _update_size_policy(self) -> None:
+        use_fixed_width = (
+            self._default_fixed_width or self._explicit_width is not None
+        )
+        if use_fixed_width:
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Fixed,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+        else:
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Preferred,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+
+    @property
+    def contrast_color(self):
+        return self._contrast_color
+
+    def _refresh_icon_style_values(self):
         # Determine the icon color
-        color_str = icon_color or self._style_data.get("color", "#ffffff")
+        color_str = self._icon_color_override or self._style_data.get(
+            "color", "#ffffff"
+        )
         self._icon_color = QColor(color_str)
         # Adjust the icon color to have enough contrast with the background
-        if isinstance(contrast_color, QColor) and contrast_color.isValid():
+        if (
+            isinstance(self._contrast_color, QColor)
+            and self._contrast_color.isValid()
+        ):
             self._icon_color = compute_color_for_contrast(
-                contrast_color.toTuple(),
+                self._contrast_color.toTuple(),
                 self._icon_color.toTuple(),
                 min_contrast_ratio=7,
             )
@@ -82,41 +147,23 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
             "opacity", 0.5
         )
 
+    def set_variant(self, variant: Variants | str):
+        variant_str = variant if isinstance(variant, str) else variant.value
+        normalized_variant = self.Variants(variant_str).value
+        if normalized_variant == self._variant_str:
+            return
+
+        self._variant_str = normalized_variant
+        self._style_data = get_ayon_style_data(
+            "QPushButton", self._variant_str
+        )
+        self._style_data.set_context(self)
+        self._refresh_icon_style_values()
+        self._style.style_widget(self)
         if self._icon:
             self.set_icon(self._icon)
-
-        if self._tooltip:
-            self.setToolTip(self._tooltip)
-
-        self._label_alignment = label_alignment
-
-        self._name_id = ""
-        if name_id:
-            self.setObjectName(name_id)
-            self._name_id = name_id
-
-        use_fixed_width = (
-            (not bool(self.text()))  # only fixed when icon-only
-            if fixed_width is None
-            else fixed_width
-        )
-        if use_fixed_width:
-            self.setSizePolicy(
-                QtWidgets.QSizePolicy.Policy.Fixed,
-                QtWidgets.QSizePolicy.Policy.Fixed,
-            )
-        else:
-            self.setSizePolicy(
-                QtWidgets.QSizePolicy.Policy.Preferred,
-                QtWidgets.QSizePolicy.Policy.Fixed,
-            )
-
-        # self._style.style_widget(self)
-        self.setStyle(get_ayon_style())
-
-    @property
-    def contrast_color(self):
-        return self._contrast_color
+        self.updateGeometry()
+        self.update()
 
     def _compute_contrast_text_color(
         self,
@@ -150,17 +197,103 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         super().initStyleOption(option)
         option.iconSize = QtCore.QSize(self._icon_size, self._icon_size)
 
+    def _apply_size_overrides(
+        self,
+        size: QtCore.QSize,
+    ) -> QtCore.QSize:
+        width = (
+            self._explicit_width
+            if self._explicit_width is not None
+            else size.width()
+        )
+        height = (
+            self._explicit_height
+            if self._explicit_height is not None
+            else size.height()
+        )
+        return QtCore.QSize(width, height)
+
+    def _sync_size_to_hint(self) -> None:
+        size = self.sizeHint()
+        if (
+            self.sizePolicy().horizontalPolicy()
+            == QtWidgets.QSizePolicy.Policy.Fixed
+        ):
+            super().setFixedSize(size)
+            return
+        super().setFixedHeight(size.height())
+
+    def _set_explicit_size(
+        self,
+        width: int | None,
+        height: int | None,
+    ) -> None:
+        self._explicit_width = width
+        self._explicit_height = height
+
+        self._update_size_policy()
+
+        self._sync_size_to_hint()
+        self.updateGeometry()
+        self.update()
+
+    def set_size_override(
+        self,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> None:
+        """Override the computed button size.
+
+        Args:
+            width: Fixed width to enforce. When ``None``, keep style sizing.
+            height: Fixed height to enforce. When ``None``, keep style sizing.
+        """
+        normalized_width = int(width) if width is not None else None
+        normalized_height = int(height) if height is not None else None
+        self._set_explicit_size(normalized_width, normalized_height)
+
+    def clear_size_override(self) -> None:
+        """Restore style-driven button sizing."""
+        self._set_explicit_size(None, None)
+
+    def setFixedWidth(self, width: int) -> None:
+        self._set_explicit_size(int(width), self._explicit_height)
+
+    def setFixedHeight(self, height: int) -> None:
+        self._set_explicit_size(self._explicit_width, int(height))
+
+    def setFixedSize(
+        self,
+        width: int | QtCore.QSize,
+        height: int | None = None,
+    ) -> None:
+        if isinstance(width, QtCore.QSize):
+            size = QtCore.QSize(width)
+        else:
+            if height is None:
+                raise TypeError(
+                    "setFixedSize(width, height) missing height argument"
+                )
+            size = QtCore.QSize(int(width), int(height))
+        self._set_explicit_size(size.width(), size.height())
+
     def sizeHint(self) -> QtCore.QSize:
+        size: QtCore.QSize
         if self.testAttribute(QtCore.Qt.WidgetAttribute.WA_StyleSheet):
             option = QtWidgets.QStyleOptionButton()
             self.initStyleOption(option)
-            return get_ayon_style().sizeFromContents(
+            size = get_ayon_style().sizeFromContents(
                 QtWidgets.QStyle.ContentsType.CT_PushButton,
                 option,
                 self.rect().size(),
                 self,
             )
-        return super().sizeHint()
+        else:
+            size = super().sizeHint()
+        return self._apply_size_overrides(size)
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return self.sizeHint()
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         p = QtGui.QPainter(self)
@@ -172,10 +305,10 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
             self.sizePolicy().horizontalPolicy()
             == QtWidgets.QSizePolicy.Policy.Fixed
         ):
-            self.setFixedSize(size)
+            super().setFixedSize(size)
             option.rect = QtCore.QRect(0, 0, size.width(), size.height())
         else:
-            self.setFixedHeight(size.height())  # draw
+            super().setFixedHeight(size.height())  # draw
         return get_ayon_style().drawControl(
             QtWidgets.QStyle.ControlElement.CE_PushButton, option, p, self
         )
@@ -304,6 +437,7 @@ class AYButtonMenu(AYButton):
 
         self._populate_callback = populate_callback
         self._menu_open: bool = False
+        self._suppress_reopen_on_next_click: bool = False
 
         self._dropdown = ButtonMenuDropdown(self)
         self._populate_callback(self._dropdown)
@@ -315,6 +449,10 @@ class AYButtonMenu(AYButton):
 
     def _on_button_clicked(self) -> None:
         """Toggle the dropdown popup visibility."""
+        if self._suppress_reopen_on_next_click:
+            self._suppress_reopen_on_next_click = False
+            return
+
         if self._menu_open:
             self._dropdown.close()
         else:
@@ -325,4 +463,9 @@ class AYButtonMenu(AYButton):
     def _on_popup_closed(self) -> None:
         """Update state when the popup signals it has closed."""
         self._menu_open = False
+        if QtWidgets.QApplication.mouseButtons() & Qt.MouseButton.LeftButton:
+            local_pos = self.mapFromGlobal(QtGui.QCursor.pos())
+            self._suppress_reopen_on_next_click = self.rect().contains(
+                local_pos
+            )
         self.menu_closed.emit()
