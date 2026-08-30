@@ -26,6 +26,17 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+DEFAULT_SORT_BY = None
+DEFAULT_SORT_DESC = False
+DEFAULT_ROW_HEIGHT = 34
+DEFAULT_GROUPING = GroupingDef()
+DEFAULT_FILTER = FilterDef()
+DEFAULT_EXTRA = {
+    "gridHeight": 230,
+    "displayType": "table",
+    "featuredVersionOrder": ["latestDone", "latest", "hero"],
+}
+
 
 class DefaultViewControl:
     """Manages the Default View row UI and persistence for a selector.
@@ -347,7 +358,16 @@ class DefaultViewControl:
         """
         Apply the default view settings to the selector's bindings.
         """
-        default_view = ViewSettings()
+
+        default_view = ViewSettings(
+            sort_by=DEFAULT_SORT_BY,
+            sort_desc=DEFAULT_SORT_DESC,
+            row_height=DEFAULT_ROW_HEIGHT,
+            grouping=DEFAULT_GROUPING,
+            filter=DEFAULT_FILTER,
+            extra=DEFAULT_EXTRA,
+        )
+
         self._selector._bindings.apply(default_view)
         self._selector._clear_modified()
         self._selector._close_menu()

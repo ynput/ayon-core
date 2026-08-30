@@ -253,16 +253,6 @@ class GroupingDef:
 # ---------------------------------------------------------------------------
 # ViewSettings
 # ---------------------------------------------------------------------------
-DEFAULT_SORT_BY = None
-DEFAULT_SORT_DESC = False
-DEFAULT_ROW_HEIGHT = 34
-DEFAULT_GROUPING = GroupingDef()
-DEFAULT_FILTER = FilterDef()
-DEFAULT_EXTRA = {
-    "gridHeight": 230,
-    "displayType": "table",
-    "featuredVersionOrder": ["latestDone", "latest", "hero"],
-}
 
 
 @dataclass
@@ -287,12 +277,12 @@ class ViewSettings:
     """
 
     columns: list[ColumnState] = field(default_factory=list)
-    sort_by: str | None = DEFAULT_SORT_BY
-    sort_desc: bool = DEFAULT_SORT_DESC
-    row_height: int = DEFAULT_ROW_HEIGHT
-    grouping: GroupingDef = field(default_factory=lambda: DEFAULT_GROUPING)
-    filter: FilterDef = field(default_factory=lambda: DEFAULT_FILTER)
-    extra: dict[str, Any] = field(default_factory=lambda: DEFAULT_EXTRA)
+    sort_by: str | None = None
+    sort_desc: bool = False
+    row_height: int = 32
+    grouping: GroupingDef = field(default_factory=GroupingDef)
+    filter: FilterDef = field(default_factory=FilterDef)
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any] | None) -> "ViewSettings":
