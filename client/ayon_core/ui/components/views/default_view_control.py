@@ -67,9 +67,7 @@ class DefaultViewControl:
 
     def build_row(self) -> AYContainer:
         """Build and return the full Studio + Project default-view row."""
-        self.studio_default_view, self.project_default_view = (
-            self._fetch_default_views()
-        )
+        self._fetch_default_views()
 
         row = AYContainer(
             layout=AYContainer.Layout.HBox,
