@@ -147,8 +147,13 @@ def configure_logger() -> None:
     root_logger.addHandler(handler)
     if VECTOR_LOG_URL:
         root_logger.addHandler(queue_handler)
-    root_logger.setLevel(
-        logging.INFO if os.getenv("AYON_DEBUG") != "1" else logging.DEBUG)
+    # set default logging level to INFO, but
+    # allow override via AYON_LOG_LEVEL or AYON_DEBUG
+    root_logger.setLevel(logging.INFO)
+    if os.getenv("AYON_LOG_LEVEL") is not None:
+        root_logger.setLevel(int(os.getenv("AYON_LOG_LEVEL", logging.INFO)))
+    if os.getenv("AYON_DEBUG") is not None:
+        root_logger.setLevel(logging.DEBUG)
 
     # 'Logger' (ayon_core.lib.log) may have attached its own fallback
     # console handler to the "AYON" logger before structlog was configured.
