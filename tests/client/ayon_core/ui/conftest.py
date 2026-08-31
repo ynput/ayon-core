@@ -50,10 +50,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
     parser.addoption(
         "--store-images",
-        action="store_true",
+        nargs="?",
+        const="",
         default=None,
+        metavar="PATH",
         help=(
-            "After the run, store failed image comparisons in a directory."
+            "After the run, store failed image comparisons in a directory. "
+            "Optionally provide a path "
+            "(defaults to <repo_root>/failed_image_tests)."
         ),
     )
 
@@ -83,7 +87,9 @@ def _reset_task_queue_between_tests():
 @pytest.fixture(autouse=True)
 def _collect_image_failures(request, tmp_path):
     yield
-    if not request.config.getoption("--show-images", default=False):
+    show = request.config.getoption("--show-images", default=False)
+    store = request.config.getoption("--store-images", default=None)
+    if not show and store is None:
         return
     rep = getattr(request.node, "rep_call", None)
     if rep is None or not rep.failed:
@@ -115,14 +121,21 @@ def _show_images():
     )
 
 
-def _store_images() -> None:
-    store_dir = REPO_ROOT / "failed_image_tests"
-    if store_dir.exists():
-        shutil.rmtree(store_dir)
-    store_dir.mkdir(exist_ok=True)
+def _store_images(store_path: str) -> None:
+    if store_path:
+        store_dir = Path(store_path)
+    else:
+        store_dir = REPO_ROOT / "failed_image_tests"
+    store_dir.mkdir(parents=True, exist_ok=True)
+    for path in store_dir.iterdir():
+        if path.is_file():
+            path.unlink()
+        else:
+            shutil.rmtree(path)
 
     for _, obtained, ref in _failed_image_tests:
-        shutil.copy(obtained, store_dir)
+        dst_path = os.path.join(store_dir, os.path.basename(ref))
+        shutil.copy(obtained, dst_path)
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
@@ -132,6 +145,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     if session.config.getoption("--show-images", default=False):
         _show_images()
 
-    if session.config.getoption("--store-images", default=False):
-        _store_images()
+    store_dir = session.config.getoption("--store-images", default=None)
+    if store_dir is not None:
+        _store_images(store_dir)
 
