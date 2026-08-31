@@ -2,14 +2,16 @@
 
 Sets QT_QPA_PLATFORM=offscreen before any Qt import so tests run headless.
 """
+from __future__ import annotations
 
 import json
 import logging
 import os
+from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 # Must be set before any Qt import. pytest-qt respects this too.
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -44,6 +46,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help=(
             "After the run, open a Qt window showing failed image comparisons."
+        ),
+    )
+    parser.addoption(
+        "--store-images",
+        action="store_true",
+        default=None,
+        help=(
+            "After the run, store failed image comparisons in a directory."
         ),
     )
 
@@ -87,11 +97,7 @@ def _collect_image_failures(request, tmp_path):
             )
 
 
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    if not session.config.getoption("--show-images", default=False):
-        return
-    if not _failed_image_tests:
-        return
+def _show_images():
     # clean up labels
     for i, (test_name, _, _) in enumerate(_failed_image_tests):
         l = re.search(r"\[([\w\d]+)\]", test_name)  # noqa: E741
@@ -107,3 +113,25 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         [sys.executable, str(visual_utils), json.dumps(_failed_image_tests)],
         env=env,
     )
+
+
+def _store_images() -> None:
+    store_dir = REPO_ROOT / "failed_image_tests"
+    if store_dir.exists():
+        shutil.rmtree(store_dir)
+    store_dir.mkdir(exist_ok=True)
+
+    for _, obtained, ref in _failed_image_tests:
+        shutil.copy(obtained, store_dir)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if not _failed_image_tests:
+        return
+
+    if session.config.getoption("--show-images", default=False):
+        _show_images()
+
+    if session.config.getoption("--store-images", default=False):
+        _store_images()
+
