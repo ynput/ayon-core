@@ -89,18 +89,16 @@ class SaveAsDialog(QtWidgets.QDialog):
     The filename is calculated in controller where UI sends values from
     dialog inputs.
 
-    Args:
-        controller (AbstractWorkfilesFrontend): The control object.
+    controller (AbstractWorkfilesFrontend): The control object.
+        parent (QtWidgets.QWidget): Parent widget.
+        extension (str | None): Limit extensions to specific one.
     """
-
-    def __init__(
-        self, controller, parent, allowed_extension=None
-    ):
+    def __init__(self, controller, parent, extension=None):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
         self._controller = controller
-        self._allowed_extension = allowed_extension
+        self._allowed_extension = extension
 
         self._folder_id = None
         self._task_id = None
