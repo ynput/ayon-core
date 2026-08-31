@@ -196,9 +196,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input.text_changed.connect(self._on_comment_change)
         extension_combobox.currentIndexChanged.connect(
             self._on_extension_change)
-        if enable_ext_selection is False:
-            extension_combobox.setEnabled(False)
-
         btn_ok.pressed.connect(self._on_ok_pressed)
         btn_cancel.pressed.connect(self._on_cancel_pressed)
 
@@ -265,7 +262,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._last_version = data["last_version"]
 
         self._extension_combobox.clear()
-        self._extension_combobox.addItems(data["extensions"])
+        # allow only the extension from the copied workfile
+        self._extension_combobox.addItems([data["ext"]])
 
         self._version_input.setValue(last_version)
 
