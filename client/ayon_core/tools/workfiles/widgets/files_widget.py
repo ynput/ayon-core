@@ -321,7 +321,7 @@ class FilesWidget(QtWidgets.QWidget):
         repre_info = self._published_widget.get_selected_repre_info()
         extension = os.path.splitext(repre_info["filepath"])[1].lower()
         result = self._exec_save_as_dialog(
-            allowed_extension=extension,
+            extension=extension,
         )
         if result is None:
             return
