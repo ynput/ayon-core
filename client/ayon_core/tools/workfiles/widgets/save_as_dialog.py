@@ -265,7 +265,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_combobox.clear()
         extensions = data["extensions"]
         if self._extension:
-            extensions = [self._extension])
+            extensions = [self._extension]
 
         self._extension_combobox.addItems(extensions)
 
