@@ -94,14 +94,13 @@ class SaveAsDialog(QtWidgets.QDialog):
     """
 
     def __init__(
-        self, controller, parent, allow_ext_selection=True, extension=None
+        self, controller, parent, allowed_extension=None
     ):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
         self._controller = controller
-        self._allow_ext_selection = allow_ext_selection
-        self._extension = extension
+        self._allowed_extension = allowed_extension
 
         self._folder_id = None
         self._task_id = None
@@ -266,11 +265,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._last_version = data["last_version"]
 
         self._extension_combobox.clear()
-        if self._allow_ext_selection:
-            self._extension_combobox.addItems(data["extensions"])
-        elif self._extension is not None:
+        if self._allowed_extension:
             # allow only the extension from the copied workfile
-            self._extension_combobox.addItems([self._extension])
+            self._extension_combobox.addItems([self._allowed_extension])
+        else:
+            self._extension_combobox.addItems(data["extensions"])
 
         self._version_input.setValue(last_version)
 

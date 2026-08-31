@@ -165,7 +165,7 @@ class FilesWidget(QtWidgets.QWidget):
         self._workarea_widget.set_text_filter(text_filter)
         self._published_widget.set_text_filter(text_filter)
 
-    def _exec_save_as_dialog(self, allow_ext_selection=True, extension=None):
+    def _exec_save_as_dialog(self, extension=None):
         """Show SaveAs dialog using currently selected context.
 
         Returns:
@@ -175,8 +175,7 @@ class FilesWidget(QtWidgets.QWidget):
         dialog = SaveAsDialog(
             self._controller,
             self,
-            allow_ext_selection=allow_ext_selection,
-            extension=extension,
+            allowed_extension=extension,
         )
         dialog.update_context()
         dialog.exec_()
@@ -322,8 +321,7 @@ class FilesWidget(QtWidgets.QWidget):
         repre_info = self._published_widget.get_selected_repre_info()
         extension = os.path.splitext(repre_info["filepath"])[1].lower()
         result = self._exec_save_as_dialog(
-            allow_ext_selection=False,
-            extension=extension,
+            allowed_extension=extension,
         )
         if result is None:
             return
