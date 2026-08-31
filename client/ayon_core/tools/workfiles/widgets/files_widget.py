@@ -165,7 +165,7 @@ class FilesWidget(QtWidgets.QWidget):
         self._workarea_widget.set_text_filter(text_filter)
         self._published_widget.set_text_filter(text_filter)
 
-    def _exec_save_as_dialog(self, allow_ext_selection=True):
+    def _exec_save_as_dialog(self, allow_ext_selection=True, extension=None):
         """Show SaveAs dialog using currently selected context.
 
         Returns:
@@ -173,7 +173,10 @@ class FilesWidget(QtWidgets.QWidget):
         """
 
         dialog = SaveAsDialog(
-            self._controller, self, allow_ext_selection=allow_ext_selection
+            self._controller,
+            self,
+            allow_ext_selection=allow_ext_selection,
+            extension=extension,
         )
         dialog.update_context()
         dialog.exec_()
@@ -316,11 +319,15 @@ class FilesWidget(QtWidgets.QWidget):
         self._update_workarea_btns_state()
 
     def _on_published_save_clicked(self):
-        result = self._exec_save_as_dialog(allow_ext_selection=False)
+        repre_info = self._published_widget.get_selected_repre_info()
+        extension = os.path.splitext(repre_info["filepath"])[1].lower()
+        result = self._exec_save_as_dialog(
+            allow_ext_selection=False,
+            extension=extension,
+        )
         if result is None:
             return
 
-        repre_info = self._published_widget.get_selected_repre_info()
         self._controller.copy_workfile_representation(
             repre_info["representation_id"],
             repre_info["filepath"],

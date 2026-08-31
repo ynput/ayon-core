@@ -93,11 +93,15 @@ class SaveAsDialog(QtWidgets.QDialog):
         controller (AbstractWorkfilesFrontend): The control object.
     """
 
-    def __init__(self, controller, parent, allow_ext_selection=True):
+    def __init__(
+        self, controller, parent, allow_ext_selection=True, extension=None
+    ):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
         self._controller = controller
+        self._allow_ext_selection = allow_ext_selection
+        self._extension = extension
 
         self._folder_id = None
         self._task_id = None
@@ -264,9 +268,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_combobox.clear()
         if self._allow_ext_selection:
             self._extension_combobox.addItems(data["extensions"])
-        else:
+        elif self._extension is not None:
             # allow only the extension from the copied workfile
-            self._extension_combobox.addItems([data["ext"]])
+            self._extension_combobox.addItems([self._extension])
 
         self._version_input.setValue(last_version)
 
