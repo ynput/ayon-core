@@ -98,7 +98,8 @@ class FilesWidget(QtWidgets.QWidget):
         workarea_btn_save.clicked.connect(self._on_workarea_save_clicked)
 
         published_widget.save_as_requested.connect(self._on_save_as_request)
-        published_btn_copy_n_open.clicked.connect(self._on_published_save_clicked)
+        published_btn_copy_n_open.clicked.connect(
+            self._on_published_save_clicked)
         published_btn_change_context.clicked.connect(
             self._on_published_change_context_clicked)
         published_btn_cancel.clicked.connect(
