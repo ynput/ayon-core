@@ -12,6 +12,7 @@ import pyblish.api
 import pyblish.logic
 import pyblish.plugin
 
+from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
@@ -1016,7 +1017,7 @@ class PublishLogic:
 
     @contextmanager
     def _log_manager(self, plugin: PluginType):
-        root = logging.getLogger()
+        ayon_root = Logger.get_root_logger()
         plugin_log_has_handler = False
         orig_propagate = plugin.log.propagate
         if not self._log_to_console:
@@ -1025,9 +1026,7 @@ class PublishLogic:
         if not plugin.log.propagate:
             plugin_log_has_handler = True
             plugin.log.addHandler(self._log_handler)
-        # "AYON" logger propagates into root by default, so attaching
-        # the handler here alone is enough to capture both trees.
-        root.addHandler(self._log_handler)
+        ayon_root.addHandler(self._log_handler)
 
         try:
             yield self._log_handler
@@ -1036,7 +1035,7 @@ class PublishLogic:
             if plugin_log_has_handler:
                 plugin.log.removeHandler(self._log_handler)
             plugin.log.propagate = orig_propagate
-            root.removeHandler(self._log_handler)
+            ayon_root.removeHandler(self._log_handler)
             self._log_handler.clear_records()
 
     def _process_plugin(
