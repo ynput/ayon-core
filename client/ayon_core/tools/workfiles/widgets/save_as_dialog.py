@@ -263,11 +263,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._last_version = data["last_version"]
 
         self._extension_combobox.clear()
-        if self._allowed_extension:
-            # allow only the extension from the copied workfile
-            self._extension_combobox.addItems([self._allowed_extension])
-        else:
-            self._extension_combobox.addItems(data["extensions"])
+        extensions = data["extensions"]
+        if self._extension:
+            extensions = [self._extension])
+
+        self._extension_combobox.addItems(extensions)
 
         self._version_input.setValue(last_version)
 
