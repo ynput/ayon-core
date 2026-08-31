@@ -176,7 +176,7 @@ class FilesWidget(QtWidgets.QWidget):
         dialog = SaveAsDialog(
             self._controller,
             self,
-            allowed_extension=extension,
+            extension=extension,
         )
         dialog.update_context()
         dialog.exec_()
