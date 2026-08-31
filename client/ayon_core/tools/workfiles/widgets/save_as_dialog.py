@@ -98,7 +98,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
         self._controller = controller
-        self._allowed_extension = extension
+        self._extension = extension
 
         self._folder_id = None
         self._task_id = None
