@@ -223,6 +223,10 @@ class BrowserSlicer(AYContainer):
             QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
         )
         self._tree_view.setCurrentIndex(index)
+        self._tree_view.scrollTo(
+            index,
+            QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
+        )
         self._folder_selection_chain = []
         self._folder_selection_attempt = 0
 
