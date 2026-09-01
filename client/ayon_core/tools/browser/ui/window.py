@@ -183,6 +183,11 @@ class BrowserWindow(AYContainer):
         if self._select_context_on_show:
             self._select_context_on_show = False
             QtCore.QTimer.singleShot(0, self.select_current_context)
+        else:
+            QtCore.QTimer.singleShot(
+                0,
+                self.browser_widget.select_current_context_if_empty,
+            )
 
     def _show_toast_message(
         self,

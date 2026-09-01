@@ -132,6 +132,12 @@ class BrowserWidget(AYContainer):
         """Navigate the Browser slicer to the host's current context."""
         self._slicer.select_current_context()
 
+    def select_current_context_if_empty(self) -> None:
+        """Use the host context when Browser has no existing selection."""
+        if self._controller.current_project or self._controller.has_selection:
+            return
+        self.select_current_context()
+
     def _on_filter_criteria_changed(self, criteria: list[Any]) -> None:
         """Reflect the filter bar's Task criterion in the task list."""
         names = []
