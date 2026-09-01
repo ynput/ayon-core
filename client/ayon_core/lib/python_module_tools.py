@@ -7,6 +7,7 @@ import inspect
 import os
 import sys
 import types
+import warnings
 
 from .log import Logger
 
@@ -55,11 +56,27 @@ class ModuleInfo:
     # Backwards compatibility - added 27/08/2026
     def __iter__(self):
         # Yield data as tuple for unpacking
+        warnings.warn(
+            (
+                "Using ModuleInfo as tuple is deprecated"
+                " and will be removed in future versions. "
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
         yield self.filepath
         yield self.module
 
     def __getitem__(self, index: int) -> str | types.ModuleType:
         # Allow index access
+        warnings.warn(
+            (
+                "Using ModuleInfo as tuple is deprecated"
+                " and will be removed in future versions. "
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return [self.filepath, self.module][index]
 
 
@@ -71,11 +88,27 @@ class CrashedModuleInfo:
     # Backwards compatibility - added 27/08/2026
     def __iter__(self):
         # Yield data as tuple for unpacking
+        warnings.warn(
+            (
+                "Using CrashedModuleInfo as tuple is deprecated"
+                " and will be removed in future versions. "
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
         yield self.filepath
         yield self.exc_info
 
     def __getitem__(self, index: int) -> str | tuple:
         # Allow index access
+        warnings.warn(
+            (
+                "Using CrashedModuleInfo as tuple is deprecated"
+                " and will be removed in future versions. "
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return [self.filepath, self.exc_info][index]
 
 
@@ -93,6 +126,14 @@ class ModulesResult:
     # Backwards compatibility - added 27/08/2026
     def __iter__(self):
         # Yield data as tuple for unpacking
+        warnings.warn(
+            (
+                "Using ModulesResult as tuple is deprecated"
+                " and will be removed in future versions. "
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
         yield self.modules
         yield self.crashed
 
@@ -100,6 +141,14 @@ class ModulesResult:
         self, index: int
     ) -> list[ModuleInfo] | list[CrashedModuleInfo]:
         # Allow index access
+        warnings.warn(
+            (
+                "Using ModulesResult as tuple is deprecated"
+                " and will be removed in future versions. "
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return [self.modules, self.crashed][index]
 
 
