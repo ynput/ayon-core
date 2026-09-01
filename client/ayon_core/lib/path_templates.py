@@ -191,6 +191,19 @@ class StringTemplate:
             invalid_types
         )
 
+    def format_map(self, data: dict[str, Any]) -> "TemplateResult":
+        """Format the template using a mapping of replacement values.
+
+        This mirrors :meth:`str.format_map`.
+
+        Args:
+            data (dict): Containing keys to be filled into the template.
+
+        Returns:
+            TemplateResult: Filled or partially filled template.
+        """
+        return self.format(data)
+
     def format_strict(self, data: dict[str, Any]) -> "TemplateResult":
         result = self.format(data)
         result.validate()
@@ -760,7 +773,7 @@ class FormattingPart:
             parent_fill_data[used_keys[-1]] = value
 
         template = f"{{{field_name}{self._format_spec}{self._conversion}}}"
-        formatted_value = template.format(**root_fill_data)
+        formatted_value = template.format_map(root_fill_data)
         used_key = key
         if keys_to_value is not None:
             used_key = self.keys_to_template_base(keys_to_value)

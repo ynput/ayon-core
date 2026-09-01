@@ -54,7 +54,7 @@ from ayon_core.tools.publisher.constants import (
     CONVERTOR_ITEM_GROUP,
 )
 
-from .widgets import AbstractInstanceView
+from .widgets import AbstractInstanceView, InstancesSelection
 
 
 class ListItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -1011,7 +1011,9 @@ class InstanceListView(AbstractInstanceView):
 
         self._missing_parent_item = None
 
-    def refresh_instance_states(self, instance_ids=None):
+    def refresh_instance_states(
+        self, instance_ids: set[str] | None = None
+    ) -> None:
         """Trigger update of all instances."""
         if instance_ids is not None:
             instance_ids = set(instance_ids)
@@ -1076,14 +1078,16 @@ class InstanceListView(AbstractInstanceView):
     def set_parent_grouping(self, parent_grouping: bool) -> None:
         self._parent_grouping = parent_grouping
 
-    def _on_active_changed(self, changed_instance_id, new_value):
+    def _on_active_changed(
+        self, changed_instance_id: str, new_value: bool
+    ) -> None:
         self._toggle_active_state(new_value, changed_instance_id)
 
     def _toggle_active_state(
         self,
-        new_value: Optional[bool],
-        active_id: Optional[str] = None,
-        instance_ids: Optional[set[str]] = None,
+        new_value: bool | None,
+        active_id: str | None = None,
+        instance_ids: set[str] | None = None,
     ) -> None:
         if instance_ids is None:
             instance_ids, _, _ = self.get_selected_items()
@@ -1126,7 +1130,7 @@ class InstanceListView(AbstractInstanceView):
     def _on_selection_change(self, *_args):
         self.selection_changed.emit()
 
-    def _on_expand_toggle_request(self, group_name):
+    def _on_expand_toggle_request(self, group_name: str) -> None:
         group_item = self._group_items.get(group_name)
         if not group_item:
             return
@@ -1134,7 +1138,9 @@ class InstanceListView(AbstractInstanceView):
         new_state = not self._instance_view.isExpanded(proxy_index)
         self._instance_view.setExpanded(proxy_index, new_state)
 
-    def _on_group_toggle_request(self, group_name, state):
+    def _on_group_toggle_request(
+        self, group_name: str, state: int | QtCore.Qt.CheckState
+    ) -> None:
         state = checkstate_int_to_enum(state)
         if state == QtCore.Qt.PartiallyChecked:
             return
@@ -1164,46 +1170,34 @@ class InstanceListView(AbstractInstanceView):
             return True
         return False
 
-    def get_selected_items(self) -> tuple[list[str], bool, list[str]]:
+    def get_selected_items(self) -> InstancesSelection:
         """Get selected instance ids and context selection.
 
         Returns:
-            tuple[list[str], bool, list[str]]: Selected instance ids,
-                boolean if context is selected and selected convertor ids.
+            InstancesSelection: Selected instance ids, boolean if context is
+                selected and selected convertor ids.
 
         """
-        instance_ids = []
-        convertor_identifiers = []
-        context_selected = False
+        output = InstancesSelection()
 
         for index in self._instance_view.selectionModel().selectedIndexes():
             convertor_identifier = index.data(CONVERTER_IDENTIFIER_ROLE)
             if convertor_identifier is not None:
-                convertor_identifiers.append(convertor_identifier)
+                output.convertor_identifiers.add(convertor_identifier)
                 continue
 
             instance_id = index.data(INSTANCE_ID_ROLE)
-            if not context_selected and instance_id == CONTEXT_ID:
-                context_selected = True
+            if not output.context_selected and instance_id == CONTEXT_ID:
+                output.context_selected = True
 
             elif instance_id is not None:
-                instance_ids.append(instance_id)
+                output.instance_ids.add(instance_id)
 
-        return instance_ids, context_selected, convertor_identifiers
+        return output
 
-    def set_selected_items(
-        self, instance_ids, context_selected, convertor_identifiers
-    ):
-        s_instance_ids = set(instance_ids)
-        s_convertor_identifiers = set(convertor_identifiers)
-        cur_ids, cur_context, cur_convertor_identifiers = (
-            self.get_selected_items()
-        )
-        if (
-            set(cur_ids) == s_instance_ids
-            and cur_context == context_selected
-            and set(cur_convertor_identifiers) == s_convertor_identifiers
-        ):
+    def set_selected_items(self, selection: InstancesSelection) -> None:
+        current_selection = self.get_selected_items()
+        if selection == current_selection:
             return
 
         view = self._instance_view
@@ -1233,16 +1227,16 @@ class InstanceListView(AbstractInstanceView):
             select = False
             expand_parent = True
             if convertor_identifier is not None:
-                if convertor_identifier in s_convertor_identifiers:
+                if convertor_identifier in selection.convertor_identifiers:
                     select = True
             else:
                 instance_id = item.data(INSTANCE_ID_ROLE)
                 if instance_id == CONTEXT_ID:
-                    if context_selected:
+                    if selection.context_selected:
                         select = True
                         expand_parent = False
 
-                elif instance_id in s_instance_ids:
+                elif instance_id in selection.instance_ids:
                     select = True
 
             if not select:

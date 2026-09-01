@@ -35,6 +35,8 @@ body:
       label: Version
       description: What version are you running? Look to AYON Tray
       options:
+        - 1.9.10
+        - 1.9.9
         - 1.9.8
         - 1.9.7
         - 1.9.6

@@ -62,7 +62,6 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self._rel_text_size = rel_text_size
         self._text_color = text_color
         self._bold = bold
-        self._text_setup_done = False
         self._elide_mode = elide_mode
         # copy the text because setting an icon will blank it, as a label is
         # either text or pixmap.
@@ -150,8 +149,9 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self.update()
 
     def set_font(self, font: QFont) -> None:
-        """Set the widget font and trigger a repaint."""
+        """Set the widget font and refresh geometry and painting."""
         self._style_font = self._configure_font(font)
+        self.updateGeometry()
         self.update()
 
     # Private methods -------------------------------------------------------
@@ -188,21 +188,16 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
             self.setPixmap(icn.pixmap(QSize(self._icon_size, self._icon_size)))
 
     def _configure_font(self, font: QFont) -> QFont:
-        """Initialize font configuration on first paint."""
-        if self._text_setup_done:
-            return font
-
+        """Return a freshly configured font derived from the base font."""
         if self._rel_text_size != 0:
             # _rel_text_size is in points but setting pixels is more reliable.
             # use QFontInfo in case PixelSize() or pointSizeF() returns -1
             pt_size = QFontInfo(font).pointSizeF()
             new_pt_size = pt_size + self._rel_text_size
             font.setPointSizeF(new_pt_size)
-
         weight = QFont.Weight.Bold if self._bold else QFont.Weight.Normal
         font.setWeight(weight)
 
-        self._text_setup_done = True
         return font
 
     def _display_text(self) -> str:
