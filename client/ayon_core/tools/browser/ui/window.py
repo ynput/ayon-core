@@ -141,8 +141,7 @@ class BrowserWindow(AYContainer):
         self._reset_on_show = True
         self._show_counter = 0
         self._show_timer = show_timer
-        if use_context:
-            QtCore.QTimer.singleShot(0, self.select_current_context)
+        self._select_context_on_show = use_context
 
     def select_current_context(self) -> None:
         """Navigate the Browser to the host's current project and folder."""
@@ -181,6 +180,9 @@ class BrowserWindow(AYContainer):
 
         if self._reset_on_show:
             self.refresh()
+        if self._select_context_on_show:
+            self._select_context_on_show = False
+            QtCore.QTimer.singleShot(0, self.select_current_context)
 
     def _show_toast_message(
         self,
