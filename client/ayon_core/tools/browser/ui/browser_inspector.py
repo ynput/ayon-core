@@ -103,8 +103,7 @@ class ReviewInspector(AYContainer):
         self.info_lyt = AYContainer(
             layout=AYContainer.Layout.Form,
             variant=AYContainer.Variants.Low,
-            layout_margin=10,
-            layout_spacing=(20, 8),
+            layout_spacing=(10, 8),
         )
         self.info_lyt.set_label_alignment(QtCore.Qt.AlignRight)
         self.add_widget(self.info_lyt)
