@@ -21,6 +21,26 @@ if TYPE_CHECKING:
     from ..style import AYONStyle
 
 
+def _get_slider_option(
+    option: QStyleOptionComplex,
+    widget: QtWidgets.QScrollBar,
+) -> QStyleOptionSlider:
+    """Return a complete slider option across Qt binding versions.
+
+    Older PySide versions may slice a ``QStyleOptionSlider`` to its
+    ``QStyleOptionComplex`` base when it passes through a Python style
+    override. Reinitializing the concrete option restores range and
+    position attributes required for scrollbar geometry.
+    """
+    required = ("minimum", "maximum", "sliderPosition", "upsideDown")
+    if all(hasattr(option, attr) for attr in required):
+        return option  # type: ignore[return-value]
+
+    slider_option = QStyleOptionSlider()
+    widget.initStyleOption(slider_option)
+    return slider_option
+
+
 class ScrollBarDrawer:
     def __init__(self, style_inst: AYONStyle) -> None:
         self.style_inst = style_inst
@@ -93,8 +113,9 @@ class ScrollBarDrawer:
                 "Widget required to calculate scrollbar sub-control rects"
             )
 
-        if not isinstance(opt, (QStyleOptionSlider, QStyleOptionComplex)):
+        if not isinstance(opt, QStyleOptionComplex):
             raise ValueError(f"Unexpected option type: {type(opt)}")
+        opt = _get_slider_option(opt, w)
 
         sup = self._super
         try:
@@ -124,11 +145,11 @@ class ScrollBarDrawer:
                 slider_length = base_slider.height()
                 available = max(0, groove.height() - slider_length)
                 offset = QStyle.sliderPositionFromValue(
-                    opt.minimum,
-                    opt.maximum,
-                    opt.sliderPosition,
+                    w.minimum(),
+                    w.maximum(),
+                    w.sliderPosition(),
                     available,
-                    opt.upsideDown,
+                    w.invertedAppearance(),
                 )
                 return QRect(
                     base_slider.left(),
@@ -143,11 +164,11 @@ class ScrollBarDrawer:
             slider_length = base_slider.width()
             available = max(0, groove.width() - slider_length)
             offset = QStyle.sliderPositionFromValue(
-                opt.minimum,
-                opt.maximum,
-                opt.sliderPosition,
+                w.minimum(),
+                w.maximum(),
+                w.sliderPosition(),
                 available,
-                opt.upsideDown,
+                w.invertedAppearance(),
             )
             return QRect(
                 groove.left() + offset,

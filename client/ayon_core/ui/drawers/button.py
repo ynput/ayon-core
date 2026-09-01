@@ -31,6 +31,28 @@ if TYPE_CHECKING:
     from ..style import AYONStyle
 
 
+def _get_button_option(
+    option: QStyleOption | None,
+    widget: QWidget | None,
+) -> QStyleOptionButton | None:
+    """Return a complete button option across Qt binding versions."""
+    required = ("features", "icon", "iconSize", "text")
+    if (
+        isinstance(option, QStyleOptionButton)
+        and all(hasattr(option, attr) for attr in required)
+    ):
+        return option
+    if widget is None or not hasattr(widget, "initStyleOption"):
+        return None
+
+    button_option = QStyleOptionButton()
+    widget.initStyleOption(button_option)  # type: ignore[attr-defined]
+    if option is not None:
+        button_option.rect = option.rect
+        button_option.state = option.state
+    return button_option
+
+
 class ButtonDrawer:
     def __init__(self, style_inst: AYONStyle) -> None:
         self.style_inst = style_inst
@@ -194,7 +216,8 @@ class ButtonDrawer:
         widget: QWidget | None,
     ) -> None:
         """Draw the button background and frame with hover detection."""
-        if not isinstance(option, QStyleOptionButton) or widget is None:
+        option = _get_button_option(option, widget)
+        if option is None or widget is None:
             return
 
         style, _ = self.get_button_style(widget, option.state)
@@ -269,7 +292,8 @@ class ButtonDrawer:
         widget: QWidget | None,
     ) -> None:
         """Draw the button text and icon."""
-        if not isinstance(option, QStyleOptionButton) or widget is None:
+        option = _get_button_option(option, widget)
+        if option is None or widget is None:
             return
 
         style, wstate = self.get_button_style(widget, option.state)  # type: ignore
@@ -454,7 +478,8 @@ class ButtonDrawer:
         """Calculate minimum size for push buttons with text, icons,
         and proper padding."""
 
-        if not isinstance(option, QStyleOptionButton):
+        button_option = _get_button_option(option, widget)
+        if button_option is None:
             # Fallback to parent if we don't have proper option data
             if option is not None:
                 return self._super.sizeFromContents(
@@ -466,6 +491,7 @@ class ButtonDrawer:
             else:
                 # Return reasonable default for button if no option
                 return QtCore.QSize(100, 30)
+        option = button_option
 
         # Set up font for text measurement
         style, _ = self.get_button_style(widget, option.state)  # type: ignore
@@ -546,6 +572,10 @@ class ButtonDrawer:
         option: QStyleOption,
         widget: QWidget,
     ):
+        button_option = _get_button_option(option, widget)
+        if button_option is None:
+            raise ValueError("Button option could not be initialized")
+        option = button_option
         if element == QStyle.SubElement.SE_PushButtonContents:
             style = self.model.get_style(
                 "QPushButton", self.get_button_variant(widget)

@@ -25,6 +25,14 @@ from ..variants import QLabelVariants
 from .style_mixin import StyleMixin
 
 
+def _iter_enum_values(enum_type):
+    """Iterate Qt enum members in both PySide2 and newer bindings."""
+    values = getattr(enum_type, "values", None)
+    if values is not None and hasattr(values, "values"):
+        return values.values()
+    return iter(enum_type)
+
+
 class AYLabel(StyleMixin, QtWidgets.QLabel):
     Variants = QLabelVariants
 
@@ -32,7 +40,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self,
         *args,
         dim: bool = False,
-        icon: str = "",
+        icon: str | QIcon = "",
         icon_color: str = "",
         icon_size: int = 20,
         icon_text_spacing=6,
@@ -154,7 +162,11 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
 
     # Private methods -------------------------------------------------------
 
-    def set_icon(self, icon: str | None = None, color: str = "") -> None:
+    def set_icon(
+        self,
+        icon: str | QIcon | None = None,
+        color: str = "",
+    ) -> None:
         if icon is not None:
             self._icon = icon
         if color:
@@ -172,7 +184,9 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
             elif same_as_bg:
                 icon_color = self._style_data["base"].get("color")
 
-            if self._icon == "none":
+            if isinstance(self._icon, QIcon):
+                icn = QIcon(self._icon)
+            elif self._icon == "none":
                 icn = QIcon()  # empty icon for spacing
                 pxm = QPixmap(self._icon_size, self._icon_size)
                 pxm.fill(Qt.GlobalColor.transparent)
@@ -292,7 +306,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         if "disabled" in self._style_data:
             opacity = self._style_data["disabled"].get("opacity", 1.0)
             if opacity < 1.0:
-                for role in QPalette.ColorRole:
+                for role in _iter_enum_values(QPalette.ColorRole):
                     color = self._style_palette.color(role)
                     if color == Qt.GlobalColor.transparent:
                         continue
