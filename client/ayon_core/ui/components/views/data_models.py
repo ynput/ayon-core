@@ -255,14 +255,10 @@ class GroupingDef:
 # ---------------------------------------------------------------------------
 DEFAULT_SORT_BY = None
 DEFAULT_SORT_DESC = False
-DEFAULT_ROW_HEIGHT = 34
+DEFAULT_ROW_HEIGHT = 0
 DEFAULT_GROUPING = GroupingDef()
 DEFAULT_FILTER = FilterDef()
-DEFAULT_EXTRA = {
-    "gridHeight": 230,
-    "displayType": "table",
-    "featuredVersionOrder": ["latestDone", "latest", "hero"],
-}
+DEFAULT_EXTRA: dict[str, Any] = {}
 
 
 @dataclass
@@ -279,8 +275,8 @@ class ViewSettings:
         columns: Ordered list of column states.
         sort_by: Column key to sort by, or ``None`` for no sort.
         sort_desc: Whether the sort is descending.
-        row_height: Row height in pixels (also used to map to card size
-            in card views).
+        row_height: Table row height in pixels. Consumers without a table
+            may use this for another height-based presentation setting.
         grouping: Grouping configuration.
         filter: Filter configuration.
         extra: All other settings keys, preserved untouched.
@@ -292,7 +288,7 @@ class ViewSettings:
     row_height: int = DEFAULT_ROW_HEIGHT
     grouping: GroupingDef = field(default_factory=lambda: DEFAULT_GROUPING)
     filter: FilterDef = field(default_factory=lambda: DEFAULT_FILTER)
-    extra: dict[str, Any] = field(default_factory=lambda: DEFAULT_EXTRA)
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any] | None) -> "ViewSettings":
@@ -320,11 +316,11 @@ class ViewSettings:
         if sort_by is not None:
             sort_by = str(sort_by) or None
 
-        row_height_raw = payload.get("rowHeight", 32)
+        row_height_raw = payload.get("rowHeight", DEFAULT_ROW_HEIGHT)
         try:
             row_height = int(row_height_raw)
         except (TypeError, ValueError):
-            row_height = 32
+            row_height = DEFAULT_ROW_HEIGHT
 
         grouping = GroupingDef(
             group_by=(

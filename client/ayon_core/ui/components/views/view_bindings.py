@@ -67,6 +67,13 @@ class ViewBindings:
         on_extra_capture: Optional callback ``() -> dict`` invoked
             during :meth:`capture` to merge consumer-specific keys
             back into :attr:`ViewSettings.extra`.
+        default_filter: Optional callback returning a ``FilterDef`` used
+            when the incoming view has no filter conditions.
+        default_settings: Optional callback returning complete defaults.
+            When supplied, it is the preferred source for columns, sorting,
+            filtering, grouping, row height, and consumer extras.
+        default_sort_by: Optional column key used when the incoming view
+            does not define a sort column.
         on_error: Optional callback
             ``(stage: str, exc: BaseException) -> None`` invoked for
             non-fatal failures during :meth:`apply` and :meth:`capture`
@@ -80,6 +87,11 @@ class ViewBindings:
     filter_bar: Any | None = None
     on_extra_apply: Any | None = None
     on_extra_capture: Any | None = None
+    default_columns: Callable[[], list[ColumnState]] | None = None
+    default_filter: Callable[[], FilterDef] | None = None
+    default_settings: Callable[[], ViewSettings] | None = None
+    default_sort_by: str | None = None
+    default_sort_desc: bool = False
     on_error: ErrorCallback | None = None
     # Keys not consumed by built-in handlers; preserved verbatim for
     # roundtrip even when the consumer does not supply a callback.
@@ -135,11 +147,33 @@ class ViewBindings:
                 f"apply expected ViewSettings, got {type(settings).__name__}"
             )
 
+        defaults = (
+            self.default_settings()
+            if self.default_settings is not None
+            else None
+        )
+
         # 1. Columns + sort live on the model.  When the consumer also
         #    wired a table view, widths and visibility are the header's
         #    responsibility — strip them from the model payload so the
         #    model only owns ordering and sort, avoiding cross-view
         #    contamination of the shared TableColumn catalog.
+        if not settings.columns and defaults is not None:
+            settings = copy.copy(settings)
+            settings.columns = copy.deepcopy(defaults.columns)
+        elif not settings.columns and self.default_columns is not None:
+            settings = copy.copy(settings)
+            settings.columns = self.default_columns()
+
+        if settings.sort_by is None and defaults is not None:
+            settings = copy.copy(settings)
+            settings.sort_by = defaults.sort_by
+            settings.sort_desc = defaults.sort_desc
+        elif settings.sort_by is None and self.default_sort_by is not None:
+            settings = copy.copy(settings)
+            settings.sort_by = self.default_sort_by
+            settings.sort_desc = self.default_sort_desc
+
         model_settings = self._settings_for_model(settings)
         self.model.apply_settings(model_settings)
 
@@ -156,21 +190,41 @@ class ViewBindings:
         #    does not yet expose AND/OR semantics.
         self._last_filter_operator = settings.filter.operator or "and"
         if self.filter_bar is not None:
-            self._apply_filter(settings.filter)
+            filter_def = settings.filter
+            if not filter_def.conditions and defaults is not None:
+                filter_def = defaults.filter
+            elif (
+                not filter_def.conditions
+                and self.default_filter is not None
+            ):
+                filter_def = self.default_filter()
+            self._apply_filter(filter_def)
 
         # 3. Grouping — placeholder for future grouping widget; we keep
         #    the data on the binding so capture() can re-emit it.
-        self._last_grouping = copy.deepcopy(settings.grouping)
+        grouping = settings.grouping
+        if grouping.is_empty() and defaults is not None:
+            grouping = defaults.grouping
+        self._last_grouping = copy.deepcopy(grouping)
 
         # 4. Row height — applied to the table view (real per-row
         #    override) and best-effort on the card view.
-        self._apply_row_height(settings.row_height)
+        row_height = settings.row_height
+        if row_height <= 0 and defaults is not None:
+            row_height = defaults.row_height
+        self._apply_row_height(row_height)
 
         # 5. Extras — let the consumer handle the un-claimed slice.
         self._untouched_extra = dict(settings.extra)
-        if self.on_extra_apply is not None and settings.extra:
+        applied_extra = (
+            dict(defaults.extra)
+            if defaults is not None
+            else {}
+        )
+        applied_extra.update(settings.extra)
+        if self.on_extra_apply is not None and applied_extra:
             try:
-                self.on_extra_apply(settings.extra)
+                self.on_extra_apply(applied_extra)
             except Exception as exc:
                 self._report_error("on_extra_apply", exc)
 

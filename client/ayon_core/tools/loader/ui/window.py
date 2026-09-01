@@ -2,36 +2,35 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ayon_core.ui.components.container import AYContainer
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
+from ayon_core.pipeline.actions import LoaderActionResult
+from ayon_core.tools.utils import (
+    MessageOverlayObject,
+    ErrorMessageBox,
+    ThumbnailPainterWidget,
+    RefreshButton,
+    GoToCurrentButton,
+    ProjectsCombobox,
+    get_qt_icon,
+    FoldersFiltersWidget,
+)
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
+from ayon_core.tools.utils.lib import center_window
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
-from ayon_core.tools.utils import (
-    ErrorMessageBox,
-    FoldersFiltersWidget,
-    GoToCurrentButton,
-    MessageOverlayObject,
-    ProjectsCombobox,
-    RefreshButton,
-    ThumbnailPainterWidget,
-    get_qt_icon,
-)
-from ayon_core.tools.utils.lib import center_window
 
 from .folders_widget import LoaderFoldersWidget
-from .info_widget import InfoWidget
-from .product_group_dialog import ProductGroupDialog
-from .products_widget import ProductsWidget
-from .repres_widget import RepresentationsWidget
-from .reviews_widget import ReviewsWidget
-from .search_bar import FilterDefinition, FiltersBar
 from .tasks_widget import LoaderTasksWidget
+from .products_widget import ProductsWidget
+from .product_group_dialog import ProductGroupDialog
+from .info_widget import InfoWidget
+from .repres_widget import RepresentationsWidget
+from .search_bar import FiltersBar, FilterDefinition
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -135,15 +134,9 @@ class RefreshHandler:
         self._products_refreshed = True
 
 
-class LoaderWindow(AYContainer):
+class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
-        super().__init__(
-            parent,
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.High,
-            layout_margin=16,
-            layout_spacing=16,
-        )
+        super().__init__(parent)
 
         if controller is None:
             controller = LoaderController()
@@ -161,7 +154,7 @@ class LoaderWindow(AYContainer):
 
         overlay_object = MessageOverlayObject(self)
 
-        main_splitter = QtWidgets.QSplitter()
+        main_splitter = QtWidgets.QSplitter(self)
 
         context_splitter = QtWidgets.QSplitter(main_splitter)
         context_splitter.setOrientation(QtCore.Qt.Vertical)
@@ -255,16 +248,8 @@ class LoaderWindow(AYContainer):
         main_splitter.setStretchFactor(1, 6)
         main_splitter.setStretchFactor(2, 1)
 
-        self.review_wdgt = ReviewsWidget(controller)
-        self.review_wdgt.default_view_message.connect(
-            self._show_toast_message
-        )
-
-        self._tab = QtWidgets.QTabWidget()
-        self._tab.addTab(main_splitter, "Folders")
-        self._tab.addTab(self.review_wdgt, "Reviews")
-
-        self.add_widget(self._tab)
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.addWidget(main_splitter)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
@@ -369,8 +354,6 @@ class LoaderWindow(AYContainer):
             self._product_group_checkbox.isChecked()
         )
 
-        self._tab.setCurrentIndex(1)
-
     def refresh(self):
         self._reset_on_show = False
         self._controller.reset()
@@ -411,9 +394,6 @@ class LoaderWindow(AYContainer):
             return
 
         super().keyPressEvent(event)
-
-    # def setStyleSheet(self, styleSheet: str) -> None:
-    #     self.setStyle(get_ayon_style())
 
     def _on_first_show(self):
         self._first_show = False

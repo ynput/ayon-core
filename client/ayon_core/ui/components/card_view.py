@@ -80,7 +80,7 @@ class _CardDelegate(QStyledItemDelegate):
     """Bridges PaginatedTableModel row data to AYEntityCard widgets.
 
     Args:
-        card_width: Fixed pixel width of every card.
+        card_width: Current pixel width of every card.
         card_data_mapper: Callable that converts a row_data dict to
             AYEntityCard keyword arguments.
         parent: Parent QObject.
@@ -191,6 +191,7 @@ class AYCardView(QAbstractItemView):
         self._sync_viewport_palette()
 
         self._card_width: int = card_width
+        self._effective_card_width: int = card_width
         self._card_spacing: int = card_spacing
         self._card_data_mapper: (
             Callable[[dict[str, Any]], dict[str, Any]] | None
@@ -239,7 +240,14 @@ class AYCardView(QAbstractItemView):
 
     def set_card_width(self, width: int) -> None:
         self._card_width = width
-        self.scroll_step = max(1, int(self._card_width / CARD_RATIO * 0.1))
+        self._calculate_layout()
+        self._sync_viewport_editors()
+
+    def _set_effective_card_width(self, width: int) -> None:
+        if width == self._effective_card_width:
+            return
+        self._effective_card_width = width
+        self.scroll_step = max(1, int(width / CARD_RATIO * 0.1))
         self._delegate.set_card_width(width)
         for pmi in self._active_editor_pmis:
             if not pmi.isValid():
@@ -247,8 +255,25 @@ class AYCardView(QAbstractItemView):
             editor = self.indexWidget(QModelIndex(pmi))  # type: ignore
             if isinstance(editor, AYEntityCard):
                 editor.resize_to_width(width)
-        self._calculate_layout()
-        self._sync_viewport_editors()
+
+    def _fit_card_width(self, viewport_width: int) -> int:
+        """Expand cards evenly so complete columns fill the viewport."""
+        spacing = self._card_spacing
+        available_width = max(1, viewport_width - (spacing * 2))
+        target_width = max(1, self._card_width)
+        column_count = max(
+            1,
+            (available_width + spacing)
+            // (target_width + spacing),
+        )
+        return max(
+            1,
+            (
+                available_width
+                - (spacing * (column_count - 1))
+            )
+            // column_count,
+        )
 
     def _sync_viewport_palette(self) -> None:
         style = get_ayon_style()
@@ -386,6 +411,10 @@ class AYCardView(QAbstractItemView):
             self._editor_sync_timer.start()
 
     def _calculate_layout(self) -> None:
+        vp_width = self.viewport().width()
+        card_w = self._fit_card_width(vp_width)
+        self._set_effective_card_width(card_w)
+
         model = self.model()
         self._tree_layout = []
         self._flat_layout = []
@@ -395,9 +424,7 @@ class AYCardView(QAbstractItemView):
             self.updateGeometries()
             return
 
-        vp_width = self.viewport().width()
         spacing = self._card_spacing
-        card_w = self._card_width
         card_h = int(card_w / CARD_RATIO)
         margin = spacing
 
@@ -424,28 +451,38 @@ class AYCardView(QAbstractItemView):
         card_h: int,
     ) -> tuple[list[_LayoutItem], int]:
         items: list[_LayoutItem] = []
-        x = margin
         y = start_y
-        line_height = 0
         row_count = model.rowCount(parent_index)
+        available_width = max(1, vp_width - (margin * 2))
+        column_count = max(
+            1,
+            (available_width + spacing) // (card_w + spacing),
+        )
+        gap_count = max(1, column_count - 1)
+        gap_space = max(0, available_width - (column_count * card_w))
+        horizontal_gap = gap_space // gap_count
+        extra_gap_count = gap_space % gap_count
+        placed_count = 0
 
         for row in range(row_count):
             idx = model.index(row, 0, parent_index)
             if not idx.isValid():
                 continue
-            next_x = x + card_w + spacing
-            if next_x - spacing > vp_width - margin and line_height > 0:
-                x = margin
-                y = y + line_height + spacing
-                next_x = x + card_w + spacing
-                line_height = 0
+            column = placed_count % column_count
+            if column == 0 and placed_count:
+                y = y + card_h + spacing
+            x = (
+                margin
+                + (column * card_w)
+                + (column * horizontal_gap)
+                + min(column, extra_gap_count)
+            )
             rect = QRect(x, y, card_w, card_h)
             pmi = QPersistentModelIndex(idx)
             items.append(_LayoutItem(index=pmi, rect=rect))
-            x = next_x
-            line_height = max(line_height, card_h)
+            placed_count += 1
 
-        end_y = y + line_height if line_height > 0 else start_y
+        end_y = y + card_h if placed_count else start_y
         return items, end_y
 
     def _calculate_flat_layout(
@@ -1138,10 +1175,7 @@ class AYCardView(QAbstractItemView):
 
     @card_width.setter
     def card_width(self, value: int) -> None:
-        self._card_width = value
-        self._delegate._card_width = value
-        self._active_editor_pmis.clear()
-        self._schedule_layout_update()
+        self.set_card_width(value)
 
     @property
     def card_spacing(self) -> int:

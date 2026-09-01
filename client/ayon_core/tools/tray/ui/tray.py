@@ -34,7 +34,6 @@ from ayon_core.tools.tray.lib import (
     TrayIsRunningError,
 )
 from ayon_core.tools.launcher.ui import LauncherWindow
-from ayon_core.tools.loader.ui import LoaderWindow
 from ayon_core.tools.console_interpreter.ui import ConsoleInterpreterWindow
 from ayon_core.tools.publisher.publish_report_viewer import (
     PublishReportViewerWindow,
@@ -595,7 +594,15 @@ class TrayManager:
 
     def _show_browser_window(self):
         if self._browser_window is None:
-            self._browser_window = LoaderWindow()
+            if os.getenv("AYON_USE_LEGACY_LOADER") == "1":
+                from ayon_core.tools.loader.ui import LoaderWindow
+
+                window_class = LoaderWindow
+            else:
+                from ayon_core.tools.browser.ui import BrowserWindow
+
+                window_class = BrowserWindow
+            self._browser_window = window_class()
             self._browser_window.setWindowTitle("AYON Browser")
             install_ayon_plugins()
 

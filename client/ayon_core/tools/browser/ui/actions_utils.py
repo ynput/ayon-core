@@ -7,12 +7,12 @@ import qtawesome
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.widgets import (
-    OptionalMenu,
     OptionalAction,
     OptionDialog,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.loader.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.ui.components import AYMenu
 
 
 def _actions_sorter(item: tuple[ActionItem, str, str]):
@@ -39,13 +39,13 @@ def show_actions_menu(
     selected_options = None
 
     if not action_items:
-        menu = QtWidgets.QMenu(parent)
+        menu = AYMenu(parent)
         action = _get_no_loader_action(menu, one_item_selected)
         menu.addAction(action)
         menu.exec_(global_point)
         return selected_action_item, selected_options
 
-    menu = OptionalMenu(parent)
+    menu = AYMenu(parent)
 
     action_items_with_labels = []
     for action_item in action_items:
@@ -70,13 +70,14 @@ def show_actions_menu(
         )
         if icon_name and "." in icon_name:
             icon_name = icon_name.split(".")[-1]
+
         icon = get_qt_icon(action_item.icon)
         use_option = bool(item_options)
         action = OptionalAction(
             action_item.label,
             icon_name,
             use_option,
-            menu
+            menu,
         )
         if use_option:
             # Add option box tip
@@ -99,7 +100,7 @@ def show_actions_menu(
         if group_label:
             group_menu = group_menu_by_label.get(group_label)
             if group_menu is None:
-                group_menu = OptionalMenu(group_label, menu)
+                group_menu = QtWidgets.QMenu(group_label, parent=menu)
                 if icon is not None:
                     group_menu.setIcon(icon)
                 menu.addMenu(group_menu)
@@ -177,6 +178,6 @@ def _get_no_loader_action(menu, one_item_selected):
     msg = "No compatible loaders for {}".format(submsg)
     icon = qtawesome.icon(
         "fa.exclamation",
-        color=QtGui.QColor(255, 51, 0)
+        color=QtGui.QColor(255, 51, 0),
     )
     return QtWidgets.QAction(icon, ("*" + msg), menu)

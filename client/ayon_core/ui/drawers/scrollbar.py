@@ -112,10 +112,51 @@ class ScrollBarDrawer:
 
         orientation = w.orientation()
 
-        if sc in (
-            QStyle.SubControl.SC_ScrollBarSlider,
-            QStyle.SubControl.SC_ScrollBarGroove,
-        ):
+        if sc == QStyle.SubControl.SC_ScrollBarSlider:
+            base_groove = sup.subControlRect(
+                cc, opt, QStyle.SubControl.SC_ScrollBarGroove, w
+            )
+            base_slider = sup.subControlRect(cc, opt, sc, w)
+            if orientation == Qt.Orientation.Vertical:
+                groove = base_groove.adjusted(
+                    0, -sls.height(), 0, als.height()
+                )
+                slider_length = base_slider.height()
+                available = max(0, groove.height() - slider_length)
+                offset = QStyle.sliderPositionFromValue(
+                    opt.minimum,
+                    opt.maximum,
+                    opt.sliderPosition,
+                    available,
+                    opt.upsideDown,
+                )
+                return QRect(
+                    base_slider.left(),
+                    groove.top() + offset,
+                    base_slider.width(),
+                    slider_length,
+                )
+
+            groove = base_groove.adjusted(
+                -sls.width(), 0, als.width(), 0
+            )
+            slider_length = base_slider.width()
+            available = max(0, groove.width() - slider_length)
+            offset = QStyle.sliderPositionFromValue(
+                opt.minimum,
+                opt.maximum,
+                opt.sliderPosition,
+                available,
+                opt.upsideDown,
+            )
+            return QRect(
+                groove.left() + offset,
+                base_slider.top(),
+                slider_length,
+                base_slider.height(),
+            )
+
+        if sc == QStyle.SubControl.SC_ScrollBarGroove:
             rect = sup.subControlRect(cc, opt, sc, w)
             if orientation == Qt.Orientation.Vertical:
                 rect.adjust(0, -sls.height(), 0, als.height())
@@ -124,20 +165,46 @@ class ScrollBarDrawer:
             return rect
 
         elif sc == QStyle.SubControl.SC_ScrollBarAddPage:
-            rect = sup.subControlRect(cc, opt, sc, w)
+            groove = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarGroove, w
+            )
+            slider = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarSlider, w
+            )
             if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, 0, 0, als.height())
-            else:
-                rect.adjust(0, 0, als.width(), 0)
-            return rect
+                return QRect(
+                    groove.left(),
+                    slider.bottom() + 1,
+                    groove.width(),
+                    max(0, groove.bottom() - slider.bottom()),
+                )
+            return QRect(
+                slider.right() + 1,
+                groove.top(),
+                max(0, groove.right() - slider.right()),
+                groove.height(),
+            )
 
         elif sc == QStyle.SubControl.SC_ScrollBarSubPage:
-            rect = sup.subControlRect(cc, opt, sc, w)
+            groove = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarGroove, w
+            )
+            slider = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarSlider, w
+            )
             if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, -sls.height(), 0, 0)
-            else:
-                rect.adjust(-sls.width(), 0, 0, 0)
-            return rect
+                return QRect(
+                    groove.left(),
+                    groove.top(),
+                    groove.width(),
+                    max(0, slider.top() - groove.top()),
+                )
+            return QRect(
+                groove.left(),
+                groove.top(),
+                max(0, slider.left() - groove.left()),
+                groove.height(),
+            )
 
         raise ValueError("Unexpected sub-control")
 

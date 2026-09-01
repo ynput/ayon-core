@@ -1036,6 +1036,9 @@ class AYTableView(StyleMixin, QTreeView):
 
         cols = source.columns
         key_to_logical: dict[str, int] = {c.key: i for i, c in enumerate(cols)}
+        states = [
+            state for state in states if state.name in key_to_logical
+        ]
 
         # Block signals while we mass-rearrange to avoid emitting
         # ``column_state_changed`` once per moved/resized section.
@@ -1057,6 +1060,8 @@ class AYTableView(StyleMixin, QTreeView):
         finally:
             header.blockSignals(False)
 
+        self.scheduleDelayedItemsLayout()
+        self.viewport().update()
         # Emit a single coalesced signal for the whole batch.
         self.column_state_changed.emit()
 
@@ -1282,7 +1287,25 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> None:
         """Paint a table cell directly, bypassing QStyle."""
-        # Skip painting for cells covered by a persistent editor widget.
+        from ..components.table_model import PaginatedTableModel
+
+        src_model = index.model()
+        if hasattr(src_model, "sourceModel"):
+            src_model = src_model.sourceModel()
+        has_widget = False
+        if isinstance(src_model, PaginatedTableModel):
+            col = index.column()
+            cols = src_model.columns
+            has_widget = (
+                0 <= col < len(cols)
+                and cols[col].widget_factory is not None
+            )
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
         from ..components.table_model import PaginatedTableModel
 
         src_model = index.model()
@@ -1291,14 +1314,8 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         if isinstance(src_model, PaginatedTableModel):
             col = index.column()
             cols = src_model.columns
-            if 0 <= col < len(cols) and cols[col].widget_factory is not None:
-                return
-
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        opt = QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
+            if 0 <= col < len(cols) and cols[col].delegate is not None:
+                cols[col].delegate.initStyleOption(opt, index)
 
         state = opt.state
         is_selected = bool(state & QStyle.StateFlag.State_Selected)
@@ -1371,6 +1388,10 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         else:
             painter.drawRect(opt.rect)
 
+        if has_widget:
+            painter.restore()
+            return
+
         # --- text colour ---
         index_color = index.data(role=Qt.ItemDataRole.ForegroundRole)
         if is_selected:
@@ -1429,6 +1450,9 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             text_rect = QRect(opt.rect)
             text_rect.setLeft(content_left)
             text_rect.setRight(content_rect.right())
+            # Font ascenders and descenders make mathematically centered
+            # text appear slightly lower than geometrically centered icons.
+            text_rect.translate(0, -1)
             painter.setPen(text_color)
             painter.setFont(self.font())
             painter.drawText(

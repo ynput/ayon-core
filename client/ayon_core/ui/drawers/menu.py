@@ -116,7 +116,12 @@ class MenuDrawer:
         panel/frame painting, where the state/variant-specific styles are
         not relevant.
         """
-        style = self.model.get_style(self._WIDGET_CLS, "default", "base")
+        variant = (
+            widget.property("variant")
+            if widget is not None
+            else None
+        ) or "default"
+        style = self.model.get_style(self._WIDGET_CLS, variant, "base")
         style.set_context(widget)
         return style
 
@@ -369,18 +374,28 @@ class MenuDrawer:
         not_checkable = QStyleOptionMenuItem.CheckType.NotCheckable
         if check_type != not_checkable:
             check_color = QColor(style.get("color", "#f4f5f5"))
-            check_icon = get_icon(
-                "check_box" if option.checked else "check_box_outline_blank",
-                color=check_color,
-                fill=False,
+            check_style = (
+                action.property("check-style") if action else None
             )
-            check_rect = QRect(
-                x,
-                cy - layout.icon_size // 2,
-                layout.icon_size,
-                layout.icon_size,
-            )
-            check_icon.paint(painter, check_rect)
+            if option.checked or check_style != "checkmark":
+                check_icon = get_icon(
+                    (
+                        "check"
+                        if check_style == "checkmark"
+                        else "check_box"
+                        if option.checked
+                        else "check_box_outline_blank"
+                    ),
+                    color=check_color,
+                    fill=False,
+                )
+                check_rect = QRect(
+                    x,
+                    cy - layout.icon_size // 2,
+                    layout.icon_size,
+                    layout.icon_size,
+                )
+                check_icon.paint(painter, check_rect)
         elif not option.icon.isNull():
             icon_rect = QRect(
                 x,

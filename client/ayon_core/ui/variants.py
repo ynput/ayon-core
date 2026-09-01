@@ -83,6 +83,7 @@ class QToolTipVariants(Enum):
 
 class QMenuVariants(Enum):
     Default = "default"
+    Surface = "surface"
     Danger = "danger"
 
 

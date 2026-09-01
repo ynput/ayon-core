@@ -13,20 +13,12 @@ from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.tools.loader.abstract import RepreItem
-from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import ReviewController
+from ayon_core.tools.browser.abstract import RepreItem
+from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
+from ayon_core.tools.browser.ui.browser_controller import BrowserController
 from ayon_core.tools.utils import get_qt_icon
 
-from ._review_thumbnails import _thumbnail_loader
-
-
-def _str_wrap(text: str) -> str:
-    # Insert a zero-width space after common path separators so long
-    # paths wrap inside a word-wrapping QLabel.
-    for ch in ("/", "\\", "_", "-", "."):
-        text = text.replace(ch, ch + "\u200b")
-    return text
+from ._browser_thumbnails import _thumbnail_loader
 
 
 class ReviewInspector(AYContainer):
@@ -34,7 +26,7 @@ class ReviewInspector(AYContainer):
 
     def __init__(
         self,
-        controller: ReviewController,
+        controller: BrowserController,
         *args,
         **kwargs,
     ):
@@ -110,9 +102,9 @@ class ReviewInspector(AYContainer):
         )
         self.info_lyt = AYContainer(
             layout=AYContainer.Layout.Form,
-            variant=AYContainer.Variants.Low_Framed_Thin,
+            variant=AYContainer.Variants.Low,
             layout_margin=10,
-            layout_spacing=(20, 20),
+            layout_spacing=(20, 8),
         )
         self.info_lyt.set_label_alignment(QtCore.Qt.AlignRight)
         self.add_widget(self.info_lyt)
@@ -143,16 +135,23 @@ class ReviewInspector(AYContainer):
             AYLabel("Created:", dim=True), self._created_value
         )
         # source
-        self._source_value = AYLabel("-", copy_text=True)
-        self._source_value.setWordWrap(True)
-        src_wrapper = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            layout_margin=0,
-            layout_spacing=0,
+        self._source_value = AYLabel(
+            "-",
+            copy_text=True,
+            elide_mode=QtCore.Qt.TextElideMode.ElideLeft,
         )
-        src_wrapper.add_widget(self._source_value, stretch=1)
-        self.info_lyt.add_row(AYLabel("Source:", dim=True), src_wrapper)
+        self._source_value.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft
+            | QtCore.Qt.AlignmentFlag.AlignTop
+        )
+        self._source_value.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        self.info_lyt.add_row(
+            AYLabel("Source:", dim=True),
+            self._source_value,
+        )
 
         # representations
         self.add_widget(
@@ -192,7 +191,7 @@ class ReviewInspector(AYContainer):
         self._view.viewport().installEventFilter(self)
 
     def _throttled_update(self) -> None:
-        """Throttled update method called by the timer during drag selection."""
+        """Update the inspector during drag selection."""
         if self._mouse_pressed:
             start_time = time.time()
             self._update()
@@ -205,8 +204,9 @@ class ReviewInspector(AYContainer):
                     int(elapsed_time_ms / num_selected),
                 )
                 self._first_update_measured = True
-                # print(f"base update time: {self._base_update_time} ms")
-            self._update_timer.start(max(16, self._base_update_time * num_selected))
+            self._update_timer.start(
+                max(16, self._base_update_time * num_selected)
+            )
 
     def _on_model_reset(self) -> None:
         """Clear the selection when the model is reset."""
@@ -241,6 +241,10 @@ class ReviewInspector(AYContainer):
         We want to show the inspector in this case if it's not visible.
         """
         self.show()
+        self._update()
+
+    def refresh_selection(self) -> None:
+        """Refresh the inspector after selected row data changes."""
         self._update()
 
     def _on_selection_changed(
@@ -282,7 +286,6 @@ class ReviewInspector(AYContainer):
         if data.get("entityType", "") == "Folder":
             data = {}
 
-        # print(f"Updating inspector with data: {data}")
         self._path_label.setText(
             data.get("path", default) if single else default
         )
@@ -298,9 +301,9 @@ class ReviewInspector(AYContainer):
         self._created_value.setText(
             data.get("createdAt", default) if single else default
         )
-        self._source_value.setText(
-            _str_wrap(data.get("source", default) if single else default)
-        )
+        source = data.get("source", default) if single else default
+        self._source_value.setToolTip(source)
+        self._source_value.setText(source)
 
         thumb_keys: list[str] = []
         version_ids: list[str] = []
@@ -409,12 +412,12 @@ class Representations(AYContainer):
     rows regardless of the mode.
     """
 
-    def __init__(self, controller: ReviewController, *args, **kwargs):
+    def __init__(self, controller: BrowserController, *args, **kwargs):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low_Framed_Thin,
-            layout_margin=2,
+            variant=AYContainer.Variants.High,
+            layout_margin=0,
             **kwargs,
         )
         self._controller = controller
@@ -502,7 +505,7 @@ class Representations(AYContainer):
 
         Args:
             repre: A
-                :class:`~ayon_core.tools.loader.abstract.RepreItem`
+                :class:`~ayon_core.tools.browser.abstract.RepreItem`
                 instance.
 
         Returns:
@@ -539,7 +542,7 @@ class Representations(AYContainer):
         Args:
             name: The shared representation name used as the label.
             sample_repre: Any child
-                :class:`~ayon_core.tools.loader.abstract.RepreItem`
+                :class:`~ayon_core.tools.browser.abstract.RepreItem`
                 from this group — used to copy the icon.
 
         Returns:
@@ -575,7 +578,7 @@ class Representations(AYContainer):
 
         Args:
             repre_items: List of
-                :class:`~ayon_core.tools.loader.abstract.RepreItem`
+                :class:`~ayon_core.tools.browser.abstract.RepreItem`
                 objects to display.
             multi_version: ``True`` when the items come from more than
                 one selected version.

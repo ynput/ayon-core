@@ -36,9 +36,14 @@ class VisibilityAwarePaginatedTableModel(PaginatedTableModel):
 
     def __init__(self, *args, **kwargs) -> None:
         self._view: AYTableView | None = None
+        self._fetch_enabled = False
         self._priority_cache: dict[tuple[int, int], int] = {}
         self._priority_cache_clear_scheduled: bool = False
         super().__init__(*args, **kwargs)
+
+    def set_fetch_enabled(self, enabled: bool) -> None:
+        """Enable page fetching when the Browser has a valid selection."""
+        self._fetch_enabled = bool(enabled)
 
     def set_view(self, view: AYTableView) -> None:
         """Attach the view used for visibility checks.
@@ -130,6 +135,35 @@ class VisibilityAwarePaginatedTableModel(PaginatedTableModel):
             QtCore.QTimer.singleShot(0, self._clear_priority_cache)
 
         return priority
+
+    def fetchMore(  # noqa: N802
+        self,
+        parent: QtCore.QModelIndex = QtCore.QModelIndex(),
+    ) -> None:
+        """Fetch children only after a visible tree node is expanded.
+
+        Qt may call ``fetchMore`` for every visible tree row while laying
+        out the view, including rows that are still collapsed. Keep the
+        model expandable, but ignore those speculative calls until Qt has
+        committed the row expansion.
+        """
+        if parent.isValid() and self._view is not None:
+            proxy_model = self._view.model()
+            if isinstance(proxy_model, QtCore.QAbstractProxyModel):
+                proxy_index = proxy_model.mapFromSource(parent)
+            else:
+                proxy_index = parent
+            if proxy_index.isValid() and not self._view.isExpanded(
+                proxy_index
+            ):
+                return
+        super().fetchMore(parent)
+
+    def _fetch_next_page(self, node: object) -> None:
+        """Skip pagination while the Browser has no slicer selection."""
+        if not self._fetch_enabled:
+            return
+        super()._fetch_next_page(node)  # type: ignore[arg-type]
 
     def _clear_priority_cache(self) -> None:
         """Clear the per-tick priority cache.

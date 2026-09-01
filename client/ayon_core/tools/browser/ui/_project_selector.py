@@ -10,7 +10,7 @@ from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.ui.review_controller import ReviewController
+from ayon_core.tools.browser.ui.browser_controller import BrowserController
 from ayon_core.tools.utils import get_qt_icon
 
 log = Logger.get_logger(__name__)
@@ -23,7 +23,7 @@ class ProjectModel(QtGui.QStandardItemModel):
     IconNameRole = QtCore.Qt.ItemDataRole.UserRole + 2
 
     def __init__(
-        self, controller: ReviewController, *args: Any, **kwargs: Any
+        self, controller: BrowserController, *args: Any, **kwargs: Any
     ) -> None:
         super().__init__(*args, **kwargs)
         self._style_data = get_ayon_style_data("QComboBox", "low")
@@ -65,9 +65,11 @@ class ProjectModel(QtGui.QStandardItemModel):
 class ProjectSelector(AYComboBox):
     """Combo box that lets the user select an AYON project."""
 
+    project_activated = QtCore.Signal(str)
+
     def __init__(
         self,
-        controller: ReviewController,
+        controller: BrowserController,
         *args: Any,
         initial_project: str = "",
         **kwargs: Any,
@@ -79,9 +81,21 @@ class ProjectSelector(AYComboBox):
             **kwargs,
         )
         self.setModel(ProjectModel(controller, self))
+        self.activated.connect(self._on_activated)
         if initial_project:
             self.setCurrentText(initial_project)
 
     def current_project(self) -> str:
         """Return the currently selected project name."""
         return self.currentText()
+
+    def set_current_project(self, project_name: str) -> None:
+        """Set and emit a programmatic project selection."""
+        if project_name == self.currentText():
+            return
+        self.setCurrentText(project_name)
+        self.project_activated.emit(project_name)
+
+    def _on_activated(self, index: int) -> None:
+        """Relay a project selected by the user."""
+        self.project_activated.emit(self.itemText(index))

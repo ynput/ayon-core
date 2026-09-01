@@ -816,6 +816,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
     def setText(self, arg__1: str) -> None:
         super().setText(arg__1)
         self._text = self.text()
+        self.updateGeometry()
 
     def set_icon_color(self, color: str) -> None:
         """Update the icon color and refresh the widget.

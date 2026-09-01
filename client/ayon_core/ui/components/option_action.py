@@ -53,6 +53,10 @@ class AYOptionBox(AYButton):
             fixed_width=False,
         )
 
+    def is_hovered(self, global_pos: QtCore.QPoint) -> bool:
+        """Return whether a global cursor position is inside the button."""
+        return self.rect().contains(self.mapFromGlobal(global_pos))
+
 
 class AYOptionalActionWidget(QtWidgets.QWidget):
     """Row widget that combines a body area and an :class:`AYOptionBox`.
@@ -217,6 +221,15 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
                 w.close()
             w = w.parentWidget()
 
+    def set_highlight(
+        self,
+        highlighted: bool,
+        _global_pos: QtCore.QPoint | None = None,
+    ) -> None:
+        """Synchronize hover styling for legacy optional menus."""
+        if self.widget is not None:
+            self.widget._set_row_hover(highlighted)
+
 
 class AYMenu(QtWidgets.QMenu):
     """QMenu that paints itself using the AYON style.
@@ -281,6 +294,8 @@ class AYMenu(QtWidgets.QMenu):
             opt = QtWidgets.QStyleOptionMenuItem()
             self.initStyleOption(opt, action)
             opt.rect = action_rect
+            if action is self.activeAction():
+                opt.state |= QtWidgets.QStyle.StateFlag.State_Selected
 
             style.drawControl(
                 QtWidgets.QStyle.ControlElement.CE_MenuItem,

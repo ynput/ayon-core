@@ -163,21 +163,36 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         bg_data = index.data(Qt.ItemDataRole.BackgroundRole)
 
         cb = self.parent()
+        highlight_color = opt.palette.color(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.Dark
+        )
 
         # Menu background from the AYON style JSON
         if self._style_model:
             cb_style = self._style_model.get_style("QComboBox")
             cb_style.set_context(cb)
             menu_bg = QColor(cb_style.get("menu-background-color", "#1c2026"))
+            selected_bg = QColor(
+                cb_style.get(
+                    "menu-selected-background-color",
+                    highlight_color,
+                )
+            )
+            selected_fg = QColor(
+                cb_style.get(
+                    "menu-selected-color",
+                    opt.palette.color(QPalette.ColorRole.HighlightedText),
+                )
+            )
         else:
             menu_bg = opt.palette.color(
                 QPalette.ColorGroup.Active,
                 QPalette.ColorRole.Window,
             )
-
-        highlight_color = opt.palette.color(
-            QPalette.ColorGroup.Active, QPalette.ColorRole.Dark
-        )
+            selected_bg = highlight_color
+            selected_fg = opt.palette.color(
+                QPalette.ColorRole.HighlightedText
+            )
 
         state = opt.state
         is_selected = bool(state & QStyle.StateFlag.State_Selected)
@@ -187,15 +202,13 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
 
         if fg_data and bg_data:
             fg = fg_data.color()
-            bg = bg_data.color()
 
             if is_hovered:
                 bg_color = highlight_color
                 text_color = fg
             elif is_selected:
-                bg_color = fg
-                text_color = bg
-                # Regenerate icon with the swapped text_color
+                bg_color = selected_bg
+                text_color = selected_fg
                 icon_name = (
                     index.data(cb.model().IconNameRole)
                     if hasattr(cb.model(), "IconNameRole")
@@ -211,9 +224,11 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         else:
             # Fallback for items without FG/BG data
             if is_hovered or is_selected:
-                bg_color = highlight_color
-                text_color = opt.palette.color(
-                    QPalette.ColorRole.HighlightedText
+                bg_color = selected_bg if is_selected else highlight_color
+                text_color = (
+                    selected_fg
+                    if is_selected
+                    else opt.palette.color(QPalette.ColorRole.HighlightedText)
                 )
             else:
                 bg_color = menu_bg
@@ -396,6 +411,14 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self.setStyle(get_ayon_style())
         self.setMouseTracking(True)
         self.setMaximumHeight(height)
+        self._popup_pressed_index = QtCore.QPersistentModelIndex()
+        self._pending_popup_activation = -1
+        self._popup_activation_timer = QtCore.QTimer(self)
+        self._popup_activation_timer.setSingleShot(True)
+        self._popup_activation_timer.timeout.connect(
+            self._emit_pending_popup_activation
+        )
+        self.view().viewport().installEventFilter(self)
 
         # Initialize properties
         self._size: MenuSize = (
@@ -415,6 +438,60 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self.setModel(model)
 
         self.update_items(items)
+
+    def eventFilter(
+        self,
+        watched: QtCore.QObject,
+        event: QtCore.QEvent,
+    ) -> bool:
+        """Commit clicks that begin inside the open popup.
+
+        QComboBox suppresses mouse releases for a short period after opening
+        its popup. This prevents the opening click from selecting an item,
+        but can also swallow a genuine fast second click. Tracking a new
+        press inside the popup distinguishes those two cases.
+        """
+        viewport = self.view().viewport()
+        if watched is viewport:
+            event_type = event.type()
+            press_types = {
+                QtCore.QEvent.Type.MouseButtonPress,
+                QtCore.QEvent.Type.MouseButtonDblClick,
+            }
+            if event_type in press_types:
+                index = self.view().indexAt(event.pos())
+                self._popup_pressed_index = QtCore.QPersistentModelIndex(
+                    index
+                )
+
+            elif event_type == QtCore.QEvent.Type.MouseButtonRelease:
+                index = self.view().indexAt(event.pos())
+                pressed_index = self._popup_pressed_index
+                self._popup_pressed_index = QtCore.QPersistentModelIndex()
+                if (
+                    pressed_index.isValid()
+                    and index.isValid()
+                    and pressed_index == index
+                ):
+                    self._pending_popup_activation = index.row()
+                    self._popup_activation_timer.start(0)
+                    return True
+
+        return super().eventFilter(watched, event)
+
+    def _emit_pending_popup_activation(self) -> None:
+        """Emit a popup selection after its mouse event has unwound."""
+        row = self._pending_popup_activation
+        self._pending_popup_activation = -1
+        if 0 <= row < self.count():
+            self.setCurrentIndex(row)
+            self.hidePopup()
+            self.activated.emit(row)
+
+    def hidePopup(self) -> None:
+        """Hide the popup and clear any unfinished popup click."""
+        self._popup_pressed_index = QtCore.QPersistentModelIndex()
+        super().hidePopup()
 
     def _assert_compatible_model(self) -> None:
         """Raise :exc:`RuntimeError` when an incompatible model is active.

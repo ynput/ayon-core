@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Callable
 
 import ayon_api
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
-from ayon_core.ui.components.frame import AYFrame
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
@@ -15,16 +14,35 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 from ayon_core.lib import Logger, log_timing
 
 if TYPE_CHECKING:
-    from ._review_model import VisibilityAwarePaginatedTableModel
+    from ._browser_model import VisibilityAwarePaginatedTableModel
 
 log = Logger.get_logger(__name__)
 
+_THUMBNAIL_ASPECT_RATIO = 64 / 30
 
-def _review_card_mapper(row_data: dict) -> dict:
+
+def _fit_thumbnail_size(width: int, height: int) -> tuple[int, int]:
+    """Return the largest thumbnail size fitting the available area."""
+    width = max(0, int(width))
+    height = max(0, int(height))
+    if not width or not height:
+        return 0, 0
+
+    if width / height > _THUMBNAIL_ASPECT_RATIO:
+        thumb_height = height
+        thumb_width = round(height * _THUMBNAIL_ASPECT_RATIO)
+    else:
+        thumb_width = width
+        thumb_height = round(width / _THUMBNAIL_ASPECT_RATIO)
+    return min(width, thumb_width), min(height, thumb_height)
+
+
+def _browser_card_mapper(row_data: dict) -> dict:
     """Map a version row dict to the fields expected by AYEntityCard."""
+    version_id = row_data.get("_version_id") or row_data.get("id", "")
     key: str = (
         f"{row_data.get('project_name', '')}/"
-        f"{row_data.get('id', '')}/"
+        f"{version_id}/"
         f"{row_data.get('thumbnailId', '')}"
     )
     status_data = row_data.get("status")
@@ -168,7 +186,12 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         size: tuple[int, int] = (66, 32),
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
-        super().__init__(size=size, parent=parent, fade_duration=500)
+        super().__init__(
+            size=size,
+            parent=parent,
+            fade_duration=500,
+            transparent=True,
+        )
         self._thumb_key: str = key
         self._context_id: str = context_id
         self._load_requested: bool = False
@@ -218,7 +241,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         super().paintEvent(event)
 
 
-class PlaceholderThumbnail(AYFrame):
+class PlaceholderThumbnail(QtWidgets.QWidget):
     """Lightweight placeholder that creates the real thumbnail lazily.
 
     The widget returned by a ``widget_factory`` is instantiated by Qt as
@@ -231,33 +254,58 @@ class PlaceholderThumbnail(AYFrame):
     Args:
         make_real: Callable with no arguments that returns the real
             :class:`LazyThumbnailWidget` when invoked.
-        alignment: Alignment flag for the widget.
         parent: Optional parent widget (viewport).
     """
 
     def __init__(
         self,
         make_real: Callable | None,
-        alignment: QtCore.Qt.AlignmentFlag = (
-            QtCore.Qt.AlignmentFlag.AlignLeft
-        ),
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
-        super().__init__(parent, variant=AYFrame.Variants.Low_Table_Editor)
+        super().__init__(parent)
+        self.setContentsMargins(1, 1, 1, 1)
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            True,
+        )
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TranslucentBackground,
+            True,
+        )
+        self.setAutoFillBackground(False)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
         self._make_real: Callable | None = make_real
-        self._real: QtWidgets.QWidget | None = None
-        self._lyt = None
-        self._alignment = alignment
+        self._real: LazyThumbnailWidget | None = None
 
-    def _create_layout(self) -> None:
-        self._lyt = QtWidgets.QHBoxLayout()
-        self._lyt.setContentsMargins(0, 0, 0, 0)
-        self._lyt.setAlignment(self._alignment)
-        self.setLayout(self._lyt)
+    def _update_thumbnail_geometry(self) -> None:
+        """Resize and center the thumbnail within the current cell."""
+        if self._real is None:
+            return
+        rect = self.contentsRect()
+        size = _fit_thumbnail_size(rect.width(), rect.height())
+        if not all(size):
+            self._real.hide()
+            return
+        if (
+            self._real.width(),
+            self._real.height(),
+        ) != size:
+            self._real.set_size(size)
+        self._real.move(
+            rect.x() + (rect.width() - size[0]) // 2,
+            rect.y() + (rect.height() - size[1]) // 2,
+        )
+        self._real.show()
+
+    def resizeEvent(  # type: ignore[override]
+        self, event: QtGui.QResizeEvent
+    ) -> None:
+        """Keep the thumbnail fitted and centered as row height changes."""
+        super().resizeEvent(event)
+        self._update_thumbnail_geometry()
 
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
@@ -274,7 +322,6 @@ class PlaceholderThumbnail(AYFrame):
         if self._make_real and self._real is None:
             self._real = self._make_real()
             if self._real:
-                self._create_layout()
-                assert self._lyt is not None
-                self._lyt.addWidget(self._real, stretch=1)
+                self._real.setParent(self)
+                self._update_thumbnail_geometry()
         super().paintEvent(event)

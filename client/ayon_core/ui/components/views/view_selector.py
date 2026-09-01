@@ -244,9 +244,11 @@ class AYViewSelector(AYButtonMenu):
         is_current_view_is_working_view = view is not None and view.working
         working_view_btn = AYButton(
             "Working view",
-            variant=AYButton.Variants.Checked
-            if self._view_modified
-               or is_current_view_is_working_view else AYButton.Variants.Text,
+            variant=(
+                AYButton.Variants.Checked
+                if self._view_modified or is_current_view_is_working_view
+                else AYButton.Variants.Text
+            ),
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
         )
@@ -258,9 +260,11 @@ class AYViewSelector(AYButtonMenu):
 
         reset_btn = AYButton(
             icon="restart_alt",
-            variant=AYButton.Variants.Checked
-            if self._view_modified
-               or is_current_view_is_working_view else AYButton.Variants.Nav_Small,
+            variant=(
+                AYButton.Variants.Checked
+                if self._view_modified or is_current_view_is_working_view
+                else AYButton.Variants.Nav_Small
+            ),
             tooltip="Reset to default",
         )
         reset_btn.setFixedSize(24, 24)
@@ -269,8 +273,11 @@ class AYViewSelector(AYButtonMenu):
 
         return row
 
-    def _make_view_label_btn(self, view: View,
-                             not_modified) -> AYButton:
+    def _make_view_label_btn(
+        self,
+        view: View,
+        not_modified: bool,
+    ) -> AYButton:
         select_btn = AYButton(
             view.label or "(unnamed view)",
             icon="star" if view.working else "view_list",
@@ -284,7 +291,7 @@ class AYViewSelector(AYButtonMenu):
             QSizePolicy.Policy.Fixed
         )
         select_btn.clicked.connect(
-            lambda _checked=False,v=view: self._on_view_selected(v)
+            lambda _checked=False, v=view: self._on_view_selected(v)
         )
         return select_btn
 
@@ -294,11 +301,16 @@ class AYViewSelector(AYButtonMenu):
                 and view.id == self._current_view.id
                 and self._view_modified
         )
-        variant = AYButton.Variants.Filled\
-            if is_modified else AYButton.Variants.Nav
-        btn = AYButton(icon="save",
-                       variant=variant,
-                       tooltip="Save view settings from current view")
+        variant = (
+            AYButton.Variants.Filled
+            if is_modified
+            else AYButton.Variants.Nav
+        )
+        btn = AYButton(
+            icon="save",
+            variant=variant,
+            tooltip="Save view settings from current view",
+        )
         btn.setFixedSize(24, 24)
         btn.clicked.connect(
             lambda _checked=False, v=view: self._on_view_save_clicked(v)
@@ -313,14 +325,20 @@ class AYViewSelector(AYButtonMenu):
 
         return btn
 
-    def _make_edit_btn(self, view: View, not_modified) -> AYButton:
+    def _make_edit_btn(self, view: View, not_modified: bool) -> AYButton:
         btn = AYButton(
             icon="more_horiz",
-            variant=AYButton.Variants.Checked
-            if not_modified else AYButton.Variants.Nav_Small,
-            tooltip="Edit view")
+            variant=(
+                AYButton.Variants.Checked
+                if not_modified
+                else AYButton.Variants.Nav_Small
+            ),
+            tooltip="Edit view",
+        )
         btn.setFixedSize(24, 24)
-        btn.clicked.connect(lambda _checked=False, v=view: self._on_edit_clicked(v))
+        btn.clicked.connect(
+            lambda _checked=False, v=view: self._on_edit_clicked(v)
+        )
         return btn
 
     def _make_row(self, view: View) -> AYContainer:
@@ -337,7 +355,10 @@ class AYViewSelector(AYButtonMenu):
                 and not self._view_modified
         )
 
-        row.add_widget(self._make_view_label_btn(view,not_modified), stretch=1)
+        row.add_widget(
+            self._make_view_label_btn(view, not_modified),
+            stretch=1,
+        )
 
         if view.can_edit(self._current_user, self._user_access):
             if not not_modified:
@@ -689,7 +710,7 @@ class AYViewSelector(AYButtonMenu):
             self._apply_view(saved, emit=True)
 
     def _clear_modified(self) -> None:
-        """Clear the dirty flag and restore the button to its default variant."""
+        """Clear the dirty flag and restore the default button variant."""
         if not self._view_modified:
             return
         self._view_modified = False
@@ -735,6 +756,8 @@ class AYViewSelector(AYButtonMenu):
             log.exception(
                 "Failed to resolve working view for %r", self._view_type
             )
+            return
+        if working_view is None:
             return
         working_view.settings = self._bindings.capture()
         with self._suspend_auto_apply():
@@ -925,7 +948,8 @@ if __name__ == "__main__":  # pragma: no cover
         )
         selector.view_modified.connect(
             lambda name, modified: print(
-                f"[demo]  view state for {name!r}: {'modified' if modified else 'clean'}"
+                f"[demo]  view state for {name!r}: "
+                f"{'modified' if modified else 'clean'}"
             )
         )
 

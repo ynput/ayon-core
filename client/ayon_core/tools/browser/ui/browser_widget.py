@@ -9,20 +9,18 @@ from ayon_core.ui.components.tree_model import LazyTreeModel
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.ui.actions_utils import show_actions_menu
-from ayon_core.tools.loader.ui.review_controller import ReviewController
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
-from ayon_core.tools.loader.control import LoaderController
-from ayon_core.tools.utils.user_prefs import UserPreferences
+from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
+from ayon_core.tools.browser.ui.browser_controller import BrowserController
+from ayon_core.tools.browser.control import LoaderController
 
-from ._review_slicer import ReviewSlicer
-from ._review_table import ReviewTable
-from .review_inspector import ReviewInspector
+from ._browser_slicer import BrowserSlicer
+from ._browser_table import BrowserTable
+from .browser_inspector import ReviewInspector
 
 log = Logger.get_logger(__name__)
 
 
-class ReviewsWidget(AYContainer):
+class BrowserWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
     default_view_message = QtCore.Signal(str, bool)
@@ -37,30 +35,24 @@ class ReviewsWidget(AYContainer):
             *args,
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.High,
+            layout_margin=0,
+            layout_spacing=4,
             **kwargs,
         )
-        prefs = UserPreferences()
-        saved_project = prefs.get("loader.review.last_project", "")
-        saved_category = prefs.get(
-            "loader.review.last_category",
-            ReviewCategory.HIERARCHY.value,
-        )
-
-        self._controller = ReviewController(
+        self._controller = BrowserController(
             loader_controller,
             parent=self,
         )
-        self._slicer = ReviewSlicer(
+        self._slicer = BrowserSlicer(
             self._controller,
+            loader_controller,
             self,
-            initial_project=saved_project,
-            initial_category=saved_category,
         )
         self._model = LazyTreeModel(
             fetch_children=self._controller.fetch_children
         )
         self._slicer.set_model(self._model)
-        self._table = ReviewTable(self._controller, self)
+        self._table = BrowserTable(self._controller, self)
         self._table.table.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.CustomContextMenu
         )
@@ -78,10 +70,13 @@ class ReviewsWidget(AYContainer):
         self._table.default_view_message.connect(
             self.default_view_message
         )
+        self._table.selection_refresh_requested.connect(
+            self._inspector.refresh_selection
+        )
         self._inspector.set_view(self._table.active_view)
         self._build()
 
-        self._slicer._selector.currentTextChanged.connect(
+        self._slicer._selector.project_activated.connect(
             self._controller.set_project
         )
         self._controller.tree_reset_requested.connect(self._on_tree_reset)
@@ -93,13 +88,12 @@ class ReviewsWidget(AYContainer):
         self._controller.project_info_changed.connect(
             self._table.on_project_info_changed
         )
-
-        initial_project = self._slicer.current_project()
-        if initial_project:
-            self._controller.set_project(initial_project)
-        initial_category = self._slicer.current_category()
-        if initial_category:
-            self._controller.set_category(initial_category)
+        self._slicer.task_names_changed.connect(
+            self._on_task_names_changed
+        )
+        self._table.filter_criteria_changed.connect(
+            self._on_filter_criteria_changed
+        )
 
     def _build(self) -> None:
         main_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -111,10 +105,13 @@ class ReviewsWidget(AYContainer):
         main_splitter.setStretchFactor(2, 2)
         self.add_widget(main_splitter)
 
+    def refresh_loaded_state(self) -> None:
+        """Refresh rows that depend on the host's loaded containers."""
+        self._table.reset_data()
+
     def _on_tree_reset(self) -> None:
-        """Reset the tree model and re-attach it to the slicer."""
+        """Reset the tree model while preserving the proxy and view."""
         self._model.reset()
-        self._slicer.set_model(self._model)
 
     def _on_project_changed(self, project_name: str) -> None:
         """Clear selection state and refresh table on project change.
@@ -123,7 +120,26 @@ class ReviewsWidget(AYContainer):
             project_name: Newly selected project name.
         """
         self._table.set_auto_expand(False)
+        self._table.clear_expansion_state()
         self._table.reset_data()
+        self._slicer.set_task_names([])
+
+    def _on_task_names_changed(self, names: list[str]) -> None:
+        """Apply task-list selection to the table's Task criterion."""
+        self._table.set_task_filter_names(names)
+
+    def select_current_context(self) -> None:
+        """Navigate the Browser slicer to the host's current context."""
+        self._slicer.select_current_context()
+
+    def _on_filter_criteria_changed(self, criteria: list[Any]) -> None:
+        """Reflect the filter bar's Task criterion in the task list."""
+        names = []
+        for criterion in criteria:
+            if criterion.key == "task":
+                names = criterion.values
+                break
+        self._slicer.set_task_names(names)
 
     def _on_folder_selected(self, ids: list[str], names: list[str]) -> None:
         """Refresh the version table when folders are selected or cleared.
@@ -136,10 +152,15 @@ class ReviewsWidget(AYContainer):
             ids: IDs of the selected folders, or empty when deselected.
             names: Names of the selected folders (parallel to *ids*).
         """
-        auto_expand = bool(ids) and self._controller.tree_mode
+        # Group headers stay collapsed so versions are fetched on demand,
+        # matching the frontend's grouped-table behavior.
+        auto_expand = (
+            bool(ids)
+            and self._controller.tree_mode
+            and self._controller.group_by_key == "none"
+        )
         self._table.set_auto_expand(auto_expand)
         self._table.reset_data()
-        self._table.refresh_filter()
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         """Show a contextual actions menu for the selected rows.

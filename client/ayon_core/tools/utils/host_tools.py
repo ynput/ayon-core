@@ -9,9 +9,10 @@ import os
 
 import pyblish.api
 from typing import TYPE_CHECKING, Literal
+from qtpy import QtCore
 
 from ayon_core.host import ILoadHost, IPublishHost
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, env_value_to_bool
 from ayon_core.pipeline import registered_host
 
 from .lib import qt_app_context
@@ -84,27 +85,48 @@ class HostToolsHelper:
 
         return workfiles_tool
 
-    def get_loader_tool(self, parent):
+    def get_loader_tool(self, parent, *, use_context: bool = False):
         """Create, cache and return loader tool window."""
         if self._loader_tool is None:
-            from ayon_core.tools.loader.ui import LoaderWindow
-            from ayon_core.tools.loader import LoaderController
+            use_legacy = env_value_to_bool(
+                "AYON_USE_LEGACY_LOADER",
+                default=False,
+            )
+            if use_legacy:
+                from ayon_core.tools.loader.ui import LoaderWindow
+                from ayon_core.tools.loader import LoaderController
+            else:
+                from ayon_core.tools.browser.ui import BrowserWindow
+                from ayon_core.tools.browser import LoaderController
+
+                LoaderWindow = BrowserWindow
 
             host = registered_host()
             ILoadHost.validate_load_methods(host)
 
             controller = LoaderController(host=host)
-            loader_window = LoaderWindow(
-                controller=controller,
-                parent=parent or self._parent
-            )
+            window_kwargs = {
+                "controller": controller,
+                "parent": parent or self._parent,
+            }
+            loader_window = LoaderWindow(**window_kwargs)
 
             self._loader_tool = loader_window
 
+        if use_context and hasattr(
+            self._loader_tool, "select_current_context"
+        ):
+            QtCore.QTimer.singleShot(
+                0,
+                self._loader_tool.select_current_context,
+            )
         return self._loader_tool
 
     def show_loader(
-        self, parent: QWidget | None = None
+        self,
+        parent: QWidget | None = None,
+        *,
+        use_context: bool = False,
     ) -> QWidget:
         """Loader tool for loading representations.
 
@@ -116,7 +138,10 @@ class HostToolsHelper:
 
         """
         with qt_app_context():
-            loader_tool = self.get_loader_tool(parent)
+            loader_tool = self.get_loader_tool(
+                parent,
+                use_context=use_context,
+            )
 
             loader_tool.show()
             loader_tool.raise_()
@@ -347,7 +372,7 @@ class HostToolsHelper:
             return self.show_workfiles(parent, *args, **kwargs)
 
         if tool_name == "loader":
-            return self.show_loader(parent)
+            return self.show_loader(parent, *args, **kwargs)
 
         if tool_name == "libraryloader":
             return self.show_library_loader(parent)

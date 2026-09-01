@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from qtmaterialsymbols import get_icon
@@ -117,6 +117,27 @@ class BatchFetchRequest:
 
 
 @dataclass
+class FilterEntry:
+    """A filter available in a table filter menu.
+
+    Attributes:
+        label: Label relative to the entity scope.
+        entity: Entity level used to group the filter in the menu.
+        text_search: Whether values are entered as fuzzy text instead of
+            selected from a distinct-value list.
+    """
+    key: str
+    label: str
+    values: list[str] = field(default_factory=list)
+    icon: str | None = None
+    entity: str = "Other"
+    value_labels: dict[str, str] = field(default_factory=dict)
+    value_icons: dict[str, str] = field(default_factory=dict)
+    value_colors: dict[str, str] = field(default_factory=dict)
+    text_search: bool = False
+
+
+@dataclass
 class TableColumn:
     """Describes a single column in a PaginatedTableModel.
 
@@ -145,6 +166,8 @@ class TableColumn:
     icon: str | None = None
     tree_position: bool = False
     widget_factory: "Callable[[Any, Any], Any] | None" = None
+    delegate: Any = None
+    entity: str = "Other"
 
 
 class PaginatedTableModel(QAbstractItemModel):
@@ -497,6 +520,36 @@ class PaginatedTableModel(QAbstractItemModel):
 
         return None
 
+    def replace_row(
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+        row_data: dict[str, Any],
+    ) -> bool:
+        """Replace one loaded row without resetting or refetching the model.
+
+        Args:
+            index: Source-model index identifying the row.
+            row_data: New complete row dictionary.
+
+        Returns:
+            ``True`` when the row was replaced, otherwise ``False``.
+        """
+        if not index.isValid():
+            return False
+        node: _TableNode | None = index.internalPointer()  # type: ignore[assignment]
+        if node is None or node.is_root or node not in self._all_nodes:
+            return False
+
+        node.row_data = row_data
+        left = self.index(index.row(), 0, self.parent(index))
+        right = self.index(
+            index.row(),
+            max(len(self._columns) - 1, 0),
+            self.parent(index),
+        )
+        self.dataChanged.emit(left, right, [])
+        return True
+
     def headerData(  # noqa: N802
         self,
         section: int,
@@ -541,7 +594,7 @@ class PaginatedTableModel(QAbstractItemModel):
 
     # Public interface --------------------------------------------------------
 
-    def set_tree_mode(self, enabled: bool) -> None:
+    def set_tree_mode(self, enabled: bool, reset_data: bool = True) -> None:
         """Switch between flat table mode and hierarchical tree mode.
 
         Emits ``tree_mode_changed`` and reloads from page 0.
@@ -553,7 +606,8 @@ class PaginatedTableModel(QAbstractItemModel):
             return
         self._tree_mode = enabled
         self.tree_mode_changed.emit(enabled)
-        self.reset_data()
+        if reset_data:
+            self.reset_data()
 
     def set_page(self, page: int) -> None:
         """Reset the model and begin fetching from the given page.
@@ -588,14 +642,19 @@ class PaginatedTableModel(QAbstractItemModel):
         self._page_size = size
         self.reset_data()
 
-    def set_columns(self, columns: list[TableColumn]) -> None:
+    def set_columns(
+        self,
+        columns: list[TableColumn],
+        reset_data: bool = True,
+    ) -> None:
         """Set the columns and reset the model from page 0.
 
         Args:
             columns: List of columns to display.
         """
         self._explicit_columns = columns
-        self.reset_data()
+        if reset_data:
+            self.reset_data()
 
     def reset_data(self) -> None:
         """Reset the model and re-fetch from page 0."""

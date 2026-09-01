@@ -413,7 +413,9 @@
                     "focus-outline-width": 2,
                     "background-color": "--md-sys-color-surface-container-highest-dark",
                     "color": "--md-sys-color-on-surface-dark",
-                    "menu-background-color": "--md-sys-color-surface-container-low-dark"
+                    "menu-background-color": "--md-sys-color-surface-container-low-dark",
+                    "menu-selected-background-color": "--md-sys-color-primary-container-dark",
+                    "menu-selected-color": "--md-sys-color-on-primary-container-dark"
                 },
                 "low": {
                     "background-color": "--md-sys-color-surface-container-low-dark"
@@ -430,7 +432,7 @@
                     "border-width": 10,
                     "border-radius": 8,
                     "width": 16,
-                    "min-length": 32
+                    "min-length": 48
                 }
             }
         },
@@ -594,6 +596,12 @@
                     },
                     "disabled": {
                         "opacity": 0.5
+                    }
+                },
+                "surface": {
+                    "background-color": "--md-sys-color-surface-container-highest-dark",
+                    "hover": {
+                        "background-color": "--md-ref-palette-neutral-variant35"
                     }
                 },
                 "danger": {

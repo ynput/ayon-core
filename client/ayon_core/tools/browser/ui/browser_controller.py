@@ -7,18 +7,33 @@ from __future__ import annotations
 
 import datetime
 import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
-from ayon_core.ui.components.table_model import BatchFetchRequest
+from ayon_core.ui.components.table_model import (
+    BatchFetchRequest,
+    FilterEntry,
+    TableColumn,
+)
 from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.loader.abstract import ActionItem
-from ayon_core.tools.loader.control import LoaderController
-from ayon_core.tools.loader.ui.review_group_by import (
+from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.columns import (
+    BrowserColumnContext,
+    BrowserColumnManager,
+    BrowserColumnServices,
+    BrowserFilter,
+)
+from ayon_core.tools.browser.control import LoaderController
+from ayon_core.tools.browser.sitesync_columns import (
+    SiteSyncBrowserColumnProvider,
+)
+from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
+from ayon_core.tools.browser.ui.browser_group_by import (
     BUILTIN_GROUPS,
     GROUP_BY_NONE_KEY,
     GROUP_BY_PRODUCT_KEY,
@@ -30,14 +45,15 @@ from ayon_core.tools.loader.ui.review_group_by import (
     GroupBySource,
     build_attribute_groups,
 )
-from ayon_core.tools.loader.ui.review_queries import (
+from ayon_core.tools.browser.ui.browser_queries import (
     COLUMN_TO_SORT_BY,
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
-    GET_VERSIONS_QUERY,
+    get_versions_query,
 )
-from ayon_core.tools.loader.ui.review_types import ReviewCategory
-from ayon_core.tools.utils.user_prefs import UserPreferences
+from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+
+ReviewCategory = BrowserSlicerCategory
 
 # Maximum number of pages to fetch when building product group headers.
 # Each page contains up to 1 000 products, so this caps the total at
@@ -54,12 +70,14 @@ def _timestamp_to_date(timestamp: str) -> str:
     Returns:
         Formatted date string as DD-MM-YYYY HH:MM:SS.
     """
+    if not timestamp:
+        return ""
     return datetime.datetime.fromisoformat(timestamp).strftime(
         "%d-%m-%Y %H:%M:%S"
     )
 
 
-class ReviewController(QtCore.QObject):
+class BrowserController(QtCore.QObject):
     """Controller for the Reviews widget.
 
     Centralises all business logic and data fetching for the reviews
@@ -81,27 +99,50 @@ class ReviewController(QtCore.QObject):
         super().__init__(parent)
         self._loader_controller = loader_controller
         self._current_project: str = ""
-        self._current_category: str = ReviewCategory.HIERARCHY.value
+        self._current_category: str = (
+            BrowserSlicerCategory.HIERARCHY.value
+        )
         self._project_info: dict[str, Any] = {}
         self._review_sessions_cache: list[dict[str, Any]] = []
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
         self._folder_cursors: dict[str, str] = {}
         self._folder_has_more: dict[str, bool] = {}
-        self._tree_mode: bool = True
+        self._tree_mode = (
+            BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
+        )
         self._selected_folder_ids: list[str] = []
+        self._folder_parent_ids: dict[str, str | None] = {}
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
+        self._attributes_by_scope: dict[
+            str, dict[str, dict[str, Any]]
+        ] = {}
         self._group_by_options: dict[str, GroupByOption] = {
             option.key: option for option in BUILTIN_GROUPS
         }
-        self._group_by_key: str = GROUP_BY_NONE_KEY
-        self._hide_empty_groups: bool = True
+        self._group_by_key = BROWSER_VIEW_DEFAULTS.group_by_key
+        self._hide_empty_groups = (
+            not BROWSER_VIEW_DEFAULTS.show_empty_groups
+        )
+        self._include_folder_children = (
+            BROWSER_VIEW_DEFAULTS.include_children
+        )
         self._featured_version_order: list[str] = [
-            "latestDone",
-            "latest",
-            "hero",
+            *BROWSER_VIEW_DEFAULTS.featured_version_order,
         ]
+        self._latest_per_folder = BROWSER_VIEW_DEFAULTS.latest_per_folder
+        self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
+        self._requested_column_keys: set[str] | None = None
+        column_services = BrowserColumnServices(loader_controller)
+        self._column_manager = BrowserColumnManager(
+            column_services,
+            [SiteSyncBrowserColumnProvider(
+                loader_controller,
+                column_services,
+            )],
+            addon_manager=loader_controller.addons_manager,
+        )
         self.log = Logger.get_logger(self.__class__.__name__)
 
     # ------------------------------------------------------------------
@@ -112,6 +153,42 @@ class ReviewController(QtCore.QObject):
     def current_project(self) -> str:
         """Return the currently active project name."""
         return self._current_project
+
+    @property
+    def include_folder_children(self) -> bool:
+        """Return whether hierarchy queries include descendant folders."""
+        return self._include_folder_children
+
+    def set_include_folder_children(self, enabled: bool) -> None:
+        """Set descendant-folder querying for the hierarchy slicer."""
+        enabled = bool(enabled)
+        if self._include_folder_children == enabled:
+            return
+        self._include_folder_children = enabled
+        self._reset_pagination()
+
+    def set_requested_columns(self, column_keys: set[str]) -> bool:
+        """Set visible query columns and return whether they changed."""
+        normalized = set(column_keys)
+        if self._requested_column_keys == normalized:
+            return False
+        self._requested_column_keys = normalized
+        self._reset_pagination()
+        return True
+
+    def get_extension_columns(self) -> list[TableColumn]:
+        """Return columns contributed by enabled addons."""
+        return self._column_manager.get_columns(self._get_column_context())
+
+    def get_extension_filters(self) -> list[FilterEntry]:
+        """Return filters contributed by enabled addons."""
+        return self._column_manager.get_filters(self._get_column_context())
+
+    def get_extension_filter_keys(self) -> set[str]:
+        """Return filter keys handled locally after row enrichment."""
+        return self._column_manager.get_filter_keys(
+            self._get_column_context()
+        )
 
     @property
     def current_category(self) -> str:
@@ -127,6 +204,16 @@ class ReviewController(QtCore.QObject):
     def version_attributes(self) -> dict[str, Any]:
         """Return version attributes dict."""
         return self._version_attributes
+
+    @property
+    def attributes_by_scope(self) -> dict[str, dict[str, dict[str, Any]]]:
+        """Return custom attribute definitions grouped by entity scope."""
+        return self._attributes_by_scope
+
+    @property
+    def has_selection(self) -> bool:
+        """Return whether the slicer has at least one selected entity."""
+        return bool(self._selected_folder_ids)
 
     @property
     def tree_mode(self) -> bool:
@@ -171,6 +258,19 @@ class ReviewController(QtCore.QObject):
         """
         return list(self._featured_version_order)
 
+    @property
+    def latest_per_folder(self) -> bool:
+        """Return whether only the latest version per folder is shown."""
+        return self._latest_per_folder
+
+    def set_latest_per_folder(self, enabled: bool) -> None:
+        """Set whether the query returns one latest version per folder."""
+        enabled = bool(enabled)
+        if self._latest_per_folder == enabled:
+            return
+        self._latest_per_folder = enabled
+        self._reset_pagination()
+
     # ------------------------------------------------------------------
     # Public methods
     # ------------------------------------------------------------------
@@ -181,16 +281,18 @@ class ReviewController(QtCore.QObject):
         Args:
             project_name: AYON project name to activate.
         """
+        if self._current_project == project_name:
+            return
         self._current_project = project_name
         self._review_sessions_cache = []
         self._reset_pagination()
         self._selected_folder_ids = []
+        self._folder_parent_ids = {}
         self._build_project_info()
         self._get_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
         self.tree_reset_requested.emit()
-        UserPreferences().set("loader.review.last_project", project_name)
 
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
@@ -204,6 +306,8 @@ class ReviewController(QtCore.QObject):
         Args:
             category: Category name, e.g. ``"Hierarchy"`` or ``"Reviews"``.
         """
+        if self._current_category == category:
+            return
         self._current_category = category
         self._selected_folder_ids = []
         self._review_session_version_ids = None
@@ -217,11 +321,9 @@ class ReviewController(QtCore.QObject):
         else:
             # Restore tree-mode consistent with the active group-by.
             self._tree_mode = self._group_by_key != GROUP_BY_NONE_KEY
-
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
-        UserPreferences().set("loader.review.last_category", category)
 
     def on_tree_selection_changed(
         self, ids: list[str], names: list[str]
@@ -233,7 +335,16 @@ class ReviewController(QtCore.QObject):
                 the selection is cleared.
             names: Names of the selected entities (parallel to *ids*).
         """
+        previous_folder_ids = self._selected_folder_ids
+        previous_review_version_ids = self._review_session_version_ids
         self._selected_folder_ids = list(ids)
+        if (
+            self._include_folder_children
+            and self._current_category == ReviewCategory.HIERARCHY.value
+        ):
+            self._selected_folder_ids = (
+                self._get_top_level_selected_folder_ids(ids)
+            )
         self._review_session_version_ids = None  # always clear first
 
         if self._current_category == ReviewCategory.REVIEWS.value and ids:
@@ -243,6 +354,13 @@ class ReviewController(QtCore.QObject):
             self._review_session_version_ids = (
                 list(ids_set) if ids_set else None
             )
+
+        if (
+            self._selected_folder_ids == previous_folder_ids
+            and self._review_session_version_ids
+            == previous_review_version_ids
+        ):
+            return
 
         self._reset_pagination()
         self.selection_changed.emit(ids, names)
@@ -290,6 +408,227 @@ class ReviewController(QtCore.QObject):
         if self._group_by_key == GROUP_BY_PRODUCT_KEY:
             self._reset_pagination()
 
+    def set_filter_criteria(self, criteria: list[Any]) -> None:
+        """Set filters that are sent to the versions GraphQL query."""
+        key_aliases = {
+            "product_name": "productName",
+        }
+        self._query_filter_criteria = [
+            (
+                key_aliases.get(str(item.key), str(item.key)),
+                [str(value) for value in item.values],
+                bool(item.use_substring),
+            )
+            for item in criteria
+            if item.values
+        ]
+        self._reset_pagination()
+
+    def _get_query_filters(self) -> dict[str, Any]:
+        version_conditions: list[dict[str, Any]] = []
+        product_conditions: list[dict[str, Any]] = []
+        task_conditions: list[dict[str, Any]] = []
+        folder_conditions: list[dict[str, Any]] = []
+        featured_only: list[str] = []
+        search: str | None = None
+        version_ids: list[str] | None = None
+
+        extension_filter_keys = self._column_manager.get_filter_keys(
+            self._get_column_context()
+        )
+        for key, values, use_substring in self._query_filter_criteria:
+            if key in extension_filter_keys:
+                continue
+            if key.startswith("attr:"):
+                _, scope, attribute_name = key.split(":", 2)
+                condition = {
+                    "key": f"attrib.{attribute_name}",
+                    "value": values[0] if use_substring else values,
+                    "operator": "like" if use_substring else "in",
+                }
+                if scope == "version":
+                    version_conditions.append(condition)
+                elif scope == "product":
+                    product_conditions.append(condition)
+                elif scope == "task":
+                    task_conditions.append(condition)
+                elif scope == "folder":
+                    folder_conditions.append(condition)
+                continue
+            if key in {"featuredVersionType", "version"}:
+                mapping = {
+                    "Latest": "latest",
+                    "Latest Done": "latestDone",
+                    "Hero": "hero",
+                }
+                version_values = []
+                for value in values:
+                    featured_value = mapping.get(value)
+                    if featured_value is not None:
+                        featured_only.append(featured_value)
+                    elif key == "version":
+                        version_values.append(value)
+                if version_values:
+                    version_conditions.append({
+                        "key": "version",
+                        "value": (
+                            version_values[0]
+                            if use_substring
+                            else version_values
+                        ),
+                        "operator": (
+                            "like" if use_substring else "in"
+                        ),
+                    })
+                continue
+            if key == "inScene":
+                selected = set(values)
+                loaded_ids = self._loader_controller.get_loaded_version_ids()
+                if selected == {"Yes"}:
+                    if loaded_ids:
+                        version_conditions.append({
+                            "key": "id",
+                            "value": list(loaded_ids),
+                            "operator": "in",
+                        })
+                    else:
+                        version_conditions.append({
+                            "key": "id",
+                            "value": [],
+                            "operator": "in",
+                        })
+                elif selected == {"No"} and loaded_ids:
+                    version_conditions.append({
+                        "key": "id",
+                        "value": list(loaded_ids),
+                        "operator": "notin",
+                    })
+                continue
+            if key == "product/version":
+                search = " ".join(values)
+                continue
+
+            operator = "like" if use_substring else "in"
+            condition = {
+                "key": key,
+                "value": values[0] if use_substring else values,
+                "operator": operator,
+            }
+            if key in {
+                "productBaseType",
+                "productType",
+                "productName",
+            }:
+                if key == "productName":
+                    condition["key"] = "name"
+                product_conditions.append(condition)
+            elif key == "folderName":
+                folder_conditions.append({
+                    "key": "name",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "task":
+                no_task = "No task" in values
+                task_names = [value for value in values if value != "No task"]
+                if no_task and task_names:
+                    task_conditions.append({
+                        "operator": "or",
+                        "conditions": [
+                            {"key": "id", "operator": "isnull"},
+                            {
+                                "key": "name",
+                                "value": task_names,
+                                "operator": "in",
+                            },
+                        ],
+                    })
+                elif no_task:
+                    task_conditions.append({
+                        "key": "id",
+                        "operator": "isnull",
+                    })
+                else:
+                    task_conditions.append({
+                        "key": "name",
+                        "value": values,
+                        "operator": operator,
+                    })
+            elif key == "taskType":
+                task_conditions.append({
+                    "key": "taskType",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "taskStatus":
+                task_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "taskTags":
+                task_conditions.append({
+                    "key": "tags",
+                    "value": values,
+                    "operator": "includesany",
+                })
+            elif key == "tags":
+                version_conditions.append({
+                    "key": "tags",
+                    "value": values,
+                    "operator": "includesany",
+                })
+            elif key == "productStatus":
+                product_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "folderStatus":
+                folder_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            else:
+                version_conditions.append(condition)
+
+        def encode(conditions: list[dict[str, Any]]) -> str:
+            if not conditions:
+                return ""
+            return json.dumps({"conditions": conditions})
+
+        return {
+            "version_filter": encode(version_conditions),
+            "product_filter": encode(product_conditions),
+            "task_filter": encode(task_conditions),
+            "folder_filter": encode(folder_conditions),
+            "featured_only": featured_only or None,
+            "search": search,
+            "version_ids": version_ids,
+        }
+
+    @staticmethod
+    def _decode_attributes(value: Any) -> dict[str, Any]:
+        """Decode an ``allAttrib`` GraphQL value defensively."""
+        if isinstance(value, dict):
+            return value
+        if not value:
+            return {}
+        try:
+            decoded = json.loads(value)
+        except (TypeError, ValueError):
+            return {}
+        return decoded if isinstance(decoded, dict) else {}
+
+    @staticmethod
+    def _merge_query_filters(*filters: str) -> str:
+        conditions: list[dict[str, Any]] = []
+        for value in filters:
+            if value:
+                conditions.extend(json.loads(value).get("conditions", []))
+        return json.dumps({"conditions": conditions}) if conditions else ""
+
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for the given parent.
 
@@ -307,6 +646,27 @@ class ReviewController(QtCore.QObject):
         return self._fetch_reviews(parent_id)
 
     def fetch_versions_page(
+        self,
+        page_number: int,
+        page_size: int,
+        sort_key: str | None = None,
+        descending: bool = False,
+        parent_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch and enrich one Browser page."""
+        rows = self._fetch_versions_page_base(
+            page_number,
+            page_size,
+            sort_key,
+            descending,
+            parent_id,
+        )
+        return self._column_manager.enrich_rows(
+            self._get_column_context(),
+            rows,
+        )
+
+    def _fetch_versions_page_base(
         self,
         page_number: int,
         page_size: int,
@@ -345,6 +705,12 @@ class ReviewController(QtCore.QObject):
                 "returning empty page."
             )
             return []
+        if not self._selected_folder_ids:
+            self.log.debug(
+                "fetch_versions_page called without a slicer selection, "
+                "returning empty page."
+            )
+            return []
 
         if page_number == 0:
             if parent_id is not None:
@@ -354,6 +720,7 @@ class ReviewController(QtCore.QObject):
                 self._reset_pagination()
 
         sort_by = COLUMN_TO_SORT_BY.get(sort_key) if sort_key else None
+        query_filters = self._get_query_filters()
         self.log.debug(
             "fetch_versions_page: page=%d sort_key=%r sort_by=%r "
             "descending=%r cursor=%r parent_id=%r",
@@ -391,13 +758,18 @@ class ReviewController(QtCore.QObject):
                     version_filter, product_filter = (
                         self._build_version_filter(group_key, group_value)
                     )
+                version_filter = self._merge_query_filters(
+                    query_filters["version_filter"], version_filter
+                )
+                product_filter = self._merge_query_filters(
+                    query_filters["product_filter"], product_filter
+                )
 
                 cursor = self._folder_cursors.get(parent_id, "")
                 if page_number > 0 and not self._folder_has_more.get(
                     parent_id, False
                 ):
                     return []
-
                 folder_ids = self._selected_folder_ids or None
 
                 edges, page_info = self._get_versions_page(
@@ -408,16 +780,23 @@ class ReviewController(QtCore.QObject):
                     sort_by=sort_by,
                     descending=descending,
                     version_ids=None,
-                    include_folder_children=True,
+                    include_folder_children=self._include_folder_children,
                     folder_ids=folder_ids,
                     product_ids=product_ids,
                     version_filter=version_filter,
                     product_filter=product_filter,
+                    task_filter=query_filters["task_filter"],
+                    folder_filter=query_filters["folder_filter"],
+                    featured_only=query_filters["featured_only"],
+                    latest_per_folder=(
+                        self._latest_per_folder
+                        and self._group_by_key != GROUP_BY_PRODUCT_KEY
+                    ),
+                    search=query_filters["search"],
                 )
                 rows = [
                     self._transform_version_edge(e)
                     for e in edges
-                    if e.get("node", {}).get("name") != "HERO"
                 ]
                 if descending:
                     self._folder_has_more[parent_id] = page_info[
@@ -446,7 +825,7 @@ class ReviewController(QtCore.QObject):
             # version leaves.
             folder_rows = (
                 self._get_child_folder_rows(parent_id)
-                if page_number == 0
+                if page_number == 0 and not self._include_folder_children
                 else []
             )
 
@@ -455,19 +834,30 @@ class ReviewController(QtCore.QObject):
                 parent_id, False
             ):
                 return []
+            query_folder_ids = [parent_id]
             edges, page_info = self._get_versions_page(
                 self._current_project,
-                parent_id,
+                None,
                 page_size,
                 cursor=cursor,
                 sort_by=sort_by,
                 descending=descending,
-                include_folder_children=False,
+                include_folder_children=self._include_folder_children,
+                folder_ids=query_folder_ids,
+                version_filter=query_filters["version_filter"],
+                product_filter=query_filters["product_filter"],
+                task_filter=query_filters["task_filter"],
+                folder_filter=query_filters["folder_filter"],
+                featured_only=query_filters["featured_only"],
+                latest_per_folder=(
+                    self._latest_per_folder
+                    and self._group_by_key != GROUP_BY_PRODUCT_KEY
+                ),
+                search=query_filters["search"],
             )
             version_rows = [
                 self._transform_version_edge(e)
                 for e in edges
-                if e.get("node", {}).get("name") != "HERO"
             ]
             if descending:
                 self._folder_has_more[parent_id] = page_info["hasPreviousPage"]
@@ -505,6 +895,17 @@ class ReviewController(QtCore.QObject):
             descending=descending,
             version_ids=version_ids,
             folder_ids=folder_ids,
+            include_folder_children=self._include_folder_children,
+            version_filter=query_filters["version_filter"],
+            product_filter=query_filters["product_filter"],
+            task_filter=query_filters["task_filter"],
+            folder_filter=query_filters["folder_filter"],
+            featured_only=query_filters["featured_only"],
+            latest_per_folder=(
+                self._latest_per_folder
+                and self._group_by_key != GROUP_BY_PRODUCT_KEY
+            ),
+            search=query_filters["search"],
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -512,7 +913,6 @@ class ReviewController(QtCore.QObject):
         page = [
             self._transform_version_edge(e)
             for e in edges
-            if e.get("node", {}).get("name") != "HERO"
         ]
 
         if descending:
@@ -549,8 +949,11 @@ class ReviewController(QtCore.QObject):
         """
         if not self._current_project:
             return {}
+        if not self._selected_folder_ids:
+            return {}
 
         result: dict[str | None, list[dict[str, Any]]] = {}
+        query_filters = self._get_query_filters()
 
         # Separate group-by requests (must be fetched individually) from
         # plain hierarchy requests (can be batched).
@@ -562,23 +965,34 @@ class ReviewController(QtCore.QObject):
             else:
                 batch_requests.append(req)
 
-        # -- Individual group-by fetches ---------------------------------
-        for req in grp_requests:
-            result[req.parent_id] = self.fetch_versions_page(
-                req.page,
-                req.page_size,
-                req.sort_key,
-                req.descending,
-                req.parent_id,
-            )
+        # -- Group-by fetches --------------------------------------------
+        # Match the frontend's Promise.all behavior: independent groups
+        # are requested concurrently instead of serially per row.
+        if grp_requests:
+            with ThreadPoolExecutor(
+                max_workers=min(8, len(grp_requests))
+            ) as executor:
+                futures = {
+                    req.parent_id: executor.submit(
+                        self._fetch_versions_page_base,
+                        req.page,
+                        req.page_size,
+                        req.sort_key,
+                        req.descending,
+                        req.parent_id,
+                    )
+                    for req in grp_requests
+                }
+                for parent_id, future in futures.items():
+                    result[parent_id] = future.result()
 
         # -- Hierarchy fetches -------------------------------------------
         if not batch_requests:
-            return result
+            return self._enrich_batch_result(result)
 
         for req in batch_requests:
             if req.parent_id is None:
-                result[req.parent_id] = self.fetch_versions_page(
+                result[req.parent_id] = self._fetch_versions_page_base(
                     req.page,
                     req.page_size,
                     req.sort_key,
@@ -600,23 +1014,36 @@ class ReviewController(QtCore.QObject):
                 continue
 
             cursor = self._folder_cursors.get(parent_id, "")
+            query_folder_ids = [parent_id]
             edges, page_info = self._get_versions_page(
                 self._current_project,
-                parent_id,
+                None,
                 req.page_size,
                 cursor=cursor,
                 sort_by=sort_by,
                 descending=req.descending,
-                include_folder_children=False,
+                include_folder_children=self._include_folder_children,
+                folder_ids=query_folder_ids,
+                version_filter=query_filters["version_filter"],
+                product_filter=query_filters["product_filter"],
+                task_filter=query_filters["task_filter"],
+                folder_filter=query_filters["folder_filter"],
+                featured_only=query_filters["featured_only"],
+                latest_per_folder=(
+                    self._latest_per_folder
+                    and self._group_by_key != GROUP_BY_PRODUCT_KEY
+                ),
+                search=query_filters["search"],
             )
 
             version_rows = [
                 self._transform_version_edge(e)
                 for e in edges
-                if e.get("node", {}).get("name") != "HERO"
             ]
             folder_rows = (
-                self._get_child_folder_rows(parent_id) if req.page == 0 else []
+                self._get_child_folder_rows(parent_id)
+                if req.page == 0 and not self._include_folder_children
+                else []
             )
 
             if req.descending:
@@ -628,7 +1055,49 @@ class ReviewController(QtCore.QObject):
 
             result[parent_id] = folder_rows + version_rows
 
-        return result
+        return self._enrich_batch_result(result)
+
+    def fetch_product_versions(
+        self,
+        product_id: str,
+        page_size: int = 250,
+    ) -> list[dict[str, Any]]:
+        """Fetch every version for a product without the active filters.
+
+        This intentionally bypasses current slicer filters so hidden
+        versions can be selected as replacements.
+        """
+        if not self._current_project or not product_id:
+            return []
+
+        cursor: str | None = None
+        rows: list[dict[str, Any]] = []
+        while True:
+            edges, page_info = self._get_versions_page(
+                self._current_project,
+                None,
+                page_size,
+                cursor=cursor,
+                product_ids=[product_id],
+                include_folder_children=True,
+                version_filter="",
+                product_filter="",
+                task_filter="",
+                folder_filter="",
+                featured_only=None,
+                latest_per_folder=False,
+                search=None,
+            )
+            rows.extend(
+                self._transform_version_edge(edge) for edge in edges
+            )
+            if not page_info.get("hasNextPage"):
+                break
+            next_cursor = page_info.get("endCursor")
+            if not next_cursor or next_cursor == cursor:
+                break
+            cursor = next_cursor
+        return rows
 
     def fetch_projects(self) -> list[dict[str, Any]]:
         """Fetch all projects using GraphQL.
@@ -690,12 +1159,53 @@ class ReviewController(QtCore.QObject):
             version_ids: List of version IDs to query.
 
         Returns:
-            List of :class:`~ayon_core.tools.loader.abstract.RepreItem`
+            List of :class:`~ayon_core.tools.browser.abstract.RepreItem`
             objects.
         """
         return self._loader_controller.get_representation_items(
             project_name, version_ids
         )
+
+    def _get_column_context(self) -> BrowserColumnContext:
+        """Return an immutable state snapshot for column providers."""
+        filters = tuple(
+            BrowserFilter(
+                key=key,
+                values=tuple(values),
+                use_substring=use_substring,
+            )
+            for key, values, use_substring in self._query_filter_criteria
+        )
+        return BrowserColumnContext(
+            project_name=self._current_project or None,
+            category=self._current_category,
+            selected_folder_ids=tuple(self._selected_folder_ids),
+            selected_task_ids=tuple(
+                self._loader_controller.get_selected_task_ids()
+            ),
+            enabled_column_keys=frozenset(
+                self._requested_column_keys or set()
+            ),
+            active_filters=filters,
+            group_by_key=self._group_by_key,
+            include_folder_children=self._include_folder_children,
+        )
+
+    def _enrich_batch_result(
+        self,
+        result: dict[str | None, list[dict[str, Any]]],
+    ) -> dict[str | None, list[dict[str, Any]]]:
+        """Enrich all rows from a batch in one provider call."""
+        rows = [
+            row
+            for page_rows in result.values()
+            for row in page_rows
+        ]
+        self._column_manager.enrich_rows(
+            self._get_column_context(),
+            rows,
+        )
+        return result
 
     def trigger_action_item(
         self,
@@ -744,6 +1254,24 @@ class ReviewController(QtCore.QObject):
         self._folder_cursors = {}
         self._folder_has_more = {}
 
+    def _get_top_level_selected_folder_ids(
+        self, folder_ids: list[str]
+    ) -> list[str]:
+        """Remove selected folders covered by another selected ancestor."""
+        selected = set(folder_ids)
+        result = []
+        for folder_id in folder_ids:
+            parent_id = self._folder_parent_ids.get(folder_id)
+            covered = False
+            while parent_id is not None:
+                if parent_id in selected:
+                    covered = True
+                    break
+                parent_id = self._folder_parent_ids.get(parent_id)
+            if not covered:
+                result.append(folder_id)
+        return result
+
     def _fetch_root_folders(
         self, selected_folder_ids: list[str] | None = None
     ) -> list[dict[str, Any]]:
@@ -763,7 +1291,9 @@ class ReviewController(QtCore.QObject):
             List of row dicts with ``has_children=True`` so the table
             model renders them as expandable nodes.
         """
-        _fields = {"id", "name", "label", "folderType", "hasChildren"}
+        _fields = {
+            "id", "name", "label", "folderType", "hasChildren", "allAttrib"
+        }
         if selected_folder_ids:
             folders = list(
                 ayon_api.get_folders(
@@ -795,7 +1325,10 @@ class ReviewController(QtCore.QObject):
         folders = ayon_api.get_folders(
             self._current_project,
             parent_ids=[parent_id],
-            fields={"id", "name", "label", "folderType", "hasChildren"},
+            fields={
+                "id", "name", "label", "folderType", "hasChildren",
+                "allAttrib",
+            },
         )
         return [self._build_folder_row(f) for f in folders]
 
@@ -824,6 +1357,10 @@ class ReviewController(QtCore.QObject):
                 "entityType__icon": "folder",
             }
         )
+        for name, value in self._decode_attributes(
+            folder.get("allAttrib")
+        ).items():
+            row[f"attr:folder:{name}"] = value
         return row
 
     # -- Group-by helpers ------------------------------------------------
@@ -872,6 +1409,7 @@ class ReviewController(QtCore.QObject):
                 "entityType": group_option.label,
                 "entityType__icon": group_option.icon,
                 "project_name": self._current_project,
+                "inScene": False,
             }
         )
         if color:
@@ -882,6 +1420,12 @@ class ReviewController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
+            row["inScene"] = (
+                True
+                if row["_version_id"]
+                in self._loader_controller.get_loaded_version_ids()
+                else False
+            )
             row["status"] = featured_version.get("status", "")
             row["status__icon"] = self._pinfo(
                 "statuses", row["status"], "icon", ""
@@ -1018,6 +1562,8 @@ class ReviewController(QtCore.QObject):
         descending: bool = False,
         folder_ids: list[str] | None = None,
         product_filter: str = "",
+        version_filter: str = "",
+        include_folder_children: bool = False,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of products via GraphQL.
 
@@ -1055,6 +1601,8 @@ class ReviewController(QtCore.QObject):
         variables: dict[str, Any] = {
             "projectName": project_name,
             "productFilter": product_filter or "",
+            "versionFilter": version_filter or "",
+            "includeFolderChildren": include_folder_children,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
             "featuredVersionOrder": self._featured_version_order,
@@ -1119,6 +1667,7 @@ class ReviewController(QtCore.QObject):
             List of expandable group-header rows keyed by product ID.
         """
         folder_ids = self._selected_folder_ids or None
+        query_filters = self._get_query_filters()
         all_edges: list[dict[str, Any]] = []
         cursor: str | None = None
 
@@ -1130,6 +1679,9 @@ class ReviewController(QtCore.QObject):
                 cursor=cursor,
                 sort_by="path",
                 folder_ids=folder_ids,
+                product_filter=query_filters["product_filter"],
+                version_filter=query_filters["version_filter"],
+                include_folder_children=self._include_folder_children,
             )
             all_edges.extend(edges)
 
@@ -1443,13 +1995,13 @@ class ReviewController(QtCore.QObject):
         Returns:
             List of :class:`TreeNode` instances.
         """
-        self.log.debug("Fetching product children for %s", parent_id)
         project = self._current_project
         if not project:
             return []
 
+        self.log.debug("Fetching product children for %s", parent_id)
         parent_ids = [parent_id] if parent_id is not None else [None]
-        folders = ayon_api.get_folders(
+        folders = list(ayon_api.get_folders(
             project,
             parent_ids=parent_ids,  # type: ignore[arg-type]
             fields={
@@ -1459,8 +2011,11 @@ class ReviewController(QtCore.QObject):
                 "folderType",
                 "hasChildren",
                 "hasTasks",
+                "parentId",
             },
-        )
+        ))
+        for folder in folders:
+            self._folder_parent_ids[folder["id"]] = folder.get("parentId")
         return [
             TreeNode(
                 id=f["id"],
@@ -1560,8 +2115,16 @@ class ReviewController(QtCore.QObject):
                 }
                 | {"default": product_base_types.get("default", {})}
             ),
+            "productBaseTypes": {
+                t["name"]: t
+                for t in product_base_types.get("definitions", [])
+            },
         }
-        self._version_attributes = ayon_api.get_attributes_for_type("version")
+        self._attributes_by_scope = {
+            scope: ayon_api.get_attributes_for_type(scope)
+            for scope in ("folder", "task", "product", "version")
+        }
+        self._version_attributes = self._attributes_by_scope["version"]
         self._rebuild_group_by_options()
 
     def _rebuild_group_by_options(self) -> None:
@@ -1639,11 +2202,16 @@ class ReviewController(QtCore.QObject):
         sort_by: str | None = None,
         descending: bool = False,
         version_ids: list[str] | None = None,
-        include_folder_children: bool = True,
+        include_folder_children: bool = False,
         folder_ids: list[str] | None = None,
         product_ids: list[str] | None = None,
         version_filter: str = "",
         product_filter: str = "",
+        task_filter: str = "",
+        folder_filter: str = "",
+        featured_only: list[str] | None = None,
+        latest_per_folder: bool = False,
+        search: str | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
 
@@ -1674,6 +2242,11 @@ class ReviewController(QtCore.QObject):
                 belonging to these product IDs.
             version_filter: JSON-encoded version filter string.
             product_filter: JSON-encoded product filter string.
+            task_filter: JSON-encoded task filter string.
+            folder_filter: JSON-encoded folder filter string.
+            featured_only: Featured version types to query.
+            latest_per_folder: Whether to return one version per folder.
+            search: Full-text versions search string.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -1697,11 +2270,15 @@ class ReviewController(QtCore.QObject):
             "projectName": project_name,
             "versionFilter": version_filter or "",
             "productFilter": product_filter or "",
-            "taskFilter": "",
+            "taskFilter": task_filter or "",
+            "folderFilter": folder_filter or "",
+            "featuredOnly": featured_only,
+            "latestPerFolder": latest_per_folder,
+            "search": search,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
             "includeFolderChildren": include_folder_children,
-            "versionIds": version_ids if version_ids else None,
+            "versionIds": version_ids if version_ids is not None else None,
             "productIds": product_ids if product_ids else None,
         }
         if descending:
@@ -1711,7 +2288,43 @@ class ReviewController(QtCore.QObject):
             variables["first"] = page_size
             variables["after"] = cursor or None
 
-        resp = con.query_graphql(GET_VERSIONS_QUERY, variables)
+        # self.log.info(GET_VERSIONS_QUERY)
+        # self.log.info(variables)
+        requested_keys = set(self._requested_column_keys or ())
+        requested_keys.update(
+            self._column_manager.get_required_query_keys(
+                self._get_column_context()
+            )
+        )
+        requested_keys.add("thumb")
+        filter_field_keys = {
+            "status": "status",
+            "tags": "tags",
+            "productType": "productType",
+            "productBaseType": "productBaseType",
+            "productStatus": "productStatus",
+            "taskType": "taskType",
+            "taskStatus": "taskStatus",
+            "task": "task",
+            "taskTags": "taskTags",
+            "folderStatus": "folderStatus",
+            "representationExtension": "representationExtension",
+        }
+        requested_keys.update(
+            field_key
+            for key, field_key in filter_field_keys.items()
+            if any(item[0] == key for item in self._query_filter_criteria)
+        )
+        requested_keys.update(
+            key
+            for key, _, _ in self._query_filter_criteria
+            if key.startswith("attr:")
+        )
+        resp = con.query_graphql(
+            get_versions_query(requested_keys),
+            variables,
+        )
+
         if resp.errors:
             raise RuntimeError(resp.errors)
         payload = resp.data["data"]
@@ -1729,61 +2342,96 @@ class ReviewController(QtCore.QObject):
             :class:`~ayon_ui_qt.components.table_model.PaginatedTableModel`.
         """
         n = edge["node"]
-        all_attrib = json.loads(n.get("allAttrib", "{}"))
-        product_folder_attrib = json.loads(
-            n.get("product", {}).get("folder", {}).get("allAttrib", "{}")
-        )
+        all_attrib = self._decode_attributes(n.get("allAttrib"))
+        version_data = self._decode_attributes(n.get("data"))
         status = n.get("status", "")
         product = n.get("product", {})
+        product_attrib = self._decode_attributes(product.get("allAttrib"))
+        folder = product.get("folder", {}) or {}
+        folder_attrib = self._decode_attributes(folder.get("allAttrib"))
         product_type = product.get("productType", "")
+        product_base_type = product.get("productBaseType", "")
         task = n.get("task", {}) or {}
-        return {
+        task_attrib = self._decode_attributes(task.get("allAttrib"))
+        frame_start = all_attrib.get("frameStart", "")
+        frame_end = all_attrib.get("frameEnd", "")
+        is_hero = n.get("name") == "HERO"
+        version_name = n.get("name", "")
+        if is_hero:
+            version_number = abs(int(n.get("version", 0)))
+            version_name = f"★ (v{version_number:03d})"
+        in_scene = (
+            True
+            if n.get("id") in self._loader_controller.get_loaded_version_ids()
+            else False
+        )
+        row = {
             "project_name": self._current_project,
             "thumbnail": n.get("thumbnailId") or "",
             "thumbnailId": n.get("thumbnailId") or "",
             "product/version": (
-                f"{product.get('name', '')} - {n.get('name', '')}"
-                f"{'  ★' if n.get('heroVersionId') else ''}"
+                f"{product.get('name', '')} - {version_name}"
             ),
             "product/version__icon": "layers",
             "status": status,
+            "productStatus": product.get("status", ""),
+            "folderStatus": folder.get("status", ""),
+            "featuredVersionType": n.get("featuredVersionType", ""),
+            "inScene": in_scene,
             "status__color": self._pinfo("statuses", status, "color"),
             "status__icon": self._pinfo("statuses", status, "icon"),
             "entityType": n.get("entityType", "Version"),
             "entityType__icon": "layers",
             "productType": product_type,
+            "productBaseType": product_base_type or product_type,
             "productType__icon": self._pinfo(
                 "productTypes", product_type, "icon"
             ),
             "productType__color": self._pinfo(
                 "productTypes", product_type, "color"
             ),
-            "folderName": product.get("folder", {}).get("name", ""),
+            "folderName": folder.get("name", ""),
             "author": n.get("author", ""),
-            "version": n.get("name", ""),
+            "version": version_name,
             "productName": product.get("name", ""),
             "taskType": task.get("taskType", ""),
+            "taskStatus": task.get("status", ""),
             "task": task.get("name", ""),
             "tags": ", ".join(n.get("tags", [])),
+            "taskTags": ", ".join(task.get("tags", [])),
             "createdAt": _timestamp_to_date(n.get("createdAt", "")),
             "updatedAt": _timestamp_to_date(n.get("updatedAt", "")),
             "fps": all_attrib.get("fps", ""),
-            "width": product_folder_attrib.get("resolutionWidth", ""),
-            "height": product_folder_attrib.get("resolutionHeight", ""),
-            "pixelAspect": product_folder_attrib.get("pixelAspect", ""),
-            "clipIn": product_folder_attrib.get("clipIn", ""),
-            "clipOut": product_folder_attrib.get("clipOut", ""),
-            "frameStart": product_folder_attrib.get("frameStart", ""),
-            "frameEnd": product_folder_attrib.get("frameEnd", ""),
+            "width": folder_attrib.get("resolutionWidth", ""),
+            "height": folder_attrib.get("resolutionHeight", ""),
+            "pixelAspect": folder_attrib.get("pixelAspect", ""),
+            "clipIn": folder_attrib.get("clipIn", ""),
+            "clipOut": folder_attrib.get("clipOut", ""),
+            "frameStart": frame_start,
+            "frameEnd": frame_end,
             "handleStart": all_attrib.get("handleStart", ""),
             "handleEnd": all_attrib.get("handleEnd", ""),
+            "step": (
+                all_attrib["step"]
+                if "step" in all_attrib
+                else version_data.get("step", "")
+            ),
             "machine": all_attrib.get("machine", ""),
             "source": all_attrib.get("source", ""),
             "path": n.get("path", ""),
             "comment": all_attrib.get("comment", ""),
             "id": n.get("id", ""),
             "productId": product.get("id", ""),
-            "folderId": product.get("folder", {}).get("id", ""),
+            "folderId": folder.get("id", ""),
             "taskId": task.get("id", ""),
             "heroVersionId": n.get("heroVersionId", ""),
         }
+        for scope, attributes in (
+            ("version", all_attrib),
+            ("product", product_attrib),
+            ("task", task_attrib),
+            ("folder", folder_attrib),
+        ):
+            for name, value in attributes.items():
+                row[f"attr:{scope}:{name}"] = value
+        return row

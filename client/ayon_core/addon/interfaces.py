@@ -12,6 +12,10 @@ if TYPE_CHECKING:
 
     from ayon_core.addon.base import AddonsManager
     from ayon_core.pipeline.traits import TraitBase
+    from ayon_core.tools.browser.columns import (
+        BrowserColumnProvider,
+        BrowserColumnServices,
+    )
     from ayon_core.tools.tray.ui.tray import TrayManager
 
 
@@ -37,6 +41,27 @@ class AYONInterface(metaclass=_AYONInterfaceMeta):
     """
 
     log = None
+
+
+class IBrowserColumnAddon(AYONInterface):
+    """Addon contributing deferred columns to the desktop Browser.
+
+    Implementations return provider instances rather than provider classes.
+    A typical addon creates them as ``Provider(self, services)`` so the
+    provider can use addon-specific APIs through the addon instance and
+    shared core data through the narrow Browser services object.
+    """
+
+    def get_browser_column_providers(
+        self,
+        services: BrowserColumnServices,
+    ) -> list[BrowserColumnProvider]:
+        """Create Browser column providers owned by the addon.
+
+        Provider modules should be imported lazily inside this method so
+        importing the addon remains safe in headless processes.
+        """
+        return []
 
 
 class IPluginPaths(AYONInterface):

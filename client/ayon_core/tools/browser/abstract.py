@@ -782,6 +782,34 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_version_thumbnail_ids(self, project_name, version_ids):
+        """Get thumbnail ids for version ids.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (Iterable[str]): Version ids.
+
+        Returns:
+            dict[str, Union[str, Any]]: Thumbnail id by version id.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_folder_thumbnail_ids(self, project_name, folder_ids):
+        """Get thumbnail ids for folder ids.
+
+        Args:
+            project_name (str): Project name.
+            folder_ids (Iterable[str]): Folder ids.
+
+        Returns:
+            dict[str, Union[str, Any]]: Thumbnail id by folder id.
+        """
+
+        pass
+
+    @abstractmethod
     def get_versions_representation_count(
         self, project_name, version_ids, sender=None
     ):

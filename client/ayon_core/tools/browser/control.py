@@ -7,6 +7,7 @@ from typing import Optional, Any
 
 import ayon_api
 
+from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import get_current_host_name
 from ayon_core.lib import (
     NestedCacheItem,
@@ -130,6 +131,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             levels=1, lifetime=60)
         self._loaded_products_cache = CacheItem(
             default_factory=set, lifetime=60)
+        self._loaded_versions_cache = CacheItem(
+            default_factory=set, lifetime=60)
+        self._addons_manager = AddonsManager()
 
         self._selection_model = SelectionModel(self)
         self._expected_selection = ExpectedSelection(self)
@@ -138,7 +142,10 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._products_model = ProductsModel(self)
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
-        self._sitesync_model = SiteSyncModel(self)
+        self._sitesync_model = SiteSyncModel(
+            self,
+            self._addons_manager,
+        )
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
 
@@ -147,6 +154,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         if self._log is None:
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
+
+    @property
+    def addons_manager(self) -> AddonsManager:
+        """Return the shared initialized addon manager."""
+        return self._addons_manager
 
     # ---------------------------------
     # Implementation of abstract methods
@@ -177,6 +189,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
         self._project_anatomy_cache.reset()
         self._loaded_products_cache.reset()
+        self._loaded_versions_cache.reset()
 
         self._products_model.reset()
         self._hierarchy_model.reset()
@@ -314,6 +327,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids, sender
         )
 
+    def get_folder_thumbnail_ids(self, project_name, folder_ids):
+        return self._thumbnails_model.get_folder_thumbnail_ids(
+            project_name, folder_ids
+        )
+
+    def get_version_thumbnail_ids(self, project_name, version_ids):
+        return self._thumbnails_model.get_version_thumbnail_ids(
+            project_name, version_ids
+        )
+
     def get_thumbnail_paths(
         self,
         project_name,
@@ -444,45 +467,105 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_loaded_product_ids(self):
         if self._host is None:
             return set()
+        if self._loaded_products_cache.is_valid:
+            return self._loaded_products_cache.get_data()
 
-        context = self.get_current_context()
-        project_name = context["project_name"]
+        project_name = self._get_current_project_name()
         if not project_name:
             return set()
 
-        if not self._loaded_products_cache.is_valid:
-            try:
-                if isinstance(self._host, ILoadHost):
-                    containers = self._host.get_containers()
-                else:
-                    containers = self._host.ls()
+        try:
+            if isinstance(self._host, ILoadHost):
+                containers = self._host.get_containers()
+            else:
+                containers = self._host.ls()
 
-            except BaseException:
-                self.log.error(
-                    "Failed to collect loaded products.", exc_info=True
-                )
-                containers = []
-
-            repre_ids = set()
-            for container in containers:
-                try:
-                    repre_id = container.get("representation")
-                    # Ignore invalid representation ids.
-                    # - invalid representation ids may be available if e.g. is
-                    #   opened scene from OpenPype whe 'ObjectId' was used
-                    #   instead of 'uuid'.
-                    # NOTE: Server call would crash if there is any invalid id.
-                    #   That would cause crash we won't get any information.
-                    uuid.UUID(repre_id)
-                    repre_ids.add(repre_id)
-                except (ValueError, TypeError, AttributeError):
-                    pass
-
-            product_ids = self._products_model.get_product_ids_by_repre_ids(
-                project_name, repre_ids
+        except BaseException:
+            self.log.error(
+                "Failed to collect loaded products.", exc_info=True
             )
-            self._loaded_products_cache.update_data(product_ids)
+            containers = []
+
+        repre_ids = set()
+        for container in containers:
+            try:
+                repre_id = container.get("representation")
+                # Ignore invalid representation ids.
+                # - invalid representation ids may be available if e.g. is
+                #   opened scene from OpenPype whe 'ObjectId' was used
+                #   instead of 'uuid'.
+                # NOTE: Server call would crash if there is any invalid id.
+                #   That would cause crash we won't get any information.
+                uuid.UUID(repre_id)
+                repre_ids.add(repre_id)
+            except (ValueError, TypeError, AttributeError):
+                pass
+
+        product_ids = self._products_model.get_product_ids_by_repre_ids(
+            project_name, repre_ids
+        )
+        self._loaded_products_cache.update_data(product_ids)
         return self._loaded_products_cache.get_data()
+
+    def get_loaded_version_ids(self):
+        """Return version IDs represented by current scene containers."""
+        if self._host is None:
+            return set()
+        if self._loaded_versions_cache.is_valid:
+            return self._loaded_versions_cache.get_data()
+
+        project_name = self._get_current_project_name()
+        if not project_name:
+            return set()
+
+        try:
+            if isinstance(self._host, ILoadHost):
+                containers = self._host.get_containers()
+            else:
+                containers = self._host.ls()
+        except BaseException:
+            self.log.error(
+                "Failed to collect loaded versions.", exc_info=True
+            )
+            containers = []
+
+        repre_ids = set()
+        for container in containers:
+            repre_id = container.get("representation")
+            try:
+                uuid.UUID(repre_id)
+            except (ValueError, TypeError, AttributeError):
+                continue
+            repre_ids.add(repre_id)
+
+        version_ids = set()
+        if repre_ids:
+            representations = ayon_api.get_representations(
+                project_name,
+                repre_ids,
+                fields=["versionId"],
+            )
+            version_ids = {
+                representation["versionId"]
+                for representation in representations
+                if representation.get("versionId")
+            }
+        self._loaded_versions_cache.update_data(version_ids)
+
+        return self._loaded_versions_cache.get_data()
+
+    def invalidate_loaded_containers(self) -> None:
+        """Invalidate cached scene-container product and version IDs."""
+        self._loaded_products_cache.reset()
+        self._loaded_versions_cache.reset()
+
+    def _get_current_project_name(self) -> str | None:
+        """Return the current project without resolving the folder."""
+        if hasattr(self._host, "get_current_context"):
+            context = self._host.get_current_context()
+        else:
+            context = get_current_context()
+        return context.get("project_name")
 
     def is_sitesync_enabled(self, project_name=None):
         return self._sitesync_model.is_sitesync_enabled(project_name)
@@ -586,3 +669,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         if not cache.is_valid:
             cache.update_data(Anatomy(project_name))
         return cache.get_data()
+
+
+BrowserController = LoaderController

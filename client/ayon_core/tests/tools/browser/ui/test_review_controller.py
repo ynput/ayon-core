@@ -1,7 +1,28 @@
+from unittest.mock import Mock
+
+import pytest
+
+from ayon_core.tools.browser.sitesync_columns import ACTIVE_FILTER_KEY
+from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
+from ayon_core.ui.components.table_filter import FilterCriterion
 from ayon_core.ui.components.table_model import BatchFetchRequest
 
-from ayon_core.tools.loader.ui.review_controller import ReviewController
-from ayon_core.tools.loader.control import LoaderController
+from ayon_core.tools.browser.ui.browser_controller import BrowserController
+from ayon_core.tools.browser.control import LoaderController
+
+
+@pytest.fixture(autouse=True)
+def _mock_sitesync_model(monkeypatch):
+    addon_manager = Mock()
+    addon_manager.get_enabled_addons.return_value = []
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.control.AddonsManager",
+        lambda: addon_manager,
+    )
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.control.SiteSyncModel",
+        lambda *args: Mock(),
+    )
 
 
 def _make_request(
@@ -20,10 +41,40 @@ def _make_request(
     )
 
 
+def test_extension_filter_is_not_forwarded_to_graphql():
+    controller = BrowserController(LoaderController())
+    controller.set_filter_criteria([
+        FilterCriterion(
+            key=ACTIVE_FILTER_KEY,
+            attribute_label="Active Site",
+            values=["Available"],
+        )
+    ])
+
+    assert controller._get_query_filters()["version_filter"] == ""
+
+
+def test_controller_uses_browser_view_defaults():
+    controller = BrowserController(LoaderController())
+    defaults = BROWSER_VIEW_DEFAULTS
+
+    assert controller.group_by_key == defaults.group_by_key
+    assert controller.tree_mode is False
+    assert controller.hide_empty_groups is not defaults.show_empty_groups
+    assert (
+        controller.include_folder_children
+        is defaults.include_children
+    )
+    assert controller.featured_version_order == list(
+        defaults.featured_version_order
+    )
+    assert controller.latest_per_folder is defaults.latest_per_folder
+
+
 def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
     monkeypatch,
 ):
-    controller = ReviewController(LoaderController())
+    controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["folder_A"]
 
@@ -38,6 +89,7 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
         descending=False,
         folder_ids=None,
         product_filter="",
+        **kwargs,
     ):
         calls.append(cursor)
         if cursor is None:
@@ -88,9 +140,9 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
 
     assert calls == [None, "cursor_1"]
     assert [row["id"] for row in rows] == [
-        "grp:Product:prod_1",
-        "grp:Product:prod_2",
-        "grp:Product:prod_3",
+        "grp:product:prod_1",
+        "grp:product:prod_2",
+        "grp:product:prod_3",
     ]
     assert [row["product/version"] for row in rows] == [
         "Product 1",
@@ -99,11 +151,13 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
     ]
 
 
-def test_fetch_versions_page_batch_page_zero_prepends_folders_and_tracks_cursors(
+def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
     monkeypatch,
 ):
-    controller = ReviewController(LoaderController())
+    controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
+    controller._selected_folder_ids = ["A", "B"]
+    controller._include_folder_children = False
     controller._folder_cursors = {"A": "stale", "B": "stale"}
     controller._folder_has_more = {"A": True, "B": True}
 
@@ -125,13 +179,14 @@ def test_fetch_versions_page_batch_page_zero_prepends_folders_and_tracks_cursors
         product_ids=None,
         version_filter="",
         product_filter="",
+        **kwargs,
     ):
-        calls.append((folder_id, cursor))
+        calls.append((folder_ids[0], cursor))
         return (
-            [{"node": {"id": f"version:{folder_id}"}}],
+            [{"node": {"id": f"version:{folder_ids[0]}"}}],
             {
                 "hasNextPage": True,
-                "endCursor": f"cursor:{folder_id}",
+                "endCursor": f"cursor:{folder_ids[0]}",
                 "hasPreviousPage": False,
                 "startCursor": "",
             },
@@ -169,8 +224,9 @@ def test_fetch_versions_page_batch_page_zero_prepends_folders_and_tracks_cursors
 def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
     monkeypatch,
 ):
-    controller = ReviewController(LoaderController())
+    controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
+    controller._selected_folder_ids = ["A", "B"]
     controller._folder_cursors = {"A": "cursor:A", "B": "cursor:B"}
     controller._folder_has_more = {"A": True, "B": False}
 
@@ -189,13 +245,14 @@ def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
         product_ids=None,
         version_filter="",
         product_filter="",
+        **kwargs,
     ):
-        calls.append((folder_id, cursor))
+        calls.append((folder_ids[0], cursor))
         return (
-            [{"node": {"id": f"version:{folder_id}:page1"}}],
+            [{"node": {"id": f"version:{folder_ids[0]}:page1"}}],
             {
                 "hasNextPage": False,
-                "endCursor": f"cursor:{folder_id}:next",
+                "endCursor": f"cursor:{folder_ids[0]}:next",
                 "hasPreviousPage": False,
                 "startCursor": "",
             },

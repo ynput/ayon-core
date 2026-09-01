@@ -55,20 +55,26 @@ class AYSlicer(AYContainer):
 
         # search filter
         self._proxy: TreeFilterProxyModel | None = None
-
         self._field.installEventFilter(self)
 
         # signals
         self._button.toggled.connect(self._on_button_toggled)
         self._field.textChanged.connect(self._on_search_changed)
-        self._combo.currentTextChanged.connect(self._on_category_changed)
+        self._combo.activated.connect(self._on_category_activated)
 
     def current_category(self) -> str:
         return self._combo.currentText()
 
-    def _on_category_changed(self, text: str):
-        """Notify other widgets of the criteria change."""
-        self.category_changed.emit(text)
+    def set_current_category(self, category: str) -> None:
+        """Select a category by its display text."""
+        if category == self._combo.currentText():
+            return
+        self._combo.setCurrentText(category)
+        self.category_changed.emit(category)
+
+    def _on_category_activated(self, index: int) -> None:
+        """Emit the selected category."""
+        self.category_changed.emit(self._combo.itemText(index))
 
     def set_model(
         self,
@@ -81,11 +87,14 @@ class AYSlicer(AYContainer):
             model: The source model (e.g. LazyTreeModel).
             view: The QAbstractItemView that displays the model.
         """
-        self._proxy = TreeFilterProxyModel(self)
-        self._proxy.setSourceModel(model)
+        if self._proxy is None:
+            self._proxy = TreeFilterProxyModel(self)
+        if self._proxy.sourceModel() is not model:
+            self._proxy.setSourceModel(model)
         if view is not None:
-            view.setModel(self._proxy)
-        self._view = view
+            if view.model() is not self._proxy:
+                view.setModel(self._proxy)
+            self._view = view
 
     def _on_search_changed(self, text: str):
         """Update the proxy filter when the user types."""

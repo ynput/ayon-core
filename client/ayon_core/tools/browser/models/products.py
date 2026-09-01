@@ -14,7 +14,7 @@ from ayon_core.lib import NestedCacheItem
 from ayon_core.lib.icon_definitions import AwesomeFontIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import ProductTypeIconMapping
-from ayon_core.tools.loader.abstract import (
+from ayon_core.tools.browser.abstract import (
     ProductTypeItem,
     ProductBaseTypeItem,
     ProductItem,
@@ -33,16 +33,13 @@ PRODUCTS_MODEL_SENDER = "products.model"
 
 
 def version_item_from_entity(version):
-    version_attribs = version.get("attrib") or {}
-    version_data = version.get("data") or {}
+    version_attribs = version["attrib"]
     tags = version["tags"]
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
     handle_end = version_attribs.get("handleEnd")
     step = version_attribs.get("step")
-    if step is None:
-        step = version_data.get("step")
     comment = version_attribs.get("comment")
     source = version_attribs.get("source")
 

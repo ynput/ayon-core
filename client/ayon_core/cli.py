@@ -86,17 +86,6 @@ def tray(force):
     main(force)
 
 
-@main_cli.command(context_settings={"ignore_unknown_options": True})
-def browser():
-    from ayon_core.tools.utils import get_ayon_qt_app
-    from ayon_core.tools.loader.ui import LoaderWindow
-
-    app = get_ayon_qt_app()
-    window = LoaderWindow()
-    window.show()
-    app.exec_()
-
-
 @main_cli.group(help="Run command line arguments of AYON addons")
 @click.pass_context
 def addon(ctx):
@@ -207,14 +196,22 @@ def interactive():
     code.interact(banner)
 
 
-@main_cli.command()
+@main_cli.command(context_settings={"ignore_unknown_options": True})
 def browser():
     """Show Browser tool."""
-    from ayon_core.tools.loader.ui import LoaderWindow
     from ayon_core.tools.utils import get_ayon_qt_app
 
+    if os.getenv("AYON_USE_LEGACY_LOADER") == "1":
+        from ayon_core.tools.loader.ui import LoaderWindow
+
+        window_class = LoaderWindow
+    else:
+        from ayon_core.tools.browser.ui import BrowserWindow
+
+        window_class = BrowserWindow
+
     app = get_ayon_qt_app()
-    browser_window = LoaderWindow()
+    browser_window = window_class()
     browser_window.setWindowTitle("AYON Browser")
     browser_window.show()
     app.exec_()

@@ -218,6 +218,27 @@ class AYOrder(AYContainer):
         """
         return [opt._text for opt in self._options]
 
+    def set_order(self, order: list[str]) -> None:
+        """Apply an order without emitting :attr:`order_changed`."""
+        if order == self.current_order():
+            return
+        options_by_text = {
+            option._text: option
+            for option in self._options
+        }
+        if set(order) != set(options_by_text):
+            raise ValueError("Order must contain all existing options")
+
+        self._stop_animations()
+        for option in self._options:
+            self._layout.removeWidget(option)
+        self._options = [
+            options_by_text[label]
+            for label in order
+        ]
+        for option in self._options:
+            self.add_widget(option)
+
     # ------------------------------------------------------------------
     # Drag lifecycle (called from _AYOrderOption)
     # ------------------------------------------------------------------

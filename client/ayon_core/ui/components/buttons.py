@@ -133,7 +133,9 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
             return
 
         self._variant_str = normalized_variant
-        self._style_data = get_ayon_style_data("QPushButton", self._variant_str)
+        self._style_data = get_ayon_style_data(
+            "QPushButton", self._variant_str
+        )
         self._style_data.set_context(self)
         self._refresh_icon_style_values()
         self._style.style_widget(self)
@@ -272,6 +274,7 @@ class ButtonMenuDropdown(AYDropdownPopup):
 
     def set_current_page(self, index: int) -> None:
         self._stack.setCurrentIndex(index)
+        self.adjustSize()
 
     def add_page(self, container: AYContainer) -> None:
         self._stack.addWidget(container)
@@ -356,5 +359,7 @@ class AYButtonMenu(AYButton):
         self._menu_open = False
         if QtWidgets.QApplication.mouseButtons() & Qt.MouseButton.LeftButton:
             local_pos = self.mapFromGlobal(QtGui.QCursor.pos())
-            self._suppress_reopen_on_next_click = self.rect().contains(local_pos)
+            self._suppress_reopen_on_next_click = self.rect().contains(
+                local_pos
+            )
         self.menu_closed.emit()
