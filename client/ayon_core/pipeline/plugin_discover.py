@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import inspect
 import traceback
+import typing
 from typing import Optional
 
 from ayon_core.lib import Logger
@@ -10,6 +11,9 @@ from ayon_core.lib.python_module_tools import (
     modules_from_path,
     classes_from_module,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.lib.python_module_tools import ModulesResult
 
 log = Logger.get_logger(__name__)
 
@@ -131,14 +135,13 @@ def discover_plugins(
     all_plugins = list(classes)
 
     for path in paths:
-        modules, crashed = modules_from_path(path)
-        for (filepath, exc_info) in crashed:
-            result.crashed_file_paths[filepath] = exc_info
+        import_result: ModulesResult = modules_from_path(path)
+        for item in import_result.crashed:
+            result.crashed_file_paths[item.filepath] = item.exc_info
 
-        for item in modules:
-            filepath, module = item
-            result.add_module(module)
-            for cls in classes_from_module(base_class, module):
+        for item in import_result.modules:
+            result.add_module(item.module)
+            for cls in classes_from_module(base_class, item.module):
                 if cls is base_class:
                     continue
                 # Class has defined 'skip_discovery = True'
