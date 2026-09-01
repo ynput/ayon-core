@@ -181,10 +181,13 @@ class AYSlider(AYContainer):
 
     Signals:
         value_changed (int): Emitted whenever the slider value changes.
+        value_committed (int): Emitted after a drag ends or for a discrete
+            keyboard, wheel, or groove-click change.
     """
 
     Variants = AYSliderVariants
     value_changed = Signal(int)
+    value_committed = Signal(int)
 
     def __init__(
         self,
@@ -258,6 +261,7 @@ class AYSlider(AYContainer):
         # Connect before setValue so _on_bar_value_changed fires and keeps
         # the label in sync with the snapped value from the very first set.
         self._bar.valueChanged.connect(self._on_bar_value_changed)
+        self._bar.sliderReleased.connect(self._on_slider_released)
         self._bar.setValue(snapped_initial)
 
     # -------------------------------------------------------------------------
@@ -312,6 +316,12 @@ class AYSlider(AYContainer):
 
         self._value_label.setText(str(snapped))
         self.value_changed.emit(snapped)
+        if not self._bar.isSliderDown():
+            self.value_committed.emit(snapped)
+
+    def _on_slider_released(self) -> None:
+        """Commit the final value after a mouse drag."""
+        self.value_committed.emit(self.value())
 
     # -------------------------------------------------------------------------
     # Public API
