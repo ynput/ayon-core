@@ -410,7 +410,7 @@ class _BaseLoaderController(ABC):
             sender (Optional[str]): Sender who requested the name.
 
         Returns:
-            list[FolderItem]: Folder items for the project.
+            dict[str, FolderItem]: Folder items by folder id.
         """
 
         pass

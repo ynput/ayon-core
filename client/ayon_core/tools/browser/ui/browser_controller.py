@@ -243,6 +243,19 @@ class BrowserController(QtCore.QObject):
         """Return available group-by options, including custom attrs."""
         return list(self._group_by_options.values())
 
+    def get_folder_id_path(self, folder_id: str) -> list[str]:
+        """Return folder IDs from the project root to the target folder."""
+        folder_items = self._loader_controller.get_folder_items(
+            self._current_project
+        )
+        path = []
+        item = folder_items.get(folder_id)
+        while item is not None:
+            path.append(item.entity_id)
+            item = folder_items.get(item.parent_id)
+        path.reverse()
+        return path
+
     @property
     def hide_empty_groups(self) -> bool:
         """Return whether empty group headers should be hidden."""

@@ -164,14 +164,7 @@ class BrowserSlicer(AYContainer):
         )
         if project_name != self._controller.current_project:
             self._selector.set_current_project(project_name)
-        folder_items = self._loader_controller.get_folder_items(project_name)
-        items_by_id = {item.folder_id: item for item in folder_items}
-        chain = []
-        item = items_by_id.get(folder_id)
-        while item is not None:
-            chain.append(item.folder_id)
-            item = items_by_id.get(item.parent_id)
-        chain.reverse()
+        chain = self._controller.get_folder_id_path(folder_id)
         self._folder_selection_timer.stop()
         self._folder_selection_chain = chain
         self._folder_selection_attempt = 0
