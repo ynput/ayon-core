@@ -6,13 +6,10 @@ import qtawesome
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
-from ayon_core.tools.utils.widgets import (
-    OptionalAction,
-    OptionDialog,
-)
+from ayon_core.tools.utils.widgets import OptionDialog
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.browser.abstract import ActionItem
-from ayon_core.ui.components import AYOptionalMenu
+from ayon_core.ui.components import AYOptionalAction, AYOptionalMenu
 
 
 def _actions_sorter(item: tuple[ActionItem, str, str]):
@@ -72,22 +69,23 @@ def show_actions_menu(
             icon_name = icon_name.split(".")[-1]
 
         icon = get_qt_icon(action_item.icon)
-        use_option = bool(item_options)
-        action = OptionalAction(
-            action_item.label,
-            icon if icon is not None else icon_name,
-            use_option,
-            menu,
-        )
-        if use_option:
-            # Add option box tip
-            action.set_option_tip(item_options)
+        if item_options:
+            action = AYOptionalAction(
+                action_item.label,
+                icon if icon is not None else icon_name,
+                True,
+                menu,
+            )
             action.option_clicked.connect(
                 lambda action=action: _select_option_action(
                     action,
                     option_action,
                 )
             )
+        else:
+            action = QtGui.QAction(action_item.label, menu)
+            if icon is not None:
+                action.setIcon(icon)
 
         tip = action_item.tooltip
         if tip:
@@ -122,7 +120,7 @@ def show_actions_menu(
 
 def _select_option_action(action, output: list) -> None:
     """Record that an action's option button triggered the menu."""
-    action.optioned = True
+    action.setProperty("optioned", True)
     output[0] = action
 
 
@@ -144,10 +142,10 @@ def _get_options(action, action_item, parent):
 
     # Pop option dialog
     options = action_item.options
-    if not getattr(action, "optioned", False) or not options:
+    if not action.property("optioned") or not options:
         return {}
 
-    dialog_title = action.label + " Options"
+    dialog_title = action.text() + " Options"
     if isinstance(options[0], AbstractAttrDef):
         qargparse_options = False
         dialog = AttributeDefinitionsDialog(

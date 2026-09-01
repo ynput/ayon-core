@@ -1,15 +1,14 @@
 """Menu action with an option box button (Maya-style option box pattern).
 
-Provides three classes that together implement a menu item composed of
-a standard action area (icon + label) and a small option button on the
-far right.  Clicking the main area fires the normal ``triggered``
-signal; clicking the option button emits ``OptionalAction.option_clicked``
-instead.
+Provides AYON-styled menus and a widget action composed of a standard
+action area (icon + label) and a small option target on the far right.
+Clicking the main area fires the normal ``triggered`` signal; clicking
+the option target emits ``AYOptionalAction.option_clicked`` instead.
 
 Typical usage::
 
-    menu = QMenu("My Menu", parent)
-    action = OptionalAction(
+    menu = AYOptionalMenu("My Menu", parent)
+    action = AYOptionalAction(
         label="Run Process",
         icon_name="play_arrow",
         use_option=True,
@@ -22,13 +21,11 @@ Typical usage::
 
 from __future__ import annotations
 
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ..style_types import get_ayon_style
+from ..style_types import StyleDict, get_ayon_style
 from .buttons import AYButton
-from .frame import AYFrame
-from .label import AYLabel
-from .layouts import AYHBoxLayout
 
 
 class AYOptionBox(AYButton):
@@ -59,99 +56,146 @@ class AYOptionBox(AYButton):
 
 
 class AYOptionalActionWidget(QtWidgets.QWidget):
-    """Row widget that combines a body area and an :class:`AYOptionBox`.
-
-    The body contains an icon label and a text label.  The option box
-    is pinned to the far right.  Both sections respond to hover state
-    via :meth:`_set_row_hover` and :meth:`_sync_row_hover`.
+    """Self-painted menu row with main and option action hit regions.
 
     Args:
         label: Display text for the action.
         icon_name: Material symbol name or an already resolved icon.
+        use_option: Whether to show the option action.
         parent: Optional parent widget.
     """
+
+    main_clicked = QtCore.Signal()
+    option_clicked = QtCore.Signal()
 
     def __init__(
         self,
         label: str,
         icon_name: str | QtGui.QIcon = "none",
+        use_option: bool = True,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-
-        style_model = get_ayon_style().model
-        _style = style_model.get_style(
-            "QLabel", variant=AYLabel.Variants.Optional_Action.value
-        )
-        menu_style = style_model.get_style("QMenu")
-        icon_size = _style.get("icon-size", 16)
-        item_padding = menu_style.get("item-padding", [0, 0])
-        if isinstance(item_padding, (list, tuple)):
-            pad_h, pad_v = int(item_padding[0]), int(item_padding[1])
-        else:
-            pad_h = pad_v = int(item_padding)
-        item_spacing = int(menu_style.get("item-spacing", 4))
-
-        body_widget = AYFrame(self, variant=AYFrame.Variants.Contextual_Menu)
-        body_widget.setObjectName("OptionalActionBody")
-
-        label_wdgt = AYLabel(
-            label,
-            variant=AYLabel.Variants.Optional_Action,
-            icon=icon_name,
-            icon_size=icon_size,
-            icon_fill=False,
-            icon_text_spacing=item_spacing,
-            parent=body_widget,
-        )
-        frame_width = label_wdgt.frameWidth()
-        label_wdgt.setContentsMargins(
-            pad_h + frame_width,
-            pad_v + frame_width,
-            pad_h + frame_width,
-            pad_v + frame_width,
-        )
-        min_h = max(
-            int(menu_style.get("min-item-height", 0)),
-            QtGui.QFontMetrics(style_model.base_font).height() + pad_v * 2,
-            icon_size + pad_v * 2,
-        )
-        self.setMinimumHeight(min_h)
-
-        option_box = AYOptionBox(icon_size=icon_size, parent=body_widget)
-        option_box.setObjectName("OptionalActionOption")
-
-        body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
-        body_layout.addWidget(label_wdgt, stretch=1)
-
-        layout = AYHBoxLayout(self, spacing=0, margin=0)
-        layout.addWidget(body_widget)
-        layout.addWidget(option_box)
-
-        body_widget.setMouseTracking(True)
+        self._label = label
+        self._icon_name = icon_name
+        self._use_option = use_option
+        self._shortcut_text = ""
+        self._hovered = False
+        self._option_hovered = False
         self.setMouseTracking(True)
 
-        self.icon: QtGui.QIcon = QtGui.QIcon()
-        self.label: AYLabel = label_wdgt
-        self.option: AYOptionBox = option_box
-        self.body: QtWidgets.QWidget = body_widget
+    def set_shortcut_text(self, shortcut_text: str) -> None:
+        self._shortcut_text = shortcut_text
+        self.updateGeometry()
+        self.update()
 
-        # Watch the children's hover transitions so we can keep them in sync
-        # while the cursor moves between them.
-        self.label.installEventFilter(self)
-        self.option.installEventFilter(self)
+    def _menu_style(self, state: str = "base") -> StyleDict:
+        style = get_ayon_style().model.get_style("QMenu", state=state)
+        style.set_context(self.parentWidget())
+        return style
 
-    # -- hover propagation ------------------------------------------------
+    def _option_rect(self) -> QtCore.QRect:
+        if not self._use_option:
+            return QtCore.QRect()
+        row_height = self.height()
+        return QtCore.QRect(
+            self.width() - row_height,
+            0,
+            row_height,
+            row_height,
+        )
 
     def _set_row_hover(self, hovered: bool) -> None:
-        for child in (self.body, self.label, self.option):
-            child.setAttribute(QtCore.Qt.WA_UnderMouse, hovered)
-            child.update()
+        if self._hovered != hovered:
+            self._hovered = hovered
+            self.update()
 
-    def _sync_row_hover(self) -> None:
-        # ``underMouse()`` on the parent stays True as long as the cursor is
-        # anywhere inside this row, even while crossing child borders.
-        self._set_row_hover(self.underMouse())
+    def _resolved_icon(self) -> QtGui.QIcon:
+        if isinstance(self._icon_name, QtGui.QIcon):
+            return QtGui.QIcon(self._icon_name)
+        if not self._icon_name or self._icon_name == "none":
+            return QtGui.QIcon()
+        color = QtGui.QColor(
+            self._menu_style().get("color", "#f4f5f5")
+        )
+        return get_icon(self._icon_name, color=color.name())
+
+    def _style_option(self) -> QtWidgets.QStyleOptionMenuItem:
+        option = QtWidgets.QStyleOptionMenuItem()
+        option.initFrom(self)
+        option.menuItemType = (
+            QtWidgets.QStyleOptionMenuItem.MenuItemType.Normal
+        )
+        option.checkType = (
+            QtWidgets.QStyleOptionMenuItem.CheckType.NotCheckable
+        )
+        option.text = self._label
+        if self._shortcut_text:
+            option.text += f"\t{self._shortcut_text}"
+        option.icon = self._resolved_icon()
+        option.maxIconWidth = int(
+            self._menu_style().get("icon-size", 16)
+        )
+        if self._hovered:
+            option.state |= (
+                QtWidgets.QStyle.StateFlag.State_Selected
+            )
+        return option
+
+    def sizeHint(self) -> QtCore.QSize:
+        option = self._style_option()
+        size = get_ayon_style().sizeFromContents(
+            QtWidgets.QStyle.ContentsType.CT_MenuItem,
+            option,
+            QtCore.QSize(),
+            self.parentWidget(),
+        )
+        if self._use_option:
+            size.setWidth(size.width() + size.height())
+        return size
+
+    def paintEvent(self, _event: QtGui.QPaintEvent) -> None:
+        option_rect = self._option_rect()
+        menu_rect = self.rect()
+        if option_rect.isValid():
+            menu_rect.setRight(option_rect.left() - 1)
+
+        option = self._style_option()
+        option.rect = menu_rect
+        painter = QtGui.QPainter(self)
+        get_ayon_style().drawControl(
+            QtWidgets.QStyle.ControlElement.CE_MenuItem,
+            option,
+            painter,
+            self.parentWidget(),
+        )
+
+        if option_rect.isValid():
+            state = "hover" if self._hovered else "base"
+            style = self._menu_style(state)
+            if self._option_hovered:
+                painter.fillRect(
+                    option_rect,
+                    QtGui.QColor(
+                        style.get("shortcut-background-color", "#353b46")
+                    ),
+                )
+            icon_size = int(style.get("icon-size", 16))
+            color = QtGui.QColor(style.get("color", "#f4f5f5"))
+            option_icon = get_icon(
+                "check_box_outline_blank",
+                color=color.name(),
+            )
+            option_icon.paint(
+                painter,
+                QtCore.QRect(
+                    option_rect.center().x() - icon_size // 2,
+                    option_rect.center().y() - icon_size // 2,
+                    icon_size,
+                    icon_size,
+                ),
+            )
+        painter.end()
 
     def enterEvent(self, event: QtCore.QEvent) -> None:
         self._set_row_hover(True)
@@ -159,18 +203,38 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
 
     def leaveEvent(self, event: QtCore.QEvent) -> None:
         self._set_row_hover(False)
+        self._option_hovered = False
         super().leaveEvent(event)
 
-    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if obj in (self.body, self.label, self.option) and event.type() in (
-            QtCore.QEvent.Type.Enter,
-            QtCore.QEvent.Type.Leave,
-        ):
-            # Qt is about to flip WA_UnderMouse on this child.  Defer to
-            # the next event-loop tick so Qt's own handling has finished,
-            # then re-assert hover state based on the parent.
-            QtCore.QTimer.singleShot(0, self._sync_row_hover)
-        return super().eventFilter(obj, event)
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        option_hovered = self._option_rect().contains(event.pos())
+        if self._option_hovered != option_hovered:
+            self._option_hovered = option_hovered
+            self.update()
+        super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() != QtCore.Qt.MouseButton.LeftButton:
+            super().mouseReleaseEvent(event)
+            return
+        if self._option_rect().contains(event.pos()):
+            self.option_clicked.emit()
+        else:
+            self.main_clicked.emit()
+        event.accept()
+
+    def is_option_hovered(self, global_pos: QtCore.QPoint) -> bool:
+        local_pos = self.mapFromGlobal(global_pos)
+        return self._option_rect().contains(local_pos)
+
+    def trigger_option(self) -> None:
+        self.option_clicked.emit()
 
 
 class AYOptionalAction(QtWidgets.QWidgetAction):
@@ -203,6 +267,7 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         self._icon_name = icon_name or "none"
         self._use_option = use_option
         self.widget: AYOptionalActionWidget | None = None
+        self.setText(label)
 
     def createWidget(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """Instantiate and configure the custom action row widget.
@@ -218,16 +283,16 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         widget = AYOptionalActionWidget(
             self._label,
             icon_name=self._icon_name,
+            use_option=self._use_option,
             parent=parent,
         )
         widget.setEnabled(self.isEnabled())
+        widget.set_shortcut_text(self.shortcut().toString())
         self.widget = widget
-
-        if self._use_option:
-            widget.option.clicked.connect(self.option_clicked.emit)
-            widget.option.clicked.connect(self._close_menu_chain)
-        else:
-            widget.option.setVisible(False)
+        widget.main_clicked.connect(self.trigger)
+        widget.main_clicked.connect(self._close_menu_chain)
+        widget.option_clicked.connect(self.option_clicked.emit)
+        widget.option_clicked.connect(self._close_menu_chain)
 
         return widget
 
@@ -254,15 +319,13 @@ class AYMenu(QtWidgets.QMenu):
 
     Replicates :meth:`QMenu.paintEvent` but routes every primitive and
     control draw call through :func:`get_ayon_style`, so the menu is
-    painted consistently with the rest of the AYON UI even when the
-    application style isn't AYONStyle.
+    painted consistently with the rest of the AYON UI without assigning
+    the shared AYON style instance to the transient menu.
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        # Force the menu to use AYONStyle for drawing, even if the app's style
-        # is something else.
-        self.setStyle(get_ayon_style())
+        get_ayon_style().style_widget(self)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         """Paint the menu using AYON's QStyle implementation.
@@ -344,31 +407,23 @@ class AYMenu(QtWidgets.QMenu):
 
 
 class AYOptionalMenu(AYMenu):
-    """AYON menu that keeps embedded optional-action rows highlighted."""
+    """AYON-styled menu that supports optional-action widget rows."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._pending_hovered_action = None
-        self._hover_timer = QtCore.QTimer(self)
-        self._hover_timer.setSingleShot(True)
-        self._hover_timer.timeout.connect(self._apply_pending_hover)
-        self.hovered.connect(self._queue_action_hover)
+        self.hovered.connect(self._apply_action_hover)
         self.aboutToHide.connect(self._clear_action_highlights)
 
-    def _queue_action_hover(self, action) -> None:
-        self._pending_hovered_action = action
-        self._hover_timer.start(0)
-
-    def _apply_pending_hover(self) -> None:
-        hovered_action = self._pending_hovered_action
-        self._pending_hovered_action = None
+    def _apply_action_hover(
+        self,
+        hovered_action: QtWidgets.QAction,
+    ) -> None:
         for action in self.actions():
             if isinstance(action, AYOptionalAction):
                 action.set_highlight(action is hovered_action)
+        self.update()
 
     def _clear_action_highlights(self) -> None:
-        self._hover_timer.stop()
-        self._pending_hovered_action = None
         for action in self.actions():
             if isinstance(action, AYOptionalAction):
                 action.set_highlight(False)

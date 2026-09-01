@@ -6,8 +6,13 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 
 from ayon_core.ui.components.option_action import (
+    AYOptionBox,
     AYOptionalAction,
 )
+from ayon_core.ui.components.frame import AYFrame
+from ayon_core.ui.components.label import AYLabel
+from ayon_core.ui.components.layouts import AYHBoxLayout
+from ayon_core.ui.style_types import get_ayon_style
 
 try:
     import markdown
@@ -858,6 +863,99 @@ class PixmapButton(ClickableFrame):
         )
 
 
+class _LegacyOptionalActionWidget(QtWidgets.QWidget):
+    """Original composed option-action row used by the legacy Loader."""
+
+    def __init__(self, label, icon_name="none", parent=None):
+        super().__init__(parent)
+
+        style_model = get_ayon_style().model
+        label_style = style_model.get_style(
+            "QLabel",
+            variant=AYLabel.Variants.Optional_Action.value,
+        )
+        menu_style = style_model.get_style("QMenu")
+        icon_size = label_style.get("icon-size", 16)
+        item_padding = menu_style.get("item-padding", [0, 0])
+        if isinstance(item_padding, (list, tuple)):
+            pad_h, pad_v = map(int, item_padding)
+        else:
+            pad_h = pad_v = int(item_padding)
+        item_spacing = int(menu_style.get("item-spacing", 4))
+
+        body_widget = AYFrame(
+            self,
+            variant=AYFrame.Variants.Contextual_Menu,
+        )
+        body_widget.setObjectName("OptionalActionBody")
+        label_widget = AYLabel(
+            label,
+            variant=AYLabel.Variants.Optional_Action,
+            icon=icon_name,
+            icon_size=icon_size,
+            icon_fill=False,
+            icon_text_spacing=item_spacing,
+            parent=body_widget,
+        )
+        frame_width = label_widget.frameWidth()
+        label_widget.setContentsMargins(
+            pad_h + frame_width,
+            pad_v + frame_width,
+            pad_h + frame_width,
+            pad_v + frame_width,
+        )
+        min_height = max(
+            int(menu_style.get("min-item-height", 0)),
+            QtGui.QFontMetrics(style_model.base_font).height() + pad_v * 2,
+            icon_size + pad_v * 2,
+        )
+        self.setMinimumHeight(min_height)
+
+        option_box = AYOptionBox(icon_size=icon_size, parent=body_widget)
+        option_box.setObjectName("OptionalActionOption")
+
+        body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
+        body_layout.addWidget(label_widget, stretch=1)
+
+        layout = AYHBoxLayout(self, spacing=0, margin=0)
+        layout.addWidget(body_widget)
+        layout.addWidget(option_box)
+
+        body_widget.setMouseTracking(True)
+        self.setMouseTracking(True)
+
+        self.label = label_widget
+        self.option = option_box
+        self.body = body_widget
+
+        label_widget.installEventFilter(self)
+        option_box.installEventFilter(self)
+
+    def _set_row_hover(self, hovered):
+        for child in (self.body, self.label, self.option):
+            child.setAttribute(QtCore.Qt.WA_UnderMouse, hovered)
+            child.update()
+
+    def _sync_row_hover(self):
+        self._set_row_hover(self.underMouse())
+
+    def enterEvent(self, event):
+        self._set_row_hover(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._set_row_hover(False)
+        super().leaveEvent(event)
+
+    def eventFilter(self, obj, event):
+        if obj in (self.body, self.label, self.option) and event.type() in (
+            QtCore.QEvent.Enter,
+            QtCore.QEvent.Leave,
+        ):
+            QtCore.QTimer.singleShot(0, self._sync_row_hover)
+        return super().eventFilter(obj, event)
+
+
 class OptionalMenu(QtWidgets.QMenu):
     """A subclass of `QtWidgets.QMenu` to work with `OptionalAction`
 
@@ -911,6 +1009,22 @@ class OptionalAction(AYOptionalAction):
         self.option_tip = ""
         self.optioned = False
         self.widget = None
+
+    def createWidget(self, parent):
+        widget = _LegacyOptionalActionWidget(
+            self.label,
+            icon_name=self.icon,
+            parent=parent,
+        )
+        widget.setEnabled(self.isEnabled())
+        self.widget = widget
+
+        if self.use_option:
+            widget.option.clicked.connect(self.option_clicked.emit)
+            widget.option.clicked.connect(self._close_menu_chain)
+        else:
+            widget.option.setVisible(False)
+        return widget
 
     def set_option_tip(self, options):
         sep = "\n\n"
