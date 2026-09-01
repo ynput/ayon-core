@@ -12,7 +12,7 @@ from ayon_core.tools.utils.widgets import (
 )
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.browser.abstract import ActionItem
-from ayon_core.ui.components import AYMenu
+from ayon_core.ui.components import AYOptionalMenu
 
 
 def _actions_sorter(item: tuple[ActionItem, str, str]):
@@ -39,13 +39,13 @@ def show_actions_menu(
     selected_options = None
 
     if not action_items:
-        menu = AYMenu(parent)
+        menu = AYOptionalMenu(parent)
         action = _get_no_loader_action(menu, one_item_selected)
         menu.addAction(action)
         menu.exec_(global_point)
         return selected_action_item, selected_options
 
-    menu = AYMenu(parent)
+    menu = AYOptionalMenu(parent)
 
     action_items_with_labels = []
     for action_item in action_items:
@@ -75,7 +75,7 @@ def show_actions_menu(
         use_option = bool(item_options)
         action = OptionalAction(
             action_item.label,
-            icon_name,
+            icon if icon is not None else icon_name,
             use_option,
             menu,
         )
@@ -100,7 +100,7 @@ def show_actions_menu(
         if group_label:
             group_menu = group_menu_by_label.get(group_label)
             if group_menu is None:
-                group_menu = QtWidgets.QMenu(group_label, parent=menu)
+                group_menu = AYOptionalMenu(group_label, parent=menu)
                 if icon is not None:
                     group_menu.setIcon(icon)
                 menu.addMenu(group_menu)

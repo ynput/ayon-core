@@ -14,6 +14,7 @@ from .layouts import AYGridLayout, AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
 from .option_action import (
     AYMenu,
+    AYOptionalMenu,
     AYOptionalAction,
     AYOptionalActionWidget,
     AYOptionBox,
@@ -52,6 +53,7 @@ __all__ = (
     "AYOptionBox",
     "AYOptionalAction",
     "AYOptionalActionWidget",
+    "AYOptionalMenu",
     "AYMenu",
     "AYViewEditor",
     "AYViewSelector",

@@ -176,17 +176,13 @@ class MenuDrawer:
         item_spacing = int(style.get("item-spacing", 4))
 
         fm = option.fontMetrics
-        text_h = (
-            fm.height()
-            if fm
-            else (
+        text_h = QFontMetrics(self.model.base_font).height()
+        if text_h <= 0:
+            text_h = (
                 contents_size.height()
                 if contents_size
                 else option.rect.height()
             )
-        )
-        if text_h <= 0:
-            text_h = 16
 
         min_h = int(style.get("min-item-height", 0))
         row_h = max(text_h + pad_v * 2, icon_size + pad_v * 2, min_h)
@@ -207,7 +203,7 @@ class MenuDrawer:
         if shortcut and sc_w == 0 and fm:
             sc_w = fm.horizontalAdvance(shortcut)
 
-        icon_gutter = (option.maxIconWidth or icon_size) + item_spacing
+        icon_gutter = icon_size + item_spacing
         is_submenu = (
             option.menuItemType == QStyleOptionMenuItem.MenuItemType.SubMenu
         )

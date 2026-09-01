@@ -67,22 +67,30 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
 
     Args:
         label: Display text for the action.
-        icon_name: Material symbol icon name for the label.
+        icon_name: Material symbol name or an already resolved icon.
         parent: Optional parent widget.
     """
 
     def __init__(
         self,
         label: str,
-        icon_name: str = "none",
+        icon_name: str | QtGui.QIcon = "none",
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
 
-        _style = get_ayon_style().model.get_style(
+        style_model = get_ayon_style().model
+        _style = style_model.get_style(
             "QLabel", variant=AYLabel.Variants.Optional_Action.value
         )
+        menu_style = style_model.get_style("QMenu")
         icon_size = _style.get("icon-size", 16)
+        item_padding = menu_style.get("item-padding", [0, 0])
+        if isinstance(item_padding, (list, tuple)):
+            pad_h, pad_v = int(item_padding[0]), int(item_padding[1])
+        else:
+            pad_h = pad_v = int(item_padding)
+        item_spacing = int(menu_style.get("item-spacing", 4))
 
         body_widget = AYFrame(self, variant=AYFrame.Variants.Contextual_Menu)
         body_widget.setObjectName("OptionalActionBody")
@@ -93,10 +101,20 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
             icon=icon_name,
             icon_size=icon_size,
             icon_fill=False,
+            icon_text_spacing=item_spacing,
             parent=body_widget,
         )
-        min_h = int(
-            get_ayon_style().model.get_style("QMenu").get("min-item-height", 0)
+        frame_width = label_wdgt.frameWidth()
+        label_wdgt.setContentsMargins(
+            pad_h + frame_width,
+            pad_v + frame_width,
+            pad_h + frame_width,
+            pad_v + frame_width,
+        )
+        min_h = max(
+            int(menu_style.get("min-item-height", 0)),
+            QtGui.QFontMetrics(style_model.base_font).height() + pad_v * 2,
+            icon_size + pad_v * 2,
         )
         self.setMinimumHeight(min_h)
 
@@ -166,7 +184,7 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
 
     Args:
         label: Display text.
-        icon_name: Material symbol icon name (or ``"none"``).
+        icon_name: Material symbol name, resolved icon, or ``"none"``.
         use_option: Whether to show the option box button.
         parent: Parent widget (typically the owning menu).
     """
@@ -176,7 +194,7 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
     def __init__(
         self,
         label: str,
-        icon_name: str | None = "none",
+        icon_name: str | QtGui.QIcon | None = "none",
         use_option: bool = True,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
@@ -323,3 +341,34 @@ class AYMenu(QtWidgets.QMenu):
             )
 
         painter.end()
+
+
+class AYOptionalMenu(AYMenu):
+    """AYON menu that keeps embedded optional-action rows highlighted."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._pending_hovered_action = None
+        self._hover_timer = QtCore.QTimer(self)
+        self._hover_timer.setSingleShot(True)
+        self._hover_timer.timeout.connect(self._apply_pending_hover)
+        self.hovered.connect(self._queue_action_hover)
+        self.aboutToHide.connect(self._clear_action_highlights)
+
+    def _queue_action_hover(self, action) -> None:
+        self._pending_hovered_action = action
+        self._hover_timer.start(0)
+
+    def _apply_pending_hover(self) -> None:
+        hovered_action = self._pending_hovered_action
+        self._pending_hovered_action = None
+        for action in self.actions():
+            if isinstance(action, AYOptionalAction):
+                action.set_highlight(action is hovered_action)
+
+    def _clear_action_highlights(self) -> None:
+        self._hover_timer.stop()
+        self._pending_hovered_action = None
+        for action in self.actions():
+            if isinstance(action, AYOptionalAction):
+                action.set_highlight(False)
