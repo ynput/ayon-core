@@ -412,7 +412,9 @@ class Customize(AYButtonMenu):
 
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
     card_size_changed = QtCore.Signal(int)  # type: ignore
+    card_size_committed = QtCore.Signal(int)  # type: ignore
     row_height_changed = QtCore.Signal(int)  # type: ignore
+    row_height_committed = QtCore.Signal(int)  # type: ignore
     featured_version_order_changed = QtCore.Signal(list)  # type: ignore
     latest_per_folder_changed = QtCore.Signal(bool)  # type: ignore
     include_children_changed = QtCore.Signal(bool)  # type: ignore
@@ -508,6 +510,9 @@ class Customize(AYButtonMenu):
         )
         layout.addWidget(self.card_size_slider, stretch=1)
         self.card_size_slider.value_changed.connect(self.card_size_changed)
+        self.card_size_slider.value_committed.connect(
+            self.card_size_committed
+        )
 
         self.row_height_slider = AYSlider(
             label="Row height",
@@ -523,6 +528,9 @@ class Customize(AYButtonMenu):
         layout.addWidget(self.row_height_slider, stretch=1)
         self.row_height_slider.value_changed.connect(
             self.row_height_changed
+        )
+        self.row_height_slider.value_committed.connect(
+            self.row_height_committed
         )
 
         self.show_empty_grps_ui = AYCheckBox(

@@ -367,10 +367,10 @@ class BrowserTable(AYContainer):
         self._customize.show_empty_groups_changed.connect(
             self._view_selector.notify_view_modified
         )
-        self._customize.card_size_changed.connect(
+        self._customize.card_size_committed.connect(
             self._view_selector.notify_view_modified
         )
-        self._customize.row_height_changed.connect(
+        self._customize.row_height_committed.connect(
             self._view_selector.notify_view_modified
         )
         self._customize.featured_version_order_changed.connect(
