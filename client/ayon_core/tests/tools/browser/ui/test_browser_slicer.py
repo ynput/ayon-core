@@ -11,6 +11,7 @@ if "qargparse" not in sys.modules:
     sys.modules["qargparse"] = types.ModuleType("qargparse")
 
 from ayon_core.tools.browser.ui._browser_slicer import BrowserSlicer
+from ayon_core.tools.browser.ui._browser_table import BrowserTable
 from ayon_core.tools.browser.ui.tasks_widget import (
     TASK_DATA_ROLE,
     BrowserTasksWidget,
@@ -113,3 +114,44 @@ def test_task_selection_updates_loader_controller():
         "task-2",
     })
     task_names_changed.emit.assert_called_once_with(["Animation"])
+
+
+def test_flat_table_fetches_next_page_near_scroll_bottom():
+    scrollbar = Mock()
+    scrollbar.value.return_value = 80
+    scrollbar.pageStep.return_value = 20
+    scrollbar.maximum.return_value = 100
+    table = Mock()
+    table.verticalScrollBar.return_value = scrollbar
+    model = Mock()
+    model.canFetchMore.return_value = True
+    browser_table = SimpleNamespace(
+        _controller=SimpleNamespace(tree_mode=False),
+        _views_stack=Mock(),
+        _table=table,
+        _card_view=Mock(),
+        _model=model,
+    )
+    browser_table._views_stack.currentWidget.return_value = table
+
+    BrowserTable._maybe_fetch_more(browser_table)
+
+    model.canFetchMore.assert_called_once()
+    model.fetchMore.assert_called_once()
+
+
+def test_card_view_handles_its_own_fetch_geometry():
+    card_view = Mock()
+    browser_table = SimpleNamespace(
+        _controller=SimpleNamespace(tree_mode=False),
+        _views_stack=Mock(),
+        _table=Mock(),
+        _card_view=card_view,
+        _model=Mock(),
+    )
+    browser_table._views_stack.currentWidget.return_value = card_view
+
+    BrowserTable._maybe_fetch_more(browser_table)
+
+    card_view.fetch_more_if_needed.assert_called_once_with()
+    browser_table._model.fetchMore.assert_not_called()

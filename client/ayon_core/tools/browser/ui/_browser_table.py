@@ -459,6 +459,9 @@ class BrowserTable(AYContainer):
         self._table.verticalScrollBar().valueChanged.connect(
             self._on_scroll_catch_up
         )
+        self._table.verticalScrollBar().valueChanged.connect(
+            self._maybe_fetch_more
+        )
         self._model.page_fetched.connect(self._on_page_fetched)
 
         # Install event filter to catch viewport resize events
@@ -1260,6 +1263,27 @@ class BrowserTable(AYContainer):
             self._eagerly_enqueue_visible_thumbnails()
         elif active is self._card_view:
             self._card_view.refresh_visible_editors()
+        QtCore.QTimer.singleShot(0, self._maybe_fetch_more)
+
+    def _maybe_fetch_more(self) -> None:
+        """Fetch more data when the active view is near its bottom."""
+        active = self._views_stack.currentWidget()
+        if active is self._card_view:
+            self._card_view.fetch_more_if_needed()
+            return
+        if active is not self._table or self._controller.tree_mode:
+            return
+
+        scrollbar = self._table.verticalScrollBar()
+        if (
+            scrollbar.value() + scrollbar.pageStep()
+            < scrollbar.maximum()
+        ):
+            return
+
+        root = QtCore.QModelIndex()
+        if self._model.canFetchMore(root):
+            self._model.fetchMore(root)
 
     def _table_row_height(self) -> int:
         first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
