@@ -8,6 +8,7 @@ from qtpy.QtCore import (
     QModelIndex,
     QObject,
     QPersistentModelIndex,
+    QSize,
     QSortFilterProxyModel,
     Qt,
     Signal,
@@ -1219,6 +1220,10 @@ class AYTableFilter(AYContainer):
         )
         self.setObjectName("AYTableFilter")
         self.setFixedHeight(32)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
 
         self._model = model
         self._filter_locally = filter_locally
@@ -1279,6 +1284,10 @@ class AYTableFilter(AYContainer):
         self.add_layout(self._criteria_container, stretch=1)
 
         self._rebuild_bar()
+
+    def minimumSizeHint(self) -> QSize:
+        """Keep badge widths from increasing the containing UI minimum."""
+        return QSize(self._search_btn.width() + 100, self.height())
 
     def _open_filter_dropdown(self) -> None:
         """Open the filter dropdown for a new criterion."""
