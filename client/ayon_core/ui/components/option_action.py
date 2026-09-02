@@ -68,9 +68,6 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         parent: Optional parent widget.
     """
 
-    main_clicked = QtCore.Signal()
-    option_clicked = QtCore.Signal()
-
     def __init__(
         self,
         label: str,
@@ -86,6 +83,9 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         self._hovered = False
         self._option_hovered = False
         self.setMouseTracking(True)
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
 
     def set_shortcut_text(self, shortcut_text: str) -> None:
         self._shortcut_text = shortcut_text
@@ -216,28 +216,29 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
             self.update()
         super().mouseMoveEvent(event)
 
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            event.accept()
-            return
-        super().mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() != QtCore.Qt.MouseButton.LeftButton:
-            super().mouseReleaseEvent(event)
-            return
-        if self._option_rect().contains(event.pos()):
-            self.option_clicked.emit()
-        else:
-            self.main_clicked.emit()
-        event.accept()
-
     def is_option_hovered(self, global_pos: QtCore.QPoint) -> bool:
         local_pos = self.mapFromGlobal(global_pos)
         return self._option_rect().contains(local_pos)
 
-    def trigger_option(self) -> None:
-        self.option_clicked.emit()
+    def set_highlight(
+        self,
+        highlighted: bool,
+        global_pos: QtCore.QPoint | None = None,
+    ) -> None:
+        """Update row and option-box hover from the owning menu."""
+        option_hovered = bool(
+            highlighted
+            and global_pos is not None
+            and self.is_option_hovered(global_pos)
+        )
+        changed = (
+            self._hovered != highlighted
+            or self._option_hovered != option_hovered
+        )
+        self._hovered = highlighted
+        self._option_hovered = option_hovered
+        if changed:
+            self.update()
 
 
 class AYOptionalAction(QtWidgets.QWidgetAction):
@@ -292,10 +293,6 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         widget.setEnabled(self.isEnabled())
         widget.set_shortcut_text(self.shortcut().toString())
         self.widget = widget
-        widget.main_clicked.connect(self.trigger)
-        widget.main_clicked.connect(self._close_menu_chain)
-        widget.option_clicked.connect(self.option_clicked.emit)
-        widget.option_clicked.connect(self._close_menu_chain)
 
         return widget
 
@@ -310,11 +307,24 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
     def set_highlight(
         self,
         highlighted: bool,
-        _global_pos: QtCore.QPoint | None = None,
+        global_pos: QtCore.QPoint | None = None,
     ) -> None:
         """Synchronize hover styling for legacy optional menus."""
         if self.widget is not None:
-            self.widget._set_row_hover(highlighted)
+            self.widget.set_highlight(highlighted, global_pos)
+
+    def is_option_hovered(self, global_pos: QtCore.QPoint) -> bool:
+        """Return whether *global_pos* is inside the option-box region."""
+        return bool(
+            self._use_option
+            and self.widget is not None
+            and self.widget.is_option_hovered(global_pos)
+        )
+
+    def trigger_option(self) -> None:
+        """Emit the secondary action and close its menu hierarchy."""
+        self.option_clicked.emit()
+        self._close_menu_chain()
 
 
 class AYMenu(QtWidgets.QMenu):
@@ -414,8 +424,41 @@ class AYOptionalMenu(AYMenu):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.setMouseTracking(True)
         self.hovered.connect(self._apply_action_hover)
         self.aboutToHide.connect(self._clear_action_highlights)
+
+    @staticmethod
+    def _event_global_pos(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+        try:
+            return event.globalPosition().toPoint()
+        except AttributeError:
+            return event.globalPos()
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        """Update option-box hover while preserving native menu behavior."""
+        super().mouseMoveEvent(event)
+        hovered_action = self.actionAt(event.pos())
+        global_pos = self._event_global_pos(event)
+        for action in self.actions():
+            if isinstance(action, AYOptionalAction):
+                action.set_highlight(
+                    action is hovered_action,
+                    global_pos,
+                )
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        """Handle option-box clicks and delegate main clicks to Qt."""
+        action = self.actionAt(event.pos())
+        if (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and isinstance(action, AYOptionalAction)
+            and action.is_option_hovered(self._event_global_pos(event))
+        ):
+            action.trigger_option()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def _apply_action_hover(
         self,
