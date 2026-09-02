@@ -18,24 +18,6 @@ if TYPE_CHECKING:
 
 log = Logger.get_logger(__name__)
 
-_THUMBNAIL_ASPECT_RATIO = 64 / 30
-
-
-def _fit_thumbnail_size(width: int, height: int) -> tuple[int, int]:
-    """Return the largest thumbnail size fitting the available area."""
-    width = max(0, int(width))
-    height = max(0, int(height))
-    if not width or not height:
-        return 0, 0
-
-    if width / height > _THUMBNAIL_ASPECT_RATIO:
-        thumb_height = height
-        thumb_width = round(height * _THUMBNAIL_ASPECT_RATIO)
-    else:
-        thumb_width = width
-        thumb_height = round(width / _THUMBNAIL_ASPECT_RATIO)
-    return min(width, thumb_width), min(height, thumb_height)
-
 
 def _browser_card_mapper(row_data: dict) -> dict:
     """Map a version row dict to the fields expected by AYEntityCard."""
@@ -191,6 +173,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
             parent=parent,
             fade_duration=500,
             transparent=True,
+            image_inset=0,
         )
         self._thumb_key: str = key
         self._context_id: str = context_id
@@ -263,7 +246,7 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setContentsMargins(1, 1, 1, 1)
+        self.setContentsMargins(0, 1, 0, 1)
         self.setAttribute(
             QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents,
             True,
@@ -285,7 +268,7 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         if self._real is None:
             return
         rect = self.contentsRect()
-        size = _fit_thumbnail_size(rect.width(), rect.height())
+        size = rect.width(), rect.height()
         if not all(size):
             self._real.hide()
             return

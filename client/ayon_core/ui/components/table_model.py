@@ -465,6 +465,13 @@ class PaginatedTableModel(QAbstractItemModel):
         Args:
             parent: Parent index (invalid = root).
         """
+        self.fetch_more(parent)
+
+    def fetch_more(
+        self,
+        parent: QModelIndex | QPersistentModelIndex = QModelIndex(),
+    ) -> None:
+        """Explicitly fetch the next page for a view-approved parent."""
         self._fetch_next_page(self._node_from_index(parent))
 
     def data(

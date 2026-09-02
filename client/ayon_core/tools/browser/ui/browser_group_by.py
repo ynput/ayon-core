@@ -121,6 +121,13 @@ def build_attribute_groups(
     Returns:
         List of :class:`GroupByOption` instances, one per attribute.
     """
+    supported_types = {
+        "boolean",
+        "datetime",
+        "float",
+        "integer",
+        "string",
+    }
     return [
         GroupByOption(
             key=f"attr:{attr_name}",
@@ -134,4 +141,5 @@ def build_attribute_groups(
             attribute_name=attr_name,
         )
         for attr_name, attr_def in version_attributes.items()
+        if attr_def.get("type") in supported_types
     ]

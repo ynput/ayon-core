@@ -11,11 +11,17 @@ if "qargparse" not in sys.modules:
     sys.modules["qargparse"] = types.ModuleType("qargparse")
 
 from ayon_core.tools.browser.ui._browser_slicer import BrowserSlicer
+from ayon_core.tools.browser.ui._browser_model import (
+    VisibilityAwarePaginatedTableModel,
+)
 from ayon_core.tools.browser.ui._browser_table import BrowserTable
 from ayon_core.tools.browser.ui.tasks_widget import (
     TASK_DATA_ROLE,
     BrowserTasksWidget,
 )
+from ayon_core.ui.components.card_view import AYCardView
+from ayon_core.ui.components.table_model import TableColumn
+from ayon_core.ui.components.table_view import AYTableView
 
 
 def test_select_folder_chain_expands_selects_and_scrolls():
@@ -155,3 +161,61 @@ def test_card_view_handles_its_own_fetch_geometry():
 
     card_view.fetch_more_if_needed.assert_called_once_with()
     browser_table._model.fetchMore.assert_not_called()
+
+
+def test_card_view_explicitly_fetches_group_children(qtbot):
+    calls = []
+
+    def _fetch_page(
+        _page,
+        _page_size,
+        _sort_key,
+        _descending,
+        parent_id,
+    ):
+        calls.append(parent_id)
+        if parent_id is None:
+            return [{
+                "id": "grp:status:Done",
+                "name": "Done",
+                "has_children": True,
+                "child_count": 3,
+            }]
+        return [{"id": "version-1", "name": "Version 1"}]
+
+    model = VisibilityAwarePaginatedTableModel(
+        fetch_page=_fetch_page,
+        columns=[
+            TableColumn(
+                key="name",
+                label="Name",
+                tree_position=True,
+            )
+        ],
+        no_async=True,
+    )
+    model.set_tree_mode(True, reset_data=False)
+    model.set_fetch_enabled(True)
+    model.reset_data()
+
+    table = AYTableView()
+    qtbot.addWidget(table)
+    table.setModel(model)
+    model.set_view(table)
+
+    proxy = QtCore.QSortFilterProxyModel()
+    proxy.setSourceModel(model)
+    card = AYCardView()
+    qtbot.addWidget(card)
+    card.setModel(proxy)
+    card.resize(600, 400)
+    card._calculate_layout()
+
+    group_index = proxy.index(0, 0)
+    assert card._tree_layout[0].child_count == 3
+    assert model.rowCount(model.index(0, 0)) == 0
+
+    card._fetch_more(group_index)
+
+    assert calls == [None, "grp:status:Done"]
+    assert model.rowCount(model.index(0, 0)) == 1

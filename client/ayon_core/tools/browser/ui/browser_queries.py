@@ -72,6 +72,46 @@ query GetVersions(
 }
 """
 
+GET_VERSION_GROUP_COUNTS_QUERY = """
+query GetVersionGroupCounts(
+  $projectName: String!,
+  $versionFilter: String,
+  $productFilter: String,
+  $taskFilter: String,
+  $folderFilter: String,
+  $folderIds: [String!],
+  $versionIds: [String!],
+  $includeFolderChildren: Boolean,
+  $featuredOnly: [String!],
+  $latestPerFolder: Boolean,
+  $search: String,
+  $targets: [MetricTargetInput!]
+) {
+  project(name: $projectName) {
+    versions(
+      calculateSpecificStatistics: $targets
+      ids: $versionIds
+      filter: $versionFilter
+      productFilter: $productFilter
+      taskFilter: $taskFilter
+      folderFilter: $folderFilter
+      folderIds: $folderIds
+      includeFolderChildren: $includeFolderChildren
+      featuredOnly: $featuredOnly
+      latestPerFolder: $latestPerFolder
+      search: $search
+    ) {
+      fieldStats {
+        columnName
+        valueFilledCount
+        valueNotFilledCount
+        distribution
+      }
+    }
+  }
+}
+"""
+
 
 def get_versions_query(column_keys: set[str] | None = None) -> str:
     """Build the version query selection for the requested columns."""
@@ -174,6 +214,9 @@ query GetProducts(
   $folderIds: [String!],
   $productFilter: String,
   $versionFilter: String,
+  $taskFilter: String,
+  $folderFilter: String,
+  $search: String,
   $includeFolderChildren: Boolean,
   $featuredVersionOrder: [String!],
   $after: String,
@@ -187,6 +230,9 @@ query GetProducts(
       folderIds: $folderIds,
       filter: $productFilter,
       versionFilter: $versionFilter,
+      taskFilter: $taskFilter,
+      folderFilter: $folderFilter,
+      search: $search,
       includeFolderChildren: $includeFolderChildren,
       after: $after,
       first: $first,
@@ -217,11 +263,6 @@ query GetProducts(
             updatedAt
             version
             featuredVersionType
-          }
-          versions: versionList {
-            id
-            name
-            version
           }
         }
         cursor

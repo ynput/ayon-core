@@ -84,6 +84,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         fade_duration: int = 0,
         variant: Variants = Variants.Thumbnail,
         transparent: bool = False,
+        image_inset: int = 1,
         **kwargs,
     ):
         """A widget that displays a thumbnail image for an entity, with options
@@ -111,6 +112,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             variant: Visual style variant.
             transparent: Draw only the icon or thumbnail image, leaving the
                 parent widget responsible for the background and border.
+            image_inset: Pixels reserved between the image and widget edges.
 
         Raises:
             ValueError: If both *file_cacher* and *async_file_cacher* are set.
@@ -132,6 +134,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             )
         self._size = size
         self._transparent = transparent
+        self._image_inset = max(0, image_inset)
         self._variant_str: str = variant.value
         self._placeholder_icon_name = placeholder_icon
         self._placeholder_scale = placeholder_scale
@@ -625,8 +628,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
 
         Draws the styled button base using the AYON style model, then
         overlays the incoming pixmap with the current fade opacity for
-        smooth transition animations.  Maintains a 1-pixel inset clip
-        to prevent the image from overlapping the button border.
+        smooth transition animations. The configured image inset prevents
+        the image from overlapping any border drawn around the widget.
 
         Args:
             arg__1: The paint event containing the update region.
@@ -655,7 +658,15 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             x = (size.width() - self._incoming_pixmap.width() // dpr) // 2
             y = (size.height() - self._incoming_pixmap.height() // dpr) // 2
             p.save()
-            p.setClipRect(QRect(1, 1, size.width() - 2, size.height() - 2))
+            inset = self._image_inset
+            p.setClipRect(
+                QRect(
+                    inset,
+                    inset,
+                    size.width() - inset * 2,
+                    size.height() - inset * 2,
+                )
+            )
             p.setOpacity(self._opacity)
             if not self._transparent:
                 p.fillRect(option.rect, self._bg_color)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -49,6 +50,7 @@ from ayon_core.tools.browser.ui.browser_queries import (
     COLUMN_TO_SORT_BY,
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
+    GET_VERSION_GROUP_COUNTS_QUERY,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
@@ -57,6 +59,15 @@ from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 # Each page contains up to 1 000 products, so this caps the total at
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
+
+
+def _normalize_entity_id(value: Any) -> str:
+    """Return UUID-like entity IDs in AYON's compact hexadecimal form."""
+    text = str(value)
+    try:
+        return uuid.UUID(text).hex
+    except (ValueError, AttributeError):
+        return text
 
 
 def _timestamp_to_date(timestamp: str) -> str:
@@ -358,7 +369,10 @@ class BrowserController(QtCore.QObject):
             )
         self._review_session_version_ids = None  # always clear first
 
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value and ids:
+        if (
+            self._current_category == BrowserSlicerCategory.REVIEWS.value
+            and ids
+        ):
             ids_set: set[str] = set()
             for sid in ids:
                 ids_set.update(self._get_review_session_version_ids(sid))
@@ -1399,7 +1413,7 @@ class BrowserController(QtCore.QObject):
         label: str | None = None,
         product_type: str | None = None,
         featured_version: dict[str, Any] | None = None,
-        num_versions: int = 0,
+        num_versions: int | None = None,
     ) -> dict[str, Any]:
         """Build an expandable group-header row.
 
@@ -1416,18 +1430,22 @@ class BrowserController(QtCore.QObject):
                 *featured_version* is provided.
             featured_version: Optional dict representing the featured
                 version.
-            num_versions: Optional number of versions in the group.
+            num_versions: Number of versions in the group, or ``None``
+                when the count source is unavailable.
 
         Returns:
-            Row dict with ``has_children=True`` and an id of the form
-            ``"grp:<group_type.value>:<value>"``.
+            Row dict containing the authoritative child count and an id
+            of the form ``"grp:<group_type.value>:<value>"``.
         """
         display_label = label if label is not None else value
         row = dict(EMPTY_ROW)
+        # None means filtered statistics were unavailable, not that the
+        # group is empty, so keep it expandable for lazy child discovery.
         row.update(
             {
                 "id": f"grp:{group_option.key}:{value}",
-                "has_children": True,
+                "has_children": num_versions is None or num_versions > 0,
+                "child_count": num_versions,
                 "thumb": display_label,
                 "product/version": display_label,
                 "product/version__icon": icon or "label",
@@ -1464,7 +1482,11 @@ class BrowserController(QtCore.QObject):
             )
             row["folderName"] = featured_version.get("parents", ["", ""])[-2]
             row["author"] = featured_version.get("author", "")
-            v_str = f"({num_versions} versions)" if num_versions else ""
+            v_str = (
+                f"({num_versions} versions)"
+                if num_versions is not None
+                else ""
+            )
             row["version"] = (
                 f"{featured_version.get('name', '')} {v_str}".strip()
             )
@@ -1479,102 +1501,320 @@ class BrowserController(QtCore.QObject):
         Returns:
             List of expandable group-header rows.
         """
+        inventory_counts = self._get_group_inventory_counts(self.group_by)
+        filtered_counts = self._get_group_counts(self.group_by)
+        if filtered_counts is None:
+            group_counts = inventory_counts or None
+        else:
+            group_counts = {
+                value: filtered_counts.get(value, 0)
+                for value in inventory_counts
+            }
+            group_counts.update(filtered_counts)
         if self.group_by_key == GROUP_BY_STATUS_KEY:
-            return self._fetch_status_group_headers()
+            return self._fetch_status_group_headers(group_counts)
         if self.group_by_key == GROUP_BY_PRODUCT_TYPE_KEY:
-            return self._fetch_product_type_group_headers()
+            return self._fetch_product_type_group_headers(group_counts)
         if self.group_by_key == GROUP_BY_PRODUCT_KEY:
-            return self._fetch_product_group_headers()
+            return self._fetch_product_group_headers(group_counts)
         if self.group_by_key == GROUP_BY_TAGS_KEY:
-            return self._fetch_tags_group_headers()
+            return self._fetch_tags_group_headers(group_counts)
         if self.group_by_key == GROUP_BY_TASK_TYPE_KEY:
-            return self._fetch_task_type_group_headers()
+            return self._fetch_task_type_group_headers(group_counts)
         if self.group_by.source == GroupBySource.ATTRIBUTE:
-            return self._fetch_attribute_group_headers(self.group_by)
+            return self._fetch_attribute_group_headers(
+                self.group_by,
+                group_counts,
+            )
         self.log.warning("Unknown group-by key: %s", self.group_by_key)
         return []
 
-    def _fetch_status_group_headers(self) -> list[dict[str, Any]]:
-        """Return one expandable row per status that has versions.
+    def _get_group_counts(
+        self,
+        group_option: GroupByOption,
+    ) -> dict[str, int] | None:
+        """Return filtered counts, or ``None`` when stats are unavailable."""
+        target_field = {
+            GROUP_BY_PRODUCT_KEY: "product_id",
+            GROUP_BY_STATUS_KEY: "status",
+            GROUP_BY_PRODUCT_TYPE_KEY: "product_type",
+            GROUP_BY_TAGS_KEY: "tags",
+            GROUP_BY_TASK_TYPE_KEY: "task_type",
+        }.get(group_option.key)
+        if group_option.source == GroupBySource.ATTRIBUTE:
+            target_field = f"attrib.{group_option.attribute_name}"
+        if not target_field:
+            return {}
 
-        Uses a single large-page fetch to discover which statuses
-        actually contain versions for the current scope, then builds
-        group-header rows only for those statuses.
-        """
-        all_statuses: dict[str, dict[str, Any]] = self._project_info.get(
-            "by_name", {}
-        ).get("statuses", {})
-        if not all_statuses:
-            return []
+        query_filters = self._get_query_filters()
+        version_ids = query_filters["version_ids"]
+        folder_ids: list[str] | None = self._selected_folder_ids or None
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
+            if not self._review_session_version_ids:
+                return {}
+            review_ids = set(self._review_session_version_ids or ())
+            if version_ids:
+                review_ids.intersection_update(version_ids)
+            version_ids = list(review_ids)
+            folder_ids = None
 
-        if self._hide_empty_groups:
-            present = self._get_distinct_field_values("status")
-            status_names = [s for s in all_statuses if s in present]
-        else:
-            status_names = list(all_statuses)
+        con = ayon_api.get_server_api_connection()
+        if not con:
+            raise RuntimeError("No server connection")
+
+        variables = {
+            "projectName": self._current_project,
+            "versionFilter": query_filters["version_filter"],
+            "productFilter": query_filters["product_filter"],
+            "taskFilter": query_filters["task_filter"],
+            "folderFilter": query_filters["folder_filter"],
+            "folderIds": folder_ids,
+            "versionIds": version_ids,
+            "includeFolderChildren": self._include_folder_children,
+            "featuredOnly": query_filters["featured_only"],
+            "latestPerFolder": (
+                self._latest_per_folder
+                and group_option.key != GROUP_BY_PRODUCT_KEY
+            ),
+            "search": query_filters["search"],
+            "targets": [{
+                "field": target_field,
+                "aggregations": [
+                    "DISTRIBUTION",
+                    "FILLED",
+                    "NOT_FILLED",
+                ],
+            }],
+        }
+        response = con.query_graphql(
+            GET_VERSION_GROUP_COUNTS_QUERY,
+            variables,
+        )
+        if response.errors:
+            raise RuntimeError(response.errors)
+
+        versions = response.data["data"]["project"]["versions"]
+        column_name = target_field.replace(".", "_")
+        column_name_parts = column_name.split("_")
+        camel_column_name = column_name_parts[0] + "".join(
+            part.title() for part in column_name_parts[1:]
+        )
+        expected_column_names = {column_name, camel_column_name}
+        if target_field in {"product_type", "task_type"}:
+            expected_column_names.add("subType")
+        stats = next(
+            (
+                item
+                for item in versions.get("fieldStats") or []
+                if (
+                    item.get("columnName")
+                    or item.get("column_name")
+                ) in expected_column_names
+            ),
+            None,
+        )
+        if stats is None:
+            self.log.warning(
+                "Version group statistics did not return field %r. "
+                "Falling back to grouping metadata.",
+                column_name,
+            )
+            return None
+
+        distribution = stats.get("distribution") or []
+        if isinstance(distribution, str):
+            distribution = json.loads(distribution)
+        if (
+            not distribution
+            and stats.get("valueFilledCount") is None
+            and stats.get("valueNotFilledCount") is None
+        ):
+            self.log.warning(
+                "Version group statistics for %r were incomplete. "
+                "Falling back to grouping metadata.",
+                column_name,
+            )
+            return None
+
+        output: dict[str, int] = {}
+        for item in distribution:
+            count = int(item.get("count") or 0)
+            raw_value = item.get("value")
+            values = (
+                raw_value
+                if isinstance(raw_value, list)
+                else [raw_value]
+            )
+            for value in values:
+                if value is not None:
+                    key = (
+                        _normalize_entity_id(value)
+                        if group_option.key == GROUP_BY_PRODUCT_KEY
+                        else str(value)
+                    )
+                    output[key] = output.get(key, 0) + count
+        return output
+
+    def _get_group_inventory_counts(
+        self,
+        group_option: GroupByOption,
+    ) -> dict[str, int]:
+        """Return broad group counts used when filtered stats are absent."""
+        endpoint = {
+            GROUP_BY_STATUS_KEY: "grouping/version/status",
+            GROUP_BY_PRODUCT_TYPE_KEY: "grouping/version/productType",
+            GROUP_BY_TAGS_KEY: "grouping/version/tags",
+            GROUP_BY_TASK_TYPE_KEY: "grouping/task/taskType",
+        }.get(group_option.key)
+        if group_option.source == GroupBySource.ATTRIBUTE:
+            endpoint = (
+                "grouping/version/"
+                f"attrib.{group_option.attribute_name}"
+            )
+        if not endpoint:
+            return {}
+
+        payload = ayon_api.get(
+            f"projects/{self._current_project}/{endpoint}",
+            empty=True,
+        )
+        output: dict[str, int] = {}
+        for item in (payload.data or {}).get("groups", []):
+            value = item.get("value")
+            if value is None:
+                continue
+            output[str(value)] = int(item.get("count") or 0)
+        return output
+
+    def _group_values(
+        self,
+        category: str,
+        group_counts: dict[str, int] | None,
+    ) -> list[str]:
+        """Return configured values plus any values found by statistics."""
+        values = list(
+            self._project_info.get("by_name", {}).get(category, {})
+        )
+        values.extend(
+            sorted(set(group_counts or {}) - set(values), key=str.casefold)
+        )
+        if self._hide_empty_groups and group_counts is not None:
+            values = [
+                value for value in values if group_counts.get(value, 0) > 0
+            ]
+        return values
+
+    def _fetch_status_group_headers(
+        self,
+        group_counts: dict[str, int] | None,
+    ) -> list[dict[str, Any]]:
+        """Return status group rows with filter-aware version counts."""
+        status_names = self._group_values("statuses", group_counts)
 
         return [
             self._build_group_header_row(
                 self._group_by_options[GROUP_BY_STATUS_KEY],
                 name,
-                icon=all_statuses[name].get("icon", "circle"),
-                color=all_statuses[name].get("color"),
+                icon=self._pinfo("statuses", name, "icon", "circle"),
+                color=self._pinfo("statuses", name, "color"),
+                num_versions=(
+                    group_counts.get(name, 0)
+                    if group_counts is not None
+                    else None
+                ),
             )
             for name in status_names
         ]
 
-    def _fetch_product_type_group_headers(self) -> list[dict[str, Any]]:
-        """Return one expandable row per product type with versions."""
-        present = self._get_distinct_field_values("productType")
+    def _fetch_product_type_group_headers(
+        self,
+        group_counts: dict[str, int] | None,
+    ) -> list[dict[str, Any]]:
+        """Return product-type rows with filter-aware version counts."""
+        values = self._group_values("productTypes", group_counts)
         return [
             self._build_group_header_row(
                 self._group_by_options[GROUP_BY_PRODUCT_TYPE_KEY],
                 pt,
                 icon=self._pinfo("productTypes", pt, "icon", "category"),
                 color=self._pinfo("productTypes", pt, "color"),
+                num_versions=(
+                    group_counts.get(pt, 0)
+                    if group_counts is not None
+                    else None
+                ),
             )
-            for pt in sorted(present)
+            for pt in values
         ]
 
-    def _fetch_tags_group_headers(self) -> list[dict[str, Any]]:
-        """Return one expandable row per tag with versions."""
-        present = self._get_distinct_field_values("tags")
+    def _fetch_tags_group_headers(
+        self,
+        group_counts: dict[str, int] | None,
+    ) -> list[dict[str, Any]]:
+        """Return tag rows with filter-aware version counts."""
+        values = self._group_values("tags", group_counts)
         return [
             self._build_group_header_row(
                 self._group_by_options[GROUP_BY_TAGS_KEY],
                 tag,
                 icon=self._pinfo("tags", tag, "icon", "label"),
                 color=self._pinfo("tags", tag, "color"),
+                num_versions=(
+                    group_counts.get(tag, 0)
+                    if group_counts is not None
+                    else None
+                ),
             )
-            for tag in sorted(present)
+            for tag in values
         ]
 
-    def _fetch_task_type_group_headers(self) -> list[dict[str, Any]]:
-        """Return one expandable row per task type with versions."""
-        present = self._get_distinct_field_values("taskType")
+    def _fetch_task_type_group_headers(
+        self,
+        group_counts: dict[str, int] | None,
+    ) -> list[dict[str, Any]]:
+        """Return task-type rows with filter-aware version counts."""
+        values = self._group_values("taskTypes", group_counts)
         return [
             self._build_group_header_row(
                 self._group_by_options[GROUP_BY_TASK_TYPE_KEY],
                 task_type,
                 icon=self._pinfo("taskTypes", task_type, "icon", "category"),
                 color=self._pinfo("taskTypes", task_type, "color"),
+                num_versions=(
+                    group_counts.get(task_type, 0)
+                    if group_counts is not None
+                    else None
+                ),
             )
-            for task_type in sorted(present)
+            for task_type in values
         ]
 
     def _fetch_attribute_group_headers(
         self,
         group_option: GroupByOption,
+        group_counts: dict[str, int] | None,
     ) -> list[dict[str, Any]]:
-        """Return one expandable row per used custom attribute value."""
+        """Return attribute rows with filter-aware version counts."""
         attr_name = group_option.attribute_name
         if not attr_name:
             return []
 
-        values = self.get_used_attribute_values(attr_name)
+        values = sorted(group_counts or {}, key=str.casefold)
+        if self._hide_empty_groups and group_counts is not None:
+            values = [
+                value for value in values if group_counts.get(value, 0) > 0
+            ]
         return [
-            self._build_group_header_row(group_option, value)
-            for value in sorted(values, key=str.casefold)
+            self._build_group_header_row(
+                group_option,
+                value,
+                num_versions=(
+                    group_counts.get(value, 0)
+                    if group_counts is not None
+                    else None
+                ),
+            )
+            for value in values
         ]
 
     def _get_products_page(
@@ -1588,6 +1828,9 @@ class BrowserController(QtCore.QObject):
         folder_ids: list[str] | None = None,
         product_filter: str = "",
         version_filter: str = "",
+        task_filter: str = "",
+        folder_filter: str = "",
+        search: str | None = None,
         include_folder_children: bool = False,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of products via GraphQL.
@@ -1604,6 +1847,10 @@ class BrowserController(QtCore.QObject):
             folder_ids: When provided, filters by this explicit list of
                 folder IDs instead of the single *folder_id*.
             product_filter: JSON-encoded product filter string.
+            version_filter: JSON-encoded version filter string.
+            task_filter: JSON-encoded task filter string.
+            folder_filter: JSON-encoded folder filter string.
+            search: Full-text product search string.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -1627,6 +1874,9 @@ class BrowserController(QtCore.QObject):
             "projectName": project_name,
             "productFilter": product_filter or "",
             "versionFilter": version_filter or "",
+            "taskFilter": task_filter or "",
+            "folderFilter": folder_filter or "",
+            "search": search,
             "includeFolderChildren": include_folder_children,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
@@ -1649,7 +1899,7 @@ class BrowserController(QtCore.QObject):
     @staticmethod
     def _extract_product_group_data(
         edges: list[dict[str, Any]],
-    ) -> list[tuple[str, str, str, dict[str, Any], int]]:
+    ) -> list[tuple[str, str, str, dict[str, Any]]]:
         """Transform raw product edges into structured tuples.
 
         Args:
@@ -1658,16 +1908,15 @@ class BrowserController(QtCore.QObject):
 
         Returns:
             List of ``(product_id, product_name, product_type,
-            featured_version, num_versions)`` tuples.
+            featured_version)`` tuples.
         """
-        result: list[tuple[str, str, str, dict[str, Any], int]] = []
+        result: list[tuple[str, str, str, dict[str, Any]]] = []
         for edge in edges:
             node = edge.get("node", {})
-            product_id = node.get("id", "")
+            product_id = _normalize_entity_id(node.get("id", ""))
             product_name = node.get("name", "")
             product_type = node.get("productType", "")
             featured_version = node.get("featuredVersion", {})
-            num_versions = len(node.get("versions", []))
             if product_id and product_name:
                 result.append(
                     (
@@ -1675,12 +1924,14 @@ class BrowserController(QtCore.QObject):
                         product_name,
                         product_type,
                         featured_version,
-                        num_versions,
                     )
                 )
         return result
 
-    def _fetch_product_group_headers(self) -> list[dict[str, Any]]:
+    def _fetch_product_group_headers(
+        self,
+        group_counts: dict[str, int] | None,
+    ) -> list[dict[str, Any]]:
         """Return one expandable row per product in the current scope.
 
         Fetches products via :meth:`_get_products_page`, extracts
@@ -1705,7 +1956,18 @@ class BrowserController(QtCore.QObject):
                 sort_by="path",
                 folder_ids=folder_ids,
                 product_filter=query_filters["product_filter"],
-                version_filter=query_filters["version_filter"],
+                version_filter=(
+                    query_filters["version_filter"]
+                    if self._hide_empty_groups
+                    else ""
+                ),
+                task_filter=(
+                    query_filters["task_filter"]
+                    if self._hide_empty_groups
+                    else ""
+                ),
+                folder_filter=query_filters["folder_filter"],
+                search=query_filters["search"],
                 include_folder_children=self._include_folder_children,
             )
             all_edges.extend(edges)
@@ -1728,7 +1990,7 @@ class BrowserController(QtCore.QObject):
         # Keep first-seen product order while dropping duplicates.
         seen_product_ids: set[str] = set()
         unique_product_data: list[
-            tuple[str, str, str, dict[str, Any], int]
+            tuple[str, str, str, dict[str, Any]]
         ] = []
         for item in product_data:
             product_id = item[0]
@@ -1736,6 +1998,13 @@ class BrowserController(QtCore.QObject):
                 continue
             seen_product_ids.add(product_id)
             unique_product_data.append(item)
+
+        if self._hide_empty_groups and group_counts is not None:
+            unique_product_data = [
+                item
+                for item in unique_product_data
+                if group_counts.get(item[0], 0) > 0
+            ]
 
         return [
             self._build_group_header_row(
@@ -1746,127 +2015,14 @@ class BrowserController(QtCore.QObject):
                 color=self._pinfo("productTypes", p_type, "color"),
                 product_type=p_type,
                 featured_version=featured_v,
-                num_versions=n_vers,
+                num_versions=(
+                    group_counts.get(p_id, 0)
+                    if group_counts is not None
+                    else None
+                ),
             )
-            for p_id, p_name, p_type, featured_v, n_vers in unique_product_data
+            for p_id, p_name, p_type, featured_v in unique_product_data
         ]
-
-    def get_used_statuses(self) -> set[str]:
-        """Fetch statuses that have versions in the current project.
-
-        Note:
-            Returns results for the entire project, not the current scope.
-
-        Returns:
-            Set of status names.
-        """
-        return self._fetch_grouping_values(
-            f"projects/{self._current_project}/grouping/version/status"
-        )
-
-    def get_used_product_types(self) -> set[str]:
-        """Fetch product types that have versions in the current project.
-
-        Note:
-            Returns results for the entire project, not the current scope.
-
-        Returns:
-            Set of product type names.
-        """
-        return self._fetch_grouping_values(
-            f"projects/{self._current_project}/grouping/version/productType"
-        )
-
-    def get_used_tags(self) -> set[str]:
-        """Fetch tags that have versions in the entire project.
-
-        Note:
-            Returns results for the entire project, not the current scope.
-
-        Returns:
-            Set of tag names.
-        """
-        return self._fetch_grouping_values(
-            f"projects/{self._current_project}/grouping/version/tags"
-        )
-
-    def get_used_task_types(self) -> set[str]:
-        """Fetch task types that have versions in the entire project.
-
-        Note:
-            Returns results for the entire project, not the current scope.
-
-        Returns:
-            Set of task type names.
-        """
-        return self._fetch_grouping_values(
-            f"projects/{self._current_project}/grouping/task/taskType"
-        )
-
-    def get_used_attribute_values(self, attribute_name: str) -> set[str]:
-        """Fetch distinct values for a version attribute in scope.
-
-        Args:
-            attribute_name: Name of the version attribute.
-
-        Returns:
-            Set of distinct string values.
-        """
-        pld = ayon_api.get(
-            f"projects/{self._current_project}"
-            f"/grouping/version/attrib.{attribute_name}",
-            empty=True,
-        )
-        data = pld.data or {}
-        return {
-            str(group.get("value"))
-            for group in data.get("groups", [])
-            if group.get("count", 0) > 0 and group.get("value") is not None
-        }
-
-    def _fetch_grouping_values(self, endpoint: str) -> set[str]:
-        """Fetch distinct non-empty values from an AYON grouping endpoint.
-
-        Args:
-            endpoint: REST endpoint path relative to the server root.
-
-        Returns:
-            Set of non-null values whose count is greater than zero.
-        """
-        pld = ayon_api.get(endpoint, empty=True)
-        data = pld.data or {}
-        return {
-            s.get("value")
-            for s in data.get("groups", [])
-            if s.get("count", 0) > 0 and s.get("value") is not None
-        }
-
-    def _get_distinct_field_values(self, field: str) -> set[str]:
-        """Fetch distinct values for a version grouping field.
-
-        Args:
-            field: One of ``"status"``, ``"productType"``, ``"tags"``,
-                or ``"taskType"``.
-
-        Returns:
-            Set of distinct values for that field.
-
-        Raises:
-            ValueError: When *field* is not a known grouping field.
-        """
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            if not self._review_session_version_ids:
-                return set()
-
-        dispatch: dict[str, Any] = {
-            "status": self.get_used_statuses,
-            "productType": self.get_used_product_types,
-            "tags": self.get_used_tags,
-            "taskType": self.get_used_task_types,
-        }
-        if field not in dispatch:
-            raise ValueError(f"Unknown field: {field}")
-        return dispatch[field]()
 
     @staticmethod
     def _parse_group_id(group_id: str) -> tuple[str, str]:
@@ -1971,8 +2127,8 @@ class BrowserController(QtCore.QObject):
                     "conditions": [
                         {
                             "key": f"attrib.{attribute_name}",
-                            "value": [typed_value],
-                            "operator": "in",
+                            "value": typed_value,
+                            "operator": "eq",
                         },
                     ]
                 }

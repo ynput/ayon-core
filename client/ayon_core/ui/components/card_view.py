@@ -65,7 +65,7 @@ class _GroupLayout:
 
     node_id: str
     label: str
-    child_count: int
+    child_count: int | None
     header_rect: QRect
     collapsed: bool
     label_color: QBrush | None = None
@@ -290,6 +290,20 @@ class AYCardView(QAbstractItemView):
         if isinstance(model, QSortFilterProxyModel):
             return model.sourceModel()
         return model
+
+    def _fetch_more(self, index: QModelIndex) -> None:
+        """Fetch through the source model after card expansion approval."""
+        model = self.model()
+        if isinstance(model, QSortFilterProxyModel):
+            source = model.sourceModel()
+            if isinstance(source, PaginatedTableModel):
+                source.fetch_more(model.mapToSource(index))
+                return
+        if isinstance(model, PaginatedTableModel):
+            model.fetch_more(index)
+            return
+        if model is not None:
+            model.fetchMore(index)
 
     def setModel(self, model: QtCore.QAbstractItemModel | None) -> None:
         for obj, conn in self._model_connections:
@@ -551,7 +565,11 @@ class AYCardView(QAbstractItemView):
             )
             label_color = meta_idx.data(Qt.ItemDataRole.ForegroundRole)
             label_icon = meta_idx.data(Qt.ItemDataRole.DecorationRole)
-            child_count = model.rowCount(group_idx)
+            row_data = group_idx.data(Qt.ItemDataRole.UserRole) or {}
+            child_count = row_data.get(
+                "child_count",
+                model.rowCount(group_idx),
+            )
 
             header_rect = QRect(0, y, vp_width, gh)
             y += gh + spacing
@@ -923,7 +941,11 @@ class AYCardView(QAbstractItemView):
             painter.setPen(label_color or header_fg)
 
             label = group.label
-            count_str = f"  ({group.child_count})"
+            count_str = (
+                f"  ({group.child_count})"
+                if group.child_count is not None
+                else ""
+            )
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -1077,7 +1099,7 @@ class AYCardView(QAbstractItemView):
             self._active_editor_pmis.discard(QPersistentModelIndex(idx))
         self._schedule_editor_sync()
 
-    def _maybe_fetch_more(self) -> None:
+    def fetch_more_if_needed(self) -> None:
         """Trigger model pagination when the viewport nears content bottom.
 
         Must be called **after** ``_calculate_layout()`` has already run so
@@ -1106,7 +1128,7 @@ class AYCardView(QAbstractItemView):
         root_pmi = QPersistentModelIndex(root)
         if near_bottom and root_pmi not in fetched:
             if model.canFetchMore(root):
-                model.fetchMore(root)
+                self._fetch_more(root)
             fetched.add(root_pmi)
 
         # --- tree-mode: per-group child fetch ---
@@ -1131,7 +1153,7 @@ class AYCardView(QAbstractItemView):
                 continue
             group_idx = QModelIndex(pmi)  # type: ignore
             if model.canFetchMore(group_idx):
-                model.fetchMore(group_idx)
+                self._fetch_more(group_idx)
             fetched.add(pmi)
 
     def _sync_viewport_editors(self) -> None:
@@ -1167,7 +1189,7 @@ class AYCardView(QAbstractItemView):
                 if isinstance(editor, AYEntityCard):
                     editor.is_active = sel_model.isSelected(idx)
 
-        self._maybe_fetch_more()
+        self.fetch_more_if_needed()
 
     @property
     def card_width(self) -> int:

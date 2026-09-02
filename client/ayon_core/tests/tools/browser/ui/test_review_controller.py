@@ -1,8 +1,15 @@
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
 from ayon_core.tools.browser.sitesync_columns import ACTIVE_FILTER_KEY
+from ayon_core.tools.browser.ui.browser_group_by import (
+    GROUP_BY_PRODUCT_KEY,
+    GROUP_BY_STATUS_KEY,
+    GROUP_BY_TAGS_KEY,
+    build_attribute_groups,
+)
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 from ayon_core.ui.components.table_filter import FilterCriterion
 from ayon_core.ui.components.table_model import BatchFetchRequest
@@ -136,7 +143,11 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
         controller, "_get_products_page", fake_get_products_page
     )
 
-    rows = controller._fetch_product_group_headers()
+    rows = controller._fetch_product_group_headers({
+        "prod_1": 2,
+        "prod_2": 3,
+        "prod_3": 1,
+    })
 
     assert calls == [None, "cursor_1"]
     assert [row["id"] for row in rows] == [
@@ -149,6 +160,7 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
         "Product 2",
         "Product 3",
     ]
+    assert [row["child_count"] for row in rows] == [2, 3, 1]
 
 
 def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
@@ -276,3 +288,229 @@ def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
     assert result["B"] == []
     assert controller._folder_cursors["A"] == "cursor:A:next"
     assert controller._folder_has_more["A"] is False
+
+
+def test_group_counts_use_filtered_distribution(monkeypatch):
+    controller = BrowserController(LoaderController())
+    controller._current_project = "test_project"
+    controller._selected_folder_ids = ["folder_A"]
+    connection = Mock()
+    connection.query_graphql.return_value = SimpleNamespace(
+        errors=None,
+        data={
+            "data": {
+                "project": {
+                    "versions": {
+                        "fieldStats": [{
+                            "columnName": "tags",
+                            "valueFilledCount": 3,
+                            "valueNotFilledCount": 0,
+                            "distribution": [
+                                {
+                                    "value": ["Animation", "Review"],
+                                    "count": 2,
+                                },
+                                {
+                                    "value": ["Animation"],
+                                    "count": 1,
+                                },
+                            ],
+                        }]
+                    }
+                }
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.ui.browser_controller."
+        "ayon_api.get_server_api_connection",
+        lambda: connection,
+    )
+
+    counts = controller._get_group_counts(
+        controller._group_by_options[GROUP_BY_TAGS_KEY]
+    )
+
+    assert counts == {"Animation": 3, "Review": 2}
+    variables = connection.query_graphql.call_args.args[1]
+    assert variables["folderIds"] == ["folder_A"]
+    assert variables["targets"] == [{
+        "field": "tags",
+        "aggregations": ["DISTRIBUTION", "FILLED", "NOT_FILLED"],
+    }]
+
+
+def test_product_group_counts_normalize_uuid_values(monkeypatch):
+    controller = BrowserController(LoaderController())
+    controller._current_project = "test_project"
+    controller._selected_folder_ids = ["folder_A"]
+    connection = Mock()
+    connection.query_graphql.return_value = SimpleNamespace(
+        errors=None,
+        data={
+            "data": {
+                "project": {
+                    "versions": {
+                        "fieldStats": [{
+                            "columnName": "product_id",
+                            "valueFilledCount": 1,
+                            "valueNotFilledCount": 0,
+                            "distribution": [{
+                                "value": (
+                                    "6c035657-168d-11f1-aa74-60cf848a5b16"
+                                ),
+                                "count": 1,
+                            }],
+                        }]
+                    }
+                }
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.ui.browser_controller."
+        "ayon_api.get_server_api_connection",
+        lambda: connection,
+    )
+
+    counts = controller._get_group_counts(
+        controller._group_by_options[GROUP_BY_PRODUCT_KEY]
+    )
+
+    assert counts == {
+        "6c035657168d11f1aa7460cf848a5b16": 1,
+    }
+
+
+def test_group_counts_control_empty_status_rows(monkeypatch):
+    controller = BrowserController(LoaderController())
+    controller._current_project = "test_project"
+    controller._selected_folder_ids = ["folder_A"]
+    controller._group_by_key = GROUP_BY_STATUS_KEY
+    controller._project_info = {
+        "by_name": {
+            "statuses": {
+                "Done": {"icon": "check", "color": "#00ff00"},
+                "Blocked": {"icon": "block", "color": "#ff0000"},
+            }
+        }
+    }
+    monkeypatch.setattr(
+        controller,
+        "_get_group_counts",
+        lambda _group: {"Done": 4},
+    )
+    monkeypatch.setattr(
+        controller,
+        "_get_group_inventory_counts",
+        lambda _group: {"Done": 10, "Blocked": 5},
+    )
+
+    controller._hide_empty_groups = True
+    rows = controller._fetch_group_headers()
+
+    assert [row["product/version"] for row in rows] == ["Done"]
+    assert rows[0]["child_count"] == 4
+    assert rows[0]["has_children"] is True
+
+    controller._hide_empty_groups = False
+    rows = controller._fetch_group_headers()
+    rows_by_name = {row["product/version"]: row for row in rows}
+
+    assert set(rows_by_name) == {"Done", "Blocked"}
+    assert rows_by_name["Blocked"]["child_count"] == 0
+    assert rows_by_name["Blocked"]["has_children"] is False
+
+
+def test_missing_filtered_counts_keep_product_groups_expandable(monkeypatch):
+    controller = BrowserController(LoaderController())
+    controller._current_project = "test_project"
+    controller._selected_folder_ids = ["folder_A"]
+    controller._group_by_key = GROUP_BY_PRODUCT_KEY
+    monkeypatch.setattr(
+        controller,
+        "_get_group_counts",
+        lambda _group: None,
+    )
+    monkeypatch.setattr(
+        controller,
+        "_get_group_inventory_counts",
+        lambda _group: {},
+    )
+    monkeypatch.setattr(
+        controller,
+        "_fetch_product_group_headers",
+        lambda counts: [{
+            "counts": counts,
+            "has_children": counts is None,
+        }],
+    )
+
+    rows = controller._fetch_group_headers()
+
+    assert rows == [{"counts": None, "has_children": True}]
+
+
+def test_missing_filtered_counts_fall_back_to_group_inventory(monkeypatch):
+    controller = BrowserController(LoaderController())
+    controller._current_project = "test_project"
+    controller._group_by_key = GROUP_BY_STATUS_KEY
+    controller._hide_empty_groups = True
+    controller._project_info = {
+        "by_name": {
+            "statuses": {
+                "Done": {"icon": "check", "color": "#00ff00"},
+                "Blocked": {"icon": "block", "color": "#ff0000"},
+            }
+        }
+    }
+    monkeypatch.setattr(
+        controller,
+        "_get_group_counts",
+        lambda _group: None,
+    )
+    monkeypatch.setattr(
+        controller,
+        "_get_group_inventory_counts",
+        lambda _group: {"Done": 3, "Blocked": 0},
+    )
+
+    rows = controller._fetch_group_headers()
+
+    assert [row["product/version"] for row in rows] == ["Done"]
+    assert rows[0]["child_count"] == 3
+    assert rows[0]["has_children"] is True
+
+
+def test_attribute_grouping_only_exposes_scalar_types():
+    options = build_attribute_groups({
+        "approved": {"type": "boolean"},
+        "priority": {"type": "integer"},
+        "department": {"type": "string"},
+        "reviewers": {"type": "list_of_strings"},
+        "metadata": {"type": "dict"},
+    })
+
+    assert [option.attribute_name for option in options] == [
+        "approved",
+        "priority",
+        "department",
+    ]
+
+
+def test_boolean_attribute_group_uses_scalar_equality():
+    controller = BrowserController(LoaderController())
+    controller._version_attributes = {
+        "approved": {"type": "boolean"}
+    }
+
+    version_filter, product_filter = controller._build_version_filter(
+        "attr:approved",
+        "true",
+    )
+
+    assert product_filter == ""
+    assert version_filter == (
+        '{"conditions": [{"key": "attrib.approved", '
+        '"value": true, "operator": "eq"}]}'
+    )

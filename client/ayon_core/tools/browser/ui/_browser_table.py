@@ -1624,8 +1624,9 @@ class BrowserTable(AYContainer):
                 parent: Viewport widget passed by the delegate.
 
             Returns:
-                A :class:`PlaceholderThumbnail` with a 1 px inset around
-                the ``(64, 30)`` thumbnail.
+                A :class:`PlaceholderThumbnail` with a 1 px vertical inset
+                whose image is fitted independently within the full cell
+                width.
             """
             row_dict = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             thumbnail_id = row_dict.get("thumbnailId", "")
