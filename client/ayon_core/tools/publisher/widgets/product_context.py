@@ -755,7 +755,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             variant_value = self.variant_input.get_value()[0]
 
         if self.folder_value_widget.has_value_changed():
-            folder_path = self.folder_value_widget.get_selected_items()[0]
+            folder_path = tuple(
+                self.folder_value_widget.get_selected_items()
+            )[0]
 
         if self.task_value_widget.has_value_changed():
             task_name = self.task_value_widget.get_selected_items()[0]
