@@ -124,10 +124,12 @@ class AYScrollBar(StyleMixin, QScrollBar):
             )
             delta = current - self._drag_origin
             value_range = self.maximum() - self.minimum()
-            value = self._drag_value + round(
-                delta * value_range / self._drag_range
-            )
-            self.setValue(value)
+            value_delta = round(delta * value_range / self._drag_range)
+            option = QStyleOptionSlider()
+            self.initStyleOption(option)
+            if option.upsideDown:
+                value_delta = -value_delta
+            self.setValue(self._drag_value + value_delta)
             event.accept()
             return
         super().mouseMoveEvent(event)

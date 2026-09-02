@@ -472,6 +472,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
                     pressed_index.isValid()
                     and index.isValid()
                     and pressed_index == index
+                    and bool(index.flags() & QtCore.Qt.ItemFlag.ItemIsEnabled)
                 ):
                     self._pending_popup_activation = index.row()
                     self._popup_activation_timer.start(0)

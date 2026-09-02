@@ -349,7 +349,12 @@ class SiteSyncModel:
 
         for repre_id in representation_ids:
             repre_entity = repre_entities_by_id.get(repre_id)
-            product_type = product_type_by_repre_id[repre_id]
+            if repre_entity is None:
+                log.warning(
+                    "Representation %s no longer exists; skipping", repre_id
+                )
+                continue
+            product_type = product_type_by_repre_id.get(repre_id)
             if action_identifier == DOWNLOAD_IDENTIFIER:
                 self._add_site(
                     project_name, repre_entity, active_site, product_type

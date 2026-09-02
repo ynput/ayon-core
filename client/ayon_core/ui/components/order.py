@@ -226,7 +226,10 @@ class AYOrder(AYContainer):
             option._text: option
             for option in self._options
         }
-        if set(order) != set(options_by_text):
+        if (
+            len(order) != len(options_by_text)
+            or set(order) != set(options_by_text)
+        ):
             raise ValueError("Order must contain all existing options")
 
         self._stop_animations()
