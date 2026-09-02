@@ -200,8 +200,9 @@ def interactive():
 def browser():
     """Show Browser tool."""
     from ayon_core.tools.utils import get_ayon_qt_app
+    from ayon_core.tools.utils.host_tools import use_legacy_loader
 
-    if os.getenv("AYON_USE_LEGACY_LOADER") == "1":
+    if use_legacy_loader():
         from ayon_core.tools.loader.ui import LoaderWindow
 
         window_class = LoaderWindow

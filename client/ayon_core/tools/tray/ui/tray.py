@@ -594,7 +594,9 @@ class TrayManager:
 
     def _show_browser_window(self):
         if self._browser_window is None:
-            if os.getenv("AYON_USE_LEGACY_LOADER") == "1":
+            from ayon_core.tools.utils.host_tools import use_legacy_loader
+
+            if use_legacy_loader():
                 from ayon_core.tools.loader.ui import LoaderWindow
 
                 window_class = LoaderWindow

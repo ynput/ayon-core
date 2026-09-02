@@ -88,11 +88,7 @@ class HostToolsHelper:
     def get_loader_tool(self, parent, *, use_context: bool = False):
         """Create, cache and return loader tool window."""
         if self._loader_tool is None:
-            use_legacy = env_value_to_bool(
-                "AYON_USE_LEGACY_LOADER",
-                default=False,
-            )
-            if use_legacy:
+            if use_legacy_loader():
                 from ayon_core.tools.loader.ui import LoaderWindow
                 from ayon_core.tools.loader import LoaderController
             else:
@@ -565,3 +561,31 @@ def get_pyblish_icon():
     if os.path.exists(icon_path):
         return icon_path
     return None
+
+
+def use_legacy_loader() -> bool:
+    """Check if legacy loader should be used.
+
+    Returns:
+        bool: True if legacy loader should be used, False otherwise.
+    """
+    use_legacy = env_value_to_bool(
+        "AYON_USE_LEGACY_LOADER",
+        default=None,
+    )
+    if use_legacy is None:
+        from ayon_core.pipeline import get_current_project_name
+        from ayon_core.settings import (
+            get_project_settings,
+            get_studio_settings,
+        )
+
+        project_name = get_current_project_name()
+        if project_name:
+            settings = get_project_settings(project_name)
+        else:
+            settings = get_studio_settings()
+        use_legacy = settings["core"]["tools"]["loader"][
+            "use_legacy_loader"
+        ]
+    return use_legacy

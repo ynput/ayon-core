@@ -312,6 +312,11 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
 
 
 class LoaderToolModel(BaseSettingsModel):
+    use_legacy_loader: bool = SettingsField(
+        False,
+        title="Use legacy loader",
+        description="Use legacy loader UI.",
+    )
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
     )
@@ -672,6 +677,7 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
+        "use_legacy_loader": False,
         "product_type_filter_profiles": []
     },
     "publish": {
