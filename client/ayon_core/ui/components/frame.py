@@ -18,6 +18,7 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
         variant: Variants = Variants.Default,
         margin=0,
         bg_tint="",
+        hover_enabled=False,
         **kwargs,
     ):
         # Convert enum to string if needed
@@ -25,6 +26,7 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
         self._variant_str = variant.value
         self._bg_tint = bg_tint
         self._bg_color = None
+        self._hover_enabled = hover_enabled
 
         super().__init__(*args, **kwargs)
         self.setStyle(get_ayon_style())
@@ -32,6 +34,9 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
         self.setAttribute(
             QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True
         )
+        if hover_enabled:
+            self.setAttribute(QtCore.Qt.WidgetAttribute.WA_Hover, True)
+            self.setMouseTracking(True)
         self.setContentsMargins(margin, margin, margin, margin)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:

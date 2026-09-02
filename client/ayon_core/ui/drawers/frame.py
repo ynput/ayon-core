@@ -52,6 +52,14 @@ class FrameDrawer:
                 state = "selected"
             elif row_state & QStyle.StateFlag.State_MouseOver:
                 state = "hover"
+        elif (
+            getattr(w, "_hover_enabled", False)
+            and (
+                option.state & QStyle.StateFlag.State_MouseOver
+                or w.underMouse()
+            )
+        ):
+            state = "hover"
         style = self.model.get_style("QFrame", variant, state)
         style.set_context(w)
 

@@ -419,6 +419,7 @@ class AYFilter(AYFrame):
             variant=AYContainer.Variants.Low_Framed_Thin,
             layout_margin=4,
             layout_spacing=4,
+            hover_enabled=True,
         )
         main_layout.addWidget(self._top_bar)
 

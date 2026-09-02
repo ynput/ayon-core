@@ -1134,6 +1134,7 @@ class _CriterionBadge(AYContainer):
             variant=AYContainer.Variants.Criterion,
             layout_margin=2,
             layout_spacing=4,
+            hover_enabled=True,
         )
         self._criterion = criterion
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1217,6 +1218,7 @@ class AYTableFilter(AYContainer):
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Low_Framed_Thin,
             layout_margin=4,
+            hover_enabled=True,
         )
         self.setObjectName("AYTableFilter")
         self.setFixedHeight(32)

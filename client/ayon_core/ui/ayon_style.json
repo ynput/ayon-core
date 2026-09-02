@@ -247,7 +247,7 @@
                         2
                     ],
                     "hover": {
-                        "background-color": "transparent"
+                        "background-color": "--md-sys-color-background-dark"
                     },
                     "pressed": {
                         "background-color": "--md-ref-palette-neutral20"
@@ -398,6 +398,9 @@
             }
         },
         "QComboBox": {
+            "states": [
+                "hover"
+            ],
             "default-variant": "default",
             "variants": {
                 "default": {
@@ -418,7 +421,10 @@
                     "menu-selected-color": "--md-sys-color-on-primary-container-dark"
                 },
                 "low": {
-                    "background-color": "--md-sys-color-surface-container-low-dark"
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "hover": {
+                        "background-color": "--md-sys-color-background-dark"
+                    }
                 }
             }
         },
@@ -474,7 +480,10 @@
                 "low-framed-thin": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
                     "border-width": 1,
-                    "border-color": "--md-sys-color-outline-variant-dark"
+                    "border-color": "--md-sys-color-outline-variant-dark",
+                    "hover": {
+                        "background-color": "--md-sys-color-background-dark"
+                    }
                 },
                 "low-table-editor": {
                     "background-color": "--color-table-row",
@@ -502,7 +511,10 @@
                     "border-width": 0
                 },
                 "criterion": {
-                    "background-color": "--md-ref-palette-neutral-variant25"
+                    "background-color": "--md-ref-palette-neutral-variant25",
+                    "hover": {
+                        "background-color": "--md-ref-palette-neutral-variant30"
+                    }
                 },
                 "entity-card": {
                     "background-color": "--md-sys-color-surface-container-high-dark",
