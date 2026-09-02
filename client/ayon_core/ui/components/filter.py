@@ -504,11 +504,12 @@ class AYFilter(AYFrame):
             return
 
         tag = self._tags.pop(key)
-        tag.hide()
+        tag.setVisible(False)
         tags_layout = self._tags_container.layout()
         if tags_layout is not None:
             tags_layout.removeWidget(tag)
-        tag.deleteLater()
+        else:
+            tag.deleteLater()
 
     def _emit_filter_changed(self) -> None:
         """Emit filter_changed signal with current selection."""

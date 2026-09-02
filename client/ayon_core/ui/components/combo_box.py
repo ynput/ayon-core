@@ -454,11 +454,10 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         viewport = self.view().viewport()
         if watched is viewport:
             event_type = event.type()
-            press_types = {
+            if event_type in (
                 QtCore.QEvent.Type.MouseButtonPress,
                 QtCore.QEvent.Type.MouseButtonDblClick,
-            }
-            if event_type in press_types:
+            ):
                 index = self.view().indexAt(event.pos())
                 self._popup_pressed_index = QtCore.QPersistentModelIndex(
                     index

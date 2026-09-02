@@ -52,7 +52,10 @@ class AYOptionBox(AYButton):
 
     def is_hovered(self, global_pos: QtCore.QPoint) -> bool:
         """Return whether a global cursor position is inside the button."""
-        return self.rect().contains(self.mapFromGlobal(global_pos))
+        pos = self.mapFromGlobal(global_pos)
+        if isinstance(pos, QtCore.QPointF):
+            pos = pos.toPoint()
+        return self.rect().contains(pos)
 
 
 class AYOptionalActionWidget(QtWidgets.QWidget):
