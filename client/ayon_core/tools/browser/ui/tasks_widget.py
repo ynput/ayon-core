@@ -71,6 +71,7 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         self._view.setSelectionBehavior(
             QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
         )
+        self._view.setShowGrid(False)
         self._view.setRootIsDecorated(False)
         self._view.setItemsExpandable(False)
         self._view.setIndentation(0)
