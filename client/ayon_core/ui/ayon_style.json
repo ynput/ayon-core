@@ -766,7 +766,7 @@
             "variants": {
                 "default": {
                     "background-color": "--color-table-row",
-                    "background-color-item": "--color-table-row-item",
+                    "background-color-item": "--color-table-row",
                     "color": "--color-table-text",
                     "border-radius": 0,
                     "border-width": 1,
@@ -1081,7 +1081,6 @@
         "--color-table-row": "#1d2026",
         "--color-table-row-hover": "#22252b",
         "--color-table-row-selected": "#394956",
-        "--color-table-row-item": "#1a1c21",
         "--color-table-text": "#dedede",
         "qt-active-window": "--md-sys-color-background-dark",
         "qt-active-window-text": "--md-sys-color-on-surface-dark",
