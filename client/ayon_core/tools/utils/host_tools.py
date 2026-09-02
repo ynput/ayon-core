@@ -585,7 +585,7 @@ def use_legacy_loader() -> bool:
             settings = get_project_settings(project_name)
         else:
             settings = get_studio_settings()
-        use_legacy = settings["core"]["tools"]["loader"][
-            "use_legacy_loader"
-        ]
+        use_legacy = settings["core"]["tools"]["loader"].get(
+            "use_legacy_loader", False
+        )
     return use_legacy
