@@ -53,6 +53,15 @@ class DeleteOldVersions(LoaderActionPlugin):
 
         return [
             LoaderActionItem(
+                label="Delete Selected Versions",
+                order=36,
+                data={
+                    "version_ids": [version["id"] for version in versions],
+                    "action": "delete-selected-version",
+                },
+                icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
+            ),
+            LoaderActionItem(
                 label="Delete Versions",
                 order=35,
                 data={
@@ -83,6 +92,10 @@ class DeleteOldVersions(LoaderActionPlugin):
         versions_to_keep = form_values.get("versions_to_keep")
         remove_publish_folder = form_values.get("remove_publish_folder")
         if step is None:
+            if action == "delete-selected-version":
+                return self._first_selected_versions_step(
+                    remove_publish_folder,
+                )
             return self._first_step(
                 action,
                 versions_to_keep,
@@ -94,8 +107,14 @@ class DeleteOldVersions(LoaderActionPlugin):
         if remove_publish_folder is None:
             remove_publish_folder = False
 
-        product_ids = data["product_ids"]
+        if step == "prepare-selected-data":
+            return self._prepare_selected_data_step(
+                remove_publish_folder,
+                selection,
+            )
+
         if step == "prepare-data":
+            product_ids = data["product_ids"]
             return self._prepare_data_step(
                 action,
                 versions_to_keep,
@@ -104,11 +123,36 @@ class DeleteOldVersions(LoaderActionPlugin):
                 selection,
             )
 
-        if step == "delete-versions":
+        if step in {"delete-versions", "delete-selected-versions"}:
             return self._delete_versions_step(
-                selection.project_name, form_values
+                selection.project_name, form_values, selection
             )
         return None
+
+    def _first_selected_versions_step(
+        self,
+        remove_publish_folder: Optional[bool],
+    ) -> LoaderActionResult:
+        if remove_publish_folder is None:
+            remove_publish_folder = False
+
+        return LoaderActionResult(
+            form=ActionForm(
+                title="Delete Selected Versions",
+                fields=[
+                    TextDef("step", visible=False),
+                    BoolDef(
+                        "remove_publish_folder",
+                        label="Remove publish folder",
+                        default=False,
+                    ),
+                ],
+            ),
+            form_values={
+                "step": "prepare-selected-data",
+                "remove_publish_folder": remove_publish_folder,
+            },
+        )
 
     def _first_step(
         self,
@@ -199,32 +243,9 @@ class DeleteOldVersions(LoaderActionPlugin):
                 success=False,
             )
 
-        project = selection.entities.get_project()
-        anatomy = Anatomy(project["name"], project_entity=project)
-
-        repres = selection.entities.get_versions_representations(version_ids)
-
-        self.log.debug(
-            f"Collected representations to remove ({len(repres)})"
+        size, _, _ = self._get_representations_data(
+            selection, version_ids
         )
-
-        filepaths_by_repre_id = {}
-        repre_ids_by_version_id = {
-            version_id: []
-            for version_id in version_ids
-        }
-        for repre in repres:
-            repre_ids_by_version_id[repre["versionId"]].append(repre["id"])
-            filepaths_by_repre_id[repre["id"]] = [
-                anatomy.fill_root(repre_file["path"])
-                for repre_file in repre["files"]
-            ]
-
-        size = 0
-        for filepaths in filepaths_by_repre_id.values():
-            for filepath in filepaths:
-                if os.path.exists(filepath):
-                    size += os.path.getsize(filepath)
 
         if action == "calculate-versions-size":
             return LoaderActionResult(
@@ -246,27 +267,94 @@ class DeleteOldVersions(LoaderActionPlugin):
             size,
             remove_publish_folder,
             list(version_ids),
-            repre_ids_by_version_id,
-            filepaths_by_repre_id,
         )
         return LoaderActionResult(
             form=form,
             form_values=form_values
         )
 
-    def _delete_versions_step(
-        self, project_name: str, form_values: dict[str, Any]
+    def _prepare_selected_data_step(
+        self,
+        remove_publish_folder: bool,
+        selection: LoaderActionSelection,
     ) -> LoaderActionResult:
-        delete_data = json.loads(form_values["delete_data"])
+        version_ids = selection.selected_ids
+        if not version_ids:
+            return LoaderActionResult(
+                message="No versions selected.",
+                success=False,
+            )
+
+        selected_versions = selection.get_selected_version_entities()
+        hero_versions = [
+            version for version in selected_versions
+            if version["version"] < 0
+        ]
+        if hero_versions:
+            return LoaderActionResult(
+                message="Hero versions cannot be deleted.",
+                success=False,
+            )
+
+        size, _, _ = self._get_representations_data(
+            selection, version_ids
+        )
+        form, form_values = self._get_delete_form(
+            size,
+            remove_publish_folder,
+            list(version_ids),
+            title="Delete Selected Versions",
+            step="delete-selected-versions",
+        )
+        return LoaderActionResult(form=form, form_values=form_values)
+
+    def _get_representations_data(
+        self,
+        selection: LoaderActionSelection,
+        version_ids: set[str],
+    ) -> tuple[int, dict[str, list[str]], dict[str, list[str]]]:
+        project = selection.entities.get_project()
+        anatomy = Anatomy(project["name"], project_entity=project)
+        repres = selection.entities.get_versions_representations(version_ids)
+
+        self.log.debug(
+            f"Collected representations to remove ({len(repres)})"
+        )
+        filepaths_by_repre_id = {}
+        repre_ids_by_version_id = {
+            version_id: [] for version_id in version_ids
+        }
+        for repre in repres:
+            repre_ids_by_version_id[repre["versionId"]].append(repre["id"])
+            filepaths_by_repre_id[repre["id"]] = [
+                anatomy.fill_root(repre_file["path"])
+                for repre_file in repre["files"]
+            ]
+
+        size = sum(
+            os.path.getsize(filepath)
+            for filepaths in filepaths_by_repre_id.values()
+            for filepath in filepaths
+            if os.path.exists(filepath)
+        )
+        return size, repre_ids_by_version_id, filepaths_by_repre_id
+
+    def _delete_versions_step(
+        self,
+        project_name: str,
+        form_values: dict[str, Any],
+        selection: LoaderActionSelection,
+    ) -> LoaderActionResult:
+        version_ids = json.loads(form_values["version_ids"])
         remove_publish_folder = form_values["remove_publish_folder"]
         if form_values["delete_value"].lower() != "delete":
-            size = delete_data["size"]
+            size, _, _ = self._get_representations_data(
+                selection, set(version_ids)
+            )
             form, form_values = self._get_delete_form(
                 size,
                 remove_publish_folder,
-                delete_data["version_ids"],
-                delete_data["repre_ids_by_version_id"],
-                delete_data["filepaths_by_repre_id"],
+                version_ids,
                 True,
             )
             return LoaderActionResult(
@@ -274,9 +362,9 @@ class DeleteOldVersions(LoaderActionPlugin):
                 form_values=form_values,
             )
 
-        version_ids = delete_data["version_ids"]
-        repre_ids_by_version_id = delete_data["repre_ids_by_version_id"]
-        filepaths_by_repre_id = delete_data["filepaths_by_repre_id"]
+        _, repre_ids_by_version_id, filepaths_by_repre_id = (
+            self._get_representations_data(selection, set(version_ids))
+        )
         op_session = OperationsSession()
         total_versions = len(version_ids)
         try:
@@ -325,11 +413,11 @@ class DeleteOldVersions(LoaderActionPlugin):
         size: int,
         remove_publish_folder: bool,
         version_ids: list[str],
-        repre_ids_by_version_id: dict[str, list[str]],
-        filepaths_by_repre_id: dict[str, list[str]],
         repeated: bool = False,
+        title: str = "Delete versions",
+        step: str = "delete-versions",
     ) -> tuple[ActionForm, dict[str, Any]]:
-        versions_len = len(repre_ids_by_version_id)
+        versions_len = len(version_ids)
         fields = [
             UILabelDef(
                 f"Going to delete {versions_len} versions<br/>"
@@ -347,7 +435,7 @@ class DeleteOldVersions(LoaderActionPlugin):
             ))
         fields.extend([
             TextDef(
-                "delete_data",
+                "version_ids",
                 visible=False,
             ),
             TextDef(
@@ -363,19 +451,14 @@ class DeleteOldVersions(LoaderActionPlugin):
         ])
 
         form = ActionForm(
-            title="Delete versions",
+            title=title,
             submit_label="Delete",
             cancel_label="Close",
             fields=fields,
         )
         form_values = {
-            "delete_data": json.dumps({
-                "size": size,
-                "version_ids": version_ids,
-                "repre_ids_by_version_id": repre_ids_by_version_id,
-                "filepaths_by_repre_id": filepaths_by_repre_id,
-            }),
-            "step": "delete-versions",
+            "version_ids": json.dumps(version_ids),
+            "step": step,
             "remove_publish_folder": remove_publish_folder,
         }
         return form, form_values
