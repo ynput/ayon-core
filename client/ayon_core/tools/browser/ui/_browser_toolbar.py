@@ -847,7 +847,7 @@ class GroupByMenu(AYFilter):
         )
         lyt = AYVBoxLayout(self._dropdown, margin=2, spacing=0)
         self._filterable_list = FilterableList(
-            placeholder="",
+            placeholder="Search",
             parent=self._dropdown,
         )
         lyt.addWidget(self._filterable_list, stretch=10)
