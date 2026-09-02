@@ -195,10 +195,8 @@ def clear_layout(layout):
         if widget:
             # Recursively clear any layouts this widget might have
             # (in case it's a container widget with its own layouts)
-            if hasattr(widget, "layout") and widget.layout():
-                clear_layout(widget.layout())
+            widget.setVisible(False)
             # Delete the widget
-            widget.setParent(None)
             widget.deleteLater()
         elif sub_layout:
             # Recursively clear the sub-layout
