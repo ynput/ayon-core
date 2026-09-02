@@ -48,10 +48,16 @@ class TasksModel(QtGui.QStandardItemModel):
         self._items_by_name: dict[str, QtGui.QStandardItem] = {}
         self._folder_paths: set[str] = set()
         self._task_names_by_folder_path: dict[str, set[str]] = {}
+        self._promised_task_lists: list[list[str]] = []
 
-    def set_folder_paths(self, folder_paths: set[str]) -> None:
-        """Set folders context."""
+    def set_folder_paths(
+        self,
+        folder_paths: set[str],
+        promised_task_lists: list[list[str]] | None = None,
+    ) -> None:
+        """Set folder paths and optional promised tasks."""
         self._folder_paths = folder_paths
+        self._promised_task_lists = promised_task_lists or []
         self.reset()
 
     @staticmethod
@@ -116,7 +122,7 @@ class TasksModel(QtGui.QStandardItemModel):
 
     def reset(self) -> None:
         """Update model by current context."""
-        if not self._folder_paths:
+        if not self._folder_paths and not self._promised_task_lists:
             self._items_by_name = {}
             self._task_names_by_folder_path = {}
             root_item = self.invisibleRootItem()
@@ -135,11 +141,21 @@ class TasksModel(QtGui.QStandardItemModel):
         }
         self._task_names_by_folder_path = task_names_by_folder_path
 
-        new_task_names = self.get_intersection_of_tasks(
-            task_names_by_folder_path
-        )
-        if self._allow_empty_task:
-            new_task_names.add("")
+        new_task_names = None
+        if self._folder_paths:
+            new_task_names = self.get_intersection_of_tasks(
+                task_names_by_folder_path
+            )
+            if self._allow_empty_task:
+                new_task_names.add("")
+
+        for promised_tasks in self._promised_task_lists:
+            promised_tasks = set(promised_tasks)
+            if new_task_names is None:
+                new_task_names = promised_tasks
+            else:
+                new_task_names &= promised_tasks
+
         old_task_names = set(self._items_by_name.keys())
         if new_task_names == old_task_names:
             return
