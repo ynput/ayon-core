@@ -899,11 +899,15 @@ class BrowserController(QtCore.QObject):
             folder_ids = self._selected_folder_ids or None
             version_ids = None
 
+        if page_number > 0 and not self._graphql_has_more:
+            return []
+
+        cursor = self._graphql_cursor
         edges, page_info = self._get_versions_page(
             self._current_project,
             None,
             page_size,
-            cursor=self._graphql_cursor,
+            cursor=cursor,
             sort_by=sort_by,
             descending=descending,
             version_ids=version_ids,
@@ -929,11 +933,21 @@ class BrowserController(QtCore.QObject):
         ]
 
         if descending:
-            self._graphql_has_more = page_info["hasPreviousPage"]
-            self._graphql_cursor = page_info["startCursor"]
+            has_more = page_info["hasPreviousPage"]
+            next_cursor = page_info["startCursor"]
         else:
-            self._graphql_has_more = page_info["hasNextPage"]
-            self._graphql_cursor = page_info["endCursor"]
+            has_more = page_info["hasNextPage"]
+            next_cursor = page_info["endCursor"]
+
+        cursor_advanced = bool(next_cursor) and next_cursor != cursor
+        self._graphql_has_more = bool(has_more and cursor_advanced)
+        self._graphql_cursor = next_cursor or cursor
+        if has_more and not cursor_advanced:
+            self.log.warning(
+                "Stopping version pagination because the cursor did not "
+                "advance from %r.",
+                cursor,
+            )
 
         return page
 
