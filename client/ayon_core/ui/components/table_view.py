@@ -1302,6 +1302,9 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         """Paint a table cell directly, bypassing QStyle."""
         from ..components.table_model import PaginatedTableModel
 
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+
         src_model = index.model()
         if hasattr(src_model, "sourceModel"):
             src_model = src_model.sourceModel()
@@ -1309,26 +1312,14 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         if isinstance(src_model, PaginatedTableModel):
             col = index.column()
             cols = src_model.columns
-            has_widget = (
-                0 <= col < len(cols)
-                and cols[col].widget_factory is not None
-            )
+            if 0 <= col < len(cols):
+                model_column = cols[col]
+                has_widget = model_column.widget_factory is not None
+                if model_column.delegate is not None:
+                    model_column.delegate.initStyleOption(opt, index)
 
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        opt = QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        from ..components.table_model import PaginatedTableModel
-
-        src_model = index.model()
-        if hasattr(src_model, "sourceModel"):
-            src_model = src_model.sourceModel()
-        if isinstance(src_model, PaginatedTableModel):
-            col = index.column()
-            cols = src_model.columns
-            if 0 <= col < len(cols) and cols[col].delegate is not None:
-                cols[col].delegate.initStyleOption(opt, index)
 
         state = opt.state
         is_selected = bool(state & QStyle.StateFlag.State_Selected)
