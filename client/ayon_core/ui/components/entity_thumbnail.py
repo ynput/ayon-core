@@ -638,16 +638,16 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         size = QSize(*self._size)
         self.setFixedSize(size)
         option.rect = QRect(0, 0, size.width(), size.height())
-        if self._transparent:
-            if not self.icon().isNull():
-                self.icon().paint(
-                    p,
-                    QRect(0, 0, size.width(), size.height()),
-                    Qt.AlignmentFlag.AlignCenter,
-                )
-        else:
+        if not self._transparent:
             get_ayon_style().drawControl(
                 QStyle.ControlElement.CE_PushButton, option, p, self
+            )
+
+        elif not self.icon().isNull():
+            self.icon().paint(
+                p,
+                QRect(0, 0, size.width(), size.height()),
+                Qt.AlignmentFlag.AlignCenter,
             )
         # overlay incoming pixmap with fade opacity
         if self._incoming_pixmap and not self._incoming_pixmap.isNull():
