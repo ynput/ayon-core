@@ -851,8 +851,6 @@ class GroupByMenu(AYFilter):
             parent=self._dropdown,
         )
         lyt.addWidget(self._filterable_list, stretch=10)
-        search = self._filterable_list.search_field()
-        search.textChanged.connect(self._on_search_changed)
 
         self._populate_list()
         return self._dropdown
@@ -893,9 +891,6 @@ class GroupByMenu(AYFilter):
         """Close the dropdown and reset the search field."""
         self._dropdown.close()
         self._filterable_list.search_field().clear()
-
-    def _on_search_changed(self, text: str) -> None:
-        self._filterable_list.adjustSize()
 
     def _set_filter_state(self, key: str, selected: bool) -> None:
         if key not in self._filters:
