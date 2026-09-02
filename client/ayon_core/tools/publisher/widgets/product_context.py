@@ -179,11 +179,8 @@ class FoldersFields(BaseClickableFrame):
         self._has_value_changed = False
         self._origin_value = set(folder_paths)
         self._selected_items = set(folder_paths)
-        self._folder_paths_to_validate = set(
-            folder_paths_to_validate or folder_paths
-        )
         is_valid = self._controller.are_folder_paths_valid(
-            folder_paths_to_validate
+            self._folder_paths_to_validate
         )
         if not folder_paths:
             self.set_text("")
