@@ -119,7 +119,9 @@ class BrowserSlicer(AYContainer):
 
         self._slicer.category_changed.connect(self._on_category_changed)
         self._tree_view.selection_changed.connect(self._on_selection_changed)
-        self._tasks.task_names_changed.connect(self.task_names_changed)
+        self._tasks.task_selection_changed.connect(
+            self._on_task_selection_changed
+        )
         self._tasks.refreshed.connect(
             lambda: self._tasks.set_selected_task_names(self._task_names)
         )
@@ -268,6 +270,15 @@ class BrowserSlicer(AYContainer):
         """Update task-list selection from the active filter criterion."""
         self._task_names = list(names)
         self._tasks.set_selected_task_names(self._task_names)
+
+    def _on_task_selection_changed(
+        self,
+        names: list[str],
+        task_ids: list[str],
+    ) -> None:
+        """Update loader selection IDs and the name-based table filter."""
+        self._loader_controller.set_selected_tasks(set(task_ids))
+        self.task_names_changed.emit(names)
 
     def current_category(self) -> str:
         """Return the currently selected category name."""

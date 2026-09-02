@@ -45,7 +45,7 @@ class BrowserTasksWidget(QtWidgets.QWidget):
     """Browser-native task selector using the shared AYON table styling."""
 
     refreshed = QtCore.Signal()
-    task_names_changed = QtCore.Signal(list)
+    task_selection_changed = QtCore.Signal(list, list)
 
     def __init__(self, controller, parent=None) -> None:
         super().__init__(parent)
@@ -53,6 +53,7 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         self._project_name = ""
         self._folder_ids: list[str] = []
         self._selected_names: set[str] = set()
+        self._selected_ids: set[str] = set()
         self._refresh_threads: dict[str, RefreshThread] = {}
         self._current_thread_id: str | None = None
         self._suppress_selection_changed = False
@@ -121,8 +122,10 @@ class BrowserTasksWidget(QtWidgets.QWidget):
 
     def set_selected_task_names(self, names: list[str]) -> None:
         """Select all rows whose task name is in *names*."""
+        previous_names = set(self._selected_names)
         self._selected_names = set(names)
         self._apply_selection()
+        self._sync_selected_rows(previous_names)
 
     def _apply_selection(self) -> None:
         """Apply the stored task names to the table selection."""
@@ -152,6 +155,32 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         finally:
             self._suppress_selection_changed = False
         self._view.viewport().update()
+
+    def _sync_selected_rows(
+        self,
+        previous_names: set[str] | None = None,
+    ) -> None:
+        """Emit selected display names and all IDs stored on their rows."""
+        names: set[str] = set()
+        task_ids: set[str] = set()
+        for index in self._view.selectionModel().selectedRows(0):
+            data = index.data(TASK_DATA_ROLE) or {}
+            name = data.get("name")
+            if name:
+                names.add(name)
+            task_ids.update(data.get("ids") or [])
+
+        if previous_names is None:
+            previous_names = self._selected_names
+        if names == previous_names and task_ids == self._selected_ids:
+            return
+
+        self._selected_names = names
+        self._selected_ids = task_ids
+        self.task_selection_changed.emit(
+            sorted(names),
+            sorted(task_ids),
+        )
 
     def _fetch_tasks(
         self,
@@ -284,17 +313,9 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         finally:
             self._suppress_selection_changed = False
         self._apply_selection()
-        if self._selected_names != previous_names:
-            self.task_names_changed.emit(sorted(self._selected_names))
+        self._sync_selected_rows(previous_names)
 
     def _on_selection_changed(self) -> None:
         if self._suppress_selection_changed:
             return
-        names = set()
-        for index in self._view.selectionModel().selectedRows(0):
-            data = index.data(TASK_DATA_ROLE) or {}
-            name = data.get("name")
-            if name:
-                names.add(name)
-        self._selected_names = names
-        self.task_names_changed.emit(sorted(names))
+        self._sync_selected_rows()
