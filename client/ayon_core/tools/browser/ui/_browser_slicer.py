@@ -48,6 +48,8 @@ class BrowserSlicer(AYContainer):
         },
     ]
     task_names_changed = QtCore.Signal(list)
+    folder_navigation_finished = QtCore.Signal(str)
+    folder_navigation_failed = QtCore.Signal(str)
 
     def __init__(
         self,
@@ -159,6 +161,10 @@ class BrowserSlicer(AYContainer):
         folder_id = context.get("folder_id")
         if not project_name or not folder_id:
             return
+        self.select_folder(project_name, folder_id)
+
+    def select_folder(self, project_name: str, folder_id: str) -> None:
+        """Select and reveal a folder in the hierarchy tree."""
         self._slicer.set_current_category(
             BrowserSlicerCategory.HIERARCHY.value
         )
@@ -168,6 +174,9 @@ class BrowserSlicer(AYContainer):
         self._folder_selection_timer.stop()
         self._folder_selection_chain = chain
         self._folder_selection_attempt = 0
+        if not chain:
+            self.folder_navigation_failed.emit(folder_id)
+            return
         self._select_folder_chain(chain, 0)
 
     def _get_view_index_by_id(self, folder_id: str) -> QtCore.QModelIndex:
@@ -190,7 +199,12 @@ class BrowserSlicer(AYContainer):
         chain: list[str],
         attempt: int,
     ) -> None:
-        if not chain or attempt >= 30:
+        if not chain:
+            return
+        if attempt >= 30:
+            self._folder_selection_chain = []
+            self._folder_selection_attempt = 0
+            self.folder_navigation_failed.emit(chain[-1])
             return
         available_count = 0
         for folder_id in chain:
@@ -222,6 +236,7 @@ class BrowserSlicer(AYContainer):
         )
         self._folder_selection_chain = []
         self._folder_selection_attempt = 0
+        self.folder_navigation_finished.emit(chain[-1])
 
     def _retry_folder_selection(self) -> None:
         if not self._folder_selection_chain:

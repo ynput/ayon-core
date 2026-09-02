@@ -282,6 +282,20 @@ class RepreItem:
         return cls(**data)
 
 
+@dataclass(frozen=True)
+class VersionLinkItem:
+    """Hydrated version-to-version link shown in the Browser inspector."""
+
+    direction: str
+    link_type: str
+    version_id: str
+    version: int
+    product_name: str
+    folder_id: str
+    folder_path: str
+    show_folder_context: bool = False
+
+
 @dataclass
 class ActionItem:
     """Action item that can be triggered.

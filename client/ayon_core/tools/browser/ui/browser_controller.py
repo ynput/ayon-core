@@ -21,7 +21,7 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem, VersionLinkItem
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -132,6 +132,7 @@ class BrowserController(QtCore.QObject):
             *BROWSER_VIEW_DEFAULTS.featured_version_order,
         ]
         self._latest_per_folder = BROWSER_VIEW_DEFAULTS.latest_per_folder
+        self._navigation_version_id: str | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
         self._requested_column_keys: set[str] | None = None
         column_services = BrowserColumnServices(loader_controller)
@@ -297,6 +298,7 @@ class BrowserController(QtCore.QObject):
         if self._current_project == project_name:
             return
         self._current_project = project_name
+        self._navigation_version_id = None
         self._review_sessions_cache = []
         self._reset_pagination()
         self._selected_folder_ids = []
@@ -322,6 +324,7 @@ class BrowserController(QtCore.QObject):
         if self._current_category == category:
             return
         self._current_category = category
+        self._navigation_version_id = None
         self._selected_folder_ids = []
         self._review_session_version_ids = None
 
@@ -350,6 +353,7 @@ class BrowserController(QtCore.QObject):
         """
         previous_folder_ids = self._selected_folder_ids
         previous_review_version_ids = self._review_session_version_ids
+        self._navigation_version_id = None
         self._selected_folder_ids = list(ids)
         if (
             self._include_folder_children
@@ -423,6 +427,7 @@ class BrowserController(QtCore.QObject):
 
     def set_filter_criteria(self, criteria: list[Any]) -> None:
         """Set filters that are sent to the versions GraphQL query."""
+        self._navigation_version_id = None
         key_aliases = {
             "product_name": "productName",
         }
@@ -731,6 +736,23 @@ class BrowserController(QtCore.QObject):
                 self._folder_has_more.pop(parent_id, None)
             else:
                 self._reset_pagination()
+
+        navigation_version_id = self._navigation_version_id
+        if navigation_version_id:
+            self._navigation_version_id = None
+            if page_number > 0 or parent_id is not None:
+                return []
+            edges, _ = self._get_versions_page(
+                self._current_project,
+                None,
+                page_size,
+                version_ids=[navigation_version_id],
+                latest_per_folder=False,
+            )
+            return [
+                self._transform_version_edge(edge)
+                for edge in edges
+            ]
 
         sort_by = COLUMN_TO_SORT_BY.get(sort_key) if sort_key else None
         query_filters = self._get_query_filters()
@@ -1178,6 +1200,118 @@ class BrowserController(QtCore.QObject):
         return self._loader_controller.get_representation_items(
             project_name, version_ids
         )
+
+    def get_version_link_items(
+        self,
+        project_name: str,
+        version_ids: list[str],
+    ) -> list[VersionLinkItem]:
+        """Return hydrated version-to-version links."""
+        links_by_version_id = ayon_api.get_versions_links(
+            project_name,
+            version_ids,
+        )
+        raw_links: dict[tuple[str, str, str], set[str]] = {}
+        linked_version_ids = set()
+        for source_version_id, source_links in links_by_version_id.items():
+            for link in source_links:
+                if link.get("entityType") != "version":
+                    continue
+                linked_version_id = link.get("entityId")
+                direction = link.get("direction")
+                if not linked_version_id or direction not in {"in", "out"}:
+                    continue
+                linked_version_ids.add(linked_version_id)
+                key = (
+                    direction,
+                    link.get("linkType") or "",
+                    linked_version_id,
+                )
+                raw_links.setdefault(key, set()).add(source_version_id)
+
+        if not linked_version_ids:
+            return []
+
+        versions = list(ayon_api.get_versions(
+            project_name,
+            version_ids=linked_version_ids | set(version_ids),
+            active=None,
+            fields={"id", "version", "productId"},
+        ))
+        versions_by_id = {version["id"]: version for version in versions}
+        product_ids = {
+            version["productId"]
+            for version in versions
+            if version.get("productId")
+        }
+        products = list(ayon_api.get_products(
+            project_name,
+            product_ids=product_ids,
+            active=None,
+            fields={"id", "name", "folderId"},
+        ))
+        products_by_id = {product["id"]: product for product in products}
+        folder_ids = {
+            product["folderId"]
+            for product in products
+            if product.get("folderId")
+        }
+        folders = list(ayon_api.get_folders(
+            project_name,
+            folder_ids=folder_ids,
+            active=None,
+            fields={"id", "path"},
+        ))
+        folders_by_id = {folder["id"]: folder for folder in folders}
+
+        output = []
+        for (
+            direction,
+            link_type,
+            linked_version_id,
+        ), source_version_ids in raw_links.items():
+            version = versions_by_id.get(linked_version_id)
+            if version is None:
+                continue
+            product = products_by_id.get(version.get("productId"), {})
+            folder_id = product.get("folderId", "")
+            folder = folders_by_id.get(folder_id, {})
+            source_folder_ids = {
+                products_by_id.get(
+                    versions_by_id.get(source_id, {}).get("productId"),
+                    {},
+                ).get("folderId", "")
+                for source_id in source_version_ids
+            }
+            show_folder_context = (
+                not source_folder_ids
+                or any(
+                    source_folder_id != folder_id
+                    for source_folder_id in source_folder_ids
+                )
+            )
+            output.append(VersionLinkItem(
+                direction=direction,
+                link_type=link_type,
+                version_id=linked_version_id,
+                version=version.get("version", 0),
+                product_name=product.get("name", ""),
+                folder_id=folder_id,
+                folder_path=folder.get("path", ""),
+                show_folder_context=show_folder_context,
+            ))
+        output.sort(key=lambda item: (
+            item.direction,
+            item.folder_path.lower(),
+            item.product_name.lower(),
+            item.version,
+        ))
+        return output
+
+    def set_navigation_version_id(self, version_id: str | None) -> None:
+        """Temporarily restrict the next table fetch to one version."""
+        self._navigation_version_id = version_id
+        self._reset_pagination()
 
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""

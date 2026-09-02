@@ -66,6 +66,7 @@ class BrowserWidget(AYContainer):
             self._on_context_menu
         )
         self._inspector = ReviewInspector(self._controller)
+        self._pending_version_navigation: tuple[str, str, str] | None = None
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
             self.default_view_message
@@ -74,6 +75,15 @@ class BrowserWidget(AYContainer):
             self._inspector.refresh_selection
         )
         self._inspector.set_view(self._table.active_view)
+        self._inspector.version_navigation_requested.connect(
+            self._navigate_to_version
+        )
+        self._slicer.folder_navigation_finished.connect(
+            self._on_folder_navigation_finished
+        )
+        self._slicer.folder_navigation_failed.connect(
+            self._on_folder_navigation_failed
+        )
         self._build()
 
         self._slicer._selector.project_activated.connect(
@@ -167,6 +177,40 @@ class BrowserWidget(AYContainer):
         )
         self._table.set_auto_expand(auto_expand)
         self._table.reset_data()
+
+    def _navigate_to_version(
+        self,
+        project_name: str,
+        folder_id: str,
+        version_id: str,
+    ) -> None:
+        """Navigate from an Inspector link to its exact version."""
+        if not project_name or not folder_id or not version_id:
+            return
+        self._pending_version_navigation = (
+            project_name,
+            folder_id,
+            version_id,
+        )
+        self._slicer.select_folder(project_name, folder_id)
+
+    def _on_folder_navigation_finished(self, folder_id: str) -> None:
+        navigation = self._pending_version_navigation
+        if navigation is None or navigation[1] != folder_id:
+            return
+        if self._controller.current_project != navigation[0]:
+            self._pending_version_navigation = None
+            return
+        self._pending_version_navigation = None
+        version_id = navigation[2]
+        self._table.select_version(version_id)
+        self._controller.set_navigation_version_id(version_id)
+        self._table.reset_data()
+
+    def _on_folder_navigation_failed(self, folder_id: str) -> None:
+        navigation = self._pending_version_navigation
+        if navigation is not None and navigation[1] == folder_id:
+            self._pending_version_navigation = None
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         """Show a contextual actions menu for the selected rows.

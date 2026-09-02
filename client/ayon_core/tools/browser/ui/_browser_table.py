@@ -448,6 +448,7 @@ class BrowserTable(AYContainer):
         self._enqueued_thumb_keys: set[str] = set()
         self._scroll_catch_up_timer: QtCore.QTimer | None = None
         self._resize_timer: QtCore.QTimer | None = None
+        self._pending_selection_version_id: str | None = None
 
         self._model.rowsInserted.connect(self._on_rows_inserted_expand)
         self._model.loading_changed.connect(
@@ -715,6 +716,15 @@ class BrowserTable(AYContainer):
         self._model.set_fetch_enabled(self._controller.has_selection)
         self._model.reset_data()
         self._update_empty_state()
+
+    def select_version(self, version_id: str) -> None:
+        """Select a version after its targeted page has loaded."""
+        criteria = self._table_filter.get_criteria()
+        if criteria:
+            self._table_filter.set_active_criteria([])
+            self._controller.set_filter_criteria([])
+            self.filter_criteria_changed.emit([])
+        self._pending_selection_version_id = version_id
 
     def clear_expansion_state(self) -> None:
         """Clear remembered row expansions without reloading the model."""
@@ -1260,6 +1270,54 @@ class BrowserTable(AYContainer):
             self._eagerly_enqueue_visible_thumbnails()
         elif active is self._card_view:
             self._card_view.refresh_visible_editors()
+        self._select_pending_version()
+
+    def _select_pending_version(self) -> bool:
+        version_id = self._pending_selection_version_id
+        if not version_id:
+            return False
+
+        source_index = self._find_version_index(
+            version_id,
+            QtCore.QModelIndex(),
+        )
+        if not source_index.isValid():
+            return False
+
+        display_model = self._table.model()
+        display_index = display_model.mapFromSource(source_index)
+        if not display_index.isValid():
+            return False
+
+        self._pending_selection_version_id = None
+        active = self.active_view
+        flags = (
+            QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows
+        )
+        active.selectionModel().select(display_index, flags)
+        active.setCurrentIndex(display_index)
+        active.scrollTo(
+            display_index,
+            QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
+        )
+        return True
+
+    def _find_version_index(
+        self,
+        version_id: str,
+        parent: QtCore.QModelIndex,
+    ) -> QtCore.QModelIndex:
+        for row in range(self._model.rowCount(parent)):
+            index = self._model.index(row, 0, parent)
+            data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            row_version_id = data.get("id") or data.get("_version_id")
+            if row_version_id == version_id:
+                return index
+            child = self._find_version_index(version_id, index)
+            if child.isValid():
+                return child
+        return QtCore.QModelIndex()
 
     def _table_row_height(self) -> int:
         first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
@@ -1416,6 +1474,11 @@ class BrowserTable(AYContainer):
         self._update_empty_state()
         if is_loading:
             return
+        if (
+            self._pending_selection_version_id
+            and not self._select_pending_version()
+        ):
+            self._pending_selection_version_id = None
         if self._expansion_phase == _ExpansionPhase.VISIBLE:
             if not self._deferred_expand_queue:
                 self._expansion_phase = _ExpansionPhase.IDLE

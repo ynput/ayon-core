@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import time
+import uuid
 from collections import defaultdict
 
 from ayon_core.ui.components.buttons import AYButton
@@ -8,12 +10,13 @@ from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.layouts import AYHBoxLayout
+from ayon_core.ui.components.option_action import AYMenu
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.tools.browser.abstract import RepreItem
+from ayon_core.tools.browser.abstract import RepreItem, VersionLinkItem
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
 from ayon_core.tools.browser.ui.browser_controller import BrowserController
 from ayon_core.tools.utils import get_qt_icon
@@ -21,8 +24,13 @@ from ayon_core.tools.utils import get_qt_icon
 from ._browser_thumbnails import _thumbnail_loader
 
 
+log = logging.getLogger(__name__)
+
+
 class ReviewInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
+
+    version_navigation_requested = QtCore.Signal(str, str, str)
 
     def __init__(
         self,
@@ -162,6 +170,12 @@ class ReviewInspector(AYContainer):
         )
         self._representations = Representations(self._controller)
         self.add_widget(self._representations)
+
+        self._links = VersionLinks(self._controller)
+        self._links.navigation_requested.connect(
+            self.version_navigation_requested
+        )
+        self.add_widget(self._links)
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
@@ -335,6 +349,7 @@ class ReviewInspector(AYContainer):
             )
         else:
             self._representations.set_items([])
+        self._links.set_selection(project_name, version_ids)
 
     def _load_thumbnail(self, keys: list[str]) -> None:
         """Load and display thumbnails for *keys* as a composite image.
@@ -399,6 +414,223 @@ class ReviewInspector(AYContainer):
     def _on_close(self) -> None:
         """Hide the inspector."""
         self.hide()
+
+
+class VersionLinks(AYContainer):
+    """Collapsed, lazily loaded input/output version links."""
+
+    navigation_requested = QtCore.Signal(str, str, str)
+
+    def __init__(
+        self,
+        controller: BrowserController,
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            *args,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=4,
+            **kwargs,
+        )
+        self._controller = controller
+        self._project_name = ""
+        self._version_ids: tuple[str, ...] = ()
+        self._loaded_key: tuple[str, tuple[str, ...]] | None = None
+        self._request_context = ""
+        self._request_name = ""
+
+        self._toggle = AYButton(
+            "Links",
+            icon="chevron_right",
+            checkable=True,
+            variant=AYButton.Variants.Surface,
+        )
+        self._toggle.setToolTip("Show input and output version links")
+        self._toggle.toggled.connect(self._on_toggled)
+        self.add_widget(self._toggle)
+
+        self._content = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=4,
+        )
+        self._input_label = AYLabel("Inputs", dim=True)
+        self._input_list = self._create_list()
+        self._content.add_widget(self._input_label)
+        self._content.add_widget(self._input_list)
+
+        self._output_label = AYLabel("Outputs", dim=True)
+        self._output_list = self._create_list()
+        self._content.add_widget(self._output_label)
+        self._content.add_widget(self._output_list)
+        self._content.setVisible(False)
+        self.add_widget(self._content)
+
+        queue = get_task_queue()
+        queue.task_failed.connect(self._on_task_failed)
+
+    def _create_list(self) -> QtWidgets.QListWidget:
+        view = QtWidgets.QListWidget()
+        view.setAlternatingRowColors(True)
+        view.setUniformItemSizes(True)
+        view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
+        view.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        view.customContextMenuRequested.connect(
+            lambda pos, source=view: self._on_context_menu(source, pos)
+        )
+        view.setMinimumHeight(72)
+        view.setMaximumHeight(150)
+        return view
+
+    def set_selection(
+        self,
+        project_name: str,
+        version_ids: list[str],
+    ) -> None:
+        """Store the inspected versions and load only when expanded."""
+        selection = project_name, tuple(sorted(set(version_ids)))
+        if selection == (self._project_name, self._version_ids):
+            return
+        self._cancel_request()
+        self._project_name, self._version_ids = selection
+        self._loaded_key = None
+        self._clear_lists()
+        if self._toggle.isChecked():
+            self._request_links()
+
+    def _on_toggled(self, expanded: bool) -> None:
+        self._toggle.set_icon(
+            "expand_more" if expanded else "chevron_right"
+        )
+        self._content.setVisible(expanded)
+        if expanded:
+            self._request_links()
+        else:
+            self._cancel_request()
+
+    def _request_links(self) -> None:
+        selection_key = self._project_name, self._version_ids
+        if not self._project_name or not self._version_ids:
+            return
+        if self._loaded_key == selection_key:
+            return
+        self._cancel_request()
+        self._cancel_request()
+        self._request_context = f"browser-links:{uuid.uuid4().hex}"
+        self._request_name = self._request_context
+        project_name = self._project_name
+        version_ids = list(self._version_ids)
+        request_context = self._request_context
+        get_task_queue().enqueue(AsyncTask(
+            name=self._request_name,
+            function=lambda: self._controller.get_version_link_items(
+                project_name,
+                version_ids,
+            ),
+            callback=lambda items: self._on_links_loaded(
+                request_context,
+                selection_key,
+                items,
+            ),
+            priority=5,
+            context_id=request_context,
+            cancellable=True,
+        ))
+
+    def _cancel_request(self) -> None:
+        if self._request_context:
+            get_task_queue().clear_context_tasks(self._request_context)
+        self._request_context = ""
+        self._request_name = ""
+
+    def _on_links_loaded(
+        self,
+        request_context: str,
+        selection_key: tuple[str, tuple[str, ...]],
+        items: list[VersionLinkItem] | None,
+    ) -> None:
+        if (
+            not shiboken.isValid(self)
+            or request_context != self._request_context
+            or selection_key != (self._project_name, self._version_ids)
+            or not self._toggle.isChecked()
+        ):
+            return
+        # AsyncTaskQueue emits the detailed task failure after invoking
+        # callbacks with None.
+        if items is None:
+            return
+        self._request_context = ""
+        self._request_name = ""
+        self._loaded_key = selection_key
+        self._populate_list(
+            self._input_list,
+            [item for item in items if item.direction == "in"],
+        )
+        self._populate_list(
+            self._output_list,
+            [item for item in items if item.direction == "out"],
+        )
+
+    def _on_task_failed(self, task_name: str, error_message: str) -> None:
+        if task_name != self._request_name:
+            return
+        self._request_context = ""
+        self._request_name = ""
+        log.warning("Failed to load Browser links: %s", error_message)
+
+    def _clear_lists(self) -> None:
+        self._input_list.clear()
+        self._output_list.clear()
+
+    def _populate_list(
+        self,
+        view: QtWidgets.QListWidget,
+        items: list[VersionLinkItem],
+    ) -> None:
+        for item in items:
+            version_label = f"v{abs(item.version):03d}"
+            if item.version < 0:
+                version_label = f"★ {version_label}"
+            label = f"{item.product_name} {version_label}"
+            if item.show_folder_context:
+                label = f"{label} ({item.folder_path})"
+            list_item = QtWidgets.QListWidgetItem(label)
+            list_item.setToolTip(
+                f"Folder: {item.folder_path}\n"
+                f"Type: {item.link_type or 'Unknown'}"
+            )
+            list_item.setData(QtCore.Qt.ItemDataRole.UserRole, item)
+            view.addItem(list_item)
+
+    def _on_context_menu(
+        self,
+        view: QtWidgets.QListWidget,
+        pos: QtCore.QPoint,
+    ) -> None:
+        list_item = view.itemAt(pos)
+        if list_item is None:
+            return
+        item = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
+        if not isinstance(item, VersionLinkItem) or not item.folder_id:
+            return
+        menu = AYMenu(self)
+        action = menu.addAction("Go to version")
+        selected = menu.exec_(view.viewport().mapToGlobal(pos))
+        if selected is action:
+            self.navigation_requested.emit(
+                self._project_name,
+                item.folder_id,
+                item.version_id,
+            )
 
 
 class Representations(AYContainer):
