@@ -1476,6 +1476,9 @@ class BrowserController(QtCore.QObject):
             row["status__color"] = self._pinfo(
                 "statuses", row["status"], "color", ""
             )
+            row["status__short"] = self._pinfo(
+                "statuses", row["status"], "shortName", ""
+            )
             row["productType"] = product_type
             row["productType__icon"] = self._pinfo(
                 "productTypes", product_type, "icon", "category"
@@ -2561,6 +2564,9 @@ class BrowserController(QtCore.QObject):
             "inScene": in_scene,
             "status__color": self._pinfo("statuses", status, "color"),
             "status__icon": self._pinfo("statuses", status, "icon"),
+            "status__short": self._pinfo(
+                "statuses", status, "shortName", ""
+            ),
             "entityType": n.get("entityType", "Version"),
             "entityType__icon": "layers",
             "productType": product_type,

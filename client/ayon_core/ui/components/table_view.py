@@ -1309,6 +1309,7 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         if hasattr(src_model, "sourceModel"):
             src_model = src_model.sourceModel()
         has_widget = False
+        model_column = None
         if isinstance(src_model, PaginatedTableModel):
             col = index.column()
             cols = src_model.columns
@@ -1462,11 +1463,33 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             # text appear slightly lower than geometrically centered icons.
             text_rect.translate(0, -1)
             painter.setPen(text_color)
-            painter.setFont(self.font())
+
+            # Allow to resolve to the `short` label if the default text is
+            # too wide for the column. Used for e.g. in status column to show
+            # the shorthand status code instead.
+            text = opt.text
+            if model_column is not None:
+                font = self.font()
+                painter.setFont(font)
+                row_data = index.data(Qt.ItemDataRole.UserRole) or {}
+                short_text = row_data.get(f"{model_column.key}__short")
+                font_metrics = QtGui.QFontMetrics(font)
+                if (
+                    short_text
+                    and font_metrics.horizontalAdvance(text)
+                    > text_rect.width()
+                ):
+                    text = font_metrics.elidedText(
+                        str(short_text),
+                        Qt.TextElideMode.ElideRight,
+                        text_rect.width(),
+                    )
+                    if len(text) < 2:
+                        text = ""
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                opt.text,
+                text,
             )
 
         painter.restore()

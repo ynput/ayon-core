@@ -1188,7 +1188,7 @@ class PaginatedTableModel(QAbstractItemModel):
         """Infer column definitions from a sample row dictionary.
 
         Reserved keys (``id``, ``has_children``) and decorator suffixes
-        (``__icon``, ``__color``, ``__fill``) are excluded.
+        (``__icon``, ``__color``, ``__fill``, ``__short``) are excluded.
 
         Args:
             row: A representative row dictionary.
@@ -1200,7 +1200,7 @@ class PaginatedTableModel(QAbstractItemModel):
         for key in row:
             if key in ("id", "has_children"):
                 continue
-            if key.endswith(("__icon", "__color", "__fill")):
+            if key.endswith(("__icon", "__color", "__fill", "__short")):
                 continue
             label = key.replace("_", " ").title()
             columns.append(TableColumn(key=key, label=label))
