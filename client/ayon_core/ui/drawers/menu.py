@@ -342,7 +342,11 @@ class MenuDrawer:
         action = None
         if isinstance(widget, QMenu):
             action = widget.actionAt(option.rect.center())
-        variant = (action.property("variant") if action else None) or "default"
+        variant = (
+            (action.property("variant") if action else None)
+            or (widget.property("variant") if widget else None)
+            or "default"
+        )
 
         style = self.model.get_style(
             self._WIDGET_CLS, variant=variant, state=state

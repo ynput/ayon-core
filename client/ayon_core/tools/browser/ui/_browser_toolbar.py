@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal, TypedDict
 
 from ayon_core.ui.components.buttons import (
     AYButton,
     AYButtonMenu,
     ButtonMenuDropdown,
 )
+from ayon_core.ui.components import AYMenu
 from ayon_core.ui.components.check_box import AYCheckBox
 from ayon_core.ui.components.container import (
     AYContainer,
@@ -20,136 +21,93 @@ from ayon_core.ui.components.filter import AYFilter, FilterItem
 from ayon_core.ui.components.filterable_list import FilterableList
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.order import AYOrder
-from ayon_core.ui.components.option_action import AYMenu
 from ayon_core.ui.components.page_button import AYPageButton
 from ayon_core.ui.components.slider import AYSlider
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_group_by import GroupByOption
+from ayon_core.ui.components.table_model import TableColumn
+from ayon_core.ui.components.views.data_models import ColumnState
 
 log = Logger.get_logger(__name__)
 
 
-class _ColumnMenu(AYMenu):
-    """Persistent menu whose rows support visibility paint gestures."""
+class _ColumnVisibility(TypedDict):
+    name: str
+    visible: bool
 
-    visibility_changed = QtCore.Signal()
+
+class _ColumnMenu(AYMenu):
+    """Column menu with native hover and drag-to-toggle support."""
+
+    drag_finished = QtCore.Signal()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.setProperty("variant", "surface")
-        self.menuAction().setProperty("variant", "surface")
         self.setMouseTracking(True)
-        self._paint_state: Optional[bool] = None
-        self._painted_keys: set[str] = set()
-        self._changed = False
-        self._pending_submenu_action = None
-        self._submenu_timer = QtCore.QTimer(self)
-        self._submenu_timer.setSingleShot(True)
-        self._submenu_timer.timeout.connect(self._open_pending_submenu)
-        self.aboutToHide.connect(self._clear_pending_submenu)
+        self._drag_state: bool | None = None
+        self._drag_changed: bool = False
 
     @staticmethod
-    def _column_key(action) -> str:
-        if action is None:
-            return ""
-        return action.property("column-key") or ""
+    def _is_column_action(action: QtWidgets.QAction | None) -> bool:
+        return bool(
+            action
+            and action.isEnabled()
+            and action.property("column-key")
+        )
 
     def mousePressEvent(self, event) -> None:
-        if event.button() != QtCore.Qt.MouseButton.LeftButton:
-            super().mousePressEvent(event)
-            return
         action = self.actionAt(event.pos())
-        if not self._column_key(action) or not action.isEnabled():
+        if (
+            event.button() != QtCore.Qt.MouseButton.LeftButton
+            or not self._is_column_action(action)
+        ):
             super().mousePressEvent(event)
             return
-        self._paint_state = not action.isChecked()
-        self._painted_keys.clear()
-        self._changed = False
-        self._paint_action(action)
+        self._drag_state = not action.isChecked()
+        self._drag_changed = False
+        self._apply_drag_state(action)
         event.accept()
 
     def mouseMoveEvent(self, event) -> None:
-        if self._paint_state is None:
-            super().mouseMoveEvent(event)
-            action = self.actionAt(event.pos())
-            submenu = action.menu() if action is not None else None
-            if submenu is not None and not submenu.isVisible():
-                self._pending_submenu_action = action
-                self._submenu_timer.start(0)
-            else:
-                self._clear_pending_submenu()
-            return
-        if not event.buttons() & QtCore.Qt.MouseButton.LeftButton:
-            self._paint_state = None
-            self._painted_keys.clear()
-            self._changed = False
+        if self._drag_state is None:
             super().mouseMoveEvent(event)
             return
-        self._paint_action(self.actionAt(event.pos()))
-        event.accept()
+        if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            self._apply_drag_state(self.actionAt(event.pos()))
+            event.accept()
+            return
+        self._finish_drag()
+        super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
-        if self._paint_state is None:
+        if self._drag_state is None:
             super().mouseReleaseEvent(event)
             return
-        self._paint_state = None
-        self._painted_keys.clear()
-        if self._changed:
-            self.visibility_changed.emit()
-        self._changed = False
+        self._finish_drag()
         event.accept()
 
-    def keyPressEvent(self, event) -> None:
-        if event.key() in (
-            QtCore.Qt.Key.Key_Enter,
-            QtCore.Qt.Key.Key_Return,
-            QtCore.Qt.Key.Key_Space,
-        ):
-            action = self.activeAction()
-            if self._column_key(action):
-                action.setChecked(not action.isChecked())
-                self.visibility_changed.emit()
-                event.accept()
-                return
-        super().keyPressEvent(event)
-
-    def _paint_action(self, action) -> None:
-        key = self._column_key(action)
+    def _apply_drag_state(
+        self,
+        action: QtWidgets.QAction | None,
+    ) -> None:
         if (
-            not key
-            or key in self._painted_keys
-            or self._paint_state is None
+            self._drag_state is None
+            or not self._is_column_action(action)
+            or action.isChecked() == self._drag_state
         ):
             return
-        self._painted_keys.add(key)
-        if action.isChecked() != self._paint_state:
-            action.setChecked(self._paint_state)
-            self._changed = True
-            self.update()
+        action.setChecked(self._drag_state)
+        self._drag_changed = True
 
-    def _open_pending_submenu(self) -> None:
-        action = self._pending_submenu_action
-        self._pending_submenu_action = None
-        if action is None or action is not self.activeAction():
-            return
-        submenu = action.menu()
-        if submenu is None or submenu.isVisible():
-            return
-        action_rect = self.actionGeometry(action)
-        submenu.popup(
-            self.mapToGlobal(
-                QtCore.QPoint(
-                    action_rect.right() + 1,
-                    action_rect.top(),
-                )
-            )
-        )
-
-    def _clear_pending_submenu(self) -> None:
-        self._submenu_timer.stop()
-        self._pending_submenu_action = None
+    def _finish_drag(self) -> None:
+        changed = self._drag_changed
+        self._drag_state = None
+        self._drag_changed = False
+        if changed:
+            self.drag_finished.emit()
 
 
 class AddColumnButton(AYButton):
@@ -165,22 +123,22 @@ class AddColumnButton(AYButton):
             tooltip="Add or remove columns",
         )
         self.setFixedSize(28, 28)
-        self._columns: list = []
-        self._states: list = []
-        self._menu_dirty = True
-        self._popup_open = False
-        self._suppress_reopen_on_next_click = False
-        self._menu = _ColumnMenu(self)
-        self._attributes_menu = _ColumnMenu("Attributes", self._menu)
-        self._attribute_scope_menus: dict[str, _ColumnMenu] = {}
-        self._menu.visibility_changed.connect(self._emit_column_state)
-        self._attributes_menu.visibility_changed.connect(
-            self._emit_column_state
+        self._columns: list[TableColumn] = []
+        self._states: list[ColumnState] = []
+        self._updating_actions: bool = False
+        # The header button is also the mouse-event source. Making it the
+        # popup's transient parent keeps the menu in that active input grab
+        # on some Qt/Windows combinations and prevents normal hover updates.
+        self._menu = self._create_menu()
+        self.destroyed.connect(self._menu.deleteLater)
+        self._attributes_menu = self._create_menu(
+            "Attributes",
+            self._menu,
         )
-        self._menu.aboutToHide.connect(self._on_popup_closed)
-        self.clicked.connect(self._on_button_clicked)
+        self._attribute_scope_menus: dict[str, _ColumnMenu] = {}
+        self.clicked.connect(lambda: self.show_menu(self))
 
-    def set_columns(self, columns: list) -> None:
+    def set_columns(self, columns: list[TableColumn]) -> None:
         columns = list(columns)
         if [
             (column.key, column.label, column.icon, column.entity)
@@ -192,9 +150,19 @@ class AddColumnButton(AYButton):
             self._columns = columns
             return
         self._columns = columns
-        self._menu_dirty = True
+        self._rebuild()
 
-    def _matches_state(self, states: list) -> bool:
+    def _create_menu(
+        self,
+        title: str = "",
+        parent: QtWidgets.QWidget | None = None,
+    ) -> _ColumnMenu:
+        menu = _ColumnMenu(title, parent)
+        menu.drag_finished.connect(self._emit_column_state)
+        return menu
+
+    def _matches_state(self, states: list[ColumnState]) -> bool:
+        """Return whether the menus already represent these states."""
         expected_builtin_keys = [
             state.name
             for state in states
@@ -242,82 +210,88 @@ class AddColumnButton(AYButton):
         by_key = {state.name: state for state in self._states}
         self._menu.clear()
         self._attributes_menu.clear()
-        self._attribute_scope_menus = {}
-        for key in builtin_keys:
-            self._add_column_action(
-                self._menu,
-                columns_by_key[key],
-                by_key.get(key),
-            )
-        if attribute_keys:
-            self._menu.addSeparator()
-            self._menu.addMenu(self._attributes_menu)
-        attributes_by_entity: dict[str, list[str]] = {}
-        for key in attribute_keys:
-            column = columns_by_key[key]
-            attributes_by_entity.setdefault(column.entity, []).append(key)
+        for menu in self._attribute_scope_menus.values():
+            menu.deleteLater()
 
-        if len(attributes_by_entity) == 1:
-            for key in attribute_keys:
+        self._attribute_scope_menus = {}
+        self._updating_actions = True
+        try:
+            for key in builtin_keys:
                 self._add_column_action(
-                    self._attributes_menu,
+                    self._menu,
                     columns_by_key[key],
                     by_key.get(key),
                 )
-        else:
-            for entity, keys in attributes_by_entity.items():
-                scope_menu = _ColumnMenu(
-                    f"{entity} attributes",
-                    self._attributes_menu,
-                )
-                scope_menu.visibility_changed.connect(
-                    self._emit_column_state
-                )
-                self._attribute_scope_menus[entity] = scope_menu
-                self._attributes_menu.addMenu(scope_menu)
-                for key in keys:
+            if attribute_keys:
+                self._menu.addSeparator()
+                self._menu.addMenu(self._attributes_menu)
+            attributes_by_entity: dict[str, list[str]] = {}
+            for key in attribute_keys:
+                column = columns_by_key[key]
+                attributes_by_entity.setdefault(column.entity, []).append(key)
+
+            if len(attributes_by_entity) == 1:
+                for key in attribute_keys:
                     self._add_column_action(
-                        scope_menu,
+                        self._attributes_menu,
                         columns_by_key[key],
                         by_key.get(key),
                     )
-                self._fit_menu_width(scope_menu)
-        self._fit_menu_width(self._attributes_menu)
-        self._fit_menu_width(self._menu)
-        self._menu_dirty = False
+            else:
+                for entity, keys in attributes_by_entity.items():
+                    scope_menu = self._create_menu(
+                        f"{entity} attributes",
+                        self._attributes_menu,
+                    )
+                    self._attribute_scope_menus[entity] = scope_menu
+                    self._attributes_menu.addMenu(scope_menu)
+                    for key in keys:
+                        self._add_column_action(
+                            scope_menu,
+                            columns_by_key[key],
+                            by_key.get(key),
+                        )
+        finally:
+            self._updating_actions = False
 
-    @staticmethod
-    def _add_column_action(menu, column, state) -> None:
+    def _add_column_action(
+        self,
+        menu: _ColumnMenu,
+        column: TableColumn,
+        state: ColumnState | None,
+    ) -> None:
         action = menu.addAction(column.label)
         action.setCheckable(True)
         action.setChecked(state is None or state.visible)
-        action.setProperty("variant", "surface")
         action.setProperty("check-style", "checkmark")
         action.setProperty("column-key", column.key)
-
-    @staticmethod
-    def _fit_menu_width(menu: QtWidgets.QMenu) -> None:
-        """Reserve enough width for the longest menu label and gutters."""
-        text_width = max(
-            (
-                menu.fontMetrics().horizontalAdvance(action.text())
-                for action in menu.actions()
-                if not action.isSeparator()
-            ),
-            default=0,
+        action.toggled.connect(
+            lambda checked, owner=menu: self._on_action_toggled(
+                owner,
+                checked,
+            )
         )
-        menu.setMinimumWidth(max(220, text_width + 96))
+
+    def _on_action_toggled(
+        self,
+        menu: _ColumnMenu,
+        _checked: bool,
+    ) -> None:
+        if self._updating_actions or menu._drag_state is not None:
+            return
+        self._emit_column_state()
 
     @staticmethod
-    def _menu_keys(menu) -> list[str]:
+    def _menu_keys(menu: _ColumnMenu) -> list[str]:
         return [
             action.property("column-key")
             for action in menu.actions()
             if action.property("column-key")
         ]
 
-    def _actions_by_key(self) -> dict:
-        output = {}
+    def _actions_by_key(self) -> dict[str, QtWidgets.QAction]:
+        """Return checkable column actions indexed by column key."""
+        output: dict[str, QtWidgets.QAction] = {}
         menus = [
             self._menu,
             self._attributes_menu,
@@ -330,14 +304,23 @@ class AddColumnButton(AYButton):
                     output[key] = action
         return output
 
-    def _update_action_states(self, states: list) -> None:
+    def _update_action_states(
+        self,
+        states: list[ColumnState],
+    ) -> None:
+        """Synchronize checked actions without emitting user changes."""
         actions_by_key = self._actions_by_key()
-        for state in states:
-            action = actions_by_key.get(state.name)
-            if action is not None:
-                action.setChecked(state.visible)
+        self._updating_actions = True
+        try:
+            for state in states:
+                action = actions_by_key.get(state.name)
+                if action is not None:
+                    action.setChecked(state.visible)
+        finally:
+            self._updating_actions = False
 
-    def set_column_state(self, states: list) -> None:
+    def set_column_state(self, states: list[ColumnState]) -> None:
+        """Synchronize menu order and visibility with table columns."""
         states = list(states)
         if self._matches_state(states):
             self._states = states
@@ -352,42 +335,19 @@ class AddColumnButton(AYButton):
             self._update_action_states(states)
             return
         self._states = states
-        self._menu_dirty = True
-
-    def _on_button_clicked(self) -> None:
-        if self._suppress_reopen_on_next_click:
-            self._suppress_reopen_on_next_click = False
-            return
-        if self._popup_open:
-            self._menu.close()
-            return
-        self.show_menu(self)
+        self._rebuild()
 
     def show_menu(self, anchor: QtWidgets.QWidget) -> None:
         """Show the shared column menu below an anchor widget."""
-        if self._menu_dirty:
-            self._rebuild()
-        self._popup_open = True
         self._menu.popup(
             anchor.mapToGlobal(
                 QtCore.QPoint(0, anchor.height() + 2)
             )
         )
 
-    def _on_popup_closed(self) -> None:
-        self._popup_open = False
-        if (
-            QtWidgets.QApplication.mouseButtons()
-            & QtCore.Qt.MouseButton.LeftButton
-        ):
-            local_pos = self.mapFromGlobal(QtGui.QCursor.pos())
-            self._suppress_reopen_on_next_click = (
-                self.rect().contains(local_pos)
-            )
-
     def _emit_column_state(self) -> None:
         actions_by_key = self._actions_by_key()
-        states = []
+        states: list[_ColumnVisibility] = []
         ordered_keys = [
             state.name
             for state in self._states
@@ -399,7 +359,9 @@ class AddColumnButton(AYButton):
             if column.key not in ordered_keys
         )
         for key in ordered_keys:
-            action = actions_by_key[key]
+            action = actions_by_key.get(key)
+            if action is None:
+                continue
             states.append({
                 "name": key,
                 "visible": action.isChecked(),

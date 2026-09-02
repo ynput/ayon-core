@@ -600,6 +600,7 @@
                 },
                 "surface": {
                     "background-color": "--md-sys-color-surface-container-highest-dark",
+                    "border-width": 0,
                     "hover": {
                         "background-color": "--md-ref-palette-neutral-variant35"
                     }

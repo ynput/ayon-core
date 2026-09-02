@@ -980,7 +980,7 @@ class BrowserTable(AYContainer):
 
     def _show_columns_menu(self) -> None:
         """Open the shared frontend-style menu from Customize."""
-        self._columns_menu_timer.start(0)
+        self._add_column_btn.show_menu(self._customize)
 
     def _open_columns_menu(self) -> None:
         self._add_column_btn.show_menu(self._customize)
