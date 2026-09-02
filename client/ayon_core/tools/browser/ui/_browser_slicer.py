@@ -17,6 +17,7 @@ from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_controller import BrowserController
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 
+from ._browser_slicer_filters import SlicerFiltersMenu
 from ._project_selector import ProjectSelector
 from .tasks_widget import BrowserTasksWidget
 
@@ -105,6 +106,9 @@ class BrowserSlicer(AYContainer):
         self.add_layout(category_layout, stretch=0)
         self._update_current_context_button(initial_category)
 
+        self._filters_menu = SlicerFiltersMenu(self)
+        self.add_widget(self._filters_menu, stretch=0)
+
         self._tree_view = ReviewTreeView(self)
         self.add_widget(self._tree_view, stretch=1)
 
@@ -125,6 +129,15 @@ class BrowserSlicer(AYContainer):
         self._tasks.refreshed.connect(
             lambda: self._tasks.set_selected_task_names(self._task_names)
         )
+        self._filters_menu.filter_changed.connect(
+            self._apply_slicer_filters
+        )
+
+        # Initialise the filter menu for the starting category now that
+        # the tasks widget it feeds into exists.
+        self._filters_menu.set_category(
+            BrowserSlicerCategory(initial_category)
+        )
 
     def set_model(self, model: LazyTreeModel) -> None:
         """Attach a tree model to the view and slicer proxy.
@@ -136,16 +149,28 @@ class BrowserSlicer(AYContainer):
 
     def _on_category_changed(self, category: str) -> None:
         self._controller.set_category(category)
+        # Rebuild the filter menu for the new mode first (this drops any
+        # filter that only applied to the mode being left, e.g. "My
+        # Tasks" when switching from Hierarchy to Reviews) and push the
+        # resulting selection down before the tasks widget re-fetches.
+        self._filters_menu.set_category(BrowserSlicerCategory(category))
+        self._apply_slicer_filters(self._filters_menu.get_selected_keys())
         enabled = category == BrowserSlicerCategory.HIERARCHY.value
         self._tasks.setEnabled(enabled)
         if enabled:
             self._tasks.set_context(
                 self._controller.current_project,
                 list(self._last_selection_ids or []),
+                task_id_scope=self._controller.get_task_id_scope(),
             )
         else:
             self._tasks.set_context(self._controller.current_project, [])
         self._update_current_context_button(category)
+
+    def _apply_slicer_filters(self, keys: list[str]) -> None:
+        """Apply the active slicer filter keys (e.g. "My Tasks")."""
+        self._controller.set_slicer_filters(set(keys))
+        self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
 
     def _update_current_context_button(self, category: str) -> None:
         context = self._loader_controller.get_current_context() or {}
@@ -264,6 +289,7 @@ class BrowserSlicer(AYContainer):
         self._tasks.set_context(
             self._controller.current_project,
             ids,
+            task_id_scope=self._controller.get_task_id_scope(),
         )
 
     def set_task_names(self, names: list[str]) -> None:

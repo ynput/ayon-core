@@ -53,7 +53,10 @@ from ayon_core.tools.browser.ui.browser_queries import (
     GET_VERSION_GROUP_COUNTS_QUERY,
     get_versions_query,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    MY_TASKS_FILTER_KEY,
+    BrowserSlicerCategory,
+)
 
 # Maximum number of pages to fetch when building product group headers.
 # Each page contains up to 1 000 products, so this caps the total at
@@ -141,6 +144,9 @@ class BrowserController(QtCore.QObject):
             *BROWSER_VIEW_DEFAULTS.featured_version_order,
         ]
         self._latest_per_folder = BROWSER_VIEW_DEFAULTS.latest_per_folder
+        self._active_slicer_filters: set[str] = set()
+        self._folder_id_scope: set[str] | None = None
+        self._task_id_scope: set[str] | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
         self._requested_column_keys: set[str] | None = None
         column_services = BrowserColumnServices(loader_controller)
@@ -310,6 +316,9 @@ class BrowserController(QtCore.QObject):
         self._reset_pagination()
         self._selected_folder_ids = []
         self._folder_parent_ids = {}
+        # Keep sticky slicer filters (e.g. "My Tasks") active across a
+        # project switch, just re-resolved against the new project.
+        self._recompute_slicer_filter_scope()
         self._build_project_info()
         self._get_review_session_list()
         self.project_changed.emit(project_name)
@@ -346,6 +355,65 @@ class BrowserController(QtCore.QObject):
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
+
+    def set_slicer_filters(self, keys: set[str]) -> None:
+        """Set the active slicer-level filter keys (e.g. "My Tasks").
+
+        Unlike the table's :meth:`set_filter_criteria`, these filters
+        scope which folders the Hierarchy tree fetches at all, so
+        changing them resets and re-fetches the tree. Unknown keys
+        (a filter not currently recognised by
+        :meth:`_recompute_slicer_filter_scope`) are stored but simply
+        have no effect, so ``SLICER_FILTER_OPTIONS`` can grow without
+        this method needing to change.
+
+        Args:
+            keys: The full set of currently selected slicer filter
+                keys, as reported by the slicer's filter menu.
+        """
+        if keys == self._active_slicer_filters:
+            return
+        self._active_slicer_filters = set(keys)
+        self._recompute_slicer_filter_scope()
+        self._reset_pagination()
+        self.tree_reset_requested.emit()
+
+    def _recompute_slicer_filter_scope(self) -> None:
+        """Recompute id scopes implied by the active slicer filters.
+
+        Only the ``my_tasks`` key is understood today: it resolves to
+        the folders that directly own a task assigned to the current
+        user, widened to include every ancestor folder so the tree can
+        still be navigated down to them, plus the matching task ids
+        themselves (consumed by ``BrowserTasksWidget`` to narrow the
+        task list under a selected folder).
+        """
+        if (
+            MY_TASKS_FILTER_KEY not in self._active_slicer_filters
+            or not self._current_project
+        ):
+            self._folder_id_scope = None
+            self._task_id_scope = None
+            return
+
+        entity_ids = self._loader_controller.get_my_tasks_entity_ids(
+            self._current_project
+        )
+        folder_ids = set(entity_ids.get("folder_ids") or [])
+        scope = set(folder_ids)
+        for folder_id in folder_ids:
+            scope.update(self.get_folder_id_path(folder_id))
+        self._folder_id_scope = scope
+        self._task_id_scope = set(entity_ids.get("task_ids") or [])
+
+    def get_task_id_scope(self) -> set[str] | None:
+        """Return task ids implied by the active "My Tasks" filter.
+
+        Returns:
+            The set of task ids to restrict the task list to, or
+            ``None`` when no id-scoping filter is active.
+        """
+        return self._task_id_scope
 
     def on_tree_selection_changed(
         self, ids: list[str], names: list[str]
@@ -2200,6 +2268,10 @@ class BrowserController(QtCore.QObject):
         ))
         for folder in folders:
             self._folder_parent_ids[folder["id"]] = folder.get("parentId")
+        if self._folder_id_scope is not None:
+            folders = [
+                f for f in folders if f["id"] in self._folder_id_scope
+            ]
         return [
             TreeNode(
                 id=f["id"],

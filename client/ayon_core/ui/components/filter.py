@@ -651,6 +651,26 @@ class AYFilterByCategory(AYFilter):
                 self._repopulate_popup()
                 break
 
+    def set_items(self, items: List[FilterItem]) -> None:
+        """Replace the full set of available filter options.
+
+        Any tag whose key is not present in *items* is dropped (its
+        filter no longer applies, e.g. because it is specific to a
+        mode the caller just switched away from). Callers that need to
+        react to filters being cleared this way should re-read
+        ``get_selected_keys()`` afterwards rather than rely on
+        ``filter_changed`` being emitted here.
+
+        Args:
+            items: New list of ``FilterItem`` options to show.
+        """
+        new_keys = {item.key for item in items}
+        for key in set(self._tags) - new_keys:
+            self._remove_tag(key)
+        self._items = list(items)
+        self._repopulate_popup()
+        self._sync_tags_from_items(self._items)
+
     def set_filter_selected(self, key: str, selected: bool) -> None:
         """Set selection state of a filter.
 
