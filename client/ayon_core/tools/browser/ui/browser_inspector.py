@@ -269,21 +269,37 @@ class ReviewInspector(AYContainer):
         if not self._mouse_pressed:
             self._update()
 
+    @staticmethod
+    def _get_version_id(data: dict) -> str:
+        """Return a version ID, excluding folders and synthetic group rows."""
+        version_id = data.get("_version_id", "")
+        if version_id:
+            return version_id
+        if str(data.get("entityType", "")).casefold() != "version":
+            return ""
+        entity_id = data.get("id", "")
+        if str(entity_id).startswith(("grp:", "attr:")):
+            return ""
+        return entity_id
+
     def _update(self) -> None:
         """Update the inspector with the current selection, if visible."""
         if not self.isVisible():
             return
 
-        n_sel = len(self._current_selection)
+        selected_data = [
+            data
+            for idx in self._current_selection
+            if (
+                (data := idx.data(QtCore.Qt.ItemDataRole.UserRole) or {})
+                and self._get_version_id(data)
+            )
+        ]
+        n_sel = len(selected_data)
         single = n_sel <= 1
         default = "-" if single else f"{n_sel} items selected"
 
-        index = next(iter(self._current_selection), QtCore.QModelIndex())
-        data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-
-        # Folder rows have no version data — clear the inspector.
-        if data.get("entityType", "") == "Folder":
-            data = {}
+        data = selected_data[0] if selected_data else {}
 
         self._path_label.setText(
             data.get("path", default) if single else default
@@ -307,15 +323,13 @@ class ReviewInspector(AYContainer):
         thumb_keys: list[str] = []
         version_ids: list[str] = []
         project_name: str = data.get("project_name", "")
-        for idx in self._current_selection:
-            d = idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+        for d in selected_data:
             tid = d.get("thumbnailId", "")
-            vid = d.get("_version_id") or d.get("id", "")
+            vid = self._get_version_id(d)
             pname = d.get("project_name", "")
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
-            if vid:
-                version_ids.append(vid)
+            version_ids.append(vid)
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses
