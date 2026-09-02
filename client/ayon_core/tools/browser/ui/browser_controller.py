@@ -53,8 +53,6 @@ from ayon_core.tools.browser.ui.browser_queries import (
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 
-ReviewCategory = BrowserSlicerCategory
-
 # Maximum number of pages to fetch when building product group headers.
 # Each page contains up to 1 000 products, so this caps the total at
 # 50 000 products before a warning is logged.
@@ -325,7 +323,7 @@ class BrowserController(QtCore.QObject):
         self._selected_folder_ids = []
         self._review_session_version_ids = None
 
-        if category == ReviewCategory.REVIEWS.value:
+        if category == BrowserSlicerCategory.REVIEWS.value:
             # Reviews are always flat — drop any grouping/tree state that
             # was active in the Hierarchy view so the table fetch path
             # takes the plain flat-version branch.
@@ -353,14 +351,14 @@ class BrowserController(QtCore.QObject):
         self._selected_folder_ids = list(ids)
         if (
             self._include_folder_children
-            and self._current_category == ReviewCategory.HIERARCHY.value
+            and self._current_category == BrowserSlicerCategory.HIERARCHY.value
         ):
             self._selected_folder_ids = (
                 self._get_top_level_selected_folder_ids(ids)
             )
         self._review_session_version_ids = None  # always clear first
 
-        if self._current_category == ReviewCategory.REVIEWS.value and ids:
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value and ids:
             ids_set: set[str] = set()
             for sid in ids:
                 ids_set.update(self._get_review_session_version_ids(sid))
@@ -654,7 +652,7 @@ class BrowserController(QtCore.QObject):
         Returns:
             List of :class:`TreeNode` instances.
         """
-        if self._current_category == ReviewCategory.HIERARCHY.value:
+        if self._current_category == BrowserSlicerCategory.HIERARCHY.value:
             return self._fetch_products(parent_id)
         return self._fetch_reviews(parent_id)
 
@@ -747,7 +745,7 @@ class BrowserController(QtCore.QObject):
 
         # -- Group-by mode -----------------------------------------------
         if (
-            self._current_category == ReviewCategory.HIERARCHY.value
+            self._current_category == BrowserSlicerCategory.HIERARCHY.value
             and self.group_by_key != GROUP_BY_NONE_KEY
         ):
             # Root level: return group header rows.
@@ -827,7 +825,7 @@ class BrowserController(QtCore.QObject):
         if (
             parent_id is None
             and self._tree_mode
-            and self._current_category == ReviewCategory.HIERARCHY.value
+            and self._current_category == BrowserSlicerCategory.HIERARCHY.value
         ):
             return self._fetch_root_folders(self._selected_folder_ids)
 
@@ -890,7 +888,7 @@ class BrowserController(QtCore.QObject):
 
         # Flat mode.
         folder_ids: list[str] | None = None
-        if self._current_category == ReviewCategory.REVIEWS.value:
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
             version_ids = self._review_session_version_ids  # None = no filter
             if not version_ids:
                 # No review session selected yet — show nothing
@@ -1856,7 +1854,7 @@ class BrowserController(QtCore.QObject):
         Raises:
             ValueError: When *field* is not a known grouping field.
         """
-        if self._current_category == ReviewCategory.REVIEWS.value:
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
             if not self._review_session_version_ids:
                 return set()
 
