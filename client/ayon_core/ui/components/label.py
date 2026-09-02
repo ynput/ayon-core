@@ -185,7 +185,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
                 icon_color = self._style_data["base"].get("color")
 
             if isinstance(self._icon, QIcon):
-                icn = QIcon(self._icon)
+                icn = self._icon
             elif self._icon == "none":
                 icn = QIcon()  # empty icon for spacing
                 pxm = QPixmap(self._icon_size, self._icon_size)
