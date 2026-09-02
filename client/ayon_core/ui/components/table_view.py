@@ -278,6 +278,7 @@ class AYTableView(StyleMixin, QTreeView):
         variant: Variants = Variants.Default,
     ) -> None:
         self._variant_str: str = variant.value
+        self._show_grid = True
 
         super().__init__(parent)
 
@@ -958,6 +959,18 @@ class AYTableView(StyleMixin, QTreeView):
     # Column-state API (used by ViewBindings / AYViewSelector)
     # ------------------------------------------------------------------
 
+    def setShowGrid(self, show: bool) -> None:  # noqa: N802
+        """Set whether the item delegate draws cell borders."""
+        show = bool(show)
+        if show == self._show_grid:
+            return
+        self._show_grid = show
+        self.viewport().update()
+
+    def showGrid(self) -> bool:  # noqa: N802
+        """Return whether cell borders are drawn."""
+        return self._show_grid
+
     def set_row_height(self, height: int | None) -> None:
         """Override the row height in pixels.
 
@@ -1366,7 +1379,9 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
 
         painter.setBrush(QBrush(bg_color))
 
-        pen_width = base_style.get("border-width", 0)
+        view = self.parent()
+        show_grid = getattr(view, "_show_grid", True)
+        pen_width = base_style.get("border-width", 0) if show_grid else 0
         if pen_width > 0:
             pen_color = QColor(base_style.get("border-color", "#000000"))
             pen = QPen(pen_color)
@@ -1375,7 +1390,9 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         else:
             painter.setPen(Qt.PenStyle.NoPen)
         column = index.column()
-        if column == 1:
+        if not show_grid:
+            painter.fillRect(opt.rect, bg_color)
+        elif column == 1:
             painter.fillRect(opt.rect, bg_color)
             painter.drawPolyline(
                 [

@@ -428,8 +428,9 @@ class Representations(AYContainer):
             variant=AYTableView.Variants.Low,
         )
         self._model = QtGui.QStandardItemModel()
-        self._model.setHorizontalHeaderLabels(["Name", "Folder", "Product"])
+        self._model.setHorizontalHeaderLabels(["Name", "Folder"])
         self._table.setModel(self._model)
+        self._table.setShowGrid(False)
         self._table.setSortingEnabled(True)
         self._table.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
@@ -500,7 +501,7 @@ class Representations(AYContainer):
         self._table._apply_tree_mode(enabled)
 
     def _make_row(self, repre: RepreItem) -> list[QtGui.QStandardItem]:
-        """Build the three-column item list for a single representation.
+        """Build the two-column item list for a representation.
 
         Args:
             repre: A
@@ -508,8 +509,7 @@ class Representations(AYContainer):
                 instance.
 
         Returns:
-            A three-element list ``[name_item, folder_item,
-            product_item]`` ready to pass to
+            A two-element list ``[name_item, folder_item]`` ready for
             :meth:`QtGui.QStandardItemModel.appendRow`.
         """
         name_item = QtGui.QStandardItem(repre.representation_name)
@@ -525,18 +525,15 @@ class Representations(AYContainer):
         folder_item = QtGui.QStandardItem(repre.folder_label)
         folder_item.setEditable(False)
 
-        product_item = QtGui.QStandardItem(repre.product_name)
-        product_item.setEditable(False)
-
-        return [name_item, folder_item, product_item]
+        return [name_item, folder_item]
 
     def _make_group_row(
         self, name: str, sample_repre: RepreItem
     ) -> QtGui.QStandardItem:
         """Build the parent (group) item for a shared representation name.
 
-        The group item spans the Name column only; Folder and Product
-        cells are intentionally left empty.
+        The group item spans the Name column only; the Folder cell is
+        intentionally left empty.
 
         Args:
             name: The shared representation name used as the label.
