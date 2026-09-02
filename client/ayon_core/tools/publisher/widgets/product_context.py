@@ -89,6 +89,7 @@ class FoldersFields(BaseClickableFrame):
         self._origin_value = set()
         self._origin_selection = set()
         self._selected_items = set()
+        self._folder_paths_to_validate = set()
         self._has_value_changed = False
         self._is_valid = True
         self._multiselection_text = None
@@ -157,7 +158,9 @@ class FoldersFields(BaseClickableFrame):
         self._name_input.end(False)
 
     def set_selected_items(
-        self, folder_paths: set[str] | None = None
+        self,
+        folder_paths: set[str] | None = None,
+        folder_paths_to_validate: set[str] | None = None,
     ) -> None:
         """Set folder paths for selection of instances.
 
@@ -166,6 +169,8 @@ class FoldersFields(BaseClickableFrame):
 
         Args:
             folder_paths (set[str] | None): Set of folder paths.
+            folder_paths_to_validate (set[str] | None): Subset of folder paths
+                whose existence must be validated. Defaults to "folder_paths".
 
         """
         if folder_paths is None:
@@ -174,7 +179,12 @@ class FoldersFields(BaseClickableFrame):
         self._has_value_changed = False
         self._origin_value = set(folder_paths)
         self._selected_items = set(folder_paths)
-        is_valid = self._controller.are_folder_paths_valid(folder_paths)
+        self._folder_paths_to_validate = set(
+            folder_paths_to_validate or folder_paths
+        )
+        is_valid = self._controller.are_folder_paths_valid(
+            folder_paths_to_validate
+        )
         if not folder_paths:
             self.set_text("")
 
@@ -191,7 +201,9 @@ class FoldersFields(BaseClickableFrame):
 
     def reset_to_origin(self) -> None:
         """Change to folder paths set with last `set_selected_items` call."""
-        self.set_selected_items(self._origin_value)
+        self.set_selected_items(
+            self._origin_value, self._folder_paths_to_validate
+        )
 
     def confirm_value(self) -> None:
         self._origin_value = copy.deepcopy(self._selected_items)
@@ -932,7 +944,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.variant_input.set_value(variants)
 
         # Set context of folder widget
-        self.folder_value_widget.set_selected_items(folder_paths)
+        self.folder_value_widget.set_selected_items(
+            folder_paths,
+            folder_paths_to_validate=editable_folder_paths,
+        )
         # Set context of task widget
         self.task_value_widget.set_selected_items(
             folder_task_combinations,

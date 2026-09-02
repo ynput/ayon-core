@@ -2103,12 +2103,12 @@ class CreateContext:
                 promised_tasks = instance.transient_data.get(
                     "promised_tasks"
                 )
-                if promised_tasks:
-                    context_info.task_is_valid = (
-                        (context_info.task_name or "") in promised_tasks
-                    )
-                else:
-                    context_info.task_is_valid = True
+                task_name = context_info.task_name or ""
+                context_info.task_is_valid = (
+                    not promised_tasks
+                    or not task_name
+                    or task_name in promised_tasks
+                )
                 # NOTE missing task type
                 continue
             # TODO allow context promise

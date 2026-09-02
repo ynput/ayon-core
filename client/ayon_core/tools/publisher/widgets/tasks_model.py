@@ -146,8 +146,6 @@ class TasksModel(QtGui.QStandardItemModel):
             new_task_names = self.get_intersection_of_tasks(
                 task_names_by_folder_path
             )
-            if self._allow_empty_task:
-                new_task_names.add("")
 
         for promised_tasks in self._promised_task_lists:
             promised_tasks = set(promised_tasks)
@@ -155,6 +153,11 @@ class TasksModel(QtGui.QStandardItemModel):
                 new_task_names = promised_tasks
             else:
                 new_task_names &= promised_tasks
+
+        # An empty task is tolerated when folders allow it or when promised
+        # tasks are provided.
+        if self._allow_empty_task or self._promised_task_lists:
+            new_task_names.add("")
 
         old_task_names = set(self._items_by_name.keys())
         if new_task_names == old_task_names:
