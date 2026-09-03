@@ -2236,10 +2236,10 @@ class BrowserController(QtCore.QObject):
             return []
 
         self.log.debug("Fetching product children for %s", parent_id)
-        parent_ids = [parent_id] if parent_id is not None else None
+        parent_ids = [parent_id] if parent_id is not None else [None]
         folders = list(ayon_api.get_folders(
             project,
-            parent_ids=parent_ids,
+            parent_ids=parent_ids,  # type: ignore[arg-type]
             fields={
                 "id",
                 "name",
