@@ -29,7 +29,7 @@ from ayon_core.tools.browser.columns import (
     BrowserColumnServices,
     BrowserFilter,
 )
-from ayon_core.tools.browser.control import LoaderController
+from ayon_core.tools.browser.control import BrowserController
 from ayon_core.tools.browser.sitesync_columns import (
     SiteSyncBrowserColumnProvider,
 )
@@ -86,10 +86,10 @@ def _timestamp_to_date(timestamp: str) -> str:
     )
 
 
-class BrowserController(QtCore.QObject):
-    """Controller for the Reviews widget.
+class BrowserWidgetController(QtCore.QObject):
+    """Controller for the Browser widget.
 
-    Centralises all business logic and data fetching for the reviews
+    Centralises all business logic and data fetching for the Browser
     UI. Emits signals when state changes so that widgets can react.
     """
 
@@ -103,7 +103,7 @@ class BrowserController(QtCore.QObject):
 
     def __init__(
         self,
-        loader_controller: LoaderController,
+        loader_controller: BrowserController,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)

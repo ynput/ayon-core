@@ -15,7 +15,9 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.tools.browser.abstract import RepreItem
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
-from ayon_core.tools.browser.ui.browser_controller import BrowserController
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
 from ayon_core.tools.utils import get_qt_icon
 
 from ._browser_thumbnails import _thumbnail_loader
@@ -26,7 +28,7 @@ class ReviewInspector(AYContainer):
 
     def __init__(
         self,
-        controller: BrowserController,
+        controller: BrowserWidgetController,
         *args,
         **kwargs,
     ):
@@ -425,7 +427,7 @@ class Representations(AYContainer):
     rows regardless of the mode.
     """
 
-    def __init__(self, controller: BrowserController, *args, **kwargs):
+    def __init__(self, controller: BrowserWidgetController, *args, **kwargs):
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,

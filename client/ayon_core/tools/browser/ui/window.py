@@ -9,7 +9,7 @@ from ayon_core.pipeline.actions import LoaderActionResult
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
-from ayon_core.tools.browser.control import LoaderController
+from ayon_core.tools.browser.control import BrowserController
 from ayon_core.tools.utils import (
     ErrorMessageBox,
     MessageOverlayObject,
@@ -98,7 +98,7 @@ class BrowserWindow(AYContainer):
         )
 
         if controller is None:
-            controller = LoaderController()
+            controller = BrowserController()
         self._controller = controller
 
         subtitle = controller.get_window_subtitle()
@@ -283,6 +283,3 @@ class BrowserWindow(AYContainer):
             data=event["data"],
             form_values=form_values,
         )
-
-
-LoaderWindow = BrowserWindow

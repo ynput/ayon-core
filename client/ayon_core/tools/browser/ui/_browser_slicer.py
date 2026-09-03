@@ -15,7 +15,9 @@ from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.ui.browser_controller import BrowserController
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils import ProjectsCombobox
 
@@ -53,7 +55,7 @@ class BrowserSlicer(AYContainer):
 
     def __init__(
         self,
-        controller: BrowserController,
+        controller: BrowserWidgetController,
         loader_controller,
         *args: Any,
         initial_category: str = BrowserSlicerCategory.HIERARCHY.value,

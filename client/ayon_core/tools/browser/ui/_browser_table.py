@@ -29,7 +29,9 @@ from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.ui.browser_controller import BrowserController
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
 from ayon_core.tools.browser.ui.browser_group_by import (
     GROUP_BY_PRODUCT_KEY,
     GroupByOption,
@@ -132,7 +134,7 @@ class BrowserTable(AYContainer):
 
     def __init__(
         self,
-        controller: BrowserController,
+        controller: BrowserWidgetController,
         *args: Any,
         **kwargs: Any,
     ) -> None:

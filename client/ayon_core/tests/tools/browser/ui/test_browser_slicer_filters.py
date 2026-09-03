@@ -12,11 +12,13 @@ import pytest
 if "qargparse" not in sys.modules:
     sys.modules["qargparse"] = types.ModuleType("qargparse")
 
-from ayon_core.tools.browser.control import LoaderController
+from ayon_core.tools.browser.control import BrowserController
 from ayon_core.tools.browser.ui._browser_slicer_filters import (
     MyTasksToggleButton,
 )
-from ayon_core.tools.browser.ui.browser_controller import BrowserController
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.browser.ui.tasks_widget import (
     TASK_DATA_ROLE,
@@ -53,7 +55,7 @@ def _task_item(task_id, name, task_type="generic", task_type_order=0):
 
 
 def test_set_my_tasks_filter_resolves_folder_and_task_scope(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
 
     monkeypatch.setattr(
@@ -82,7 +84,7 @@ def test_set_my_tasks_filter_resolves_folder_and_task_scope(monkeypatch):
 
 
 def test_set_my_tasks_filter_noop_when_unchanged(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     recompute = Mock(wraps=controller._recompute_my_tasks_scope)
     monkeypatch.setattr(
         controller, "_recompute_my_tasks_scope", recompute
@@ -94,7 +96,7 @@ def test_set_my_tasks_filter_noop_when_unchanged(monkeypatch):
 
 
 def test_set_my_tasks_filter_clears_scope_when_disabled(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     monkeypatch.setattr(
         controller._loader_controller,
@@ -117,7 +119,7 @@ def test_set_my_tasks_filter_clears_scope_when_disabled(monkeypatch):
 
 
 def test_fetch_folders_restricts_to_folder_id_scope(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._folder_id_scope = {"shot010"}
 
@@ -141,7 +143,7 @@ def test_fetch_folders_restricts_to_folder_id_scope(monkeypatch):
 
 
 def test_fetch_folders_returns_everything_without_scope(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
 
     monkeypatch.setattr(
@@ -259,7 +261,7 @@ def test_my_tasks_toggle_emits_native_toggled_signal(qtbot):
 
 
 def test_my_tasks_filter_enabled_property_reflects_state(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     monkeypatch.setattr(
         controller._loader_controller,
@@ -276,7 +278,7 @@ def test_my_tasks_filter_enabled_property_reflects_state(monkeypatch):
 
 
 def test_set_my_tasks_filter_emits_signal_only_on_change(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     monkeypatch.setattr(
         controller._loader_controller,

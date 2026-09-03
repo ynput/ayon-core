@@ -10,8 +10,10 @@ from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
-from ayon_core.tools.browser.ui.browser_controller import BrowserController
-from ayon_core.tools.browser.control import LoaderController
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
+from ayon_core.tools.browser.control import BrowserController
 
 from ._browser_slicer import BrowserSlicer
 from ._browser_table import BrowserTable
@@ -27,7 +29,7 @@ class BrowserWidget(AYContainer):
 
     def __init__(
         self,
-        loader_controller: LoaderController,
+        loader_controller: BrowserController,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -39,7 +41,7 @@ class BrowserWidget(AYContainer):
             layout_spacing=4,
             **kwargs,
         )
-        self._controller = BrowserController(
+        self._controller = BrowserWidgetController(
             loader_controller,
             parent=self,
         )

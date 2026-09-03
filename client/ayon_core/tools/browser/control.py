@@ -112,7 +112,7 @@ class ExpectedSelection:
         return True
 
 
-class LoaderController(BackendLoaderController, FrontendLoaderController):
+class BrowserController(BackendLoaderController, FrontendLoaderController):
     """
 
     Args:
@@ -669,6 +669,3 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         if not cache.is_valid:
             cache.update_data(Anatomy(project_name))
         return cache.get_data()
-
-
-BrowserController = LoaderController

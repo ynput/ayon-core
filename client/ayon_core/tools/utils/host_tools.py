@@ -93,9 +93,10 @@ class HostToolsHelper:
                 from ayon_core.tools.loader import LoaderController
             else:
                 from ayon_core.tools.browser.ui import BrowserWindow
-                from ayon_core.tools.browser import LoaderController
+                from ayon_core.tools.browser import BrowserController
 
                 LoaderWindow = BrowserWindow
+                LoaderController = BrowserController
 
             host = registered_host()
             ILoadHost.validate_load_methods(host)

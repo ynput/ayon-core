@@ -14,8 +14,10 @@ from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 from ayon_core.ui.components.table_filter import FilterCriterion
 from ayon_core.ui.components.table_model import BatchFetchRequest
 
-from ayon_core.tools.browser.ui.browser_controller import BrowserController
-from ayon_core.tools.browser.control import LoaderController
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
+from ayon_core.tools.browser.control import BrowserController
 
 
 @pytest.fixture(autouse=True)
@@ -49,7 +51,7 @@ def _make_request(
 
 
 def test_extension_filter_is_not_forwarded_to_graphql():
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller.set_filter_criteria([
         FilterCriterion(
             key=ACTIVE_FILTER_KEY,
@@ -68,7 +70,7 @@ def test_extension_filter_is_not_forwarded_to_graphql():
 def test_has_reviewables_filter_is_forwarded_to_versions_query(
     value, expected,
 ):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller.set_filter_criteria([
         FilterCriterion(
             key="hasReviewables",
@@ -84,7 +86,7 @@ def test_has_reviewables_filter_is_forwarded_to_versions_query(
 
 
 def test_controller_uses_browser_view_defaults():
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     defaults = BROWSER_VIEW_DEFAULTS
 
     assert controller.group_by_key == defaults.group_by_key
@@ -103,7 +105,7 @@ def test_controller_uses_browser_view_defaults():
 def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
     monkeypatch,
 ):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["folder_A"]
 
@@ -188,7 +190,7 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
 def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
     monkeypatch,
 ):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["A", "B"]
     controller._include_folder_children = False
@@ -258,7 +260,7 @@ def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
 def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
     monkeypatch,
 ):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["A", "B"]
     controller._folder_cursors = {"A": "cursor:A", "B": "cursor:B"}
@@ -313,7 +315,7 @@ def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
 
 
 def test_group_counts_use_filtered_distribution(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["folder_A"]
     connection = Mock()
@@ -363,7 +365,7 @@ def test_group_counts_use_filtered_distribution(monkeypatch):
 
 
 def test_product_group_counts_normalize_uuid_values(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["folder_A"]
     connection = Mock()
@@ -405,7 +407,7 @@ def test_product_group_counts_normalize_uuid_values(monkeypatch):
 
 
 def test_group_counts_control_empty_status_rows(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["folder_A"]
     controller._group_by_key = GROUP_BY_STATUS_KEY
@@ -445,7 +447,7 @@ def test_group_counts_control_empty_status_rows(monkeypatch):
 
 
 def test_missing_filtered_counts_keep_product_groups_expandable(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["folder_A"]
     controller._group_by_key = GROUP_BY_PRODUCT_KEY
@@ -474,7 +476,7 @@ def test_missing_filtered_counts_keep_product_groups_expandable(monkeypatch):
 
 
 def test_missing_filtered_counts_fall_back_to_group_inventory(monkeypatch):
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._group_by_key = GROUP_BY_STATUS_KEY
     controller._hide_empty_groups = True
@@ -521,7 +523,7 @@ def test_attribute_grouping_only_exposes_scalar_types():
 
 
 def test_boolean_attribute_group_uses_scalar_equality():
-    controller = BrowserController(LoaderController())
+    controller = BrowserWidgetController(BrowserController())
     controller._version_attributes = {
         "approved": {"type": "boolean"}
     }
