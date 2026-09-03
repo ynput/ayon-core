@@ -99,6 +99,7 @@ class BrowserController(QtCore.QObject):
     tree_reset_requested = QtCore.Signal()  # type: ignore
     selection_changed = QtCore.Signal(list, list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
+    my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
 
     def __init__(
         self,
@@ -141,6 +142,9 @@ class BrowserController(QtCore.QObject):
             *BROWSER_VIEW_DEFAULTS.featured_version_order,
         ]
         self._latest_per_folder = BROWSER_VIEW_DEFAULTS.latest_per_folder
+        self._my_tasks_filter_enabled: bool = False
+        self._folder_id_scope: set[str] | None = None
+        self._task_id_scope: set[str] | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
         self._requested_column_keys: set[str] | None = None
         column_services = BrowserColumnServices(loader_controller)
@@ -310,6 +314,9 @@ class BrowserController(QtCore.QObject):
         self._reset_pagination()
         self._selected_folder_ids = []
         self._folder_parent_ids = {}
+        # Keep the "My Tasks" filter sticky across a project switch,
+        # just re-resolved against the new project.
+        self._recompute_my_tasks_scope()
         self._build_project_info()
         self._get_review_session_list()
         self.project_changed.emit(project_name)
@@ -346,6 +353,68 @@ class BrowserController(QtCore.QObject):
         self._reset_pagination()
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
+
+    def set_my_tasks_filter(self, enabled: bool) -> None:
+        """Toggle the "My Tasks" slicer filter.
+
+        Unlike the table's :meth:`set_filter_criteria`, this scopes
+        which folders the Hierarchy tree fetches at all, so toggling
+        it resets and re-fetches the tree.
+
+        Args:
+            enabled: Whether the filter should be active.
+        """
+        enabled = bool(enabled)
+        if enabled == self._my_tasks_filter_enabled:
+            return
+        self._my_tasks_filter_enabled = enabled
+        self._recompute_my_tasks_scope()
+        self._reset_pagination()
+        self.my_tasks_filter_changed.emit(enabled)
+        self.tree_reset_requested.emit()
+
+    @property
+    def my_tasks_filter_enabled(self) -> bool:
+        """Return whether the "My Tasks" slicer filter is active.
+
+        Used by ``BrowserTable`` to capture the filter into a saved
+        View (see ``_capture_view_extras``).
+        """
+        return self._my_tasks_filter_enabled
+
+    def _recompute_my_tasks_scope(self) -> None:
+        """Recompute id scopes for the "My Tasks" filter.
+
+        Resolves to the folders that directly own a task assigned to
+        the current user, widened to include every ancestor folder so
+        the tree can still be navigated down to them, plus the
+        matching task ids themselves (consumed by
+        ``BrowserTasksWidget`` to narrow the task list under a
+        selected folder).
+        """
+        if not self._my_tasks_filter_enabled or not self._current_project:
+            self._folder_id_scope = None
+            self._task_id_scope = None
+            return
+
+        entity_ids = self._loader_controller.get_my_tasks_entity_ids(
+            self._current_project
+        )
+        folder_ids = set(entity_ids.get("folder_ids") or [])
+        scope = set(folder_ids)
+        for folder_id in folder_ids:
+            scope.update(self.get_folder_id_path(folder_id))
+        self._folder_id_scope = scope
+        self._task_id_scope = set(entity_ids.get("task_ids") or [])
+
+    def get_task_id_scope(self) -> set[str] | None:
+        """Return task ids implied by the active "My Tasks" filter.
+
+        Returns:
+            The set of task ids to restrict the task list to, or
+            ``None`` when no id-scoping filter is active.
+        """
+        return self._task_id_scope
 
     def on_tree_selection_changed(
         self, ids: list[str], names: list[str]
@@ -2200,6 +2269,10 @@ class BrowserController(QtCore.QObject):
         ))
         for folder in folders:
             self._folder_parent_ids[folder["id"]] = folder.get("parentId")
+        if self._folder_id_scope is not None:
+            folders = [
+                f for f in folders if f["id"] in self._folder_id_scope
+            ]
         return [
             TreeNode(
                 id=f["id"],

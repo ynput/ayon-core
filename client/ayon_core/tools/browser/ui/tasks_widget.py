@@ -52,6 +52,9 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         self._controller = controller
         self._project_name = ""
         self._folder_ids: list[str] = []
+        self._task_id_scope: set[str] | None = None
+        self._last_task_items: list[Any] = []
+        self._last_task_type_items: list[Any] = []
         self._selected_names: set[str] = set()
         self._selected_ids: set[str] = set()
         self._refresh_threads: dict[str, RefreshThread] = {}
@@ -89,12 +92,26 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         self,
         project_name: str,
         folder_ids: list[str],
+        task_id_scope: set[str] | None = None,
     ) -> None:
-        """Load tasks for the selected project and folders."""
+        """Load tasks for the selected project and folders.
+
+        Args:
+            project_name: Project to fetch tasks from.
+            folder_ids: Folder ids whose tasks should be listed.
+            task_id_scope: When given, restrict the listed tasks to
+                this set of ids (used by the "My Tasks" slicer
+                filter). ``None`` shows every task under the folders.
+        """
         self._project_name = project_name
         self._folder_ids = list(folder_ids)
+        self._task_id_scope = (
+            set(task_id_scope) if task_id_scope is not None else None
+        )
         if not project_name or not folder_ids:
             self._current_thread_id = None
+            self._last_task_items = []
+            self._last_task_type_items = []
             self._replace_rows([])
             self.refreshed.emit()
             return
@@ -118,7 +135,31 @@ class BrowserTasksWidget(QtWidgets.QWidget):
 
     def refresh(self) -> None:
         """Reload tasks for the current context."""
-        self.set_context(self._project_name, self._folder_ids)
+        self.set_context(
+            self._project_name, self._folder_ids, self._task_id_scope
+        )
+
+    def set_task_id_scope(self, task_id_scope: set[str] | None) -> None:
+        """Restrict the listed tasks to *task_id_scope* in place.
+
+        Rebuilds rows from the last fetched result without a new
+        server round trip, so toggling the "My Tasks" filter is
+        instant rather than re-querying tasks that are already cached
+        client-side.
+
+        Args:
+            task_id_scope: Task ids to restrict the list to, or
+                ``None`` to show every task under the current folders.
+        """
+        scope = set(task_id_scope) if task_id_scope is not None else None
+        if scope == self._task_id_scope:
+            return
+        self._task_id_scope = scope
+        self._replace_rows(
+            self._build_rows(
+                self._last_task_items, self._last_task_type_items
+            )
+        )
 
     def set_selected_task_names(self, names: list[str]) -> None:
         """Select all rows whose task name is in *names*."""
@@ -211,11 +252,42 @@ class BrowserTasksWidget(QtWidgets.QWidget):
                 "Failed to refresh Browser tasks: %s",
                 thread.get_exception(),
             )
+            self._last_task_items = []
+            self._last_task_type_items = []
             self._replace_rows([])
             self.refreshed.emit()
             return
 
         task_items, task_type_items = result
+        self._last_task_items = task_items
+        self._last_task_type_items = task_type_items
+        self._replace_rows(self._build_rows(task_items, task_type_items))
+        self.refreshed.emit()
+
+    def _build_rows(
+        self,
+        task_items: list[Any],
+        task_type_items: list[Any],
+    ) -> list[list[QtGui.QStandardItem]]:
+        """Build table rows for *task_items*, grouped and sorted.
+
+        Args:
+            task_items: Raw task items as returned by the controller.
+            task_type_items: Task type items used to resolve icons and
+                (when sorting by type) group ordering.
+
+        Returns:
+            Row data ready for :meth:`_replace_rows`. When the "My
+            Tasks" scope is active, only matching tasks are included
+            and the "No task" placeholder row is omitted, since "no
+            task" cannot be a task assigned to anyone.
+        """
+        if self._task_id_scope is not None:
+            task_items = [
+                item
+                for item in task_items
+                if item.task_id in self._task_id_scope
+            ]
         type_items_by_name = {
             item.name: item for item in task_type_items
         }
@@ -242,9 +314,9 @@ class BrowserTasksWidget(QtWidgets.QWidget):
             )
             for items in grouped_items
         ]
-        rows.append(self._create_no_task_row())
-        self._replace_rows(rows)
-        self.refreshed.emit()
+        if self._task_id_scope is None:
+            rows.append(self._create_no_task_row())
+        return rows
 
     def _create_task_row(
         self,

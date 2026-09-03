@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from qtpy import QtWidgets
 from qtpy.QtCore import (
     QAbstractItemModel,
     QEvent,
@@ -61,6 +62,18 @@ class AYSlicer(AYContainer):
         self._button.toggled.connect(self._on_button_toggled)
         self._field.textChanged.connect(self._on_search_changed)
         self._combo.activated.connect(self._on_category_activated)
+
+    def add_trailing_widget(self, widget: QtWidgets.QWidget) -> None:
+        """Append an extra action widget after the search toggle button.
+
+        Lets callers place a mode-aware action (e.g. Browser's slicer
+        filter menu) inline with the category/search row without
+        ``AYSlicer`` needing to know anything about it.
+
+        Args:
+            widget: Widget to append, e.g. an icon button.
+        """
+        self.add_widget(widget)
 
     def current_category(self) -> str:
         return self._combo.currentText()

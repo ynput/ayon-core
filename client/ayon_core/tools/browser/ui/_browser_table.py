@@ -1063,11 +1063,17 @@ class BrowserTable(AYContainer):
         Supported loader-specific extras:
             ``gridHeight`` (card width),
             ``featuredVersionOrder`` (hero/latest version order),
-            ``displayType`` (``"table"`` or ``"grid"``).
+            ``displayType`` (``"table"`` or ``"grid"``),
+            ``myTasksFilter`` (whether the "My Tasks" slicer filter
+            is active).
 
         Args:
             extra: The settings ``extra`` dict from the applied view.
         """
+        if "myTasksFilter" in extra:
+            self._controller.set_my_tasks_filter(
+                bool(extra["myTasksFilter"])
+            )
         if "gridHeight" in extra:
             try:
                 self._card_view.card_width = int(extra["gridHeight"])
@@ -1134,7 +1140,8 @@ class BrowserTable(AYContainer):
         drops known keys from ``extra``).
 
         Captured loader-specific extras include card width, featured
-        version order, and current display type (table or grid).
+        version order, current display type (table or grid), and
+        whether the "My Tasks" slicer filter is active.
 
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
@@ -1147,6 +1154,7 @@ class BrowserTable(AYContainer):
             ),
             "latestPerFolder": self._controller.latest_per_folder,
             "includeChildren": self._controller.include_folder_children,
+            "myTasksFilter": self._controller.my_tasks_filter_enabled,
         }
         return extra
 

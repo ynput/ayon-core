@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
+from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.slicer import AYSlicer
 from ayon_core.ui.components.task_queue import get_task_queue
 from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_core.ui.components.tree_model import LazyTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
-from ayon_core.tools.utils import GoToCurrentButton
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_controller import BrowserController
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 
+from ._browser_slicer_filters import MyTasksToggleButton
 from ._project_selector import ProjectSelector
 from .tasks_widget import BrowserTasksWidget
 
@@ -90,19 +91,18 @@ class BrowserSlicer(AYContainer):
             item_list=self.CATEGORIES,
             initial_text=initial_category,
         )
-        self._go_to_current_btn = GoToCurrentButton(self)
-        self._go_to_current_btn.setToolTip(
-            "Select the current context in the hierarchy"
+        self._my_tasks_btn = MyTasksToggleButton(self)
+        self._slicer.add_trailing_widget(self._my_tasks_btn)
+        self._go_to_current_btn = AYButton(
+            variant=AYButton.Variants.Nav,
+            icon="my_location",
+            tooltip="Select the current context in the hierarchy",
         )
         self._go_to_current_btn.clicked.connect(
             self.select_current_context
         )
-        category_layout = QtWidgets.QHBoxLayout()
-        category_layout.setContentsMargins(0, 0, 0, 0)
-        category_layout.setSpacing(4)
-        category_layout.addWidget(self._slicer, stretch=1)
-        category_layout.addWidget(self._go_to_current_btn, stretch=0)
-        self.add_layout(category_layout, stretch=0)
+        self._slicer.add_trailing_widget(self._go_to_current_btn)
+        self.add_widget(self._slicer, stretch=0)
         self._update_current_context_button(initial_category)
 
         self._tree_view = ReviewTreeView(self)
@@ -125,6 +125,16 @@ class BrowserSlicer(AYContainer):
         self._tasks.refreshed.connect(
             lambda: self._tasks.set_selected_task_names(self._task_names)
         )
+        self._my_tasks_btn.toggled.connect(self._apply_my_tasks_filter)
+        self._controller.my_tasks_filter_changed.connect(
+            self._on_controller_my_tasks_filter_changed
+        )
+
+        # Initialise the toggle's visibility for the starting category
+        # now that the tasks widget it feeds into exists.
+        self._my_tasks_btn.set_category(
+            BrowserSlicerCategory(initial_category)
+        )
 
     def set_model(self, model: LazyTreeModel) -> None:
         """Attach a tree model to the view and slicer proxy.
@@ -136,16 +146,39 @@ class BrowserSlicer(AYContainer):
 
     def _on_category_changed(self, category: str) -> None:
         self._controller.set_category(category)
+        # Update the toggle's visibility for the new mode first (this
+        # clears "My Tasks" -- via its own toggled signal -- when
+        # switching away from Hierarchy) before the tasks widget
+        # re-fetches using the now-current scope.
+        self._my_tasks_btn.set_category(BrowserSlicerCategory(category))
         enabled = category == BrowserSlicerCategory.HIERARCHY.value
         self._tasks.setEnabled(enabled)
         if enabled:
             self._tasks.set_context(
                 self._controller.current_project,
                 list(self._last_selection_ids or []),
+                task_id_scope=self._controller.get_task_id_scope(),
             )
         else:
             self._tasks.set_context(self._controller.current_project, [])
         self._update_current_context_button(category)
+
+    def _apply_my_tasks_filter(self, enabled: bool) -> None:
+        """Apply the "My Tasks" toggle to the controller and task list."""
+        self._controller.set_my_tasks_filter(enabled)
+        self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
+
+    def _on_controller_my_tasks_filter_changed(self, enabled: bool) -> None:
+        """React to the filter changing from outside the toggle itself.
+
+        Currently only reached when a saved View is applied (see
+        ``BrowserTable._apply_view_extras``); keeps the toggle's
+        checked state and the task list's scope in sync with it.
+        """
+        self._my_tasks_btn.blockSignals(True)
+        self._my_tasks_btn.setChecked(enabled)
+        self._my_tasks_btn.blockSignals(False)
+        self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
 
     def _update_current_context_button(self, category: str) -> None:
         context = self._loader_controller.get_current_context() or {}
@@ -264,6 +297,7 @@ class BrowserSlicer(AYContainer):
         self._tasks.set_context(
             self._controller.current_project,
             ids,
+            task_id_scope=self._controller.get_task_id_scope(),
         )
 
     def set_task_names(self, names: list[str]) -> None:
