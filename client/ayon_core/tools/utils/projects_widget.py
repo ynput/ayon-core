@@ -616,6 +616,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._expected_selection = None
 
         self._projects_combobox = projects_combobox
+        self._combobox_delegate = combobox_delegate
         self._projects_model = projects_model
         self._projects_proxy_model = projects_proxy_model
 
