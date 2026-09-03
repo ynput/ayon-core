@@ -155,6 +155,8 @@ class BrowserColumnManager:
         context: BrowserColumnContext,
     ) -> list[TableColumn]:
         """Return contributed columns, rejecting duplicate keys."""
+        if not context.project_name:
+            return []
         output = []
         keys = set()
         for provider in self._providers:
@@ -189,6 +191,8 @@ class BrowserColumnManager:
         context: BrowserColumnContext,
     ) -> list[FilterEntry]:
         """Return contributed filters, rejecting duplicate keys."""
+        if not context.project_name:
+            return []
         output = []
         keys = set()
         for provider in self._providers:
@@ -231,6 +235,8 @@ class BrowserColumnManager:
         context: BrowserColumnContext,
     ) -> set[str]:
         """Return base-query fields needed by active providers."""
+        if not context.project_name:
+            return set()
         output = set()
         for provider in self._providers:
             owned_keys = provider.column_keys | provider.filter_keys
@@ -253,7 +259,7 @@ class BrowserColumnManager:
         """Run only providers needed by visible columns or active filters."""
         output = rows
         requested_keys = context.requested_keys
-        if not output or not requested_keys:
+        if not output or not requested_keys or not context.project_name:
             return output
 
         for provider in self._providers:

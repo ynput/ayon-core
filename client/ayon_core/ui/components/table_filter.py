@@ -11,6 +11,7 @@ from qtpy.QtCore import (
     QSize,
     QSortFilterProxyModel,
     Qt,
+    QTimer,
     Signal,
 )
 from qtpy.QtGui import QCloseEvent, QKeySequence, QMouseEvent
@@ -1258,8 +1259,31 @@ class AYTableFilter(AYContainer):
             self._is_tree_mode,
             self._has_unloaded_children,
         )
-        # Re-filter whenever new rows are loaded
-        model.rowsInserted.connect(lambda *_: self._proxy.refresh_filter())
+        # Force a full re-scan whenever new rows are loaded, but only in
+        # tree mode. There a parent folder can be tentatively accepted
+        # while its children are still unloaded (see
+        # `AYTableFilterProxyModel.filterAcceptsRow`); once children
+        # arrive that parent's real verdict can only be resolved by
+        # re-running the filter. `QSortFilterProxyModel` already runs
+        # `filterAcceptsRow` automatically for every newly inserted row on
+        # its own, and again for a row whose `dataChanged` fires, so in
+        # flat mode - where a leaf row's verdict depends only on its own
+        # (already-enriched) data - forcing a full O(loaded rows) re-scan
+        # on every page is pure waste. That waste compounds badly with a
+        # local (client-side-only) filter: matches can be rare, pages keep
+        # arriving, and each re-scan gets more expensive than the last.
+        # Debounced for the tree-mode case, so a burst of pages arriving
+        # in quick succession triggers one re-scan instead of one per page.
+        self._refresh_filter_timer = QTimer(self)
+        self._refresh_filter_timer.setSingleShot(True)
+        self._refresh_filter_timer.setInterval(60)
+        self._refresh_filter_timer.timeout.connect(self._proxy.refresh_filter)
+
+        def _on_source_rows_inserted(*_args: Any) -> None:
+            if self._is_tree_mode():
+                self._refresh_filter_timer.start()
+
+        model.rowsInserted.connect(_on_source_rows_inserted)
 
         # Shared dropdown instance (reused across open calls)
         self._dropdown = _FilterDropdown(

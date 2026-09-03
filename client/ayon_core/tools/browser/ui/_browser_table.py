@@ -186,6 +186,13 @@ class BrowserTable(AYContainer):
             filter_locally=False,
             local_filter_keys=self._controller.get_extension_filter_keys(),
         )
+        # Tracks the last criteria that actually went into the server
+        # query, so a change to a local-only criterion (e.g. Site Sync
+        # availability) doesn't force a full reset+refetch below - the
+        # proxy already re-filters the already-loaded rows on its own.
+        self._last_server_filter_criteria: list[
+            tuple[str, tuple[str, ...], bool]
+        ] = []
         self._table_filter.filters_changed.connect(
             self._on_filters_changed
         )
@@ -643,9 +650,36 @@ class BrowserTable(AYContainer):
         self,
         criteria: list[FilterCriterion],
     ) -> None:
-        """Refetch rows after changing the server-side filters."""
+        """Refetch rows, but only when a server-side filter changed.
+
+        A criterion whose key is local-only (e.g. Site Sync availability,
+        computed client-side after each row is fetched) can never change
+        which rows the server should return, so toggling one alone must
+        not force a full reset+refetch - `AYTableFilter` already re-runs
+        the proxy filter over the rows that are already loaded. Refetching
+        anyway means re-running every extension provider's `enrich_rows`
+        (including a real Site Sync addon call) for data that hasn't
+        changed, for no visible benefit.
+        """
         self._controller.set_filter_criteria(criteria)
+        local_keys = self._controller.get_extension_filter_keys()
+        server_criteria = sorted(
+            (
+                criterion.key,
+                tuple(sorted(criterion.values)),
+                criterion.use_substring,
+            )
+            for criterion in criteria
+            if criterion.key not in local_keys
+        )
+        if server_criteria == self._last_server_filter_criteria:
+            # No refetch, so no `loading_changed` cycle will run to
+            # refresh the empty-state overlay on its own - do it here.
+            self._update_empty_state()
+            return
+        self._last_server_filter_criteria = server_criteria
         self._model.reset_data()
+        self._update_empty_state()
 
     def set_auto_expand(self, enabled: bool) -> None:
         """Enable or disable automatic expansion of folder rows.
@@ -891,16 +925,32 @@ class BrowserTable(AYContainer):
         self._position_add_column_button()
 
     def _update_empty_state(self) -> None:
-        """Show the shared empty state when no rows are available."""
-        show_empty = not self._model.is_loading and not self._model.rowCount()
+        """Show the shared empty state when no rows are visible.
+
+        Checks the FILTERED (proxy) row count, not the source model's.
+        A criterion like Site Sync availability is applied client-side
+        after rows are already loaded, so the source model can be full
+        while the proxy shows zero rows - that state must still surface
+        an empty-state message, otherwise the table just looks blank
+        and stuck with no explanation, indistinguishable from a hang.
+        """
+        show_empty = (
+            not self._model.is_loading
+            and not self._table_filter.filter_model.rowCount()
+        )
         self._empty_overlay.setVisible(show_empty)
         if show_empty:
             has_selection = self._controller.has_selection
-            self._empty_label.setText(
-                "No versions or products found"
-                if has_selection
-                else "Select a folder to show versions or products"
-            )
+            if not has_selection:
+                if not self._controller.current_project:
+                    text = "Select a project"
+                else:
+                    text = "Select a folder to show versions or products"
+            elif self._model.rowCount():
+                text = "No versions or products match the active filters"
+            else:
+                text = "No versions or products found"
+            self._empty_label.setText(text)
             self._empty_overlay.raise_()
 
     def _on_group_by_options_changed(
@@ -1185,11 +1235,15 @@ class BrowserTable(AYContainer):
 
     def _table_row_height(self) -> int:
         first_row_index = self._table.indexAt(QtCore.QPoint(0, 0))
-        return (
+        height = (
             self._table.rowHeight(first_row_index)
             if self._table.children()
             else 32
         )
+        # `rowHeight()` on an invalid index (e.g. the filtered view has
+        # zero visible rows) returns 0, which would stall any caller that
+        # advances a Y coordinate by this amount per step.
+        return height if height > 0 else 32
 
     def _iter_visible_proxy_indices(
         self,
@@ -1204,8 +1258,13 @@ class BrowserTable(AYContainer):
         if vp_rect.isEmpty():
             return
 
-        # Skip if table hasn't rendered yet
-        if self._model.rowCount() == 0:
+        # Skip if the view has nothing to show. Checks the model actually
+        # bound to the view (the filtered proxy), not the source model -
+        # the source can be full while every row is filtered out, and
+        # `indexAt` below would then return an invalid index for every Y
+        # in the loop.
+        view_model = self._table.model()
+        if view_model is None or view_model.rowCount() == 0:
             return
 
         row_height = self._table_row_height()
