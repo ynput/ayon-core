@@ -58,21 +58,11 @@ def show_actions_menu(
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
-        icon_name = (
-            action_item.icon.name
-            if hasattr(action_item.icon, "name")
-            else action_item.icon.get("name")
-            if isinstance(action_item.icon, dict)
-            else None
-        )
-        if icon_name and "." in icon_name:
-            icon_name = icon_name.split(".")[-1]
-
         icon = get_qt_icon(action_item.icon)
         if item_options:
             action = AYOptionalAction(
                 action_item.label,
-                icon if icon is not None else icon_name,
+                icon,
                 True,
                 menu,
             )
