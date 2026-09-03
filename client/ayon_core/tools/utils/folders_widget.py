@@ -283,11 +283,15 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             or refresh_task_id != self._current_refresh_task.id
         ):
             return
-        if refresh_task.is_failed():
-            # TODO visualize that refresh failed
-            folder_items, folder_type_items, status_items = {}, [], []
-        else:
-            folder_items, folder_type_items, status_items = refresh_task.get_result()
+
+        folder_items, folder_type_items, status_items = {}, [], []
+        # TODO visualize that refresh failed
+        if not refresh_task.is_failed():
+            (
+                folder_items,
+                folder_type_items,
+                status_items
+            ) = refresh_task.get_result()
         self._fill_items(folder_items, folder_type_items, status_items)
         self._current_refresh_thread = None
 
