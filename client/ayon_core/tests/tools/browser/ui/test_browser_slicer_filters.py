@@ -239,18 +239,18 @@ def test_slicer_filters_menu_offers_my_tasks_only_in_hierarchy(qtbot):
 
     menu.set_category(BrowserSlicerCategory.HIERARCHY)
     assert menu.isVisible()
-    assert list(menu._option_buttons) == [MY_TASKS_FILTER_KEY]
+    assert list(menu._option_checkboxes) == [MY_TASKS_FILTER_KEY]
 
     menu.set_category(BrowserSlicerCategory.REVIEWS)
     assert not menu.isVisible()
-    assert menu._option_buttons == {}
+    assert menu._option_checkboxes == {}
 
 
 def test_slicer_filters_menu_clears_selection_when_leaving_hierarchy(qtbot):
     menu = SlicerFiltersMenu()
     qtbot.addWidget(menu)
     menu.set_category(BrowserSlicerCategory.HIERARCHY)
-    menu._option_buttons[MY_TASKS_FILTER_KEY].setChecked(True)
+    menu._option_checkboxes[MY_TASKS_FILTER_KEY].setChecked(True)
     assert menu.get_selected_keys() == [MY_TASKS_FILTER_KEY]
 
     menu.set_category(BrowserSlicerCategory.REVIEWS)
@@ -265,14 +265,14 @@ def test_slicer_filters_menu_toggle_emits_and_highlights(qtbot):
     changed = Mock()
     menu.filter_changed.connect(changed)
 
-    menu._option_buttons[MY_TASKS_FILTER_KEY].setChecked(True)
+    menu._option_checkboxes[MY_TASKS_FILTER_KEY].setChecked(True)
 
     changed.assert_called_once_with([MY_TASKS_FILTER_KEY])
     assert menu.get_selected_keys() == [MY_TASKS_FILTER_KEY]
     assert menu._variant_str == AYButton.Variants.Checked.value
     assert "My Tasks" in menu.toolTip()
 
-    menu._option_buttons[MY_TASKS_FILTER_KEY].setChecked(False)
+    menu._option_checkboxes[MY_TASKS_FILTER_KEY].setChecked(False)
 
     assert menu.get_selected_keys() == []
     assert menu._variant_str == AYButton.Variants.Nav.value
@@ -290,7 +290,7 @@ def test_slicer_filters_menu_set_selected_keys_syncs_without_reemitting(
     menu.set_selected_keys({MY_TASKS_FILTER_KEY})
 
     assert menu.get_selected_keys() == [MY_TASKS_FILTER_KEY]
-    assert menu._option_buttons[MY_TASKS_FILTER_KEY].isChecked()
+    assert menu._option_checkboxes[MY_TASKS_FILTER_KEY].isChecked()
     changed.assert_not_called()
 
 

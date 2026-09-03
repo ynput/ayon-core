@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.slicer import AYSlicer
 from ayon_core.ui.components.task_queue import get_task_queue
 from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_core.ui.components.tree_model import LazyTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
-from ayon_core.tools.utils import GoToCurrentButton
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
@@ -93,19 +93,16 @@ class BrowserSlicer(AYContainer):
         )
         self._filters_menu = SlicerFiltersMenu(self)
         self._slicer.add_trailing_widget(self._filters_menu)
-        self._go_to_current_btn = GoToCurrentButton(self)
-        self._go_to_current_btn.setToolTip(
-            "Select the current context in the hierarchy"
+        self._go_to_current_btn = AYButton(
+            variant=AYButton.Variants.Nav,
+            icon="my_location",
+            tooltip="Select the current context in the hierarchy",
         )
         self._go_to_current_btn.clicked.connect(
             self.select_current_context
         )
-        category_layout = QtWidgets.QHBoxLayout()
-        category_layout.setContentsMargins(0, 0, 0, 0)
-        category_layout.setSpacing(4)
-        category_layout.addWidget(self._slicer, stretch=1)
-        category_layout.addWidget(self._go_to_current_btn, stretch=0)
-        self.add_layout(category_layout, stretch=0)
+        self._slicer.add_trailing_widget(self._go_to_current_btn)
+        self.add_widget(self._slicer, stretch=0)
         self._update_current_context_button(initial_category)
 
         self._tree_view = ReviewTreeView(self)

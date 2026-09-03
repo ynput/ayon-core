@@ -9,19 +9,20 @@ a filter that only applies to one slicer mode (e.g. "My Tasks" in
 Hierarchy) is simply not offered -- and the button hides entirely --
 in modes it doesn't apply to.
 
-Built on ``AYButtonMenu`` + ``FilterableList`` -- the same primitives
-already used for the Browser toolbar's "Group By" menu -- rather than
-``AYFilterByCategory``, since that widget's tag bar has no place to
-live once there is no filter row, and its default checkbox popup
-carries a heavier border than the rest of the app's dropdowns.
+Built on ``AYButtonMenu`` with plain ``AYCheckBox`` rows -- the same
+recipe the toolbar's "Customize" menu uses -- rather than a searchable
+list: with only a handful of options there is no need to search, and
+a flat checkbox menu avoids both the scroll area's leftover
+whitespace and ``AYFilterByCategory``'s heavier popup border.
 """
 
 from __future__ import annotations
 
-from qtpy import QtCore
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.ui.components.buttons import AYButton, AYButtonMenu
-from ayon_core.ui.components.filterable_list import FilterableList
+from ayon_core.ui.components.check_box import AYCheckBox
+from ayon_core.ui.components.layouts import AYVBoxLayout
 
 from .browser_types import BrowserSlicerCategory, SLICER_FILTER_OPTIONS
 
@@ -39,8 +40,8 @@ class SlicerFiltersMenu(AYButtonMenu):
     def __init__(self, parent=None) -> None:
         self._category = BrowserSlicerCategory.HIERARCHY
         self._selected: set[str] = set()
-        self._option_buttons: dict[str, AYButton] = {}
-        self._list: FilterableList | None = None
+        self._option_checkboxes: dict[str, AYCheckBox] = {}
+        self._layout: AYVBoxLayout | None = None
         super().__init__(
             icon="filter_alt",
             variant=AYButton.Variants.Nav,
@@ -55,11 +56,15 @@ class SlicerFiltersMenu(AYButtonMenu):
 
         Args:
             container: The ``ButtonMenuDropdown`` page passed in by
-                ``AYButtonMenu``; rows are added to its layout, then
-                rebuilt in place by :meth:`set_category`.
+                ``AYButtonMenu``; checkbox rows are added directly to
+                its layout, then rebuilt in place by
+                :meth:`set_category`.
         """
-        self._list = FilterableList(placeholder="Search")
-        container.layout().addWidget(self._list)
+        layout = container.layout()
+        assert isinstance(layout, AYVBoxLayout)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(4)
+        self._layout = layout
 
     def set_category(self, category: BrowserSlicerCategory) -> None:
         """Rebuild the option list for *category*.
@@ -81,32 +86,29 @@ class SlicerFiltersMenu(AYButtonMenu):
         ]
         self._selected &= {option.key for option in options}
 
-        assert self._list is not None
-        self._list.clear_items()
-        self._option_buttons = {}
+        assert self._layout is not None
+        for checkbox in self._option_checkboxes.values():
+            self._layout.removeWidget(checkbox)
+            checkbox.deleteLater()
+        self._option_checkboxes = {}
         for option in options:
-            btn = AYButton(
+            checkbox = AYCheckBox(
                 option.label,
-                icon=option.icon,
-                variant=AYButton.Variants.Text,
-                checkable=True,
-                label_alignment=QtCore.Qt.AlignmentFlag.AlignLeft,
-                fixed_width=False,
+                checked=option.key in self._selected,
+                variant=AYCheckBox.Variants.Menu,
+                parent=self,
             )
-            btn.setChecked(option.key in self._selected)
-            btn.toggled.connect(
+            checkbox.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            checkbox.toggled.connect(
                 lambda checked, key=option.key: self._on_option_toggled(
                     key, checked
                 )
             )
-            self._option_buttons[option.key] = btn
-            self._list.add_item(
-                btn,
-                match_fn=lambda text, label=option.label: (
-                    not text.lower().strip()
-                    or text.lower().strip() in label.lower()
-                ),
-            )
+            self._option_checkboxes[option.key] = checkbox
+            self._layout.addWidget(checkbox, stretch=0)
 
         self.setVisible(bool(options))
         self._refresh_state()
@@ -159,10 +161,10 @@ class SlicerFiltersMenu(AYButtonMenu):
         if new_selected == self._selected:
             return
         self._selected = new_selected
-        for key, btn in self._option_buttons.items():
+        for key, checkbox in self._option_checkboxes.items():
             checked = key in self._selected
-            if btn.isChecked() != checked:
-                btn.blockSignals(True)
-                btn.setChecked(checked)
-                btn.blockSignals(False)
+            if checkbox.isChecked() != checked:
+                checkbox.blockSignals(True)
+                checkbox.setChecked(checked)
+                checkbox.blockSignals(False)
         self._refresh_state()
