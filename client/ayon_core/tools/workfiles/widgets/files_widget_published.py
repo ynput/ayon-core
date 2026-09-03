@@ -3,18 +3,17 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
+
+from ayon_core.style import (
+    get_default_entity_icon_color,
+    get_disabled_entity_icon_color,
+)
 from ayon_core.ui.components import (
     AYContainer,
     AYLabel,
     AYHBoxLayout,
     AYTreeView
 )
-
-from ayon_core.style import (
-    get_default_entity_icon_color,
-    get_disabled_entity_icon_color,
-)
-
 from ayon_core.ui.style_types import get_ayon_style
 
 from .utils import BaseOverlayFrame, WorkfilesDelegate

@@ -2,6 +2,14 @@ from pathlib import Path
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core import resources
+from ayon_core.tools.utils import (
+    FoldersWidget,
+    MessageOverlayObject,
+    TasksWidget,
+    FoldersFiltersWidget,
+)
+from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.ui.components import (
     AYButton,
     AYCheckBox,
@@ -11,15 +19,6 @@ from ayon_core.ui.components import (
     AYVBoxLayout,
     AYLineEdit
 )
-
-from ayon_core import resources
-from ayon_core.tools.utils import (
-    FoldersWidget,
-    MessageOverlayObject,
-    TasksWidget,
-    FoldersFiltersWidget,
-)
-from ayon_core.tools.workfiles.control import BaseWorkfileController
 
 from .files_widget import FilesWidget
 from .side_panel import SidePanelWidget

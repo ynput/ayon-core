@@ -1,14 +1,13 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.style import load_stylesheet, get_app_icon_path
+from ayon_core.pipeline.workfile.lock_workfile import get_workfile_lock_data
 from ayon_core.ui.components import (
     AYButton,
     AYLabel,
     AYHBoxLayout,
     AYVBoxLayout
 )
-
-from ayon_core.style import load_stylesheet, get_app_icon_path
-from ayon_core.pipeline.workfile.lock_workfile import get_workfile_lock_data
 
 
 class WorkfileLockDialog(QtWidgets.QDialog):

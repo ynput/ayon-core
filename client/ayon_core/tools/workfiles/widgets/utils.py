@@ -1,6 +1,8 @@
 from qtpy import QtWidgets, QtCore
+
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.tools.utils.delegates import pretty_timestamp
+
 
 class WorkfilesDelegate(TreeViewItemDelegate):
     """Unified delegate for the workfiles tree view.
