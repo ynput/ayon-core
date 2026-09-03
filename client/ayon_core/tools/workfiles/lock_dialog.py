@@ -1,5 +1,12 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.ui.components import (
+    AYButton,
+    AYLabel,
+    AYHBoxLayout,
+    AYVBoxLayout
+)
+
 from ayon_core.style import load_stylesheet, get_app_icon_path
 from ayon_core.pipeline.workfile.lock_workfile import get_workfile_lock_data
 
@@ -18,22 +25,25 @@ class WorkfileLockDialog(QtWidgets.QDialog):
             data["hostname"]
         )
 
-        msg_label = QtWidgets.QLabel(message, self)
+        msg_label = AYLabel(message, parent=self)
 
         btns_widget = QtWidgets.QWidget(self)
 
-        cancel_btn = QtWidgets.QPushButton("Cancel", btns_widget)
-        ignore_btn = QtWidgets.QPushButton("Ignore lock", btns_widget)
+        cancel_btn = AYButton(
+            "Cancel", variant=AYButton.Variants.Tertiary,
+            parent=btns_widget,
+        )
+        ignore_btn = AYButton(
+            "Ignore lock", variant=AYButton.Variants.Danger,
+            parent=btns_widget,
+        )
 
-        btns_layout = QtWidgets.QHBoxLayout(btns_widget)
-        btns_layout.setContentsMargins(0, 0, 0, 0)
-        btns_layout.setSpacing(10)
+        btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)
         btns_layout.addStretch(1)
         btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(ignore_btn, 0)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout = AYVBoxLayout(self, margin=15, spacing=4)
         main_layout.addWidget(msg_label, 1, QtCore.Qt.AlignCenter),
         main_layout.addSpacing(10)
         main_layout.addWidget(btns_widget, 0)

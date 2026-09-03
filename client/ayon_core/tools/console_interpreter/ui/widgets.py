@@ -8,7 +8,7 @@ try:
 except ImportError:
     PythonSyntaxHighlighter = None  # type: ignore
 
-
+#TODO: Use ayon_core/ui/components and match it with style
 class PythonCodeEditor(QtWidgets.QPlainTextEdit):
     execute_requested = QtCore.Signal()
 

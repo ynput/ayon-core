@@ -1,0 +1,167 @@
+/* Enabled vs Disabled logic in most of stylesheets - global font color Enabled - should be same globalle except placeholders Disabled - font color is greyed out - global active/hover Enabled - color motive of borders and bg color - combobox, slider, views, buttons, checkbox, radiobox, inputs - QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox Enabled - bg has lighter or darked color Disabled - bg has same color as background - QComboBox, QPushButton Enabled - slightly lighter color Disabled - even lighter color */
+* {
+    font-size: 10.5pt;
+    font-family: "Nunito Sans";
+    font-weight: 450;
+    outline: none;
+
+    /* Define icon size to fix size issues for most of DCCs */
+    icon-size: 16px;
+}
+
+QWidget {
+color: #D3D8DE;
+    background: #2C313A;
+    border-radius: 0px;
+}
+
+QWidget:disabled {
+color: #5b6779;
+}
+
+/* Splitter */ QSplitter::handle {
+border: 3px solid transparent;
+}
+
+QSplitter::handle:horizontal, QSplitter::handle:vertical, QSplitter::handle:horizontal:hover, QSplitter::handle:vertical:hover {
+/* must be single like because of Nuke*/
+    background: transparent;
+}
+
+
+QHeaderView {
+border: 0px solid #373D48;
+    border-radius: 0px;
+    margin: 0px;
+    padding: 0px;
+}
+
+QHeaderView::section {
+background: #373D48;
+    padding: 4px;
+    border-top: 0px; /* Substance Painter fix */
+    border-right: 1px solid #21252B;
+    border-radius: 0px;
+    text-align: center;
+    color: #D3D8DE;
+    font-weight: bold;
+}
+
+QHeaderView::section:first {
+border-left: none;
+}
+
+QHeaderView::section:last {
+border-right: none;
+}
+
+QHeaderView::section:only-one {
+border-left: none;
+    border-right: none;
+}
+
+QHeaderView::down-arrow {
+image: url(:/openpype/images/down_arrow.png);
+    padding-right: 4px;
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+}
+
+QHeaderView::up-arrow {
+image: url(:/openpype/images/up_arrow.png);
+    padding-right: 4px;
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+}
+
+/* TODO: Bring below full style match to
+/* ayon-core/client/ayon_core/ui/components/spin_box.py
+/* then eliminate QAbstractSpinBox style from here.
+/* Inputs */ QAbstractSpinBox{
+border: 1px solid #373D48;
+    border-radius: 0.2em;
+    background: #21252B;
+    padding: 1px;
+}
+
+QAbstractSpinBox:disabled{
+background: #2C313A;
+}
+
+QAbstractSpinBox:hover{
+border-color: rgb(92, 99, 111);
+}
+
+QAbstractSpinBox:focus{
+border-color: rgb(92, 173, 214);
+}
+
+QAbstractSpinBox:up-button {
+margin: 0px;
+    background-color: transparent;
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    border-top-right-radius: 0.3em;
+    border-top: 0px solid transparent;
+    border-right: 0px solid transparent;
+    border-left: 1px solid #373D48;
+    border-bottom: 1px solid #373D48;
+}
+
+QAbstractSpinBox:down-button {
+margin: 0px;
+    background-color: transparent;
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 0.3em;
+    border-bottom: 0px solid transparent;
+    border-right: 0px solid transparent;
+    border-left: 1px solid #373D48;
+    border-top: 1px solid #373D48;
+}
+
+QAbstractSpinBox:up-button:focus, QAbstractSpinBox:down-button:focus {
+border-color: rgb(92, 173, 214);
+}
+
+QAbstractSpinBox::up-arrow, QAbstractSpinBox::up-arrow:off {
+image: url(:/openpype/images/up_arrow.png);
+    width: 0.5em;
+    height: 1em;
+    border-width: 1px;
+}
+
+QAbstractSpinBox::up-arrow:hover {
+image: url(:/openpype/images/up_arrow_on.png);
+    bottom: 1;
+}
+
+QAbstractSpinBox::up-arrow:disabled {
+image: url(:/openpype/images/up_arrow_disabled.png);
+}
+
+QAbstractSpinBox::up-arrow:pressed {
+image: url(:/openpype/images/up_arrow_on.png);
+    bottom: 0;
+}
+
+QAbstractSpinBox::down-arrow, QAbstractSpinBox::down-arrow:off {
+image: url(:/openpype/images/down_arrow.png);
+    width: 0.5em;
+    height: 1em;
+    border-width: 1px;
+}
+
+QAbstractSpinBox::down-arrow:hover {
+image: url(:/openpype/images/down_arrow_on.png);
+    bottom: 1;
+}
+
+QAbstractSpinBox::down-arrow:disabled {
+image: url(:/openpype/images/down_arrow_disabled.png);
+}
+
+QAbstractSpinBox::down-arrow:hover:pressed {
+image: url(:/openpype/images/down_arrow_on.png);
+    bottom: 0;
+}

@@ -27,6 +27,7 @@ from ayon_core.lib import (
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
     convert_ffprobe_fps_value,
+    is_ffmpeg_option_supported,
     StringTemplate,
 )
 
@@ -646,7 +647,13 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             ) as temp:
                 temp.write(filter_string)
                 filters_path = temp.name
-            filters = '-filter_script:v "{}"'.format(filters_path)
+
+            # "-filter_script" was removed in FFmpeg 9 in favor of "-/filter"
+            if is_ffmpeg_option_supported("filter_script"):
+                filters = f'-filter_script:v "{filters_path}"'
+            else:
+                filters = f'-/filter:v "{filters_path}"'
+
             print("Filters:", filter_string)
             self.cleanup_paths.append(filters_path)
 

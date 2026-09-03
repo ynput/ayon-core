@@ -78,7 +78,6 @@ class FoldersDialog(QtWidgets.QDialog):
 
         controller_wrap = ControllerWrap(controller)
         folders_widget = FoldersWidget(controller_wrap, self)
-        folders_widget.set_deselectable(True)
 
         ok_btn = QtWidgets.QPushButton("OK", self)
         cancel_btn = QtWidgets.QPushButton("Cancel", self)

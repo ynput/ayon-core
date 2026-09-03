@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import datetime
 import getpass
@@ -7,8 +9,9 @@ import os
 import platform
 import socket
 import sys
-import threading
 import time
+import threading
+import warnings
 from contextlib import contextmanager
 from typing import Generator
 
@@ -104,6 +107,19 @@ class LogFormatter(logging.Formatter):
         )
 
 
+def _deprecated_getter(func):
+    def _get_logger_deprecate(cls, name: str | None = None) -> logging.Logger:
+        if name is None:
+            warnings.warn(
+                "DEPRECATION: 'Logger.get_logger' without passed name is"
+                " deprecated and will be removed in future versions.",
+                stacklevel=2,
+            )
+            name = "__main__"
+        return func(cls, name)
+    return _get_logger_deprecate
+
+
 class Logger:
     DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ] "
     DBG = "  - { %(name)s }: [ %(message)s ] "
@@ -124,6 +140,7 @@ class Logger:
     # Is static class initialized
     initialized = False
     _init_lock = threading.Lock()
+    _root_logger = None
 
     # Logging level - AYON_LOG_LEVEL
     log_level = None
@@ -134,27 +151,22 @@ class Logger:
     _process_name = None
 
     @classmethod
-    def get_logger(cls, name=None):
+    @_deprecated_getter
+    def get_logger(cls, name: str) -> logging.Logger:
         if not cls.initialized:
             cls.initialize()
 
         logger = logging.getLogger(name or "__main__")
-
         logger.setLevel(cls.log_level)
-
-        add_console_handler = True
-
-        for handler in logger.handlers:
-            if isinstance(handler, LogStreamHandler):
-                add_console_handler = False
-
-        if add_console_handler:
-            logger.addHandler(cls._get_console_handler())
-
-        # Do not propagate logs to root logger
-        logger.propagate = False
+        logger.parent = cls._root_logger
 
         return logger
+
+    @classmethod
+    def get_root_logger(cls) -> logging.Logger:
+        if not cls.initialized:
+            cls.initialize()
+        return cls._root_logger
 
     @classmethod
     def _get_console_handler(cls):
@@ -192,6 +204,11 @@ class Logger:
             else:
                 log_level = 20
         cls.log_level = int(log_level)
+        root_logger = logging.getLogger("AYON")
+        root_logger.propagate = False
+        root_logger.setLevel(cls.log_level)
+        root_logger.addHandler(cls._get_console_handler())
+        cls._root_logger = root_logger
 
         # Mark as initialized
         cls.initialized = True

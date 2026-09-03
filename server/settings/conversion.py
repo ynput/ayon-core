@@ -311,12 +311,37 @@ def _convert_usd_contribution_variant_default_policy_1_9_11(overrides):
         )
 
 
-def _convert_publish_plugins(overrides):
+def _convert_usd_contribution_uri_modes_1_9_11(
+    publish_overrides,
+    version: VersionInfo
+):
+    """Convert legacy USD contribution URI booleans to URI modes."""
+    if (version.major, version.minor, version.patch) >= (1, 9, 11):
+        return
+    for plugin_name in (
+        "ExtractUSDAssetContribution",
+        "ExtractUSDLayerContribution",
+    ):
+        plugin_settings = publish_overrides.get(plugin_name)
+        if not plugin_settings:
+            continue
+
+        value = plugin_settings.get("use_ayon_entity_uri")
+        if not isinstance(value, bool):
+            continue
+
+        plugin_settings["use_ayon_entity_uri"] = (
+            "ayon_entity_uri" if value else "filepath"
+        )
+
+
+def _convert_publish_plugins(overrides, version: VersionInfo):
     if "publish" not in overrides:
         return
     _convert_validate_version_0_3_3(overrides["publish"])
     _convert_oiio_transcode_0_4_5(overrides["publish"])
     _convert_usd_contribution_variant_default_policy_1_9_11(overrides)
+    _convert_usd_contribution_uri_modes_1_9_11(overrides["publish"], version)
 
 
 def _convert_extract_thumbnail(overrides, version: VersionInfo):
@@ -437,7 +462,7 @@ def convert_settings_overrides(
     _convert_imageio_configs_0_4_5(overrides)
     _convert_product_name_templates_1_6_5(overrides)
     _convert_product_name_templates_1_7_0(overrides)
-    _convert_publish_plugins(overrides)
+    _convert_publish_plugins(overrides, version)
     _convert_extract_thumbnail(overrides, version)
     _convert_product_base_types_1_8_0(overrides)
     _convert_unify_profile_keys_1_8_0(overrides)

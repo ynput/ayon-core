@@ -1,5 +1,27 @@
 from qtpy import QtWidgets, QtCore
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.tools.utils.delegates import pretty_timestamp
 
+class WorkfilesDelegate(TreeViewItemDelegate):
+    """Unified delegate for the workfiles tree view.
+
+    Column 0: workfile name with middle-elide.
+    Column 2: pretty-printed timestamp (falls back to ``"N/A"``).
+    """
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        if index.column() == 0:
+            option.textElideMode = QtCore.Qt.ElideMiddle
+        elif index.column() == 2:
+            # Column 2 exposes timestamp through DisplayRole in WorkfilesModel.
+            raw = index.data(QtCore.Qt.DisplayRole)
+            if raw is not None:
+                pretty = pretty_timestamp(raw)
+                if pretty is not None:
+                    option.text = pretty
+                    return
+            option.text = "N/A"
 
 class BaseOverlayFrame(QtWidgets.QFrame):
     """Base frame for overlay widgets.

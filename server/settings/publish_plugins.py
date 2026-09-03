@@ -494,14 +494,33 @@ class CollectExplicitResolutionModel(BaseSettingsModel):
         return value
 
 
+def usd_contribution_path_types():
+    return [
+        {"value": "filepath", "label": "Filepath"},
+        {
+            "value": "ayon_entity_uri",
+            "label": "AYON Entity URI (explicit version)"
+        },
+        {
+            "value": "ayon_entity_uri_latest",
+            "label": "AYON Entity URI as latest version"
+        },
+        {
+            "value": "ayon_entity_uri_latest_approved",
+            "label": "AYON Entity URI as latest approved"
+        },
+    ]
+
+
 class AyonEntityURIModel(BaseSettingsModel):
-    use_ayon_entity_uri: bool = SettingsField(
-        title="Use AYON Entity URI",
+    use_ayon_entity_uri: str = SettingsField(
+        "filepath",
+        title="Contribution path",
         description=(
-            "When enabled the USD paths written using the contribution "
-            "workflow will use ayon entity URIs instead of resolved published "
-            "paths. You can only load these if you use the AYON USD Resolver."
-        )
+            "Choose how paths written by the USD contribution workflow are "
+            "authored. Entity URI options require the AYON USD Resolver."
+        ),
+        enum_resolver=usd_contribution_path_types,
     )
 
 
@@ -2125,10 +2144,10 @@ DEFAULT_PUBLISH_VALUES = {
         ]
     },
     "ExtractUSDAssetContribution": {
-        "use_ayon_entity_uri": False,
+        "use_ayon_entity_uri": "filepath",
     },
     "ExtractUSDLayerContribution": {
-        "use_ayon_entity_uri": False,
+        "use_ayon_entity_uri": "filepath",
         "enforce_default_prim": False,
     },
     "PreIntegrateThumbnails": {

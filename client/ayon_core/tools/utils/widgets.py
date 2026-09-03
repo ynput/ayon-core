@@ -4,15 +4,7 @@ from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
-
-from ayon_core.ui.components.option_action import (
-    AYOptionBox,
-    AYOptionalAction,
-)
-from ayon_core.ui.components.frame import AYFrame
-from ayon_core.ui.components.label import AYLabel
-from ayon_core.ui.components.layouts import AYHBoxLayout
-from ayon_core.ui.style_types import get_ayon_style
+import qtawesome
 
 try:
     import markdown
@@ -863,99 +855,6 @@ class PixmapButton(ClickableFrame):
         )
 
 
-class _LegacyOptionalActionWidget(QtWidgets.QWidget):
-    """Original composed option-action row used by the legacy Loader."""
-
-    def __init__(self, label, icon_name="none", parent=None):
-        super().__init__(parent)
-
-        style_model = get_ayon_style().model
-        label_style = style_model.get_style(
-            "QLabel",
-            variant=AYLabel.Variants.Optional_Action.value,
-        )
-        menu_style = style_model.get_style("QMenu")
-        icon_size = label_style.get("icon-size", 16)
-        item_padding = menu_style.get("item-padding", [0, 0])
-        if isinstance(item_padding, (list, tuple)):
-            pad_h, pad_v = map(int, item_padding)
-        else:
-            pad_h = pad_v = int(item_padding)
-        item_spacing = int(menu_style.get("item-spacing", 4))
-
-        body_widget = AYFrame(
-            self,
-            variant=AYFrame.Variants.Contextual_Menu,
-        )
-        body_widget.setObjectName("OptionalActionBody")
-        label_widget = AYLabel(
-            label,
-            variant=AYLabel.Variants.Optional_Action,
-            icon=icon_name,
-            icon_size=icon_size,
-            icon_fill=False,
-            icon_text_spacing=item_spacing,
-            parent=body_widget,
-        )
-        frame_width = label_widget.frameWidth()
-        label_widget.setContentsMargins(
-            pad_h + frame_width,
-            pad_v + frame_width,
-            pad_h + frame_width,
-            pad_v + frame_width,
-        )
-        min_height = max(
-            int(menu_style.get("min-item-height", 0)),
-            QtGui.QFontMetrics(style_model.base_font).height() + pad_v * 2,
-            icon_size + pad_v * 2,
-        )
-        self.setMinimumHeight(min_height)
-
-        option_box = AYOptionBox(icon_size=icon_size, parent=body_widget)
-        option_box.setObjectName("OptionalActionOption")
-
-        body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
-        body_layout.addWidget(label_widget, stretch=1)
-
-        layout = AYHBoxLayout(self, spacing=0, margin=0)
-        layout.addWidget(body_widget)
-        layout.addWidget(option_box)
-
-        body_widget.setMouseTracking(True)
-        self.setMouseTracking(True)
-
-        self.label = label_widget
-        self.option = option_box
-        self.body = body_widget
-
-        label_widget.installEventFilter(self)
-        option_box.installEventFilter(self)
-
-    def _set_row_hover(self, hovered):
-        for child in (self.body, self.label, self.option):
-            child.setAttribute(QtCore.Qt.WA_UnderMouse, hovered)
-            child.update()
-
-    def _sync_row_hover(self):
-        self._set_row_hover(self.underMouse())
-
-    def enterEvent(self, event):
-        self._set_row_hover(True)
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        self._set_row_hover(False)
-        super().leaveEvent(event)
-
-    def eventFilter(self, obj, event):
-        if obj in (self.body, self.label, self.option) and event.type() in (
-            QtCore.QEvent.Enter,
-            QtCore.QEvent.Leave,
-        ):
-            QtCore.QTimer.singleShot(0, self._sync_row_hover)
-        return super().eventFilter(obj, event)
-
-
 class OptionalMenu(QtWidgets.QMenu):
     """A subclass of `QtWidgets.QMenu` to work with `OptionalAction`
 
@@ -989,7 +888,7 @@ class OptionalMenu(QtWidgets.QMenu):
         super().leaveEvent(event)
 
 
-class OptionalAction(AYOptionalAction):
+class OptionalAction(QtWidgets.QWidgetAction):
     """Menu action with option box
 
     A menu action like Maya's menu item with option box, implemented by
@@ -998,11 +897,7 @@ class OptionalAction(AYOptionalAction):
     """
 
     def __init__(self, label, icon, use_option, parent):
-        super().__init__(
-            label,
-            icon_name=icon,
-            use_option=use_option,
-            parent=parent)
+        super().__init__(parent)
         self.label = label
         self.icon = icon
         self.use_option = use_option
@@ -1011,19 +906,18 @@ class OptionalAction(AYOptionalAction):
         self.widget = None
 
     def createWidget(self, parent):
-        widget = _LegacyOptionalActionWidget(
-            self.label,
-            icon_name=self.icon,
-            parent=parent,
-        )
-        widget.setEnabled(self.isEnabled())
+        widget = OptionalActionWidget(self.label, parent)
         self.widget = widget
 
+        if self.icon:
+            widget.setIcon(self.icon)
+
         if self.use_option:
-            widget.option.clicked.connect(self.option_clicked.emit)
-            widget.option.clicked.connect(self._close_menu_chain)
+            widget.option.clicked.connect(self.on_option)
+            widget.option.setToolTip(self.option_tip)
         else:
             widget.option.setVisible(False)
+
         return widget
 
     def set_option_tip(self, options):
@@ -1049,6 +943,103 @@ class OptionalAction(AYOptionalAction):
             option_items.append("\n".join(option_lines))
 
         self.option_tip = sep.join(option_items)
+
+    def on_option(self):
+        self.optioned = True
+
+    def set_highlight(self, state, global_pos=None):
+        option_state = False
+        if self.use_option:
+            option_state = self.widget.option.is_hovered(global_pos)
+        self.widget.set_hover_properties(state, option_state)
+
+
+class OptionalActionWidget(QtWidgets.QWidget):
+    """Main widget class for `OptionalAction`"""
+
+    def __init__(self, label, parent=None):
+        super().__init__(parent)
+
+        body_widget = QtWidgets.QWidget(self)
+        body_widget.setObjectName("OptionalActionBody")
+
+        icon = QtWidgets.QLabel(body_widget)
+        label = QtWidgets.QLabel(label, body_widget)
+        # (NOTE) For removing ugly QLable shadow FX when highlighted in Nuke.
+        #   See https://stackoverflow.com/q/52838690/4145300
+        label.setStyle(QtWidgets.QStyleFactory.create("Plastique"))
+        option = OptionBox(body_widget)
+        option.setObjectName("OptionalActionOption")
+
+        icon.setFixedSize(24, 16)
+        option.setFixedSize(30, 30)
+
+        body_layout = QtWidgets.QHBoxLayout(body_widget)
+        body_layout.setContentsMargins(4, 0, 4, 0)
+        body_layout.setSpacing(2)
+        body_layout.addWidget(icon)
+        body_layout.addWidget(label)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(2, 1, 2, 1)
+        layout.setSpacing(0)
+        layout.addWidget(body_widget)
+        layout.addWidget(option)
+
+        body_widget.setMouseTracking(True)
+        label.setMouseTracking(True)
+        option.setMouseTracking(True)
+        self.setMouseTracking(True)
+        self.setFixedHeight(32)
+
+        self.icon = icon
+        self.label = label
+        self.option = option
+        self.body = body_widget
+
+    def set_hover_properties(self, hovered, option_hovered):
+        body_state = ""
+        option_state = ""
+        if hovered:
+            body_state = "hover"
+
+        if option_hovered:
+            option_state = "hover"
+
+        if self.body.property("state") != body_state:
+            self.body.setProperty("state", body_state)
+            self.body.style().polish(self.body)
+
+        if self.option.property("state") != option_state:
+            self.option.setProperty("state", option_state)
+            self.option.style().polish(self.option)
+
+    def setIcon(self, icon):
+        pixmap = icon.pixmap(16, 16)
+        self.icon.setPixmap(pixmap)
+
+
+class OptionBox(QtWidgets.QLabel):
+    """Option box widget class for `OptionalActionWidget`"""
+
+    clicked = QtCore.Signal()
+
+    def __init__(self, parent):
+        super(OptionBox, self).__init__(parent)
+
+        self.setAlignment(QtCore.Qt.AlignCenter)
+
+        icon = qtawesome.icon("fa.sticky-note-o", color="#c6c6c6")
+        pixmap = icon.pixmap(18, 18)
+        self.setPixmap(pixmap)
+
+    def is_hovered(self, global_pos):
+        if global_pos is None:
+            return False
+        pos = self.mapFromGlobal(global_pos)
+        if isinstance(pos, QtCore.QPointF):
+            pos = pos.toPoint()
+        return self.rect().contains(pos)
 
 
 class OptionDialog(QtWidgets.QDialog):

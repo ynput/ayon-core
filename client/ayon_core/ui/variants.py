@@ -44,6 +44,10 @@ class QLineEditVariants(Enum):
     Search_Field = "search-field"
 
 
+class QSpinBoxVariants(Enum):
+    Default = "default"
+
+
 class QComboBoxVariants(Enum):
     Default = "default"
     Low = "low"

@@ -1,0 +1,131 @@
+/* Enabled vs Disabled logic in most of stylesheets - global font color Enabled - should be same globalle except placeholders Disabled - font color is greyed out - global active/hover Enabled - color motive of borders and bg color - combobox, slider, views, buttons, checkbox, radiobox, inputs - QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox Enabled - bg has lighter or darked color Disabled - bg has same color as background - QComboBox, QPushButton Enabled - slightly lighter color Disabled - even lighter color */
+* {
+font-size: 10.5pt;
+    font-family: "Nunito Sans";
+    font-weight: 450;
+    outline: none;
+
+    /* Define icon size to fix size issues for most of DCCs */
+    icon-size: 16px;
+}
+
+QWidget {
+color: #D3D8DE;
+    background: #2C313A;
+    border-radius: 0px;
+}
+
+QWidget:disabled {
+color: #5b6779;
+}
+
+/* Splitter */ QSplitter::handle {
+border: 3px solid transparent;
+}
+
+QSplitter::handle:horizontal, QSplitter::handle:vertical, QSplitter::handle:horizontal:hover, QSplitter::handle:vertical:hover {
+/* must be single like because of Nuke*/
+    background: transparent;
+}
+
+
+QHeaderView {
+border: 0px solid #373D48;
+    border-radius: 0px;
+    margin: 0px;
+    padding: 0px;
+}
+
+QHeaderView::section {
+background: #373D48;
+    padding: 4px;
+    border-top: 0px; /* Substance Painter fix */
+    border-right: 1px solid #21252B;
+    border-radius: 0px;
+    text-align: center;
+    color: #D3D8DE;
+    font-weight: bold;
+}
+
+QHeaderView::section:first {
+border-left: none;
+}
+
+QHeaderView::section:last {
+border-right: none;
+}
+
+QHeaderView::section:only-one {
+border-left: none;
+    border-right: none;
+}
+
+QHeaderView::down-arrow {
+image: url(:/openpype/images/down_arrow.png);
+    padding-right: 4px;
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+}
+
+QHeaderView::up-arrow {
+image: url(:/openpype/images/up_arrow.png);
+    padding-right: 4px;
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+}
+
+/* Messages overlay */ OverlayMessageWidget {
+border-radius: 0.2em;
+    background: #458056;
+}
+
+OverlayMessageWidget:hover {
+background: #55a066;
+}
+
+OverlayMessageWidget[type="error"] {
+background: #AD2E2E;
+}
+
+OverlayMessageWidget[type="error"]:hover {
+background: #C93636;
+}
+
+OverlayMessageWidget[type="info"] {
+background: rgb(63, 98, 121);
+}
+
+OverlayMessageWidget[type="info"]:hover {
+background: rgb(81, 146, 181);
+}
+
+OverlayMessageWidget QWidget {
+background: transparent;
+}
+
+/* Launcher specific stylesheets */ ActionsView {
+/* font size can't be set on items */
+    font-size: 8pt;
+    border: 0px;
+    padding: 0px;
+    margin: 0px;
+    background: #1c2026;
+}
+
+ActionsView::item {
+padding-top: 8px;
+    padding-bottom: 4px;
+    border: 0px;
+    border-radius: 5px;
+}
+
+ActionsView::item:hover {
+color: #F0F2F5;
+    background: #424A57;
+}
+
+ActionMenuPopup ActionsView {
+background: transparent;
+    border: none;
+    margin: 4px;
+}

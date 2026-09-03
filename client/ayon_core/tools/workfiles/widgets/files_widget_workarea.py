@@ -3,12 +3,14 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.ui.components import AYContainer, AYTreeView
+
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.tools.utils import TreeView
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from .utils import WorkfilesDelegate
+from ayon_core.ui.style_types import get_ayon_style
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -280,7 +282,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._fill_items()
 
 
-class WorkAreaFilesWidget(QtWidgets.QWidget):
+class WorkAreaFilesWidget(AYContainer):
     """Workarea files widget.
 
     Args:
@@ -293,13 +295,23 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
     duplicate_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(WorkAreaFilesWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
-        view = TreeView(self)
+        view = AYTreeView(
+            self, item_height=23, item_padding=[1, 6]
+        )
+        view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Smaller indentation
         view.setIndentation(0)
+        view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = WorkAreaFilesModel(controller)
         proxy_model = QtCore.QSortFilterProxyModel()
@@ -309,16 +321,19 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
         view.setModel(proxy_model)
 
-        time_delegate = PrettyTimeDelegate()
-        view.setItemDelegateForColumn(model.date_modified_col, time_delegate)
+        work_files_delegate = WorkfilesDelegate(
+            parent=view,
+            style_model=get_ayon_style().model,
+            item_height=23,
+            item_padding=[1, 6]
+        )
+        view.setItemDelegate(work_files_delegate)
 
         # Default to a wider first filename column it is what we mostly care
         # about and the date modified is relatively small anyway.
         view.setColumnWidth(0, 330)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(view, 1)
+        self.add_widget(view, stretch=1)
 
         selection_model = view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
@@ -334,7 +349,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
-        self._time_delegate = time_delegate
+        self._work_files_delegate = work_files_delegate
         self._controller = controller
 
         self._published_mode = False
