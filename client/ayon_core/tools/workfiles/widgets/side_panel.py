@@ -201,8 +201,6 @@ class SidePanelWidget(AYContainer):
             )
 
         if workfile_info is None:
-            self._orig_description = ""
-            self._description_input.setPlainText("")
             self._set_context(False, folder_id, task_id)
             return
 
@@ -215,11 +213,8 @@ class SidePanelWidget(AYContainer):
             size_value=workfile_info.file_size,
             created_by=workfile_info.created_by,
             updated_by=workfile_info.updated_by,
+            description=workfile_info.description,
         )
-
-        description = workfile_info.description
-        self._orig_description = description
-        self._description_input.setPlainText(description)
 
     def _set_publish_context(
         self,
@@ -236,7 +231,6 @@ class SidePanelWidget(AYContainer):
         comment = published_workfile_wrap.comment
         if info is None:
             self._set_context(False, folder_id, task_id)
-            self._description_input.setPlainText("")
             return
 
         self._set_context(
@@ -248,9 +242,8 @@ class SidePanelWidget(AYContainer):
             size_value=info.file_size,
             created_by=info.author,
             updated_by=info.author,
+            description=comment or "",
         )
-
-        self._description_input.setPlainText(comment or "")
 
     def _set_context(
         self,
@@ -263,6 +256,7 @@ class SidePanelWidget(AYContainer):
         size_value: Optional[int] = None,
         created_by: Optional[str] = None,
         updated_by: Optional[str] = None,
+        description: str = "",
     ) -> None:
         self._folder_id = folder_id
         self._task_id = task_id
@@ -270,6 +264,9 @@ class SidePanelWidget(AYContainer):
         self._details_form.setEnabled(is_valid)
         self._description_input.setEnabled(is_valid)
         self._btn_description_save.setEnabled(is_valid)
+
+        self._orig_description = description
+        self._description_input.setPlainText(description)
 
         size_text = "-"
         created_text = "-"
