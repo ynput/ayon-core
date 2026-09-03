@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from typing import Optional
 
 from qtpy import QtCore
@@ -271,10 +271,13 @@ class SidePanelWidget(AYContainer):
         self._description_input.setEnabled(is_valid)
         self._btn_description_save.setEnabled(is_valid)
 
+        size_text = "-"
+        created_text = "-"
+        modified_text = "-"
         if not is_valid:
-            self._size_val.setText("-")
-            self._created_val.setText("-")
-            self._modified_val.setText("-")
+            self._size_val.setText(size_text)
+            self._created_val.setText(created_text)
+            self._modified_val.setText(modified_text)
             return
 
         datetime_format = "%b %d %Y %H:%M:%S"
@@ -286,30 +289,37 @@ class SidePanelWidget(AYContainer):
                 return user_item.full_name
             return username_v
 
-        self._size_val.setText(
-            file_size_to_string(size_value) if size_value is not None else "-"
-        )
+        if size_value is not None:
+            size_text = file_size_to_string(size_value)
 
         created_parts = []
         if created_by:
             created_parts.append(convert_username(created_by))
+
         if file_created:
             created_parts.append(
-                datetime.datetime.fromtimestamp(file_created).strftime(datetime_format)
+                datetime
+                .fromtimestamp(file_created)
+                .strftime(datetime_format)
             )
-        self._created_val.setText("\n".join(created_parts) if created_parts else "-")
 
-        show_modified = bool(updated_by or file_modified)
-        if show_modified:
-            modified_parts = []
-            if updated_by:
-                modified_parts.append(convert_username(updated_by))
-            if file_modified:
-                modified_parts.append(
-                    datetime.datetime.fromtimestamp(file_modified).strftime(datetime_format)
-                )
-            self._modified_val.setText(
-                "\n".join(modified_parts) if modified_parts else "-"
+        if created_parts:
+            created_text = "\n".join(created_parts)
+
+        modified_parts = []
+        if updated_by:
+            modified_parts.append(convert_username(updated_by))
+
+        if file_modified:
+            modified_parts.append(
+                datetime
+                .fromtimestamp(file_modified)
+                .strftime(datetime_format)
             )
-        else:
-            self._modified_val.setText("-")
+
+        if modified_parts:
+            modified_text = "\n".join(modified_parts)
+
+        self._size_val.setText(size_text)
+        self._created_val.setText(created_text)
+        self._modified_val.setText(modified_text)
