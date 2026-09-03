@@ -61,6 +61,28 @@ def test_extension_filter_is_not_forwarded_to_graphql():
     assert controller._get_query_filters()["version_filter"] == ""
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("Yes", True), ("No", False), ("true", True), ("false", False)],
+)
+def test_has_reviewables_filter_is_forwarded_to_versions_query(
+    value, expected,
+):
+    controller = BrowserController(LoaderController())
+    controller.set_filter_criteria([
+        FilterCriterion(
+            key="hasReviewables",
+            attribute_label="Has Reviewables",
+            values=[value],
+        )
+    ])
+
+    query_filters = controller._get_query_filters()
+
+    assert query_filters["has_reviewables"] is expected
+    assert query_filters["version_filter"] == ""
+
+
 def test_controller_uses_browser_view_defaults():
     controller = BrowserController(LoaderController())
     defaults = BROWSER_VIEW_DEFAULTS

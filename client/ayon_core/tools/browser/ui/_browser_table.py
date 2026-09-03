@@ -1885,6 +1885,11 @@ class BrowserTable(AYContainer):
                 icon="person", entity="Version",
             ),
             FilterEntry(
+                "hasReviewables", "Has Reviewables",
+                values=["Yes", "No"],
+                icon="play_circle", entity="Version",
+            ),
+            FilterEntry(
                 "tags", "Tags",
                 icon="local_offer", entity="Version",
             ),

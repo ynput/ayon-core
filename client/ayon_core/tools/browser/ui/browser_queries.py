@@ -84,6 +84,7 @@ query GetVersionGroupCounts(
   $includeFolderChildren: Boolean,
   $featuredOnly: [String!],
   $latestPerFolder: Boolean,
+  $hasReviewables: Boolean,
   $search: String,
   $targets: [MetricTargetInput!]
 ) {
@@ -99,6 +100,7 @@ query GetVersionGroupCounts(
       includeFolderChildren: $includeFolderChildren
       featuredOnly: $featuredOnly
       latestPerFolder: $latestPerFolder
+      hasReviewables: $hasReviewables
       search: $search
     ) {
       fieldStats {

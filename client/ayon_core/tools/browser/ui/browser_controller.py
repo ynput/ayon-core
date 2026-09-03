@@ -526,6 +526,7 @@ class BrowserController(QtCore.QObject):
         featured_only: list[str] = []
         search: str | None = None
         version_ids: list[str] | None = None
+        has_reviewables: bool | None = None
 
         extension_filter_keys = self._column_manager.get_filter_keys(
             self._get_column_context()
@@ -574,6 +575,13 @@ class BrowserController(QtCore.QObject):
                             "like" if use_substring else "in"
                         ),
                     })
+                continue
+            if key == "hasReviewables":
+                selected = {value.lower() for value in values}
+                if selected in ({"yes"}, {"true"}):
+                    has_reviewables = True
+                elif selected in ({"no"}, {"false"}):
+                    has_reviewables = False
                 continue
             if key == "inScene":
                 selected = set(values)
@@ -700,6 +708,7 @@ class BrowserController(QtCore.QObject):
             "featured_only": featured_only or None,
             "search": search,
             "version_ids": version_ids,
+            "has_reviewables": has_reviewables,
         }
 
     @staticmethod
@@ -887,6 +896,7 @@ class BrowserController(QtCore.QObject):
                         and self._group_by_key != GROUP_BY_PRODUCT_KEY
                     ),
                     search=query_filters["search"],
+                    has_reviewables=query_filters["has_reviewables"],
                 )
                 rows = [
                     self._transform_version_edge(e)
@@ -948,6 +958,7 @@ class BrowserController(QtCore.QObject):
                     and self._group_by_key != GROUP_BY_PRODUCT_KEY
                 ),
                 search=query_filters["search"],
+                has_reviewables=query_filters["has_reviewables"],
             )
             version_rows = [
                 self._transform_version_edge(e)
@@ -1004,6 +1015,7 @@ class BrowserController(QtCore.QObject):
                 and self._group_by_key != GROUP_BY_PRODUCT_KEY
             ),
             search=query_filters["search"],
+            has_reviewables=query_filters["has_reviewables"],
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -1142,6 +1154,7 @@ class BrowserController(QtCore.QObject):
                     and self._group_by_key != GROUP_BY_PRODUCT_KEY
                 ),
                 search=query_filters["search"],
+                has_reviewables=query_filters["has_reviewables"],
             )
 
             version_rows = [
@@ -1648,6 +1661,7 @@ class BrowserController(QtCore.QObject):
                 self._latest_per_folder
                 and group_option.key != GROUP_BY_PRODUCT_KEY
             ),
+            "hasReviewables": query_filters["has_reviewables"],
             "search": query_filters["search"],
             "targets": [{
                 "field": target_field,
@@ -2469,6 +2483,7 @@ class BrowserController(QtCore.QObject):
         featured_only: list[str] | None = None,
         latest_per_folder: bool = False,
         search: str | None = None,
+        has_reviewables: bool | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of versions via GraphQL.
 
@@ -2504,6 +2519,7 @@ class BrowserController(QtCore.QObject):
             featured_only: Featured version types to query.
             latest_per_folder: Whether to return one version per folder.
             search: Full-text versions search string.
+            has_reviewables: Whether versions must have reviewables.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -2537,6 +2553,7 @@ class BrowserController(QtCore.QObject):
             "includeFolderChildren": include_folder_children,
             "versionIds": version_ids if version_ids is not None else None,
             "productIds": product_ids if product_ids else None,
+            "hasReviewables": has_reviewables,
         }
         if descending:
             variables["last"] = page_size
