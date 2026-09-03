@@ -98,6 +98,8 @@ class SlicerFiltersMenu(AYButtonMenu):
                 variant=AYCheckBox.Variants.Menu,
                 parent=self,
             )
+            if option.tooltip:
+                checkbox.setToolTip(option.tooltip)
             checkbox.setSizePolicy(
                 QtWidgets.QSizePolicy.Policy.Expanding,
                 QtWidgets.QSizePolicy.Policy.Fixed,

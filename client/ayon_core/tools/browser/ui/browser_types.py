@@ -35,12 +35,15 @@ class SlicerFilterOption:
         label: Display text shown in the popup and as a tag.
         icon: Material Symbols icon name shown next to the label.
         categories: Slicer categories this filter is offered in.
+        tooltip: Plain-language explanation shown on hover, so artists
+            don't need to guess what checking the option will do.
     """
 
     key: str
     label: str
     icon: str
     categories: tuple[BrowserSlicerCategory, ...]
+    tooltip: str = ""
 
 
 SLICER_FILTER_OPTIONS: list[SlicerFilterOption] = [
@@ -49,5 +52,9 @@ SLICER_FILTER_OPTIONS: list[SlicerFilterOption] = [
         label="My Tasks",
         icon="assignment_ind",
         categories=(BrowserSlicerCategory.HIERARCHY,),
+        tooltip=(
+            "Only show folders that have a task assigned to you, so "
+            "you can jump straight to your work."
+        ),
     ),
 ]

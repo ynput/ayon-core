@@ -246,6 +246,21 @@ def test_slicer_filters_menu_offers_my_tasks_only_in_hierarchy(qtbot):
     assert menu._option_checkboxes == {}
 
 
+def test_slicer_filters_menu_option_row_has_artist_friendly_tooltip(qtbot):
+    menu = SlicerFiltersMenu()
+    qtbot.addWidget(menu)
+
+    menu.set_category(BrowserSlicerCategory.HIERARCHY)
+
+    checkbox = menu._option_checkboxes[MY_TASKS_FILTER_KEY]
+    assert checkbox.toolTip() == next(
+        o.tooltip
+        for o in SLICER_FILTER_OPTIONS
+        if o.key == MY_TASKS_FILTER_KEY
+    )
+    assert checkbox.toolTip()
+
+
 def test_slicer_filters_menu_clears_selection_when_leaving_hierarchy(qtbot):
     menu = SlicerFiltersMenu()
     qtbot.addWidget(menu)
