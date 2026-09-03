@@ -606,9 +606,11 @@ class TasksWidget(QtWidgets.QWidget):
         if not proxy_index.isValid():
             return False
 
-        selection_model = self._folders_view.selectionModel()
+        selection_model = self._tasks_view.selectionModel()
         selection_model.setCurrentIndex(
-            proxy_index, QtCore.QItemSelectionModel.SelectCurrent
+            proxy_index,
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows
         )
         return True
 
