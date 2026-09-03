@@ -23,7 +23,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from qtpy.QtGui import QColor, QFont, QFontDatabase, QPalette
+from qtpy.QtGui import QColor, QFont, QPalette
 from qtpy.QtWidgets import QWidget
 
 from .drawers._utils import style_font
