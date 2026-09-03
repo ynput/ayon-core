@@ -2,7 +2,7 @@
     "description": "AYON style data",
     "version": "1.0.0-a.1",
     "global": {
-        "font-family": "Nunito Sans",
+        "font-family": "Noto Sans",
         "font-size": 10.5,
         "font-size-darwin": 12,
         "font-weight": 400
