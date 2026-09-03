@@ -15,15 +15,17 @@ class WorkfilesDelegate(TreeViewItemDelegate):
         super().initStyleOption(option, index)
         if index.column() == 0:
             option.textElideMode = QtCore.Qt.ElideMiddle
+
         elif index.column() == 2:
             # Column 2 exposes timestamp through DisplayRole in WorkfilesModel.
             raw = index.data(QtCore.Qt.DisplayRole)
+            text = "N/A"
             if raw is not None:
                 pretty = pretty_timestamp(raw)
                 if pretty is not None:
-                    option.text = pretty
-                    return
-            option.text = "N/A"
+                    text = pretty
+            option.text = text
+
 
 class BaseOverlayFrame(QtWidgets.QFrame):
     """Base frame for overlay widgets.

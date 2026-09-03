@@ -181,18 +181,21 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             FILE_SIZE_ROLE
         }:
             if index.column() != 0:
-                index = self.index(index.row(), 0, index.parent())
+                index = index.sibling(index.row(), 0)
             return super().data(index, role)
 
         col = index.column()
         if col != 0:
             if role != QtCore.Qt.DisplayRole:
                 return None
+
             if col == 1:
                 role = UPDATED_AT_ROLE
-            else:
+            elif col == 2:
                 role = FILE_SIZE_ROLE
-            index = self.index(index.row(), 0, index.parent())
+            else:
+                return None
+            index = index.sibling(index.row(), 0)
 
         return super().data(index, role)
 
@@ -269,15 +272,17 @@ class WorkfilesDelegate(TreeViewItemDelegate):
         super().initStyleOption(option, index)
         if index.column() == 0:
             option.textElideMode = QtCore.Qt.ElideMiddle
+
         elif index.column() == 1:
             # Column 1 exposes timestamp through DisplayRole in WorkfilesModel.
             raw = index.data(QtCore.Qt.DisplayRole)
+            text = ""
             if raw is not None:
                 pretty = pretty_timestamp(raw)
                 if pretty is not None:
-                    option.text = pretty
-                    return
-            option.text = ""
+                    text = pretty
+            option.text = text
+
         elif index.column() == 2:
             raw = index.data(FILE_SIZE_ROLE)
             if raw is not None:
