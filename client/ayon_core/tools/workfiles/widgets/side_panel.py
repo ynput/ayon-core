@@ -32,7 +32,7 @@ class SidePanelWidget(AYContainer):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
+            variant=AYContainer.Variants.High,
             layout_margin=6,
             layout_spacing=4,
         )
@@ -42,7 +42,7 @@ class SidePanelWidget(AYContainer):
 
         details_form = AYContainer(
             layout=AYContainer.Layout.Form,
-            variant=AYContainer.Variants.Low_Framed_Thin,
+            variant=AYContainer.Variants.High,
             layout_margin=4,
             layout_spacing=(6, 6),
             parent=self,
