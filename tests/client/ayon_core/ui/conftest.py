@@ -143,4 +143,3 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     store_dir = session.config.getoption("--store-images", default=None)
     if store_dir is not None:
         _store_images(store_dir)
-
