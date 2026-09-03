@@ -53,10 +53,7 @@ from ayon_core.tools.browser.ui.browser_queries import (
     GET_VERSION_GROUP_COUNTS_QUERY,
     get_versions_query,
 )
-from ayon_core.tools.browser.ui.browser_types import (
-    MY_TASKS_FILTER_KEY,
-    BrowserSlicerCategory,
-)
+from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 
 # Maximum number of pages to fetch when building product group headers.
 # Each page contains up to 1 000 products, so this caps the total at
@@ -102,7 +99,7 @@ class BrowserController(QtCore.QObject):
     tree_reset_requested = QtCore.Signal()  # type: ignore
     selection_changed = QtCore.Signal(list, list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
-    slicer_filters_changed = QtCore.Signal(set)  # type: ignore
+    my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
 
     def __init__(
         self,
@@ -145,7 +142,7 @@ class BrowserController(QtCore.QObject):
             *BROWSER_VIEW_DEFAULTS.featured_version_order,
         ]
         self._latest_per_folder = BROWSER_VIEW_DEFAULTS.latest_per_folder
-        self._active_slicer_filters: set[str] = set()
+        self._my_tasks_filter_enabled: bool = False
         self._folder_id_scope: set[str] | None = None
         self._task_id_scope: set[str] | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
@@ -317,9 +314,9 @@ class BrowserController(QtCore.QObject):
         self._reset_pagination()
         self._selected_folder_ids = []
         self._folder_parent_ids = {}
-        # Keep sticky slicer filters (e.g. "My Tasks") active across a
-        # project switch, just re-resolved against the new project.
-        self._recompute_slicer_filter_scope()
+        # Keep the "My Tasks" filter sticky across a project switch,
+        # just re-resolved against the new project.
+        self._recompute_my_tasks_scope()
         self._build_project_info()
         self._get_review_session_list()
         self.project_changed.emit(project_name)
@@ -357,52 +354,45 @@ class BrowserController(QtCore.QObject):
         self.category_changed.emit(category)
         self.tree_reset_requested.emit()
 
-    def set_slicer_filters(self, keys: set[str]) -> None:
-        """Set the active slicer-level filter keys (e.g. "My Tasks").
+    def set_my_tasks_filter(self, enabled: bool) -> None:
+        """Toggle the "My Tasks" slicer filter.
 
-        Unlike the table's :meth:`set_filter_criteria`, these filters
-        scope which folders the Hierarchy tree fetches at all, so
-        changing them resets and re-fetches the tree. Unknown keys
-        (a filter not currently recognised by
-        :meth:`_recompute_slicer_filter_scope`) are stored but simply
-        have no effect, so ``SLICER_FILTER_OPTIONS`` can grow without
-        this method needing to change.
+        Unlike the table's :meth:`set_filter_criteria`, this scopes
+        which folders the Hierarchy tree fetches at all, so toggling
+        it resets and re-fetches the tree.
 
         Args:
-            keys: The full set of currently selected slicer filter
-                keys, as reported by the slicer's filter menu.
+            enabled: Whether the filter should be active.
         """
-        if keys == self._active_slicer_filters:
+        enabled = bool(enabled)
+        if enabled == self._my_tasks_filter_enabled:
             return
-        self._active_slicer_filters = set(keys)
-        self._recompute_slicer_filter_scope()
+        self._my_tasks_filter_enabled = enabled
+        self._recompute_my_tasks_scope()
         self._reset_pagination()
-        self.slicer_filters_changed.emit(set(self._active_slicer_filters))
+        self.my_tasks_filter_changed.emit(enabled)
         self.tree_reset_requested.emit()
 
     @property
-    def active_slicer_filters(self) -> set[str]:
-        """Return the currently active slicer filter keys.
+    def my_tasks_filter_enabled(self) -> bool:
+        """Return whether the "My Tasks" slicer filter is active.
 
-        Used by ``BrowserTable`` to capture the filter selection into
-        a saved View (see ``_capture_view_extras``).
+        Used by ``BrowserTable`` to capture the filter into a saved
+        View (see ``_capture_view_extras``).
         """
-        return set(self._active_slicer_filters)
+        return self._my_tasks_filter_enabled
 
-    def _recompute_slicer_filter_scope(self) -> None:
-        """Recompute id scopes implied by the active slicer filters.
+    def _recompute_my_tasks_scope(self) -> None:
+        """Recompute id scopes for the "My Tasks" filter.
 
-        Only the ``my_tasks`` key is understood today: it resolves to
-        the folders that directly own a task assigned to the current
-        user, widened to include every ancestor folder so the tree can
-        still be navigated down to them, plus the matching task ids
-        themselves (consumed by ``BrowserTasksWidget`` to narrow the
-        task list under a selected folder).
+        Resolves to the folders that directly own a task assigned to
+        the current user, widened to include every ancestor folder so
+        the tree can still be navigated down to them, plus the
+        matching task ids themselves (consumed by
+        ``BrowserTasksWidget`` to narrow the task list under a
+        selected folder).
         """
-        if (
-            MY_TASKS_FILTER_KEY not in self._active_slicer_filters
-            or not self._current_project
-        ):
+        if not self._my_tasks_filter_enabled or not self._current_project:
             self._folder_id_scope = None
             self._task_id_scope = None
             return

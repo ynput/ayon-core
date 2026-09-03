@@ -1064,18 +1064,16 @@ class BrowserTable(AYContainer):
             ``gridHeight`` (card width),
             ``featuredVersionOrder`` (hero/latest version order),
             ``displayType`` (``"table"`` or ``"grid"``),
-            ``slicerFilters`` (active slicer filter keys, e.g.
-            ``["my_tasks"]``).
+            ``myTasksFilter`` (whether the "My Tasks" slicer filter
+            is active).
 
         Args:
             extra: The settings ``extra`` dict from the applied view.
         """
-        if "slicerFilters" in extra:
-            filters = extra["slicerFilters"]
-            if isinstance(filters, list):
-                self._controller.set_slicer_filters(
-                    {str(key) for key in filters}
-                )
+        if "myTasksFilter" in extra:
+            self._controller.set_my_tasks_filter(
+                bool(extra["myTasksFilter"])
+            )
         if "gridHeight" in extra:
             try:
                 self._card_view.card_width = int(extra["gridHeight"])
@@ -1142,8 +1140,8 @@ class BrowserTable(AYContainer):
         drops known keys from ``extra``).
 
         Captured loader-specific extras include card width, featured
-        version order, current display type (table or grid), and the
-        active slicer filter keys (e.g. "My Tasks").
+        version order, current display type (table or grid), and
+        whether the "My Tasks" slicer filter is active.
 
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
@@ -1156,7 +1154,7 @@ class BrowserTable(AYContainer):
             ),
             "latestPerFolder": self._controller.latest_per_folder,
             "includeChildren": self._controller.include_folder_children,
-            "slicerFilters": sorted(self._controller.active_slicer_filters),
+            "myTasksFilter": self._controller.my_tasks_filter_enabled,
         }
         return extra
 

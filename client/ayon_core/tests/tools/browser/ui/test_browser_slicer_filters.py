@@ -1,4 +1,4 @@
-"""Tests for the extensible slicer-filter mechanism ("My Tasks" etc.)."""
+"""Tests for the "My Tasks" slicer filter."""
 
 from __future__ import annotations
 
@@ -14,15 +14,10 @@ if "qargparse" not in sys.modules:
 
 from ayon_core.tools.browser.control import LoaderController
 from ayon_core.tools.browser.ui._browser_slicer_filters import (
-    SlicerFiltersMenu,
+    MyTasksToggleButton,
 )
-from ayon_core.ui.components.buttons import AYButton
 from ayon_core.tools.browser.ui.browser_controller import BrowserController
-from ayon_core.tools.browser.ui.browser_types import (
-    MY_TASKS_FILTER_KEY,
-    SLICER_FILTER_OPTIONS,
-    BrowserSlicerCategory,
-)
+from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.browser.ui.tasks_widget import (
     TASK_DATA_ROLE,
     BrowserTasksWidget,
@@ -53,23 +48,11 @@ def _task_item(task_id, name, task_type="generic", task_type_order=0):
 
 
 # ---------------------------------------------------------------------
-# Schema
-# ---------------------------------------------------------------------
-
-
-def test_my_tasks_option_only_offered_in_hierarchy():
-    option = next(
-        o for o in SLICER_FILTER_OPTIONS if o.key == MY_TASKS_FILTER_KEY
-    )
-    assert option.categories == (BrowserSlicerCategory.HIERARCHY,)
-
-
-# ---------------------------------------------------------------------
 # BrowserController scope resolution
 # ---------------------------------------------------------------------
 
 
-def test_set_slicer_filters_resolves_folder_and_task_scope(monkeypatch):
+def test_set_my_tasks_filter_resolves_folder_and_task_scope(monkeypatch):
     controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
 
@@ -89,7 +72,7 @@ def test_set_slicer_filters_resolves_folder_and_task_scope(monkeypatch):
     reset_calls = Mock()
     controller.tree_reset_requested.connect(reset_calls)
 
-    controller.set_slicer_filters({MY_TASKS_FILTER_KEY})
+    controller.set_my_tasks_filter(True)
 
     assert controller._folder_id_scope == {
         "episode", "sequence", "shot010",
@@ -98,19 +81,19 @@ def test_set_slicer_filters_resolves_folder_and_task_scope(monkeypatch):
     reset_calls.assert_called_once()
 
 
-def test_set_slicer_filters_noop_when_unchanged(monkeypatch):
+def test_set_my_tasks_filter_noop_when_unchanged(monkeypatch):
     controller = BrowserController(LoaderController())
-    recompute = Mock(wraps=controller._recompute_slicer_filter_scope)
+    recompute = Mock(wraps=controller._recompute_my_tasks_scope)
     monkeypatch.setattr(
-        controller, "_recompute_slicer_filter_scope", recompute
+        controller, "_recompute_my_tasks_scope", recompute
     )
 
-    controller.set_slicer_filters(set())
+    controller.set_my_tasks_filter(False)
 
     recompute.assert_not_called()
 
 
-def test_set_slicer_filters_clears_scope_when_deselected(monkeypatch):
+def test_set_my_tasks_filter_clears_scope_when_disabled(monkeypatch):
     controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
     monkeypatch.setattr(
@@ -124,20 +107,10 @@ def test_set_slicer_filters_clears_scope_when_deselected(monkeypatch):
     monkeypatch.setattr(
         controller, "get_folder_id_path", lambda folder_id: [folder_id]
     )
-    controller.set_slicer_filters({MY_TASKS_FILTER_KEY})
+    controller.set_my_tasks_filter(True)
     assert controller.get_task_id_scope() == {"task-1"}
 
-    controller.set_slicer_filters(set())
-
-    assert controller._folder_id_scope is None
-    assert controller.get_task_id_scope() is None
-
-
-def test_unknown_slicer_filter_key_has_no_effect():
-    controller = BrowserController(LoaderController())
-    controller._current_project = "test_project"
-
-    controller.set_slicer_filters({"not_a_real_filter"})
+    controller.set_my_tasks_filter(False)
 
     assert controller._folder_id_scope is None
     assert controller.get_task_id_scope() is None
@@ -229,102 +202,63 @@ def test_set_task_id_scope_none_restores_no_task_row(qtbot):
 
 
 # ---------------------------------------------------------------------
-# SlicerFiltersMenu
+# MyTasksToggleButton
 # ---------------------------------------------------------------------
 
 
-def test_slicer_filters_menu_offers_my_tasks_only_in_hierarchy(qtbot):
-    menu = SlicerFiltersMenu()
-    qtbot.addWidget(menu)
+def test_my_tasks_toggle_visible_only_in_hierarchy(qtbot):
+    btn = MyTasksToggleButton()
+    qtbot.addWidget(btn)
 
-    menu.set_category(BrowserSlicerCategory.HIERARCHY)
-    assert menu.isVisible()
-    assert list(menu._option_checkboxes) == [MY_TASKS_FILTER_KEY]
+    btn.set_category(BrowserSlicerCategory.HIERARCHY)
+    assert btn.isVisible()
 
-    menu.set_category(BrowserSlicerCategory.REVIEWS)
-    assert not menu.isVisible()
-    assert menu._option_checkboxes == {}
+    btn.set_category(BrowserSlicerCategory.REVIEWS)
+    assert not btn.isVisible()
 
 
-def test_slicer_filters_menu_option_row_has_artist_friendly_tooltip(qtbot):
-    menu = SlicerFiltersMenu()
-    qtbot.addWidget(menu)
+def test_my_tasks_toggle_has_artist_friendly_tooltip(qtbot):
+    btn = MyTasksToggleButton()
+    qtbot.addWidget(btn)
 
-    menu.set_category(BrowserSlicerCategory.HIERARCHY)
-
-    checkbox = menu._option_checkboxes[MY_TASKS_FILTER_KEY]
-    assert checkbox.toolTip() == next(
-        o.tooltip
-        for o in SLICER_FILTER_OPTIONS
-        if o.key == MY_TASKS_FILTER_KEY
-    )
-    assert checkbox.toolTip()
+    assert "task" in btn.toolTip().lower()
+    assert "you" in btn.toolTip().lower()
 
 
-def test_slicer_filters_menu_clears_selection_when_leaving_hierarchy(qtbot):
-    menu = SlicerFiltersMenu()
-    qtbot.addWidget(menu)
-    menu.set_category(BrowserSlicerCategory.HIERARCHY)
-    menu._option_checkboxes[MY_TASKS_FILTER_KEY].setChecked(True)
-    assert menu.get_selected_keys() == [MY_TASKS_FILTER_KEY]
-
-    menu.set_category(BrowserSlicerCategory.REVIEWS)
-
-    assert menu.get_selected_keys() == []
-
-
-def test_slicer_filters_menu_toggle_emits_and_highlights(qtbot):
-    menu = SlicerFiltersMenu()
-    qtbot.addWidget(menu)
-    menu.set_category(BrowserSlicerCategory.HIERARCHY)
+def test_my_tasks_toggle_unchecks_when_leaving_hierarchy(qtbot):
+    btn = MyTasksToggleButton()
+    qtbot.addWidget(btn)
+    btn.set_category(BrowserSlicerCategory.HIERARCHY)
     changed = Mock()
-    menu.filter_changed.connect(changed)
+    btn.toggled.connect(changed)
+    btn.setChecked(True)
+    changed.reset_mock()
 
-    menu._option_checkboxes[MY_TASKS_FILTER_KEY].setChecked(True)
+    btn.set_category(BrowserSlicerCategory.REVIEWS)
 
-    changed.assert_called_once_with([MY_TASKS_FILTER_KEY])
-    assert menu.get_selected_keys() == [MY_TASKS_FILTER_KEY]
-    assert menu._variant_str == AYButton.Variants.Checked.value
-    assert "My Tasks" in menu.toolTip()
-
-    menu._option_checkboxes[MY_TASKS_FILTER_KEY].setChecked(False)
-
-    assert menu.get_selected_keys() == []
-    assert menu._variant_str == AYButton.Variants.Nav.value
+    assert not btn.isChecked()
+    changed.assert_called_once_with(False)
 
 
-def test_slicer_filters_menu_set_selected_keys_syncs_without_reemitting(
-    qtbot,
-):
-    menu = SlicerFiltersMenu()
-    qtbot.addWidget(menu)
-    menu.set_category(BrowserSlicerCategory.HIERARCHY)
+def test_my_tasks_toggle_emits_native_toggled_signal(qtbot):
+    btn = MyTasksToggleButton()
+    qtbot.addWidget(btn)
+    btn.set_category(BrowserSlicerCategory.HIERARCHY)
     changed = Mock()
-    menu.filter_changed.connect(changed)
+    btn.toggled.connect(changed)
 
-    menu.set_selected_keys({MY_TASKS_FILTER_KEY})
+    btn.setChecked(True)
 
-    assert menu.get_selected_keys() == [MY_TASKS_FILTER_KEY]
-    assert menu._option_checkboxes[MY_TASKS_FILTER_KEY].isChecked()
-    changed.assert_not_called()
-
-
-def test_slicer_filters_menu_set_selected_keys_ignores_inapplicable(qtbot):
-    menu = SlicerFiltersMenu()
-    qtbot.addWidget(menu)
-    menu.set_category(BrowserSlicerCategory.REVIEWS)
-
-    menu.set_selected_keys({MY_TASKS_FILTER_KEY})
-
-    assert menu.get_selected_keys() == []
+    changed.assert_called_once_with(True)
+    assert btn.isChecked()
 
 
 # ---------------------------------------------------------------------
-# Controller <-> menu bidirectional sync (used by saved Views)
+# Controller <-> toggle bidirectional sync (used by saved Views)
 # ---------------------------------------------------------------------
 
 
-def test_active_slicer_filters_property_reflects_state(monkeypatch):
+def test_my_tasks_filter_enabled_property_reflects_state(monkeypatch):
     controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
     monkeypatch.setattr(
@@ -334,14 +268,14 @@ def test_active_slicer_filters_property_reflects_state(monkeypatch):
     )
     monkeypatch.setattr(controller, "get_folder_id_path", lambda fid: [])
 
-    assert controller.active_slicer_filters == set()
+    assert controller.my_tasks_filter_enabled is False
 
-    controller.set_slicer_filters({MY_TASKS_FILTER_KEY})
+    controller.set_my_tasks_filter(True)
 
-    assert controller.active_slicer_filters == {MY_TASKS_FILTER_KEY}
+    assert controller.my_tasks_filter_enabled is True
 
 
-def test_set_slicer_filters_emits_signal_only_on_change(monkeypatch):
+def test_set_my_tasks_filter_emits_signal_only_on_change(monkeypatch):
     controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
     monkeypatch.setattr(
@@ -351,25 +285,25 @@ def test_set_slicer_filters_emits_signal_only_on_change(monkeypatch):
     )
     monkeypatch.setattr(controller, "get_folder_id_path", lambda fid: [])
     changed = Mock()
-    controller.slicer_filters_changed.connect(changed)
+    controller.my_tasks_filter_changed.connect(changed)
 
-    controller.set_slicer_filters({MY_TASKS_FILTER_KEY})
-    controller.set_slicer_filters({MY_TASKS_FILTER_KEY})  # unchanged
+    controller.set_my_tasks_filter(True)
+    controller.set_my_tasks_filter(True)  # unchanged
 
-    changed.assert_called_once_with({MY_TASKS_FILTER_KEY})
+    changed.assert_called_once_with(True)
 
 
 # ---------------------------------------------------------------------
-# BrowserTable view-extras wiring for slicer filters
+# BrowserTable view-extras wiring for the My Tasks filter
 # ---------------------------------------------------------------------
 
 
-def test_capture_view_extras_includes_active_slicer_filters():
+def test_capture_view_extras_includes_my_tasks_filter():
     from ayon_core.tools.browser.ui._browser_table import BrowserTable
 
     table = SimpleNamespace(
         _controller=SimpleNamespace(
-            active_slicer_filters={MY_TASKS_FILTER_KEY},
+            my_tasks_filter_enabled=True,
             featured_version_order=["latest"],
             latest_per_folder=False,
             include_folder_children=False,
@@ -380,19 +314,15 @@ def test_capture_view_extras_includes_active_slicer_filters():
 
     extra = BrowserTable._capture_view_extras(table)
 
-    assert extra["slicerFilters"] == [MY_TASKS_FILTER_KEY]
+    assert extra["myTasksFilter"] is True
 
 
-def test_apply_view_extras_forwards_slicer_filters_to_controller():
+def test_apply_view_extras_forwards_my_tasks_filter_to_controller():
     from ayon_core.tools.browser.ui._browser_table import BrowserTable
 
     controller = Mock()
     table = SimpleNamespace(_controller=controller)
 
-    BrowserTable._apply_view_extras(
-        table, {"slicerFilters": [MY_TASKS_FILTER_KEY]}
-    )
+    BrowserTable._apply_view_extras(table, {"myTasksFilter": True})
 
-    controller.set_slicer_filters.assert_called_once_with(
-        {MY_TASKS_FILTER_KEY}
-    )
+    controller.set_my_tasks_filter.assert_called_once_with(True)
