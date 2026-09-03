@@ -383,13 +383,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._filename = result.filename
         self._btn_ok.setEnabled(not result.exists)
 
+        color = "green"
+        text = result.filename
         if result.exists:
-            self._preview_widget._text_color = "red"
-            self._preview_widget.setText(
-                'Cannot create "{}" because file exists!'.format(
-                    result.filename
-                )
-            )
-        else:
-            self._preview_widget._text_color = "green"
-            self._preview_widget.setText(result.filename)
+            color = "red"
+            text = f'Cannot create "{result.filename}" because file exists!'
+
+        self._preview_widget.set_text_color(color)
+        self._preview_widget.setText(text)
