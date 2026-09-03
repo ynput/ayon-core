@@ -53,15 +53,6 @@ class DeleteOldVersions(LoaderActionPlugin):
 
         return [
             LoaderActionItem(
-                label="Delete Selected Versions",
-                order=36,
-                data={
-                    "version_ids": [version["id"] for version in versions],
-                    "action": "delete-selected-version",
-                },
-                icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
-            ),
-            LoaderActionItem(
                 label="Delete Versions",
                 order=35,
                 data={
@@ -69,6 +60,15 @@ class DeleteOldVersions(LoaderActionPlugin):
                     "action": "delete-versions",
                 },
                 icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
+            ),
+            LoaderActionItem(
+                label="Delete Selected Versions",
+                order=35,
+                data={
+                    "version_ids": [version["id"] for version in versions],
+                    "action": "delete-selected-version",
+                },
+                icon=MaterialSymbolsIcon("delete_sweep", color="#d8d8d8"),
             ),
             LoaderActionItem(
                 label="Calculate Versions size",
