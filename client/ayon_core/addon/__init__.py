@@ -9,7 +9,6 @@ from .base import (
     get_bundle_information,
 )
 from .interfaces import (
-    IBrowserColumnAddon,
     IHostAddon,
     IPluginPaths,
     ITraits,
@@ -25,7 +24,6 @@ from .utils import (
 __all__ = (
     "AYONAddon",
     "AddonsManager",
-    "IBrowserColumnAddon",
     "IHostAddon",
     "IPluginPaths",
     "ITraits",

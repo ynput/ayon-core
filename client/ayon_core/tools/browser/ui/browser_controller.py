@@ -149,12 +149,12 @@ class BrowserController(QtCore.QObject):
         self._requested_column_keys: set[str] | None = None
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
-            column_services,
-            [SiteSyncBrowserColumnProvider(
-                loader_controller,
-                column_services,
-            )],
-            addon_manager=loader_controller.addons_manager,
+            providers=[
+                SiteSyncBrowserColumnProvider(
+                    loader_controller,
+                    column_services,
+                )
+            ],
         )
         self.log = Logger.get_logger(self.__class__.__name__)
 

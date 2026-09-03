@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from ayon_core.addon import IBrowserColumnAddon
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -69,55 +68,10 @@ class _TestProvider(BrowserColumnProvider):
             row["test:status"] = row.get("status")
 
 
-class _TestAddon(IBrowserColumnAddon):
-    name = "test_addon"
-
-    def __init__(self, provider):
-        self._provider = provider
-        self.services = None
-
-    def get_browser_column_providers(self, services):
-        self.services = services
-        return [self._provider]
-
-
-def test_addon_provider_is_discovered_and_skips_unused_columns():
-    provider = _TestProvider()
-    services = BrowserColumnServices(Mock())
-    addon = _TestAddon(provider)
-    addon_manager = Mock()
-    addon_manager.get_enabled_addons.return_value = [addon]
-    manager = BrowserColumnManager(
-        services,
-        addon_manager=addon_manager,
-    )
-
-    assert [column.key for column in manager.get_columns(_context())] == [
-        "test:value"
-    ]
-    assert addon.services is services
-
-    rows = [{"id": "one"}]
-    assert manager.enrich_rows(_context(), rows) == rows
-    assert provider.enrich_calls == 0
-    assert manager.get_required_query_keys(_context()) == set()
-
-    enabled_context = _context(enabled={"test:value"})
-    assert manager.get_required_query_keys(enabled_context) == {"status"}
-    manager.enrich_rows(enabled_context, rows)
-    assert provider.enrich_calls == 1
-    assert rows[0]["test:value"] == "one"
-
-
 def test_provider_filter_requests_enrichment_when_column_is_hidden():
     provider = _TestProvider()
-    services = BrowserColumnServices(Mock())
-    addon_manager = Mock()
-    addon_manager.get_enabled_addons.return_value = []
     manager = BrowserColumnManager(
-        services,
         [provider],
-        addon_manager=addon_manager,
     )
     context = _context(filters=(
         BrowserFilter("test:status", ("Keep",)),
@@ -194,9 +148,7 @@ def test_sitesync_filter_requests_deferred_status_values():
         services,
     )
     manager = BrowserColumnManager(
-        services,
         [provider],
-        addon_manager=Mock(get_enabled_addons=lambda: []),
     )
     rows = [{"id": "version_a"}, {"id": "version_b"}]
     context = _context(filters=(
@@ -213,9 +165,7 @@ def test_sitesync_filter_keys_remain_owned_when_provider_is_disabled():
     loader_controller.is_sitesync_enabled.return_value = False
     services = BrowserColumnServices(loader_controller)
     manager = BrowserColumnManager(
-        services,
         [SiteSyncBrowserColumnProvider(loader_controller, services)],
-        addon_manager=Mock(get_enabled_addons=lambda: []),
     )
 
     assert manager.get_columns(_context()) == []

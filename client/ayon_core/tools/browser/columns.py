@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from ayon_core.addon import AddonsManager, IBrowserColumnAddon
 from ayon_core.lib import Logger
 from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 
@@ -126,41 +125,9 @@ class BrowserColumnManager:
 
     def __init__(
         self,
-        services: BrowserColumnServices,
-        fallback_providers: Iterable[BrowserColumnProvider] = (),
-        addon_manager: Any | None = None,
+        providers: Iterable[BrowserColumnProvider] = (),
     ) -> None:
-        providers = list(
-            self._discover_addon_providers(addon_manager, services)
-        )
-        identifiers = {provider.identifier for provider in providers}
-        providers.extend(
-            provider
-            for provider in fallback_providers
-            if provider.identifier not in identifiers
-        )
         self._providers = self._validate_providers(providers)
-
-    @staticmethod
-    def _discover_addon_providers(
-        addon_manager: Any | None,
-        services: BrowserColumnServices,
-    ) -> list[BrowserColumnProvider]:
-        output = []
-        manager = addon_manager or AddonsManager()
-        for addon in manager.get_enabled_addons():
-            if not isinstance(addon, IBrowserColumnAddon):
-                continue
-            try:
-                output.extend(
-                    addon.get_browser_column_providers(services)
-                )
-            except Exception:
-                log.exception(
-                    "Addon %r failed to provide Browser columns",
-                    addon.name,
-                )
-        return output
 
     @staticmethod
     def _validate_providers(
