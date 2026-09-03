@@ -123,7 +123,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                 selection,
             )
 
-        if step in {"delete-versions", "delete-selected-versions"}:
+        if step == "delete-versions":
             return self._delete_versions_step(
                 selection.project_name, form_values, selection
             )
@@ -302,9 +302,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         form, form_values = self._get_delete_form(
             size,
             remove_publish_folder,
-            list(version_ids),
-            title="Delete Selected Versions",
-            step="delete-selected-versions",
+            list(version_ids)
         )
         return LoaderActionResult(form=form, form_values=form_values)
 
@@ -414,8 +412,6 @@ class DeleteOldVersions(LoaderActionPlugin):
         remove_publish_folder: bool,
         version_ids: list[str],
         repeated: bool = False,
-        title: str = "Delete versions",
-        step: str = "delete-versions",
     ) -> tuple[ActionForm, dict[str, Any]]:
         versions_len = len(version_ids)
         fields = [
@@ -451,14 +447,14 @@ class DeleteOldVersions(LoaderActionPlugin):
         ])
 
         form = ActionForm(
-            title=title,
+            title="Delete versions",
             submit_label="Delete",
             cancel_label="Close",
             fields=fields,
         )
         form_values = {
             "version_ids": json.dumps(version_ids),
-            "step": step,
+            "step": "delete-versions",
             "remove_publish_folder": remove_publish_folder,
         }
         return form, form_values
