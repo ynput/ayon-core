@@ -49,7 +49,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
 
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
-#TODO: Headers style need to match with launcher ones
+
 class WorkfilesToolWindow(AYContainer):
     """WorkFiles Window.
 
