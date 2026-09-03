@@ -877,10 +877,15 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_proxy_model.invalidateFilter()
         self.refreshed.emit()
 
-    def _on_selection_change(self, _new_selection=None, _old_selection=None):
-        project_name = self.get_selected_project()
-        self._controller.set_selected_project(project_name)
+    def _on_selection_change(self, new_selection, _old_selection):
+        project_name = None
+        for index in new_selection.indexes():
+            name = index.data(PROJECT_NAME_ROLE)
+            if name:
+                project_name = name
+                break
         self.selection_changed.emit(project_name or "")
+        self._controller.set_selected_project(project_name)
 
     def _on_projects_refresh_finished(self, event):
         if event["sender"] != PROJECTS_MODEL_SENDER:
