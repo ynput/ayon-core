@@ -227,7 +227,11 @@ class ButtonDrawer:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Draw button background with hover awareness
-        bg_color = style["background-color"]
+        # NOTE: QColor(...) wrapping is required here - PySide2's QBrush
+        # constructor (unlike PySide6's) does not implicitly convert a
+        # plain hex-color string, silently producing an invisible
+        # NoBrush instead.
+        bg_color = QColor(style["background-color"])
         painter.setOpacity(style.get("opacity", 1.0))
 
         painter.setBrush(QBrush(bg_color))
