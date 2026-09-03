@@ -266,7 +266,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
             0, QtWidgets.QHeaderView.ResizeMode.Stretch
         )
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Fixed)
-        header.resizeSection(1, 50)
+        header.resizeSection(1, 30)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

@@ -364,7 +364,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         header.setSectionResizeMode(
             3, QtWidgets.QHeaderView.ResizeMode.Fixed
         )
-        header.resizeSection(3, 50)
+        header.resizeSection(3, 30)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

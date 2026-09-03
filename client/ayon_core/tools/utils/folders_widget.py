@@ -565,7 +565,7 @@ class FoldersWidget(QtWidgets.QWidget):
         header.setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Fixed
         )
-        header.resizeSection(1, 50)
+        header.resizeSection(1, 30)
         folders_view.setColumnHidden(1, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
