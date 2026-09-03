@@ -26,6 +26,21 @@ except ImportError:
     StatusesEnumResolver = None
 
 
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_not_set": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set",
+}
+
+
+def contribution_variant_default_policy_enum():
+    """Return the available variant default policies for the settings UI."""
+    return [
+        {"value": value, "label": label}
+        for value, label in CONTRIBUTION_VARIANT_DEFAULT_POLICY.items()
+    ]
+
+
 async def _get_anatomy(project_name: str | None = None) -> Anatomy:
     if project_name:
         return await get_project_anatomy(project_name)
@@ -261,16 +276,19 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             "The default variant name for instances matching this profile."
         ),
     )
-    contribution_variant_is_default: bool = SettingsField(
-        False,
+    contribution_variant_default_policy: str = SettingsField(
+        "if_not_set",
         title="Set as default variant selection",
+        enum_resolver=contribution_variant_default_policy_enum,
         description=(
-            "Whether to set this instance's variant name as the "
-            "default selected variant name for the variant set.\n"
-            "It is always expected to be enabled for only one "
-            "variant name in the variant set.\n"
-            "The behavior is unpredictable if multiple instances "
-            "for the same variant set have this enabled."
+            "Controls whether this contribution's variant name is authored "
+            "as the selected default for the variant set. Use "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' to leave the "
+            "variant selection unchanged, "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' to set "
+            "it only when no selection exists, or "
+            f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' to always "
+            "override the current selection."
         ),
     )
 
@@ -476,14 +494,33 @@ class CollectExplicitResolutionModel(BaseSettingsModel):
         return value
 
 
+def usd_contribution_path_types():
+    return [
+        {"value": "filepath", "label": "Filepath"},
+        {
+            "value": "ayon_entity_uri",
+            "label": "AYON Entity URI (explicit version)"
+        },
+        {
+            "value": "ayon_entity_uri_latest",
+            "label": "AYON Entity URI as latest version"
+        },
+        {
+            "value": "ayon_entity_uri_latest_approved",
+            "label": "AYON Entity URI as latest approved"
+        },
+    ]
+
+
 class AyonEntityURIModel(BaseSettingsModel):
-    use_ayon_entity_uri: bool = SettingsField(
-        title="Use AYON Entity URI",
+    use_ayon_entity_uri: str = SettingsField(
+        "filepath",
+        title="Contribution path",
         description=(
-            "When enabled the USD paths written using the contribution "
-            "workflow will use ayon entity URIs instead of resolved published "
-            "paths. You can only load these if you use the AYON USD Resolver."
-        )
+            "Choose how paths written by the USD contribution workflow are "
+            "authored. Entity URI options require the AYON USD Resolver."
+        ),
+        enum_resolver=usd_contribution_path_types,
     )
 
 
@@ -1656,7 +1693,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["look"],
@@ -1668,7 +1706,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["groom"],
@@ -1680,7 +1719,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["rig"],
@@ -1692,7 +1732,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": True,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
             {
                 "product_base_types": ["usd"],
@@ -1704,7 +1745,8 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": False,
                 "contribution_variant_set_name": "{layer}",
                 "contribution_variant": "{variant}",
-                "contribution_variant_is_default": False,
+                "contribution_variant_default_policy":
+                    "if_not_set",
             },
         ]
     },
@@ -2102,10 +2144,10 @@ DEFAULT_PUBLISH_VALUES = {
         ]
     },
     "ExtractUSDAssetContribution": {
-        "use_ayon_entity_uri": False,
+        "use_ayon_entity_uri": "filepath",
     },
     "ExtractUSDLayerContribution": {
-        "use_ayon_entity_uri": False,
+        "use_ayon_entity_uri": "filepath",
         "enforce_default_prim": False,
     },
     "PreIntegrateThumbnails": {

@@ -825,11 +825,11 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
 
                 content_rect.setLeft(bg_rect.right() + spacing)
 
-        painter.restore()
-
         if total_used_width > available_width:
             ellide_dots = chr(0x2026)
             painter.drawText(origin_rect, QtCore.Qt.AlignRight, ellide_dots)
+
+        painter.restore()
 
     def setItemCheckState(self, index, state):
         self.setItemData(index, state, QtCore.Qt.CheckStateRole)

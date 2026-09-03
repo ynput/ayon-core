@@ -1,32 +1,42 @@
+from __future__ import annotations
+
 import collections
+import typing
 
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem
 from ayon_core.pipeline.thumbnails import get_thumbnail_path
 
+if typing.TYPE_CHECKING:
+    from typing import Literal
+
+    ThumbnailEntityType = Literal["folder", "version"]
+
 
 class ThumbnailsModel:
     entity_cache_lifetime = 240  # In seconds
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._paths_cache = collections.defaultdict(dict)
         self._folders_cache = NestedCacheItem(
-            levels=2, lifetime=self.entity_cache_lifetime)
+            levels=2, lifetime=self.entity_cache_lifetime
+        )
         self._versions_cache = NestedCacheItem(
-            levels=2, lifetime=self.entity_cache_lifetime)
+            levels=2, lifetime=self.entity_cache_lifetime
+        )
 
-    def reset(self):
+    def reset(self) -> None:
         self._paths_cache = collections.defaultdict(dict)
         self._folders_cache.reset()
         self._versions_cache.reset()
 
     def get_thumbnail_paths(
         self,
-        project_name,
-        entity_type,
-        entity_ids,
-    ):
+        project_name: str | None,
+        entity_type: ThumbnailEntityType,
+        entity_ids: set[str],
+    ) -> dict[str, str | None]:
         output = {
             entity_id: None
             for entity_id in entity_ids
@@ -65,7 +75,9 @@ class ThumbnailsModel:
 
         return output
 
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
+    def get_folder_thumbnail_ids(
+        self, project_name: str, folder_ids: set[str]
+    ) -> dict[str, str | None]:
         project_cache = self._folders_cache[project_name]
         output = {}
         missing_cache = set()
@@ -81,7 +93,9 @@ class ThumbnailsModel:
             output[folder_id] = cache.get_data()
         return output
 
-    def get_version_thumbnail_ids(self, project_name, version_ids):
+    def get_version_thumbnail_ids(
+        self, project_name: str, version_ids: set[str]
+    ) -> dict[str, str | None]:
         project_cache = self._versions_cache[project_name]
         output = {}
         missing_cache = set()
@@ -99,11 +113,11 @@ class ThumbnailsModel:
 
     def _get_thumbnail_path(
         self,
-        project_name,
-        entity_type,
-        entity_id,
-        thumbnail_id
-    ):
+        project_name: str,
+        entity_type: ThumbnailEntityType,
+        entity_id: str,
+        thumbnail_id: str,
+    ) -> str | None:
         if not thumbnail_id:
             return None
 
@@ -120,7 +134,9 @@ class ThumbnailsModel:
         project_cache[thumbnail_id] = filepath
         return filepath
 
-    def _query_folder_thumbnail_ids(self, project_name, folder_ids):
+    def _query_folder_thumbnail_ids(
+        self, project_name: str, folder_ids: set[str]
+    ) -> None:
         if not project_name or not folder_ids:
             return
 
@@ -133,7 +149,9 @@ class ThumbnailsModel:
         for folder in folders:
             project_cache[folder["id"]] = folder["thumbnailId"]
 
-    def _query_version_thumbnail_ids(self, project_name, version_ids):
+    def _query_version_thumbnail_ids(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
         if not project_name or not version_ids:
             return
 

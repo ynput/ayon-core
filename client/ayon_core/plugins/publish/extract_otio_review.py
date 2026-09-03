@@ -51,8 +51,7 @@ class ExtractOTIOReview(
 
     order = api.ExtractorOrder - 0.45
     label = "Extract OTIO review"
-    families = ["review"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.clip.review"]
 
     # plugin default attributes
     to_width = 1280
