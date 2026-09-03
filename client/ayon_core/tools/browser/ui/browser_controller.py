@@ -2235,11 +2235,13 @@ class BrowserController(QtCore.QObject):
         if not project:
             return []
 
+        # Don't list anything without a selection, so must have a parent id
+        if not parent_id:
+            return []
         self.log.debug("Fetching product children for %s", parent_id)
-        parent_ids = [parent_id] if parent_id is not None else [None]
         folders = list(ayon_api.get_folders(
             project,
-            parent_ids=parent_ids,  # type: ignore[arg-type]
+            parent_ids=[parent_id],
             fields={
                 "id",
                 "name",
