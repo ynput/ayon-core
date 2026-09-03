@@ -17,7 +17,6 @@ from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.label import AYLabel
-from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.views import (
     AYViewSelector,
     ServerViewManager,
@@ -130,7 +129,6 @@ class BrowserTable(AYContainer):
     display_type_changed = QtCore.Signal(QtWidgets.QAbstractItemView)
     default_view_message = QtCore.Signal(str, bool)
     filter_criteria_changed = QtCore.Signal(list)
-    selection_refresh_requested = QtCore.Signal()
 
     def __init__(
         self,
@@ -150,7 +148,6 @@ class BrowserTable(AYContainer):
         self._table = AYTableView(self)
         self._table.set_row_height(BROWSER_VIEW_DEFAULTS.row_height)
         self._table.viewport().installEventFilter(self)
-        self._version_combo: AYComboBox | None = None
         self._table.header().setSectionsMovable(True)
         self._table.header().setMouseTracking(True)
         self._table.header().installEventFilter(self)
@@ -472,7 +469,7 @@ class BrowserTable(AYContainer):
     # ------------------------------------------------------------------
 
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        """Handle viewport resize and Version-cell double-click events.
+        """Handle viewport resize events.
 
         Debounces resize events via a 100 ms timer to avoid flooding the
         thumbnail fetch queue during continuous resizing.
@@ -485,126 +482,17 @@ class BrowserTable(AYContainer):
             ``False`` to allow the event to propagate.
         """
         if obj is self._table.viewport():
-            if event.type() == QtCore.QEvent.Type.MouseButtonPress:
-                if self._version_combo is not None:
-                    combo_rect = self._version_combo.geometry()
-                    if not combo_rect.contains(event.pos()):
-                        self._close_version_picker()
-                return False
-            if event.type() == QtCore.QEvent.Type.MouseButtonDblClick:
-                index = self._table.indexAt(event.pos())
-                if index.isValid() and self._is_version_index(index):
-                    self._open_version_picker(index)
-                    return True
-            elif event.type() != QtCore.QEvent.Type.Resize:
+            if event.type() != QtCore.QEvent.Type.Resize:
                 return False
 
             # Debounce resize events similar to scroll events
-            if event.type() == QtCore.QEvent.Type.Resize:
-                self._on_viewport_resize()
+            self._on_viewport_resize()
         elif obj is self._table.header():
             if event.type() == QtCore.QEvent.Type.Enter:
                 self._add_column_btn.show()
             elif event.type() == QtCore.QEvent.Type.Leave:
                 self._add_column_btn.hide()
         return False
-
-    def _is_version_index(self, index: QtCore.QModelIndex) -> bool:
-        """Return whether *index* is a replaceable Version cell."""
-        if index.column() >= len(self._model.columns):
-            return False
-        if self._model.columns[index.column()].key != "version":
-            return False
-        source_index = self._source_index(index)
-        row_data = source_index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-        return (
-            row_data.get("entityType") == "Version"
-            and bool(row_data.get("productId"))
-        )
-
-    def _source_index(
-        self,
-        index: QtCore.QModelIndex,
-    ) -> QtCore.QModelIndex:
-        """Map a displayed index through any filter proxy to the source."""
-        model = index.model()
-        source_index = index
-        while isinstance(model, QtCore.QAbstractProxyModel):
-            source_index = model.mapToSource(source_index)
-            model = model.sourceModel()
-        return source_index
-
-    def _open_version_picker(self, index: QtCore.QModelIndex) -> None:
-        """Fetch and display versions for the double-clicked product."""
-        source_index = self._source_index(index)
-        row_data = source_index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-        product_id = row_data.get("productId")
-        if not product_id:
-            return
-
-        self._close_version_picker()
-
-        combo = AYComboBox(self._table.viewport())
-        self._version_combo = combo
-        combo.setMinimumWidth(
-            max(self._table.columnWidth(index.column()), 140)
-        )
-        combo.setGeometry(self._table.visualRect(index))
-        combo.installEventFilter(self)
-
-        def _on_versions_ready(
-            versions: list[dict[str, Any]] | None,
-        ) -> None:
-            if combo is not self._version_combo:
-                return
-            if not versions:
-                self._close_version_picker()
-                return
-
-            combo.clear()
-
-            current_id = row_data.get("id")
-            selected = 0
-            for idx, version in enumerate(reversed(versions)):
-                label = str(version.get("version", ""))
-                if version.get("id") == current_id:
-                    selected = idx
-                combo.addItem(label, version)
-            combo.setCurrentIndex(selected)
-            combo.show()
-            combo.showPopup()
-
-        def _on_version_selected(position: int) -> None:
-            version = combo.itemData(position)
-            if not isinstance(version, dict):
-                return
-            replaced = self._model.replace_row(source_index, version)
-            self._close_version_picker()
-            if replaced:
-                self.selection_refresh_requested.emit()
-
-        combo.activated.connect(_on_version_selected)
-        get_task_queue().enqueue(
-            AsyncTask(
-                name=f"browser_product_versions_{product_id}",
-                function=lambda: self._controller.fetch_product_versions(
-                    product_id
-                ),
-                callback=_on_versions_ready,
-                priority=1,
-                cancellable=True,
-            )
-        )
-
-    def _close_version_picker(self) -> None:
-        """Close and discard the transient Version picker."""
-        combo = self._version_combo
-        if combo is None:
-            return
-        self._version_combo = None
-        combo.removeEventFilter(self)
-        combo.hidePopup()
-        combo.deleteLater()
 
     def _on_viewport_resize(self) -> None:
         """Debounced handler for viewport resize events.

@@ -1178,48 +1178,6 @@ class BrowserController(QtCore.QObject):
 
         return self._enrich_batch_result(result)
 
-    def fetch_product_versions(
-        self,
-        product_id: str,
-        page_size: int = 250,
-    ) -> list[dict[str, Any]]:
-        """Fetch every version for a product without the active filters.
-
-        This intentionally bypasses current slicer filters so hidden
-        versions can be selected as replacements.
-        """
-        if not self._current_project or not product_id:
-            return []
-
-        cursor: str | None = None
-        rows: list[dict[str, Any]] = []
-        while True:
-            edges, page_info = self._get_versions_page(
-                self._current_project,
-                None,
-                page_size,
-                cursor=cursor,
-                product_ids=[product_id],
-                include_folder_children=True,
-                version_filter="",
-                product_filter="",
-                task_filter="",
-                folder_filter="",
-                featured_only=None,
-                latest_per_folder=False,
-                search=None,
-            )
-            rows.extend(
-                self._transform_version_edge(edge) for edge in edges
-            )
-            if not page_info.get("hasNextPage"):
-                break
-            next_cursor = page_info.get("endCursor")
-            if not next_cursor or next_cursor == cursor:
-                break
-            cursor = next_cursor
-        return rows
-
     def fetch_projects(self) -> list[dict[str, Any]]:
         """Fetch all projects using GraphQL.
 

@@ -70,9 +70,6 @@ class BrowserWidget(AYContainer):
         self._table.default_view_message.connect(
             self.default_view_message
         )
-        self._table.selection_refresh_requested.connect(
-            self._inspector.refresh_selection
-        )
         self._inspector.set_view(self._table.active_view)
         self._build()
 
