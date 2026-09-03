@@ -2,14 +2,16 @@
 
 Sets QT_QPA_PLATFORM=offscreen before any Qt import so tests run headless.
 """
+from __future__ import annotations
 
 import json
 import logging
 import os
+from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 # Must be set before any Qt import. pytest-qt respects this too.
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -46,6 +48,18 @@ def pytest_addoption(parser: pytest.Parser) -> None:
             "After the run, open a Qt window showing failed image comparisons."
         ),
     )
+    parser.addoption(
+        "--store-images",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="PATH",
+        help=(
+            "After the run, store failed image comparisons in a directory. "
+            "Optionally provide a path "
+            "(defaults to <repo_root>/failed_image_tests)."
+        ),
+    )
 
 
 @pytest.fixture
@@ -73,7 +87,9 @@ def _reset_task_queue_between_tests():
 @pytest.fixture(autouse=True)
 def _collect_image_failures(request, tmp_path):
     yield
-    if not request.config.getoption("--show-images", default=False):
+    show = request.config.getoption("--show-images", default=False)
+    store = request.config.getoption("--store-images", default=None)
+    if not show and store is None:
         return
     rep = getattr(request.node, "rep_call", None)
     if rep is None or not rep.failed:
@@ -87,11 +103,7 @@ def _collect_image_failures(request, tmp_path):
             )
 
 
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    if not session.config.getoption("--show-images", default=False):
-        return
-    if not _failed_image_tests:
-        return
+def _show_images():
     # clean up labels
     for i, (test_name, _, _) in enumerate(_failed_image_tests):
         l = re.search(r"\[([\w\d]+)\]", test_name)  # noqa: E741
@@ -107,3 +119,28 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         [sys.executable, str(visual_utils), json.dumps(_failed_image_tests)],
         env=env,
     )
+
+
+def _store_images(store_path: str) -> None:
+    if store_path:
+        store_dir = Path(store_path)
+    else:
+        store_dir = CURRENT_DIR / "test_visual"
+    store_dir.mkdir(parents=True, exist_ok=True)
+
+    for _, obtained, ref in _failed_image_tests:
+        dst_path = os.path.join(store_dir, os.path.basename(ref))
+        shutil.copy(obtained, dst_path)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if not _failed_image_tests:
+        return
+
+    if session.config.getoption("--show-images", default=False):
+        _show_images()
+
+    store_dir = session.config.getoption("--store-images", default=None)
+    if store_dir is not None:
+        _store_images(store_dir)
+
