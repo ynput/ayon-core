@@ -63,7 +63,7 @@ class ExtractOIIOTranscode(publish.Extractor):
     optional = True
 
     # Supported extensions
-    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
+    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tif"}
 
     # Configurable by Settings
     profiles = None
