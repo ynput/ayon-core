@@ -79,13 +79,15 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
             host_name = workfile_item.host_name
-
+            file_size = ""
+            if workfile_item.file_size is not None:
+                file_size = file_size_to_string(workfile_item.file_size)
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
-            item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
+            item.setData(file_size, FILE_SIZE_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
             item.setColumnCount(3)
             flags = QtCore.Qt.NoItemFlags
@@ -282,13 +284,6 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 if pretty is not None:
                     text = pretty
             option.text = text
-
-        elif index.column() == 2:
-            raw = index.data(FILE_SIZE_ROLE)
-            if raw is not None:
-                option.text = file_size_to_string(raw)
-            else:
-                option.text = ""
 
 
 class WorkfilesPage(AYContainer):
