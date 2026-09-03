@@ -1,18 +1,4 @@
-""""My Tasks" toggle button for the Browser slicer.
-
-Sits to the right of the slicer's own search toggle. There is only
-one slicer-level filter today, so this is a plain checkable icon
-button rather than a dropdown menu: a menu with a single entry (and,
-previously, a lot of dead space around it) was pure clutter. Checking
-it scopes the Hierarchy tree -- and the task list under the selected
-folder -- down to folders and tasks assigned to the current user;
-unchecking it restores the full tree.
-
-If a second slicer-level filter becomes a real, concrete need, this
-is a reasonable place to grow a proper menu -- but building that
-structure ahead of an actual second filter would just be speculative
-complexity for a "extensibility" nothing exercises yet.
-"""
+""""My Tasks" toggle button for the Browser slicer."""
 
 from __future__ import annotations
 
@@ -20,26 +6,16 @@ from ayon_core.ui.components.buttons import AYButton
 
 from .browser_types import BrowserSlicerCategory
 
-_TOOLTIP = (
-    "Only show folders that have a task assigned to you, so you can "
-    "jump straight to your work."
-)
-
 
 class MyTasksToggleButton(AYButton):
-    """Checkable icon button that toggles the "My Tasks" slicer filter.
-
-    Checked state is native ``QAbstractButton`` state, so callers use
-    the button's own ``toggled``/``isChecked``/``setChecked`` API
-    directly rather than a bespoke signal or accessor.
-    """
+    """Checkable icon button that toggles the "My Tasks" slicer filter."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(
             variant=AYButton.Variants.Nav,
             icon="assignment_ind",
             checkable=True,
-            tooltip=_TOOLTIP,
+            tooltip="Only show folders that have a task assigned to you.",
             parent=parent,
         )
         self.setVisible(False)
