@@ -1486,6 +1486,7 @@ class BrowserController(QtCore.QObject):
                 "id": f"grp:{group_option.key}:{value}",
                 "has_children": num_versions is None or num_versions > 0,
                 "child_count": num_versions,
+                "group_metrics": group_option.key != GROUP_BY_PRODUCT_KEY,
                 "thumb": display_label,
                 "product/version": display_label,
                 "product/version__icon": icon or "label",
@@ -1555,22 +1556,32 @@ class BrowserController(QtCore.QObject):
             }
             group_counts.update(filtered_counts)
         if self.group_by_key == GROUP_BY_STATUS_KEY:
-            return self._fetch_status_group_headers(group_counts)
-        if self.group_by_key == GROUP_BY_PRODUCT_TYPE_KEY:
-            return self._fetch_product_type_group_headers(group_counts)
-        if self.group_by_key == GROUP_BY_PRODUCT_KEY:
-            return self._fetch_product_group_headers(group_counts)
-        if self.group_by_key == GROUP_BY_TAGS_KEY:
-            return self._fetch_tags_group_headers(group_counts)
-        if self.group_by_key == GROUP_BY_TASK_TYPE_KEY:
-            return self._fetch_task_type_group_headers(group_counts)
-        if self.group_by.source == GroupBySource.ATTRIBUTE:
-            return self._fetch_attribute_group_headers(
+            rows = self._fetch_status_group_headers(group_counts)
+        elif self.group_by_key == GROUP_BY_PRODUCT_TYPE_KEY:
+            rows = self._fetch_product_type_group_headers(group_counts)
+        elif self.group_by_key == GROUP_BY_PRODUCT_KEY:
+            rows = self._fetch_product_group_headers(group_counts)
+        elif self.group_by_key == GROUP_BY_TAGS_KEY:
+            rows = self._fetch_tags_group_headers(group_counts)
+        elif self.group_by_key == GROUP_BY_TASK_TYPE_KEY:
+            rows = self._fetch_task_type_group_headers(group_counts)
+        elif self.group_by.source == GroupBySource.ATTRIBUTE:
+            rows = self._fetch_attribute_group_headers(
                 self.group_by,
                 group_counts,
             )
-        self.log.warning("Unknown group-by key: %s", self.group_by_key)
-        return []
+        else:
+            self.log.warning("Unknown group-by key: %s", self.group_by_key)
+            return []
+
+        total = sum(group_counts.values()) if group_counts else 0
+        for row in rows:
+            count = row.get("child_count")
+            if count is not None:
+                row["group_percentage"] = (
+                    int(count / total * 100 + 0.5) if total else 0
+                )
+        return rows
 
     def _get_group_counts(
         self,

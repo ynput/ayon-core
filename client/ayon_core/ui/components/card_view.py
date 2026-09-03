@@ -66,6 +66,8 @@ class _GroupLayout:
     node_id: str
     label: str
     child_count: int | None
+    percentage: int | None
+    show_metrics: bool
     header_rect: QRect
     collapsed: bool
     label_color: QBrush | None = None
@@ -570,6 +572,8 @@ class AYCardView(QAbstractItemView):
                 "child_count",
                 model.rowCount(group_idx),
             )
+            percentage = row_data.get("group_percentage")
+            show_group_metrics = row_data.get("group_metrics", True)
 
             header_rect = QRect(0, y, vp_width, gh)
             y += gh + spacing
@@ -596,6 +600,8 @@ class AYCardView(QAbstractItemView):
                     node_id=node_id,
                     label=label,
                     child_count=child_count,
+                    percentage=percentage,
+                    show_metrics=show_group_metrics,
                     header_rect=header_rect,
                     collapsed=collapsed,
                     label_color=label_color,
@@ -941,16 +947,34 @@ class AYCardView(QAbstractItemView):
             painter.setPen(label_color or header_fg)
 
             label = group.label
-            count_str = (
-                f"  ({group.child_count})"
-                if group.child_count is not None
-                else ""
-            )
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                label + count_str,
+                label,
             )
+            if group.show_metrics and group.child_count is not None:
+                label_width = painter.fontMetrics().horizontalAdvance(label)
+                metrics_x = text_x + label_width
+                metrics_rect = QRect(
+                    metrics_x,
+                    visible_rect.top(),
+                    text_rect.right() - metrics_x,
+                    visible_rect.height(),
+                )
+                painter.setPen(QColor(tbl_style.get(
+                    "group-metrics-color", "#8b929b"
+                )))
+                percentage = (
+                    f" ({group.percentage}%)"
+                    if group.percentage is not None
+                    else ""
+                )
+                painter.drawText(
+                    metrics_rect,
+                    Qt.AlignmentFlag.AlignVCenter
+                    | Qt.AlignmentFlag.AlignLeft,
+                    f"  {group.child_count}{percentage}",
+                )
         painter.setFont(font)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:

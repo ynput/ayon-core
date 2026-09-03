@@ -1468,10 +1468,22 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             # too wide for the column. Used for e.g. in status column to show
             # the shorthand status code instead.
             text = opt.text
+            group_metrics = None
             if model_column is not None:
                 font = self.font()
                 painter.setFont(font)
                 row_data = index.data(Qt.ItemDataRole.UserRole) or {}
+                if (
+                    model_column.tree_position
+                    and row_data.get("group_metrics", True)
+                    and "child_count" in row_data
+                ):
+                    child_count = row_data.get("child_count")
+                    if child_count is not None:
+                        percentage = row_data.get("group_percentage")
+                        group_metrics = f"  {child_count}"
+                        if percentage is not None:
+                            group_metrics += f" ({percentage}%)"
                 short_text = row_data.get(f"{model_column.key}__short")
                 font_metrics = QtGui.QFontMetrics(font)
                 if (
@@ -1491,5 +1503,17 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                 text,
             )
+            if group_metrics:
+                label_width = painter.fontMetrics().horizontalAdvance(text)
+                metrics_rect = QRect(text_rect)
+                metrics_rect.setLeft(text_rect.left() + label_width)
+                painter.setPen(QColor(base_style.get(
+                    "group-metrics-color", "#8b929b"
+                )))
+                painter.drawText(
+                    metrics_rect,
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    group_metrics,
+                )
 
         painter.restore()

@@ -795,6 +795,7 @@
                     "expand-icon-size": 16,
                     "header-background-color": "--md-sys-color-surface-container-lowest-dark",
                     "header-color": "--md-sys-color-on-surface-variant-dark",
+                    "group-metrics-color": "--md-sys-color-outline-dark",
                     "header-border-color": "--md-sys-color-surface-container-dark",
                     "header-border-width": 1,
                     "header-height": 36,
