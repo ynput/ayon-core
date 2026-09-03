@@ -116,7 +116,7 @@ def test_set_my_tasks_filter_clears_scope_when_disabled(monkeypatch):
     assert controller.get_task_id_scope() is None
 
 
-def test_fetch_products_restricts_to_folder_id_scope(monkeypatch):
+def test_fetch_folders_restricts_to_folder_id_scope(monkeypatch):
     controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
     controller._folder_id_scope = {"shot010"}
@@ -129,7 +129,7 @@ def test_fetch_products_restricts_to_folder_id_scope(monkeypatch):
         ],
     )
 
-    nodes = controller._fetch_products(None)
+    nodes = controller._fetch_folders(None)
 
     assert [n.id for n in nodes] == ["shot010"]
     # Parent tracking still happens for folders outside the scope too,
@@ -140,7 +140,7 @@ def test_fetch_products_restricts_to_folder_id_scope(monkeypatch):
     }
 
 
-def test_fetch_products_returns_everything_without_scope(monkeypatch):
+def test_fetch_folders_returns_everything_without_scope(monkeypatch):
     controller = BrowserController(LoaderController())
     controller._current_project = "test_project"
 
@@ -151,7 +151,7 @@ def test_fetch_products_returns_everything_without_scope(monkeypatch):
         ],
     )
 
-    nodes = controller._fetch_products(None)
+    nodes = controller._fetch_folders(None)
 
     assert [n.id for n in nodes] == ["shot010"]
 

@@ -735,7 +735,7 @@ class BrowserController(QtCore.QObject):
     def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for the given parent.
 
-        Dispatches to :meth:`_fetch_products` or
+        Dispatches to :meth:`_fetch_folders` or
         :meth:`_fetch_reviews` depending on the current category.
 
         Args:
@@ -745,7 +745,7 @@ class BrowserController(QtCore.QObject):
             List of :class:`TreeNode` instances.
         """
         if self._current_category == BrowserSlicerCategory.HIERARCHY.value:
-            return self._fetch_products(parent_id)
+            return self._fetch_folders(parent_id)
         return self._fetch_reviews(parent_id)
 
     def fetch_versions_page(
@@ -2222,7 +2222,7 @@ class BrowserController(QtCore.QObject):
             if r.get("entityListType") == "review-session"
         ]
 
-    def _fetch_products(self, parent_id: str | None) -> list[TreeNode]:
+    def _fetch_folders(self, parent_id: str | None) -> list[TreeNode]:
         """Fetch folder hierarchy level by parent folder id.
 
         Args:
