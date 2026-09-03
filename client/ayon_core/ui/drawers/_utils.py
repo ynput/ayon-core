@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import platform
-
 from qtpy.QtGui import QFont
 from qtpy.QtWidgets import QStyle, QWidget
 
