@@ -1,5 +1,6 @@
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.tools.utils import PlaceholderPlainTextEdit
 from ayon_core.ui.components import (
     AYButton,
     AYCheckBox,
@@ -11,7 +12,6 @@ from ayon_core.ui.components import (
     AYLineEdit,
     AYSpinBox,
 )
-from ayon_core.tools.utils import PlaceholderPlainTextEdit
 
 
 class SubversionLineEdit(QtWidgets.QWidget):

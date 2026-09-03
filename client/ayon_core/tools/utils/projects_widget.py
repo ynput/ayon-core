@@ -6,17 +6,16 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.tools.common_models import (
+    ProjectItem,
+    PROJECTS_MODEL_SENDER,
+)
 from ayon_core.ui.components import AYComboBox, AYTreeView
 from ayon_core.ui.style import (
     TreeViewItemDelegate,
     get_ayon_style,
     ComboBoxItemDelegate,
-)
-
-from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
-from ayon_core.tools.common_models import (
-    ProjectItem,
-    PROJECTS_MODEL_SENDER,
 )
 
 from .lib import RefreshThread, get_qt_icon

@@ -1,9 +1,3 @@
-from ayon_core.ui.components import (
-    AYButton,
-    AYHBoxLayout,
-    AYVBoxLayout
-)
-
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
@@ -12,6 +6,11 @@ from ayon_core.tools.utils import (
     TasksWidget,
 )
 from ayon_core.tools.utils.folders_widget import FoldersFiltersWidget
+from ayon_core.ui.components import (
+    AYButton,
+    AYHBoxLayout,
+    AYVBoxLayout,
+)
 
 from .workfiles_page import WorkfilesPage
 

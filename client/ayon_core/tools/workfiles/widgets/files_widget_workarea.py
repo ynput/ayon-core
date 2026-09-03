@@ -3,14 +3,14 @@ import os
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.ui.components import AYContainer, AYTreeView
-
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from .utils import WorkfilesDelegate
+from ayon_core.ui.components import AYContainer, AYTreeView
 from ayon_core.ui.style_types import get_ayon_style
+
+from .utils import WorkfilesDelegate
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2

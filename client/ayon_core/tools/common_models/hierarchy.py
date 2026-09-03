@@ -146,7 +146,6 @@ class TaskItem:
     status: str
     full_label: str = ""
 
-
     def __post_init__(self):
         if not self.full_label:
             self.full_label = f"{self.label} ({self.task_type})"
@@ -315,7 +314,15 @@ class HierarchyModel:
         folders = ayon_api.get_folders(
             project_name,
             folder_ids=folder_ids,
-            fields=["id", "name", "label", "parentId", "path", "folderType", "status"]
+            fields=[
+                "id",
+                "name",
+                "label",
+                "parentId",
+                "path",
+                "folderType",
+                "status",
+            ]
         )
         # Make sure all folder ids are in output
         output = {folder_id: None for folder_id in folder_ids}
@@ -358,7 +365,15 @@ class HierarchyModel:
         folders = ayon_api.get_folders(
             project_name,
             folder_paths=folder_paths,
-            fields=["id", "name", "label", "parentId", "path", "folderType", "status"]
+            fields=[
+                "id",
+                "name",
+                "label",
+                "parentId",
+                "path",
+                "folderType",
+                "status",
+            ]
         )
         # Make sure all folder ids are in output
         for folder in folders:
@@ -707,7 +722,15 @@ class HierarchyModel:
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type", "tags", "status"}
+            fields={
+                "id",
+                "name",
+                "label",
+                "folderId",
+                "type",
+                "tags",
+                "status",
+            }
         ))
         task_type_items: list[TaskTypeItem] = (
             self._controller.get_task_type_items(project_name)

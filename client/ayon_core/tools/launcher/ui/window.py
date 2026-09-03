@@ -1,19 +1,19 @@
 from pathlib import Path
+
+from qtpy import QtWidgets, QtCore, QtGui
+
+from ayon_core import resources
+from ayon_core.tools.launcher.control import BaseLauncherController
+from ayon_core.tools.utils import (
+    MessageOverlayObject,
+    ProjectsWidget,
+)
 from ayon_core.ui.components import (
     AYContainer,
     AYHBoxLayout,
     AYVBoxLayout,
     AYLineEdit,
     AYButton,
-)
-from qtpy import QtWidgets, QtCore, QtGui
-
-from ayon_core import resources
-
-from ayon_core.tools.launcher.control import BaseLauncherController
-from ayon_core.tools.utils import (
-    MessageOverlayObject,
-    ProjectsWidget,
 )
 
 from .hierarchy_page import HierarchyPage

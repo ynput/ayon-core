@@ -3,13 +3,13 @@ from typing import Optional
 
 from qtpy import QtCore
 
+from ayon_core.tools.utils.delegates import file_size_to_string
 from ayon_core.ui.components import (
     AYContainer,
     AYButton,
     AYLabel,
     AYTextEdit
 )
-from ayon_core.tools.utils.delegates import file_size_to_string
 
 class SidePanelWidget(AYContainer):
     """Details about selected workfile.

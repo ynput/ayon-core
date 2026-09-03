@@ -15,12 +15,7 @@ from ayon_core.lib.icon_definitions import (
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import pretty_timestamp, file_size_to_string
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
-
-from ayon_core.ui.components import (
-    AYContainer,
-    AYTreeView,
-    AYMenu,
-)
+from ayon_core.ui.components import AYContainer, AYTreeView
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
