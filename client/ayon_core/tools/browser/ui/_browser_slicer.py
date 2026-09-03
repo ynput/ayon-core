@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ayon_core.ui.components.buttons import AYButton
+from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.slicer import AYSlicer
 from ayon_core.ui.components.task_queue import get_task_queue
@@ -16,9 +17,9 @@ from qtpy import QtCore, QtWidgets
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_controller import BrowserController
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.utils import ProjectsCombobox
 
 from ._browser_slicer_filters import MyTasksToggleButton
-from ._project_selector import ProjectSelector
 from .tasks_widget import BrowserTasksWidget
 
 log = Logger.get_logger(__name__)
@@ -55,7 +56,6 @@ class BrowserSlicer(AYContainer):
         controller: BrowserController,
         loader_controller,
         *args: Any,
-        initial_project: str = "",
         initial_category: str = BrowserSlicerCategory.HIERARCHY.value,
         **kwargs: Any,
     ) -> None:
@@ -81,9 +81,16 @@ class BrowserSlicer(AYContainer):
             self._retry_folder_selection
         )
 
-        self._selector = ProjectSelector(
-            controller,
-            initial_project=initial_project,
+        self._selector = ProjectsCombobox(
+            loader_controller,
+            self,
+            handle_expected_selection=True,
+            variant=AYComboBox.Variants.Low,
+        )
+        self._selector.set_select_item_visible(True)
+        self._selector.set_libraries_separator_visible(True)
+        self._selector.set_standard_filter_enabled(
+            loader_controller.is_standard_projects_filter_enabled()
         )
         self.add_widget(self._selector, stretch=0)
 
@@ -129,12 +136,31 @@ class BrowserSlicer(AYContainer):
         self._controller.my_tasks_filter_changed.connect(
             self._on_controller_my_tasks_filter_changed
         )
+        self._selector.selection_changed.connect(self._controller.set_project)
+        loader_controller.register_event_callback(
+            "controller.reset.finished",
+            self._on_controller_reset_finished,
+        )
 
         # Initialise the toggle's visibility for the starting category
         # now that the tasks widget it feeds into exists.
         self._my_tasks_btn.set_category(
             BrowserSlicerCategory(initial_category)
         )
+
+    def _on_controller_reset_finished(self) -> None:
+        """Keep the project selector in sync with the host's context.
+
+        Mirrors the legacy loader tool: the current-context project is
+        always kept selectable regardless of the library filter, and the
+        combobox is refreshed since its own auto-refresh (triggered by
+        the shared projects model) is skipped for same-sender refreshes.
+        """
+        context = self._loader_controller.get_current_context() or {}
+        self._selector.set_current_context_project(
+            context.get("project_name") or ""
+        )
+        self._selector.refresh()
 
     def set_model(self, model: LazyTreeModel) -> None:
         """Attach a tree model to the view and slicer proxy.
@@ -198,7 +224,7 @@ class BrowserSlicer(AYContainer):
             BrowserSlicerCategory.HIERARCHY.value
         )
         if project_name != self._controller.current_project:
-            self._selector.set_current_project(project_name)
+            self._selector.set_selection(project_name)
         chain = self._controller.get_folder_id_path(folder_id)
         self._folder_selection_timer.stop()
         self._folder_selection_chain = chain
@@ -320,4 +346,4 @@ class BrowserSlicer(AYContainer):
 
     def current_project(self) -> str:
         """Return the currently selected project name."""
-        return self._selector.current_project()
+        return self._selector.get_selected_project_name() or ""

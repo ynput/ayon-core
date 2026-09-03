@@ -73,9 +73,6 @@ class BrowserWidget(AYContainer):
         self._inspector.set_view(self._table.active_view)
         self._build()
 
-        self._slicer._selector.project_activated.connect(
-            self._controller.set_project
-        )
         self._controller.tree_reset_requested.connect(self._on_tree_reset)
         self._controller.project_changed.connect(self._on_project_changed)
         self._controller.selection_changed.connect(self._on_folder_selected)
