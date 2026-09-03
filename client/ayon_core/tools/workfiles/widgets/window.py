@@ -104,6 +104,7 @@ class WorkfilesToolWindow(AYContainer):
         tasks_widget = TasksWidget(
             controller, home_body_widget, handle_expected_selection=True
         )
+        tasks_widget.set_status_column_visible(True)
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
         side_panel = SidePanelWidget(controller, home_body_widget)
 
@@ -212,6 +213,7 @@ class WorkfilesToolWindow(AYContainer):
         folder_widget = FoldersWidget(
             controller, col_widget, handle_expected_selection=True
         )
+        folder_widget.set_status_column_visible(True)
 
         col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
