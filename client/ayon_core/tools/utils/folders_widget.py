@@ -746,7 +746,9 @@ class FoldersWidget(QtWidgets.QWidget):
 
         selection_model = self._folders_view.selectionModel()
         selection_model.setCurrentIndex(
-            proxy_index, QtCore.QItemSelectionModel.SelectCurrent
+            proxy_index,
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows
         )
         return True
 
