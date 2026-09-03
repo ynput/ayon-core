@@ -46,9 +46,9 @@ SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 32
 ACTIVE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 33
 REMOTE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 34
 
-STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
-TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
-VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 35
+STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 35
+TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 36
+VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 37
 
 
 class ProductsModel(QtGui.QStandardItemModel):
