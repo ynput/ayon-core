@@ -91,6 +91,8 @@ class BrowserSlicer(AYContainer):
             item_list=self.CATEGORIES,
             initial_text=initial_category,
         )
+        self._filters_menu = SlicerFiltersMenu(self)
+        self._slicer.add_trailing_widget(self._filters_menu)
         self._go_to_current_btn = GoToCurrentButton(self)
         self._go_to_current_btn.setToolTip(
             "Select the current context in the hierarchy"
@@ -105,9 +107,6 @@ class BrowserSlicer(AYContainer):
         category_layout.addWidget(self._go_to_current_btn, stretch=0)
         self.add_layout(category_layout, stretch=0)
         self._update_current_context_button(initial_category)
-
-        self._filters_menu = SlicerFiltersMenu(self)
-        self.add_widget(self._filters_menu, stretch=0)
 
         self._tree_view = ReviewTreeView(self)
         self.add_widget(self._tree_view, stretch=1)
@@ -131,6 +130,9 @@ class BrowserSlicer(AYContainer):
         )
         self._filters_menu.filter_changed.connect(
             self._apply_slicer_filters
+        )
+        self._controller.slicer_filters_changed.connect(
+            self._on_controller_slicer_filters_changed
         )
 
         # Initialise the filter menu for the starting category now that
@@ -170,6 +172,16 @@ class BrowserSlicer(AYContainer):
     def _apply_slicer_filters(self, keys: list[str]) -> None:
         """Apply the active slicer filter keys (e.g. "My Tasks")."""
         self._controller.set_slicer_filters(set(keys))
+        self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
+
+    def _on_controller_slicer_filters_changed(self, keys: set[str]) -> None:
+        """React to slicer filters changing from outside the menu itself.
+
+        Currently only reached when a saved View is applied (see
+        ``BrowserTable._apply_view_extras``); keeps the filter menu's
+        checked state and the task list's scope in sync with it.
+        """
+        self._filters_menu.set_selected_keys(keys)
         self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
 
     def _update_current_context_button(self, category: str) -> None:

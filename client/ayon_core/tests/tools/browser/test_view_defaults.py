@@ -23,6 +23,7 @@ def test_browser_view_defaults_create_complete_independent_settings():
         "featuredVersionOrder": list(defaults.featured_version_order),
         "latestPerFolder": defaults.latest_per_folder,
         "includeChildren": defaults.include_children,
+        "slicerFilters": [],
     }
     assert [
         state.name for state in settings.columns if state.visible

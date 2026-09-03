@@ -69,6 +69,7 @@ class BrowserViewDefaults:
                 ),
                 "latestPerFolder": self.latest_per_folder,
                 "includeChildren": self.include_children,
+                "slicerFilters": [],
             },
         )
 

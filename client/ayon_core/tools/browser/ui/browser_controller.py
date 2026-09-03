@@ -102,6 +102,7 @@ class BrowserController(QtCore.QObject):
     tree_reset_requested = QtCore.Signal()  # type: ignore
     selection_changed = QtCore.Signal(list, list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
+    slicer_filters_changed = QtCore.Signal(set)  # type: ignore
 
     def __init__(
         self,
@@ -376,7 +377,17 @@ class BrowserController(QtCore.QObject):
         self._active_slicer_filters = set(keys)
         self._recompute_slicer_filter_scope()
         self._reset_pagination()
+        self.slicer_filters_changed.emit(set(self._active_slicer_filters))
         self.tree_reset_requested.emit()
+
+    @property
+    def active_slicer_filters(self) -> set[str]:
+        """Return the currently active slicer filter keys.
+
+        Used by ``BrowserTable`` to capture the filter selection into
+        a saved View (see ``_capture_view_extras``).
+        """
+        return set(self._active_slicer_filters)
 
     def _recompute_slicer_filter_scope(self) -> None:
         """Recompute id scopes implied by the active slicer filters.
