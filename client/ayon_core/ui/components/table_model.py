@@ -508,11 +508,22 @@ class PaginatedTableModel(QAbstractItemModel):
 
         if role == Qt.ItemDataRole.DecorationRole:
             icon_key = f"{col_key}__icon"
-            icon_name = row_dict.get(icon_key)
-            if icon_name:
+            icon_value = row_dict.get(icon_key)
+            if not icon_value:
+                return None
+            if isinstance(icon_value, str):
                 icon_color = row_dict.get(f"{col_key}__color", "#ffffff")
                 icon_fill = row_dict.get(f"{col_key}__icon_fill", False)
-                return get_icon(icon_name, color=icon_color, fill=icon_fill)
+                return get_icon(icon_value, color=icon_color, fill=icon_fill)
+            if isinstance(icon_value, dict):
+                # Icon definition (e.g. an addon-supplied provider icon)
+                # rather than a material symbol name. Resolved to a QIcon
+                # here rather than by the row producer, since row
+                # enrichment may run on a background worker thread where
+                # building Qt icon objects is unsafe.
+                from ayon_core.tools.utils.lib import get_qt_icon
+
+                return get_qt_icon(icon_value, default=None)
             return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
@@ -521,6 +532,10 @@ class PaginatedTableModel(QAbstractItemModel):
             if isinstance(color, str):
                 return QBrush(QColor(color))
             return None
+
+        if role == Qt.ItemDataRole.ToolTipRole:
+            tooltip_key = f"{col_key}__tooltip"
+            return row_dict.get(tooltip_key) or None
 
         if role == Qt.ItemDataRole.UserRole:
             return row_dict
@@ -1188,7 +1203,8 @@ class PaginatedTableModel(QAbstractItemModel):
         """Infer column definitions from a sample row dictionary.
 
         Reserved keys (``id``, ``has_children``) and decorator suffixes
-        (``__icon``, ``__color``, ``__fill``, ``__short``) are excluded.
+        (``__icon``, ``__color``, ``__fill``, ``__short``, ``__tooltip``)
+        are excluded.
 
         Args:
             row: A representative row dictionary.
@@ -1200,7 +1216,9 @@ class PaginatedTableModel(QAbstractItemModel):
         for key in row:
             if key in ("id", "has_children"):
                 continue
-            if key.endswith(("__icon", "__color", "__fill", "__short")):
+            if key.endswith(
+                ("__icon", "__color", "__fill", "__short", "__tooltip")
+            ):
                 continue
             label = key.replace("_", " ").title()
             columns.append(TableColumn(key=key, label=label))

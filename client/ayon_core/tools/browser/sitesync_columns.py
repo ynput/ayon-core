@@ -130,6 +130,16 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
                 version_ids,
             )
         )
+
+        active_site_name = self._sitesync_api.get_active_site(project_name)
+        remote_site_name = self._sitesync_api.get_remote_site(project_name)
+        active_icon_def = self._sitesync_api.get_active_site_icon_def(
+            project_name
+        )
+        remote_icon_def = self._sitesync_api.get_remote_site_icon_def(
+            project_name
+        )
+
         for version_id, version_rows in rows_by_version_id.items():
             active, remote = availability.get(version_id, (0, 0))
             total = representation_counts.get(version_id, 0)
@@ -141,6 +151,14 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
                 ACTIVE_FILTER_KEY: active_status,
                 REMOTE_FILTER_KEY: remote_status,
             }
+            if active_icon_def:
+                values[f"{ACTIVE_COLUMN_KEY}__icon"] = active_icon_def
+            if active_site_name:
+                values[f"{ACTIVE_COLUMN_KEY}__tooltip"] = active_site_name
+            if remote_icon_def:
+                values[f"{REMOTE_COLUMN_KEY}__icon"] = remote_icon_def
+            if remote_site_name:
+                values[f"{REMOTE_COLUMN_KEY}__tooltip"] = remote_site_name
             for row in version_rows:
                 row.update(values)
 
