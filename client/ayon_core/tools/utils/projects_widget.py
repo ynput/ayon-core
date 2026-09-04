@@ -787,7 +787,7 @@ class ProjectsWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent=parent)
 
-        projects_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        projects_view = AYTreeView(self)
         projects_view.setIndentation(0)
         projects_view.setHeaderHidden(True)
         projects_view.setSelectionMode(
@@ -799,9 +799,7 @@ class ProjectsWidget(QtWidgets.QWidget):
         projects_delegate = ProjectsTreeDelegate(
             parent=projects_view,
             style_model=ayon_style.model,
-            variant=projects_view._variant_str,
-            item_height=23,
-            item_padding=[1, 6],
+            variant=projects_view._variant_str
         )
         projects_view.setItemDelegate(projects_delegate)
 

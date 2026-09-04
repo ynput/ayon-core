@@ -59,12 +59,8 @@ class AYTreeView(StyleMixin, QTreeView):
         self,
         parent: QWidget | None = None,
         variant: QTreeViewVariants = QTreeViewVariants.Default,
-        item_height: int | None = None,
-        item_padding: list[int] | None = None,
     ) -> None:
         self._variant_str: str = variant.value
-        self._item_height = item_height
-        self._item_padding = item_padding
 
         super().__init__(parent)
 
@@ -91,8 +87,6 @@ class AYTreeView(StyleMixin, QTreeView):
             parent=self,
             style_model=style.model,
             variant=self._variant_str,
-            item_height=item_height,
-            item_padding=item_padding,
         )
         self.setItemDelegate(delegate)
 
@@ -252,15 +246,11 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         parent: QWidget | None = None,
         style_model: StyleData | None = None,
         variant: str = "default",
-        item_height: int | None = None,
-        item_padding: list[int] | None = None,
     ) -> None:
         super().__init__(parent)
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
-        self._item_custom_height = item_height
-        self._item_custom_padding = item_padding
 
     def _tv_styles(self) -> dict[str, dict]:
         """Return *base*, *hover* and *selected* style dicts at once."""
@@ -302,9 +292,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._item_custom_height is not None:
-            h = self._item_custom_height
-        elif self._style_model:
+        if self._style_model:
             style = self._style_model.get_style("QTreeView", self._variant_str)
             h = int(style.get("item-height", 28))
         else:

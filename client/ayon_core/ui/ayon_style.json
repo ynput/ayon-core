@@ -729,10 +729,10 @@
                     "border-width": 0,
                     "border-color": "--md-sys-color-background-dark",
                     "indent": 22,
-                    "item-height": 28,
+                    "item-height": 24,
                     "item-padding": [
-                        4,
-                        8
+                        1,
+                        2
                     ],
                     "icon-text-spacing": 6,
                     "branch-indicator-color": "--md-sys-color-on-surface-dark",

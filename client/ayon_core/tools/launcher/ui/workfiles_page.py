@@ -299,7 +299,7 @@ class WorkfilesPage(AYContainer):
             layout_spacing=0,
         )
 
-        workfiles_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        workfiles_view = AYTreeView(self)
         workfiles_view.setHeaderHidden(False)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
@@ -313,9 +313,7 @@ class WorkfilesPage(AYContainer):
 
         workfiles_delegate = WorkfilesDelegate(
             parent=workfiles_view,
-            style_model=get_ayon_style().model,
-            item_height=23,
-            item_padding=[1, 6]
+            style_model=get_ayon_style().model
         )
         workfiles_view.setItemDelegate(workfiles_delegate)
 
