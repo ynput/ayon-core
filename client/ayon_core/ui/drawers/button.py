@@ -192,14 +192,25 @@ class ButtonDrawer:
         state."""
         variant = self.get_button_variant(widget)
 
+        is_hover = bool(
+            state & QStyle.StateFlag.State_MouseOver
+        ) or widget.underMouse()
+
         wstate = "base"
         if not (state & QStyle.StateFlag.State_Enabled):
             wstate = "disabled"
         elif state & QStyle.StateFlag.State_Sunken:
             wstate = "pressed"
-        elif (state & QStyle.StateFlag.State_MouseOver and not (
-            state & QStyle.StateFlag.State_On) or widget.underMouse()
-        ):
+        elif is_hover and state & QStyle.StateFlag.State_On:
+            # Only variants that explicitly define "checked-hover" opt
+            # into a combined look; every other checkable variant
+            # (filter chips, tag toggles, ...) falls straight to
+            # "hover" here, unchanged from before this state existed.
+            raw_variant = self.model.widget_data("QPushButton").get(
+                "variants", {}
+            ).get(variant, {})
+            wstate = "checked-hover" if "checked-hover" in raw_variant else "hover"
+        elif is_hover:
             wstate = "hover"
         elif state & QStyle.StateFlag.State_On:
             wstate = "checked"
@@ -362,6 +373,26 @@ class ButtonDrawer:
             elif option.state & QStyle.StateFlag.State_Sunken:  # type: ignore
                 mode = QtGui.QIcon.Mode.Active
 
+            # Same On/Off-as-hover encoding the icon-only branch below
+            # uses: AYButton.set_icon() bakes the hover color into the
+            # icon's "On" state for non-checkable buttons. Without
+            # selecting that state here, an icon+text button's icon
+            # never picks up its hover color even though the text does.
+            checkable = widget.isCheckable() if widget else False
+            icon_state = (
+                (
+                    QtGui.QIcon.State.On
+                    if wstate == "hover"
+                    else QtGui.QIcon.State.Off
+                )
+                if not checkable
+                else (
+                    QtGui.QIcon.State.On
+                    if option.state & QStyle.StateFlag.State_On  # type: ignore
+                    else QtGui.QIcon.State.Off
+                )
+            )
+
             if label_alignment is not None:
                 # Group layout: icon + text move together as a unit
                 h_align = (
@@ -397,6 +428,7 @@ class ButtonDrawer:
                     icon_rect,
                     Qt.AlignmentFlag.AlignCenter,
                     mode,
+                    icon_state,
                 )
                 painter.drawText(
                     text_rect,
@@ -419,6 +451,7 @@ class ButtonDrawer:
                     icon_rect,
                     Qt.AlignmentFlag.AlignCenter,
                     mode,
+                    icon_state,
                 )
                 # Adjust text rectangle
                 text_rect = QRect(content_rect)

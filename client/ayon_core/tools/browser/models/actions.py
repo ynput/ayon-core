@@ -33,6 +33,20 @@ LOADER_PLUGIN_ID = "__loader_plugin__"
 NOT_SET = object()
 
 
+def _format_traceback_if_needed(exc: Exception) -> Optional[str]:
+    """Format the current exception's traceback, unless it's a LoadError.
+
+    A ``LoadError`` is raised deliberately by a loader to show a clean
+    message to the user, so its traceback isn't useful and is skipped.
+    """
+    if isinstance(exc, LoadError):
+        return None
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    return "".join(
+        traceback.format_exception(exc_type, exc_value, exc_traceback)
+    )
+
+
 class LoaderActionsModel:
     """Model for loader actions.
 
@@ -1019,16 +1033,9 @@ class LoaderActionsModel:
                 ))
 
             except Exception as exc:
-                formatted_traceback = None
-                if not isinstance(exc, LoadError):
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    formatted_traceback = "".join(traceback.format_exception(
-                        exc_type, exc_value, exc_traceback
-                    ))
-
                 error_info.append((
                     str(exc),
-                    formatted_traceback,
+                    _format_traceback_if_needed(exc),
                     repre_context["representation"]["name"],
                     repre_context["product"]["name"],
                     version
@@ -1067,15 +1074,9 @@ class LoaderActionsModel:
                     options=options
                 )
             except Exception as exc:
-                formatted_traceback = None
-                if not isinstance(exc, LoadError):
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    formatted_traceback = "".join(traceback.format_exception(
-                        exc_type, exc_value, exc_traceback
-                    ))
                 error_info.append((
                     str(exc),
-                    formatted_traceback,
+                    _format_traceback_if_needed(exc),
                     None,
                     ", ".join(product_names),
                     None
@@ -1093,18 +1094,9 @@ class LoaderActionsModel:
                     )
 
                 except Exception as exc:
-                    formatted_traceback = None
-                    if not isinstance(exc, LoadError):
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        formatted_traceback = "".join(
-                            traceback.format_exception(
-                                exc_type, exc_value, exc_traceback
-                            )
-                        )
-
                     error_info.append((
                         str(exc),
-                        formatted_traceback,
+                        _format_traceback_if_needed(exc),
                         None,
                         product_name,
                         None

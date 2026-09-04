@@ -1556,15 +1556,29 @@ class BrowserWidgetController(QtCore.QObject):
             }
             group_counts.update(filtered_counts)
         if self.group_by_key == GROUP_BY_STATUS_KEY:
-            rows = self._fetch_status_group_headers(group_counts)
+            rows = self._fetch_simple_group_headers(
+                "statuses", GROUP_BY_STATUS_KEY, "circle", group_counts
+            )
         elif self.group_by_key == GROUP_BY_PRODUCT_TYPE_KEY:
-            rows = self._fetch_product_type_group_headers(group_counts)
+            rows = self._fetch_simple_group_headers(
+                "productTypes",
+                GROUP_BY_PRODUCT_TYPE_KEY,
+                "category",
+                group_counts,
+            )
         elif self.group_by_key == GROUP_BY_PRODUCT_KEY:
             rows = self._fetch_product_group_headers(group_counts)
         elif self.group_by_key == GROUP_BY_TAGS_KEY:
-            rows = self._fetch_tags_group_headers(group_counts)
+            rows = self._fetch_simple_group_headers(
+                "tags", GROUP_BY_TAGS_KEY, "label", group_counts
+            )
         elif self.group_by_key == GROUP_BY_TASK_TYPE_KEY:
-            rows = self._fetch_task_type_group_headers(group_counts)
+            rows = self._fetch_simple_group_headers(
+                "taskTypes",
+                GROUP_BY_TASK_TYPE_KEY,
+                "category",
+                group_counts,
+            )
         elif self.group_by.source == GroupBySource.ATTRIBUTE:
             rows = self._fetch_attribute_group_headers(
                 self.group_by,
@@ -1759,89 +1773,33 @@ class BrowserWidgetController(QtCore.QObject):
             ]
         return values
 
-    def _fetch_status_group_headers(
+    def _fetch_simple_group_headers(
         self,
+        category: str,
+        group_by_key: str,
+        default_icon: str,
         group_counts: dict[str, int] | None,
     ) -> list[dict[str, Any]]:
-        """Return status group rows with filter-aware version counts."""
-        status_names = self._group_values("statuses", group_counts)
+        """Return group rows for a plain project-info-backed category.
 
+        Covers the group-by axes whose values, icons and colors all come
+        straight from project info (statuses, product types, tags, task
+        types) with filter-aware version counts.
+        """
+        values = self._group_values(category, group_counts)
         return [
             self._build_group_header_row(
-                self._group_by_options[GROUP_BY_STATUS_KEY],
-                name,
-                icon=self._pinfo("statuses", name, "icon", "circle"),
-                color=self._pinfo("statuses", name, "color"),
+                self._group_by_options[group_by_key],
+                value,
+                icon=self._pinfo(category, value, "icon", default_icon),
+                color=self._pinfo(category, value, "color"),
                 num_versions=(
-                    group_counts.get(name, 0)
+                    group_counts.get(value, 0)
                     if group_counts is not None
                     else None
                 ),
             )
-            for name in status_names
-        ]
-
-    def _fetch_product_type_group_headers(
-        self,
-        group_counts: dict[str, int] | None,
-    ) -> list[dict[str, Any]]:
-        """Return product-type rows with filter-aware version counts."""
-        values = self._group_values("productTypes", group_counts)
-        return [
-            self._build_group_header_row(
-                self._group_by_options[GROUP_BY_PRODUCT_TYPE_KEY],
-                pt,
-                icon=self._pinfo("productTypes", pt, "icon", "category"),
-                color=self._pinfo("productTypes", pt, "color"),
-                num_versions=(
-                    group_counts.get(pt, 0)
-                    if group_counts is not None
-                    else None
-                ),
-            )
-            for pt in values
-        ]
-
-    def _fetch_tags_group_headers(
-        self,
-        group_counts: dict[str, int] | None,
-    ) -> list[dict[str, Any]]:
-        """Return tag rows with filter-aware version counts."""
-        values = self._group_values("tags", group_counts)
-        return [
-            self._build_group_header_row(
-                self._group_by_options[GROUP_BY_TAGS_KEY],
-                tag,
-                icon=self._pinfo("tags", tag, "icon", "label"),
-                color=self._pinfo("tags", tag, "color"),
-                num_versions=(
-                    group_counts.get(tag, 0)
-                    if group_counts is not None
-                    else None
-                ),
-            )
-            for tag in values
-        ]
-
-    def _fetch_task_type_group_headers(
-        self,
-        group_counts: dict[str, int] | None,
-    ) -> list[dict[str, Any]]:
-        """Return task-type rows with filter-aware version counts."""
-        values = self._group_values("taskTypes", group_counts)
-        return [
-            self._build_group_header_row(
-                self._group_by_options[GROUP_BY_TASK_TYPE_KEY],
-                task_type,
-                icon=self._pinfo("taskTypes", task_type, "icon", "category"),
-                color=self._pinfo("taskTypes", task_type, "color"),
-                num_versions=(
-                    group_counts.get(task_type, 0)
-                    if group_counts is not None
-                    else None
-                ),
-            )
-            for task_type in values
+            for value in values
         ]
 
     def _fetch_attribute_group_headers(

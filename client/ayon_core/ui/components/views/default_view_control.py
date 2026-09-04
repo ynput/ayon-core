@@ -8,23 +8,192 @@ toggle UI and all persistence actions for default views.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QSizePolicy
-from qtpy.QtWidgets import QMessageBox
+from qtpy.QtCore import QPointF, QRect, QRectF, Qt
+from qtpy.QtGui import QBrush, QColor, QPainter
+from qtpy.QtWidgets import (
+    QMessageBox,
+    QSizePolicy,
+    QStyle,
+    QStyleOptionButton,
+)
 
 from ..buttons import AYButton
 from ..container import AYContainer
+from ..frame import RowHoverTracker
+from ...style_types import get_ayon_style, get_ayon_style_data
 
-from .data_models import View, Visibility, Scope
-from .data_models import FilterDef, GroupingDef, ViewSettings
+from .data_models import View, Visibility, Scope, ViewSettings
 from .view_manager import DEFAULT_VIEW_LABEL
 
 if TYPE_CHECKING:
     from .view_selector import AYViewSelector
 
 log = logging.getLogger(__name__)
+
+# Side length of the icon's hoverable badge — a bit larger than the
+# icon glyph itself (14px) so it reads as a distinct clickable target.
+# "chip"/"chip-active"'s icon-padding[0] (4) is tuned to this exact
+# value: it puts the icon's center at size/2 from the pill's own left
+# edge, the minimum that lets a badge this size fit without clipping.
+# Changing one without the other reintroduces clipping or an
+# unnecessarily large left-padding — see _icon_badge_rect().
+_ICON_BADGE_SIZE = 16
+
+
+class _DefaultViewPillButton(AYButton):
+    """A default-view pill's single icon+label button.
+
+    Always one button with the icon fixed on the left and the label on
+    the right, so the label never shifts between the pill's "unset"
+    (dashed, ``+``) and "active" (filled, ``x``) look — only the icon
+    glyph changes. In the "unset" state the icon is purely decorative
+    and non-interactive: a click anywhere (including over the icon)
+    saves the current view as the default, and the icon never gets its
+    own hover badge, since ``_icon_click`` is ``None`` there and every
+    hover/click check below is gated on it. In the "active" state, a
+    click on the icon specifically removes the default instead of
+    loading it, and hovering it paints its own badge — centered on the
+    actual painted icon glyph — so it still reads as a separate action
+    from the rest of the pill.
+    """
+
+    def __init__(
+        self,
+        *args,
+        icon_click: Callable[[], None] | None = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._icon_click = icon_click
+        self._icon_hovered = False
+        if icon_click is not None:
+            self.setMouseTracking(True)
+
+    def _icon_center(self) -> QPointF:
+        """Return where the drawer paints the icon glyph's center.
+
+        Mirrors ``ButtonDrawer``'s icon+text layout — icon centered at
+        ``(content_rect.left() + icon-padding[0], content_rect.center().y())``
+        — so the hover badge and the icon-click hit zone both land
+        exactly on the glyph instead of an independently-guessed
+        offset. Note this is ``content_rect``'s own vertical center,
+        not the button widget's — they aren't always the same.
+        """
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        option.rect = self.rect()
+        content_rect = self.style().subElementRect(
+            QStyle.SubElement.SE_PushButtonContents, option, self
+        )
+        style = get_ayon_style_data("QPushButton", self._variant_str)
+        icon_padding_x = style.get("icon-padding", [4, 4])[0]
+        return QPointF(
+            content_rect.left() + icon_padding_x, content_rect.center().y()
+        )
+
+    def _icon_badge_rect(self) -> QRectF:
+        # Cap to the button's own height (minus a small margin) — a
+        # no-op at _ICON_BADGE_SIZE's current tuning, kept as a safety
+        # net for a future shorter button.
+        size = min(_ICON_BADGE_SIZE, self.height() - 4)
+        # Always centered on the icon (see _ICON_BADGE_SIZE for why
+        # this fits without clipping); paintEvent still clips to the
+        # button's own rect defensively rather than shifting the badge
+        # off-center to force a fit.
+        center = self._icon_center()
+        return QRectF(center.x() - size / 2, center.y() - size / 2, size, size)
+
+    def _is_in_icon_zone(self, x: int) -> bool:
+        if self._icon_click is None:
+            return False
+        badge = self._icon_badge_rect()
+        return badge.left() <= x <= badge.right()
+
+    def _set_icon_hovered(self, hovered: bool) -> None:
+        if hovered == self._icon_hovered:
+            return
+        self._icon_hovered = hovered
+        self.update()
+
+    def mouseMoveEvent(self, event) -> None:
+        self._set_icon_hovered(self._is_in_icon_zone(event.pos().x()))
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._set_icon_hovered(False)
+        super().leaveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.pos())
+            and self._is_in_icon_zone(event.pos().x())
+        ):
+            self.setDown(False)
+            self._icon_click()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event) -> None:
+        # Deliberately not a plain ``super().paintEvent()`` call: this
+        # button needs to paint its hover badge *between* the button's
+        # background and its icon/text, so both layers stay under one
+        # continuous QPainter session. A badge painted before calling
+        # ``super().paintEvent()`` (in its own, separate QPainter
+        # session) was silently erased once the base paint ran its own
+        # QPainter session on this widget — reproducible only once
+        # nested inside a real selected "Pill" container, not when
+        # tested standalone. Mirrors ``AYButton.paintEvent()``'s own
+        # size-hint handling, then calls the same two style elements it
+        # would (bevel, then label) with the badge painted in between.
+        painter = QPainter(self)
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        size = self.sizeHint()
+        if self.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Fixed:
+            self.setFixedSize(size)
+            option.rect = QRect(0, 0, size.width(), size.height())
+        else:
+            self.setFixedHeight(size.height())
+
+        style = get_ayon_style()
+        style.drawControl(
+            QStyle.ControlElement.CE_PushButtonBevel, option, painter, self,
+        )
+
+        # Guard on _icon_click (not just _icon_hovered): the "unset"
+        # ("+") state is meant to render as a plain, non-interactive
+        # icon, never with its own hover badge.
+        if self._icon_hovered and self._icon_click is not None:
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(Qt.PenStyle.NoPen)
+            # The badge is centered on the icon, which can put its left
+            # edge past x=0 when the icon sits close to the pill's own
+            # left edge — clip to the button's own rect rather than
+            # shifting the badge right, which would throw off centering.
+            painter.setClipRect(self.rect())
+            # The pill's own "selected" background is already
+            # ``surface-container-highest-dark`` (#424a57); its "hover"
+            # sibling is only ~11 units brighter per channel — too
+            # subtle once anti-aliased at this size — so use the
+            # outline token for a badge that reads clearly regardless
+            # of the pill's exact surrounding shade.
+            palette = style.model.palette()
+            badge_color = palette.get(
+                "--md-sys-color-outline-dark",
+                "#8b9198",
+            )
+            painter.setBrush(QBrush(QColor(badge_color)))
+            painter.drawRoundedRect(self._icon_badge_rect(), 6, 6)
+            painter.restore()
+
+        style.drawControl(
+            QStyle.ControlElement.CE_PushButtonLabel, option, painter, self,
+        )
 
 
 class DefaultViewControl:
@@ -62,24 +231,31 @@ class DefaultViewControl:
 
         row = AYContainer(
             layout=AYContainer.Layout.HBox,
-            layout_spacing=0,
+            variant=AYContainer.Variants.Popover,
+            layout_spacing=6,
             layout_margin=0,
         )
 
         self._studio_control = AYContainer(
             layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Pill,
             layout_spacing=0,
-            layout_margin=0,
+            layout_margin=2,
+            hover_enabled=True,
         )
         self._project_control = AYContainer(
             layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Pill,
             layout_spacing=0,
-            layout_margin=0,
+            layout_margin=2,
+            hover_enabled=True,
         )
 
         self._rebuild_studio_control()
         self._rebuild_project_control()
 
+        # Both pills share the row evenly instead of hugging their own
+        # content width, so together they fill the panel.
         row.add_widget(self._studio_control, stretch=1)
         row.add_widget(self._project_control, stretch=1)
         return row
@@ -101,93 +277,83 @@ class DefaultViewControl:
             if widget is not None:
                 widget.deleteLater()
 
+    def _build_pill(
+        self,
+        control: AYContainer,
+        label: str,
+        is_active: bool,
+        on_click: Callable[[], None],
+        on_icon_click: Callable[[], None] | None,
+    ) -> None:
+        """Populate *control* with the pill's single icon+label button.
+
+        Args:
+            control: The pill's wrapping frame (carries the
+                selected/hover look; already cleared by the caller).
+            label: "Studio" or "Project".
+            is_active: Whether a default view is currently set — picks
+                the icon (``x``/``add``), the variant (bright/dim) and
+                whether the icon becomes its own click target.
+            on_click: Handler for a click anywhere but the icon
+                (always fires in the unset state, since there the icon
+                isn't a distinct target).
+            on_icon_click: Handler for a click on the icon
+                specifically; only used when ``is_active``.
+        """
+        control.set_selected(is_active)
+        btn = _DefaultViewPillButton(
+            label,
+            icon="close" if is_active else "add",
+            icon_size=14,
+            variant=(
+                AYButton.Variants.Chip_Active
+                if is_active
+                else AYButton.Variants.Chip
+            ),
+            fixed_width=False,
+            icon_click=on_icon_click if is_active else None,
+        )
+        btn.clicked.connect(on_click)
+        control.addStretch(1)
+        control.add_widget(btn)
+        control.addStretch(1)
+        RowHoverTracker(control).watch(btn)
+
     def _rebuild_studio_control(self) -> None:
         control = self._studio_control
         if control is None:
             return
         self._clear_control(control)
-
-        if self.studio_default_view is None:
-            add_btn = AYButton(
-                "Studio",
-                icon="add",
-                variant=AYButton.Variants.Surface,
-                fixed_width=False,
-                label_alignment=Qt.AlignmentFlag.AlignLeft,
-            )
-            add_btn.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
-            )
-            add_btn.clicked.connect(self.on_studio_add_clicked)
-            control.add_widget(add_btn, stretch=1)
-            return
-
-        close_btn = AYButton(
-            icon="close",
-            variant=AYButton.Variants.Checked,
-            tooltip="Unset studio default",
-        )
-        close_btn.setFixedSize(24, 24)
-        close_btn.clicked.connect(self.on_studio_close_clicked)
-        control.add_widget(close_btn)
-
-        studio_btn = AYButton(
+        is_active = self.studio_default_view is not None
+        self._build_pill(
+            control,
             "Studio",
-            variant=AYButton.Variants.Checked,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
+            is_active,
+            on_click=(
+                self.load_studio_default_view
+                if is_active
+                else self.on_studio_add_clicked
+            ),
+            on_icon_click=self.on_studio_close_clicked if is_active else None,
         )
-        studio_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed,
-        )
-        studio_btn.clicked.connect(self.load_studio_default_view)
-        control.add_widget(studio_btn, stretch=1)
 
     def _rebuild_project_control(self) -> None:
         control = self._project_control
         if control is None:
             return
         self._clear_control(control)
-
-        if self.project_default_view is None:
-            add_btn = AYButton(
-                "Project",
-                icon="add",
-                variant=AYButton.Variants.Surface,
-                fixed_width=False,
-                label_alignment=Qt.AlignmentFlag.AlignLeft,
-            )
-            add_btn.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
-            )
-            add_btn.clicked.connect(self.on_project_add_clicked)
-            control.add_widget(add_btn, stretch=1)
-            return
-
-        close_btn = AYButton(
-            icon="close",
-            variant=AYButton.Variants.Checked,
-            tooltip="Unset project default",
-        )
-        close_btn.setFixedSize(24, 24)
-        close_btn.clicked.connect(self.on_project_close_clicked)
-        control.add_widget(close_btn)
-
-        project_btn = AYButton(
+        is_active = self.project_default_view is not None
+        self._build_pill(
+            control,
             "Project",
-            variant=AYButton.Variants.Checked,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
+            is_active,
+            on_click=(
+                self.load_project_default_view
+                if is_active
+                else self.on_project_add_clicked
+            ),
+            on_icon_click=self.on_project_close_clicked if is_active else None,
         )
-        project_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed,
-        )
-        project_btn.clicked.connect(self.load_project_default_view)
-        control.add_widget(project_btn, stretch=1)
 
     # ------------------------------------------------------------------
     # Persistence helpers
@@ -280,6 +446,7 @@ class DefaultViewControl:
     def on_studio_add_clicked(self, _checked: bool = False) -> None:
         if self._set_default_for_scope(Scope.STUDIO) is not None:
             self._rebuild_studio_control()
+            self._selector.refresh_dropdown_size()
             self._emit_action_message("Studio default view saved.")
         else:
             self._emit_action_message(
@@ -289,6 +456,7 @@ class DefaultViewControl:
     def on_studio_close_clicked(self, _checked: bool = False) -> None:
         if self._unset_default_for_scope(Scope.STUDIO):
             self._rebuild_studio_control()
+            self._selector.refresh_dropdown_size()
             self._emit_action_message("Studio default view removed.")
 
     def load_studio_default_view(self, _checked: bool = False) -> None:
@@ -315,6 +483,7 @@ class DefaultViewControl:
     def on_project_add_clicked(self, _checked: bool = False) -> None:
         if self._set_default_for_scope(Scope.PROJECT) is not None:
             self._rebuild_project_control()
+            self._selector.refresh_dropdown_size()
             self._emit_action_message("Project default view saved.")
         else:
             self._emit_action_message(
@@ -324,6 +493,7 @@ class DefaultViewControl:
     def on_project_close_clicked(self, _checked: bool = False) -> None:
         if self._unset_default_for_scope(Scope.PROJECT):
             self._rebuild_project_control()
+            self._selector.refresh_dropdown_size()
             self._emit_action_message("Project default view removed.")
 
     def load_project_default_view(self, _checked: bool = False) -> None:

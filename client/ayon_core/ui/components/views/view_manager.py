@@ -110,6 +110,43 @@ class ViewManager(QObject):
                 return view
         return None
 
+    def get_default_studio_view(self, view_type: str) -> View | None:
+        """Return the studio-scope default view for *view_type*, if any.
+
+        Default views are saved with :data:`DEFAULT_VIEW_LABEL` and the
+        matching :class:`Scope` (see
+        ``DefaultViewControl._set_default_for_scope``). Subclasses backed
+        by a dedicated endpoint (e.g. :class:`ServerViewManager`) should
+        override this rather than rely on filtering :meth:`list_views`.
+
+        Args:
+            view_type: The view-type identifier.
+
+        Returns:
+            The studio default view for *view_type*, or ``None``.
+        """
+        for view in self.list_views(view_type):
+            if view.scope == Scope.STUDIO and view.label == DEFAULT_VIEW_LABEL:
+                return view
+        return None
+
+    def get_default_project_view(self, view_type: str) -> View | None:
+        """Return the project-scope default view for *view_type*, if any.
+
+        See :meth:`get_default_studio_view` for how default views are
+        identified.
+
+        Args:
+            view_type: The view-type identifier.
+
+        Returns:
+            The project default view for *view_type*, or ``None``.
+        """
+        for view in self.list_views(view_type):
+            if view.scope == Scope.PROJECT and view.label == DEFAULT_VIEW_LABEL:
+                return view
+        return None
+
     def set_working_view(self, view: View) -> None:
         """Mark *view* as the (sole) working view for its view type.
 

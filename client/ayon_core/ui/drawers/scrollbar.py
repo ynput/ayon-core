@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from qtpy import QtWidgets
 from qtpy.QtCore import QRect, Qt
-from qtpy.QtGui import QBrush, QColor, QPainter, QPen
+from qtpy.QtGui import QBrush, QColor, QPainter
 from qtpy.QtWidgets import (
     QStyle,
     QStyleOption,
@@ -246,25 +246,48 @@ class ScrollBarDrawer:
             return int(self._style["min-length"])
         return 0
 
+    def _get_variant_style(self, widget: QWidget | None):
+        variant = getattr(widget, "_variant_str", "default")
+        style = self.model.get_style("QScrollBar", variant=variant)
+        style.set_context(widget)
+        return style
+
     def draw_scrollbar_slider(
         self,
         option: QStyleOptionComplex,
         painter: QPainter,
         widget: QWidget | None = None,
     ) -> None:
-        """Draw the scrollbar slider/thumb."""
-        style = self.model.get_style("QScrollBar")
-        style.set_context(widget)
+        """Draw the scrollbar slider/thumb.
+
+        Insets the filled rect directly (by half of ``border-width``,
+        kept as the inset amount for visual continuity) rather than
+        drawing a wide pen in the track's own ``background-color`` —
+        that pen doubled as the "padding" between the thumb and the
+        scrollbar's own edge, coupling the thumb's look to the track
+        always being opaque. A transparent-track variant needs the
+        thumb's inset to still work with no track color to borrow.
+
+        The slider's own sub-control rect (``option.rect``) sits
+        outside the ``AddPage``/``SubPage`` rects this drawer also
+        paints, so the inset margin around the thumb isn't covered by
+        either — it must be filled here with the same background-color
+        first, or that margin is left to whatever Qt painted underneath
+        before this call (opaque black, by default).
+        """
+        style = self._get_variant_style(widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Draw slider background
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor(style.get("background-color"))))
+        painter.drawRect(option.rect)
+
         painter.setBrush(QBrush(QColor(style.get("slider-color"))))
-        pen = QPen(QColor(style.get("background-color")))
-        pen.setWidth(style.get("border-width"))
-        painter.setPen(pen)
+        inset = int(style.get("border-width", 10) / 2)
+        rect = option.rect.adjusted(inset, inset, -inset, -inset)
         radius = style.get("border-radius")
-        painter.drawRoundedRect(option.rect, radius, radius)
+        painter.drawRoundedRect(rect, radius, radius)
 
         painter.restore()
 
@@ -274,13 +297,11 @@ class ScrollBarDrawer:
         painter: QPainter,
         widget: QWidget | None = None,
     ) -> None:
-        """Draw scrollbar page buttons."""
-        style = self.model.get_style("QScrollBar")
-        style.set_context(widget)
+        """Draw scrollbar page buttons (the track behind the thumb)."""
+        style = self._get_variant_style(widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Draw slider background
         painter.setBrush(QBrush(QColor(style.get("background-color"))))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRect(option.rect)

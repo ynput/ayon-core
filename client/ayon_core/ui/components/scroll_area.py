@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..style_types import get_ayon_style
+from ..variants import QScrollBarVariants
 from .style_mixin import StyleMixin
 
 
@@ -23,12 +24,41 @@ class AYScrollBar(StyleMixin, QScrollBar):
 
     Args:
         *args: Positional arguments passed to QTextEdit.
+        variant: Visual variant — ``Default`` (opaque track, matches
+            the table) or ``Transparent_Track`` (no track fill, just
+            the thumb).
         **kwargs: Keyword arguments passed to QTextEdit.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    Variants = QScrollBarVariants
+
+    def __init__(
+        self,
+        *args,
+        variant: QScrollBarVariants = QScrollBarVariants.Default,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
+        self._variant_str = variant.value
         self.setStyle(get_ayon_style())
+        # The "default" variant's track fill happens to paint over the
+        # widget's entire rect, masking that it has no real background
+        # of its own. "transparent-track" skips that fill, which would
+        # otherwise leave Qt's own opaque default widget background
+        # showing through instead of whatever sits behind the scrollbar.
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        if variant == QScrollBarVariants.Transparent_Track:
+            # QScrollBar sets this True by default: a hint that its
+            # paintEvent always covers its whole rect opaquely, letting
+            # Qt skip compositing whatever is behind it. The page/
+            # add-page painting for this variant draws alpha 0, so
+            # without clearing this the widget's region still resolves
+            # to Qt's stale/opaque fallback instead of showing what's
+            # actually behind the scrollbar. Only needed for this
+            # variant — the default variant's track is opaque anyway,
+            # and disabling the optimization there would only cost a
+            # touch of antialiasing precision for nothing.
+            self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
         self._dragging = False
         self._drag_origin = 0
         self._drag_value = 0
@@ -151,10 +181,19 @@ class AYScrollArea(StyleMixin, QScrollArea):
 
     Args:
         *args: Positional arguments passed to QTextEdit.
+        scrollbar_variant: Variant forwarded to the vertical/horizontal
+            :class:`AYScrollBar` instances this area creates.
         **kwargs: Keyword arguments passed to QTextEdit.
     """
 
-    def __init__(self, *args, **kwargs):
+    Variants = QScrollBarVariants
+
+    def __init__(
+        self,
+        *args,
+        scrollbar_variant: QScrollBarVariants = QScrollBarVariants.Default,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.setStyle(get_ayon_style())
         # AYONStyle's FrameDrawer would otherwise draw a 1px frame around the
@@ -162,7 +201,11 @@ class AYScrollArea(StyleMixin, QScrollArea):
         # scrollbar) and along the bottom.
         self.setFrameShape(QFrame.Shape.NoFrame)
 
-        self.setVerticalScrollBar(AYScrollBar(Qt.Orientation.Vertical))
+        self.setVerticalScrollBar(
+            AYScrollBar(Qt.Orientation.Vertical, variant=scrollbar_variant)
+        )
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.setHorizontalScrollBar(AYScrollBar(Qt.Orientation.Horizontal))
+        self.setHorizontalScrollBar(
+            AYScrollBar(Qt.Orientation.Horizontal, variant=scrollbar_variant)
+        )
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
