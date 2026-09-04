@@ -629,9 +629,8 @@ class Customize(AYButtonMenu):
         self._show_empty_groups = enabled
         if not hasattr(self, "show_empty_grps_ui"):
             return
-        self.show_empty_grps_ui.blockSignals(True)
-        self.show_empty_grps_ui.setChecked(enabled)
-        self.show_empty_grps_ui.blockSignals(False)
+        with QtCore.QSignalBlocker(self.show_empty_grps_ui):
+            self.show_empty_grps_ui.setChecked(enabled)
 
     def set_card_width(self, width: int) -> None:
         """Update slider value without re-emitting change signal."""
@@ -640,9 +639,8 @@ class Customize(AYButtonMenu):
         )
         if not hasattr(self, "card_size_slider"):
             return
-        self.card_size_slider.blockSignals(True)
-        self.card_size_slider.setValue(self._initial_card_width)
-        self.card_size_slider.blockSignals(False)
+        with QtCore.QSignalBlocker(self.card_size_slider):
+            self.card_size_slider.setValue(self._initial_card_width)
 
     def set_row_height(self, height: int) -> None:
         """Update the row-height slider without emitting a change."""
@@ -652,9 +650,8 @@ class Customize(AYButtonMenu):
         )
         if not hasattr(self, "row_height_slider"):
             return
-        self.row_height_slider.blockSignals(True)
-        self.row_height_slider.setValue(self._initial_row_height)
-        self.row_height_slider.blockSignals(False)
+        with QtCore.QSignalBlocker(self.row_height_slider):
+            self.row_height_slider.setValue(self._initial_row_height)
 
     def set_latest_per_folder(
         self, enabled: bool, *, disabled: bool = False
@@ -663,21 +660,20 @@ class Customize(AYButtonMenu):
         self._latest_per_folder = bool(enabled)
         if not hasattr(self, "latest_per_folder_ui"):
             return
-        self.latest_per_folder_ui.blockSignals(True)
-        self.latest_per_folder_ui.setChecked(
-            self._latest_per_folder and not disabled
-        )
-        self.latest_per_folder_ui.setEnabled(not disabled)
-        if disabled:
-            self.latest_per_folder_ui.setToolTip(
-                "Disabled when grouping by product"
+        with QtCore.QSignalBlocker(self.latest_per_folder_ui):
+            self.latest_per_folder_ui.setChecked(
+                self._latest_per_folder and not disabled
             )
-        else:
-            self.latest_per_folder_ui.setToolTip(
-                "Show only the latest published version per folder "
-                "(1 version per folder)."
-            )
-        self.latest_per_folder_ui.blockSignals(False)
+            self.latest_per_folder_ui.setEnabled(not disabled)
+            if disabled:
+                self.latest_per_folder_ui.setToolTip(
+                    "Disabled when grouping by product"
+                )
+            else:
+                self.latest_per_folder_ui.setToolTip(
+                    "Show only the latest published version per folder "
+                    "(1 version per folder)."
+                )
 
     def set_include_children(
         self, enabled: bool, *, disabled: bool = False
@@ -686,12 +682,11 @@ class Customize(AYButtonMenu):
         self._include_children = bool(enabled)
         if not hasattr(self, "include_children_ui"):
             return
-        self.include_children_ui.blockSignals(True)
-        self.include_children_ui.setChecked(
-            self._include_children and not disabled
-        )
-        self.include_children_ui.setEnabled(not disabled)
-        self.include_children_ui.blockSignals(False)
+        with QtCore.QSignalBlocker(self.include_children_ui):
+            self.include_children_ui.setChecked(
+                self._include_children and not disabled
+            )
+            self.include_children_ui.setEnabled(not disabled)
 
 
 class DisplayType(AYContainer):
@@ -853,11 +848,6 @@ class GroupByMenu(AYFilter):
         """Close the dropdown and reset the search field."""
         self._dropdown.close()
         self._filterable_list.search_field().clear()
-
-    def _set_filter_state(self, key: str, selected: bool) -> None:
-        if key not in self._filters:
-            return
-        self._filters[key].selected = selected
 
     def _sync_tags(self) -> None:
         self._sync_tags_from_items(list(self._filters.values()))
