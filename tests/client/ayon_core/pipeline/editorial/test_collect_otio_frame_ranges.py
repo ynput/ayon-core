@@ -45,7 +45,7 @@ def _check_expected_frame_range_values(
 
     instance = MockInstance(instance_data)
 
-    processor = collect_otio_frame_ranges.CollectOtioRanges()
+    processor = collect_otio_frame_ranges.CollectOTIORanges()
     processor.process(instance)
 
     # Assert expected data is subset of edited instance.
