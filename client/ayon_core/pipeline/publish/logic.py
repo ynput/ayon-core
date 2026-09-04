@@ -1017,7 +1017,6 @@ class PublishLogic:
 
     @contextmanager
     def _log_manager(self, plugin: PluginType):
-        root = logging.getLogger()
         ayon_root = Logger.get_root_logger()
         plugin_log_has_handler = False
         orig_propagate = plugin.log.propagate
@@ -1027,7 +1026,6 @@ class PublishLogic:
         if not plugin.log.propagate:
             plugin_log_has_handler = True
             plugin.log.addHandler(self._log_handler)
-        root.addHandler(self._log_handler)
         ayon_root.addHandler(self._log_handler)
 
         try:
@@ -1037,7 +1035,6 @@ class PublishLogic:
             if plugin_log_has_handler:
                 plugin.log.removeHandler(self._log_handler)
             plugin.log.propagate = orig_propagate
-            root.removeHandler(self._log_handler)
             ayon_root.removeHandler(self._log_handler)
             self._log_handler.clear_records()
 
