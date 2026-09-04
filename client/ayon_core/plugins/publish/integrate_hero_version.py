@@ -38,20 +38,31 @@ def prepare_changes(old_entity, new_entity):
     """
     changes = {}
     for key in set(new_entity.keys()):
-        if key == "attrib":
+        if key in ("attrib", "data"):
             continue
 
         if key in new_entity and new_entity[key] != old_entity.get(key):
             changes[key] = new_entity[key]
             continue
 
+    data_changes = {}
+    if "data" in new_entity:
+        for key, value in new_entity["data"].items():
+            if value != old_entity["data"].get(key):
+                data_changes[key] = value
+
     attrib_changes = {}
     if "attrib" in new_entity:
         for key, value in new_entity["attrib"].items():
             if value != old_entity["attrib"].get(key):
                 attrib_changes[key] = value
+
+    if data_changes:
+        changes["data"] = data_changes
+
     if attrib_changes:
         changes["attrib"] = attrib_changes
+
     return changes
 
 
