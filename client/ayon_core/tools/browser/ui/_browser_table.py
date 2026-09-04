@@ -5,7 +5,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Iterator, Literal
 
-import ayon_api
 from ayon_core.ui.components.card_view import AYCardView
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.container import AYContainer
@@ -28,7 +27,7 @@ from ayon_core.ui.image_cache import ImageCache
 from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
@@ -94,29 +93,17 @@ class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
 # Module-level helpers
 # ---------------------------------------------------------------------------
 
-_CACHED_CURRENT_USER: str = ""
-_CACHED_CURRENT_USER_FETCHED: bool = False
-
-
 def _get_current_user() -> str:
-    """Return the current user name, fetching once and caching thereafter.
-
-    The AYON user does not change during a session, so a single network
-    call is sufficient.  Returns an empty string when the call fails or
-    the user is not authenticated.
+    """Return the current user name, or ``""`` if it can't be resolved.
 
     Returns:
         The authenticated user's name, or ``""`` on failure.
     """
-    global _CACHED_CURRENT_USER, _CACHED_CURRENT_USER_FETCHED  # noqa: PLW0603
-    if not _CACHED_CURRENT_USER_FETCHED:
-        _CACHED_CURRENT_USER_FETCHED = True
-        try:
-            info = ayon_api.get_user() or {}
-            _CACHED_CURRENT_USER = str(info.get("name", "") or "")
-        except Exception:  # noqa: BLE001
-            log.debug("Could not fetch current user name", exc_info=True)
-    return _CACHED_CURRENT_USER
+    try:
+        return get_ayon_username()
+    except Exception:  # noqa: BLE001
+        log.debug("Could not fetch current user name", exc_info=True)
+        return ""
 
 
 class _ExpansionPhase(Enum):
