@@ -89,6 +89,7 @@ class FoldersFields(BaseClickableFrame):
         self._origin_value = set()
         self._origin_selection = set()
         self._selected_items = set()
+        self._folder_paths_to_validate = set()
         self._has_value_changed = False
         self._is_valid = True
         self._multiselection_text = None
@@ -157,7 +158,9 @@ class FoldersFields(BaseClickableFrame):
         self._name_input.end(False)
 
     def set_selected_items(
-        self, folder_paths: set[str] | None = None
+        self,
+        folder_paths: set[str] | None = None,
+        folder_paths_to_validate: set[str] | None = None,
     ) -> None:
         """Set folder paths for selection of instances.
 
@@ -166,6 +169,8 @@ class FoldersFields(BaseClickableFrame):
 
         Args:
             folder_paths (set[str] | None): Set of folder paths.
+            folder_paths_to_validate (set[str] | None): Subset of folder paths
+                whose existence must be validated. Defaults to "folder_paths".
 
         """
         if folder_paths is None:
@@ -174,7 +179,9 @@ class FoldersFields(BaseClickableFrame):
         self._has_value_changed = False
         self._origin_value = set(folder_paths)
         self._selected_items = set(folder_paths)
-        is_valid = self._controller.are_folder_paths_valid(folder_paths)
+        is_valid = self._controller.are_folder_paths_valid(
+            self._folder_paths_to_validate
+        )
         if not folder_paths:
             self.set_text("")
 
@@ -191,7 +198,9 @@ class FoldersFields(BaseClickableFrame):
 
     def reset_to_origin(self) -> None:
         """Change to folder paths set with last `set_selected_items` call."""
-        self.set_selected_items(self._origin_value)
+        self.set_selected_items(
+            self._origin_value, self._folder_paths_to_validate
+        )
 
     def confirm_value(self) -> None:
         self._origin_value = copy.deepcopy(self._selected_items)
@@ -258,6 +267,9 @@ class TasksCombobox(QtWidgets.QComboBox):
         self._ignore_index_change = False
         self._multiselection_text = None
         self._is_valid = True
+        self._promised_task_lists = []
+        self._origin_promised_task_lists = []
+        self._origin_query_folder_paths = set()
 
         self._text = None
 
@@ -366,7 +378,10 @@ class TasksCombobox(QtWidgets.QComboBox):
         """Set folder paths for which should show tasks."""
         self._ignore_index_change = True
 
-        self._model.set_folder_paths(folder_paths)
+        self._model.set_folder_paths(
+            folder_paths,
+            self._promised_task_lists,
+        )
         self._proxy_model.set_filter_empty(False)
         self._proxy_model.sort(0)
 
@@ -416,29 +431,46 @@ class TasksCombobox(QtWidgets.QComboBox):
         self._origin_selection = copy.deepcopy(self._selected_items)
         self._has_value_changed = False
 
-    def set_selected_items(self, folder_task_combinations=None):
+    def set_selected_items(
+        self,
+        folder_task_combinations,
+        query_folder_paths: set[str],
+        promised_task_lists: list[list[str]] | None = None,
+    ):
         """Set items for selected instances.
 
         Args:
-            folder_task_combinations (list): List of tuples. Each item in
-                the list contain folder path and task name.
+            folder_task_combinations (list): Current (folder path, task name)
+                value of each selected instance, including promised ones.
+                Used to show the current value in the widget.
+            query_folder_paths (set[str]): Folder paths whose tasks are
+                fetched to build the available choices. Same as the folders
+                in 'folder_task_combinations' but with promised-context
+                folders excluded (their tasks come from
+                'promised_task_lists').
+            promised_task_lists (list[list[str]] | None): Allowed task names
+                per promised-context instance.
         """
         self._proxy_model.set_filter_empty(False)
         self._proxy_model.sort(0)
-
-        if folder_task_combinations is None:
-            folder_task_combinations = []
 
         task_names = set()
         task_names_by_folder_path = collections.defaultdict(set)
         for folder_path, task_name in folder_task_combinations:
             task_names.add(task_name)
             task_names_by_folder_path[folder_path].add(task_name)
-        folder_paths = set(task_names_by_folder_path.keys())
 
         self._ignore_index_change = True
 
-        self._model.set_folder_paths(folder_paths)
+        self._model.set_folder_paths(
+            query_folder_paths,
+            promised_task_lists,
+        )
+        self._promised_task_lists = promised_task_lists or []
+        self._origin_promised_task_lists = (
+            copy.deepcopy(self._promised_task_lists)
+        )
+        self._origin_query_folder_paths = set(query_folder_paths)
 
         self._has_value_changed = False
 
@@ -456,7 +488,7 @@ class TasksCombobox(QtWidgets.QComboBox):
             task_name = tuple(task_names)[0]
             idx = self.findText(task_name)
             is_valid = not idx < 0
-            if not is_valid and len(folder_paths) > 1:
+            if not is_valid and len(query_folder_paths) > 1:
                 is_valid = self._validate_task_names_by_folder_paths(
                     task_names_by_folder_path
                 )
@@ -469,7 +501,7 @@ class TasksCombobox(QtWidgets.QComboBox):
                 if not is_valid:
                     break
 
-            if not is_valid and len(folder_paths) > 1:
+            if not is_valid and len(query_folder_paths) > 1:
                 is_valid = self._validate_task_names_by_folder_paths(
                     task_names_by_folder_path
                 )
@@ -504,7 +536,11 @@ class TasksCombobox(QtWidgets.QComboBox):
 
     def reset_to_origin(self):
         """Change to task names set with last `set_selected_items` call."""
-        self.set_selected_items(self._origin_value)
+        self.set_selected_items(
+            self._origin_value,
+            self._origin_query_folder_paths,
+            self._origin_promised_task_lists,
+        )
 
 
 class VariantInputWidget(PlaceholderLineEdit):
@@ -658,7 +694,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         variant_input.set_value()
         folder_value_widget.set_selected_items()
-        task_value_widget.set_selected_items()
+        task_value_widget.set_selected_items([], set())
         product_base_type_value_widget.set_value()
         product_value_widget.set_value()
 
@@ -716,7 +752,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             variant_value = self.variant_input.get_value()[0]
 
         if self.folder_value_widget.has_value_changed():
-            folder_path = self.folder_value_widget.get_selected_items()[0]
+            folder_path = tuple(
+                self.folder_value_widget.get_selected_items()
+            )[0]
 
         if self.task_value_widget.has_value_changed():
             task_name = self.task_value_widget.get_selected_items()[0]
@@ -727,7 +765,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         changes_by_id = {}
         for item in self._current_instances_by_id.values():
             # Ignore instances that have promised context
-            if item.has_promised_context:
+            if item.has_promised_context and not item.promised_tasks:
                 continue
 
             instance_changes = {}
@@ -738,7 +776,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 instance_changes["variant"] = variant_value
                 new_variant_value = variant_value
 
-            if folder_path is not None:
+            if folder_path is not None and not item.has_promised_context:
                 instance_changes["folderPath"] = folder_path
                 new_folder_path = folder_path
 
@@ -857,6 +895,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
     def _refresh_content(self):
         folder_paths = set()
+        editable_folder_paths = set()
         variants = set()
         product_base_types = set()
         product_names = set()
@@ -866,15 +905,19 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             editable = False
 
         folder_task_combinations = []
-        context_editable = None
+        task_editable = None
         invalid_tasks = False
+        promised_task_lists = []
         for item in self._current_instances_by_id.values():
             if not item.has_promised_context:
-                context_editable = True
-            elif context_editable is None:
-                context_editable = False
+                task_editable = True
+            elif task_editable is None:
+                task_editable = False
                 if item.id in self._invalid_task_item_ids:
                     invalid_tasks = True
+            if item.has_promised_context and item.promised_tasks:
+                promised_task_lists.append(item.promised_tasks)
+                task_editable = True
 
             # NOTE I'm not sure how this can even happen?
             if item.creator_identifier is None:
@@ -887,26 +930,36 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             folder_path = item.folder_path or self.unknown_value
             task_name = item.task_name or ""
             folder_paths.add(folder_path)
+            if not item.has_promised_context:
+                editable_folder_paths.add(folder_path)
             folder_task_combinations.append((folder_path, task_name))
             product_names.add(item.product_name or self.unknown_value)
 
         if not editable:
-            context_editable = False
-        elif context_editable is None:
-            context_editable = True
+            task_editable = False
+        elif task_editable is None:
+            task_editable = True
 
         self.variant_input.set_value(variants)
 
         # Set context of folder widget
-        self.folder_value_widget.set_selected_items(folder_paths)
+        self.folder_value_widget.set_selected_items(
+            folder_paths,
+            folder_paths_to_validate=editable_folder_paths,
+        )
         # Set context of task widget
-        self.task_value_widget.set_selected_items(folder_task_combinations)
+        self.task_value_widget.set_selected_items(
+            folder_task_combinations,
+            promised_task_lists=promised_task_lists,
+            query_folder_paths=editable_folder_paths,
+        )
         self._product_base_type_value_widget.set_value(product_base_types)
         self.product_value_widget.set_value(product_names)
 
         self.variant_input.setEnabled(editable)
-        self.folder_value_widget.setEnabled(context_editable)
-        self.task_value_widget.setEnabled(context_editable)
+        folder_editable = editable and bool(editable_folder_paths)
+        self.folder_value_widget.setEnabled(folder_editable)
+        self.task_value_widget.setEnabled(task_editable)
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
@@ -914,12 +967,16 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         if not editable:
             folder_tooltip = "Select instances to change folder path."
             task_tooltip = "Select instances to change task name."
-        elif not context_editable:
-            folder_tooltip = "Folder path is defined by Create plugin."
-            task_tooltip = "Task is defined by Create plugin."
         else:
-            folder_tooltip = "Change folder path of selected instances."
-            task_tooltip = "Change task of selected instances."
+            if folder_editable:
+                folder_tooltip = "Change folder path of selected instances."
+            else:
+                folder_tooltip = "Folder path is defined by Create plugin."
+
+            if task_editable:
+                task_tooltip = "Change task of selected instances."
+            else:
+                task_tooltip = "Task is defined by Create plugin."
 
         self.folder_value_widget.setToolTip(folder_tooltip)
         self.task_value_widget.setToolTip(task_tooltip)

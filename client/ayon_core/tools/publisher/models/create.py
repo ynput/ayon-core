@@ -292,6 +292,7 @@ class InstanceItem:
         has_promised_context: bool,
         parent_instance_id: str | None,
         parent_flags: int,
+        promised_tasks: list[str] | None = None,
     ):
         self._instance_id: str = instance_id
         self._creator_identifier: str = creator_identifier
@@ -308,6 +309,7 @@ class InstanceItem:
         self._has_promised_context: bool = has_promised_context
         self._parent_instance_id: str | None = parent_instance_id
         self._parent_flags: int = parent_flags
+        self._promised_tasks: list[str] = list(promised_tasks or [])
 
     @property
     def id(self):
@@ -340,6 +342,10 @@ class InstanceItem:
     @property
     def has_promised_context(self):
         return self._has_promised_context
+
+    @property
+    def promised_tasks(self) -> list[str]:
+        return list(self._promised_tasks)
 
     @property
     def parent_instance_id(self):
@@ -403,6 +409,7 @@ class InstanceItem:
             instance.has_promised_context,
             instance.parent_instance_id,
             instance.parent_flags,
+            instance.transient_data.get("promised_tasks"),
         )
 
     def to_data(self) -> dict[str, Any]:
@@ -422,6 +429,7 @@ class InstanceItem:
             has_promised_context=self._has_promised_context,
             parent_instance_id=self._parent_instance_id,
             parent_flags=self._parent_flags,
+            promised_tasks=list(self._promised_tasks),
         )
 
     @classmethod

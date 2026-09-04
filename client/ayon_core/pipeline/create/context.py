@@ -2100,7 +2100,15 @@ class CreateContext:
             context_info = info_by_instance_id[instance.id]
             if instance.has_promised_context:
                 context_info.folder_is_valid = True
-                context_info.task_is_valid = True
+                promised_tasks = instance.transient_data.get(
+                    "promised_tasks"
+                )
+                task_name = context_info.task_name or ""
+                context_info.task_is_valid = (
+                    not promised_tasks
+                    or not task_name
+                    or task_name in promised_tasks
+                )
                 # NOTE missing task type
                 continue
             # TODO allow context promise
