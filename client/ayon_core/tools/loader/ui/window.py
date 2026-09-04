@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
 from typing import Optional
 
+from ayon_api import get_folder_by_path, get_folder_links
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.host import AbstractHost
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
@@ -15,9 +18,10 @@ from ayon_core.tools.utils import (
     RefreshButton,
     GoToCurrentButton,
     ProjectsCombobox,
+    NiceCheckbox,
     get_qt_icon,
-    FoldersFiltersWidget,
 )
+from ayon_core.tools.utils.folders_widget import FoldersFiltersWidgetBase
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.lib import center_window
 from ayon_core.tools.common_models import StatusItem
@@ -134,6 +138,116 @@ class RefreshHandler:
         self._products_refreshed = True
 
 
+class LoaderNiceCheckbox(QtWidgets.QWidget):
+    """Wraps NiceCheckBox in a Widget."""
+    state_changed = QtCore.Signal(bool)
+
+    def __init__(
+            self,
+            label: str,
+            tooltip: str = "",
+            checked: bool = False,
+            parent=None,
+        ):
+
+        super().__init__(parent)
+
+        layout = QtWidgets.QHBoxLayout(self)
+
+        _tooltip = (
+            tooltip
+        )
+        _label = QtWidgets.QLabel(label, self)
+        _label.setToolTip(_tooltip)
+
+        checkbox = NiceCheckbox(self)
+        checkbox.setChecked(checked)
+        checkbox.setToolTip(_tooltip)
+
+        checkbox.stateChanged.connect(self._on_state_change)
+
+        layout.addWidget(checkbox)
+        layout.addWidget(_label)
+
+        self._checkbox = checkbox
+        self.setLayout(layout)
+
+    def setChecked(self, checked: bool):
+        self._checkbox.setChecked(checked)
+
+    def isChecked(self):
+        return self._checkbox.isChecked()
+
+    def _on_state_change(self, _state: int) -> None:
+        self.state_changed.emit(self._checkbox.isChecked())
+
+
+class LoaderFiltersMenu(QtWidgets.QMenu):
+    """Menu that with My tasks, and Linked breakdown / template"""
+
+    check_state_changed = QtCore.Signal(tuple)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._my_tasks_checkbox = LoaderNiceCheckbox(
+            "My tasks",
+            "Filter folders and task to only those you are assigned to.",
+            False,
+            self
+        )
+
+        self._linked_breakdown_checkbox = LoaderNiceCheckbox(
+            "Linked breakdown",
+            ("Filter folders to those that are linked to "
+            "current context as breakdown."),
+            False,
+            self
+        )
+
+        self._linked_template_checkbox = LoaderNiceCheckbox(
+            "Linked template",
+            ("Filter folders to those that are linked to "
+            "current context as template."),
+            False,
+            self
+        )
+
+        self._add_widget_as_action(self._my_tasks_checkbox)
+        self._add_widget_as_action(self._linked_breakdown_checkbox)
+        self._add_widget_as_action(self._linked_template_checkbox)
+
+        self._my_tasks_checkbox.state_changed.connect(self._on_filter_checkboxes_state_changed)
+        self._linked_breakdown_checkbox.state_changed.connect(self._on_filter_checkboxes_state_changed)
+        self._linked_template_checkbox.state_changed.connect(self._on_filter_checkboxes_state_changed)
+
+    def _add_widget_as_action(self, widget: QtWidgets.QWidget):
+        action = QtWidgets.QWidgetAction(self)
+        action.setDefaultWidget(widget)
+        self.addAction(action)
+        return action
+
+    def close_menu(self):
+        self.hide()
+
+    def _on_filter_checkboxes_state_changed(self, *args):
+        """Emit all checks as a tuple."""
+        self.check_state_changed.emit(
+            (
+                self._my_tasks_checkbox.isChecked(),
+                self._linked_breakdown_checkbox.isChecked(),
+                self._linked_template_checkbox.isChecked(),
+            )
+        )
+
+    def checkboxes_state(self):
+        return (
+                self._my_tasks_checkbox.isChecked(),
+                self._linked_breakdown_checkbox.isChecked(),
+                self._linked_template_checkbox.isChecked(),
+            )
+
+
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
         super().__init__(parent)
@@ -183,7 +297,17 @@ class LoaderWindow(QtWidgets.QWidget):
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
 
-        filters_widget = FoldersFiltersWidget(context_widget)
+        filters_widget = FoldersFiltersWidgetBase(context_widget)
+        filters_menu_button = QtWidgets.QPushButton(
+            "Filters...", parent=context_widget
+        )
+        filters_menu = LoaderFiltersMenu(parent=self)
+        filters_menu_button.setMenu(filters_menu)
+
+        self._filters_menu_button = filters_menu_button
+        self._filters_menu = filters_menu
+
+        filters_widget.layout().addWidget(filters_menu_button, 0)
 
         folders_widget = LoaderFoldersWidget(controller, context_widget)
 
@@ -262,9 +386,10 @@ class LoaderWindow(QtWidgets.QWidget):
         filters_widget.text_changed.connect(
             self._on_folder_filter_change
         )
-        filters_widget.my_tasks_changed.connect(
-            self._on_my_tasks_checkbox_state_changed
+        filters_menu.check_state_changed.connect(
+            self._on_filter_checkboxes_state_changed
         )
+
         search_bar.filter_changed.connect(self._on_filter_change)
         product_group_checkbox.stateChanged.connect(
             self._on_product_group_change
@@ -465,15 +590,84 @@ class LoaderWindow(QtWidgets.QWidget):
     def _on_folder_filter_change(self, text: str) -> None:
         self._folders_widget.set_name_filter(text)
 
-    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
+    def _get_path_context(self):
+        if self._controller._host and isinstance(
+            self._controller._host, AbstractHost
+        ):
+            folderpath = self._controller._host.get_current_folder_path()
+            if folderpath:
+                return folderpath
+
+        return os.environ.get("AYON_FOLDER_PATH")
+
+    def _get_context_linked_folder_ids(
+            self, use_breakdown: bool, use_template: bool
+        ):
+        project_name = self._selected_project_name
+        folder_path = self._get_path_context()
+
+        folder_entity = get_folder_by_path(project_name, folder_path)
+        folder_id = folder_entity.get("id")
+
+        if not folder_id:
+            return []
+
+        link_types = []
+
+        if use_breakdown:
+            link_types.append("breakdown")
+        if use_template:
+            link_types.append("template")
+
+        if not link_types:
+            return None
+
+        # Fetch breakdown in / template in
+        links = get_folder_links(
+            project_name,
+            folder_id,
+            link_types=link_types,
+            link_direction="in",
+        )
+
+        # Set comprehension to remove overlap
+        linked_folder_ids = {
+            link["entityId"]
+            for link in links
+            if link["entityType"] == "folder"
+        }
+
+        return list(linked_folder_ids)
+
+    def _on_filter_checkboxes_state_changed(self, states: tuple) -> None:
         folder_ids = None
         task_ids = None
-        if enabled:
+
+        task_enabled, breakdown_enabled, template_enabled = states
+
+        if any((breakdown_enabled, template_enabled)):
+            folder_ids = self._get_context_linked_folder_ids(
+                breakdown_enabled,
+                template_enabled
+            )
+
+        if task_enabled:
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._selected_project_name
             )
-            folder_ids = entity_ids["folder_ids"]
+
+            if folder_ids is None:
+                folder_ids = entity_ids["folder_ids"]
+            else:
+                # Filter by previously found folders.
+                folder_ids = [
+                    folder_id for folder_id in
+                    entity_ids["folder_ids"]
+                    if folder_id in folder_ids
+                ]
+
             task_ids = entity_ids["task_ids"]
+
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
 
@@ -539,8 +733,8 @@ class LoaderWindow(QtWidgets.QWidget):
             self._projects_combobox.refresh()
         self._update_filters()
         # Update my tasks
-        self._on_my_tasks_checkbox_state_changed(
-            self._filters_widget.is_my_tasks_checked()
+        self._on_filter_checkboxes_state_changed(
+            self._filters_menu.checkboxes_state()
         )
 
     def _on_load_finished(self, event):
