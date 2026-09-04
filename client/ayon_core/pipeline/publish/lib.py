@@ -1414,6 +1414,40 @@ def get_trait_representations(
     return instance.data.get(TRAIT_INSTANCE_KEY, [])
 
 
+def get_file_collections(
+        files: list[str]
+) -> tuple[list[clique.Collection], list[str]]:
+    """Get collections from list of files from representation
+    data using clique.
+
+    Args:
+        files (list[str]): list of sequence file paths
+
+    Returns:
+        tuple[list[clique.Collection], list[str]]: tuple of collections
+        and remainders from clique.
+    """
+    pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    minimum_items = 1 if len(files) == 1 else 2
+    collections, remainders = clique.assemble(
+        files,
+        minimum_items=minimum_items,
+        assume_padded_when_ambiguous=True,
+        patterns=[pattern]
+    )
+
+    # If custom pattern yields no collections,
+    # retry default clique parsing.
+    if not collections and len(files) > 1:
+        collections, remainders = clique.assemble(
+            files,
+            minimum_items=minimum_items,
+            assume_padded_when_ambiguous=True
+        )
+
+    return collections, remainders
+
+
 def fill_sequence_gaps_with_previous_version(
     collection: str,
     staging_dir: str,
