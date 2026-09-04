@@ -55,7 +55,7 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
         """
         if not cls.instance_matches_plugin_families(instance):
             return []
-        defs = []
+
         use_custom_frames = (
             cls._get_publish_use_custom_frames_value(instance.data) or "none"
         )
@@ -66,25 +66,22 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
             {"value": "custom_only", "label": "Custom Frames Only"},
             {"value": "reuse_last_version", "label": "Reuse from Last Version"}
         ]
-        defs.append(
+        custom_frames_visible = cls._is_custom_frames_used(use_custom_frames)
+        return [
             EnumDef(
                 "use_custom_frames",
                 label="Use Custom Frames",
                 default=use_custom_frames,
                 items=use_custom_frames_enum_values,
-            )
-        )
-        custom_frames_visible = cls._is_custom_frames_used(use_custom_frames)
-        defs.append(
+            ),
             TextDef(
                 "frames",
                 label="Custom Frames",
                 default="",
                 tooltip="Explicit frames to be rendered. (1001,1003-1004)(2x)",
                 visible=custom_frames_visible
-            )
-        )
-        return defs
+            ),
+        ]
 
     @classmethod
     def register_create_context_callbacks(cls, create_context):
