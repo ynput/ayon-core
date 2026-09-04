@@ -513,13 +513,13 @@ class PublishAttributes:
 class InstanceContextInfo:
     def __init__(
         self,
-        folder_path: Optional[str],
-        task_name: Optional[str],
+        folder_path: str | None,
+        task_name: str | None,
         folder_is_valid: bool,
         task_is_valid: bool,
     ):
-        self.folder_path: Optional[str] = folder_path
-        self.task_name: Optional[str] = task_name
+        self.folder_path: str | None = folder_path
+        self.task_name: str | None = task_name
         self.folder_is_valid: bool = folder_is_valid
         self.task_is_valid: bool = task_is_valid
 
