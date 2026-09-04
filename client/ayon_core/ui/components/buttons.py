@@ -121,6 +121,17 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
                 min_contrast_ratio=7,
             )
 
+        # A checkable button's "checked" state can recolor the
+        # background entirely (e.g. Row_Action turning primary-blue) —
+        # use that state's own "color" for the icon when checked,
+        # instead of reusing the unchecked icon color regardless.
+        checked_color_str = self._style_data.get("checked", {}).get("color")
+        self._icon_checked_color = (
+            QColor(checked_color_str)
+            if isinstance(checked_color_str, str)
+            else self._icon_color
+        )
+
         # get the disabled opacity
         self._disabled_opacity = self._style_data.get("disabled", {}).get(
             "opacity", 0.5
@@ -219,7 +230,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
                 icon_name_off=self._icon,
                 color_off=self._icon_color,
                 icon_name_on=self._icon_on,
-                color_on=self._icon_color,
+                color_on=self._icon_checked_color,
                 color_on_disabled=disabled_color,
                 color_off_disabled=disabled_color,
                 fill=self._icon_fill,
@@ -252,31 +263,44 @@ class ButtonMenuDropdown(AYDropdownPopup):
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
-        container_variant: AYContainer.Variants = (
-            AYContainer.Variants.Low_Framed_Thin
+        frame_variant: AYDropdownPopup.Variants = (
+            AYDropdownPopup.Variants.Low_Framed_Thin
         ),
+        container_variant: AYContainer.Variants | None = None,
+        container_margin: int = 10,
     ) -> None:
         """Initialize the dropdown popup frame.
 
         Args:
             parent: Optional parent widget (used for style inheritance).
-            container_variant: Background variant for both the popup's
-                own frame and the inner content container drawn on top
-                of it. Sharing one variant keeps their colors matched,
-                so no mismatched border/margin shows through at the
-                inner container's rounded corners.
+            frame_variant: Variant for the popup's own outer frame
+                (drawn first, may carry a border).
+            container_variant: Background variant for the inner content
+                panel drawn on top of the frame. Defaults to
+                ``AYContainer.Variants.Low`` — a plain, borderless fill
+                matching ``Low_Framed_Thin``'s background so the frame's
+                border is the only stroke visible. Pass the *same*
+                variant as ``frame_variant`` only when that variant has
+                no border of its own (e.g. ``Popover``); otherwise the
+                panel's rounded corners double the frame's border.
+            container_margin: Padding between the panel's own edges and
+                its content.
         """
         super().__init__(
             parent,
-            variant=container_variant,
+            variant=frame_variant,
             translucent_bg=True,
         )
         self._stack = QtWidgets.QStackedLayout(self)
         self._stack.setContentsMargins(0, 0, 0, 0)
         container = AYContainer(
             layout=AYContainer.Layout.VBox,
-            variant=container_variant,
-            margin=10,
+            variant=(
+                container_variant
+                if container_variant is not None
+                else AYContainer.Variants.Low
+            ),
+            margin=container_margin,
             layout_spacing=10,
         )
         self._stack.addWidget(container)
@@ -325,9 +349,8 @@ class AYButtonMenu(AYButton):
         self,
         *args,
         populate_callback: Callable[[QtWidgets.QFrame], None],
-        dropdown_variant: AYContainer.Variants = (
-            AYContainer.Variants.Low_Framed_Thin
-        ),
+        dropdown_variant: AYContainer.Variants | None = None,
+        dropdown_margin: int = 10,
         **kwargs,
     ) -> None:
         """Initialize the AYButtonMenu.
@@ -337,10 +360,16 @@ class AYButtonMenu(AYButton):
             populate_callback: A callable that receives the dropdown
                 ``QFrame`` container and is responsible for adding
                 child widgets to it.
-            dropdown_variant: Background variant shared by the popup's
-                own frame and its inner content panel (kept identical
-                so the panel's rounded corners never expose a
-                mismatched sliver of the frame behind them).
+            dropdown_variant: Background variant for *both* the popup's
+                own frame and its inner content panel. Leave as
+                ``None`` to keep ``ButtonMenuDropdown``'s own default
+                pairing (a bordered frame behind a plain, borderless
+                panel). Only pass a variant here when it has no border
+                of its own (e.g. ``Popover``) — sharing a *bordered*
+                variant across both layers double-draws the border,
+                since the panel fully covers the frame's fill.
+            dropdown_margin: Padding between the dropdown panel's own
+                edges and its content.
             **kwargs: Keyword arguments forwarded to ``AYButton``.
         """
         super().__init__(*args, **kwargs)
@@ -349,9 +378,17 @@ class AYButtonMenu(AYButton):
         self._menu_open: bool = False
         self._suppress_reopen_on_next_click: bool = False
 
-        self._dropdown = ButtonMenuDropdown(
-            self, container_variant=dropdown_variant
-        )
+        if dropdown_variant is None:
+            self._dropdown = ButtonMenuDropdown(
+                self, container_margin=dropdown_margin
+            )
+        else:
+            self._dropdown = ButtonMenuDropdown(
+                self,
+                frame_variant=dropdown_variant,
+                container_variant=dropdown_variant,
+                container_margin=dropdown_margin,
+            )
         self._populate_callback(self._dropdown)
         self._dropdown.popup_closed.connect(self._on_popup_closed)
 

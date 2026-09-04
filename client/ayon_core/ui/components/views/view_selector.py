@@ -18,11 +18,17 @@ from typing import Callable
 
 import ayon_api
 from qtpy.QtCore import QEvent, QObject, Qt, Signal  # type: ignore[attr-defined]
-from qtpy.QtWidgets import QDialog, QFrame, QSizePolicy, QWidget
+from qtpy.QtWidgets import (
+    QDialog,
+    QFrame,
+    QWidget,
+)
 
 from ..buttons import AYButton, AYButtonMenu
 from ..container import AYContainer
+from ..frame import RowHoverTracker
 from ..label import AYLabel
+from ..scroll_area import AYScrollArea
 
 from .data_models import View, ViewSettings, Visibility, Scope
 from .default_view_control import DefaultViewControl
@@ -36,6 +42,19 @@ log = logging.getLogger(__name__)
 # Real consumer apps should pass the user's actual project access level
 # when constructing the selector so View.can_edit() works correctly.
 _DEFAULT_USER_ACCESS: int = 50
+
+# Shared minimum height for every list-style dropdown row (working view,
+# per-view rows, "Create new view…"). Without this, a row with no
+# trailing Row_Action button (26px) collapses to just its label's own
+# height, making it look visibly thinner than its siblings even though
+# all rows use the same contents margins.
+_ROW_MIN_HEIGHT: int = 34
+
+# Cap on the height of the scrollable views list (working view + "My
+# views" + "Shared views") before it grows a scrollbar instead of
+# pushing "Default view" / "Create new view…" further down — mirrors
+# the frontend's views-menu scroll behavior.
+_VIEWS_LIST_MAX_HEIGHT: int = 490
 
 
 class _HoverReveal(QObject):
@@ -71,6 +90,36 @@ class _HoverReveal(QObject):
         return False  # never consume the event
 
 
+class _ClickableRow(AYContainer):
+    """A row that is itself the primary click target.
+
+    Its label is plain, non-interactive text (not a button), so the
+    row "wraps" its trailing action buttons the way a single button
+    would: clicking anywhere in the row's own background or margins —
+    including the gaps around a trailing icon button — triggers
+    *on_click*. Clicking directly on one of those icon buttons still
+    reaches that button first (Qt routes the event to the topmost
+    widget under the cursor) and never reaches here.
+    """
+
+    def __init__(
+        self,
+        *args,
+        on_click: Callable[[], None],
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_click = on_click
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
+            event.pos()
+        ):
+            self._on_click()
+        super().mouseReleaseEvent(event)
+
+
 class _SectionHeader(AYContainer):
     """Clickable, collapsible header for a section of the views dropdown.
 
@@ -98,7 +147,7 @@ class _SectionHeader(AYContainer):
         self._on_toggle = on_toggle
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        label = AYLabel(title, dim=True, rel_text_size=-2)
+        label = AYLabel(title, dim=True, rel_text_size=-1)
         label.setContentsMargins(6, 4, 0, 4)
         self.add_widget(label, stretch=1)
 
@@ -205,6 +254,7 @@ class AYViewSelector(AYButtonMenu):
             icon="view_quilt",
             variant=AYButton.Variants.Surface,
             dropdown_variant=AYContainer.Variants.Popover,
+            dropdown_margin=6,
             tooltip="Views",
             parent=parent,
         )
@@ -227,6 +277,10 @@ class AYViewSelector(AYButtonMenu):
             self._bindings.on_error = self._on_binding_error
 
         self.refresh()
+        # After refresh(), since it may apply a working view and set
+        # its own "View: ..." tooltip — this call must have the final
+        # say when there's no project, overriding that.
+        self._update_enabled_for_project()
 
     # ------------------------------------------------------------------
     # Menu population
@@ -259,9 +313,51 @@ class AYViewSelector(AYButtonMenu):
             if item and item.widget():
                 item.widget().deleteLater()
 
-        # Current view row with inline reset button.
-        layout.addWidget(self._make_working_view_row(self._current_view))
+        # The working view + "My views" + "Shared views" portion lives
+        # in its own scrollable area, capped at _VIEWS_LIST_MAX_HEIGHT,
+        # so a long view list scrolls instead of growing the dropdown
+        # indefinitely — "Default view" and "Create new view…" stay
+        # outside it, always visible.
+        layout.addWidget(self._make_views_list_scroll_area())
+
+        layout.addWidget(
+            self._make_section_header("Default view", "default_view")
+        )
+        if not self._collapsed_sections.get("default_view"):
+            layout.addWidget(self._make_default_view_row())
         layout.addWidget(self._make_separator())
+
+        layout.addWidget(self._make_create_view_row())
+
+        self.refresh_dropdown_size()
+
+    def _make_views_list_scroll_area(self) -> AYScrollArea:
+        """Build the scrollable working-view + "My views" + "Shared
+        views" portion of the dropdown, capped at
+        ``_VIEWS_LIST_MAX_HEIGHT``.
+        """
+        # A real, opaquely-painted Popover frame — same variant as the
+        # dropdown and its rows — rather than a bare QWidget stylesheet
+        # "background: transparent". The dropdown is a translucent
+        # popup: a bare widget's "transparent" paints nothing of its
+        # own, and any pixel none of its rows happen to cover (the
+        # inter-row spacing, in particular) has nothing to fall back
+        # to, so it stayed see-through — a visible darker gap/border
+        # around the whole list. Painting Popover here directly makes
+        # every pixel in the list opaque and correct, regardless of
+        # what any translucent ancestor does or doesn't cover.
+        scroll_content = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Popover_Square,
+            layout_spacing=2,
+            layout_margin=0,
+        )
+
+        # Current view row with inline reset button.
+        scroll_content.add_widget(
+            self._make_working_view_row(self._current_view)
+        )
+        scroll_content.add_widget(self._make_separator())
 
         # Exclude working view as it stored with private Visibility
         private_views = [
@@ -275,47 +371,67 @@ class AYViewSelector(AYButtonMenu):
         ]
 
         if private_views:
-            layout.addWidget(self._make_section_header("My views", "my_views"))
+            scroll_content.add_widget(
+                self._make_section_header("My views", "my_views")
+            )
             if not self._collapsed_sections.get("my_views"):
                 for view in private_views:
-                    layout.addWidget(self._make_row(view))
+                    scroll_content.add_widget(self._make_row(view))
 
         if public_views:
-            layout.addWidget(
+            scroll_content.add_widget(
                 self._make_section_header("Shared views", "shared_views")
             )
             if not self._collapsed_sections.get("shared_views"):
                 for view in public_views:
-                    layout.addWidget(self._make_row(view))
+                    scroll_content.add_widget(self._make_row(view))
 
         if not self._views:
-            layout.addWidget(AYLabel("No saved views.", dim=True))
+            no_views_label = AYLabel("No saved views.", dim=True)
+            # Match the left indent every row's own label gets from its
+            # row's contents margins + the label's own inner margin
+            # (2 + 6 = 8), since this one isn't wrapped in a row.
+            no_views_label.setContentsMargins(8, 4, 8, 4)
+            scroll_content.add_widget(no_views_label)
 
-        layout.addWidget(
-            self._make_section_header("Default view", "default_view")
+        scroll_area = AYScrollArea(
+            scrollbar_variant=AYScrollArea.Variants.Transparent_Track
         )
-        if not self._collapsed_sections.get("default_view"):
-            layout.addWidget(self._make_default_view_row())
-        layout.addWidget(self._make_separator())
-
-        new_btn = AYButton(
-            "Create new view…",
-            icon="add",
-            variant=AYButton.Variants.Text,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
+        scroll_area.setWidget(scroll_content)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        new_btn.clicked.connect(self._on_create_clicked)
-        layout.addWidget(new_btn)
 
-        # Sections collapsing/expanding changes the ideal content size;
-        # the popup window itself doesn't track that automatically once
-        # it's already shown, so resize it to match on every rebuild.
-        self._dropdown.adjustSize()
+        # Natural content height, capped — lets the scroll area shrink
+        # to fit a short list instead of always reserving max height.
+        scroll_content.adjustSize()
+        content_height = scroll_content.sizeHint().height()
+        scroll_area.setFixedHeight(
+            min(content_height, _VIEWS_LIST_MAX_HEIGHT)
+        )
+        return scroll_area
 
     # ------------------------------------------------------------------
     # Row helpers
     # ------------------------------------------------------------------
+
+    def _style_row(self, row: AYContainer) -> None:
+        """Apply the shared row inset/height to a dropdown list row.
+
+        Uses the row's *layout* contents margins rather than the row
+        widget's own ``setContentsMargins`` — ``AYFrame`` paints its own
+        background using ``frameRect()`` (== ``contentsRect()``), which
+        is inset by the widget's own contents margins. Insetting the
+        widget itself would shrink the row's background fill by the
+        same amount as its children, leaving the fill and a trailing
+        action button flush against each other with no visible gap.
+        The layout's margins only affect child placement, so this
+        keeps the row's fill full-bleed while still inserting real
+        padding around its children.
+        """
+        row.layout().setContentsMargins(4, 4, 8, 4)
+        row.setMinimumHeight(_ROW_MIN_HEIGHT)
 
     def _make_separator(self) -> QFrame:
         """Return a subtle 1px divider line (outline-variant color)."""
@@ -344,79 +460,69 @@ class AYViewSelector(AYButtonMenu):
     def _make_working_view_row(self, view: View) -> AYContainer:
         """Build the current-view row with an inline reset button.
 
-        The row itself (not the label button) carries the selected
-        highlight, so the label and the reset button read as one
-        merged control — matching the frontend, where ``.selected`` is
-        applied to the whole row element.
+        The row itself is the click target and carries the selected
+        highlight — the label is plain text, not a button — so the
+        label and the reset button read as one merged control, and
+        clicking anywhere in the row (including the margins around the
+        reset button) selects the working view. Matches the frontend,
+        where ``.selected`` is applied to the whole row element.
         """
         is_current_view_is_working_view = view is not None and view.working
         is_selected = self._view_modified or is_current_view_is_working_view
 
-        row = AYContainer(
+        row = _ClickableRow(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Popover,
             layout_spacing=4,
             layout_margin=0,
             hover_enabled=True,
+            on_click=self._on_working_view_clicked,
         )
+        self._style_row(row)
         row.set_selected(is_selected)
 
-        working_view_btn = AYButton(
-            "Working view",
-            variant=AYButton.Variants.Row_Label,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
-        )
-        working_view_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
-        working_view_btn.clicked.connect(self._on_working_view_clicked)
-        row.add_widget(working_view_btn, stretch=1)
+        label = AYLabel("Working view")
+        label.setContentsMargins(6, 0, 0, 0)
+        row.add_widget(label, stretch=1)
 
         reset_btn = AYButton(
             icon="restart_alt",
-            variant=AYButton.Variants.Nav_Small,
+            variant=AYButton.Variants.Row_Action,
             tooltip="Reset to default",
         )
-        reset_btn.setFixedSize(24, 24)
         reset_btn.clicked.connect(self._on_reset_clicked)
         row.add_widget(reset_btn)
 
+        RowHoverTracker(row).watch(reset_btn)
+
         return row
 
-    def _make_view_label_btn(self, view: View) -> AYButton:
-        select_btn = AYButton(
-            view.label or "(unnamed view)",
-            variant=AYButton.Variants.Row_Label,
-            fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
-        )
-        select_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed
-        )
-        select_btn.clicked.connect(
-            lambda _checked=False, v=view: self._on_view_selected(v)
-        )
-        return select_btn
+    def _make_view_label(self, view: View) -> AYLabel:
+        label = AYLabel(view.label or "(unnamed view)")
+        label.setContentsMargins(6, 0, 0, 0)
+        return label
 
     def _make_save_btn(self, view: View, row: AYContainer) -> AYButton:
-        is_modified = (
-                self._current_view
-                and view.id == self._current_view.id
-                and self._view_modified
-        )
-        variant = (
-            AYButton.Variants.Filled
-            if is_modified
-            else AYButton.Variants.Nav
+        """Build the save button — same size as any other row action.
+
+        It's the plain ``Row_Action`` variant, not a bespoke bigger
+        one: the "modified" highlight is just its ``checked`` state
+        (like the filter chips and other checkable buttons elsewhere)
+        turning it primary-blue, the same mechanism, not a special
+        button.
+        """
+        is_modified = bool(
+            self._current_view
+            and view.id == self._current_view.id
+            and self._view_modified
         )
         btn = AYButton(
             icon="save",
-            variant=variant,
+            variant=AYButton.Variants.Row_Action,
+            checkable=True,
             tooltip="Save view settings from current view",
         )
-        btn.setFixedSize(24, 24)
+        btn.setChecked(is_modified)
         btn.clicked.connect(
             lambda _checked=False, v=view: self._on_view_save_clicked(v)
         )
@@ -433,10 +539,9 @@ class AYViewSelector(AYButtonMenu):
     def _make_edit_btn(self, view: View) -> AYButton:
         btn = AYButton(
             icon="more_horiz",
-            variant=AYButton.Variants.Nav_Small,
+            variant=AYButton.Variants.Row_Action,
             tooltip="Edit view",
         )
-        btn.setFixedSize(24, 24)
         btn.clicked.connect(
             lambda _checked=False, v=view: self._on_edit_clicked(v)
         )
@@ -450,30 +555,62 @@ class AYViewSelector(AYButtonMenu):
                 and not self._view_modified
         )
 
-        row = AYContainer(
+        row = _ClickableRow(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Popover,
             layout_spacing=4,
             layout_margin=0,
             hover_enabled=True,
+            on_click=lambda v=view: self._on_view_selected(v),
         )
+        self._style_row(row)
         row.set_selected(bool(not_modified))
 
-        row.add_widget(
-            self._make_view_label_btn(view),
-            stretch=1,
-        )
+        row.add_widget(self._make_view_label(view), stretch=1)
+        hover_watched = []
 
         if view.can_edit(self._current_user, self._user_access):
             if not not_modified:
-                row.add_widget(self._make_save_btn(view, row))
-            row.add_widget(self._make_edit_btn(view))
+                save_btn = self._make_save_btn(view, row)
+                row.add_widget(save_btn)
+                hover_watched.append(save_btn)
+            edit_btn = self._make_edit_btn(view)
+            row.add_widget(edit_btn)
+            hover_watched.append(edit_btn)
+
+        RowHoverTracker(row).watch(*hover_watched)
 
         return row
 
     def _make_default_view_row(self) -> AYContainer:
         """Build a row for the default view."""
         return self._default_view_control.build_row()
+
+    def _make_create_view_row(self) -> AYContainer:
+        """Build the "Create new view…" row.
+
+        Wrapped the same way as every other row (a hover-enabled
+        Popover frame whose click and hover the row itself owns) so
+        its look matches the rest of the dropdown instead of the plain
+        Text-button gray. No :class:`RowHoverTracker` here: unlike the
+        other rows, this one has no interactive child button to steal
+        Enter/Leave events, so the frame drawer's own ``underMouse()``
+        fallback (see ``hover_enabled``) already keeps it highlighted.
+        """
+        row = _ClickableRow(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Popover,
+            layout_spacing=4,
+            layout_margin=0,
+            hover_enabled=True,
+            on_click=self._on_create_clicked,
+        )
+        self._style_row(row)
+
+        label = AYLabel("Create new view…", icon="add")
+        label.setContentsMargins(6, 0, 0, 0)
+        row.add_widget(label, stretch=1)
+        return row
 
     def _on_binding_error(self, stage: str, exc: BaseException) -> None:
         """Forward a :class:`ViewBindings` error via :attr:`binding_error`."""
@@ -643,6 +780,21 @@ class AYViewSelector(AYButtonMenu):
         self._current_view = None
         self._clear_modified()
         self.refresh()
+        self._update_enabled_for_project()
+
+    def _update_enabled_for_project(self) -> None:
+        """Enable the Views button only while a project is active.
+
+        With no project there is nothing sensible for a view to apply
+        to, so opening the dropdown wouldn't do anything useful — keep
+        it disabled instead. Called after :meth:`refresh`, since that
+        may apply a working view and set its own "View: ..." tooltip;
+        this must have the final say when there's no project.
+        """
+        has_project = bool(self._current_project_name())
+        self.setEnabled(has_project)
+        if not has_project:
+            self.setToolTip("Views (select a project first)")
 
     def _get_usernames_and_groups(self) -> dict[str, list]:
         """Fetch active project users and return unique usernames."""
@@ -690,6 +842,25 @@ class AYViewSelector(AYButtonMenu):
             self._dropdown.close()
         except Exception:
             pass
+
+    def refresh_dropdown_size(self) -> None:
+        """Resize the dropdown popup to fit its current content.
+
+        Call after any change to the dropdown's contents (a full
+        rebuild, or swapping a single row/pill's children in place):
+        rebuilding a widget's children leaves stale cached size hints
+        on its ancestors, so a plain ``adjustSize()`` alone can settle
+        on a size that no longer fits — e.g. clipping the label text on
+        a default-view pill after it switches between its "unset" and
+        "active" (wider) look. Invalidating the layout chain first
+        forces every ancestor to recompute before the popup resizes.
+        """
+        layout = self._dropdown_layout
+        if layout is not None:
+            layout.invalidate()
+            layout.activate()
+        self._dropdown.updateGeometry()
+        self._dropdown.adjustSize()
 
     def emit_default_view_message(self, message: str, success: bool) -> None:
         """Emit default-view feedback for host UIs.

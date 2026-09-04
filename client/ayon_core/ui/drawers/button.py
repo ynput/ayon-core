@@ -192,14 +192,25 @@ class ButtonDrawer:
         state."""
         variant = self.get_button_variant(widget)
 
+        is_hover = bool(
+            state & QStyle.StateFlag.State_MouseOver
+        ) or widget.underMouse()
+
         wstate = "base"
         if not (state & QStyle.StateFlag.State_Enabled):
             wstate = "disabled"
         elif state & QStyle.StateFlag.State_Sunken:
             wstate = "pressed"
-        elif (state & QStyle.StateFlag.State_MouseOver and not (
-            state & QStyle.StateFlag.State_On) or widget.underMouse()
-        ):
+        elif is_hover and state & QStyle.StateFlag.State_On:
+            # Only variants that explicitly define "checked-hover" opt
+            # into a combined look; every other checkable variant
+            # (filter chips, tag toggles, ...) falls straight to
+            # "hover" here, unchanged from before this state existed.
+            raw_variant = self.model.widget_data("QPushButton").get(
+                "variants", {}
+            ).get(variant, {})
+            wstate = "checked-hover" if "checked-hover" in raw_variant else "hover"
+        elif is_hover:
             wstate = "hover"
         elif state & QStyle.StateFlag.State_On:
             wstate = "checked"
