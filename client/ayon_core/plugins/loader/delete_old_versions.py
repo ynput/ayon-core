@@ -53,7 +53,8 @@ class DeleteOldVersions(LoaderActionPlugin):
 
         return [
             LoaderActionItem(
-                label="Delete Versions",
+                group_label="Delete Versions",
+                label="Old versions",
                 order=35,
                 data={
                     "product_ids": list(product_ids),
@@ -62,7 +63,8 @@ class DeleteOldVersions(LoaderActionPlugin):
                 icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
             ),
             LoaderActionItem(
-                label="Delete Selected Versions",
+                group_label="Delete Versions",
+                label="Selected versions",
                 order=35,
                 data={
                     "version_ids": [version["id"] for version in versions],
