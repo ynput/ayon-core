@@ -417,3 +417,55 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         painter.restore()
+# =============================================================================
+# __main__ - visual test harness
+# =============================================================================
+
+if __name__ == "__main__":
+    from qtpy import QtWidgets
+
+    from qtmaterialsymbols import get_icon  # type: ignore  # noqa: F401
+
+    from ..tester import Style, test
+
+    def _build() -> QtWidgets.QWidget:
+        """Show one AYTreeView per variant with lazy-loaded fake data."""
+        from .layouts import AYVBoxLayout
+        from .tree_model import PRODUCTS_TEST_DATA, LazyTreeModel, TreeNode
+
+        def fetch_children(
+            parent_id: str | None,
+        ) -> list[TreeNode]:
+            print(f"fetching children of {parent_id}")
+            return PRODUCTS_TEST_DATA.get(parent_id, [])
+
+        # ----------------------------------------------------------
+
+        container = QtWidgets.QWidget()
+        root_lyt = AYVBoxLayout(container, margin=8, spacing=8)
+
+        for variant in AYTreeView.Variants:
+            label = QtWidgets.QLabel(f"variant: {variant.value}")
+            label.setFixedHeight(20)
+            root_lyt.addWidget(label)
+
+            tv = AYTreeView(variant=variant)
+            tv.setModel(LazyTreeModel(fetch_children=fetch_children))
+            tv.setMinimumHeight(160)
+            root_lyt.addWidget(tv)
+
+            tv.selection_changed.connect(
+                lambda selected, deselected, tv=tv: print(
+                    "selection changed: "
+                    f"Selected {[i.data() for i in selected.indexes()]} "
+                    "and deselected "
+                    f"{[i.data() for i in deselected.indexes()]}) "
+                    "(full selection: "
+                    f"{[i.data() for i in tv.selectedIndexes()]})"
+                )
+            )
+
+        container.setMinimumWidth(360)
+        return container
+
+    test(_build, style=Style.AyonStyleOverCSS)

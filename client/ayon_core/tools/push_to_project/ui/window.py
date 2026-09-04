@@ -118,7 +118,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         )
 
         folders_widget = FoldersWidget(controller, context_splitter)
-        folders_widget.set_deselectable(True)
         tasks_widget = TasksWidget(controller, context_splitter)
 
         context_splitter.addWidget(folders_widget)

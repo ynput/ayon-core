@@ -17,6 +17,8 @@ from ayon_core.tools.utils.tasks_widget import (
     PARENT_ID_ROLE,
     TASK_TYPE_ROLE,
     TASK_TYPE_ORDER_ROLE,
+    TASK_STATUS_ROLE,
+    TASK_STATUS_ICON_ROLE,
     TasksProxyModel,
 )
 from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
@@ -31,7 +33,8 @@ class LoaderTasksQtModel(TasksQtModel):
     column_labels = [
         "Task name",
         "Task type",
-        "Folder"
+        "Folder",
+        "Status",
     ]
 
     def __init__(self, controller):
@@ -126,7 +129,10 @@ class LoaderTasksQtModel(TasksQtModel):
         folder_labels_by_id = self._controller.get_folder_labels(
             project_name, folder_ids
         )
-        return task_items, task_type_items, folder_labels_by_id
+        status_items = self._controller.get_project_status_items(
+            project_name, sender=TASKS_MODEL_SENDER_NAME
+        )
+        return task_items, task_type_items, folder_labels_by_id, status_items
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -164,7 +170,7 @@ class LoaderTasksQtModel(TasksQtModel):
         super()._clear_items()
 
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items, folder_labels_by_id = thread.get_result()
+        task_items, task_type_items, folder_labels_by_id, status_items = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -174,6 +180,15 @@ class LoaderTasksQtModel(TasksQtModel):
             self._add_empty_task_item()
             return
         self._remove_invalid_items()
+
+        status_icon_by_name = {}
+        for status in status_items:
+            icon = None
+            if status.icon:
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(status.icon, color=status.color)
+                )
+            status_icon_by_name[status.name] = icon
 
         task_type_item_by_name = {
             task_type_item.name: task_type_item
@@ -209,6 +224,9 @@ class LoaderTasksQtModel(TasksQtModel):
             item.setData(folder_id, PARENT_ID_ROLE)
             item.setData(folder_label, FOLDER_LABEL_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
+            item.setData(task_item.status, TASK_STATUS_ROLE)
+            status_icon = status_icon_by_name.get(task_item.status)
+            item.setData(status_icon, TASK_STATUS_ICON_ROLE)
 
             items_by_name[name].append(item)
 
@@ -273,27 +291,27 @@ class LoaderTasksQtModel(TasksQtModel):
         if new_root_items:
             root_item.appendRows(new_root_items)
 
-    def data(self, index, role=None):
-        if not index.isValid():
-            return None
-
-        if role is None:
-            role = QtCore.Qt.DisplayRole
-
+    def _get_index_data(self, index, role):
         col = index.column()
-        if col != 0:
-            index = self.index(index.row(), 0, index.parent())
-
+        index = index.sibling(index.row(), 0)
         if col == 1:
             if role == QtCore.Qt.DisplayRole:
                 role = TASK_TYPE_ROLE
-            else:
+            elif role < QtCore.Qt.UserRole:
                 return None
 
         if col == 2:
             if role == QtCore.Qt.DisplayRole:
                 role = FOLDER_LABEL_ROLE
-            else:
+            elif role < QtCore.Qt.UserRole:
+                return None
+
+        if col == 3:
+            if role == QtCore.Qt.DecorationRole:
+                role = TASK_STATUS_ICON_ROLE
+            elif role == QtCore.Qt.ToolTipRole:
+                role = TASK_STATUS_ROLE
+            elif role < QtCore.Qt.UserRole:
                 return None
 
         return super().data(index, role)
@@ -334,6 +352,19 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view.setModel(tasks_proxy_model)
         # Hide folder column by default
         tasks_view.setColumnHidden(2, True)
+
+        header = tasks_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            3, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+        header.resizeSection(3, 30)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -406,7 +437,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
         item_ids = set()
-        for index in selection_model.selectedIndexes():
+        for index in selection_model.selectedRows():
             item_id = index.data(ITEM_ID_ROLE)
             if item_id is None:
                 continue
