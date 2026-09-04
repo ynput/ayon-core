@@ -256,7 +256,7 @@ class BrowserTable(AYContainer):
         self._columns_menu_timer = QtCore.QTimer(self)
         self._columns_menu_timer.setSingleShot(True)
         self._columns_menu_timer.timeout.connect(
-            self._open_columns_menu
+            self._show_columns_menu
         )
         self._table.column_state_changed.connect(
             self._on_table_column_state_changed
@@ -860,9 +860,6 @@ class BrowserTable(AYContainer):
 
     def _show_columns_menu(self) -> None:
         """Open the shared frontend-style menu from Customize."""
-        self._add_column_btn.show_menu(self._customize)
-
-    def _open_columns_menu(self) -> None:
         self._add_column_btn.show_menu(self._customize)
 
     def _on_table_column_state_changed(self) -> None:
