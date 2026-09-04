@@ -218,7 +218,7 @@ class UIPublishErrorItem:
     def from_error_item(
         cls, error_info: PublishErrorInfo
     ) -> "UIPublishErrorItem":
-        """Create new object based on resukt from controller.
+        """Create new object based on result from controller.
 
         Returns:
             PublishErrorItem: New object with filled data.
@@ -345,6 +345,14 @@ class UIPublishErrorReport:
                 for ai in data["plugin_action_items"]
             ],
         )
+
+
+@dataclass
+class SubtaskProduct:
+    product_name: str
+    product_base_type: str
+    product_type: str
+    created: bool = False
 
 
 class AbstractPublisherCommon(ABC):
@@ -505,6 +513,12 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
     def get_folder_entity(
         self, project_name: str, folder_id: str
     ) -> dict[str, Any] | None:
+        pass
+
+    @abstractmethod
+    def get_folder_item(
+        self, project_name: str, folder_id: str
+    ) -> FolderItem | None:
         pass
 
     @abstractmethod
@@ -1049,3 +1063,9 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     def clear_thumbnail_temp_dir_path(self) -> None:
         """Remove content of thumbnail temp directory."""
         pass
+
+    @abstractmethod
+    def get_subtask_products(
+        self, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        """Get subtask products for a given folder and task."""
