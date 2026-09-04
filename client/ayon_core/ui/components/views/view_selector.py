@@ -14,6 +14,7 @@ It owns the wiring between :class:`ViewManager` (persistence),
 from __future__ import annotations
 
 import logging
+from typing import Callable
 
 import ayon_api
 from qtpy.QtCore import QEvent, QObject, Qt, Signal  # type: ignore[attr-defined]
@@ -39,18 +40,94 @@ _DEFAULT_USER_ACCESS: int = 50
 
 class _HoverReveal(QObject):
     """Event filter that shows *widget* only while
-    the watched widget is hovered."""
+    the watched widget is hovered.
 
-    def __init__(self, widget: QWidget, parent: QObject) -> None:
+    Args:
+        widget: The widget to reveal/hide.
+        parent: The watched widget (also used as the filter's parent).
+        force_visible: Optional callable; when it returns ``True`` the
+            widget stays visible on Leave instead of being hidden (used
+            to keep a collapsed section's expand chevron visible even
+            when the header isn't hovered).
+    """
+
+    def __init__(
+        self,
+        widget: QWidget,
+        parent: QObject,
+        force_visible: Callable[[], bool] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._widget = widget
+        self._force_visible = force_visible
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.Enter:
             self._widget.setVisible(True)
         elif event.type() == QEvent.Type.Leave:
-            self._widget.setVisible(False)
+            self._widget.setVisible(
+                bool(self._force_visible and self._force_visible())
+            )
         return False  # never consume the event
+
+
+class _SectionHeader(AYContainer):
+    """Clickable, collapsible header for a section of the views dropdown.
+
+    Mirrors the frontend's views-menu section header: the collapse
+    chevron stays hidden until the row is hovered, except while the
+    section is collapsed, where it stays visible so users can tell
+    there is more to expand.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        collapsed: bool,
+        on_toggle: Callable[[], None],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Popover,
+            layout_spacing=4,
+            layout_margin=0,
+            hover_enabled=True,
+            parent=parent,
+        )
+        self._on_toggle = on_toggle
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        label = AYLabel(title, dim=True, rel_text_size=-2)
+        label.setContentsMargins(6, 4, 0, 4)
+        self.add_widget(label, stretch=1)
+
+        chevron = AYLabel(
+            icon="chevron_right" if collapsed else "expand_more",
+            icon_size=14,
+            dim=True,
+        )
+        chevron.setContentsMargins(0, 4, 6, 4)
+        size_policy = chevron.sizePolicy()
+        size_policy.setRetainSizeWhenHidden(True)
+        chevron.setSizePolicy(size_policy)
+        # Parent it before toggling visibility: setVisible() on a still-
+        # parentless widget makes Qt treat it as its own top-level
+        # window, which steals activation from the dropdown popup and
+        # triggers its Qt.WindowType.Popup auto-close.
+        self.add_widget(chevron)
+        chevron.setVisible(collapsed)
+
+        self.installEventFilter(
+            _HoverReveal(chevron, self, force_visible=lambda: collapsed)
+        )
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
+            event.pos()
+        ):
+            self._on_toggle()
+        super().mouseReleaseEvent(event)
 
 
 class AYViewSelector(AYButtonMenu):
@@ -114,6 +191,12 @@ class AYViewSelector(AYButtonMenu):
         self._suppress_auto_apply: bool = False
         self._ensuring_working_view: bool = False
 
+        # Per-section collapsed state for the dropdown headers ("My
+        # views", "Shared views", "Default view"). Kept for the
+        # lifetime of the selector, mirroring the frontend's
+        # collapsible section headers.
+        self._collapsed_sections: dict[str, bool] = {}
+
         self._dropdown_layout = None  # type: ignore[assignment]
         self._default_view_control = DefaultViewControl(self)
 
@@ -121,6 +204,7 @@ class AYViewSelector(AYButtonMenu):
             populate_callback=self._populate_menu,
             icon="view_quilt",
             variant=AYButton.Variants.Surface,
+            dropdown_variant=AYContainer.Variants.Popover,
             tooltip="Views",
             parent=parent,
         )
@@ -191,20 +275,27 @@ class AYViewSelector(AYButtonMenu):
         ]
 
         if private_views:
-            layout.addWidget(self._make_header("My views"))
-            for view in private_views:
-                layout.addWidget(self._make_row(view))
+            layout.addWidget(self._make_section_header("My views", "my_views"))
+            if not self._collapsed_sections.get("my_views"):
+                for view in private_views:
+                    layout.addWidget(self._make_row(view))
 
         if public_views:
-            layout.addWidget(self._make_header("Shared views"))
-            for view in public_views:
-                layout.addWidget(self._make_row(view))
+            layout.addWidget(
+                self._make_section_header("Shared views", "shared_views")
+            )
+            if not self._collapsed_sections.get("shared_views"):
+                for view in public_views:
+                    layout.addWidget(self._make_row(view))
 
         if not self._views:
             layout.addWidget(AYLabel("No saved views.", dim=True))
 
-        layout.addWidget(self._make_header("Default view"))
-        layout.addWidget(self._make_default_view_row())
+        layout.addWidget(
+            self._make_section_header("Default view", "default_view")
+        )
+        if not self._collapsed_sections.get("default_view"):
+            layout.addWidget(self._make_default_view_row())
         layout.addWidget(self._make_separator())
 
         new_btn = AYButton(
@@ -217,38 +308,62 @@ class AYViewSelector(AYButtonMenu):
         new_btn.clicked.connect(self._on_create_clicked)
         layout.addWidget(new_btn)
 
+        # Sections collapsing/expanding changes the ideal content size;
+        # the popup window itself doesn't track that automatically once
+        # it's already shown, so resize it to match on every rebuild.
+        self._dropdown.adjustSize()
+
     # ------------------------------------------------------------------
     # Row helpers
     # ------------------------------------------------------------------
 
     def _make_separator(self) -> QFrame:
+        """Return a subtle 1px divider line (outline-variant color)."""
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
         sep.setFrameShadow(QFrame.Shadow.Plain)
         sep.setFixedHeight(1)
+        sep.setStyleSheet("QFrame { border-top: 1px solid #41474d; }")
         return sep
 
-    def _make_header(self, text: str) -> AYLabel:
-        """Return a section header label."""
-        label = AYLabel(text, dim=True)
-        label.setContentsMargins(6, 4, 6, 2)
-        return label
+    def _make_section_header(self, title: str, section_key: str) -> _SectionHeader:
+        """Return a clickable, collapsible section header."""
+        return _SectionHeader(
+            title,
+            collapsed=bool(self._collapsed_sections.get(section_key)),
+            on_toggle=lambda key=section_key: self._on_section_toggle(key),
+        )
+
+    def _on_section_toggle(self, section_key: str) -> None:
+        """Flip a section's collapsed state and redraw the dropdown."""
+        self._collapsed_sections[section_key] = not self._collapsed_sections.get(
+            section_key
+        )
+        self._rebuild_menu()
 
     def _make_working_view_row(self, view: View) -> AYContainer:
-        """Build the current-view row with an inline reset button."""
+        """Build the current-view row with an inline reset button.
+
+        The row itself (not the label button) carries the selected
+        highlight, so the label and the reset button read as one
+        merged control — matching the frontend, where ``.selected`` is
+        applied to the whole row element.
+        """
+        is_current_view_is_working_view = view is not None and view.working
+        is_selected = self._view_modified or is_current_view_is_working_view
+
         row = AYContainer(
             layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Popover,
             layout_spacing=4,
             layout_margin=0,
+            hover_enabled=True,
         )
-        is_current_view_is_working_view = view is not None and view.working
+        row.set_selected(is_selected)
+
         working_view_btn = AYButton(
             "Working view",
-            variant=(
-                AYButton.Variants.Checked
-                if self._view_modified or is_current_view_is_working_view
-                else AYButton.Variants.Text
-            ),
+            variant=AYButton.Variants.Row_Label,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
         )
@@ -260,11 +375,7 @@ class AYViewSelector(AYButtonMenu):
 
         reset_btn = AYButton(
             icon="restart_alt",
-            variant=(
-                AYButton.Variants.Checked
-                if self._view_modified or is_current_view_is_working_view
-                else AYButton.Variants.Nav_Small
-            ),
+            variant=AYButton.Variants.Nav_Small,
             tooltip="Reset to default",
         )
         reset_btn.setFixedSize(24, 24)
@@ -273,16 +384,10 @@ class AYViewSelector(AYButtonMenu):
 
         return row
 
-    def _make_view_label_btn(
-        self,
-        view: View,
-        not_modified: bool,
-    ) -> AYButton:
+    def _make_view_label_btn(self, view: View) -> AYButton:
         select_btn = AYButton(
             view.label or "(unnamed view)",
-            icon="star" if view.working else "view_list",
-            variant=AYButton.Variants.Checked
-            if not_modified else AYButton.Variants.Text,
+            variant=AYButton.Variants.Row_Label,
             fixed_width=False,
             label_alignment=Qt.AlignmentFlag.AlignLeft,
         )
@@ -325,14 +430,10 @@ class AYViewSelector(AYButtonMenu):
 
         return btn
 
-    def _make_edit_btn(self, view: View, not_modified: bool) -> AYButton:
+    def _make_edit_btn(self, view: View) -> AYButton:
         btn = AYButton(
             icon="more_horiz",
-            variant=(
-                AYButton.Variants.Checked
-                if not_modified
-                else AYButton.Variants.Nav_Small
-            ),
+            variant=AYButton.Variants.Nav_Small,
             tooltip="Edit view",
         )
         btn.setFixedSize(24, 24)
@@ -343,27 +444,30 @@ class AYViewSelector(AYButtonMenu):
 
     def _make_row(self, view: View) -> AYContainer:
         """Build one selectable row for *view*."""
-        row = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            layout_spacing=4,
-            layout_margin=0
-        )
-
         not_modified = (
                 self._current_view
                 and view.id == self._current_view.id
                 and not self._view_modified
         )
 
+        row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Popover,
+            layout_spacing=4,
+            layout_margin=0,
+            hover_enabled=True,
+        )
+        row.set_selected(bool(not_modified))
+
         row.add_widget(
-            self._make_view_label_btn(view, not_modified),
+            self._make_view_label_btn(view),
             stretch=1,
         )
 
         if view.can_edit(self._current_user, self._user_access):
             if not not_modified:
                 row.add_widget(self._make_save_btn(view, row))
-            row.add_widget(self._make_edit_btn(view, not_modified))
+            row.add_widget(self._make_edit_btn(view))
 
         return row
 

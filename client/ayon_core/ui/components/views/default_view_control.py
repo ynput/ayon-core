@@ -10,8 +10,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QSizePolicy
 from qtpy.QtWidgets import QMessageBox
 
 from ..buttons import AYButton
@@ -62,26 +60,32 @@ class DefaultViewControl:
 
         row = AYContainer(
             layout=AYContainer.Layout.HBox,
-            layout_spacing=0,
+            variant=AYContainer.Variants.Popover,
+            layout_spacing=6,
             layout_margin=0,
         )
 
         self._studio_control = AYContainer(
             layout=AYContainer.Layout.HBox,
-            layout_spacing=0,
-            layout_margin=0,
+            variant=AYContainer.Variants.Pill,
+            layout_spacing=4,
+            layout_margin=2,
+            hover_enabled=True,
         )
         self._project_control = AYContainer(
             layout=AYContainer.Layout.HBox,
-            layout_spacing=0,
-            layout_margin=0,
+            variant=AYContainer.Variants.Pill,
+            layout_spacing=4,
+            layout_margin=2,
+            hover_enabled=True,
         )
 
         self._rebuild_studio_control()
         self._rebuild_project_control()
 
-        row.add_widget(self._studio_control, stretch=1)
-        row.add_widget(self._project_control, stretch=1)
+        row.add_widget(self._studio_control)
+        row.add_widget(self._project_control)
+        row.addStretch(1)
         return row
 
     # ------------------------------------------------------------------
@@ -108,42 +112,35 @@ class DefaultViewControl:
         self._clear_control(control)
 
         if self.studio_default_view is None:
+            control.set_selected(False)
             add_btn = AYButton(
                 "Studio",
                 icon="add",
-                variant=AYButton.Variants.Surface,
+                icon_size=14,
+                variant=AYButton.Variants.Chip,
                 fixed_width=False,
-                label_alignment=Qt.AlignmentFlag.AlignLeft,
-            )
-            add_btn.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
             )
             add_btn.clicked.connect(self.on_studio_add_clicked)
-            control.add_widget(add_btn, stretch=1)
+            control.add_widget(add_btn)
             return
 
+        control.set_selected(True)
         close_btn = AYButton(
             icon="close",
-            variant=AYButton.Variants.Checked,
+            icon_size=14,
+            variant=AYButton.Variants.Chip_Icon,
             tooltip="Unset studio default",
         )
-        close_btn.setFixedSize(24, 24)
         close_btn.clicked.connect(self.on_studio_close_clicked)
         control.add_widget(close_btn)
 
         studio_btn = AYButton(
             "Studio",
-            variant=AYButton.Variants.Checked,
+            variant=AYButton.Variants.Chip_Active,
             fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
-        )
-        studio_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed,
         )
         studio_btn.clicked.connect(self.load_studio_default_view)
-        control.add_widget(studio_btn, stretch=1)
+        control.add_widget(studio_btn)
 
     def _rebuild_project_control(self) -> None:
         control = self._project_control
@@ -152,42 +149,35 @@ class DefaultViewControl:
         self._clear_control(control)
 
         if self.project_default_view is None:
+            control.set_selected(False)
             add_btn = AYButton(
                 "Project",
                 icon="add",
-                variant=AYButton.Variants.Surface,
+                icon_size=14,
+                variant=AYButton.Variants.Chip,
                 fixed_width=False,
-                label_alignment=Qt.AlignmentFlag.AlignLeft,
-            )
-            add_btn.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
             )
             add_btn.clicked.connect(self.on_project_add_clicked)
-            control.add_widget(add_btn, stretch=1)
+            control.add_widget(add_btn)
             return
 
+        control.set_selected(True)
         close_btn = AYButton(
             icon="close",
-            variant=AYButton.Variants.Checked,
+            icon_size=14,
+            variant=AYButton.Variants.Chip_Icon,
             tooltip="Unset project default",
         )
-        close_btn.setFixedSize(24, 24)
         close_btn.clicked.connect(self.on_project_close_clicked)
         control.add_widget(close_btn)
 
         project_btn = AYButton(
             "Project",
-            variant=AYButton.Variants.Checked,
+            variant=AYButton.Variants.Chip_Active,
             fixed_width=False,
-            label_alignment=Qt.AlignmentFlag.AlignLeft,
-        )
-        project_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed,
         )
         project_btn.clicked.connect(self.load_project_default_view)
-        control.add_widget(project_btn, stretch=1)
+        control.add_widget(project_btn)
 
     # ------------------------------------------------------------------
     # Persistence helpers

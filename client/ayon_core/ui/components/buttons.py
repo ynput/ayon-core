@@ -252,21 +252,30 @@ class ButtonMenuDropdown(AYDropdownPopup):
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
+        container_variant: AYContainer.Variants = (
+            AYContainer.Variants.Low_Framed_Thin
+        ),
     ) -> None:
         """Initialize the dropdown popup frame.
 
         Args:
             parent: Optional parent widget (used for style inheritance).
+            container_variant: Background variant for both the popup's
+                own frame and the inner content container drawn on top
+                of it. Sharing one variant keeps their colors matched,
+                so no mismatched border/margin shows through at the
+                inner container's rounded corners.
         """
         super().__init__(
             parent,
-            variant=AYDropdownPopup.Variants.Low_Framed_Thin,
+            variant=container_variant,
             translucent_bg=True,
         )
         self._stack = QtWidgets.QStackedLayout(self)
+        self._stack.setContentsMargins(0, 0, 0, 0)
         container = AYContainer(
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
+            variant=container_variant,
             margin=10,
             layout_spacing=10,
         )
@@ -316,6 +325,9 @@ class AYButtonMenu(AYButton):
         self,
         *args,
         populate_callback: Callable[[QtWidgets.QFrame], None],
+        dropdown_variant: AYContainer.Variants = (
+            AYContainer.Variants.Low_Framed_Thin
+        ),
         **kwargs,
     ) -> None:
         """Initialize the AYButtonMenu.
@@ -325,6 +337,10 @@ class AYButtonMenu(AYButton):
             populate_callback: A callable that receives the dropdown
                 ``QFrame`` container and is responsible for adding
                 child widgets to it.
+            dropdown_variant: Background variant shared by the popup's
+                own frame and its inner content panel (kept identical
+                so the panel's rounded corners never expose a
+                mismatched sliver of the frame behind them).
             **kwargs: Keyword arguments forwarded to ``AYButton``.
         """
         super().__init__(*args, **kwargs)
@@ -333,7 +349,9 @@ class AYButtonMenu(AYButton):
         self._menu_open: bool = False
         self._suppress_reopen_on_next_click: bool = False
 
-        self._dropdown = ButtonMenuDropdown(self)
+        self._dropdown = ButtonMenuDropdown(
+            self, container_variant=dropdown_variant
+        )
         self._populate_callback(self._dropdown)
         self._dropdown.popup_closed.connect(self._on_popup_closed)
 

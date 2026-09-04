@@ -55,3 +55,19 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
             else:
                 return base_color
         return self._bg_color
+
+    def set_selected(self, selected: bool) -> None:
+        """Mark this frame as selected via the ``row_state`` property.
+
+        The frame drawer reads this to pick the current variant's
+        ``selected`` style block (background, border, ...), so a whole
+        frame can carry a highlight the way a single-row control would,
+        instead of only an inner button doing so.
+        """
+        state = (
+            QtWidgets.QStyle.StateFlag.State_Selected
+            if selected
+            else QtWidgets.QStyle.StateFlag.State_None
+        )
+        self.setProperty("row_state", state)
+        self.update()

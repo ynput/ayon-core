@@ -263,6 +263,77 @@
                         "background-color": "--md-sys-color-surface-container-lowest-dark",
                         "opacity": 0.5
                     }
+                },
+                "chip": {
+                    "background-color": "transparent",
+                    "color": "--md-sys-color-outline-dark",
+                    "border-color": "--md-sys-color-outline-dark",
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "text-padding": [
+                        1,
+                        10
+                    ],
+                    "icon-padding": [
+                        1,
+                        6
+                    ],
+                    "hover": {
+                        "color": "--md-sys-color-on-surface-dark"
+                    },
+                    "disabled": {
+                        "background-color": "transparent",
+                        "opacity": 0.5
+                    }
+                },
+                "chip-active": {
+                    "background-color": "transparent",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "border-color": "--md-sys-color-on-surface-dark",
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "text-padding": [
+                        1,
+                        10
+                    ],
+                    "icon-padding": [
+                        1,
+                        6
+                    ],
+                    "disabled": {
+                        "background-color": "transparent",
+                        "opacity": 0.5
+                    }
+                },
+                "chip-icon": {
+                    "background-color": "transparent",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "border-color": "--md-sys-color-on-surface-dark",
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "border-radius": 10,
+                    "text-padding": [
+                        1,
+                        6
+                    ],
+                    "icon-padding": [
+                        1,
+                        6
+                    ],
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-high-dark"
+                    },
+                    "disabled": {
+                        "background-color": "transparent",
+                        "opacity": 0.5
+                    }
+                },
+                "row-label": {
+                    "background-color": "transparent",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "border-color": "--md-sys-color-on-surface-dark",
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "disabled": {
+                        "background-color": "transparent",
+                        "opacity": 0.5
+                    }
                 }
             }
         },
@@ -490,7 +561,8 @@
                 "hover",
                 "active",
                 "dragging",
-                "selected"
+                "selected",
+                "selected-hover"
             ],
             "default-variant": "default",
             "variants": {
@@ -579,6 +651,39 @@
                 },
                 "surface": {
                     "background-color": "--md-sys-color-surface-container-highest-dark"
+                },
+                "popover": {
+                    "border-radius": 4,
+                    "background-color": "--md-sys-color-surface-container-high-dark",
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-high-dark-hover"
+                    },
+                    "selected": {
+                        "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "selected-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
+                    }
+                },
+                "pill": {
+                    "border-radius": 999,
+                    "border-width": 1,
+                    "border-style": "dashed",
+                    "background-color": "--md-sys-color-surface-container-high-dark",
+                    "border-color": "--md-sys-color-outline-dark",
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-high-dark-hover"
+                    },
+                    "selected": {
+                        "border-style": "solid",
+                        "background-color": "--md-sys-color-surface-container-highest-dark",
+                        "border-color": "--md-sys-color-surface-container-highest-dark"
+                    },
+                    "selected-hover": {
+                        "border-style": "solid",
+                        "background-color": "--md-sys-color-surface-container-highest-dark-hover",
+                        "border-color": "--md-sys-color-surface-container-highest-dark-hover"
+                    }
                 },
                 "contextual-menu": {
                     "background-color": "--md-sys-color-surface-container-lowest-dark",
@@ -973,6 +1078,7 @@
         "--md-sys-color-primary-dark": "#8fceff",
         "--md-sys-color-on-primary-dark": "#00344f",
         "--md-sys-color-primary-container-dark": "#1c4154",
+        "--md-sys-color-primary-container-dark-hover": "#204a60",
         "--md-sys-color-on-primary-container-dark": "#ebf5ff",
         "--md-sys-color-primary-fixed-dark": "#cae6ff",
         "--md-sys-color-on-primary-fixed-dark": "#001e30",
@@ -1013,7 +1119,9 @@
         "--md-sys-color-outline-variant-dark": "#41474d",
         "--md-sys-color-scrim-dark": "#000000",
         "--md-sys-color-surface-container-highest-dark": "#424a57",
+        "--md-sys-color-surface-container-highest-dark-hover": "#4d5560",
         "--md-sys-color-surface-container-high-dark": "#353b46",
+        "--md-sys-color-surface-container-high-dark-hover": "#424852",
         "--md-sys-color-surface-container-dark": "#272d35",
         "--md-sys-color-surface-container-low-dark": "#1c2026",
         "--md-sys-color-surface-container-lowest-dark": "#16191d",
