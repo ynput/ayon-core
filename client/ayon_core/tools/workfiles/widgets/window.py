@@ -24,6 +24,8 @@ from .files_widget import FilesWidget
 from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
 
+WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
+
 
 class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
@@ -47,7 +49,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
 
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
-#TODO: Headers style need to match with launcher ones
+
 class WorkfilesToolWindow(AYContainer):
     """WorkFiles Window.
 
@@ -317,12 +319,7 @@ class WorkfilesToolWindow(AYContainer):
         self._show_timer.start()
         if self._first_show:
             self._first_show = False
-            # TODO: Find right place and logic to handle this
-            # launcher-specific styles
-            launcher_css_path = Path(__file__).parent / "workfiles_style.css"
-            with open(launcher_css_path, "r") as f:
-                launcher_stylesheet = f.read()
-            self.setStyleSheet(launcher_stylesheet)
+            self.setStyleSheet(WORKFILE_CSS_PATH.read_text())
 
 
     def keyPressEvent(self, event):

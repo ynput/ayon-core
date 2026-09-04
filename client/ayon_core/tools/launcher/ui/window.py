@@ -19,6 +19,8 @@ from ayon_core.ui.components import (
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
 
+LAUNCHER_CSS_PATH = Path(__file__).parent / "launcher_style.css"
+
 
 class LauncherWindow(AYContainer):
     """Launcher interface"""
@@ -42,13 +44,7 @@ class LauncherWindow(AYContainer):
         self.setWindowTitle("Launcher")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
-
-        #TODO: Find right place and logic to handle this
-        #  launcher-specific styles
-        launcher_css_path = Path(__file__).parent / "launcher_style.css"
-        with open(launcher_css_path, "r") as f:
-            launcher_stylesheet = f.read()
-        self.setStyleSheet(launcher_stylesheet)
+        self.setStyleSheet(LAUNCHER_CSS_PATH.read_text())
 
         # Allow minimize
         self.setWindowFlags(

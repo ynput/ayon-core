@@ -318,9 +318,7 @@ class PublishedFilesWidget(AYContainer):
             layout_spacing=0,
         )
 
-        view = AYTreeView(
-            self,item_height=23,item_padding=[1, 6]
-        )
+        view = AYTreeView(self)
         view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -338,9 +336,7 @@ class PublishedFilesWidget(AYContainer):
 
         work_files_delegate = WorkfilesDelegate(
             parent=view,
-            style_model=get_ayon_style().model,
-            item_height=23,
-            item_padding=[1, 6]
+            style_model=get_ayon_style().model
         )
         view.setItemDelegate(work_files_delegate)
 

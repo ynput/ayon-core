@@ -201,6 +201,11 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
                 )
             self.setPixmap(icn.pixmap(QSize(self._icon_size, self._icon_size)))
 
+    def set_text_color(self, color: str) -> None:
+        self._text_color = color
+        self._configure_palette()
+        self.repaint()
+
     def _configure_font(self, font: QFont) -> QFont:
         """Return a freshly configured font derived from the base font."""
         if self._rel_text_size != 0:

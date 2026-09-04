@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from typing import Optional
 
 from qtpy import QtCore
@@ -201,8 +201,6 @@ class SidePanelWidget(AYContainer):
             )
 
         if workfile_info is None:
-            self._orig_description = ""
-            self._description_input.setPlainText("")
             self._set_context(False, folder_id, task_id)
             return
 
@@ -215,11 +213,8 @@ class SidePanelWidget(AYContainer):
             size_value=workfile_info.file_size,
             created_by=workfile_info.created_by,
             updated_by=workfile_info.updated_by,
+            description=workfile_info.description,
         )
-
-        description = workfile_info.description
-        self._orig_description = description
-        self._description_input.setPlainText(description)
 
     def _set_publish_context(
         self,
@@ -236,7 +231,6 @@ class SidePanelWidget(AYContainer):
         comment = published_workfile_wrap.comment
         if info is None:
             self._set_context(False, folder_id, task_id)
-            self._description_input.setPlainText("")
             return
 
         self._set_context(
@@ -248,9 +242,8 @@ class SidePanelWidget(AYContainer):
             size_value=info.file_size,
             created_by=info.author,
             updated_by=info.author,
+            description=comment or "",
         )
-
-        self._description_input.setPlainText(comment or "")
 
     def _set_context(
         self,
@@ -263,6 +256,7 @@ class SidePanelWidget(AYContainer):
         size_value: Optional[int] = None,
         created_by: Optional[str] = None,
         updated_by: Optional[str] = None,
+        description: str = "",
     ) -> None:
         self._folder_id = folder_id
         self._task_id = task_id
@@ -271,10 +265,16 @@ class SidePanelWidget(AYContainer):
         self._description_input.setEnabled(is_valid)
         self._btn_description_save.setEnabled(is_valid)
 
+        self._orig_description = description
+        self._description_input.setPlainText(description)
+
+        size_text = "-"
+        created_text = "-"
+        modified_text = "-"
         if not is_valid:
-            self._size_val.setText("-")
-            self._created_val.setText("-")
-            self._modified_val.setText("-")
+            self._size_val.setText(size_text)
+            self._created_val.setText(created_text)
+            self._modified_val.setText(modified_text)
             return
 
         datetime_format = "%b %d %Y %H:%M:%S"
@@ -286,30 +286,37 @@ class SidePanelWidget(AYContainer):
                 return user_item.full_name
             return username_v
 
-        self._size_val.setText(
-            file_size_to_string(size_value) if size_value is not None else "-"
-        )
+        if size_value is not None:
+            size_text = file_size_to_string(size_value)
 
         created_parts = []
         if created_by:
             created_parts.append(convert_username(created_by))
+
         if file_created:
             created_parts.append(
-                datetime.datetime.fromtimestamp(file_created).strftime(datetime_format)
+                datetime
+                .fromtimestamp(file_created)
+                .strftime(datetime_format)
             )
-        self._created_val.setText("\n".join(created_parts) if created_parts else "-")
 
-        show_modified = bool(updated_by or file_modified)
-        if show_modified:
-            modified_parts = []
-            if updated_by:
-                modified_parts.append(convert_username(updated_by))
-            if file_modified:
-                modified_parts.append(
-                    datetime.datetime.fromtimestamp(file_modified).strftime(datetime_format)
-                )
-            self._modified_val.setText(
-                "\n".join(modified_parts) if modified_parts else "-"
+        if created_parts:
+            created_text = "\n".join(created_parts)
+
+        modified_parts = []
+        if updated_by:
+            modified_parts.append(convert_username(updated_by))
+
+        if file_modified:
+            modified_parts.append(
+                datetime
+                .fromtimestamp(file_modified)
+                .strftime(datetime_format)
             )
-        else:
-            self._modified_val.setText("-")
+
+        if modified_parts:
+            modified_text = "\n".join(modified_parts)
+
+        self._size_val.setText(size_text)
+        self._created_val.setText(created_text)
+        self._modified_val.setText(modified_text)
