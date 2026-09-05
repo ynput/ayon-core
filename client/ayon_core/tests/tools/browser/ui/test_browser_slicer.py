@@ -39,9 +39,14 @@ def test_select_folder_chain_expands_selects_and_scrolls():
     slicer = SimpleNamespace(
         _tree_view=tree_view,
         _get_view_index_by_id=indexes.__getitem__,
+        _pending_context=("demo", "folder-id"),
         _folder_selection_chain=["parent-id", "folder-id"],
         _folder_selection_attempt=0,
         _folder_selection_timer=Mock(),
+        _MAX_SELECTION_ATTEMPTS=BrowserSlicer._MAX_SELECTION_ATTEMPTS,
+    )
+    slicer._clear_pending_selection = (
+        lambda: BrowserSlicer._clear_pending_selection(slicer)
     )
 
     BrowserSlicer._select_folder_chain(
@@ -61,6 +66,7 @@ def test_select_folder_chain_expands_selects_and_scrolls():
         QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
     )
     assert slicer._folder_selection_chain == []
+    assert slicer._pending_context is None
 
 
 def test_task_selection_aggregates_row_ids(qtbot):

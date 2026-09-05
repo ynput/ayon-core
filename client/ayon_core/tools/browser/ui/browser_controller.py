@@ -282,7 +282,14 @@ class BrowserWidgetController(QtCore.QObject):
         return list(self._group_by_options.values())
 
     def get_folder_id_path(self, folder_id: str) -> list[str]:
-        """Return folder IDs from the project root to the target folder."""
+        """Return folder IDs from the project root to the target folder.
+
+        Returns an empty path when no project is active: querying the
+        hierarchy without one asks the server for ``/projects//hierarchy``,
+        which 404s.
+        """
+        if not self._current_project or not folder_id:
+            return []
         folder_items = self._loader_controller.get_folder_items(
             self._current_project
         )

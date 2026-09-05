@@ -37,6 +37,10 @@ class ReviewTreeView(AYTreeView):
 class BrowserSlicer(AYContainer):
     """Left-hand panel with project selector, category slicer and tree."""
 
+    #: Attempts, one per 100 ms timer tick, spent waiting for the project
+    #: switch and then the lazily fetched folder rows.
+    _MAX_SELECTION_ATTEMPTS = 30
+
     CATEGORIES = [
         {
             "text": BrowserSlicerCategory.HIERARCHY.value,
@@ -74,6 +78,7 @@ class BrowserSlicer(AYContainer):
         self._loader_controller = loader_controller
         self._task_names: list[str] = []
         self._last_selection_ids: tuple[str, ...] | None = None
+        self._pending_context: tuple[str, str] | None = None
         self._folder_selection_chain: list[str] = []
         self._folder_selection_attempt = 0
         self._folder_selection_timer = QtCore.QTimer(self)
@@ -227,11 +232,52 @@ class BrowserSlicer(AYContainer):
         )
         if project_name != self._controller.current_project:
             self._selector.set_selection(project_name)
-        chain = self._controller.get_folder_id_path(folder_id)
         self._folder_selection_timer.stop()
-        self._folder_selection_chain = chain
+        self._pending_context = (project_name, folder_id)
+        self._folder_selection_chain = []
         self._folder_selection_attempt = 0
-        self._select_folder_chain(chain, 0)
+        self._advance_context_selection(0)
+
+    def _advance_context_selection(self, attempt: int) -> None:
+        """Move the pending context selection forward by one attempt.
+
+        Two things have to land before the folder can be selected, and
+        neither is synchronous at startup. The project switch requested
+        above is a no-op while the projects combo box is still populating,
+        and the hierarchy must not be queried until it has landed -
+        ``get_folder_id_path`` would otherwise run against an empty
+        project name. Only then are the tree rows fetched, lazily, which
+        is what :meth:`_select_folder_chain` waits on.
+
+        Args:
+            attempt: Number of attempts already spent.
+        """
+        if self._pending_context is None:
+            return
+        if attempt >= self._MAX_SELECTION_ATTEMPTS:
+            self._clear_pending_selection()
+            return
+
+        project_name, folder_id = self._pending_context
+        if self._controller.current_project != project_name:
+            self._folder_selection_attempt = attempt + 1
+            self._folder_selection_timer.start()
+            return
+
+        if not self._folder_selection_chain:
+            self._folder_selection_chain = (
+                self._controller.get_folder_id_path(folder_id)
+            )
+            if not self._folder_selection_chain:
+                self._clear_pending_selection()
+                return
+        self._select_folder_chain(self._folder_selection_chain, attempt)
+
+    def _clear_pending_selection(self) -> None:
+        """Forget an in-flight context selection."""
+        self._pending_context = None
+        self._folder_selection_chain = []
+        self._folder_selection_attempt = 0
 
     def _get_view_index_by_id(self, folder_id: str) -> QtCore.QModelIndex:
         model = self._tree_view.model()
@@ -253,7 +299,8 @@ class BrowserSlicer(AYContainer):
         chain: list[str],
         attempt: int,
     ) -> None:
-        if not chain or attempt >= 30:
+        if not chain or attempt >= self._MAX_SELECTION_ATTEMPTS:
+            self._clear_pending_selection()
             return
         available_count = 0
         for folder_id in chain:
@@ -272,6 +319,7 @@ class BrowserSlicer(AYContainer):
 
         index = self._get_view_index_by_id(chain[-1])
         if not index.isValid():
+            self._clear_pending_selection()
             return
         selection_model = self._tree_view.selectionModel()
         selection_model.select(
@@ -283,16 +331,10 @@ class BrowserSlicer(AYContainer):
             index,
             QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
         )
-        self._folder_selection_chain = []
-        self._folder_selection_attempt = 0
+        self._clear_pending_selection()
 
     def _retry_folder_selection(self) -> None:
-        if not self._folder_selection_chain:
-            return
-        self._select_folder_chain(
-            self._folder_selection_chain,
-            self._folder_selection_attempt,
-        )
+        self._advance_context_selection(self._folder_selection_attempt)
 
     def _on_selection_changed(
         self,
