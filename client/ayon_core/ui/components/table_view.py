@@ -1238,7 +1238,7 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             self._styles_cache = self._style_model.get_styles(
                 "AYTableView",
                 self._variant_str,
-                ["base", "hover", "selected"],
+                ["base", "hover", "selected", "selected-hover"],
             )
         return self._styles_cache
 
@@ -1440,6 +1440,11 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         base_style = styles["base"]
         hover_style = styles["hover"]
         selected_style = styles["selected"]
+        # Hovering the selected row brightens its own colour rather than
+        # replacing it with the plain hover grey, which used to hide the
+        # fact that the row is the selected one.
+        if is_selected and is_hovered:
+            selected_style = styles["selected-hover"]
 
         item_padding = base_style.get("item-padding", [4, 8])
         icon_text_spacing = int(base_style.get("icon-text-spacing", 6))

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ..style_types import get_ayon_style
@@ -88,6 +90,42 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
         self._set_row_state_bit(
             QtWidgets.QStyle.StateFlag.State_MouseOver, hovered
         )
+
+
+class HoverReveal(QtCore.QObject):
+    """Event filter that shows *widget* only while its row is hovered.
+
+    Give the revealed widget a size policy with
+    ``setRetainSizeWhenHidden(True)`` so the row keeps its width and
+    nothing shifts as the widget appears.
+
+    Args:
+        widget: The widget to reveal/hide.
+        parent: The watched widget (also used as the filter's parent).
+        force_visible: Optional callable; when it returns ``True`` the
+            widget stays visible on Leave instead of being hidden.
+    """
+
+    def __init__(
+        self,
+        widget: QtWidgets.QWidget,
+        parent: QtCore.QObject,
+        force_visible: Callable[[], bool] | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._widget = widget
+        self._force_visible = force_visible
+
+    def eventFilter(
+        self, obj: QtCore.QObject, event: QtCore.QEvent
+    ) -> bool:
+        if event.type() == QtCore.QEvent.Type.Enter:
+            self._widget.setVisible(True)
+        elif event.type() == QtCore.QEvent.Type.Leave:
+            self._widget.setVisible(
+                bool(self._force_visible and self._force_visible())
+            )
+        return False  # never consume the event
 
 
 class RowHoverTracker(QtCore.QObject):

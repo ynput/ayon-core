@@ -328,17 +328,26 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
 
 
 class AYMenu(QtWidgets.QMenu):
-    """QMenu that paints itself using the AYON style.
+    """QMenu that paints and measures itself using the AYON style.
 
     Replicates :meth:`QMenu.paintEvent` but routes every primitive and
     control draw call through :func:`get_ayon_style`, so the menu is
-    painted consistently with the rest of the AYON UI without assigning
-    the shared AYON style instance to the transient menu.
+    painted consistently with the rest of the AYON UI.
+
+    The style is also assigned to the widget, because painting alone is
+    not enough: Qt asks ``widget.style()`` for ``CT_MenuItem`` when it
+    lays the rows out.  Leaving that to whatever style the host
+    application happens to install means rows are measured by one style
+    and painted by another - AYON's own icon gutter and padding are never
+    accounted for, and longer entries end up clipped inside a row that
+    was sized for something else.
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        get_ayon_style().style_widget(self)
+        style = get_ayon_style()
+        self.setStyle(style)
+        style.style_widget(self)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         """Paint the menu using AYON's QStyle implementation.

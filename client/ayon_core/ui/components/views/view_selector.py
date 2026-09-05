@@ -18,8 +18,6 @@ from typing import Callable
 
 import ayon_api
 from qtpy.QtCore import (  # type: ignore[attr-defined]
-    QEvent,
-    QObject,
     Qt,
     QTimer,
     Signal,
@@ -31,8 +29,8 @@ from qtpy.QtWidgets import (
 )
 
 from ..buttons import AYButton, AYButtonMenu
-from ..container import AYContainer
-from ..frame import RowHoverTracker
+from ..container import AYClickableRow, AYContainer
+from ..frame import HoverReveal, RowHoverTracker
 from ..label import AYLabel
 from ..scroll_area import AYScrollArea
 
@@ -61,69 +59,6 @@ _ROW_MIN_HEIGHT: int = 34
 # pushing "Default view" / "Create new view…" further down — mirrors
 # the frontend's views-menu scroll behavior.
 _VIEWS_LIST_MAX_HEIGHT: int = 490
-
-
-class _HoverReveal(QObject):
-    """Event filter that shows *widget* only while
-    the watched widget is hovered.
-
-    Args:
-        widget: The widget to reveal/hide.
-        parent: The watched widget (also used as the filter's parent).
-        force_visible: Optional callable; when it returns ``True`` the
-            widget stays visible on Leave instead of being hidden (used
-            to keep a collapsed section's expand chevron visible even
-            when the header isn't hovered).
-    """
-
-    def __init__(
-        self,
-        widget: QWidget,
-        parent: QObject,
-        force_visible: Callable[[], bool] | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._widget = widget
-        self._force_visible = force_visible
-
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if event.type() == QEvent.Type.Enter:
-            self._widget.setVisible(True)
-        elif event.type() == QEvent.Type.Leave:
-            self._widget.setVisible(
-                bool(self._force_visible and self._force_visible())
-            )
-        return False  # never consume the event
-
-
-class _ClickableRow(AYContainer):
-    """A row that is itself the primary click target.
-
-    Its label is plain, non-interactive text (not a button), so the
-    row "wraps" its trailing action buttons the way a single button
-    would: clicking anywhere in the row's own background or margins —
-    including the gaps around a trailing icon button — triggers
-    *on_click*. Clicking directly on one of those icon buttons still
-    reaches that button first (Qt routes the event to the topmost
-    widget under the cursor) and never reaches here.
-    """
-
-    def __init__(
-        self,
-        *args,
-        on_click: Callable[[], None],
-        **kwargs,
-    ) -> None:
-        super().__init__(*args, **kwargs)
-        self._on_click = on_click
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-
-    def mouseReleaseEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
-            event.pos()
-        ):
-            self._on_click()
-        super().mouseReleaseEvent(event)
 
 
 class _SectionHeader(AYContainer):
@@ -174,7 +109,7 @@ class _SectionHeader(AYContainer):
         chevron.setVisible(collapsed)
 
         self.installEventFilter(
-            _HoverReveal(chevron, self, force_visible=lambda: collapsed)
+            HoverReveal(chevron, self, force_visible=lambda: collapsed)
         )
 
     def mouseReleaseEvent(self, event) -> None:
@@ -496,7 +431,7 @@ class AYViewSelector(AYButtonMenu):
         is_current_view_is_working_view = view is not None and view.working
         is_selected = self._view_modified or is_current_view_is_working_view
 
-        row = _ClickableRow(
+        row = AYClickableRow(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Popover,
             layout_spacing=4,
@@ -558,7 +493,7 @@ class AYViewSelector(AYButtonMenu):
             sp.setRetainSizeWhenHidden(True)
             btn.setSizePolicy(sp)
             btn.setVisible(False)
-            row.installEventFilter(_HoverReveal(btn, row))
+            row.installEventFilter(HoverReveal(btn, row))
 
         return btn
 
@@ -581,7 +516,7 @@ class AYViewSelector(AYButtonMenu):
                 and not self._view_modified
         )
 
-        row = _ClickableRow(
+        row = AYClickableRow(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Popover,
             layout_spacing=4,
@@ -623,7 +558,7 @@ class AYViewSelector(AYButtonMenu):
         Enter/Leave events, so the frame drawer's own ``underMouse()``
         fallback (see ``hover_enabled``) already keeps it highlighted.
         """
-        row = _ClickableRow(
+        row = AYClickableRow(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Popover,
             layout_spacing=4,

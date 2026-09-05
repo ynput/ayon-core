@@ -63,6 +63,43 @@ log = Logger.get_logger(__name__)
 _MAX_GROUP_PAGES: int = 50
 
 
+def _collect_product_base_types(
+    definitions: list[dict[str, Any]],
+    product_types: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Return every product base type the project can show, by name.
+
+    A project's anatomy only defines the base types it customises, so
+    that list alone leaves the Base Type filter with nothing to offer on
+    a project that never touched them. The web UI resolves this the same
+    way: it derives the base types from the product types in use, taking
+    each one's appearance from the first product type that declares it.
+
+    Args:
+        definitions: ``productBaseTypes.definitions`` from the anatomy.
+        product_types: The project's ``productTypes`` entries.
+
+    Returns:
+        Mapping of base type name to its definition. Anatomy definitions
+        win over the derived ones.
+    """
+    output: dict[str, dict[str, Any]] = {}
+    for product_type in product_types:
+        base_name = product_type.get("baseType")
+        if not base_name or base_name in output:
+            continue
+        output[base_name] = {
+            "name": base_name,
+            "icon": product_type.get("icon"),
+            "color": product_type.get("color"),
+        }
+    for definition in definitions:
+        name = definition.get("name")
+        if name:
+            output[name] = definition
+    return output
+
+
 def _folder_sort_key(folder: dict[str, Any]) -> str:
     """Return the case-insensitive label used to order sibling folders.
 
@@ -2360,6 +2397,11 @@ class BrowserWidgetController(QtCore.QObject):
         self._project_info = dict(project_entity)
         config = project_entity.get("config", {})
         product_base_types = config.get("productBaseTypes", {})
+        product_type_items = project_entity.get("productTypes") or []
+        base_type_items = _collect_product_base_types(
+            product_base_types.get("definitions", []),
+            product_type_items,
+        )
         self._project_info["by_name"] = {
             "folderTypes": {
                 ft["name"]: ft for ft in project_entity.get("folderTypes", [])
@@ -2376,12 +2418,10 @@ class BrowserWidgetController(QtCore.QObject):
             "tags": {t["name"]: t for t in project_entity.get("tags", [])},
             "productTypes": {
                 t["name"]: t
-                for t in product_base_types.get("definitions", [])
+                for t in product_type_items
+                if t.get("name")
             },
-            "productBaseTypes": {
-                t["name"]: t
-                for t in product_base_types.get("definitions", [])
-            },
+            "productBaseTypes": base_type_items,
         }
         # Anatomy's "Default appearance" for product base types. Both maps
         # above are keyed by definition name only, so a product type the

@@ -14,7 +14,12 @@ from qtpy.QtCore import (
     QTimer,
     Signal,
 )
-from qtpy.QtGui import QCloseEvent, QKeySequence, QMouseEvent
+from qtpy.QtGui import (
+    QCloseEvent,
+    QContextMenuEvent,
+    QKeySequence,
+    QMouseEvent,
+)
 from qtpy.QtWidgets import (
     QFrame,
     QShortcut,
@@ -25,9 +30,9 @@ from qtpy.QtWidgets import (
 )
 
 from .buttons import AYButton
-from .container import AYContainer
+from .container import AYClickableRow, AYContainer
 from .dropdown import AYDropdownPopup
-from .frame import AYFrame
+from .frame import AYFrame, HoverReveal, RowHoverTracker
 from .label import AYLabel
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
@@ -39,6 +44,12 @@ ENTITY_ICONS = {
     "Task": "check_circle",
     "Version": "layers",
 }
+
+#: Order the entity scopes are offered in on the dropdown's first page,
+#: from the entity the table's rows actually are outwards to their
+#: context. Scopes not listed here (attribute groups, anything an addon
+#: contributes) follow, in the order they were declared.
+ENTITY_ORDER = ("Version", "Product", "Task", "Folder")
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -95,6 +106,22 @@ class FilterCriterion:
             values=[str(v) for v in raw_values],
             use_substring=bool(payload.get("useSubstring", False)),
         )
+
+
+def criterion_text(criterion: "FilterCriterion") -> str:
+    """Return the one-line description shown for a criterion.
+
+    Shared by the inline badge, the bar's tooltip and its context menu so
+    the three never drift apart.
+
+    Args:
+        criterion: The criterion to describe.
+
+    Returns:
+        Text of the form ``"Label: value or other"``.
+    """
+    values_text = " or ".join(criterion.values) if criterion.values else "…"
+    return f"{criterion.attribute_label}: {values_text}"
 
 
 # ---------------------------------------------------------------------------
@@ -337,12 +364,29 @@ class _FilterDropdown(AYDropdownPopup):
         self._reindex_filters()
 
     def _reindex_filters(self) -> None:
-        """Build lookup maps used by the dropdown pages."""
+        """Build lookup maps used by the dropdown pages.
+
+        Entity groups are ordered by :data:`ENTITY_ORDER` rather than by
+        however the caller happened to declare its filters, so the first
+        page always reads the same way.
+        """
         self._filters_by_key = {}
-        self._filters_by_entity = {}
+        grouped: dict[str, list[FilterEntry]] = {}
         for entry in self._filters:
             self._filters_by_key[entry.key] = entry
-            self._filters_by_entity.setdefault(entry.entity, []).append(entry)
+            grouped.setdefault(entry.entity, []).append(entry)
+
+        def _entity_rank(name: str) -> tuple[int, int]:
+            if name in ENTITY_ORDER:
+                return (0, ENTITY_ORDER.index(name))
+            # Unranked scopes sort after, keeping their declared order
+            # (``sorted`` is stable over the dict's insertion order).
+            return (1, 0)
+
+        self._filters_by_entity = {
+            name: grouped[name]
+            for name in sorted(grouped, key=_entity_rank)
+        }
 
     # ------------------------------------------------------------------
     # Build
@@ -366,6 +410,14 @@ class _FilterDropdown(AYDropdownPopup):
 
         self._stack = QStackedWidget(self)
         root_layout.addWidget(self._stack)
+
+        # Declared up front: the dropdown can open straight onto the value
+        # page (editing an existing criterion), and going Back from there
+        # measures the attribute page before it has ever been populated.
+        self._search_separator = None
+        self._attr_buttons: dict[str, AYButton] = {}
+        self._attr_groups: dict[str, list[AYButton]] = {}
+        self._attr_selection_index = -1
 
         self._stack.addWidget(self._build_attribute_page())
         self._stack.addWidget(self._build_value_page())
@@ -541,8 +593,8 @@ class _FilterDropdown(AYDropdownPopup):
                 item.widget().deleteLater()
 
         self._search_separator = None
-        self._attr_buttons: dict[str, AYButton] = {}
-        self._attr_groups: dict[str, list[AYButton]] = {}
+        self._attr_buttons = {}
+        self._attr_groups = {}
         self._attr_selection_index = -1
 
         if entity is None:
@@ -721,6 +773,12 @@ class _FilterDropdown(AYDropdownPopup):
         self._attr_search.setFocus()
 
     def _go_to_attribute_page(self) -> None:
+        """Return from the value page to the attribute list."""
+        if not self._attr_buttons:
+            # Reached the value page directly by editing a criterion, so
+            # the page behind it was never built; Back would otherwise
+            # land on an empty list.
+            self._show_entity_page()
         self._stack.setCurrentIndex(0)
         self._attr_search.blockSignals(True)
         self._attr_search.clear()
@@ -789,25 +847,33 @@ class _FilterDropdown(AYDropdownPopup):
             )
         else:
             self._value_breadcrumb.setText(label)
-        if entry is not None and entry.text_search:
+        # Whether this filter takes typed text is declared by the entry.
+        # Deciding it from "we found no values to list" instead made a
+        # multi-select filter fall back to a text box - pre-filled with
+        # its own current value - whenever its list happened to come up
+        # short.
+        is_text_search = entry is not None and entry.text_search
+        if is_text_search:
             distinct = []
-        elif key == "version" and entry is not None:
-            distinct = list(entry.values)
-            for value in (
-                self._column_values.get(key)
-                or self._model.get_distinct_values(key)
-            ):
-                if value not in distinct:
-                    distinct.append(value)
-        elif entry is not None and entry.values:
-            distinct = list(entry.values)
-        elif key in self._column_values:
-            distinct = list(self._column_values[key])
         else:
-            distinct = self._model.get_distinct_values(key)
-        for value in selected_values:
-            if value not in distinct:
-                distinct.append(value)
+            # Every source contributes, rather than the first non-empty
+            # one winning. Picking just one made the page's contents
+            # depend on how much of the table had paged in by the time it
+            # was opened: a column whose values are configured showed
+            # them, but one relying on loaded rows came up empty on first
+            # open and filled in later, so re-entering the same filter
+            # gave a different list. Configured values lead, in their
+            # configured order; values only the data knows about follow.
+            distinct = []
+            for source in (
+                list(entry.values) if entry is not None else [],
+                self._column_values.get(key) or [],
+                self._model.get_distinct_values(key),
+                selected_values,
+            ):
+                for value in source:
+                    if value not in distinct:
+                        distinct.append(value)
         if key == "task" and "No task" not in distinct:
             distinct.append("No task")
 
@@ -864,29 +930,59 @@ class _FilterDropdown(AYDropdownPopup):
         else:
             self._is_free_text = True
             self._value_scroll = None
-            if selected_values:
+            # Only a text filter carries its value in the search box; a
+            # multi-select shows its values in the list above and leaves
+            # the box free for searching.
+            if is_text_search and selected_values:
                 self._attr_search.setText(selected_values[0])
 
         self._apply_btn.installEventFilter(self)
 
     def _get_value_navigation_widgets(self) -> list[QWidget]:
-        """Return controls in the value-page keyboard navigation order."""
-        widgets: list[QWidget] = []
+        """Return controls in the value-page keyboard navigation order.
+
+        The search field leads the ring, so Down steps from typing
+        straight into the values and Up wraps back to it - the search box
+        was previously left out entirely unless the filter took free
+        text, which made the first Down land on the Back button.
+
+        Uses ``isHidden`` rather than ``isVisible`` for the same reason
+        :meth:`_adjust_height` does: the page is laid out before the
+        popup reaches the screen, where every child reports itself
+        invisible and the ring would come out empty.
+        """
+        widgets: list[QWidget] = [self._attr_search]
+        widgets.extend(self._value_buttons.values())
         if self._value_back_btn is not None:
             widgets.append(self._value_back_btn)
-        widgets.extend(self._value_buttons.values())
-        if self._is_free_text:
-            widgets.append(self._attr_search)
         widgets.append(self._apply_btn)
         return [
             widget for widget in widgets
-            if widget.isVisible() and widget.isEnabled()
+            if not widget.isHidden() and widget.isEnabled()
         ]
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         """Navigate and activate visible filter members from the keyboard."""
         if not hasattr(self, "_stack"):
             return super().eventFilter(watched, event)
+
+        if (
+            event.type() == QEvent.Type.KeyPress
+            and event.key() == Qt.Key.Key_Left
+            and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
+            # Ctrl+Left (Cmd+Left on macOS, which Qt reports as Control)
+            # steps back out a level, mirroring whichever Back button is
+            # on screen, so the dropdown can be walked entirely by key.
+            if self._stack.currentIndex() == 1:
+                self._go_to_attribute_page()
+                return True
+            if self._attr_back_btn.isVisible():
+                self._show_entity_page()
+                self._adjust_height()
+                self._attr_search.setFocus()
+                return True
+            return False
 
         if self._stack.currentIndex() == 1:
             widgets = self._get_value_navigation_widgets()
@@ -920,8 +1016,23 @@ class _FilterDropdown(AYDropdownPopup):
                     widget = watched
                 else:
                     widget = widgets[0]
-                if widget is self._attr_search and self._is_free_text:
-                    self._on_apply()
+                if widget is self._attr_search:
+                    if self._is_free_text:
+                        self._on_apply()
+                    else:
+                        # Enter straight from typing takes the first
+                        # match, so a value can be picked without ever
+                        # leaving the search field.
+                        first = next(
+                            (
+                                button
+                                for button in self._value_buttons.values()
+                                if not button.isHidden()
+                            ),
+                            None,
+                        )
+                        if first is not None:
+                            first.click()
                 elif isinstance(widget, AYButton):
                     widget.click()
                 return True
@@ -936,7 +1047,7 @@ class _FilterDropdown(AYDropdownPopup):
         ):
             buttons = [
                 button for button in self._attr_buttons.values()
-                if button.isVisible() and button.isEnabled()
+                if not button.isHidden() and button.isEnabled()
             ]
             if buttons:
                 focused = (
@@ -961,7 +1072,7 @@ class _FilterDropdown(AYDropdownPopup):
         ):
             buttons = [
                 button for button in self._attr_buttons.values()
-                if button.isVisible() and button.isEnabled()
+                if not button.isHidden() and button.isEnabled()
             ]
             if buttons:
                 if watched in buttons:
@@ -1049,10 +1160,16 @@ class _FilterDropdown(AYDropdownPopup):
         else:
             self._value_content_layout.activate()
             scroll = self._value_scroll
+            # isHidden(), not isVisible(): editing a criterion measures
+            # this page while the popup is still off screen, where every
+            # child reports itself invisible - which sized the value list
+            # to nothing and left the page apparently empty. Search
+            # filtering hides buttons explicitly, so isHidden() still
+            # excludes exactly the ones it should.
             buttons = [
                 button
                 for button in self._value_buttons.values()
-                if button.isVisible()
+                if not button.isHidden()
             ]
             separator = None
 
@@ -1149,12 +1266,7 @@ class _CriterionBadge(AYContainer):
         )
         self.add_widget(front_icon)
 
-        values_text = (
-            " or ".join(criterion.values) if criterion.values else "…"
-        )
-        badge_text = f"{criterion.attribute_label}: {values_text}"
-
-        self._label = AYLabel(badge_text)
+        self._label = AYLabel(criterion_text(criterion))
         self._label.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents
         )
@@ -1177,6 +1289,117 @@ class _CriterionBadge(AYContainer):
             event.accept()
             return
         super().mousePressEvent(event)
+
+
+class _CriterionListPopup(AYDropdownPopup):
+    """Lists every active criterion, so overflowed ones stay reachable.
+
+    The bar only draws as many badges as fit across its width, which
+    leaves criteria added earlier unreachable once it fills up.  Rows
+    here mirror the Views menu: the row body opens the criterion for
+    editing and a trailing button, revealed on hover, removes it.
+
+    Signals:
+        edit_requested: Emitted with the criterion whose row was clicked.
+        remove_requested: Emitted with the criterion to drop.
+    """
+
+    _ROW_HEIGHT = 28
+
+    edit_requested = Signal(object)  # FilterCriterion
+    remove_requested = Signal(object)  # FilterCriterion
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent, variant=AYDropdownPopup.Variants.Popover)
+        self._layout = AYVBoxLayout(self, margin=4, spacing=2)
+
+    def show_for(
+        self,
+        criteria: list[FilterCriterion],
+        entries_by_key: dict[str, FilterEntry],
+        anchor: QWidget,
+    ) -> None:
+        """Rebuild the rows for *criteria* and drop the popup below *anchor*.
+
+        Args:
+            criteria: The active criteria, in bar order.
+            entries_by_key: Filter entries, used for each row's icon.
+            anchor: Widget to position the popup under.
+        """
+        while self._layout.count():
+            item = self._layout.takeAt(0)
+            if item is not None and item.widget():
+                item.widget().deleteLater()
+
+        if not criteria:
+            label = AYLabel("No active filters", dim=True)
+            label.setContentsMargins(8, 4, 8, 4)
+            self._layout.addWidget(label)
+        else:
+            for criterion in criteria:
+                self._layout.addWidget(
+                    self._make_row(criterion, entries_by_key)
+                )
+
+        self.adjustSize()
+        self.show_below(anchor)
+
+    def _make_row(
+        self,
+        criterion: FilterCriterion,
+        entries_by_key: dict[str, FilterEntry],
+    ) -> AYClickableRow:
+        """Build one criterion row."""
+        row = AYClickableRow(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Popover,
+            layout_spacing=4,
+            layout_margin=0,
+            hover_enabled=True,
+            on_click=lambda c=criterion: self._on_row_clicked(c),
+        )
+        row.layout().setContentsMargins(4, 2, 4, 2)
+        row.setMinimumHeight(self._ROW_HEIGHT)
+
+        entry = entries_by_key.get(criterion.key)
+        label = AYLabel(
+            criterion_text(criterion),
+            icon=entry.icon if entry is not None else "",
+        )
+        row.add_widget(label, stretch=1)
+
+        remove_btn = AYButton(
+            icon="close",
+            icon_size=14,
+            variant=AYButton.Variants.Row_Action,
+            tooltip="Remove this filter",
+        )
+        # Reserve the button's space up front so revealing it on hover
+        # cannot shuffle the row's contents.
+        policy = remove_btn.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)
+        remove_btn.setSizePolicy(policy)
+        remove_btn.clicked.connect(
+            lambda _checked=False, c=criterion: self._on_remove_clicked(c)
+        )
+        # Parent before hiding: setVisible() on a parentless widget makes
+        # Qt treat it as its own window, which steals activation from this
+        # popup and closes it.
+        row.add_widget(remove_btn)
+        remove_btn.setVisible(False)
+
+        row.installEventFilter(HoverReveal(remove_btn, row))
+        RowHoverTracker(row).watch(remove_btn)
+        return row
+
+    def _on_row_clicked(self, criterion: FilterCriterion) -> None:
+        self.close()
+        self.edit_requested.emit(criterion)
+
+    def _on_remove_clicked(self, criterion: FilterCriterion) -> None:
+        # Left open on purpose: pruning filters usually means removing a
+        # few. The bar closes it once nothing is left to list.
+        self.remove_requested.emit(criterion)
 
 
 # ---------------------------------------------------------------------------
@@ -1292,6 +1515,11 @@ class AYTableFilter(AYContainer):
             filters=self._filters,
         )
         self._dropdown.criterion_ready.connect(self._on_criterion_ready)
+
+        # Reachable list of the criteria, for the ones the bar clips.
+        self._criteria_popup = _CriterionListPopup(self)
+        self._criteria_popup.edit_requested.connect(self._on_badge_edit)
+        self._criteria_popup.remove_requested.connect(self._on_badge_remove)
 
         # search button - always visible, opens empty dropdown for new
         # criterion
@@ -1434,6 +1662,33 @@ class AYTableFilter(AYContainer):
             self._open_filter_dropdown()
         super().mousePressEvent(event)
 
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        """Open the list of active criteria."""
+        self._criteria_popup.show_for(
+            self._criteria,
+            {entry.key: entry for entry in self._filters},
+            self,
+        )
+        event.accept()
+
+    def _update_tooltip(self) -> None:
+        """Describe every active criterion, one per line.
+
+        Reads the way the criteria combine, which the badges cannot show
+        once they overflow::
+
+            Version: Latest
+            and Product Base Type: render
+        """
+        if not self._criteria:
+            self.setToolTip("No active filters")
+            return
+        lines = [
+            ("" if index == 0 else "and ") + criterion_text(criterion)
+            for index, criterion in enumerate(self._criteria)
+        ]
+        self.setToolTip("\n".join(lines))
+
     # ------------------------------------------------------------------
     # Bar management
     # ------------------------------------------------------------------
@@ -1441,6 +1696,7 @@ class AYTableFilter(AYContainer):
     def _rebuild_bar(self) -> None:
         """Clear and repopulate the bar with current criteria."""
         self._criteria_container.clear()
+        self._update_tooltip()
 
         if not self._criteria:
             empty_btn = AYButton(
@@ -1533,6 +1789,25 @@ class AYTableFilter(AYContainer):
         self._criteria = [c for c in self._criteria if c is not criterion]
         self._rebuild_bar()
         self._update_proxy()
+        self._refresh_criteria_popup()
+
+    def _refresh_criteria_popup(self) -> None:
+        """Keep an open criteria list in step after a removal.
+
+        Removing one of several is usually part of pruning a few, so the
+        popup stays up and simply re-lists what is left; it closes only
+        once there is nothing left to show.
+        """
+        if not self._criteria_popup.isVisible():
+            return
+        if not self._criteria:
+            self._criteria_popup.close()
+            return
+        self._criteria_popup.show_for(
+            self._criteria,
+            {entry.key: entry for entry in self._filters},
+            self,
+        )
 
     def _update_proxy(self) -> None:
         if self._filter_locally:

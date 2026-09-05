@@ -178,6 +178,12 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
                     highlight_color,
                 )
             )
+            selected_hover_bg = QColor(
+                cb_style.get(
+                    "menu-selected-hover-background-color",
+                    selected_bg,
+                )
+            )
             selected_fg = QColor(
                 cb_style.get(
                     "menu-selected-color",
@@ -190,24 +196,28 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
                 QPalette.ColorRole.Window,
             )
             selected_bg = highlight_color
+            selected_hover_bg = selected_bg
             selected_fg = opt.palette.color(
                 QPalette.ColorRole.HighlightedText
             )
 
         state = opt.state
         is_selected = bool(state & QStyle.StateFlag.State_Selected)
-        is_hovered = (
-            bool(state & QStyle.StateFlag.State_MouseOver) and not is_selected
-        )
+        is_hovered = bool(state & QStyle.StateFlag.State_MouseOver)
+        # Hovering a row that is not the current one gets the plain
+        # highlight; hovering the current one brightens its own color
+        # instead, so it stays recognizable as the selected row.
+        hover_only = is_hovered and not is_selected
+        selected_background = selected_hover_bg if is_hovered else selected_bg
 
         if fg_data and bg_data:
             fg = fg_data.color()
 
-            if is_hovered:
+            if hover_only:
                 bg_color = highlight_color
                 text_color = fg
             elif is_selected:
-                bg_color = selected_bg
+                bg_color = selected_background
                 text_color = selected_fg
                 icon_name = (
                     index.data(cb.model().IconNameRole)
@@ -224,7 +234,9 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         else:
             # Fallback for items without FG/BG data
             if is_hovered or is_selected:
-                bg_color = selected_bg if is_selected else highlight_color
+                bg_color = (
+                    selected_background if is_selected else highlight_color
+                )
                 text_color = (
                     selected_fg
                     if is_selected

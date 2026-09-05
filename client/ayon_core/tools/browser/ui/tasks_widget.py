@@ -162,11 +162,33 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         )
 
     def set_selected_task_names(self, names: list[str]) -> None:
-        """Select all rows whose task name is in *names*."""
-        previous_names = set(self._selected_names)
+        """Select all rows whose task name is in *names*.
+
+        Deliberately does not report the selection back out.  This is the
+        programmatic path - the active filter being re-applied to a
+        refreshed list - and which rows exist depends on the folder in
+        context, so a task the filter names may simply not be present.
+        Emitting from here would narrow the filter to whatever happens to
+        be visible and silently drop the rest of it.
+
+        Args:
+            names: Task names the filter is currently asking for.
+        """
         self._selected_names = set(names)
         self._apply_selection()
-        self._sync_selected_rows(previous_names)
+        self._selected_ids = self._visible_selected_ids()
+
+    def selected_task_ids(self) -> set[str]:
+        """Return the task ids behind the rows currently selected."""
+        return set(self._selected_ids)
+
+    def _visible_selected_ids(self) -> set[str]:
+        """Collect task ids from every currently selected row."""
+        task_ids: set[str] = set()
+        for index in self._view.selectionModel().selectedRows(0):
+            data = index.data(TASK_DATA_ROLE) or {}
+            task_ids.update(data.get("ids") or [])
+        return task_ids
 
     def _apply_selection(self) -> None:
         """Apply the stored task names to the table selection."""
@@ -192,16 +214,25 @@ class BrowserTasksWidget(QtWidgets.QWidget):
                 if first_index is None:
                     first_index = index
             if first_index is not None:
-                self._view.setCurrentIndex(first_index)
+                # Move the keyboard focus without touching the
+                # selection: the view's own setCurrentIndex() selects
+                # with ClearAndSelect, which would throw away every row
+                # matched above and leave only this one highlighted.
+                selection_model.setCurrentIndex(
+                    first_index,
+                    QtCore.QItemSelectionModel.SelectionFlag.NoUpdate,
+                )
         finally:
             self._suppress_selection_changed = False
         self._view.viewport().update()
 
-    def _sync_selected_rows(
-        self,
-        previous_names: set[str] | None = None,
-    ) -> None:
-        """Emit selected display names and all IDs stored on their rows."""
+    def _sync_selected_rows(self) -> None:
+        """Emit selected display names and all IDs stored on their rows.
+
+        Only reached from a real selection change in the view; see
+        :meth:`set_selected_task_names` for why the programmatic path
+        stays quiet.
+        """
         names: set[str] = set()
         task_ids: set[str] = set()
         for index in self._view.selectionModel().selectedRows(0):
@@ -211,9 +242,7 @@ class BrowserTasksWidget(QtWidgets.QWidget):
                 names.add(name)
             task_ids.update(data.get("ids") or [])
 
-        if previous_names is None:
-            previous_names = self._selected_names
-        if names == previous_names and task_ids == self._selected_ids:
+        if names == self._selected_names and task_ids == self._selected_ids:
             return
 
         self._selected_names = names
@@ -370,13 +399,6 @@ class BrowserTasksWidget(QtWidgets.QWidget):
         self,
         rows: list[list[QtGui.QStandardItem]],
     ) -> None:
-        previous_names = set(self._selected_names)
-        available_names = {
-            row[0].data(TASK_DATA_ROLE).get("name")
-            for row in rows
-            if row[0].data(TASK_DATA_ROLE)
-        }
-        self._selected_names.intersection_update(available_names)
         self._suppress_selection_changed = True
         try:
             self._model.removeRows(0, self._model.rowCount())
@@ -384,8 +406,13 @@ class BrowserTasksWidget(QtWidgets.QWidget):
                 self._model.appendRow(row)
         finally:
             self._suppress_selection_changed = False
+        # The requested names are kept whole rather than trimmed to the
+        # rows that happen to exist now: this list follows the folder in
+        # context, while the names come from the Task filter, which is
+        # the one that decides what is being asked for. A task it names
+        # simply has no row here until a folder that owns one is picked.
         self._apply_selection()
-        self._sync_selected_rows(previous_names)
+        self._selected_ids = self._visible_selected_ids()
 
     def _on_selection_changed(self) -> None:
         if self._suppress_selection_changed:

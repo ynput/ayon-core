@@ -263,11 +263,16 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         """
         if self._styles_cache is None:
             if self._style_model is None:
-                return {"base": {}, "hover": {}, "selected": {}}
+                return {
+                    "base": {},
+                    "hover": {},
+                    "selected": {},
+                    "selected-hover": {},
+                }
             self._styles_cache = self._style_model.get_styles(
                 "QTreeView",
                 self._variant_str,
-                ["base", "hover", "selected"],
+                ["base", "hover", "selected", "selected-hover"],
             )
         return self._styles_cache
 
@@ -331,6 +336,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         base_style = styles["base"]
         hover_style = styles["hover"]
         selected_style = styles["selected"]
+        # Same rule as the table: a selected row that is hovered keeps
+        # its selected colour, brightened.
+        if is_selected and is_hovered:
+            selected_style = styles["selected-hover"]
 
         item_padding = base_style.get("item-padding", [4, 8])
         icon_text_spacing = int(base_style.get("icon-text-spacing", 6))

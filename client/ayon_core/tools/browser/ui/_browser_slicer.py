@@ -136,9 +136,7 @@ class BrowserSlicer(AYContainer):
         self._tasks.task_selection_changed.connect(
             self._on_task_selection_changed
         )
-        self._tasks.refreshed.connect(
-            lambda: self._tasks.set_selected_task_names(self._task_names)
-        )
+        self._tasks.refreshed.connect(self._on_tasks_refreshed)
         self._my_tasks_btn.toggled.connect(self._apply_my_tasks_filter)
         self._controller.my_tasks_filter_changed.connect(
             self._on_controller_my_tasks_filter_changed
@@ -374,6 +372,19 @@ class BrowserSlicer(AYContainer):
         """Update task-list selection from the active filter criterion."""
         self._task_names = list(names)
         self._tasks.set_selected_task_names(self._task_names)
+
+    def _on_tasks_refreshed(self) -> None:
+        """Re-apply the filter's task names to the refreshed task list.
+
+        Re-selecting rows here is not a user action, so it must not feed
+        back into the Task filter - tasks it names may not exist under the
+        folder now in context. Only the loader's selected ids are brought
+        back in step, since those describe the current context.
+        """
+        self._tasks.set_selected_task_names(self._task_names)
+        self._loader_controller.set_selected_tasks(
+            self._tasks.selected_task_ids()
+        )
 
     def _on_task_selection_changed(
         self,

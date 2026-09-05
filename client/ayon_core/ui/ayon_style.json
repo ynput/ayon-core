@@ -12,7 +12,8 @@
                 "hover",
                 "pressed",
                 "disabled",
-                "checked"
+                "checked",
+                "checked-hover"
             ],
             "default-variant": "surface",
             "variants": {
@@ -43,6 +44,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "filled": {
@@ -62,6 +66,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "nav": {
@@ -81,6 +88,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "nav-small": {
@@ -104,6 +114,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "danger": {
@@ -123,6 +136,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "tertiary": {
@@ -142,6 +158,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "text": {
@@ -180,6 +199,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
                 "thumbnail": {
@@ -232,6 +254,9 @@
                     },
                     "checked": {
                         "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
                     },
                     "disabled": {
                         "background-color": "transparent",
@@ -519,6 +544,7 @@
                     "color": "--md-sys-color-on-surface-dark",
                     "menu-background-color": "--md-sys-color-surface-container-low-dark",
                     "menu-selected-background-color": "--md-sys-color-primary-container-dark",
+                    "menu-selected-hover-background-color": "--md-sys-color-primary-container-dark-hover",
                     "menu-selected-color": "--md-sys-color-on-primary-container-dark"
                 },
                 "low": {
@@ -850,6 +876,7 @@
             "states": [
                 "hover",
                 "selected",
+                "selected-hover",
                 "disabled"
             ],
             "default-variant": "default",
@@ -877,6 +904,10 @@
                     },
                     "selected": {
                         "background-color": "--md-sys-color-primary-container-dark",
+                        "color": "--md-sys-color-on-primary-container-dark"
+                    },
+                    "selected-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover",
                         "color": "--md-sys-color-on-primary-container-dark"
                     },
                     "disabled": {
@@ -920,6 +951,7 @@
             "states": [
                 "hover",
                 "selected",
+                "selected-hover",
                 "disabled"
             ],
             "default-variant": "default",
@@ -961,6 +993,10 @@
                     },
                     "selected": {
                         "background-color": "--color-table-row-selected",
+                        "color": "--md-sys-color-on-primary-container-dark"
+                    },
+                    "selected-hover": {
+                        "background-color": "--color-table-row-selected-hover",
                         "color": "--md-sys-color-on-primary-container-dark"
                     },
                     "disabled": {
@@ -1245,6 +1281,7 @@
         "--color-table-row": "#1d2026",
         "--color-table-row-hover": "#22252b",
         "--color-table-row-selected": "#394956",
+        "--color-table-row-selected-hover": "#3d5262",
         "--color-table-text": "#dedede",
         "qt-active-window": "--md-sys-color-background-dark",
         "qt-active-window-text": "--md-sys-color-on-surface-dark",

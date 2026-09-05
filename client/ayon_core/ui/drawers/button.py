@@ -202,14 +202,13 @@ class ButtonDrawer:
         elif state & QStyle.StateFlag.State_Sunken:
             wstate = "pressed"
         elif is_hover and state & QStyle.StateFlag.State_On:
-            # Only variants that explicitly define "checked-hover" opt
-            # into a combined look; every other checkable variant
-            # (filter chips, tag toggles, ...) falls straight to
-            # "hover" here, unchanged from before this state existed.
-            raw_variant = self.model.widget_data("QPushButton").get(
-                "variants", {}
-            ).get(variant, {})
-            wstate = "checked-hover" if "checked-hover" in raw_variant else "hover"
+            # A checked button hovered stays on its checked colour, just
+            # brighter. Falling back to the plain "hover" grey - which
+            # this did unless a variant spelled out "checked-hover" -
+            # dropped the only cue that the button is the active one.
+            # A variant that defines no "checked-hover" resolves to
+            # "checked", so the colour holds rather than turning grey.
+            wstate = "checked-hover"
         elif is_hover:
             wstate = "hover"
         elif state & QStyle.StateFlag.State_On:

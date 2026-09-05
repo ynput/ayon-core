@@ -719,20 +719,18 @@ class BrowserTable(AYContainer):
             self._deferred_expand_queue.clear()
             self._expansion_phase = _ExpansionPhase.IDLE
 
-    def on_project_info_changed(self) -> None:
-        """Rebuild columns now that version attributes are available."""
-        current_states = self._table.get_column_state()
-        self._model.set_fetch_enabled(False)
-        self._enqueued_thumb_keys.clear()
-        self._deferred_expand_queue.clear()
-        self._expansion_phase = _ExpansionPhase.IDLE
-        self._group_by_menu.set_options(
-            self._controller.get_group_by_options(),
-            self._controller.group_by_key,
-        )
+    def _enum_filter_values(self) -> dict[str, list[str]]:
+        """Return the project's known values for each enum-backed filter.
+
+        Statuses are scoped per entity by the project config; a scope
+        that names none falls back to every status the project defines.
+
+        Returns:
+            Mapping of filter key to its values, sorted for display.
+        """
         by_name = self._controller.project_info.get("by_name", {})
         statuses = self._controller.project_info.get("statuses", [])
-        status_values = {
+        status_values: dict[str, list[str]] = {
             "status": [],
             "productStatus": [],
             "folderStatus": [],
@@ -753,10 +751,9 @@ class BrowserTable(AYContainer):
         for key, values in status_values.items():
             if not values:
                 status_values[key] = all_status_names
-        self._table_filter.set_column_filter_values({
-            "productBaseType": sorted(
-                by_name.get("productBaseTypes", {})
-            ),
+
+        return {
+            "productBaseType": sorted(by_name.get("productBaseTypes", {})),
             **{
                 key: sorted(values)
                 for key, values in status_values.items()
@@ -765,7 +762,22 @@ class BrowserTable(AYContainer):
             "taskType": sorted(by_name.get("taskTypes", {})),
             "tags": sorted(by_name.get("tags", {})),
             "taskTags": sorted(by_name.get("tags", {})),
-        })
+        }
+
+    def on_project_info_changed(self) -> None:
+        """Rebuild columns now that version attributes are available."""
+        current_states = self._table.get_column_state()
+        self._model.set_fetch_enabled(False)
+        self._enqueued_thumb_keys.clear()
+        self._deferred_expand_queue.clear()
+        self._expansion_phase = _ExpansionPhase.IDLE
+        self._group_by_menu.set_options(
+            self._controller.get_group_by_options(),
+            self._controller.group_by_key,
+        )
+        self._table_filter.set_column_filter_values(
+            self._enum_filter_values()
+        )
         self._model.reset_data()
         self._model.set_columns(
             self._build_columns(self._controller.current_category)
@@ -1863,7 +1875,14 @@ class BrowserTable(AYContainer):
         return core_columns + extension_columns
 
     def _build_filters(self) -> list[FilterEntry]:
-        """Build the complete filter schema independently of the view."""
+        """Build the complete filter schema independently of the view.
+
+        Enum-backed entries carry their project values directly, rather
+        than relying on them arriving later through a separate channel:
+        an entry rebuilt after those values were pushed would otherwise
+        have nothing to offer until they were pushed again.
+        """
+        enum_values = self._enum_filter_values()
         filters = [
             FilterEntry(
                 "productName", "Name",
@@ -1871,18 +1890,22 @@ class BrowserTable(AYContainer):
             ),
             FilterEntry(
                 "productType", "Type",
+                values=enum_values["productType"],
                 icon="category", entity="Product",
             ),
             FilterEntry(
                 "productBaseType", "Base Type",
+                values=enum_values["productBaseType"],
                 icon="category", entity="Product",
             ),
             FilterEntry(
                 "productStatus", "Status",
+                values=enum_values["productStatus"],
                 icon="arrow_circle_right", entity="Product",
             ),
             FilterEntry(
                 "status", "Status",
+                values=enum_values["status"],
                 icon="arrow_circle_right", entity="Version",
             ),
             FilterEntry(
@@ -1901,6 +1924,7 @@ class BrowserTable(AYContainer):
             ),
             FilterEntry(
                 "tags", "Tags",
+                values=enum_values["tags"],
                 icon="local_offer", entity="Version",
             ),
             FilterEntry(
@@ -1909,19 +1933,23 @@ class BrowserTable(AYContainer):
             ),
             FilterEntry(
                 "folderStatus", "Status",
+                values=enum_values["folderStatus"],
                 icon="arrow_circle_right", entity="Folder",
             ),
             FilterEntry("task", "Task", icon="task", entity="Task"),
             FilterEntry(
                 "taskType", "Type",
+                values=enum_values["taskType"],
                 icon="task_alt", entity="Task",
             ),
             FilterEntry(
                 "taskStatus", "Status",
+                values=enum_values["taskStatus"],
                 icon="arrow_circle_right", entity="Task",
             ),
             FilterEntry(
                 "taskTags", "Tags",
+                values=enum_values["taskTags"],
                 icon="local_offer", entity="Task",
             ),
 
