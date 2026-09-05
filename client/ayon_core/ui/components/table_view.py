@@ -363,6 +363,7 @@ class AYTableView(StyleMixin, QTreeView):
         # row transitions and stays highlighted until the next full repaint.
         self._hovered_row: int = -1
         self._hovered_row_rect: QRect = QRect()
+        self._delegate_cursor_shape: Qt.CursorShape | None = None
 
         # Track the currently hovered index so we may pass hover state to
         # editors.
@@ -923,10 +924,47 @@ class AYTableView(StyleMixin, QTreeView):
             # Repaint the new row so its indicator lights up immediately.
             self._repaint_row(self._hovered_row_rect)
 
+        self._update_delegate_hover(new_idx, event.pos())
         super().mouseMoveEvent(event)
+
+    def _update_delegate_hover(
+        self, index: QModelIndex, pos: QtCore.QPoint
+    ) -> None:
+        """Let a column delegate react to the cursor moving inside a cell.
+
+        Qt repaints a cell when the *hovered index* changes, not while the
+        cursor travels within one, so a delegate painting a hover-only
+        affordance needs the cell repainted on every move.  The delegate
+        also gets to name the cursor shape for its interactive region.
+
+        Args:
+            index: Index under the cursor, may be invalid.
+            pos: Cursor position in viewport coordinates.
+        """
+        delegate = self.itemDelegate()
+        get_column_delegate = getattr(delegate, "column_delegate", None)
+        column_delegate = (
+            get_column_delegate(index)
+            if index.isValid() and get_column_delegate is not None
+            else None
+        )
+        cursor_shape_at = getattr(column_delegate, "cursor_shape_at", None)
+        shape = None
+        if cursor_shape_at is not None:
+            rect = self.visualRect(index)
+            self.viewport().update(rect)
+            shape = cursor_shape_at(rect, pos, index)
+        if shape == self._delegate_cursor_shape:
+            return
+        self._delegate_cursor_shape = shape
+        if shape is None:
+            self.viewport().unsetCursor()
+        else:
+            self.viewport().setCursor(shape)
 
     def leaveEvent(self, event: "QtCore.QEvent") -> None:
         """Clear hover tracking when the mouse exits the widget."""
+        self._update_delegate_hover(QModelIndex(), QtCore.QPoint(-1, -1))
         self._repaint_row(self._hovered_row_rect)
         self._hovered_row = -1
         self._hovered_row_rect = QRect()
@@ -1160,6 +1198,15 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
     so server-push updates reach live widgets without extra wiring.
     User edits are written back via :meth:`setModelData`.
 
+    A column may also set ``delegate`` on its :class:`TableColumn` to
+    customise painting without owning a widget.  Such a delegate may
+    implement ``initStyleOption(option, index)`` to tweak the standard
+    text/icon rendering, and/or ``paint_content(painter, option, index,
+    content_rect, styles)`` to draw the whole cell foreground itself while
+    still inheriting the shared background, grid and hover painting.
+    ``styles`` is the ``base``/``hover``/``selected`` style mapping for
+    the view.
+
     Args:
         parent: The parent widget (expected to be an AYTableView instance).
         style_model: StyleData instance providing colour/dimension data.
@@ -1175,16 +1222,72 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         super().__init__(parent)
         self._style_model = style_model
         self._variant_str = variant
+        self._styles_cache: dict[str, dict] | None = None
 
     def _table_styles(self) -> dict[str, dict]:
-        """Return base, hover and selected style dicts at once."""
-        if self._style_model is None:
-            raise ValueError("TableItemDelegate requires a style model")
-        return self._style_model.get_styles(
-            "AYTableView",
-            self._variant_str,
-            ["base", "hover", "selected"],
-        )
+        """Return base, hover and selected style dicts at once.
+
+        Resolved once and kept: every state lookup deep-copies the style
+        data, which is far too costly to repeat for each of the hundreds
+        of cells repainted on a single hover move.  The underlying style
+        data is loaded once per process, so the cache never goes stale.
+        """
+        if self._styles_cache is None:
+            if self._style_model is None:
+                raise ValueError("TableItemDelegate requires a style model")
+            self._styles_cache = self._style_model.get_styles(
+                "AYTableView",
+                self._variant_str,
+                ["base", "hover", "selected"],
+            )
+        return self._styles_cache
+
+    @staticmethod
+    def model_column(index: QtCore.QModelIndex) -> Any:
+        """Return the :class:`TableColumn` behind *index*, or ``None``."""
+        from ..components.table_model import PaginatedTableModel
+
+        model = index.model()
+        if hasattr(model, "sourceModel"):
+            model = model.sourceModel()
+        if not isinstance(model, PaginatedTableModel):
+            return None
+        columns = model.columns
+        column = index.column()
+        if 0 <= column < len(columns):
+            return columns[column]
+        return None
+
+    def column_delegate(self, index: QtCore.QModelIndex) -> Any:
+        """Return the delegate a column declared for itself, or ``None``.
+
+        The view only ever installs this shared delegate, so everything a
+        column delegate wants to do - painting, event handling, cursor
+        shapes - is routed through here.
+        """
+        column = self.model_column(index)
+        return None if column is None else column.delegate
+
+    def editorEvent(
+        self,
+        event: QtCore.QEvent,
+        model: QtCore.QAbstractItemModel,
+        option: QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> bool:
+        """Offer item events to the column's own delegate first.
+
+        Qt only delivers events to the delegate the *view* installed, so a
+        column delegate that owns a clickable region would never hear about
+        the click without this hop.  ``option.rect`` is the cell rect, so
+        the column delegate can hit-test against exactly what it painted.
+        """
+        column_delegate = self.column_delegate(index)
+        if column_delegate is not None:
+            handler = getattr(column_delegate, "editorEvent", None)
+            if handler is not None and handler(event, model, option, index):
+                return True
+        return super().editorEvent(event, model, option, index)
 
     def sizeHint(
         self,
@@ -1201,13 +1304,8 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         override = getattr(view, "_row_height_override", None)
         if isinstance(override, int) and override > 0:
             h = override
-        elif self._style_model:
-            style = self._style_model.get_style(
-                "AYTableView", self._variant_str
-            )
-            h = int(style.get("item-height", 32))
         else:
-            h = 32
+            h = int(self._table_styles()["base"].get("item-height", 32))
         return QtCore.QSize(option.rect.width(), h)
 
     def createEditor(
@@ -1300,24 +1398,24 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> None:
         """Paint a table cell directly, bypassing QStyle."""
-        from ..components.table_model import PaginatedTableModel
-
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
 
-        src_model = index.model()
-        if hasattr(src_model, "sourceModel"):
-            src_model = src_model.sourceModel()
-        has_widget = False
-        model_column = None
-        if isinstance(src_model, PaginatedTableModel):
-            col = index.column()
-            cols = src_model.columns
-            if 0 <= col < len(cols):
-                model_column = cols[col]
-                has_widget = model_column.widget_factory is not None
-                if model_column.delegate is not None:
-                    model_column.delegate.initStyleOption(opt, index)
+        model_column = self.model_column(index)
+        has_widget = (
+            model_column is not None
+            and model_column.widget_factory is not None
+        )
+        # A column delegate may recolour the text through the option's
+        # palette (the QStyledItemDelegate convention).  Nothing else here
+        # reads the palette, so remember an override explicitly.
+        delegate_text_color = None
+        if model_column is not None and model_column.delegate is not None:
+            before = opt.palette.color(QPalette.ColorRole.Text)
+            model_column.delegate.initStyleOption(opt, index)
+            after = opt.palette.color(QPalette.ColorRole.Text)
+            if after != before:
+                delegate_text_color = after
 
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -1401,20 +1499,35 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             painter.restore()
             return
 
+        # --- column-supplied cell content ---
+        # A column delegate exposing ``paint_content`` takes over the
+        # foreground of the cell while still inheriting the background,
+        # grid and hover painting done above.
+        if model_column is not None and model_column.delegate is not None:
+            paint_content = getattr(
+                model_column.delegate, "paint_content", None
+            )
+            if paint_content is not None:
+                item_rect = QRect(opt.rect).adjusted(
+                    item_padding[1],
+                    item_padding[0],
+                    -item_padding[1],
+                    -item_padding[0],
+                )
+                paint_content(painter, opt, index, item_rect, styles)
+                painter.restore()
+                return
+
         # --- text colour ---
+        # A column delegate's palette override wins, then the row's own
+        # ForegroundRole, then the view's style.
         index_color = index.data(role=Qt.ItemDataRole.ForegroundRole)
-        if is_selected:
-            text_color = (
-                index_color.color()
-                if index_color
-                else QColor(base_style.get("color", "#f4f5f5"))
-            )
+        if delegate_text_color is not None:
+            text_color = QColor(delegate_text_color)
+        elif index_color:
+            text_color = index_color.color()
         else:
-            text_color = (
-                index_color.color()
-                if index_color
-                else QColor(base_style.get("color", "#f4f5f5"))
-            )
+            text_color = QColor(base_style.get("color", "#f4f5f5"))
 
         # disabled dimming
         if not (state & QStyle.StateFlag.State_Enabled):

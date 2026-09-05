@@ -5,12 +5,12 @@ Centralises all business logic and data fetching for the reviews UI.
 
 from __future__ import annotations
 
-import datetime
 import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+import arrow
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
 from ayon_core.ui.components.table_model import (
@@ -55,10 +55,23 @@ from ayon_core.tools.browser.ui.browser_queries import (
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 
+log = Logger.get_logger(__name__)
+
 # Maximum number of pages to fetch when building product group headers.
 # Each page contains up to 1 000 products, so this caps the total at
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
+
+
+def _folder_sort_key(folder: dict[str, Any]) -> str:
+    """Return the case-insensitive label used to order sibling folders.
+
+    ``ayon_api.get_folders`` returns folders in server order, which is not
+    alphabetical. Sorting on the displayed label keeps the Browser
+    hierarchy consistent with the Launcher, whose folder proxy model sorts
+    case-insensitively on the same label.
+    """
+    return (folder.get("label") or folder.get("name") or "").lower()
 
 
 def _normalize_entity_id(value: Any) -> str:
@@ -71,19 +84,28 @@ def _normalize_entity_id(value: Any) -> str:
 
 
 def _timestamp_to_date(timestamp: str) -> str:
-    """Convert ISO timestamp string to human-readable date.
+    """Convert a server timestamp to a human-readable local date.
+
+    Server timestamps arrive in assorted ISO 8601 flavours (``Z`` suffix,
+    numeric offsets, fractional seconds). ``arrow`` parses all of them and
+    converts to the local timezone, matching how the legacy Loader tool
+    presents publish times.
 
     Args:
-        timestamp: ISO 8601 timestamp string.
+        timestamp: ISO 8601 timestamp string or POSIX timestamp.
 
     Returns:
-        Formatted date string as DD-MM-YYYY HH:MM:SS.
+        Formatted local date string as DD-MM-YYYY HH:MM:SS, or ``""``
+        when the value is empty or cannot be parsed.
     """
     if not timestamp:
         return ""
-    return datetime.datetime.fromisoformat(timestamp).strftime(
-        "%d-%m-%Y %H:%M:%S"
-    )
+    try:
+        local = arrow.get(timestamp).to("local")
+    except Exception:  # noqa: BLE001 - server may send anything
+        log.warning("Could not parse timestamp %r", timestamp)
+        return str(timestamp)
+    return local.strftime("%d-%m-%Y %H:%M:%S")
 
 
 class BrowserWidgetController(QtCore.QObject):
@@ -113,6 +135,9 @@ class BrowserWidgetController(QtCore.QObject):
             BrowserSlicerCategory.HIERARCHY.value
         )
         self._project_info: dict[str, Any] = {}
+        self._appearance_defaults: dict[str, dict[str, Any]] = {}
+        self._boolean_attr_defaults: dict[str, dict[str, bool]] = {}
+        self._user_full_names: dict[str, str] = {}
         self._review_sessions_cache: list[dict[str, Any]] = []
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
@@ -748,6 +773,58 @@ class BrowserWidgetController(QtCore.QObject):
             return self._fetch_folders(parent_id)
         return self._fetch_reviews(parent_id)
 
+    def _version_query_kwargs(
+        self,
+        query_filters: dict[str, Any],
+        version_filter: str | None = None,
+        product_filter: str | None = None,
+    ) -> dict[str, Any]:
+        """Return the filter arguments every version-page query shares.
+
+        Args:
+            query_filters: Result of :meth:`_get_query_filters`.
+            version_filter: Overrides the version filter from
+                *query_filters* - used when a group header narrows it.
+            product_filter: Overrides the product filter the same way.
+
+        Returns:
+            Keyword arguments for :meth:`_get_versions_page`.
+        """
+        return {
+            "version_filter": (
+                query_filters["version_filter"]
+                if version_filter is None
+                else version_filter
+            ),
+            "product_filter": (
+                query_filters["product_filter"]
+                if product_filter is None
+                else product_filter
+            ),
+            "task_filter": query_filters["task_filter"],
+            "folder_filter": query_filters["folder_filter"],
+            "featured_only": query_filters["featured_only"],
+            "latest_per_folder": (
+                self._latest_per_folder
+                and self._group_by_key != GROUP_BY_PRODUCT_KEY
+            ),
+            "search": query_filters["search"],
+            "has_reviewables": query_filters["has_reviewables"],
+        }
+
+    @staticmethod
+    def _page_cursor(
+        page_info: dict[str, Any], descending: bool
+    ) -> tuple[bool, str]:
+        """Return the has-more flag and cursor for the traversal direction.
+
+        Descending pages walk backwards through the connection, so the
+        next page is the one before the current window.
+        """
+        if descending:
+            return page_info["hasPreviousPage"], page_info["startCursor"]
+        return page_info["hasNextPage"], page_info["endCursor"]
+
     def fetch_versions_page(
         self,
         page_number: int,
@@ -886,30 +963,18 @@ class BrowserWidgetController(QtCore.QObject):
                     include_folder_children=self._include_folder_children,
                     folder_ids=folder_ids,
                     product_ids=product_ids,
-                    version_filter=version_filter,
-                    product_filter=product_filter,
-                    task_filter=query_filters["task_filter"],
-                    folder_filter=query_filters["folder_filter"],
-                    featured_only=query_filters["featured_only"],
-                    latest_per_folder=(
-                        self._latest_per_folder
-                        and self._group_by_key != GROUP_BY_PRODUCT_KEY
+                    **self._version_query_kwargs(
+                        query_filters, version_filter, product_filter
                     ),
-                    search=query_filters["search"],
-                    has_reviewables=query_filters["has_reviewables"],
                 )
                 rows = [
                     self._transform_version_edge(e)
                     for e in edges
                 ]
-                if descending:
-                    self._folder_has_more[parent_id] = page_info[
-                        "hasPreviousPage"
-                    ]
-                    self._folder_cursors[parent_id] = page_info["startCursor"]
-                else:
-                    self._folder_has_more[parent_id] = page_info["hasNextPage"]
-                    self._folder_cursors[parent_id] = page_info["endCursor"]
+                (
+                    self._folder_has_more[parent_id],
+                    self._folder_cursors[parent_id],
+                ) = self._page_cursor(page_info, descending)
                 return rows
 
         # -- Default hierarchy / flat mode --------------------------------
@@ -948,28 +1013,16 @@ class BrowserWidgetController(QtCore.QObject):
                 descending=descending,
                 include_folder_children=self._include_folder_children,
                 folder_ids=query_folder_ids,
-                version_filter=query_filters["version_filter"],
-                product_filter=query_filters["product_filter"],
-                task_filter=query_filters["task_filter"],
-                folder_filter=query_filters["folder_filter"],
-                featured_only=query_filters["featured_only"],
-                latest_per_folder=(
-                    self._latest_per_folder
-                    and self._group_by_key != GROUP_BY_PRODUCT_KEY
-                ),
-                search=query_filters["search"],
-                has_reviewables=query_filters["has_reviewables"],
+                **self._version_query_kwargs(query_filters),
             )
             version_rows = [
                 self._transform_version_edge(e)
                 for e in edges
             ]
-            if descending:
-                self._folder_has_more[parent_id] = page_info["hasPreviousPage"]
-                self._folder_cursors[parent_id] = page_info["startCursor"]
-            else:
-                self._folder_has_more[parent_id] = page_info["hasNextPage"]
-                self._folder_cursors[parent_id] = page_info["endCursor"]
+            (
+                self._folder_has_more[parent_id],
+                self._folder_cursors[parent_id],
+            ) = self._page_cursor(page_info, descending)
             self.log.debug(
                 "Received %d sub-folders and %d child version edges for "
                 "folder %r, page info: %s",
@@ -1005,17 +1058,7 @@ class BrowserWidgetController(QtCore.QObject):
             version_ids=version_ids,
             folder_ids=folder_ids,
             include_folder_children=self._include_folder_children,
-            version_filter=query_filters["version_filter"],
-            product_filter=query_filters["product_filter"],
-            task_filter=query_filters["task_filter"],
-            folder_filter=query_filters["folder_filter"],
-            featured_only=query_filters["featured_only"],
-            latest_per_folder=(
-                self._latest_per_folder
-                and self._group_by_key != GROUP_BY_PRODUCT_KEY
-            ),
-            search=query_filters["search"],
-            has_reviewables=query_filters["has_reviewables"],
+            **self._version_query_kwargs(query_filters),
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -1025,12 +1068,7 @@ class BrowserWidgetController(QtCore.QObject):
             for e in edges
         ]
 
-        if descending:
-            has_more = page_info["hasPreviousPage"]
-            next_cursor = page_info["startCursor"]
-        else:
-            has_more = page_info["hasNextPage"]
-            next_cursor = page_info["endCursor"]
+        has_more, next_cursor = self._page_cursor(page_info, descending)
 
         cursor_advanced = bool(next_cursor) and next_cursor != cursor
         self._graphql_has_more = bool(has_more and cursor_advanced)
@@ -1144,17 +1182,7 @@ class BrowserWidgetController(QtCore.QObject):
                 descending=req.descending,
                 include_folder_children=self._include_folder_children,
                 folder_ids=query_folder_ids,
-                version_filter=query_filters["version_filter"],
-                product_filter=query_filters["product_filter"],
-                task_filter=query_filters["task_filter"],
-                folder_filter=query_filters["folder_filter"],
-                featured_only=query_filters["featured_only"],
-                latest_per_folder=(
-                    self._latest_per_folder
-                    and self._group_by_key != GROUP_BY_PRODUCT_KEY
-                ),
-                search=query_filters["search"],
-                has_reviewables=query_filters["has_reviewables"],
+                **self._version_query_kwargs(query_filters),
             )
 
             version_rows = [
@@ -1167,12 +1195,10 @@ class BrowserWidgetController(QtCore.QObject):
                 else []
             )
 
-            if req.descending:
-                self._folder_has_more[parent_id] = page_info["hasPreviousPage"]
-                self._folder_cursors[parent_id] = page_info["startCursor"]
-            else:
-                self._folder_has_more[parent_id] = page_info["hasNextPage"]
-                self._folder_cursors[parent_id] = page_info["endCursor"]
+            (
+                self._folder_has_more[parent_id],
+                self._folder_cursors[parent_id],
+            ) = self._page_cursor(page_info, req.descending)
 
             result[parent_id] = folder_rows + version_rows
 
@@ -1409,7 +1435,10 @@ class BrowserWidgetController(QtCore.QObject):
                 "allAttrib",
             },
         )
-        return [self._build_folder_row(f) for f in folders]
+        return [
+            self._build_folder_row(f)
+            for f in sorted(folders, key=_folder_sort_key)
+        ]
 
     def _build_folder_row(self, folder: dict[str, Any]) -> dict[str, Any]:
         """Build a table row dict from a folder entity.
@@ -1432,10 +1461,17 @@ class BrowserWidgetController(QtCore.QObject):
                 "product/version": label,
                 "product/version__icon": icon,
                 "folderName": label,
+                "folderName__icon": icon,
+                "folderName__icon_color": self._pinfo(
+                    "folderTypes", folder_type, "color"
+                ),
+                "folderId": folder.get("id", ""),
+                "project_name": self._current_project,
                 "entityType": "Folder",
                 "entityType__icon": "folder",
             }
         )
+        row.update(self._boolean_attr_defaults.get("folder", {}))
         for name, value in self._decode_attributes(
             folder.get("allAttrib")
         ).items():
@@ -1524,8 +1560,14 @@ class BrowserWidgetController(QtCore.QObject):
             row["productType__icon"] = self._pinfo(
                 "productTypes", product_type, "icon", "category"
             )
+            row["productType__color"] = self._pinfo(
+                "productTypes", product_type, "color", ""
+            )
             row["folderName"] = featured_version.get("parents", ["", ""])[-2]
             row["author"] = featured_version.get("author", "")
+            row["author__label"] = self._user_full_names.get(
+                row["author"], row["author"]
+            )
             v_str = (
                 f"({num_versions} versions)"
                 if num_versions is not None
@@ -1535,8 +1577,12 @@ class BrowserWidgetController(QtCore.QObject):
                 f"{featured_version.get('name', '')} {v_str}".strip()
             )
             row["productName"] = featured_version.get("parents", [""])[-1]
-            row["createdAt"] = featured_version.get("createdAt", "")
-            row["updatedAt"] = featured_version.get("updatedAt", "")
+            row["createdAt"] = _timestamp_to_date(
+                featured_version.get("createdAt", "")
+            )
+            row["updatedAt"] = _timestamp_to_date(
+                featured_version.get("updatedAt", "")
+            )
         return row
 
     def _fetch_group_headers(self) -> list[dict[str, Any]]:
@@ -2214,6 +2260,7 @@ class BrowserWidgetController(QtCore.QObject):
             folders = [
                 f for f in folders if f["id"] in self._folder_id_scope
             ]
+        folders.sort(key=_folder_sort_key)
         return [
             TreeNode(
                 id=f["id"],
@@ -2306,21 +2353,40 @@ class BrowserWidgetController(QtCore.QObject):
                 s["name"]: s for s in project_entity.get("statuses", [])
             },
             "tags": {t["name"]: t for t in project_entity.get("tags", [])},
-            "productTypes": (
-                {
-                    t["name"]: t
-                    for t in product_base_types.get("definitions", [])
-                }
-                | {"default": product_base_types.get("default", {})}
-            ),
+            "productTypes": {
+                t["name"]: t
+                for t in product_base_types.get("definitions", [])
+            },
             "productBaseTypes": {
                 t["name"]: t
                 for t in product_base_types.get("definitions", [])
             },
         }
+        # Anatomy's "Default appearance" for product base types. Both maps
+        # above are keyed by definition name only, so a product type the
+        # anatomy does not define falls back to this - the same rule the
+        # web UI applies in ``getAnatomyType``.
+        product_type_default = product_base_types.get("default") or {}
+        self._appearance_defaults = {
+            "productTypes": product_type_default,
+            "productBaseTypes": product_type_default,
+        }
+        self._user_full_names = self._fetch_user_full_names(name)
         self._attributes_by_scope = {
             scope: ayon_api.get_attributes_for_type(scope)
             for scope in ("folder", "task", "product", "version")
+        }
+        # The server omits attributes an entity never set, so a boolean
+        # column would have no value to paint for exactly the rows where
+        # it is off. Seed every boolean attribute as False and let the
+        # fetched values overwrite it.
+        self._boolean_attr_defaults = {
+            scope: {
+                f"attr:{scope}:{name}": False
+                for name, definition in definitions.items()
+                if definition.get("type") == "boolean"
+            }
+            for scope, definitions in self._attributes_by_scope.items()
         }
         self._version_attributes = self._attributes_by_scope["version"]
         self._rebuild_group_by_options()
@@ -2372,24 +2438,87 @@ class BrowserWidgetController(QtCore.QObject):
     ) -> Any:
         """Get a project info value by category and key.
 
+        Categories that declare a fallback appearance in the project
+        anatomy (product types) resolve to it before *default* is used, so
+        an undefined product type still gets the anatomy's icon and colour
+        instead of a generic placeholder.
+
         Args:
             category: One of ``"folderTypes"``, ``"taskTypes"``,
-                ``"linkTypes"``, ``"statuses"``, ``"tags"``, or
-                ``"productTypes"``.
+                ``"linkTypes"``, ``"statuses"``, ``"tags"``,
+                ``"productTypes"`` or ``"productBaseTypes"``.
             name: The name of the entity to look up within the category.
             key: The name of the item to look up.
-            default: The value to return if the key is not found.
+            default: The value to return if nothing else supplies one.
 
         Returns:
-            The value for the given key in the given category, or the
-            specified default.
+            The value for the given key in the given category, the
+            category's anatomy fallback, or *default*.
         """
-        return (
+        value = (
             self._project_info.get("by_name", {})
             .get(category, {})
             .get(name, {})
-            .get(key, default)
+            .get(key)
         )
+        if value is None:
+            value = self._appearance_defaults.get(category, {}).get(key)
+        return default if value is None else value
+
+    @staticmethod
+    def _fetch_user_full_names(project_name: str) -> dict[str, str]:
+        """Return a login to full-name mapping for the project's users.
+
+        Author columns display the full name the way the web UI does; the
+        login stays the stored value so filtering and sorting keep working
+        against what the server indexes.
+
+        Args:
+            project_name: Project whose users should be resolved.
+
+        Returns:
+            Mapping of login name to full name. Users without a full name
+            are omitted so callers can fall back to the login.
+        """
+        try:
+            users = ayon_api.get_users(project_name=project_name) or []
+        except Exception:  # noqa: BLE001 - users are a display nicety
+            log.warning(
+                "Could not fetch users for project %r", project_name,
+                exc_info=True,
+            )
+            return {}
+        output = {}
+        for user in users:
+            if not isinstance(user, dict):
+                continue
+            name = str(user.get("name") or "").strip()
+            full_name = str(
+                (user.get("ownAttrib") or {}).get("fullName") or ""
+            ).strip()
+            if name and full_name:
+                output[name] = full_name
+        return output
+
+    def _build_tag_chips(
+        self, tags: list[str] | None
+    ) -> list[tuple[str, str]]:
+        """Return ``(name, colour)`` pairs for a row's tags.
+
+        Colours come from the project anatomy tag definitions; tags that
+        are not defined there fall back to an empty colour so the painter
+        can use a neutral chip background.
+
+        Args:
+            tags: Tag names set on the entity, or ``None``.
+
+        Returns:
+            List of ``(tag_name, colour)`` tuples in their original order.
+        """
+        return [
+            (tag, self._pinfo("tags", tag, "color", "") or "")
+            for tag in (tags or [])
+        ]
 
     def _get_versions_page(
         self,
@@ -2489,8 +2618,6 @@ class BrowserWidgetController(QtCore.QObject):
             variables["first"] = page_size
             variables["after"] = cursor or None
 
-        # self.log.info(GET_VERSIONS_QUERY)
-        # self.log.info(variables)
         requested_keys = set(self._requested_column_keys or ())
         requested_keys.update(
             self._column_manager.get_required_query_keys(
@@ -2552,6 +2679,7 @@ class BrowserWidgetController(QtCore.QObject):
         folder_attrib = self._decode_attributes(folder.get("allAttrib"))
         product_type = product.get("productType", "")
         product_base_type = product.get("productBaseType", "")
+        folder_type = folder.get("folderType", "")
         task = n.get("task", {}) or {}
         task_attrib = self._decode_attributes(task.get("allAttrib"))
         frame_start = all_attrib.get("frameStart", "")
@@ -2595,14 +2723,31 @@ class BrowserWidgetController(QtCore.QObject):
                 "productTypes", product_type, "color"
             ),
             "folderName": folder.get("name", ""),
+            "folderName__icon": self._pinfo(
+                "folderTypes", folder_type, "icon", "folder"
+            ),
+            "folderName__icon_color": self._pinfo(
+                "folderTypes", folder_type, "color"
+            ),
             "author": n.get("author", ""),
+            "author__label": self._user_full_names.get(
+                n.get("author", ""), n.get("author", "")
+            ),
             "version": version_name,
             "productName": product.get("name", ""),
             "taskType": task.get("taskType", ""),
             "taskStatus": task.get("status", ""),
             "task": task.get("name", ""),
+            "task__icon": self._pinfo(
+                "taskTypes", task.get("taskType", ""), "icon", "check_circle"
+            ),
+            "task__icon_color": self._pinfo(
+                "taskTypes", task.get("taskType", ""), "color"
+            ),
             "tags": ", ".join(n.get("tags", [])),
+            "tags__chips": self._build_tag_chips(n.get("tags")),
             "taskTags": ", ".join(task.get("tags", [])),
+            "taskTags__chips": self._build_tag_chips(task.get("tags")),
             "createdAt": _timestamp_to_date(n.get("createdAt", "")),
             "updatedAt": _timestamp_to_date(n.get("updatedAt", "")),
             "fps": all_attrib.get("fps", ""),
@@ -2630,12 +2775,14 @@ class BrowserWidgetController(QtCore.QObject):
             "taskId": task.get("id", ""),
             "heroVersionId": n.get("heroVersionId", ""),
         }
-        for scope, attributes in (
-            ("version", all_attrib),
-            ("product", product_attrib),
-            ("task", task_attrib),
-            ("folder", folder_attrib),
+        for scope, attributes, has_entity in (
+            ("version", all_attrib, True),
+            ("product", product_attrib, bool(product)),
+            ("task", task_attrib, bool(task)),
+            ("folder", folder_attrib, bool(folder)),
         ):
+            if has_entity:
+                row.update(self._boolean_attr_defaults.get(scope, {}))
             for name, value in attributes.items():
                 row[f"attr:{scope}:{name}"] = value
         return row

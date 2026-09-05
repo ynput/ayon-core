@@ -512,7 +512,13 @@ class PaginatedTableModel(QAbstractItemModel):
             if not icon_value:
                 return None
             if isinstance(icon_value, str):
-                icon_color = row_dict.get(f"{col_key}__color", "#ffffff")
+                # ``__icon_color`` colors the icon alone; ``__color``
+                # colors icon and text together.
+                icon_color = (
+                    row_dict.get(f"{col_key}__icon_color")
+                    or row_dict.get(f"{col_key}__color")
+                    or "#ffffff"
+                )
                 icon_fill = row_dict.get(f"{col_key}__icon_fill", False)
                 return get_icon(icon_value, color=icon_color, fill=icon_fill)
             if isinstance(icon_value, dict):
@@ -1203,8 +1209,9 @@ class PaginatedTableModel(QAbstractItemModel):
         """Infer column definitions from a sample row dictionary.
 
         Reserved keys (``id``, ``has_children``) and decorator suffixes
-        (``__icon``, ``__color``, ``__fill``, ``__short``, ``__tooltip``)
-        are excluded.
+        (``__icon``, ``__icon_color``, ``__icon_fill``, ``__color``,
+        ``__fill``, ``__short``, ``__tooltip``, ``__chips``) are
+        excluded.
 
         Args:
             row: A representative row dictionary.
@@ -1217,7 +1224,16 @@ class PaginatedTableModel(QAbstractItemModel):
             if key in ("id", "has_children"):
                 continue
             if key.endswith(
-                ("__icon", "__color", "__fill", "__short", "__tooltip")
+                (
+                    "__icon",
+                    "__icon_color",
+                    "__icon_fill",
+                    "__color",
+                    "__fill",
+                    "__short",
+                    "__tooltip",
+                    "__chips",
+                )
             ):
                 continue
             label = key.replace("_", " ").title()

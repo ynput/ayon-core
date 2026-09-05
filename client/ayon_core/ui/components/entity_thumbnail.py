@@ -85,6 +85,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         variant: Variants = Variants.Thumbnail,
         transparent: bool = False,
         image_inset: int = 1,
+        fill_area: bool = False,
         **kwargs,
     ):
         """A widget that displays a thumbnail image for an entity, with options
@@ -113,6 +114,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             transparent: Draw only the icon or thumbnail image, leaving the
                 parent widget responsible for the background and border.
             image_inset: Pixels reserved between the image and widget edges.
+            fill_area: Scale the image to cover the whole widget, cropping
+                the overflowing edges, instead of fitting it inside.
 
         Raises:
             ValueError: If both *file_cacher* and *async_file_cacher* are set.
@@ -135,6 +138,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         self._size = size
         self._transparent = transparent
         self._image_inset = max(0, image_inset)
+        self._fill_area = fill_area
         self._variant_str: str = variant.value
         self._placeholder_icon_name = placeholder_icon
         self._placeholder_scale = placeholder_scale
@@ -460,9 +464,15 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         """Handle the completion of the fade-in animation.
 
         Promotes the incoming pixmap to the button's icon and resets
-        the opacity state.
+        the opacity state.  In ``fill_area`` mode the pixmap deliberately
+        overflows the widget, and the button icon would scale it back to
+        fit, so it keeps being painted by :meth:`paintEvent` instead.
         """
         pixmap = self._incoming_pixmap
+        if self._fill_area and pixmap and not pixmap.isNull():
+            self._opacity = 1.0
+            self.update()
+            return
         if pixmap and not pixmap.isNull():
             icon = QIcon()
             icon.addPixmap(pixmap)
@@ -493,12 +503,22 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         self._anim.start()
 
     def _scaled_pixmap_from_path(self, fpath: str) -> QPixmap:
-        """Load and smoothly scale an image for the current widget size."""
+        """Load and smoothly scale an image for the current widget size.
+
+        With ``fill_area`` the image covers the widget and the overflow is
+        cropped by the clip rect in :meth:`paintEvent`; otherwise it is
+        fitted inside the widget.
+        """
         raw = QPixmap(fpath)
         raw.setDevicePixelRatio(self.devicePixelRatio())
+        aspect_mode = (
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding
+            if self._fill_area
+            else Qt.AspectRatioMode.KeepAspectRatio
+        )
         return raw.scaled(
             QSize(*self._size) * raw.devicePixelRatio(),
-            Qt.AspectRatioMode.KeepAspectRatio,
+            aspect_mode,
             Qt.TransformationMode.SmoothTransformation,
         )
 

@@ -143,14 +143,18 @@ def get_versions_query(column_keys: set[str] | None = None) -> str:
         product_fields.append("productBaseType")
     if "productStatus" in keys:
         product_fields.append("status")
-    if "taskType" in keys:
+    if keys.intersection({"task", "taskType"}):
+        # The Task column paints a task-type colored icon, so the type is
+        # needed even when the Task Type column itself is hidden.
         task_fields.append("taskType")
     if "taskStatus" in keys:
         task_fields.append("status")
     if "taskTags" in keys:
         task_fields.append("tags")
     if "folderName" in keys:
-        folder_fields.append("label")
+        # the Folder Name column paints a folder-type colored icon next to the
+        # label.
+        folder_fields.extend(("label", "folderType"))
     if "folderStatus" in keys:
         folder_fields.append("status")
 

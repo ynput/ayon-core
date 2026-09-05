@@ -15,6 +15,7 @@ from ayon_core.ui.components.table_filter import (
 from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.user_avatars import UserAvatarCache
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.views import (
     AYViewSelector,
@@ -39,6 +40,12 @@ from ayon_core.tools.browser.ui.browser_group_by import (
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 
+from ._browser_cell_delegates import (
+    BooleanCheckboxDelegate,
+    EntityLinkDelegate,
+    TagsDelegate,
+    UserDelegate,
+)
 from ._browser_model import VisibilityAwarePaginatedTableModel
 from ._browser_thumbnails import (
     LazyThumbnailWidget,
@@ -57,6 +64,10 @@ from ._browser_toolbar import (
 log = Logger.get_logger(__name__)
 
 BROWSER_VIEW_TYPE = "desktop.browser"
+
+#: Narrowest a column may be dragged: one 18 px cell icon plus the cell's
+#: horizontal padding on either side.
+ICON_ONLY_COLUMN_WIDTH = 26
 
 
 class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
@@ -136,8 +147,33 @@ class BrowserTable(AYContainer):
         self._controller = controller
         self._table = AYTableView(self)
         self._table.set_row_height(BROWSER_VIEW_DEFAULTS.row_height)
+        # Entity columns paint a hover pill that links to the web UI. The
+        # delegates own their own hit testing and click handling; the view
+        # routes item events to them.
+        self._entity_link_delegates: dict[str, EntityLinkDelegate] = {
+            "folderName": EntityLinkDelegate(
+                "folder", "folderId", parent=self._table
+            ),
+            "task": EntityLinkDelegate(
+                "task", "taskId", parent=self._table
+            ),
+        }
+        self._tags_delegate = TagsDelegate(self._table)
+        self._boolean_delegate = BooleanCheckboxDelegate(self._table)
+        self._in_scene_delegate = LoadedInSceneDelegate(self._table)
+        self._avatar_cache = UserAvatarCache(self)
+        self._avatar_cache.avatar_updated.connect(
+            lambda _name: self._table.viewport().update()
+        )
+        self._author_delegate = UserDelegate(
+            self._avatar_cache, parent=self._table
+        )
         self._table.viewport().installEventFilter(self)
         self._table.header().setSectionsMovable(True)
+        # Qt's default floor (38 px here) is wider than an icon-only cell,
+        # so columns whose content degrades to a single glyph - an avatar,
+        # a checkbox, a status dot - could never be dragged that narrow.
+        self._table.header().setMinimumSectionSize(ICON_ONLY_COLUMN_WIDTH)
         self._table.header().setMouseTracking(True)
         self._table.header().installEventFilter(self)
         self._table.header().setContextMenuPolicy(
@@ -457,9 +493,6 @@ class BrowserTable(AYContainer):
         )
         self._model.page_fetched.connect(self._on_page_fetched)
 
-        # Install event filter to catch viewport resize events
-        self._table.viewport().installEventFilter(self)
-
     # ------------------------------------------------------------------
     # Event handling
     # ------------------------------------------------------------------
@@ -549,14 +582,12 @@ class BrowserTable(AYContainer):
         """Restore tracked expansions for newly inserted rows."""
         proxy_model = self._table_filter.filter_model
         for row in range(first, last + 1):
-            source_index = self._model.index(row, 0, parent)
-            node_id = self._get_node_id(
-                proxy_model.mapFromSource(source_index)
+            proxy_index = proxy_model.mapFromSource(
+                self._model.index(row, 0, parent)
             )
+            node_id = self._get_node_id(proxy_index)
             if not node_id or node_id not in self._expanded_node_ids:
                 continue
-
-            proxy_index = proxy_model.mapFromSource(source_index)
             if proxy_index.isValid() and not self._table.isExpanded(
                 proxy_index
             ):
@@ -1516,7 +1547,6 @@ class BrowserTable(AYContainer):
             (header.height() - self._add_column_btn.height()) // 2,
         )
         self._add_column_btn.move(x_pos, y_pos)
-        # self._add_column_btn.raise_()
 
     def _get_default_column_state(
         self, columns: list[TableColumn] | None = None
@@ -1619,7 +1649,7 @@ class BrowserTable(AYContainer):
                 width=_w("In Scene", 80),
                 sortable=False,
                 icon="how_to_reg",
-                delegate=LoadedInSceneDelegate(self._table),
+                delegate=self._in_scene_delegate,
             ),
         ]
 
@@ -1643,14 +1673,20 @@ class BrowserTable(AYContainer):
                 label = data.get("title", name)
                 if scope != "version":
                     label = f"{entity} {label}"
+                attr_type = data.get("type")
                 attributes.append(TableColumn(
                     key,
                     label,
                     width=_w(label),
                     icon=get_attribute_icon(
-                        name, data.get("type"), bool(data.get("enum"))
+                        name, attr_type, bool(data.get("enum"))
                     ),
                     entity=entity,
+                    delegate=(
+                        self._boolean_delegate
+                        if attr_type == "boolean"
+                        else None
+                    ),
                 ))
 
         hierarchy = [
@@ -1668,12 +1704,19 @@ class BrowserTable(AYContainer):
             ),
             TableColumn(
                 "folderName",
-                "Folder Name",
-                width=_w("Folder Name"),
+                "Folder",
+                width=_w("Folder"),
                 filterable=False,
                 icon="folder",
+                delegate=self._entity_link_delegates["folderName"],
             ),
-            TableColumn("author", "Author", width=_w("Author"), icon="person"),
+            TableColumn(
+                "author",
+                "Author",
+                width=_w("Author", 120),
+                icon="person",
+                delegate=self._author_delegate,
+            ),
             TableColumn(
                 "createdAt", "Time", width=_w("Time"), icon="schedule"
             ),
@@ -1696,8 +1739,20 @@ class BrowserTable(AYContainer):
                 width=_w("Task Type"),
                 icon="task_alt",
             ),
-            TableColumn("task", "Task", width=_w("Task"), icon="task"),
-            TableColumn("tags", "Tags", width=_w("Tags"), icon="label"),
+            TableColumn(
+                "task",
+                "Task",
+                width=_w("Task"),
+                icon="task",
+                delegate=self._entity_link_delegates["task"],
+            ),
+            TableColumn(
+                "tags",
+                "Tags",
+                width=_w("Tags"),
+                icon="label",
+                delegate=self._tags_delegate,
+            ),
             TableColumn(
                 "frameStart", "Frame Start", width=_w("Frame Start"),
                 icon="first_page",
@@ -1724,7 +1779,13 @@ class BrowserTable(AYContainer):
                 width=_w("Product Base Type"),
                 icon="category",
             ),
-            TableColumn("tags", "Tags", width=_w("Tags"), icon="label"),
+            TableColumn(
+                "tags",
+                "Tags",
+                width=_w("Tags"),
+                icon="label",
+                delegate=self._tags_delegate,
+            ),
             TableColumn(
                 "productType",
                 "Product Type",
@@ -1737,7 +1798,13 @@ class BrowserTable(AYContainer):
                 width=_w("Task Type"),
                 icon="task_alt",
             ),
-            TableColumn("author", "Author", width=_w("Author"), icon="person"),
+            TableColumn(
+                "author",
+                "Author",
+                width=_w("Author", 120),
+                icon="person",
+                delegate=self._author_delegate,
+            ),
             TableColumn(
                 "version",
                 "Version",

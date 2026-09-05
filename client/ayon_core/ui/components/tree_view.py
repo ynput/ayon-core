@@ -251,16 +251,25 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
+        self._styles_cache: dict[str, dict] | None = None
 
     def _tv_styles(self) -> dict[str, dict]:
-        """Return *base*, *hover* and *selected* style dicts at once."""
-        if self._style_model is None:
-            return {"base": {}, "hover": {}, "selected": {}}
-        return self._style_model.get_styles(
-            "QTreeView",
-            self._variant_str,
-            ["base", "hover", "selected"],
-        )
+        """Return *base*, *hover* and *selected* style dicts at once.
+
+        Resolved once and kept: every state lookup deep-copies the style
+        data, which is too costly to repeat for each painted row.  The
+        underlying style data is loaded once per process, so the cached
+        result never goes stale.
+        """
+        if self._styles_cache is None:
+            if self._style_model is None:
+                return {"base": {}, "hover": {}, "selected": {}}
+            self._styles_cache = self._style_model.get_styles(
+                "QTreeView",
+                self._variant_str,
+                ["base", "hover", "selected"],
+            )
+        return self._styles_cache
 
     def initStyleOption(
         self,
@@ -292,11 +301,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._style_model:
-            style = self._style_model.get_style("QTreeView", self._variant_str)
-            h = int(style.get("item-height", 28))
-        else:
-            h = 28
+        h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
     def paint(
@@ -420,6 +425,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
 # =============================================================================
 # __main__ - visual test harness
 # =============================================================================
+
 
 if __name__ == "__main__":
     from qtpy import QtWidgets
