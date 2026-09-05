@@ -933,8 +933,8 @@
                     "border-color": "--md-sys-color-surface-container-dark",
                     "item-height": 24,
                     "item-padding": [
-                        1,
-                        2
+                        2,
+                        6
                     ],
                     "icon-text-spacing": 6,
                     "branch-indicator-color": "--md-sys-color-on-surface-dark",
