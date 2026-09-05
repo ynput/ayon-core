@@ -20,6 +20,7 @@ from ayon_core.tools.browser.ui.browser_controller import (
 )
 from ayon_core.tools.utils import get_qt_icon
 
+from ._browser_cell_delegates import format_relative_time
 from ._browser_thumbnails import _thumbnail_loader
 
 
@@ -315,8 +316,14 @@ class ReviewInspector(AYContainer):
         self._comment_value.setText(
             data.get("comment", default) or default if single else default
         )
-        self._created_value.setText(
-            data.get("createdAt", default) if single else default
+        created = (
+            format_relative_time(data.get("createdAt", "")) if single else ""
+        )
+        self._created_value.setText(created or default)
+        # The relative text is the readable one; keep the exact local
+        # timestamp a hover away.
+        self._created_value.setToolTip(
+            data.get("createdAt__tooltip", "") if single else ""
         )
         source = data.get("source", default) if single else default
         self._source_value.setToolTip(source)

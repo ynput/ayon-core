@@ -1577,12 +1577,10 @@ class BrowserWidgetController(QtCore.QObject):
                 f"{featured_version.get('name', '')} {v_str}".strip()
             )
             row["productName"] = featured_version.get("parents", [""])[-1]
-            row["createdAt"] = _timestamp_to_date(
-                featured_version.get("createdAt", "")
-            )
-            row["updatedAt"] = _timestamp_to_date(
-                featured_version.get("updatedAt", "")
-            )
+            row["createdAt"] = featured_version.get("createdAt", "")
+            row["createdAt__tooltip"] = _timestamp_to_date(row["createdAt"])
+            row["updatedAt"] = featured_version.get("updatedAt", "")
+            row["updatedAt__tooltip"] = _timestamp_to_date(row["updatedAt"])
         return row
 
     def _fetch_group_headers(self) -> list[dict[str, Any]]:
@@ -2748,8 +2746,13 @@ class BrowserWidgetController(QtCore.QObject):
             "tags__chips": self._build_tag_chips(n.get("tags")),
             "taskTags": ", ".join(task.get("tags", [])),
             "taskTags__chips": self._build_tag_chips(task.get("tags")),
-            "createdAt": _timestamp_to_date(n.get("createdAt", "")),
-            "updatedAt": _timestamp_to_date(n.get("updatedAt", "")),
+            # Raw timestamps: the Time column's delegate renders them as
+            # a relative time on every paint, and the tooltip carries the
+            # absolute local time.
+            "createdAt": n.get("createdAt", ""),
+            "createdAt__tooltip": _timestamp_to_date(n.get("createdAt", "")),
+            "updatedAt": n.get("updatedAt", ""),
+            "updatedAt__tooltip": _timestamp_to_date(n.get("updatedAt", "")),
             "fps": all_attrib.get("fps", ""),
             "width": folder_attrib.get("resolutionWidth", ""),
             "height": folder_attrib.get("resolutionHeight", ""),

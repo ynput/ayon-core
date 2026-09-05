@@ -43,6 +43,7 @@ from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 from ._browser_cell_delegates import (
     BooleanCheckboxDelegate,
     EntityLinkDelegate,
+    PrettyTimeDelegate,
     TagsDelegate,
     UserDelegate,
 )
@@ -160,6 +161,7 @@ class BrowserTable(AYContainer):
         }
         self._tags_delegate = TagsDelegate(self._table)
         self._boolean_delegate = BooleanCheckboxDelegate(self._table)
+        self._time_delegate = PrettyTimeDelegate(self._table)
         self._in_scene_delegate = LoadedInSceneDelegate(self._table)
         self._avatar_cache = UserAvatarCache(self)
         self._avatar_cache.avatar_updated.connect(
@@ -1718,7 +1720,11 @@ class BrowserTable(AYContainer):
                 delegate=self._author_delegate,
             ),
             TableColumn(
-                "createdAt", "Time", width=_w("Time"), icon="schedule"
+                "createdAt",
+                "Time",
+                width=_w("Time", 110),
+                icon="schedule",
+                delegate=self._time_delegate,
             ),
             TableColumn(
                 "version",
@@ -1818,7 +1824,11 @@ class BrowserTable(AYContainer):
                 icon="inventory_2",
             ),
             TableColumn(
-                "createdAt", "Time", width=_w("Time"), icon="schedule"
+                "createdAt",
+                "Time",
+                width=_w("Time", 110),
+                icon="schedule",
+                delegate=self._time_delegate,
             ),
             TableColumn(
                 "frameStart", "Frame Start", width=_w("Frame Start"),

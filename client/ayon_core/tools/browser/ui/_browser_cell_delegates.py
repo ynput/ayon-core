@@ -11,11 +11,13 @@ from __future__ import annotations
 import webbrowser
 from typing import Any
 
+import arrow
 import ayon_api
 from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import Logger
+from ayon_core.tools.utils.delegates import pretty_date
 from ayon_core.ui.color_utils import compute_color_for_contrast
 from ayon_core.ui.components.user_avatars import UserAvatarCache
 from ayon_core.ui.style import get_ayon_style, get_ayon_style_data
@@ -60,6 +62,32 @@ def build_entity_web_url(
         f"{base_url}/projects/{project_name}/{page}"
         f"?project={project_name}&type={entity_type}&id={entity_id}"
     )
+
+
+def format_relative_time(timestamp: str) -> str:
+    """Return a server timestamp as a relative, human-readable string.
+
+    Shares the legacy Loader's wording by going through the same
+    :func:`~ayon_core.tools.utils.delegates.pretty_date` helper the Loader
+    Time column uses: "just now", "7 seconds ago", "2:05 hours ago", then
+    an absolute date once the timestamp is more than a day old.
+
+    Args:
+        timestamp: ISO 8601 timestamp as returned by the server.
+
+    Returns:
+        The relative description, or ``""`` when there is no timestamp.
+    """
+    if not timestamp:
+        return ""
+    try:
+        local = arrow.get(timestamp).to("local")
+    except Exception:  # noqa: BLE001 - the server may send anything
+        log.debug("Could not parse timestamp %r", timestamp, exc_info=True)
+        return str(timestamp)
+    # ``pretty_date`` compares against a naive ``datetime.now()``, so hand
+    # it a naive datetime that is already in local time.
+    return pretty_date(local.naive)
 
 
 def open_entity_url(url: str) -> None:
@@ -734,3 +762,29 @@ class UserDelegate(QtWidgets.QStyledItemDelegate):
             | QtCore.Qt.AlignmentFlag.AlignLeft,
             label,
         )
+
+
+class PrettyTimeDelegate(QtWidgets.QStyledItemDelegate):
+    """Show a timestamp column the way the legacy Loader's Time column did.
+
+    The row keeps the raw server timestamp so server-side sorting and any
+    export stay exact; only the displayed text is relative, and it is
+    resolved per paint so "7 seconds ago" keeps counting up rather than
+    freezing at the value the row was built with.  The absolute local time
+    is supplied separately by the row as ``<key>__tooltip``.
+    """
+
+    def initStyleOption(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ) -> None:
+        """Replace the cell text with its relative description."""
+        super().initStyleOption(option, index)
+        column_key = column_key_for(index)
+        if not column_key:
+            return
+        row_data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+        pretty = format_relative_time(row_data.get(column_key) or "")
+        if pretty:
+            option.text = pretty
