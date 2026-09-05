@@ -23,6 +23,7 @@ from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.order import AYOrder
 from ayon_core.ui.components.page_button import AYPageButton
 from ayon_core.ui.components.slider import AYSlider
+from ayon_core.ui.utils import QSignalBlocker
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
@@ -629,7 +630,7 @@ class Customize(AYButtonMenu):
         self._show_empty_groups = enabled
         if not hasattr(self, "show_empty_grps_ui"):
             return
-        with QtCore.QSignalBlocker(self.show_empty_grps_ui):
+        with QSignalBlocker(self.show_empty_grps_ui):
             self.show_empty_grps_ui.setChecked(enabled)
 
     def set_card_width(self, width: int) -> None:
@@ -639,7 +640,7 @@ class Customize(AYButtonMenu):
         )
         if not hasattr(self, "card_size_slider"):
             return
-        with QtCore.QSignalBlocker(self.card_size_slider):
+        with QSignalBlocker(self.card_size_slider):
             self.card_size_slider.setValue(self._initial_card_width)
 
     def set_row_height(self, height: int) -> None:
@@ -650,7 +651,7 @@ class Customize(AYButtonMenu):
         )
         if not hasattr(self, "row_height_slider"):
             return
-        with QtCore.QSignalBlocker(self.row_height_slider):
+        with QSignalBlocker(self.row_height_slider):
             self.row_height_slider.setValue(self._initial_row_height)
 
     def set_latest_per_folder(
@@ -660,7 +661,7 @@ class Customize(AYButtonMenu):
         self._latest_per_folder = bool(enabled)
         if not hasattr(self, "latest_per_folder_ui"):
             return
-        with QtCore.QSignalBlocker(self.latest_per_folder_ui):
+        with QSignalBlocker(self.latest_per_folder_ui):
             self.latest_per_folder_ui.setChecked(
                 self._latest_per_folder and not disabled
             )
@@ -682,7 +683,7 @@ class Customize(AYButtonMenu):
         self._include_children = bool(enabled)
         if not hasattr(self, "include_children_ui"):
             return
-        with QtCore.QSignalBlocker(self.include_children_ui):
+        with QSignalBlocker(self.include_children_ui):
             self.include_children_ui.setChecked(
                 self._include_children and not disabled
             )
