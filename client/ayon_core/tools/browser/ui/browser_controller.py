@@ -139,6 +139,7 @@ class BrowserWidgetController(QtCore.QObject):
         self._boolean_attr_defaults: dict[str, dict[str, bool]] = {}
         self._user_full_names: dict[str, str] = {}
         self._review_sessions_cache: list[dict[str, Any]] = []
+        self._review_sessions_loaded: bool = False
         self._graphql_has_more: bool = False
         self._graphql_cursor: str = ""
         self._folder_cursors: dict[str, str] = {}
@@ -343,6 +344,7 @@ class BrowserWidgetController(QtCore.QObject):
             return
         self._current_project = project_name
         self._review_sessions_cache = []
+        self._review_sessions_loaded = False
         self._reset_pagination()
         self._selected_folder_ids = []
         self._folder_parent_ids = {}
@@ -350,7 +352,10 @@ class BrowserWidgetController(QtCore.QObject):
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
         self._build_project_info()
-        self._get_review_session_list()
+        # Only the Reviews category reads the list, so a project switch
+        # while Hierarchy is showing leaves it for later.
+        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
+            self._ensure_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
         self.tree_reset_requested.emit()
@@ -374,6 +379,10 @@ class BrowserWidgetController(QtCore.QObject):
         self._review_session_version_ids = None
 
         if category == BrowserSlicerCategory.REVIEWS.value:
+            # Entering Reviews is the first point the session list is
+            # actually needed, and this runs on the main thread - which
+            # :meth:`_ensure_review_session_list` requires.
+            self._ensure_review_session_list()
             # Reviews are always flat — drop any grouping/tree state that
             # was active in the Hierarchy view so the table fetch path
             # takes the plain flat-version branch.
@@ -2204,10 +2213,11 @@ class BrowserWidgetController(QtCore.QObject):
 
         Read-only: builds :class:`TreeNode` objects from the pre-populated
         :attr:`_review_sessions_cache`.  The cache is populated exclusively
-        from the main thread by :meth:`_get_review_session_list`, which is
-        called inside :meth:`set_project`.  Pool worker threads that call
-        this method therefore only perform read access on an already-complete
-        list, eliminating any generator re-entrancy race.
+        from the main thread by :meth:`_ensure_review_session_list`, which
+        runs when the Reviews category is entered - always before this
+        method can be reached.  Pool worker threads that call it therefore
+        only perform read access on an already-complete list, eliminating
+        any generator re-entrancy race.
 
         Args:
             parent_id: Parent entity ID. Only root (``None``) returns
@@ -2279,19 +2289,23 @@ class BrowserWidgetController(QtCore.QObject):
             for f in folders
         ]
 
-    def _get_review_session_list(self) -> None:
-        """Fetch review sessions from the server and cache them as a list.
+    def _ensure_review_session_list(self) -> None:
+        """Fetch review sessions once per project, on first use.
 
         Materialises the generator returned by
         :func:`ayon_api.get_entity_lists` into a plain Python list so that
         the result can be read safely by pool worker threads without the
         generator re-entrancy issue.  Must only be called from the main
-        thread (e.g. inside :meth:`set_project`).
+        thread - :meth:`set_category` and :meth:`set_project` are the two
+        entry points into the Reviews category, and both qualify.
         """
+        if self._review_sessions_loaded:
+            return
         project = self._current_project
         self._review_sessions_cache = list(
             ayon_api.get_entity_lists(project_name=project)
         )
+        self._review_sessions_loaded = True
         self.log.debug(
             "Review sessions cached for project %s (%d items)",
             project,
@@ -2338,7 +2352,9 @@ class BrowserWidgetController(QtCore.QObject):
         name = project_name or self._current_project
         if not name:
             return
-        project_entity = ayon_api.get_project(name)
+        # Shares the projects model's cached entity instead of issuing a
+        # second identical GET /projects/{name} at startup.
+        project_entity = self._loader_controller.get_project_entity(name)
         if not project_entity:
             return
         self._project_info = dict(project_entity)

@@ -567,6 +567,22 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_project_entity(
+        self, project_name: str | None
+    ) -> dict[str, Any] | None:
+        """Project entity, served from the shared projects cache.
+
+        Args:
+            project_name (str | None): Project name.
+
+        Returns:
+            dict[str, Any] | None: Project entity, or None when the
+                project was not found.
+
+        """
+        pass
+
+    @abstractmethod
     def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
         """Tag items defined on project anatomy.
 

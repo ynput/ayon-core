@@ -95,6 +95,22 @@ class ViewManager(QObject):
 
     # -- optional helpers ---------------------------------------------------
 
+    def load_view(self, view: View) -> View:
+        """Return *view* with its :attr:`View.settings` populated.
+
+        Managers that list views cheaply - fetching only the metadata the
+        dropdown needs - override this to fetch the full payload the first
+        time a view is actually used. The default implementation assumes
+        :meth:`list_views` already returned complete views.
+
+        Args:
+            view: The view to complete.
+
+        Returns:
+            A view whose settings are safe to apply or persist.
+        """
+        return view
+
     def get_working_view(self, view_type: str) -> View | None:
         """Return the working view for *view_type*, if any.
 

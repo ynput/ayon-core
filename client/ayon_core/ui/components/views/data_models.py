@@ -396,6 +396,11 @@ class View:
         owner: User name / id of the creator.
         scope: ``"project"`` or ``"studio"``.
         visibility: :class:`Visibility` enum.
+        loaded: False for a view built from a listing summary, whose
+            ``settings`` are therefore empty rather than merely unset.
+            Client-side only - never serialised. Managers that fetch
+            settings lazily flip this once the full payload arrives; see
+            :meth:`ViewManager.load_view`.
         working: True for the per-user fallback view that captures
             ad-hoc tweaks.  At most one working view per (user,
             view_type) should be flagged.
@@ -415,6 +420,7 @@ class View:
     scope: Scope = Scope.PROJECT
     visibility: Visibility = Visibility.PRIVATE
     working: bool = False
+    loaded: bool = True
     position: int = 0
     access_level: int = DEFAULT_ACCESS_LEVEL
     access: dict[str, int] = field(default_factory=dict)

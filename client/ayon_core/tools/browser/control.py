@@ -298,6 +298,11 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
     def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
         return self._settings_model.get_task_sorting_mode(project_name)
 
+    def get_project_entity(
+        self, project_name: str | None
+    ) -> dict[str, Any] | None:
+        return self._projects_model.get_project_entity(project_name)
+
     def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
         return self._projects_model.get_project_anatomy_tags(project_name)
 

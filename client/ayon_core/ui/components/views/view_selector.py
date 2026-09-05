@@ -17,7 +17,13 @@ import logging
 from typing import Callable
 
 import ayon_api
-from qtpy.QtCore import QEvent, QObject, Qt, Signal  # type: ignore[attr-defined]
+from qtpy.QtCore import (  # type: ignore[attr-defined]
+    QEvent,
+    QObject,
+    Qt,
+    QTimer,
+    Signal,
+)
 from qtpy.QtWidgets import (
     QDialog,
     QFrame,
@@ -233,12 +239,20 @@ class AYViewSelector(AYButtonMenu):
 
         self._current_view: View | None = None
         self._views: list[View] = []
+        # The view list is only needed to draw the dropdown, so it is
+        # fetched the first time the menu opens rather than at startup.
+        self._views_loaded: bool = False
         # When True, :meth:`refresh` skips its auto-apply-working-view
         # branch.  Toggled by :class:`_SuspendAutoApply` around save
         # operations so the manager-driven refresh during save_view
         # does not trigger a redundant page-0 refetch.
         self._suppress_auto_apply: bool = False
         self._ensuring_working_view: bool = False
+        # True while :meth:`_apply_view` is pushing settings into the
+        # widgets. Those widgets emit the same change signals a user edit
+        # does, and echoing them back to the server would rewrite the
+        # working view with what we just read from it.
+        self._applying_view: bool = False
 
         # Per-section collapsed state for the dropdown headers ("My
         # views", "Shared views", "Default view"). Kept for the
@@ -260,6 +274,15 @@ class AYViewSelector(AYButtonMenu):
         )
         self.setObjectName("AYViewSelector")
         self.setFixedSize(32, 32)
+
+        # Applying a view, or a single user gesture, moves several widgets
+        # at once. Coalesce the resulting saves into one round trip.
+        # Built here rather than with the state above: parenting a QTimer
+        # needs this object's base class to be initialised first.
+        self._working_view_timer = QTimer(self)
+        self._working_view_timer.setSingleShot(True)
+        self._working_view_timer.setInterval(300)
+        self._working_view_timer.timeout.connect(self._update_working_view)
 
         # Rebuild the menu contents each time it opens, since the view
         # list may change between openings.
@@ -312,6 +335,9 @@ class AYViewSelector(AYButtonMenu):
             item = layout.takeAt(0)
             if item and item.widget():
                 item.widget().deleteLater()
+
+        # First open of the menu is what pays for the view list.
+        self._ensure_views_listed()
 
         # The working view + "My views" + "Shared views" portion lives
         # in its own scrollable area, capped at _VIEWS_LIST_MAX_HEIGHT,
@@ -637,16 +663,15 @@ class AYViewSelector(AYButtonMenu):
         self.refresh()
 
     def refresh(self) -> None:
-        """Re-pull the view list from the manager.
+        """Re-resolve the working view and drop the cached view list.
 
-        Also picks the manager's working view (if any) and applies it
-        when no view is currently active.
+        Restoring the user's last state only needs the working view,
+        which has its own endpoint. The dropdown is not on screen yet, so
+        listing the rest - and each one's settings - waits until the menu
+        is opened; see :meth:`_ensure_views_listed`.
         """
-        try:
-            self._views = list(self._manager.list_views(self._view_type))
-        except Exception:
-            log.exception("Failed to list views for %r", self._view_type)
-            self._views = []
+        self._views = []
+        self._views_loaded = False
 
         working = self._ensure_working_view_exists()
         if (
@@ -656,6 +681,17 @@ class AYViewSelector(AYButtonMenu):
         ):
             self._apply_view(working, emit=True)
             return
+
+    def _ensure_views_listed(self) -> None:
+        """Fetch the view list on first use, then keep it until refresh."""
+        if self._views_loaded:
+            return
+        try:
+            self._views = list(self._manager.list_views(self._view_type))
+        except Exception:
+            log.exception("Failed to list views for %r", self._view_type)
+            self._views = []
+        self._views_loaded = True
 
     def current_view(self) -> View | None:
         """Return the currently active view, or ``None``."""
@@ -880,7 +916,13 @@ class AYViewSelector(AYButtonMenu):
         if self._ensuring_working_view or self._current_view is not None:
             return None
 
-        existing = next((view for view in self._views if view.working), None)
+        try:
+            existing = self._manager.get_working_view(self._view_type)
+        except Exception:
+            log.exception(
+                "Failed to resolve working view for %r", self._view_type
+            )
+            existing = None
         if existing is not None:
             return existing
 
@@ -911,13 +953,8 @@ class AYViewSelector(AYButtonMenu):
         finally:
             self._ensuring_working_view = False
 
-        refreshed_views = list(self._manager.list_views(self._view_type))
-        refreshed_working = next(
-            (view for view in refreshed_views if view.working),
-            None,
-        )
+        refreshed_working = self._manager.get_working_view(self._view_type)
         if refreshed_working is not None:
-            self._views = refreshed_views
             return refreshed_working
         return working_view
 
@@ -925,7 +962,11 @@ class AYViewSelector(AYButtonMenu):
         """Set the dirty flag on the first UI change after a view is applied.
             and cleared by applying, saving, or resetting a view.
         """
-        self._update_working_view()
+        if self._applying_view:
+            # Our own writes bouncing back off the widgets.
+            return
+
+        self._working_view_timer.start()
 
         if self._view_modified:
             return
@@ -962,13 +1003,23 @@ class AYViewSelector(AYButtonMenu):
             target_view = working_view
             self._close_menu()
 
+        # A view picked from the dropdown carries only listing metadata;
+        # this is where its settings are actually needed.
+        view = self._manager.load_view(view)
+        if target_view is not None and target_view.id == view.id:
+            target_view = view
         self._current_view = target_view
 
+        self._applying_view = True
         try:
             self._bindings.apply(view.settings)
         except Exception:
             log.exception("Failed to apply view %r", view.id)
             return
+        finally:
+            self._applying_view = False
+            # Nothing was modified, so drop any save this apply queued.
+            self._working_view_timer.stop()
 
         self.setToolTip(f"View: {self._current_view.label}")
         self._clear_modified()
@@ -1024,14 +1075,30 @@ class AYViewSelector(AYButtonMenu):
         self.set_variant(AYButton.Variants.Surface)
         self._close_menu()
 
+    def hideEvent(self, event) -> None:
+        """Flush a pending working-view save before going away.
+
+        The debounce would otherwise drop the last few hundred
+        milliseconds of edits when the window closes.
+        """
+        if self._working_view_timer.isActive():
+            self._working_view_timer.stop()
+            self._update_working_view()
+        super().hideEvent(event)
+
     def _update_working_view(self) -> None:
-        try:
-            working_view = self._manager.get_working_view(self._view_type)
-        except Exception:
-            log.exception(
-                "Failed to resolve working view for %r", self._view_type
-            )
-            return
+        """Persist the live widget state onto the working view."""
+        # The applied view is normally the working view already, so going
+        # back to the server for it would just re-read what we hold.
+        working_view = self._current_view
+        if working_view is None or not working_view.working:
+            try:
+                working_view = self._manager.get_working_view(self._view_type)
+            except Exception:
+                log.exception(
+                    "Failed to resolve working view for %r", self._view_type
+                )
+                return
         if working_view is None:
             return
         working_view.settings = self._bindings.capture()

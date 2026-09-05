@@ -216,18 +216,15 @@ class ServerViewManager(ViewManager):
             if item.get("label") == DEFAULT_VIEW_LABEL:
                 continue
             try:
-                try:
-                    resp = ayon_api.get(
-                        f"views/{view_type}/{item.get('id')}",
-                        project_name=self._project_name,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    log.exception("Failed to fetch view %s", item.get("id"))
-                    self.error.emit(f"Failed to fetch view: {exc}")
-                    continue
-                views.append(View.from_payload(resp.data))
+                view = View.from_payload(item)
             except Exception:  # noqa: BLE001
                 log.exception("Skipping malformed view payload: %r", item)
+                continue
+            # The listing carries only the metadata the selector needs to
+            # draw its rows; settings arrive via :meth:`load_view` when a
+            # view is actually applied or saved.
+            view.loaded = False
+            views.append(view)
 
         views.sort(key=lambda v: (v.position, v.label.lower()))
         self._cache[view_type] = views
@@ -236,6 +233,70 @@ class ServerViewManager(ViewManager):
             if v.id:
                 self._id_to_view_attributes[v.id] = (view_type, v.scope)
         return list(views)
+
+    def set_working_view(self, view: View) -> None:
+        """Mark *view* as the sole working view for its type.
+
+        The base implementation scans :meth:`list_views` to clear the flag
+        on every other view, which costs a full listing on each save. The
+        server exposes the working view directly, so at most one other
+        view can be holding the flag and one request finds it - and when
+        *view* already is the working view, none is needed at all.
+
+        Args:
+            view: The view to mark as working.
+        """
+        if not (view.working and view.id):
+            current = self.get_working_view(view.view_type)
+            if current is not None and current.id and current.id != view.id:
+                current.working = False
+                self.save_view(current)
+        view.working = True
+        self.save_view(view)
+
+    def load_view(self, view: View) -> View:
+        """Return *view* with its settings fetched from the server.
+
+        :meth:`list_views` builds its rows from the listing endpoint,
+        which omits ``settings``, so opening the Views menu costs one
+        request instead of one per view. This fills in the rest, and is
+        a no-op for a view that already carries its settings.
+
+        Args:
+            view: A view, possibly built from a listing summary.
+
+        Returns:
+            A fully populated view. The passed view is returned unchanged
+            when it is already loaded, has no id, or the fetch fails -
+            callers must still tolerate empty settings.
+        """
+        if view.loaded or not view.id:
+            return view
+
+        view_type = view.view_type or ""
+        try:
+            resp = ayon_api.get(
+                f"views/{view_type}/{view.id}",
+                project_name=self._project_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Failed to fetch view %s", view.id)
+            self.error.emit(f"Failed to fetch view: {exc}")
+            return view
+
+        try:
+            loaded = View.from_payload(resp.data)
+        except Exception:  # noqa: BLE001
+            log.exception("Malformed view payload for %s", view.id)
+            return view
+
+        cached = self._cache.get(view_type)
+        if cached is not None:
+            for idx, item in enumerate(cached):
+                if item.id == loaded.id:
+                    cached[idx] = loaded
+                    break
+        return loaded
 
     def save_view(self, view: View) -> View:
         """POST a new view or PATCH an existing one.
@@ -261,6 +322,16 @@ class ServerViewManager(ViewManager):
             Exception: Re-raises any ``ayon_api`` failure after
                 emitting :attr:`error`.
         """
+        # A view straight off the listing has empty settings, and
+        # to_payload always sends them - persisting one as-is would wipe
+        # what is stored. Fetch the real settings unless the caller has
+        # already supplied their own.
+        if not view.loaded and view.id:
+            stored = self.load_view(view)
+            if stored is not view:
+                view.settings = stored.settings
+                view.loaded = True
+
         payload = view.to_payload()
         access_data = self._normalize_access_payload(payload.get("access"))
         should_share_access = self._has_positive_access(access_data)
