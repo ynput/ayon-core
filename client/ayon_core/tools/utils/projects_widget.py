@@ -567,10 +567,11 @@ class ProjectsCombobox(QtWidgets.QWidget):
         controller: AbstractProjectController,
         parent: QtWidgets.QWidget,
         handle_expected_selection: bool = False,
+        variant: AYComboBox.Variants = AYComboBox.Variants.Default,
     ):
         super().__init__(parent)
 
-        projects_combobox = AYComboBox(self)
+        projects_combobox = AYComboBox(self, variant=variant)
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
         projects_proxy_model.setSourceModel(projects_model)

@@ -1,0 +1,658 @@
+"""Modal dialog for editing :class:`View` metadata.
+
+The dialog is intentionally *metadata only*: it edits label, scope,
+visibility, access level and the ``working`` flag.  The actual UI
+configuration (columns, sort, filter…) is captured by
+:meth:`ViewBindings.capture` at the call site and merged with the
+metadata into the returned :class:`View` by the caller.
+
+The dialog never talks to a :class:`ViewManager` directly — it just
+collects values and exposes them through :meth:`get_view` after the
+user accepts.  The :class:`AYViewSelector` is responsible for invoking
+``manager.save_view(view)``.
+"""
+
+from __future__ import annotations
+
+import logging
+from enum import IntEnum
+
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
+    QDialog,
+    QSizePolicy,
+    QSpacerItem,
+    QWidget,
+    QHBoxLayout,
+)
+
+from ...style_types import get_ayon_style
+from ..buttons import AYButton
+from ..combo_box import AYComboBox
+from ..container import AYContainer
+from ..searchable_combo_box import AYSearchableComboBox
+from ..label import AYLabel
+from ..layouts import AYVBoxLayout, AYHBoxLayout
+from ..line_edit import AYLineEdit
+from ..user_image import AYUserImage
+from .data_models import Scope, View, Visibility
+
+log = logging.getLogger(__name__)
+
+# Access level constants
+ACCESS_LEVELS = {
+    0: "No access",
+    10: "Viewer",
+    20: "Editor",
+    30: "Admin",
+}
+ACCESS_LEVEL_VALUES = list(ACCESS_LEVELS.keys())
+
+
+class AYViewEditor(QDialog):
+    """Modal editor for the metadata fields of a :class:`View`.
+
+    Args:
+        view: The :class:`View` to edit.  Pass a fresh ``View()`` with
+            an empty ``id`` to create a new view.
+        current_user: User identifier of the editor.  Used to gate the
+            studio scope when applicable.
+        allow_studio_scope: Whether ``Scope.STUDIO`` is offered to the
+            user.  Consumer apps gate this via their permission model.
+        parent: Optional parent widget.
+    """
+
+    class Mode(IntEnum):
+        """Dialog mode: create or edit."""
+
+        CREATE = 0
+        EDIT = 1
+
+    def __init__(
+        self,
+        view: View,
+        current_user: str = "",
+        current_project: str = "",
+        allow_studio_scope: bool = False,
+        usernames_and_groups: dict[str, list] | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
+        self._dialog_mode = (
+            AYViewEditor.Mode.EDIT if view.id else AYViewEditor.Mode.CREATE
+        )
+
+        super().__init__(parent)
+        self.setStyle(get_ayon_style())
+        self.setWindowTitle(
+            "Edit View"
+            if self._dialog_mode == AYViewEditor.Mode.EDIT
+            else "Create New View"
+        )
+        self.setModal(True)
+        self.setContentsMargins(0, 0, 0, 0)
+
+        self._view = view
+        self._current_user = current_user
+        self.usernames_and_groups = usernames_and_groups or {
+            "users": [],
+            "groups": [],
+        }
+        self._current_project = current_project
+        self._allow_studio_scope = bool(allow_studio_scope)
+        self._delete_requested = False
+
+        # Access control state: {key: access_level} where key is "user:name" or "group:name"
+        self._access_dict: dict[str, int] = {}
+        # Stores row widgets by access key
+        self._access_row_widgets: dict[str, QWidget] = {}
+
+        self._build_ui()
+        self._load_from_view(view)
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def _build_ui(self) -> None:
+        """Create the form and button row."""
+        root = AYVBoxLayout(self, spacing=0, margin=0)
+
+        static_layout = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            layout_margin=20,
+            layout_spacing=12,
+        )
+
+        static_layout.add_widget(AYLabel("View name"))
+
+        # view name field — required.
+        self._view_name_edit = AYLineEdit(placeholder="View name")
+        static_layout.add_widget(self._view_name_edit)
+
+        # Scope combo (project / all projects).
+        self._scope_combo = AYComboBox()
+        scope_items = [
+            {
+                "text": f"Project - {self._current_project}",
+                "short_text": "Project",
+            }
+        ]
+        if self._allow_studio_scope:
+            scope_items.append(
+                {"text": "All Projects", "short_text": "All Projects"}
+            )
+        self._scope_combo.update_items(scope_items)
+        static_layout.add_widget(AYLabel("Scope"))
+        static_layout.add_widget(self._scope_combo)
+
+        # User/group selector dropdown
+        self._user_selector = AYSearchableComboBox(
+            placeholder="Add people or access groups"
+        )
+
+        static_layout.add_widget(AYLabel("People with access"))
+        static_layout.add_widget(self._user_selector)
+
+        self._user_selector.item_selected.connect(self._on_user_selected)
+
+        # Owner row
+        self._owner_avatar = AYUserImage(
+            name="",
+            full_name="",
+            size=24,
+            outline=False,
+        )
+        self._owner_avatar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self._owner_label = AYLabel("-")
+        
+        owner_row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=8,
+            layout_margin=0,
+        )
+        owner_row.add_widget(self._owner_avatar, stretch=0)
+        owner_row.add_widget(self._owner_label, stretch=0)
+        owner_row.addStretch()
+        owner_row.add_widget(AYLabel("Owner", dim=True))
+        owner_row.layout().addSpacerItem(
+            QSpacerItem(32, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+        )
+        static_layout.add_widget(owner_row)
+
+        # Everyone row
+        self._everyone_combo = AYComboBox()
+        access_items = [
+            {"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES
+        ]
+        self._everyone_combo.update_items(access_items)
+        self._everyone_combo.setFixedWidth(120)
+
+        def on_everyone_changed(idx: int) -> None:
+            self._access_dict["__everyone__"] = ACCESS_LEVEL_VALUES[idx]
+
+        self._everyone_combo.currentIndexChanged.connect(on_everyone_changed)
+
+        everyone_row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=8,
+            layout_margin=0,
+        )
+        everyone_icon = AYLabel(icon="groups", icon_size=24)
+        everyone_row.add_widget(everyone_icon, stretch=0)
+        everyone_row.add_widget(AYLabel("Everyone"), stretch=0)
+        everyone_row.addStretch()
+        everyone_row.add_widget(self._everyone_combo)
+        everyone_row.layout().addSpacerItem(
+            QSpacerItem(32, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+        )
+        static_layout.add_widget(everyone_row)
+
+        # Dynamic user/group access rows
+        self._access_rows_container = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            layout_spacing=4,
+            layout_margin=0,
+        )
+        static_layout.add_widget(self._access_rows_container)
+
+        root.addWidget(static_layout)
+        root.addStretch()
+
+        # Button row - positioned at bottom with Delete on left, Save on right
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(16, 16, 16, 16)
+        button_layout.setSpacing(8)
+
+        save_btn = AYButton(
+            "Save"
+            if self._dialog_mode == AYViewEditor.Mode.EDIT
+            else "Create",
+            variant=AYButton.Variants.Filled,
+            icon="check",
+        )
+        delete_btn = AYButton(
+            "Delete", variant=AYButton.Variants.Danger, icon="delete"
+        )
+
+        if self._dialog_mode == AYViewEditor.Mode.EDIT:
+            # Delete on left, stretch, Save on right
+            button_layout.addWidget(delete_btn)
+            button_layout.addStretch()
+            button_layout.addWidget(save_btn)
+            delete_btn.clicked.connect(self._on_delete)
+        else:
+            # Just Save on right for create mode
+            button_layout.addStretch()
+            button_layout.addWidget(save_btn)
+
+        save_btn.clicked.connect(self._on_accept)
+
+        root.addWidget(button_container)
+
+        self.setMinimumWidth(500)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    # ------------------------------------------------------------------
+    # Data loading
+    # ------------------------------------------------------------------
+
+    def _load_from_view(self, view: View) -> None:
+        """Populate widgets from *view*.
+
+        Args:
+            view: The view to copy values from.
+        """
+        self._view_name_edit.setText(view.label)
+
+        # Scope: select matching item, falling back to project when
+        # studio is disallowed but the view is scoped studio.
+        if view.scope == Scope.STUDIO and self._allow_studio_scope:
+            self._scope_combo.setCurrentIndex(1)
+        else:
+            self._scope_combo.setCurrentIndex(0)
+
+        # Load access data from view
+        self._access_dict = dict(view.access) if view.access else {}
+
+        # Update Owner
+        owner_name = self._view.owner or self._current_user or "-"
+        self._owner_label.setText(owner_name)
+        
+        # Recreate owner avatar with updated name
+        self._owner_avatar._name = owner_name
+        self._owner_avatar._full_name = owner_name
+        self._owner_avatar.set_image()
+
+        # Update Everyone
+        everyone_level = self._access_dict.get("__everyone__", 0)
+        if everyone_level not in ACCESS_LEVEL_VALUES:
+            everyone_level = 0
+        self._access_dict["__everyone__"] = everyone_level
+        self._everyone_combo.setCurrentIndex(
+            ACCESS_LEVEL_VALUES.index(everyone_level)
+        )
+
+        self._populate_access_rows()
+        self._update_user_dropdown()
+
+    def _update_user_dropdown(self) -> None:
+        """Update dropdown to show only users/groups not yet added."""
+        added_keys = set(self._access_dict.keys())
+
+        items = []
+        users = self.usernames_and_groups.get("users", [])
+        groups = self.usernames_and_groups.get("groups", [])
+
+        if users:
+            for user in users:
+                user_name = user.get("name", "")
+                user_full_name = user.get("fullName", "") or user_name
+                user_key = f"user:{user_name}"
+                if user_key not in added_keys:
+                    items.append({
+                        "key": user_key,
+                        "label": user_full_name,
+                        "identifier": user_name,
+                        "type": "user"
+                    })
+
+        for group in groups:
+            group_key = f"group:{group}"
+            if group_key not in added_keys:
+                items.append({
+                    "key": group_key,
+                    "label": group.capitalize(),
+                    "identifier": "group",
+                    "type": "group"
+                })
+
+        # Set items
+        self._user_selector.set_items_with_builder(
+            items,
+            row_builder=self._build_access_list_row
+        )
+
+    def _on_user_selected(self, access_key: str) -> None:
+        """Handle user selection from dropdown."""
+        if not access_key:
+            return
+
+        self._add_access_row(access_key, 10)  # Default to Viewer access
+        self._update_user_dropdown()
+
+    def _add_access_row(self, key: str, access_level: int) -> None:
+        """Add an access control row for the given user/group.
+
+        Args:
+            key: The access key (e.g., "user:name" or "group:name").
+            access_level: The access level (0, 10, 20, or 30).
+        """
+        if key in self._access_dict:
+            return  # Already exists
+
+        self._access_dict[key] = access_level
+        self._populate_access_rows()
+
+    def _remove_access_row(self, key: str) -> None:
+        """Remove an access control row.
+
+        Args:
+            key: The access key to remove.
+        """
+        if key not in self._access_dict:
+            return
+
+        del self._access_dict[key]
+
+        self._populate_access_rows()
+        self._update_user_dropdown()
+
+    def _render_access_row(self, key: str, access_level: int) -> None:
+        """Render a single access row"""
+        row = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=4,
+            layout_margin=0,
+        )
+
+        access_combo = AYComboBox(show_chevron=True)
+        access_combo.setFixedWidth(120)
+        access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
+        access_combo.update_items(access_items)
+
+        if access_level not in ACCESS_LEVEL_VALUES:
+            access_level = 10
+        access_combo.setCurrentIndex(ACCESS_LEVEL_VALUES.index(access_level))
+
+        def on_access_changed(idx: int) -> None:
+            self._access_dict[key] = ACCESS_LEVEL_VALUES[idx]
+
+        access_combo.currentIndexChanged.connect(on_access_changed)
+
+        remove_btn = AYButton("", icon="close", variant=AYButton.Variants.Nav)
+        remove_btn.setFixedWidth(32)
+        remove_btn.clicked.connect(lambda: self._remove_access_row(key))
+
+        label_widget = self._build_access_row_label(key)
+        row.add_widget(label_widget, stretch=1)
+        row.addStretch()
+        row.add_widget(access_combo)
+        row.add_widget(remove_btn)
+
+        self._access_rows_container.add_widget(row)
+        self._access_row_widgets[key] = row
+
+    def _populate_access_rows(self) -> None:
+        """Populate access control rows from _access_dict."""
+        # Clear existing rows
+        for widget in self._access_row_widgets.values():
+            widget.deleteLater()
+        self._access_row_widgets.clear()
+
+        self._access_rows_container.clear()
+
+        # Add user/group rows
+        for key in sorted(self._access_dict.keys()):
+            if key == "__everyone__":
+                continue
+            self._render_access_row(key, int(self._access_dict[key]))
+
+    def _build_access_list_row(self, row, entry: dict) -> None:
+        """Build custom identifier widgets for a dropdown row.
+
+        This row builder is used with :meth:`AYSearchableComboBox.set_items_with_builder`
+        to add avatar and identifier labels to user/group rows.
+
+        Args:
+            row: The _ItemRow widget to customize.
+            entry: The item dict containing metadata.
+        """
+        entry_type = entry.get("type", "")
+        identifier = entry.get("identifier", "")
+        label = entry.get("label", "")
+
+        # Insert avatar/icon at the beginning for users and groups
+        if entry_type == "user":
+            avatar = AYUserImage(
+                name=identifier,
+                full_name=label,
+                size=20,
+                outline=False,
+            )
+            avatar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            row.layout().insertWidget(0, avatar)
+        elif entry_type == "group":
+            group_icon = AYLabel(
+                icon="shield_person",
+                icon_size=20,
+            )
+            row.layout().insertWidget(0, group_icon)
+
+        if "identifier" in entry:
+            # Add spacer item with stretch
+            row.layout().addSpacerItem(
+                QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+            )
+            # Add identifier label (dim)
+            id_label = AYLabel(f"({identifier})", dim=True)
+            row.add_custom_widget(id_label, stretch=0)
+
+    def _build_access_row_label(self, key: str) -> AYContainer:
+        """Build formatted label widget for access control row.
+
+        For users: Shows avatar with "Full Name" and "(username)" in dim text
+        For groups: Shows capitalized group name
+
+        Args:
+            key: The access key (e.g., "user:name" or "group:name")
+
+        Returns:
+            AYContainer with formatted widgets for the access row.
+        """
+        if key.startswith("user:"):
+            # Extract username from key
+            user_name = key.replace("user:", "")
+
+            # Find the full name from usernames_and_groups
+            user_full_name = user_name
+            for user in self.usernames_and_groups.get("users", []):
+                if user.get("name") == user_name:
+                    user_full_name = user.get("fullName", "") or user_name
+                    break
+
+            # Create container with avatar and text
+            user_row_container = AYContainer(
+                layout=AYContainer.Layout.HBox,
+                layout_spacing=8,
+                layout_margin=0,
+            )
+
+            # Add Avatar
+            avatar = AYUserImage(
+                name=user_name,
+                full_name=user_full_name,
+                size=24,
+                outline=False,
+                parent=user_row_container,
+            )
+            avatar.setSizePolicy(
+                QSizePolicy.Fixed,
+                QSizePolicy.Fixed,
+            )
+            user_row_container.add_widget(avatar, stretch=0)
+
+            # Add full name
+            user_row_container.add_widget(
+                AYLabel(user_full_name),
+                stretch=0
+            )
+            user_row_container.add_widget(
+                AYLabel(f"({user_name})", dim=True),
+                stretch=0
+            )
+            user_row_container.layout().addSpacerItem(
+                QSpacerItem(
+                    0,
+                    0,
+                    QSizePolicy.Expanding,
+                    QSizePolicy.Minimum,
+                )
+            )
+
+            return user_row_container
+
+        # Group access row
+        group_name = key.replace("group:", "")
+
+        # Create container with groups icon and name
+        group_row_container = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=8,
+            layout_margin=0,
+        )
+
+        # Add groups icon
+        group_icon = AYLabel(
+            icon="shield_person",
+            icon_size=24,
+        )
+        group_row_container.add_widget(group_icon, stretch=0)
+
+        # Add group name
+        group_row_container.add_widget(
+            AYLabel(group_name.capitalize()),
+            stretch=0
+        )
+        group_row_container.layout().addSpacerItem(
+            QSpacerItem(
+                0,
+                0,
+                QSizePolicy.Expanding,
+                QSizePolicy.Minimum,
+            )
+        )
+
+        return group_row_container
+
+    # ------------------------------------------------------------------
+    # Accept handling
+    # ------------------------------------------------------------------
+
+    def _on_accept(self) -> None:
+        """Validate inputs and accept the dialog.
+
+        Labels must be non-empty; the dialog stays open otherwise.
+        """
+        label = self._view_name_edit.text().strip()
+        if not label:
+            self._view_name_edit.setFocus(Qt.FocusReason.OtherFocusReason)
+            return
+
+        self.accept()
+
+    def _on_delete(self) -> None:
+        """Delete the view and close the dialog."""
+        self._delete_requested = True
+        self.accept()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def mode(self) -> AYViewEditor.Mode:
+        """Return the dialog mode: create or edit."""
+        return self._dialog_mode
+
+    def delete_requested(self) -> bool:
+        """Whether the user requested deletion of the view."""
+        return self._delete_requested
+
+    def get_view(self) -> View:
+        """Return the edited :class:`View`.
+
+        The original :attr:`View.settings`, :attr:`View.id`,
+        :attr:`View.view_type`, :attr:`View.owner`, :attr:`View.access`,
+        :attr:`View.position` and :attr:`View.extra` are kept intact;
+        only the metadata edited in this dialog is mutated.
+
+        Returns:
+            The (mutated) original :class:`View` instance.
+        """
+        view = self._view
+        view.label = self._view_name_edit.text().strip()
+
+        if self._scope_combo.currentIndex() == 1 and self._allow_studio_scope:
+            view.scope = Scope.STUDIO
+        else:
+            view.scope = Scope.PROJECT
+
+        view.access = dict(self._access_dict)
+
+        if not view.owner and self._current_user:
+            view.owner = self._current_user
+
+        return view
+
+
+__all__ = ("AYViewEditor",)
+
+
+if __name__ == "__main__":
+    import sys
+
+    from qtpy.QtWidgets import QApplication
+
+    from .data_models import ViewSettings
+
+    app = QApplication(sys.argv)
+
+    view = View(
+        id="1234",
+        label="Test View",
+        view_type="test",
+        scope=Scope.PROJECT,
+        visibility=Visibility.PUBLIC,
+        access_level=50,
+        working=True,
+        owner="user",
+        settings=ViewSettings(),
+        position=0,
+        extra={},
+    )
+
+    dialog = AYViewEditor(
+        view,
+        allow_studio_scope=True,
+        current_user="Donald",
+        current_project="Make_Projects_Great_Again",
+    )
+    if dialog.exec_():
+        if dialog.delete_requested():
+            print(">> View deletion requested")
+        elif dialog.mode() == AYViewEditor.Mode.CREATE:
+            print(">> View created:", dialog.get_view())
+        else:
+            print(">> View edited:", dialog.get_view())
+    else:
+        print(">> View rejected")

@@ -44,6 +44,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         self._tooltip = tooltip
         self._icon = icon
         self._icon_on = icon_on or icon
+        self._icon_color_override = icon_color
         self._icon_fill = icon_fill
         self._contrast_color = contrast_color
 
@@ -53,34 +54,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         self._style = get_ayon_style()
         self._style_data = get_ayon_style_data("QPushButton", variant.value)
         self._style_data.set_context(self)
-
-        # Determine the icon color
-        color_str = icon_color or self._style_data.get("color", "#ffffff")
-        self._icon_color = QColor(color_str)
-        # Adjust the icon color to have enough contrast with the background
-        if isinstance(contrast_color, QColor) and contrast_color.isValid():
-            self._icon_color = compute_color_for_contrast(
-                contrast_color.toTuple(),
-                self._icon_color.toTuple(),
-                min_contrast_ratio=7,
-            )
-
-        # compute a readable icon hover color
-        self._icon_hover_color = self._icon_color
-        icon_hover_bg = self._style_data.get("hover", {}).get(
-            "background-color", "#000000"
-        )
-        if isinstance(icon_hover_bg, str) and self._icon_color.isValid():
-            self._icon_hover_color = compute_color_for_contrast(
-                QColor(icon_hover_bg).toTuple(),
-                self._icon_color.toTuple(),
-                min_contrast_ratio=7,
-            )
-
-        # get the disabled opacity
-        self._disabled_opacity = self._style_data.get("disabled", {}).get(
-            "opacity", 0.5
-        )
+        self._refresh_icon_style_values()
 
         if self._icon:
             self.set_icon(self._icon)
@@ -117,6 +91,69 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
     @property
     def contrast_color(self):
         return self._contrast_color
+
+    def _refresh_icon_style_values(self):
+        # Determine the icon color
+        color_str = self._icon_color_override or self._style_data.get(
+            "color", "#ffffff"
+        )
+        self._icon_color = QColor(color_str)
+        # Adjust the icon color to have enough contrast with the background
+        if (
+            isinstance(self._contrast_color, QColor)
+            and self._contrast_color.isValid()
+        ):
+            self._icon_color = compute_color_for_contrast(
+                self._contrast_color.toTuple(),
+                self._icon_color.toTuple(),
+                min_contrast_ratio=7,
+            )
+
+        # compute a readable icon hover color
+        self._icon_hover_color = self._icon_color
+        icon_hover_bg = self._style_data.get("hover", {}).get(
+            "background-color", "#000000"
+        )
+        if isinstance(icon_hover_bg, str) and self._icon_color.isValid():
+            self._icon_hover_color = compute_color_for_contrast(
+                QColor(icon_hover_bg).toTuple(),
+                self._icon_color.toTuple(),
+                min_contrast_ratio=7,
+            )
+
+        # A checkable button's "checked" state can recolor the
+        # background entirely (e.g. Row_Action turning primary-blue) —
+        # use that state's own "color" for the icon when checked,
+        # instead of reusing the unchecked icon color regardless.
+        checked_color_str = self._style_data.get("checked", {}).get("color")
+        self._icon_checked_color = (
+            QColor(checked_color_str)
+            if isinstance(checked_color_str, str)
+            else self._icon_color
+        )
+
+        # get the disabled opacity
+        self._disabled_opacity = self._style_data.get("disabled", {}).get(
+            "opacity", 0.5
+        )
+
+    def set_variant(self, variant: Variants | str):
+        variant_str = variant if isinstance(variant, str) else variant.value
+        normalized_variant = self.Variants(variant_str).value
+        if normalized_variant == self._variant_str:
+            return
+
+        self._variant_str = normalized_variant
+        self._style_data = get_ayon_style_data(
+            "QPushButton", self._variant_str
+        )
+        self._style_data.set_context(self)
+        self._refresh_icon_style_values()
+        self._style.style_widget(self)
+        if self._icon:
+            self.set_icon(self._icon)
+        self.updateGeometry()
+        self.update()
 
     def _compute_contrast_text_color(
         self,
@@ -193,7 +230,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
                 icon_name_off=self._icon,
                 color_off=self._icon_color,
                 icon_name_on=self._icon_on,
-                color_on=self._icon_color,
+                color_on=self._icon_checked_color,
                 color_on_disabled=disabled_color,
                 color_off_disabled=disabled_color,
                 fill=self._icon_fill,
@@ -226,28 +263,51 @@ class ButtonMenuDropdown(AYDropdownPopup):
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
+        frame_variant: AYDropdownPopup.Variants = (
+            AYDropdownPopup.Variants.Low_Framed_Thin
+        ),
+        container_variant: AYContainer.Variants | None = None,
+        container_margin: int = 10,
     ) -> None:
         """Initialize the dropdown popup frame.
 
         Args:
             parent: Optional parent widget (used for style inheritance).
+            frame_variant: Variant for the popup's own outer frame
+                (drawn first, may carry a border).
+            container_variant: Background variant for the inner content
+                panel drawn on top of the frame. Defaults to
+                ``AYContainer.Variants.Low`` — a plain, borderless fill
+                matching ``Low_Framed_Thin``'s background so the frame's
+                border is the only stroke visible. Pass the *same*
+                variant as ``frame_variant`` only when that variant has
+                no border of its own (e.g. ``Popover``); otherwise the
+                panel's rounded corners double the frame's border.
+            container_margin: Padding between the panel's own edges and
+                its content.
         """
         super().__init__(
             parent,
-            variant=AYDropdownPopup.Variants.Low_Framed_Thin,
+            variant=frame_variant,
             translucent_bg=True,
         )
         self._stack = QtWidgets.QStackedLayout(self)
+        self._stack.setContentsMargins(0, 0, 0, 0)
         container = AYContainer(
             layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
-            margin=10,
+            variant=(
+                container_variant
+                if container_variant is not None
+                else AYContainer.Variants.Low
+            ),
+            margin=container_margin,
             layout_spacing=10,
         )
         self._stack.addWidget(container)
 
     def set_current_page(self, index: int) -> None:
         self._stack.setCurrentIndex(index)
+        self.adjustSize()
 
     def add_page(self, container: AYContainer) -> None:
         self._stack.addWidget(container)
@@ -289,6 +349,8 @@ class AYButtonMenu(AYButton):
         self,
         *args,
         populate_callback: Callable[[QtWidgets.QFrame], None],
+        dropdown_variant: AYContainer.Variants | None = None,
+        dropdown_margin: int = 10,
         **kwargs,
     ) -> None:
         """Initialize the AYButtonMenu.
@@ -298,14 +360,35 @@ class AYButtonMenu(AYButton):
             populate_callback: A callable that receives the dropdown
                 ``QFrame`` container and is responsible for adding
                 child widgets to it.
+            dropdown_variant: Background variant for *both* the popup's
+                own frame and its inner content panel. Leave as
+                ``None`` to keep ``ButtonMenuDropdown``'s own default
+                pairing (a bordered frame behind a plain, borderless
+                panel). Only pass a variant here when it has no border
+                of its own (e.g. ``Popover``) — sharing a *bordered*
+                variant across both layers double-draws the border,
+                since the panel fully covers the frame's fill.
+            dropdown_margin: Padding between the dropdown panel's own
+                edges and its content.
             **kwargs: Keyword arguments forwarded to ``AYButton``.
         """
         super().__init__(*args, **kwargs)
 
         self._populate_callback = populate_callback
         self._menu_open: bool = False
+        self._suppress_reopen_on_next_click: bool = False
 
-        self._dropdown = ButtonMenuDropdown(self)
+        if dropdown_variant is None:
+            self._dropdown = ButtonMenuDropdown(
+                self, container_margin=dropdown_margin
+            )
+        else:
+            self._dropdown = ButtonMenuDropdown(
+                self,
+                frame_variant=dropdown_variant,
+                container_variant=dropdown_variant,
+                container_margin=dropdown_margin,
+            )
         self._populate_callback(self._dropdown)
         self._dropdown.popup_closed.connect(self._on_popup_closed)
 
@@ -315,6 +398,10 @@ class AYButtonMenu(AYButton):
 
     def _on_button_clicked(self) -> None:
         """Toggle the dropdown popup visibility."""
+        if self._suppress_reopen_on_next_click:
+            self._suppress_reopen_on_next_click = False
+            return
+
         if self._menu_open:
             self._dropdown.close()
         else:
@@ -325,4 +412,9 @@ class AYButtonMenu(AYButton):
     def _on_popup_closed(self) -> None:
         """Update state when the popup signals it has closed."""
         self._menu_open = False
+        if QtWidgets.QApplication.mouseButtons() & Qt.MouseButton.LeftButton:
+            local_pos = self.mapFromGlobal(QtGui.QCursor.pos())
+            self._suppress_reopen_on_next_click = self.rect().contains(
+                local_pos
+            )
         self.menu_closed.emit()

@@ -9,9 +9,10 @@ import os
 
 import pyblish.api
 from typing import TYPE_CHECKING, Literal
+from qtpy import QtCore
 
 from ayon_core.host import ILoadHost, IPublishHost
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, env_value_to_bool
 from ayon_core.pipeline import registered_host
 
 from .lib import qt_app_context
@@ -84,27 +85,45 @@ class HostToolsHelper:
 
         return workfiles_tool
 
-    def get_loader_tool(self, parent):
+    def get_loader_tool(self, parent, *, use_context: bool = False):
         """Create, cache and return loader tool window."""
         if self._loader_tool is None:
-            from ayon_core.tools.loader.ui import LoaderWindow
-            from ayon_core.tools.loader import LoaderController
+            if use_legacy_loader():
+                from ayon_core.tools.loader.ui import LoaderWindow
+                from ayon_core.tools.loader import LoaderController
+            else:
+                from ayon_core.tools.browser.ui import BrowserWindow
+                from ayon_core.tools.browser import BrowserController
+
+                LoaderWindow = BrowserWindow
+                LoaderController = BrowserController
 
             host = registered_host()
             ILoadHost.validate_load_methods(host)
 
             controller = LoaderController(host=host)
-            loader_window = LoaderWindow(
-                controller=controller,
-                parent=parent or self._parent
-            )
+            window_kwargs = {
+                "controller": controller,
+                "parent": parent or self._parent,
+            }
+            loader_window = LoaderWindow(**window_kwargs)
 
             self._loader_tool = loader_window
 
+        if use_context and hasattr(
+            self._loader_tool, "select_current_context"
+        ):
+            QtCore.QTimer.singleShot(
+                0,
+                self._loader_tool.select_current_context,
+            )
         return self._loader_tool
 
     def show_loader(
-        self, parent: QWidget | None = None
+        self,
+        parent: QWidget | None = None,
+        *,
+        use_context: bool = False,
     ) -> QWidget:
         """Loader tool for loading representations.
 
@@ -116,7 +135,10 @@ class HostToolsHelper:
 
         """
         with qt_app_context():
-            loader_tool = self.get_loader_tool(parent)
+            loader_tool = self.get_loader_tool(
+                parent,
+                use_context=use_context,
+            )
 
             loader_tool.show()
             loader_tool.raise_()
@@ -347,7 +369,7 @@ class HostToolsHelper:
             return self.show_workfiles(parent, *args, **kwargs)
 
         if tool_name == "loader":
-            return self.show_loader(parent)
+            return self.show_loader(parent, *args, **kwargs)
 
         if tool_name == "libraryloader":
             return self.show_library_loader(parent)
@@ -540,3 +562,31 @@ def get_pyblish_icon():
     if os.path.exists(icon_path):
         return icon_path
     return None
+
+
+def use_legacy_loader() -> bool:
+    """Check if legacy loader should be used.
+
+    Returns:
+        bool: True if legacy loader should be used, False otherwise.
+    """
+    use_legacy = env_value_to_bool(
+        "AYON_USE_LEGACY_LOADER",
+        default=None,
+    )
+    if use_legacy is None:
+        from ayon_core.pipeline import get_current_project_name
+        from ayon_core.settings import (
+            get_project_settings,
+            get_studio_settings,
+        )
+
+        project_name = get_current_project_name()
+        if project_name:
+            settings = get_project_settings(project_name)
+        else:
+            settings = get_studio_settings()
+        use_legacy = settings["core"]["tools"]["loader"].get(
+            "use_legacy_loader", False
+        )
+    return use_legacy

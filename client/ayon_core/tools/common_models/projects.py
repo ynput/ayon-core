@@ -16,7 +16,11 @@ from ayon_core.lib.icon_definitions import (
     AwesomeFontIcon,
     get_icon_def_from_data,
 )
-from ayon_core.lib import CacheItem, NestedCacheItem
+from ayon_core.lib import (
+    CacheItem,
+    NestedCacheItem,
+    get_ayon_user_entity,
+)
 
 if typing.TYPE_CHECKING:
     from typing import Literal
@@ -612,7 +616,10 @@ class ProjectsModel:
     def _query_projects(self) -> list[ProjectItem]:
         projects = self._fetch_graphql_projects()
 
-        user = ayon_api.get_user()
+        # Shares ayon_core's cached user entity rather than issuing
+        # another '/users/me' - tools ask for the current user from
+        # several places while starting up.
+        user = get_ayon_user_entity()
         pinned_projects = (
             user
             .get("data", {})

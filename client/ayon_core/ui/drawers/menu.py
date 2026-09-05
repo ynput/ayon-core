@@ -116,7 +116,12 @@ class MenuDrawer:
         panel/frame painting, where the state/variant-specific styles are
         not relevant.
         """
-        style = self.model.get_style(self._WIDGET_CLS, "default", "base")
+        variant = (
+            widget.property("variant")
+            if widget is not None
+            else None
+        ) or "default"
+        style = self.model.get_style(self._WIDGET_CLS, variant, "base")
         style.set_context(widget)
         return style
 
@@ -171,17 +176,13 @@ class MenuDrawer:
         item_spacing = int(style.get("item-spacing", 4))
 
         fm = option.fontMetrics
-        text_h = (
-            fm.height()
-            if fm
-            else (
+        text_h = QFontMetrics(self.model.base_font).height()
+        if text_h <= 0:
+            text_h = (
                 contents_size.height()
                 if contents_size
                 else option.rect.height()
             )
-        )
-        if text_h <= 0:
-            text_h = 16
 
         min_h = int(style.get("min-item-height", 0))
         row_h = max(text_h + pad_v * 2, icon_size + pad_v * 2, min_h)
@@ -202,7 +203,7 @@ class MenuDrawer:
         if shortcut and sc_w == 0 and fm:
             sc_w = fm.horizontalAdvance(shortcut)
 
-        icon_gutter = (option.maxIconWidth or icon_size) + item_spacing
+        icon_gutter = icon_size + item_spacing
         is_submenu = (
             option.menuItemType == QStyleOptionMenuItem.MenuItemType.SubMenu
         )
@@ -341,7 +342,11 @@ class MenuDrawer:
         action = None
         if isinstance(widget, QMenu):
             action = widget.actionAt(option.rect.center())
-        variant = (action.property("variant") if action else None) or "default"
+        variant = (
+            (action.property("variant") if action else None)
+            or (widget.property("variant") if widget else None)
+            or "default"
+        )
 
         style = self.model.get_style(
             self._WIDGET_CLS, variant=variant, state=state
@@ -369,18 +374,28 @@ class MenuDrawer:
         not_checkable = QStyleOptionMenuItem.CheckType.NotCheckable
         if check_type != not_checkable:
             check_color = QColor(style.get("color", "#f4f5f5"))
-            check_icon = get_icon(
-                "check_box" if option.checked else "check_box_outline_blank",
-                color=check_color,
-                fill=False,
+            check_style = (
+                action.property("check-style") if action else None
             )
-            check_rect = QRect(
-                x,
-                cy - layout.icon_size // 2,
-                layout.icon_size,
-                layout.icon_size,
-            )
-            check_icon.paint(painter, check_rect)
+            if option.checked or check_style != "checkmark":
+                check_icon = get_icon(
+                    (
+                        "check"
+                        if check_style == "checkmark"
+                        else "check_box"
+                        if option.checked
+                        else "check_box_outline_blank"
+                    ),
+                    color=check_color,
+                    fill=False,
+                )
+                check_rect = QRect(
+                    x,
+                    cy - layout.icon_size // 2,
+                    layout.icon_size,
+                    layout.icon_size,
+                )
+                check_icon.paint(painter, check_rect)
         elif not option.icon.isNull():
             icon_rect = QRect(
                 x,

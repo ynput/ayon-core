@@ -17,6 +17,47 @@ from .data_models import (
 logger = logging.getLogger(__name__)
 
 
+class QSignalBlocker:
+    """Block a QObject's signals for the duration of a ``with`` block.
+
+    ``QtCore.QSignalBlocker`` only implements the context-manager protocol
+    on PySide6; on PySide2 ``with QtCore.QSignalBlocker(widget):`` fails
+    with ``AttributeError: __enter__``.  This wrapper drives
+    ``QObject.blockSignals()`` directly, which behaves identically on Qt 5
+    and Qt 6, so the same code runs under both bindings.
+
+    Unlike Qt's class, blocking starts on ``__enter__`` rather than on
+    construction: Python has no deterministic destructor, so a blocker
+    created outside a ``with`` statement would leave signals blocked for
+    however long the object happened to live.
+
+    The previous blocked state is restored rather than signals being
+    unconditionally unblocked, so nesting blockers over the same object is
+    safe.
+
+    Example:
+        with QSignalBlocker(self.checkbox):
+            self.checkbox.setChecked(True)
+
+    Args:
+        *objects: QObjects to block. ``None`` entries are ignored so
+            callers can pass widgets that may not exist yet.
+    """
+
+    def __init__(self, *objects) -> None:
+        self._objects = [obj for obj in objects if obj is not None]
+        self._previous: list[bool] = []
+
+    def __enter__(self) -> "QSignalBlocker":
+        self._previous = [obj.blockSignals(True) for obj in self._objects]
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        for obj, was_blocked in zip(self._objects, self._previous):
+            obj.blockSignals(was_blocked)
+        self._previous = []
+
+
 def color_blend(bg: str, fg: str, mix: float):
     b = QColor(bg)
     t = QColor(fg)
@@ -195,10 +236,8 @@ def clear_layout(layout):
         if widget:
             # Recursively clear any layouts this widget might have
             # (in case it's a container widget with its own layouts)
-            if hasattr(widget, "layout") and widget.layout():
-                clear_layout(widget.layout())
+            widget.setVisible(False)
             # Delete the widget
-            widget.setParent(None)
             widget.deleteLater()
         elif sub_layout:
             # Recursively clear the sub-layout

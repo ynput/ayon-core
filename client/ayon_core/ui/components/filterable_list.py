@@ -7,9 +7,7 @@ from typing import Callable
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QFrame, QWidget
 
-from .container import AYContainer
 from .frame import AYFrame
-from .label import AYLabel
 from .layouts import AYVBoxLayout
 from .line_edit import AYLineEdit
 from .scroll_area import AYScrollArea
@@ -46,25 +44,12 @@ class FilterableList(StyleMixin, QWidget):
         """Build the internal UI layout."""
         layout = AYVBoxLayout(self, margin=0, spacing=0)
 
-        search_container = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYFrame.Variants.Low_Square,
-            layout_margin=6,
-            layout_spacing=6,
+        self._search_field = AYLineEdit(
+            placeholder=self._placeholder,
+            variant=AYLineEdit.Variants.Search_Field,
         )
-        self.search_icon = AYLabel(
-            icon="search",
-            icon_size=18,
-            icon_color="#ffffff",
-            variant=AYLabel.Variants.Default,
-        )
-        search_container.add_widget(self.search_icon)
-
-        self._search_field = AYLineEdit()
-        self._search_field.setPlaceholderText(self._placeholder)
         self._search_field.textChanged.connect(self._on_search_changed)
-        search_container.add_widget(self._search_field)
-        layout.addWidget(search_container)
+        layout.addWidget(self._search_field)
 
         scroll_area = AYScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -107,8 +92,21 @@ class FilterableList(StyleMixin, QWidget):
 
     def clear_items(self) -> None:
         """Remove all items from the list."""
+        for widget in self.take_items():
+            widget.deleteLater()
+
+    def take_items(self) -> list[QWidget]:
+        """Remove and return items without deleting their widgets."""
+        widgets = [widget for widget, _match_fn in self._items]
+        for widget in widgets:
+            widget.hide()
+            self._items_layout.removeWidget(widget)
         self._items.clear()
-        self._items_layout.clear()
+
+        while self._items_layout.count():
+            item = self._items_layout.takeAt(0)
+            del item
+        return widgets
 
     def search_field(self) -> AYLineEdit:
         """Return the search field widget.

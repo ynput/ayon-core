@@ -31,6 +31,28 @@ if TYPE_CHECKING:
     from ..style import AYONStyle
 
 
+def _get_button_option(
+    option: QStyleOption | None,
+    widget: QWidget | None,
+) -> QStyleOptionButton | None:
+    """Return a complete button option across Qt binding versions."""
+    required = ("features", "icon", "iconSize", "text")
+    if (
+        isinstance(option, QStyleOptionButton)
+        and all(hasattr(option, attr) for attr in required)
+    ):
+        return option
+    if widget is None or not hasattr(widget, "initStyleOption"):
+        return None
+
+    button_option = QStyleOptionButton()
+    widget.initStyleOption(button_option)  # type: ignore[attr-defined]
+    if option is not None:
+        button_option.rect = option.rect
+        button_option.state = option.state
+    return button_option
+
+
 class ButtonDrawer:
     def __init__(self, style_inst: AYONStyle) -> None:
         self.style_inst = style_inst
@@ -170,14 +192,25 @@ class ButtonDrawer:
         state."""
         variant = self.get_button_variant(widget)
 
+        is_hover = bool(
+            state & QStyle.StateFlag.State_MouseOver
+        ) or widget.underMouse()
+
         wstate = "base"
         if not (state & QStyle.StateFlag.State_Enabled):
             wstate = "disabled"
         elif state & QStyle.StateFlag.State_Sunken:
             wstate = "pressed"
-        elif (state & QStyle.StateFlag.State_MouseOver and not (
-            state & QStyle.StateFlag.State_On) or widget.underMouse()
-        ):
+        elif is_hover and state & QStyle.StateFlag.State_On:
+            # Only variants that explicitly define "checked-hover" opt
+            # into a combined look; every other checkable variant
+            # (filter chips, tag toggles, ...) falls straight to
+            # "hover" here, unchanged from before this state existed.
+            raw_variant = self.model.widget_data("QPushButton").get(
+                "variants", {}
+            ).get(variant, {})
+            wstate = "checked-hover" if "checked-hover" in raw_variant else "hover"
+        elif is_hover:
             wstate = "hover"
         elif state & QStyle.StateFlag.State_On:
             wstate = "checked"
@@ -194,7 +227,8 @@ class ButtonDrawer:
         widget: QWidget | None,
     ) -> None:
         """Draw the button background and frame with hover detection."""
-        if not isinstance(option, QStyleOptionButton) or widget is None:
+        option = _get_button_option(option, widget)
+        if option is None or widget is None:
             return
 
         style, _ = self.get_button_style(widget, option.state)
@@ -204,7 +238,11 @@ class ButtonDrawer:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Draw button background with hover awareness
-        bg_color = style["background-color"]
+        # NOTE: QColor(...) wrapping is required here - PySide2's QBrush
+        # constructor (unlike PySide6's) does not implicitly convert a
+        # plain hex-color string, silently producing an invisible
+        # NoBrush instead.
+        bg_color = QColor(style["background-color"])
         painter.setOpacity(style.get("opacity", 1.0))
 
         painter.setBrush(QBrush(bg_color))
@@ -269,7 +307,8 @@ class ButtonDrawer:
         widget: QWidget | None,
     ) -> None:
         """Draw the button text and icon."""
-        if not isinstance(option, QStyleOptionButton) or widget is None:
+        option = _get_button_option(option, widget)
+        if option is None or widget is None:
             return
 
         style, wstate = self.get_button_style(widget, option.state)  # type: ignore
@@ -334,6 +373,26 @@ class ButtonDrawer:
             elif option.state & QStyle.StateFlag.State_Sunken:  # type: ignore
                 mode = QtGui.QIcon.Mode.Active
 
+            # Same On/Off-as-hover encoding the icon-only branch below
+            # uses: AYButton.set_icon() bakes the hover color into the
+            # icon's "On" state for non-checkable buttons. Without
+            # selecting that state here, an icon+text button's icon
+            # never picks up its hover color even though the text does.
+            checkable = widget.isCheckable() if widget else False
+            icon_state = (
+                (
+                    QtGui.QIcon.State.On
+                    if wstate == "hover"
+                    else QtGui.QIcon.State.Off
+                )
+                if not checkable
+                else (
+                    QtGui.QIcon.State.On
+                    if option.state & QStyle.StateFlag.State_On  # type: ignore
+                    else QtGui.QIcon.State.Off
+                )
+            )
+
             if label_alignment is not None:
                 # Group layout: icon + text move together as a unit
                 h_align = (
@@ -369,6 +428,7 @@ class ButtonDrawer:
                     icon_rect,
                     Qt.AlignmentFlag.AlignCenter,
                     mode,
+                    icon_state,
                 )
                 painter.drawText(
                     text_rect,
@@ -391,6 +451,7 @@ class ButtonDrawer:
                     icon_rect,
                     Qt.AlignmentFlag.AlignCenter,
                     mode,
+                    icon_state,
                 )
                 # Adjust text rectangle
                 text_rect = QRect(content_rect)
@@ -454,7 +515,8 @@ class ButtonDrawer:
         """Calculate minimum size for push buttons with text, icons,
         and proper padding."""
 
-        if not isinstance(option, QStyleOptionButton):
+        button_option = _get_button_option(option, widget)
+        if button_option is None:
             # Fallback to parent if we don't have proper option data
             if option is not None:
                 return self._super.sizeFromContents(
@@ -466,6 +528,7 @@ class ButtonDrawer:
             else:
                 # Return reasonable default for button if no option
                 return QtCore.QSize(100, 30)
+        option = button_option
 
         # Set up font for text measurement
         style, _ = self.get_button_style(widget, option.state)  # type: ignore
@@ -546,6 +609,10 @@ class ButtonDrawer:
         option: QStyleOption,
         widget: QWidget,
     ):
+        button_option = _get_button_option(option, widget)
+        if button_option is None:
+            raise ValueError("Button option could not be initialized")
+        option = button_option
         if element == QStyle.SubElement.SE_PushButtonContents:
             style = self.model.get_style(
                 "QPushButton", self.get_button_variant(widget)

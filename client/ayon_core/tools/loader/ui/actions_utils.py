@@ -55,6 +55,7 @@ def show_actions_menu(
 
     group_menu_by_label = {}
     action_items_by_id = {}
+    option_action = [None]
     for item in sorted(action_items_with_labels, key=_actions_sorter):
         action_item, _, _ = item
         item_id = uuid.uuid4().hex
@@ -71,6 +72,12 @@ def show_actions_menu(
         if use_option:
             # Add option box tip
             action.set_option_tip(item_options)
+            action.option_clicked.connect(
+                lambda action=action: _select_option_action(
+                    action,
+                    option_action,
+                )
+            )
 
         tip = action_item.tooltip
         if tip:
@@ -92,7 +99,7 @@ def show_actions_menu(
         else:
             menu.addAction(action)
 
-    action = menu.exec_(global_point)
+    action = menu.exec_(global_point) or option_action[0]
     if action is not None:
         item_id = action.data()
         selected_action_item = action_items_by_id.get(item_id)
@@ -101,6 +108,12 @@ def show_actions_menu(
         selected_options = _get_options(action, selected_action_item, parent)
 
     return selected_action_item, selected_options
+
+
+def _select_option_action(action, output: list) -> None:
+    """Record that an action's option button triggered the menu."""
+    action.optioned = True
+    output[0] = action
 
 
 def _get_options(action, action_item, parent):

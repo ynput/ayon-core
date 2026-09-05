@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from qtpy import QtWidgets
 from qtpy.QtCore import QRect, Qt
-from qtpy.QtGui import QBrush, QColor, QPainter, QPen
+from qtpy.QtGui import QBrush, QColor, QPainter
 from qtpy.QtWidgets import (
     QStyle,
     QStyleOption,
@@ -19,6 +19,26 @@ from ._utils import enum_to_str
 
 if TYPE_CHECKING:
     from ..style import AYONStyle
+
+
+def _get_slider_option(
+    option: QStyleOptionComplex,
+    widget: QtWidgets.QScrollBar,
+) -> QStyleOptionSlider:
+    """Return a complete slider option across Qt binding versions.
+
+    Older PySide versions may slice a ``QStyleOptionSlider`` to its
+    ``QStyleOptionComplex`` base when it passes through a Python style
+    override. Reinitializing the concrete option restores range and
+    position attributes required for scrollbar geometry.
+    """
+    required = ("minimum", "maximum", "sliderPosition", "upsideDown")
+    if all(hasattr(option, attr) for attr in required):
+        return option  # type: ignore[return-value]
+
+    slider_option = QStyleOptionSlider()
+    widget.initStyleOption(slider_option)
+    return slider_option
 
 
 class ScrollBarDrawer:
@@ -93,8 +113,9 @@ class ScrollBarDrawer:
                 "Widget required to calculate scrollbar sub-control rects"
             )
 
-        if not isinstance(opt, (QStyleOptionSlider, QStyleOptionComplex)):
+        if not isinstance(opt, QStyleOptionComplex):
             raise ValueError(f"Unexpected option type: {type(opt)}")
+        opt = _get_slider_option(opt, w)
 
         sup = self._super
         try:
@@ -112,10 +133,51 @@ class ScrollBarDrawer:
 
         orientation = w.orientation()
 
-        if sc in (
-            QStyle.SubControl.SC_ScrollBarSlider,
-            QStyle.SubControl.SC_ScrollBarGroove,
-        ):
+        if sc == QStyle.SubControl.SC_ScrollBarSlider:
+            base_groove = sup.subControlRect(
+                cc, opt, QStyle.SubControl.SC_ScrollBarGroove, w
+            )
+            base_slider = sup.subControlRect(cc, opt, sc, w)
+            if orientation == Qt.Orientation.Vertical:
+                groove = base_groove.adjusted(
+                    0, -sls.height(), 0, als.height()
+                )
+                slider_length = base_slider.height()
+                available = max(0, groove.height() - slider_length)
+                offset = QStyle.sliderPositionFromValue(
+                    w.minimum(),
+                    w.maximum(),
+                    w.sliderPosition(),
+                    available,
+                    w.invertedAppearance(),
+                )
+                return QRect(
+                    base_slider.left(),
+                    groove.top() + offset,
+                    base_slider.width(),
+                    slider_length,
+                )
+
+            groove = base_groove.adjusted(
+                -sls.width(), 0, als.width(), 0
+            )
+            slider_length = base_slider.width()
+            available = max(0, groove.width() - slider_length)
+            offset = QStyle.sliderPositionFromValue(
+                w.minimum(),
+                w.maximum(),
+                w.sliderPosition(),
+                available,
+                w.invertedAppearance(),
+            )
+            return QRect(
+                groove.left() + offset,
+                base_slider.top(),
+                slider_length,
+                base_slider.height(),
+            )
+
+        if sc == QStyle.SubControl.SC_ScrollBarGroove:
             rect = sup.subControlRect(cc, opt, sc, w)
             if orientation == Qt.Orientation.Vertical:
                 rect.adjust(0, -sls.height(), 0, als.height())
@@ -124,20 +186,46 @@ class ScrollBarDrawer:
             return rect
 
         elif sc == QStyle.SubControl.SC_ScrollBarAddPage:
-            rect = sup.subControlRect(cc, opt, sc, w)
+            groove = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarGroove, w
+            )
+            slider = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarSlider, w
+            )
             if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, 0, 0, als.height())
-            else:
-                rect.adjust(0, 0, als.width(), 0)
-            return rect
+                return QRect(
+                    groove.left(),
+                    slider.bottom() + 1,
+                    groove.width(),
+                    max(0, groove.bottom() - slider.bottom()),
+                )
+            return QRect(
+                slider.right() + 1,
+                groove.top(),
+                max(0, groove.right() - slider.right()),
+                groove.height(),
+            )
 
         elif sc == QStyle.SubControl.SC_ScrollBarSubPage:
-            rect = sup.subControlRect(cc, opt, sc, w)
+            groove = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarGroove, w
+            )
+            slider = self.get_size(
+                cc, opt, QStyle.SubControl.SC_ScrollBarSlider, w
+            )
             if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, -sls.height(), 0, 0)
-            else:
-                rect.adjust(-sls.width(), 0, 0, 0)
-            return rect
+                return QRect(
+                    groove.left(),
+                    groove.top(),
+                    groove.width(),
+                    max(0, slider.top() - groove.top()),
+                )
+            return QRect(
+                groove.left(),
+                groove.top(),
+                max(0, slider.left() - groove.left()),
+                groove.height(),
+            )
 
         raise ValueError("Unexpected sub-control")
 
@@ -158,25 +246,48 @@ class ScrollBarDrawer:
             return int(self._style["min-length"])
         return 0
 
+    def _get_variant_style(self, widget: QWidget | None):
+        variant = getattr(widget, "_variant_str", "default")
+        style = self.model.get_style("QScrollBar", variant=variant)
+        style.set_context(widget)
+        return style
+
     def draw_scrollbar_slider(
         self,
         option: QStyleOptionComplex,
         painter: QPainter,
         widget: QWidget | None = None,
     ) -> None:
-        """Draw the scrollbar slider/thumb."""
-        style = self.model.get_style("QScrollBar")
-        style.set_context(widget)
+        """Draw the scrollbar slider/thumb.
+
+        Insets the filled rect directly (by half of ``border-width``,
+        kept as the inset amount for visual continuity) rather than
+        drawing a wide pen in the track's own ``background-color`` —
+        that pen doubled as the "padding" between the thumb and the
+        scrollbar's own edge, coupling the thumb's look to the track
+        always being opaque. A transparent-track variant needs the
+        thumb's inset to still work with no track color to borrow.
+
+        The slider's own sub-control rect (``option.rect``) sits
+        outside the ``AddPage``/``SubPage`` rects this drawer also
+        paints, so the inset margin around the thumb isn't covered by
+        either — it must be filled here with the same background-color
+        first, or that margin is left to whatever Qt painted underneath
+        before this call (opaque black, by default).
+        """
+        style = self._get_variant_style(widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Draw slider background
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor(style.get("background-color"))))
+        painter.drawRect(option.rect)
+
         painter.setBrush(QBrush(QColor(style.get("slider-color"))))
-        pen = QPen(QColor(style.get("background-color")))
-        pen.setWidth(style.get("border-width"))
-        painter.setPen(pen)
+        inset = int(style.get("border-width", 10) / 2)
+        rect = option.rect.adjusted(inset, inset, -inset, -inset)
         radius = style.get("border-radius")
-        painter.drawRoundedRect(option.rect, radius, radius)
+        painter.drawRoundedRect(rect, radius, radius)
 
         painter.restore()
 
@@ -186,13 +297,11 @@ class ScrollBarDrawer:
         painter: QPainter,
         widget: QWidget | None = None,
     ) -> None:
-        """Draw scrollbar page buttons."""
-        style = self.model.get_style("QScrollBar")
-        style.set_context(widget)
+        """Draw scrollbar page buttons (the track behind the thumb)."""
+        style = self._get_variant_style(widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Draw slider background
         painter.setBrush(QBrush(QColor(style.get("background-color"))))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRect(option.rect)

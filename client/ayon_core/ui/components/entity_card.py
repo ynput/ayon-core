@@ -84,8 +84,9 @@ class _CardBody(AYEntityThumbnail):
             size=(width, width / IMG_RATIO),
             fade_duration=250,
             placeholder_icon="image",
-            placeholder_scale=0.20,
+            placeholder_scale=0.35,
             async_file_cacher=async_file_cacher,
+            fill_area=True,
             parent=parent,
         )
 

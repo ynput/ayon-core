@@ -45,13 +45,23 @@ class FrameDrawer:
     ):
         # get style
         variant = getattr(w, "_variant_str", "")
-        state = "base"
         row_state = w.property("row_state") if w is not None else None
-        if row_state:
-            if row_state & QStyle.StateFlag.State_Selected:
-                state = "selected"
-            elif row_state & QStyle.StateFlag.State_MouseOver:
-                state = "hover"
+        is_selected = bool(row_state and row_state & QStyle.StateFlag.State_Selected)
+        is_hover = bool(row_state and row_state & QStyle.StateFlag.State_MouseOver) or (
+            getattr(w, "_hover_enabled", False)
+            and (
+                option.state & QStyle.StateFlag.State_MouseOver
+                or w.underMouse()
+            )
+        )
+        if is_selected and is_hover:
+            state = "selected-hover"
+        elif is_selected:
+            state = "selected"
+        elif is_hover:
+            state = "hover"
+        else:
+            state = "base"
         style = self.model.get_style("QFrame", variant, state)
         style.set_context(w)
 
@@ -74,9 +84,12 @@ class FrameDrawer:
         border_color = QColor(style["border-color"])
         pen = QPen(border_color)
         pen.setWidth(border_width)
-        pen.setStyle(
-            Qt.PenStyle.SolidLine if border_width else Qt.PenStyle.NoPen
-        )
+        if not border_width:
+            pen.setStyle(Qt.PenStyle.NoPen)
+        elif style.get("border-style", "solid") == "dashed":
+            pen.setStyle(Qt.PenStyle.DashLine)
+        else:
+            pen.setStyle(Qt.PenStyle.SolidLine)
         # brush setup
         bg_color = QColor(style["background-color"])
         brush = QBrush(bg_color)
@@ -95,6 +108,12 @@ class FrameDrawer:
             )
 
         if radius:
+            # Clamp to a single value derived from the shorter side so
+            # both corner axes stay circular. Qt's own clamping caps
+            # each axis independently against half its own dimension,
+            # which turns an oversized radius on a wide-but-short rect
+            # (e.g. a pill chip) into an ellipse instead of a stadium.
+            radius = min(radius, draw_rect.width() / 2.0, draw_rect.height() / 2.0)
             painter.drawRoundedRect(draw_rect, radius, radius)
         else:
             painter.drawRect(draw_rect)

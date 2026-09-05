@@ -18,6 +18,9 @@ class QPushButtonVariants(Enum):
     Entity_Card = "entity-card"
     Tag = "tag"
     Tag_Menu = "tag-menu"
+    Chip = "chip"
+    Chip_Active = "chip-active"
+    Row_Action = "row-action"
     Table_Filter = "table-filter"
     Optional_Action = "optional-action"
 
@@ -55,6 +58,7 @@ class QComboBoxVariants(Enum):
 
 class QScrollBarVariants(Enum):
     Default = "default"
+    Transparent_Track = "transparent-track"
 
 
 class QScrollAreaVariants(Enum):
@@ -75,6 +79,12 @@ class QFrameVariants(Enum):
     Entity_Card = "entity-card"
     Entity_Card_Tag = "entity-card-tag"
     Surface = "surface"
+    Popover = "popover"
+    # Same color as Popover, no corner rounding — for content that's
+    # naturally clipped by a scroll viewport, where a rounded corner
+    # would fall in the middle of a scroll range and just look wrong.
+    Popover_Square = "popover-square"
+    Pill = "pill"
     Contextual_Menu = "contextual-menu"
     Debug_R = "debug-r"
     Debug_G = "debug-g"
@@ -87,6 +97,7 @@ class QToolTipVariants(Enum):
 
 class QMenuVariants(Enum):
     Default = "default"
+    Surface = "surface"
     Danger = "danger"
 
 

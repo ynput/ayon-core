@@ -1,15 +1,14 @@
 """Menu action with an option box button (Maya-style option box pattern).
 
-Provides three classes that together implement a menu item composed of
-a standard action area (icon + label) and a small option button on the
-far right.  Clicking the main area fires the normal ``triggered``
-signal; clicking the option button emits ``OptionalAction.option_clicked``
-instead.
+Provides AYON-styled menus and a widget action composed of a standard
+action area (icon + label) and a small option target on the far right.
+Clicking the main area fires the normal ``triggered`` signal; clicking
+the option target emits ``AYOptionalAction.option_clicked`` instead.
 
 Typical usage::
 
-    menu = QMenu("My Menu", parent)
-    action = OptionalAction(
+    menu = AYOptionalMenu("My Menu", parent)
+    action = AYOptionalAction(
         label="Run Process",
         icon_name="play_arrow",
         use_option=True,
@@ -22,13 +21,11 @@ Typical usage::
 
 from __future__ import annotations
 
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ..style_types import get_ayon_style
+from ..style_types import StyleDict, get_ayon_style
 from .buttons import AYButton
-from .frame import AYFrame
-from .label import AYLabel
-from .layouts import AYHBoxLayout
 
 
 class AYOptionBox(AYButton):
@@ -53,83 +50,155 @@ class AYOptionBox(AYButton):
             fixed_width=False,
         )
 
+    def is_hovered(self, global_pos: QtCore.QPoint) -> bool:
+        """Return whether a global cursor position is inside the button."""
+        pos = self.mapFromGlobal(global_pos)
+        if isinstance(pos, QtCore.QPointF):
+            pos = pos.toPoint()
+        return self.rect().contains(pos)
+
 
 class AYOptionalActionWidget(QtWidgets.QWidget):
-    """Row widget that combines a body area and an :class:`AYOptionBox`.
-
-    The body contains an icon label and a text label.  The option box
-    is pinned to the far right.  Both sections respond to hover state
-    via :meth:`_set_row_hover` and :meth:`_sync_row_hover`.
+    """Self-painted menu row with main and option action hit regions.
 
     Args:
         label: Display text for the action.
-        icon_name: Material symbol icon name for the label.
+        icon_name: Material symbol name or an already resolved icon.
+        use_option: Whether to show the option action.
         parent: Optional parent widget.
     """
 
     def __init__(
         self,
         label: str,
-        icon_name: str = "none",
+        icon_name: str | QtGui.QIcon = "none",
+        use_option: bool = True,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-
-        _style = get_ayon_style().model.get_style(
-            "QLabel", variant=AYLabel.Variants.Optional_Action.value
-        )
-        icon_size = _style.get("icon-size", 16)
-
-        body_widget = AYFrame(self, variant=AYFrame.Variants.Contextual_Menu)
-        body_widget.setObjectName("OptionalActionBody")
-
-        label_wdgt = AYLabel(
-            label,
-            variant=AYLabel.Variants.Optional_Action,
-            icon=icon_name,
-            icon_size=icon_size,
-            icon_fill=False,
-            parent=body_widget,
-        )
-        min_h = int(
-            get_ayon_style().model.get_style("QMenu").get("min-item-height", 0)
-        )
-        self.setMinimumHeight(min_h)
-
-        option_box = AYOptionBox(icon_size=icon_size, parent=body_widget)
-        option_box.setObjectName("OptionalActionOption")
-
-        body_layout = AYHBoxLayout(body_widget, spacing=2, margin=0)
-        body_layout.addWidget(label_wdgt, stretch=1)
-
-        layout = AYHBoxLayout(self, spacing=0, margin=0)
-        layout.addWidget(body_widget)
-        layout.addWidget(option_box)
-
-        body_widget.setMouseTracking(True)
+        self._label = label
+        self._icon_name = icon_name
+        self._use_option = use_option
+        self._shortcut_text = ""
+        self._hovered = False
+        self._option_hovered = False
         self.setMouseTracking(True)
+        self.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
 
-        self.icon: QtGui.QIcon = QtGui.QIcon()
-        self.label: AYLabel = label_wdgt
-        self.option: AYOptionBox = option_box
-        self.body: QtWidgets.QWidget = body_widget
+    def set_shortcut_text(self, shortcut_text: str) -> None:
+        self._shortcut_text = shortcut_text
+        self.updateGeometry()
+        self.update()
 
-        # Watch the children's hover transitions so we can keep them in sync
-        # while the cursor moves between them.
-        self.label.installEventFilter(self)
-        self.option.installEventFilter(self)
+    def _menu_style(self, state: str = "base") -> StyleDict:
+        style = get_ayon_style().model.get_style("QMenu", state=state)
+        style.set_context(self.parentWidget())
+        return style
 
-    # -- hover propagation ------------------------------------------------
+    def _option_rect(self) -> QtCore.QRect:
+        if not self._use_option:
+            return QtCore.QRect()
+        row_height = self.height()
+        return QtCore.QRect(
+            self.width() - row_height,
+            0,
+            row_height,
+            row_height,
+        )
 
     def _set_row_hover(self, hovered: bool) -> None:
-        for child in (self.body, self.label, self.option):
-            child.setAttribute(QtCore.Qt.WA_UnderMouse, hovered)
-            child.update()
+        if self._hovered != hovered:
+            self._hovered = hovered
+            self.update()
 
-    def _sync_row_hover(self) -> None:
-        # ``underMouse()`` on the parent stays True as long as the cursor is
-        # anywhere inside this row, even while crossing child borders.
-        self._set_row_hover(self.underMouse())
+    def _resolved_icon(self) -> QtGui.QIcon:
+        if isinstance(self._icon_name, QtGui.QIcon):
+            return QtGui.QIcon(self._icon_name)
+        if not self._icon_name or self._icon_name == "none":
+            return QtGui.QIcon()
+        color = QtGui.QColor(
+            self._menu_style().get("color", "#f4f5f5")
+        )
+        return get_icon(self._icon_name, color=color.name())
+
+    def _style_option(self) -> QtWidgets.QStyleOptionMenuItem:
+        option = QtWidgets.QStyleOptionMenuItem()
+        option.initFrom(self)
+        option.menuItemType = (
+            QtWidgets.QStyleOptionMenuItem.MenuItemType.Normal
+        )
+        option.checkType = (
+            QtWidgets.QStyleOptionMenuItem.CheckType.NotCheckable
+        )
+        option.text = self._label
+        if self._shortcut_text:
+            option.text += f"\t{self._shortcut_text}"
+        option.icon = self._resolved_icon()
+        option.maxIconWidth = int(
+            self._menu_style().get("icon-size", 16)
+        )
+        if self._hovered:
+            option.state |= (
+                QtWidgets.QStyle.StateFlag.State_Selected
+            )
+        return option
+
+    def sizeHint(self) -> QtCore.QSize:
+        option = self._style_option()
+        size = get_ayon_style().sizeFromContents(
+            QtWidgets.QStyle.ContentsType.CT_MenuItem,
+            option,
+            QtCore.QSize(),
+            self.parentWidget(),
+        )
+        if self._use_option:
+            size.setWidth(size.width() + size.height())
+        return size
+
+    def paintEvent(self, _event: QtGui.QPaintEvent) -> None:
+        option_rect = self._option_rect()
+        menu_rect = self.rect()
+        if option_rect.isValid():
+            menu_rect.setRight(option_rect.left() - 1)
+
+        option = self._style_option()
+        option.rect = menu_rect
+        painter = QtGui.QPainter(self)
+        get_ayon_style().drawControl(
+            QtWidgets.QStyle.ControlElement.CE_MenuItem,
+            option,
+            painter,
+            self.parentWidget(),
+        )
+
+        if option_rect.isValid():
+            state = "hover" if self._hovered else "base"
+            style = self._menu_style(state)
+            if self._option_hovered:
+                painter.fillRect(
+                    option_rect,
+                    QtGui.QColor(
+                        style.get("shortcut-background-color", "#353b46")
+                    ),
+                )
+            icon_size = int(style.get("icon-size", 16))
+            color = QtGui.QColor(style.get("color", "#f4f5f5"))
+            option_icon = get_icon(
+                "check_box_outline_blank",
+                color=color.name(),
+            )
+            option_icon.paint(
+                painter,
+                QtCore.QRect(
+                    option_rect.center().x() - icon_size // 2,
+                    option_rect.center().y() - icon_size // 2,
+                    icon_size,
+                    icon_size,
+                ),
+            )
+        painter.end()
 
     def enterEvent(self, event: QtCore.QEvent) -> None:
         self._set_row_hover(True)
@@ -137,18 +206,39 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
 
     def leaveEvent(self, event: QtCore.QEvent) -> None:
         self._set_row_hover(False)
+        self._option_hovered = False
         super().leaveEvent(event)
 
-    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if obj in (self.body, self.label, self.option) and event.type() in (
-            QtCore.QEvent.Type.Enter,
-            QtCore.QEvent.Type.Leave,
-        ):
-            # Qt is about to flip WA_UnderMouse on this child.  Defer to
-            # the next event-loop tick so Qt's own handling has finished,
-            # then re-assert hover state based on the parent.
-            QtCore.QTimer.singleShot(0, self._sync_row_hover)
-        return super().eventFilter(obj, event)
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        option_hovered = self._option_rect().contains(event.pos())
+        if self._option_hovered != option_hovered:
+            self._option_hovered = option_hovered
+            self.update()
+        super().mouseMoveEvent(event)
+
+    def is_option_hovered(self, global_pos: QtCore.QPoint) -> bool:
+        local_pos = self.mapFromGlobal(global_pos)
+        return self._option_rect().contains(local_pos)
+
+    def set_highlight(
+        self,
+        highlighted: bool,
+        global_pos: QtCore.QPoint | None = None,
+    ) -> None:
+        """Update row and option-box hover from the owning menu."""
+        option_hovered = bool(
+            highlighted
+            and global_pos is not None
+            and self.is_option_hovered(global_pos)
+        )
+        changed = (
+            self._hovered != highlighted
+            or self._option_hovered != option_hovered
+        )
+        self._hovered = highlighted
+        self._option_hovered = option_hovered
+        if changed:
+            self.update()
 
 
 class AYOptionalAction(QtWidgets.QWidgetAction):
@@ -162,7 +252,7 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
 
     Args:
         label: Display text.
-        icon_name: Material symbol icon name (or ``"none"``).
+        icon_name: Material symbol name, resolved icon, or ``"none"``.
         use_option: Whether to show the option box button.
         parent: Parent widget (typically the owning menu).
     """
@@ -172,7 +262,7 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
     def __init__(
         self,
         label: str,
-        icon_name: str | None = "none",
+        icon_name: str | QtGui.QIcon | None = "none",
         use_option: bool = True,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
@@ -181,6 +271,7 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         self._icon_name = icon_name or "none"
         self._use_option = use_option
         self.widget: AYOptionalActionWidget | None = None
+        self.setText(label)
 
     def createWidget(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """Instantiate and configure the custom action row widget.
@@ -196,16 +287,12 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         widget = AYOptionalActionWidget(
             self._label,
             icon_name=self._icon_name,
+            use_option=self._use_option,
             parent=parent,
         )
         widget.setEnabled(self.isEnabled())
+        widget.set_shortcut_text(self.shortcut().toString())
         self.widget = widget
-
-        if self._use_option:
-            widget.option.clicked.connect(self.option_clicked.emit)
-            widget.option.clicked.connect(self._close_menu_chain)
-        else:
-            widget.option.setVisible(False)
 
         return widget
 
@@ -217,21 +304,41 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
                 w.close()
             w = w.parentWidget()
 
+    def set_highlight(
+        self,
+        highlighted: bool,
+        global_pos: QtCore.QPoint | None = None,
+    ) -> None:
+        """Synchronize hover styling for legacy optional menus."""
+        if self.widget is not None:
+            self.widget.set_highlight(highlighted, global_pos)
+
+    def is_option_hovered(self, global_pos: QtCore.QPoint) -> bool:
+        """Return whether *global_pos* is inside the option-box region."""
+        return bool(
+            self._use_option
+            and self.widget is not None
+            and self.widget.is_option_hovered(global_pos)
+        )
+
+    def trigger_option(self) -> None:
+        """Emit the secondary action and close its menu hierarchy."""
+        self.option_clicked.emit()
+        self._close_menu_chain()
+
 
 class AYMenu(QtWidgets.QMenu):
     """QMenu that paints itself using the AYON style.
 
     Replicates :meth:`QMenu.paintEvent` but routes every primitive and
     control draw call through :func:`get_ayon_style`, so the menu is
-    painted consistently with the rest of the AYON UI even when the
-    application style isn't AYONStyle.
+    painted consistently with the rest of the AYON UI without assigning
+    the shared AYON style instance to the transient menu.
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        # Force the menu to use AYONStyle for drawing, even if the app's style
-        # is something else.
-        self.setStyle(get_ayon_style())
+        get_ayon_style().style_widget(self)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         """Paint the menu using AYON's QStyle implementation.
@@ -281,6 +388,8 @@ class AYMenu(QtWidgets.QMenu):
             opt = QtWidgets.QStyleOptionMenuItem()
             self.initStyleOption(opt, action)
             opt.rect = action_rect
+            if action is self.activeAction():
+                opt.state |= QtWidgets.QStyle.StateFlag.State_Selected
 
             style.drawControl(
                 QtWidgets.QStyle.ControlElement.CE_MenuItem,
@@ -308,3 +417,59 @@ class AYMenu(QtWidgets.QMenu):
             )
 
         painter.end()
+
+
+class AYOptionalMenu(AYMenu):
+    """AYON-styled menu that supports optional-action widget rows."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.setMouseTracking(True)
+        self.hovered.connect(self._apply_action_hover)
+        self.aboutToHide.connect(self._clear_action_highlights)
+
+    @staticmethod
+    def _event_global_pos(event: QtGui.QMouseEvent) -> QtCore.QPoint:
+        try:
+            return event.globalPosition().toPoint()
+        except AttributeError:
+            return event.globalPos()
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        """Update option-box hover while preserving native menu behavior."""
+        super().mouseMoveEvent(event)
+        hovered_action = self.actionAt(event.pos())
+        global_pos = self._event_global_pos(event)
+        for action in self.actions():
+            if isinstance(action, AYOptionalAction):
+                action.set_highlight(
+                    action is hovered_action,
+                    global_pos,
+                )
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        """Handle option-box clicks and delegate main clicks to Qt."""
+        action = self.actionAt(event.pos())
+        if (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and isinstance(action, AYOptionalAction)
+            and action.is_option_hovered(self._event_global_pos(event))
+        ):
+            action.trigger_option()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def _apply_action_hover(
+        self,
+        hovered_action: QtWidgets.QAction,
+    ) -> None:
+        for action in self.actions():
+            if isinstance(action, AYOptionalAction):
+                action.set_highlight(action is hovered_action)
+        self.update()
+
+    def _clear_action_highlights(self) -> None:
+        for action in self.actions():
+            if isinstance(action, AYOptionalAction):
+                action.set_highlight(False)
