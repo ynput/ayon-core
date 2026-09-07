@@ -32,6 +32,10 @@ from . import (
     deregister_inventory_action_path
 )
 
+import structlog
+from structlog.contextvars import bind_contextvars, clear_contextvars
+
+
 
 _is_installed = False
 _process_id = None
@@ -162,6 +166,8 @@ def install_host(host: AbstractHost) -> None:
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
+
+    bind_contextvars(host_name=host_name, project=project_name)
 
     install_ayon_plugins(project_name, host_name)
 

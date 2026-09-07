@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import contextlib
 import typing
 from typing import Optional, Any
@@ -9,7 +8,15 @@ from dataclasses import dataclass
 
 import ayon_api
 
+import structlog
+from structlog.contextvars import (
+    bind_contextvars,
+    clear_contextvars,
+    unbind_contextvars,
+)
+
 from ayon_core.lib import emit_event
+from ayon_core.lib.log import configure_logger
 
 from .constants import ContextChangeReason
 from .abstract import AbstractHost, ApplicationInformation
@@ -27,6 +34,13 @@ class ContextChangeData:
     task_entity: dict[str, Any]
     reason: ContextChangeReason
     anatomy: Anatomy
+
+
+@dataclass
+class AyonLogContext:
+    project: str
+    folder: str
+    task: str
 
 
 class HostBase(AbstractHost):
@@ -93,8 +107,9 @@ class HostBase(AbstractHost):
             to implement 'install' method which is triggered after global
             'install'.
         """
-
-        pass
+        configure_logger()
+        clear_contextvars()
+        bind_contextvars(host=self.__class__.__name__)
 
     def get_app_information(self) -> ApplicationInformation:
         """Running application information.
@@ -118,12 +133,11 @@ class HostBase(AbstractHost):
         triggered.
 
         """
-        pass
 
     @property
-    def log(self) -> logging.Logger:
+    def log(self) -> structlog.BoundLogger:
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = structlog.get_logger(self.__class__.__name__)
         return self._log
 
     def get_current_project_name(self) -> str:
@@ -231,7 +245,12 @@ class HostBase(AbstractHost):
         self._before_context_change(context_change_data)
         self._set_current_context(context_change_data)
         self._after_context_change(context_change_data)
-
+        unbind_contextvars("ayon_context")
+        bind_contextvars(ayon_context=AyonLogContext(
+            project=project_name,
+            folder=folder_path,
+            task=task_name,
+        ))
         return self._emit_context_change_event(
             project_name,
             folder_path,
