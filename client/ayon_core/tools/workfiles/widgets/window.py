@@ -321,7 +321,6 @@ class WorkfilesToolWindow(AYContainer):
             self._first_show = False
             self.setStyleSheet(WORKFILE_CSS_PATH.read_text())
 
-
     def keyPressEvent(self, event):
         """Custom keyPressEvent.
 
