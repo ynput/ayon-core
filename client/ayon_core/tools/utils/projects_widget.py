@@ -621,7 +621,6 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._projects_model = projects_model
         self._projects_proxy_model = projects_proxy_model
 
-
     def refresh(self):
         self._projects_model.refresh()
 

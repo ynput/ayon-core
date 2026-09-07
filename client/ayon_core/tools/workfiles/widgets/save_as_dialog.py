@@ -95,6 +95,7 @@ class SubversionLineEdit(QtWidgets.QWidget):
 
         group.triggered.connect(self._on_action_clicked)
 
+
 class SaveAsDialog(QtWidgets.QDialog):
     """Save as dialog to define a unique filename inside workdir.
 

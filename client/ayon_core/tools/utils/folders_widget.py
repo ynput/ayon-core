@@ -326,15 +326,17 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_item,
         folder_type_item_by_name,
         folder_type_icon_cache,
-        status_icon_by_name                 ,
+        status_icon_by_name,
     ):
         """
+
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
             folder_type_item_by_name: Mapping of folder type names to items.
             folder_type_icon_cache: Cache for folder type icons.
             status_icon_by_name: Mapping of status name to QIcon.
+
         """
         icon = self._get_folder_item_icon(
             folder_item,

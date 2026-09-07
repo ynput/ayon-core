@@ -117,6 +117,7 @@ class FolderItem:
             status=entity["status"]
         )
 
+
 @dataclass
 class TaskItem:
     """Task item representing task entity on a server.
