@@ -105,11 +105,16 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
 
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Ignored if flexible
-            else QtWidgets.QSizePolicy.Policy.Minimum,
-            QtWidgets.QSizePolicy.Policy.Preferred,
-        )
+        # Minimum pins the label at its text width; Preferred still asks
+        # for that width but lets a layout shrink it, which is what makes
+        # eliding possible at all.
+        if flexible:
+            h_policy = QtWidgets.QSizePolicy.Policy.Ignored
+        elif self._elides:
+            h_policy = QtWidgets.QSizePolicy.Policy.Preferred
+        else:
+            h_policy = QtWidgets.QSizePolicy.Policy.Minimum
+        self.setSizePolicy(h_policy, QtWidgets.QSizePolicy.Policy.Preferred)
 
         # set alignment from style data if specified.
         alignment = self._style_data["base"].get("alignment")
@@ -219,21 +224,36 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
 
         return font
 
+    @property
+    def _elides(self) -> bool:
+        """Whether this label shortens text that does not fit."""
+        return self._elide_mode != Qt.TextElideMode.ElideNone
+
+    def _chrome_width(self) -> int:
+        """Return the width taken by everything that is not the text.
+
+        That is the variant's horizontal padding on both sides plus, when
+        there is an icon, the icon and its spacing - the same amounts the
+        painters subtract before drawing the text.
+        """
+        padding = self._style_data["base"].get("padding", [0, 0])
+        width = int(padding[0]) * 2
+        if self._icon:
+            width += self._icon_size + int(
+                self._style_data["base"].get(
+                    "icon-text-spacing", self._icon_text_spacing
+                )
+            )
+        return width
+
     def _display_text(self) -> str:
         """Recompute the elided version of the stored text."""
-        if (
-            self._elide_mode == Qt.TextElideMode.ElideNone
-            or not self.fontMetrics()
-        ):
+        if not self._elides or not self.fontMetrics():
             return self._text
-        available_w = self.contentsRect().width()
-        if self._icon:
-            spacing = self._icon_text_spacing
-            available_w -= self._icon_size + spacing
-        text = self.fontMetrics().elidedText(
+        available_w = self.contentsRect().width() - self._chrome_width()
+        return self.fontMetrics().elidedText(
             self._text, self._elide_mode, max(0, available_w)
         )
-        return text
 
     def _resolve_color(self) -> QColor:
         """Get the effective foreground color (icon_color or palette)."""
@@ -712,7 +732,14 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         # --- text size --------------------------------------------------
         if self._text:
             t_rect = fm.boundingRect(self._text)
-            text_w = t_rect.width() + 1  # +1 pixel for antialiasing
+            # Cover the text's *advance* - what elidedText() and
+            # drawText() measure with - or a label handed exactly its
+            # own hint would elide text it just asked the room for.
+            # boundingRect() is the ink extent, wider only for glyphs
+            # that overhang their advance, so keep whichever is larger.
+            text_w = max(
+                fm.horizontalAdvance(self._text), t_rect.width()
+            ) + 1  # +1 pixel for antialiasing
             text_h = t_rect.height()
         else:
             text_w = 0
@@ -787,6 +814,24 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
             content_w + 2 * pad_h + cm.left() + cm.right(),
             content_h + 2 * pad_v + cm.top() + cm.bottom(),
         )
+
+    def minimumSizeHint(self) -> QSize:
+        """Return the smallest useful size for this label.
+
+        ``QLabel`` reports its full text width, which for an eliding
+        label defeats the elide - a layout could never make it narrower
+        than the text it is meant to shorten.  An eliding label only
+        insists on its icon, padding and an ellipsis.
+
+        Returns:
+            The minimum widget size.
+        """
+        if not self._elides:
+            return super().minimumSizeHint()
+        hint = self.sizeHint()
+        floor = self._chrome_width()
+        floor += self.fontMetrics().horizontalAdvance("…")
+        return QSize(min(floor, hint.width()), hint.height())
 
     def hasHeightForWidth(self) -> bool:
         """Return True when word-wrap is active so layouts call heightForWidth.

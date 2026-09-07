@@ -55,7 +55,37 @@ from .entity_path import AYEntityPath
 from .user_image import AYUserImage
 
 IMG_RATIO = 200.0 / 112.5  # 16:9
-CARD_RATIO = 200.0 / (112.5 + 24)  # thumbnail + header
+#: Height of the header strip above the thumbnail.
+CARD_HEADER_HEIGHT = 24
+
+
+def _border_width() -> int:
+    """Return the card frame's border width, from the stylesheet."""
+    style_data = get_ayon_style_data(
+        "QFrame", QFrameVariants.Entity_Card.value
+    )
+    return int(style_data["border-width"])
+
+
+def card_body_size_for_width(width: int) -> QSize:
+    """Return the 16:9 thumbnail size inside a card of *width*."""
+    body_w = width - (_border_width() * 2)
+    return QSize(body_w, int(body_w / IMG_RATIO))
+
+
+def card_height_for_width(width: int) -> int:
+    """Return the total height of a card of *width*.
+
+    Only the thumbnail scales - the header strip and the border keep
+    their pixel sizes - so a wider card spends every extra pixel on the
+    thumbnail instead of stretching the header and leaving slack the
+    layout spreads as gaps around it.
+    """
+    return (
+        CARD_HEADER_HEIGHT
+        + card_body_size_for_width(width).height()
+        + _border_width()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -158,13 +188,19 @@ class _CardOverlay(QWidget):
         top_lyt.setContentsMargins(0, 0, 0, 0)
         top_lyt.setSpacing(4)
 
+        # Left-aligned and elided: a product name wider than the card
+        # keeps its readable start instead of being centred in a chip too
+        # wide for the thumbnail, which clipped it at both ends.
         self._title_chip = AYLabel(
             "",
             icon_size=16,
             rel_text_size=-1,
             variant=AYLabel.Variants.Entity_Label,
+            elide_mode=Qt.TextElideMode.ElideRight,
         )
-        self._title_chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._title_chip.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         self._title_chip.hide()
 
         self._playable_chip = AYLabel(
@@ -302,7 +338,13 @@ class _CardHeader(QWidget):
         super().__init__(parent)
         self.setStyle(get_ayon_style())
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedHeight(24)
+        self.setFixedHeight(CARD_HEADER_HEIGHT)
+        # An empty header still reserves its strip, so every card's
+        # thumbnail sits at the same offset and the grid cell height
+        # stays a pure function of the card width.
+        size_policy = self.sizePolicy()
+        size_policy.setRetainSizeWhenHidden(True)
+        self.setSizePolicy(size_policy)
 
         lyt = QHBoxLayout(self)
         lyt.setContentsMargins(5, 0, 5, 0)
@@ -435,12 +477,9 @@ class AYEntityCard(AYContainer):
         self._header_widget = _CardHeader(self)
         self.add_widget(self._header_widget)
 
-        _body_sd = get_ayon_style_data("QFrame", self._variant_str)
-        _body_sd.set_context(self)
-        border_width = _body_sd["border-width"]
         self._card_body = _CardBody(
             parent=self,
-            width=width - (border_width * 2),
+            width=card_body_size_for_width(width).width(),
             async_file_cacher=async_file_cacher,
         )
         self._card_body.set_placeholder_icon(placeholder_icon)
@@ -480,20 +519,14 @@ class AYEntityCard(AYContainer):
             self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
 
     def set_width(self, w: int) -> None:
-        """Set the card width and adjust height to maintain a 1.52:1 aspect
-        ratio (default thumbnail ratio from front-end)."""
-        self.setFixedSize(w, int(w / CARD_RATIO))
+        """Set the card width and the height its content needs."""
+        self.setFixedSize(w, card_height_for_width(w))
 
     def resize_to_width(self, w: int) -> None:
         """Resize the card and all internal sub-widgets to a new width."""
-        _body_sd = get_ayon_style_data("QFrame", self._variant_str)
-        _body_sd.set_context(self)
-        border_width = _body_sd["border-width"]
-        body_w = w - (border_width * 2)
-        body_h = int(body_w / IMG_RATIO)
-        body_size = QSize(body_w, body_h)
+        body_size = card_body_size_for_width(w)
 
-        self._card_body.set_size((body_w, body_h))
+        self._card_body.set_size((body_size.width(), body_size.height()))
         self._overlay.set_width(body_size)
         self._body_wrapper.setFixedSize(body_size)
         self.set_width(w)

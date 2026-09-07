@@ -44,7 +44,7 @@ from qtpy.QtWidgets import (
 
 from ..style_types import get_ayon_style
 from ..variants import AYCardViewVariants
-from .entity_card import CARD_RATIO, AYEntityCard
+from .entity_card import AYEntityCard, card_height_for_width
 from .scroll_area import AYScrollBar
 from .table_model import PaginatedTableModel
 
@@ -102,7 +102,7 @@ class _CardDelegate(QStyledItemDelegate):
         self._card_width = width
 
     def _card_height(self) -> int:
-        return int(self._card_width / CARD_RATIO)
+        return card_height_for_width(self._card_width)
 
     def createEditor(
         self,
@@ -199,7 +199,9 @@ class AYCardView(QAbstractItemView):
             Callable[[dict[str, Any]], dict[str, Any]] | None
         ) = card_data_mapper
         self._group_header_height: int = group_header_height
-        self.scroll_step = max(1, int(self._card_width / CARD_RATIO * 0.1))
+        self.scroll_step = max(
+            1, int(card_height_for_width(self._card_width) * 0.1)
+        )
 
         vsb = AYScrollBar(Qt.Orientation.Vertical, self)
         self.setVerticalScrollBar(vsb)
@@ -249,7 +251,7 @@ class AYCardView(QAbstractItemView):
         if width == self._effective_card_width:
             return
         self._effective_card_width = width
-        self.scroll_step = max(1, int(width / CARD_RATIO * 0.1))
+        self.scroll_step = max(1, int(card_height_for_width(width) * 0.1))
         self._delegate.set_card_width(width)
         for pmi in self._active_editor_pmis:
             if not pmi.isValid():
@@ -441,7 +443,7 @@ class AYCardView(QAbstractItemView):
             return
 
         spacing = self._card_spacing
-        card_h = int(card_w / CARD_RATIO)
+        card_h = card_height_for_width(card_w)
         margin = spacing
 
         if self._is_tree_mode:
