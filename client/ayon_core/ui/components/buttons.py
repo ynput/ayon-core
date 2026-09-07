@@ -414,6 +414,8 @@ class AYButtonMenu(AYButton):
         self._menu_open = False
         if QtWidgets.QApplication.mouseButtons() & Qt.MouseButton.LeftButton:
             local_pos = self.mapFromGlobal(QtGui.QCursor.pos())
+            if isinstance(local_pos, QtCore.QPointF):
+                local_pos = local_pos.toPoint()
             self._suppress_reopen_on_next_click = self.rect().contains(
                 local_pos
             )
