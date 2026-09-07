@@ -378,17 +378,17 @@ class AYButtonMenu(AYButton):
         self._menu_open: bool = False
         self._suppress_reopen_on_next_click: bool = False
 
-        if dropdown_variant is None:
-            self._dropdown = ButtonMenuDropdown(
-                self, container_margin=dropdown_margin
-            )
-        else:
-            self._dropdown = ButtonMenuDropdown(
-                self,
+        kwargs = {}
+        if dropdown_variant is not None:
+            kwargs = dict(
                 frame_variant=dropdown_variant,
                 container_variant=dropdown_variant,
-                container_margin=dropdown_margin,
             )
+        self._dropdown = ButtonMenuDropdown(
+            self,
+            container_margin=dropdown_margin,
+            **kwargs
+        )
         self._populate_callback(self._dropdown)
         self._dropdown.popup_closed.connect(self._on_popup_closed)
 
