@@ -21,6 +21,7 @@ from qtpy.QtGui import (
     QPainter,
     QPaintEvent,
     QPalette,
+    QFontMetrics,
 )
 from qtpy.QtWidgets import (
     QStyle,
@@ -381,22 +382,58 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             -item_padding[1],
             -item_padding[0],
         )
-        content_left = content_rect.left()
 
-        if not opt.icon.isNull():
+        icon = opt.icon
+        icon_rect = QRect(0, 0, 0, 0)
+        text_rect = QRect(0, 0, 0, 0)
+        icon_offset = 0
+        if not icon.isNull():
             icon_size = opt.decorationSize
             icon_rect = QRect(
-                content_left,
+                content_rect.y(),
                 opt.rect.center().y() - icon_size.height() // 2,
                 icon_size.width(),
                 icon_size.height(),
             )
+            icon_offset = icon_rect.width()
+            if opt.text:
+                icon_offset += icon_text_spacing
+
+        if opt.text:
+            metrics = QFontMetrics(opt.font)
+            bound = metrics.boundingRect(opt.text)
+            text_rect = QRect(opt.rect)
+            text_rect.setWidth(bound.width())
+
+        content_width = icon_offset + text_rect.width()
+        if content_width > content_rect.width():
+            # Text is too long to fit in the available space, so elide it.
+            metrics = QFontMetrics(opt.font)
+            elided_text = metrics.elidedText(
+                opt.text,
+                opt.textElideMode,
+                content_rect.width() - icon_offset,
+            )
+            opt.text = elided_text
+
+        if opt.displayAlignment == Qt.AlignmentFlag.AlignRight:
+            content_left = content_rect.right() - content_width
+        elif opt.displayAlignment == Qt.AlignmentFlag.AlignHCenter:
+            content_left = content_rect.left() + (
+                content_rect.width() - content_width
+            ) // 2
+
+        else:
+            content_left = content_rect.left()
+
+        if not icon.isNull():
+            icon_rect.moveLeft(content_left)
             mode = (
                 QIcon.Mode.Normal
                 if state & QStyle.StateFlag.State_Enabled
                 else QIcon.Mode.Disabled
             )
-            opt.icon.paint(
+            icon.paint(
                 painter,
                 icon_rect,
                 Qt.AlignmentFlag.AlignCenter,
@@ -405,14 +442,13 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             content_left = icon_rect.right() + icon_text_spacing
 
         if opt.text:
-            text_rect = QRect(opt.rect)
             text_rect.setLeft(content_left)
             text_rect.setRight(content_rect.right())
             painter.setPen(text_color)
             painter.setFont(opt.font)
             painter.drawText(
                 text_rect,
-                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                opt.displayAlignment,
                 opt.text,
             )
 
