@@ -1025,6 +1025,15 @@ class AYTableView(StyleMixin, QTreeView):
         self.scheduleDelayedItemsLayout()
         self.viewport().update()
 
+    def row_height(self) -> int | None:
+        """Return the explicit row-height override, if any.
+
+        Returns:
+            The pixel height last passed to :meth:`set_row_height`, or
+            ``None`` when rows fall back to the style default.
+        """
+        return self._row_height_override
+
     def get_column_state(self) -> list:
         """Return the current column state as a list of ColumnState.
 

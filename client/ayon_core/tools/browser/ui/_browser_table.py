@@ -407,6 +407,12 @@ class BrowserTable(AYContainer):
         self._customize.featured_version_order_changed.connect(
             self._view_selector.notify_view_modified
         )
+        self._customize.latest_per_folder_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._controller.my_tasks_filter_changed.connect(
+            self._view_selector.notify_view_modified
+        )
 
         toolbar = AYContainer(
             layout=AYContainer.Layout.HBox,
@@ -1045,12 +1051,19 @@ class BrowserTable(AYContainer):
             )
         if "gridHeight" in extra:
             try:
-                self._card_view.card_width = int(extra["gridHeight"])
+                card_width = int(extra["gridHeight"])
             except (TypeError, ValueError):
                 log.debug(
                     "Invalid gridHeight in view extras: %r",
                     extra["gridHeight"],
                 )
+            else:
+                self._card_view.card_width = card_width
+                # The slider is write-only towards the card view, so
+                # without this it keeps showing the previous view's card
+                # size - matching how the row-height slider is synced in
+                # :meth:`_on_view_applied`.
+                self._customize.set_card_width(card_width)
         if "featuredVersionOrder" in extra:
             order = extra["featuredVersionOrder"]
             if isinstance(order, list):

@@ -258,8 +258,14 @@ class ViewBindings:
         # Grouping (round-tripped verbatim; no widget yet).
         settings.grouping = copy.deepcopy(self._last_grouping)
 
-        # Row height.
-        settings.row_height = self._capture_row_height(settings.row_height)
+        # Row height.  Never let a 0 ("unset") reach the payload - a
+        # stored 0 makes the next apply() silently fall back to the
+        # defaults, so a row height the user did pick would be lost on
+        # the next round trip.
+        row_height = self._capture_row_height(settings.row_height)
+        if row_height <= 0:
+            row_height = self._default_row_height()
+        settings.row_height = row_height
 
         # Extras.
         extras: dict[str, Any] = dict(self._untouched_extra)
@@ -398,6 +404,21 @@ class ViewBindings:
                 except Exception as exc:
                     self._report_error("row_height_card", exc)
 
+    def _default_row_height(self) -> int:
+        """Return the consumer's default row height, or ``0``.
+
+        Returns:
+            ``default_settings().row_height`` when a defaults callback
+            is wired and returns a positive height; ``0`` otherwise.
+        """
+        if self.default_settings is None:
+            return 0
+        try:
+            return int(self.default_settings().row_height)
+        except Exception as exc:  # noqa: BLE001
+            self._report_error("default_row_height", exc)
+            return 0
+
     def _capture_row_height(self, fallback: int) -> int:
         """Best-effort read of the current row height.
 
@@ -408,7 +429,12 @@ class ViewBindings:
             Row height in pixels.
         """
         if self.table_view is not None:
-            override = getattr(self.table_view, "_row_height_override", None)
+            getter = getattr(self.table_view, "row_height", None)
+            override = (
+                getter()
+                if callable(getter)
+                else getattr(self.table_view, "_row_height_override", None)
+            )
             if isinstance(override, int) and override > 0:
                 return int(override)
             # Use the visualRect of the first index when available.

@@ -641,6 +641,87 @@ class AYViewSelector(AYButtonMenu):
         """
         self._mark_modified()
 
+    def apply_default_settings(self) -> None:
+        """Reset every tracked setting to the built-in AYON defaults.
+
+        Used when neither a project nor a studio default view is
+        configured, so "reset" has to fall back to what the consumer
+        declared as its defaults.  Applying an empty
+        :class:`ViewSettings` makes :class:`ViewBindings` fill in every
+        slice from ``default_settings`` - columns, sort, filter,
+        grouping, row height and the consumer's extras alike - so
+        nothing carries over from the view that was active before.
+
+        The reset lands on the *working* view: it is emitted through
+        :attr:`view_applied` (so consumers can sync widgets the
+        bindings do not own, such as the Group By menu) and then
+        persisted, which is what makes it survive a restart.
+        """
+        defaults = (
+            self._bindings.default_settings()
+            if self._bindings.default_settings is not None
+            else ViewSettings()
+        )
+
+        self._applying_view = True
+        try:
+            self._bindings.apply(ViewSettings())
+        except Exception:
+            log.exception("Failed to apply default view settings")
+            return
+        finally:
+            self._applying_view = False
+            # Nothing the user did is pending; this method saves the
+            # working view itself once the widgets have settled.
+            self._working_view_timer.stop()
+
+        try:
+            working_view = self._manager.get_working_view(self._view_type)
+        except Exception:
+            log.exception(
+                "Failed to resolve working view for %r", self._view_type
+            )
+            working_view = None
+        if working_view is None:
+            working_view = View(
+                label="Working",
+                working=True,
+                visibility=Visibility.PRIVATE,
+                view_type=self._view_type,
+                owner=self._current_user,
+                scope=Scope.PROJECT,
+            )
+        working_view.settings = defaults
+        working_view.loaded = True
+        self._current_view = working_view
+        self.setToolTip(f"View: {working_view.label}")
+
+        # Consumers apply the slices the bindings do not own (grouping,
+        # toolbar widgets) from this signal, so it has to fire before
+        # the working view is captured back below.  Clearing the dirty
+        # flag afterwards discards the changes those handlers report -
+        # they are this reset's own writes, not the user's edits.
+        self.view_applied.emit(working_view)
+        self._working_view_timer.stop()
+        self._clear_modified()
+        self._update_working_view()
+
+    def _capture_into(self, view: View) -> None:
+        """Store the live widget state as *view*'s settings.
+
+        Also flags the view as loaded.  Rows built from the listing
+        endpoint arrive with ``loaded=False`` and empty settings, and a
+        manager that fetches settings lazily reads that flag as "this
+        view's settings still need fetching" - which would make it
+        refetch the stored settings on save and silently discard the
+        capture we just made (see ``ServerViewManager.save_view``).
+
+        Args:
+            view: The view to write the captured settings onto.
+        """
+        view.settings = self._bindings.capture()
+        view.loaded = True
+
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
@@ -654,7 +735,7 @@ class AYViewSelector(AYButtonMenu):
         """Open the editor for an existing view."""
         self._close_menu()
         editable = View.from_payload(view.to_payload())
-        editable.settings = self._bindings.capture()
+        self._capture_into(editable)
         usernames_and_groups = self._get_usernames_and_groups()
         editor = AYViewEditor(
             editable,
@@ -681,7 +762,7 @@ class AYViewSelector(AYButtonMenu):
         """Open the editor for a new view, then save it."""
         self._close_menu()
         new_view = View(view_type=self._view_type)
-        new_view.settings = self._bindings.capture()
+        self._capture_into(new_view)
         usernames_and_groups = self._get_usernames_and_groups()
         editor = AYViewEditor(
             new_view,
@@ -964,7 +1045,7 @@ class AYViewSelector(AYButtonMenu):
 
     def _on_view_save_clicked(self, view: View) -> None:
         self._close_menu()
-        view.settings = self._bindings.capture()
+        self._capture_into(view)
         with self._suspend_auto_apply():
             saved = self._save_view(view)
         if saved is not None:
@@ -1036,7 +1117,7 @@ class AYViewSelector(AYButtonMenu):
                 return
         if working_view is None:
             return
-        working_view.settings = self._bindings.capture()
+        self._capture_into(working_view)
         with self._suspend_auto_apply():
             self._manager.set_working_view(working_view)
 

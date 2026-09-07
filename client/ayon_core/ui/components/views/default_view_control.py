@@ -24,7 +24,7 @@ from ..container import AYContainer
 from ..frame import RowHoverTracker
 from ...style_types import get_ayon_style, get_ayon_style_data
 
-from .data_models import View, Visibility, Scope, ViewSettings
+from .data_models import View, Visibility, Scope
 from .view_manager import DEFAULT_VIEW_LABEL
 
 if TYPE_CHECKING:
@@ -386,15 +386,13 @@ class DefaultViewControl:
         if default_view is None:
             default_view = View(
                 label=DEFAULT_VIEW_LABEL,
-                settings=sel._bindings.capture(),
                 working=False,
                 scope=scope,
                 visibility=Visibility.PRIVATE,
                 view_type=sel._view_type,
                 owner=sel._current_user,
             )
-        else:
-            default_view.settings = sel._bindings.capture()
+        sel._capture_into(default_view)
 
         saved = sel._save_view(default_view)
         if saved is None:
@@ -514,12 +512,8 @@ class DefaultViewControl:
             )
 
     def make_default_view_settings(self):
-        """
-        Apply the default view settings to the selector's bindings.
-        """
-        default_view = ViewSettings()
-        self._selector._bindings.apply(default_view)
-        self._selector._clear_modified()
+        """Reset the working view to the built-in AYON defaults."""
+        self._selector.apply_default_settings()
         self._selector._close_menu()
         self._emit_action_message("Reset to defaults.")
 
