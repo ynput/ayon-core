@@ -574,19 +574,20 @@ def use_legacy_loader() -> bool:
         "AYON_USE_LEGACY_LOADER",
         default=None,
     )
-    if use_legacy is None:
-        from ayon_core.pipeline import get_current_project_name
-        from ayon_core.settings import (
-            get_project_settings,
-            get_studio_settings,
-        )
+    if use_legacy is not None:
+        return use_legacy
 
-        project_name = get_current_project_name()
-        if project_name:
-            settings = get_project_settings(project_name)
-        else:
-            settings = get_studio_settings()
-        use_legacy = settings["core"]["tools"]["loader"].get(
-            "use_legacy_loader", False
-        )
-    return use_legacy
+    from ayon_core.pipeline import get_current_project_name
+    from ayon_core.settings import (
+        get_project_settings,
+        get_studio_settings,
+    )
+
+    project_name = get_current_project_name()
+    if project_name:
+        settings = get_project_settings(project_name)
+    else:
+        settings = get_studio_settings()
+    return settings["core"]["tools"]["loader"].get(
+        "use_legacy_loader", False
+    )
