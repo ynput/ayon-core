@@ -82,13 +82,7 @@ class LoadErrorMessageBox(ErrorMessageBox):
 
 
 class BrowserWindow(AYContainer):
-    def __init__(
-        self,
-        controller=None,
-        parent=None,
-        *,
-        use_context: bool = False,
-    ):
+    def __init__(self, controller=None, parent=None):
         super().__init__(
             parent,
             layout=AYContainer.Layout.HBox,
@@ -141,7 +135,6 @@ class BrowserWindow(AYContainer):
         self._reset_on_show = True
         self._show_counter = 0
         self._show_timer = show_timer
-        self._select_context_on_show = use_context
 
     def select_current_context(self) -> None:
         """Navigate the Browser to the host's current project and folder."""
@@ -180,14 +173,10 @@ class BrowserWindow(AYContainer):
 
         if self._reset_on_show:
             self.refresh()
-        if self._select_context_on_show:
-            self._select_context_on_show = False
-            QtCore.QTimer.singleShot(0, self.select_current_context)
-        else:
-            QtCore.QTimer.singleShot(
-                0,
-                self.browser_widget.select_current_context_if_empty,
-            )
+        QtCore.QTimer.singleShot(
+            0,
+            self.browser_widget.select_current_context_if_empty,
+        )
 
     def _show_toast_message(
         self,

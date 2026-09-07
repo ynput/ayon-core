@@ -9,7 +9,6 @@ import os
 
 import pyblish.api
 from typing import TYPE_CHECKING, Literal
-from qtpy import QtCore
 
 from ayon_core.host import ILoadHost, IPublishHost
 from ayon_core.lib import Logger, env_value_to_bool
@@ -85,7 +84,7 @@ class HostToolsHelper:
 
         return workfiles_tool
 
-    def get_loader_tool(self, parent, *, use_context: bool = False):
+    def get_loader_tool(self, parent):
         """Create, cache and return loader tool window."""
         if self._loader_tool is None:
             if use_legacy_loader():
@@ -110,20 +109,10 @@ class HostToolsHelper:
 
             self._loader_tool = loader_window
 
-        if use_context and hasattr(
-            self._loader_tool, "select_current_context"
-        ):
-            QtCore.QTimer.singleShot(
-                0,
-                self._loader_tool.select_current_context,
-            )
         return self._loader_tool
 
     def show_loader(
-        self,
-        parent: QWidget | None = None,
-        *,
-        use_context: bool = False,
+        self, parent: QWidget | None = None
     ) -> QWidget:
         """Loader tool for loading representations.
 
@@ -135,10 +124,7 @@ class HostToolsHelper:
 
         """
         with qt_app_context():
-            loader_tool = self.get_loader_tool(
-                parent,
-                use_context=use_context,
-            )
+            loader_tool = self.get_loader_tool(parent)
 
             loader_tool.show()
             loader_tool.raise_()
@@ -369,7 +355,7 @@ class HostToolsHelper:
             return self.show_workfiles(parent, *args, **kwargs)
 
         if tool_name == "loader":
-            return self.show_loader(parent, *args, **kwargs)
+            return self.show_loader(parent)
 
         if tool_name == "libraryloader":
             return self.show_library_loader(parent)
@@ -470,24 +456,17 @@ def show_workfiles(*args, **kwargs) -> QWidget | None:
     )
 
 
-def show_loader(
-    parent: QWidget | None = None,
-    *,
-    use_context: bool = False
-) -> QWidget | None:
+def show_loader(parent: QWidget | None = None) -> QWidget | None:
     """Show loader tool.
 
     Args:
         parent: tool parent,
-        use_context: use context,
 
     Returns:
         QWidget of the tool
 
     """
-    return _SingletonPoint.show_tool_by_name(
-        "loader", parent, use_context=use_context
-    )
+    return _SingletonPoint.show_tool_by_name("loader", parent)
 
 
 def show_scene_inventory(
