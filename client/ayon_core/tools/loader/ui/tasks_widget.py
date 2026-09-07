@@ -175,7 +175,7 @@ class LoaderTasksQtModel(TasksQtModel):
             task_type_items,
             folder_labels_by_id,
             status_items,
-        )= thread.get_result()
+        ) = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return

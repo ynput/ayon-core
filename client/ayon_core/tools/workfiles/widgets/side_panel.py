@@ -11,6 +11,7 @@ from ayon_core.ui.components import (
     AYTextEdit
 )
 
+
 class SidePanelWidget(AYContainer):
     """Details about selected workfile.
 
