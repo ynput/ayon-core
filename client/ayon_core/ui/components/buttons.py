@@ -126,7 +126,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
         # use that state's own "color" for the icon when checked,
         # instead of reusing the unchecked icon color regardless.
         checked_color_str = self._style_data.get("checked", {}).get("color")
-        self._icon_checked_color = (
+        self._icon_color_on = (
             QColor(checked_color_str)
             if isinstance(checked_color_str, str)
             else self._icon_color
@@ -230,7 +230,7 @@ class AYButton(StyleMixin, QtWidgets.QPushButton):
                 icon_name_off=self._icon,
                 color_off=self._icon_color,
                 icon_name_on=self._icon_on,
-                color_on=self._icon_checked_color,
+                color_on=self._icon_color_on,
                 color_on_disabled=disabled_color,
                 color_off_disabled=disabled_color,
                 fill=self._icon_fill,
