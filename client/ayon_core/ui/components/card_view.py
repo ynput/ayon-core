@@ -289,8 +289,8 @@ class AYCardView(QAbstractItemView):
 
     def _source_model(self) -> QtCore.QAbstractItemModel | None:
         model = self.model()
-        if isinstance(model, QSortFilterProxyModel):
-            return model.sourceModel()
+        while isinstance(model, QSortFilterProxyModel):
+            model = model.sourceModel()
         return model
 
     def _fetch_more(self, index: QModelIndex) -> None:
