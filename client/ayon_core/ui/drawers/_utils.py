@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import platform
-
 from qtpy.QtGui import QFont
 from qtpy.QtWidgets import QStyle, QWidget
 
@@ -54,10 +51,6 @@ def style_font(style: dict, w: QWidget | None) -> QFont:
     font = QFont()
     font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
     font.setFamily(style["font-family"])
-    os_name = os.environ.get("AYON_CORE_UI_FONT_OS")
-    if not os_name:
-        os_name = platform.system()
-    pt_size = style.get(f"font-size-{os_name.lower()}", style["font-size"])
-    font.setPointSizeF(pt_size)
+    font.setPointSizeF(style["font-size"])
     font.setWeight(QFont.Weight(style["font-weight"]))
     return font
