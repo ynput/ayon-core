@@ -125,7 +125,8 @@ class HoverReveal(QtCore.QObject):
             self._widget.setVisible(
                 bool(self._force_visible and self._force_visible())
             )
-        return False  # never consume the event
+        # never consume the event
+        return False
 
 
 class RowHoverTracker(QtCore.QObject):
