@@ -170,7 +170,12 @@ class LoaderTasksQtModel(TasksQtModel):
         super()._clear_items()
 
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items, folder_labels_by_id, status_items = thread.get_result()
+        (
+            task_items,
+            task_type_items,
+            folder_labels_by_id,
+            status_items,
+        )= thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -300,13 +305,13 @@ class LoaderTasksQtModel(TasksQtModel):
             elif role < QtCore.Qt.UserRole:
                 return None
 
-        if col == 2:
+        elif col == 2:
             if role == QtCore.Qt.DisplayRole:
                 role = FOLDER_LABEL_ROLE
             elif role < QtCore.Qt.UserRole:
                 return None
 
-        if col == 3:
+        elif col == 3:
             if role == QtCore.Qt.DecorationRole:
                 role = TASK_STATUS_ICON_ROLE
             elif role == QtCore.Qt.ToolTipRole:

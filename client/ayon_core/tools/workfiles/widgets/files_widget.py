@@ -90,7 +90,7 @@ class FilesWidget(AYContainer):
         published_btns_layout.addWidget(published_btn_cancel, 1)
 
         btns_layout = AYVBoxLayout(
-            btns_widget,margin=0,spacing=4
+            btns_widget, margin=0, spacing=4
         )
         btns_layout.addWidget(workarea_btns_widget, 1)
         btns_layout.addWidget(published_btns_widget, 1)

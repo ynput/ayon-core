@@ -13,7 +13,10 @@ from ayon_core.lib.icon_definitions import (
     TransparentIcon,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.delegates import pretty_timestamp, file_size_to_string
+from ayon_core.tools.utils.delegates import (
+    pretty_timestamp,
+    file_size_to_string,
+)
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 from ayon_core.ui.components import AYContainer, AYTreeView
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
@@ -89,7 +92,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(host_name, HOST_NAME_ROLE)
             item.setData(file_size, FILE_SIZE_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
-            item.setColumnCount(3)
+            item.setColumnCount(self.columnCount())
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -112,7 +115,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_item.setData(host_name, HOST_NAME_ROLE)
             host_item.setData(1, ITEM_TYPE_ROLE)
             host_item.setFlags(QtCore.Qt.ItemIsEnabled)
-            host_item.setColumnCount(3)
+            host_item.setColumnCount(self.columnCount())
             host_items_by_name[host_name] = host_item
             if host_name in self._group_host_names:
                 new_items.append(host_item)
