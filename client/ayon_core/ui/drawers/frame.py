@@ -113,7 +113,11 @@ class FrameDrawer:
             # each axis independently against half its own dimension,
             # which turns an oversized radius on a wide-but-short rect
             # (e.g. a pill chip) into an ellipse instead of a stadium.
-            radius = min(radius, draw_rect.width() / 2.0, draw_rect.height() / 2.0)
+            radius = min(
+                radius,
+                draw_rect.width() * 0.5,
+                draw_rect.height() * 0.5
+            )
             painter.drawRoundedRect(draw_rect, radius, radius)
         else:
             painter.drawRect(draw_rect)
