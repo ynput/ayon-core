@@ -70,6 +70,9 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
 
     def __init__(self, controller: AbstractProjectController):
         super().__init__()
+
+        self.setColumnCount(1)
+
         self._controller = controller
 
         self._project_items = {}
