@@ -93,6 +93,7 @@ def configure_logger() -> None:
         return event_dict
 
     shared_processors = [
+        structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
@@ -117,14 +118,16 @@ def configure_logger() -> None:
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
             _drop_site_id,
-            structlog.dev.ConsoleRenderer(),
+            structlog.dev.ConsoleRenderer(
+                exception_formatter=structlog.dev.rich_traceback,
+            ),
         ],
     )
     json_formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            _drop_site_id,
+            structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
         ],
     )
@@ -154,6 +157,14 @@ def configure_logger() -> None:
         root_logger.setLevel(int(os.getenv("AYON_LOG_LEVEL", logging.INFO)))
     if os.getenv("AYON_DEBUG") is not None:
         root_logger.setLevel(logging.DEBUG)
+
+    info_level = logging.getLevelNamesMapping()['INFO']
+    if (
+            os.getenv("AYON_DEBUG") == "1" or
+            int(os.getenv("AYON_LOG_LEVEL", info_level)) < info_level):
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("GlobalServerAPI").setLevel(logging.WARNING)
 
     # 'Logger' (ayon_core.lib.log) may have attached its own fallback
     # console handler to the "AYON" logger before structlog was configured.
