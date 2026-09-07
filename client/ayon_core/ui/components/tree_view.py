@@ -37,6 +37,7 @@ from ..style_types import StyleData, get_ayon_style
 from ..variants import QTreeViewVariants
 from .scroll_area import AYScrollBar
 from .style_mixin import StyleMixin
+from .header_view import AYHeaderView
 
 
 class AYTreeView(StyleMixin, QTreeView):
@@ -66,6 +67,15 @@ class AYTreeView(StyleMixin, QTreeView):
         super().__init__(parent)
 
         style = get_ayon_style()
+
+        header = AYHeaderView(
+            Qt.Orientation.Horizontal,
+            parent=self,
+            style_model=style.model,
+            variant=self._variant_str,
+        )
+        self.setHeader(header)
+
         self.setStyle(style)
 
         # Self-contained: do not inherit parent background or stylesheet.
@@ -100,7 +110,6 @@ class AYTreeView(StyleMixin, QTreeView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         # No header — single-column hierarchical browser.
-        self.setHeaderHidden(True)
 
         # Indentation from style data.
         tv_style = style.model.get_style("QTreeView", self._variant_str)

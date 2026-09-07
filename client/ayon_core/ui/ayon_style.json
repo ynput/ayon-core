@@ -947,6 +947,25 @@
                 }
             }
         },
+        "AYHeaderView": {
+            "default-variant": "default",
+            "variants": {
+                "default": {
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "color": "--md-sys-color-on-surface-variant-dark",
+                    "border-color": "--md-sys-color-surface-container-dark",
+                    "border-width": 1,
+                    "height": 36,
+                    "padding": [
+                        4,
+                        8
+                    ],
+                    "sort-indicator-color": "--md-sys-color-on-surface-dark",
+                    "sort-indicator-icon": "sort",
+                    "sort-indicator-size": 18
+                }
+            }
+        },
         "AYTableView": {
             "states": [
                 "hover",
