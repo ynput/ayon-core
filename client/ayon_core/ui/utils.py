@@ -234,10 +234,7 @@ def clear_layout(layout):
         sub_layout = item.layout()
 
         if widget:
-            # Recursively clear any layouts this widget might have
-            # (in case it's a container widget with its own layouts)
             widget.setVisible(False)
-            # Delete the widget
             widget.deleteLater()
         elif sub_layout:
             # Recursively clear the sub-layout
