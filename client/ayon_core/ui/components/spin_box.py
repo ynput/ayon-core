@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from qtpy.QtCore import QRectF, QSize, Qt
-from qtpy.QtGui import QBrush, QColor, QPainter, QPaintEvent, QPalette, QPen
+from qtpy.QtCore import QRect, QPointF, QRectF, QSize, Qt
+from qtpy.QtGui import (
+    QBrush, QColor, QPainter, QPaintEvent, QPalette, QPen, QIcon
+)
 from qtpy.QtWidgets import (
+    QAbstractSpinBox,
     QSpinBox,
     QStyleOptionSpinBox,
     QWidget,
+    QStyle,
 )
 
 from ..style_types import get_ayon_style
@@ -125,6 +129,8 @@ class AYSpinBox(StyleMixin, QSpinBox):
         buttons using QPainter directly, then calls super().paintEvent()
         which renders the text, cursor, and selection on top.
         """
+        opt = QStyleOptionSpinBox()
+        self.initStyleOption(opt)
 
         is_disabled = not self.isEnabled()
         is_hover = self.underMouse()
@@ -138,6 +144,13 @@ class AYSpinBox(StyleMixin, QSpinBox):
             state = "base"
 
         style = self.variant_style(state)
+        # NOTE A lot of styling of this component is wrong. The spinbox input
+        #   should be drawn using internal QLineEdit, which has its own
+        #   styling.
+        #   The button does not respect "real" button dimensions. The
+        #   arrows are defined by internal logic of QSpinBox and style, we
+        #   can't just define where it is drawn we also have to handle mouse
+        #   hit collisions. That can be affected only by QStyle.
 
         bg_color = QColor(style.get("background-color", "#21252B"))
         border_color = QColor(style.get("border-color", "#373D48"))
@@ -151,12 +164,9 @@ class AYSpinBox(StyleMixin, QSpinBox):
         )
 
         # Button styling
-        button_bg_color = QColor(style.get("button-background-color", "transparent"))
-        button_border_color = QColor(style.get("button-border-color", "#373D48"))
-        button_hover_bg_color = QColor(style.get("button-hover-background-color", "#5c636f"))
         arrow_color = QColor(style.get("arrow-color", "#D3D8DE"))
-        button_width = style.get("button-width", 16)
-        padding = style.get("padding", [4, 4])
+        # button_width = style.get("button-width", 16)
+        # padding = style.get("padding", [4, 4])
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -164,57 +174,31 @@ class AYSpinBox(StyleMixin, QSpinBox):
         painter.setFont(self.font())
 
         rect = QRectF(self.rect())
-        half_bw = border_width / 2.0
+
+        if has_focus:
+            half_bw = focus_outline_width * 0.5
+            border_color = focus_outline_color
+        else:
+            half_bw = border_width * 0.5
+            border_color = border_color
 
         # Background
         bg_rect = rect.adjusted(half_bw, half_bw, -half_bw, -half_bw)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(bg_color))
-        painter.drawRoundedRect(bg_rect, border_radius, border_radius)
-
-        # Border
         border_pen = QPen(border_color)
         border_pen.setWidthF(border_width)
         painter.setPen(border_pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setBrush(QBrush(bg_color))
         painter.drawRoundedRect(bg_rect, border_radius, border_radius)
-
-        # Focus ring
-        if has_focus:
-            half_fw = focus_outline_width / 2.0
-            focus_rect = rect.adjusted(half_fw, half_fw, -half_fw, -half_fw)
-            focus_pen = QPen(focus_outline_color)
-            focus_pen.setWidthF(focus_outline_width)
-            painter.setPen(focus_pen)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRoundedRect(focus_rect, border_radius, border_radius)
 
         # Draw buttons and arrows
         self._draw_buttons(
             painter,
             rect,
-            button_width,
-            button_bg_color,
-            button_border_color,
-            button_hover_bg_color,
+            opt,
+            border_color,
             arrow_color,
             border_width,
             is_disabled,
-            is_hover,
-        )
-
-        # Draw the text value manually with proper positioning
-        text_rect = QRectF(
-            rect.left() + padding[0],
-            rect.top(),
-            rect.width() - button_width - padding[0] * 2,
-            rect.height()
-        )
-        painter.setPen(QColor(style.get("color", "#D3D8DE")) if not is_disabled else QColor("#5b6779"))
-        painter.drawText(
-            text_rect,
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-            self.text()
         )
 
         painter.end()
@@ -223,73 +207,79 @@ class AYSpinBox(StyleMixin, QSpinBox):
         self,
         painter: QPainter,
         rect: QRectF,
-        button_width: int,
-        button_bg_color: QColor,
-        button_border_color: QColor,
-        button_hover_bg_color: QColor,
+        opt: QStyleOptionSpinBox,
+        border_color: QColor,
         arrow_color: QColor,
         border_width: float,
         is_disabled: bool,
-        is_hover: bool,
     ) -> None:
         """Draw the up and down arrow buttons."""
-        # Button container rect (right side of the widget)
-        button_x = rect.right() - button_width
-        
-        # Up button rect (top half)
-        up_rect = QRectF(
-            button_x, rect.top(), button_width, rect.height() / 2
-        )
-        
-        # Down button rect (bottom half)
-        down_rect = QRectF(
-            button_x, rect.top() + rect.height() / 2, button_width, rect.height() / 2
-        )
+        if opt.buttonSymbols == QAbstractSpinBox.NoButtons:
+            return
 
-        # Check which button is under mouse
-        mouse_pos = self.mapFromGlobal(self.cursor().pos())
-        up_hovered = up_rect.contains(mouse_pos) and is_hover and not is_disabled
-        down_hovered = down_rect.contains(mouse_pos) and is_hover and not is_disabled
+        # Button container rect (right side of the widget)
+        style = self.style()
+        up_rect = style.subControlRect(
+            QStyle.ComplexControl.CC_SpinBox,
+            opt,
+            QStyle.SubControl.SC_SpinBoxUp,
+            self
+        )
+        down_rect = style.subControlRect(
+            QStyle.ComplexControl.CC_SpinBox,
+            opt,
+            QStyle.SubControl.SC_SpinBoxDown,
+            self
+        )
+        button_x = int(rect.right() - up_rect.width())
 
         # Draw vertical separator line
-        painter.setPen(QPen(button_border_color, border_width))
+        painter.setPen(QPen(border_color, border_width))
         painter.drawLine(
-            int(button_x), int(rect.top() + border_width),
-            int(button_x), int(rect.bottom() - border_width)
+            button_x, int(rect.top() + border_width) + 1,
+            button_x, int(rect.bottom() - border_width) - 1
         )
 
         # Draw horizontal separator between buttons
+        mid = int(rect.height() * 0.5)
         painter.drawLine(
-            int(button_x), int(up_rect.bottom()),
-            int(rect.right()), int(up_rect.bottom())
+            button_x, mid, int(rect.right()) - 1, mid
         )
 
-        # Draw button backgrounds on hover
-        painter.setPen(Qt.PenStyle.NoPen)
-        if up_hovered:
-            painter.setBrush(QBrush(button_hover_bg_color))
-            painter.drawRect(up_rect)
-        
-        if down_hovered:
-            painter.setBrush(QBrush(button_hover_bg_color))
-            painter.drawRect(down_rect)
-
         # Draw arrows using Material Symbols icons
-        arrow_size = 12
-        
+        arrow_size = min(12, up_rect.height(), down_rect.height())
+
+        up_icon_rect = QRect(0, 0, arrow_size, arrow_size)
+        down_icon_rect = QRect(0, 0, arrow_size, arrow_size)
+
+        up_icon_rect.moveCenter(up_rect.center())
+        down_icon_rect.moveCenter(down_rect.center())
+
+        if (
+            opt.subControls & QStyle.SubControl.SC_SpinBoxUp
+            and opt.activeSubControls == QStyle.SubControl.SC_SpinBoxUp
+        ):
+            up_icon_rect.moveTop(up_icon_rect.top() - 1)
+
+        if (
+            opt.subControls & QStyle.SubControl.SC_SpinBoxDown
+            and opt.activeSubControls == QStyle.SubControl.SC_SpinBoxDown
+        ):
+            down_icon_rect.moveTop(down_icon_rect.top() + 1)
+
         # Up arrow
-        up_icon = get_icon("arrow_drop_up", color=arrow_color if not is_disabled else "#5b6779")
-        up_pixmap = up_icon.pixmap(arrow_size, arrow_size)
-        up_x = button_x + (button_width - arrow_size) / 2
-        up_y = up_rect.top() + (up_rect.height() - arrow_size) / 2
-        painter.drawPixmap(int(up_x), int(up_y), arrow_size, arrow_size, up_pixmap)
+        up_icon: QIcon = get_icon(
+            "arrow_drop_up",
+            color=arrow_color if not is_disabled else "#5b6779"
+        )
+        up_icon.paint(painter, up_icon_rect)
 
         # Down arrow
-        down_icon = get_icon("arrow_drop_down", color=arrow_color if not is_disabled else "#5b6779")
-        down_pixmap = down_icon.pixmap(arrow_size, arrow_size)
-        down_x = button_x + (button_width - arrow_size) / 2
-        down_y = down_rect.top() + (down_rect.height() - arrow_size) / 2
-        painter.drawPixmap(int(down_x), int(down_y), arrow_size, arrow_size, down_pixmap)
+        down_icon: QIcon = get_icon(
+            "arrow_drop_down",
+            color=arrow_color if not is_disabled else "#5b6779"
+        )
+        down_icon.paint(painter, down_icon_rect)
 
     def sizeHint(self) -> QSize:
         """Override sizeHint to account for padding and buttons."""
