@@ -27,11 +27,12 @@ from .tasks_widget import BrowserTasksWidget
 log = Logger.get_logger(__name__)
 
 
-class ReviewTreeView(AYTreeView):
+class BrowserFolderTreeView(AYTreeView):
     """Tree view used inside the review slicer."""
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent, variant=AYTreeView.Variants.Low)
+        self.setHeaderHidden(True)
 
 
 class BrowserSlicer(AYContainer):
@@ -119,7 +120,7 @@ class BrowserSlicer(AYContainer):
         self.add_widget(self._slicer, stretch=0)
         self._update_current_context_button(initial_category)
 
-        self._tree_view = ReviewTreeView(self)
+        self._tree_view = BrowserFolderTreeView(self)
         self.add_widget(self._tree_view, stretch=1)
 
         self._tasks = BrowserTasksWidget(
