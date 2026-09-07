@@ -14,7 +14,7 @@ from ayon_core.lib import NestedCacheItem
 from .projects import TaskTypeItem
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
-_FOLDER_FIELDS = {
+FOLDER_FIELDS = {
     "id",
     "name",
     "label",
@@ -324,7 +324,7 @@ class HierarchyModel:
         folders = ayon_api.get_folders(
             project_name,
             folder_ids=folder_ids,
-            fields=_FOLDER_FIELDS,
+            fields=FOLDER_FIELDS,
         )
         # Make sure all folder ids are in output
         output = {folder_id: None for folder_id in folder_ids}
@@ -367,7 +367,7 @@ class HierarchyModel:
         folders = ayon_api.get_folders(
             project_name,
             folder_paths=folder_paths,
-            fields=_FOLDER_FIELDS,
+            fields=FOLDER_FIELDS,
         )
         # Make sure all folder ids are in output
         for folder in folders:
