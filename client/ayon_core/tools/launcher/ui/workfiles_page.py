@@ -307,6 +307,9 @@ class WorkfilesPage(AYContainer):
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        workfiles_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
 
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = WorkfileSortFilterProxy()
