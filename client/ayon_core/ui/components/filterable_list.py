@@ -92,21 +92,13 @@ class FilterableList(StyleMixin, QWidget):
 
     def clear_items(self) -> None:
         """Remove all items from the list."""
-        for widget in self.take_items():
-            widget.deleteLater()
-
-    def take_items(self) -> list[QWidget]:
-        """Remove and return items without deleting their widgets."""
-        widgets = [widget for widget, _match_fn in self._items]
-        for widget in widgets:
-            widget.hide()
-            self._items_layout.removeWidget(widget)
         self._items.clear()
-
         while self._items_layout.count():
             item = self._items_layout.takeAt(0)
-            del item
-        return widgets
+            widget = item.widget()
+            if widget is not None:
+                widget.setVisible(False)
+                widget.deleteLater()
 
     def search_field(self) -> AYLineEdit:
         """Return the search field widget.
