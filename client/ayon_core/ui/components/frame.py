@@ -163,4 +163,5 @@ class RowHoverTracker(QtCore.QObject):
             local = self._frame.mapFromGlobal(QtGui.QCursor.pos())
             if not self._frame.rect().contains(local):
                 self._frame.set_hovered(False)
-        return False  # never consume the event
+        # never consume the event
+        return False
