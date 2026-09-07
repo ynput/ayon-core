@@ -21,7 +21,6 @@ from qtpy.QtGui import (
     QPainter,
     QPaintEvent,
     QPalette,
-    QFontMetrics,
 )
 from qtpy.QtWidgets import (
     QStyle,
@@ -301,6 +300,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         super().initStyleOption(option, index)
         option.font = self.font()
         option.fontMetrics = self.fontMetrics()
+        option.decorationAlignment = Qt.AlignmentFlag.AlignCenter
+        option.displayAlignment = (
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
 
     def sizeHint(
         self,
@@ -412,18 +415,23 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         icon_offset = 0
         if not icon.isNull():
             icon_size = opt.decorationSize
-            icon_rect = QRect(
-                content_rect.y(),
-                opt.rect.center().y() - icon_size.height() // 2,
-                icon_size.width(),
-                icon_size.height(),
-            )
+            icon_rect = QRect(opt.rect)
+            icon_rect.setSize(icon_size)
+            if opt.decorationAlignment & Qt.AlignmentFlag.AlignBottom:
+                icon_rect.moveTop(
+                    (opt.rect.bottom() - icon_size.height()) + 1
+                )
+            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignHCenter:
+                icon_rect.moveTop(
+                    (opt.rect.center().y() - (icon_size.height() // 2)) + 1
+                )
+
             icon_offset = icon_rect.width()
             if opt.text:
                 icon_offset += icon_text_spacing
 
         if opt.text:
-            metrics = QFontMetrics(opt.font)
+            metrics = opt.fontMetrics
             bound = metrics.boundingRect(opt.text)
             text_rect = QRect(opt.rect)
             text_rect.setWidth(bound.width())
@@ -431,7 +439,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         content_width = icon_offset + text_rect.width()
         if content_width > content_rect.width():
             # Text is too long to fit in the available space, so elide it.
-            metrics = QFontMetrics(opt.font)
+            metrics = opt.fontMetrics
             elided_text = metrics.elidedText(
                 opt.text,
                 opt.textElideMode,
@@ -459,7 +467,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             icon.paint(
                 painter,
                 icon_rect,
-                Qt.AlignmentFlag.AlignCenter,
+                opt.decorationAlignment,
                 mode,
             )
             content_left = icon_rect.right() + icon_text_spacing

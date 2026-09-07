@@ -73,6 +73,9 @@ class AYHeaderView(StyleMixin, QHeaderView):
         variant: str = "default",
     ) -> None:
         super().__init__(orientation, parent)
+
+        self.setStretchLastSection(True)
+
         self._style_model = style_model
         self._variant_str = variant
         # Keys of columns the user has flagged as *pinned* (kept at the
