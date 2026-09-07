@@ -378,14 +378,14 @@ class MenuDrawer:
                 action.property("check-style") if action else None
             )
             if option.checked or check_style != "checkmark":
+                if check_style == "checkmark":
+                    icon_name = "check"
+                elif option.checked:
+                    icon_name = "check_box"
+                else:
+                    icon_name = "check_box_outline_blank"
                 check_icon = get_icon(
-                    (
-                        "check"
-                        if check_style == "checkmark"
-                        else "check_box"
-                        if option.checked
-                        else "check_box_outline_blank"
-                    ),
+                    icon_name,
                     color=check_color,
                     fill=False,
                 )
