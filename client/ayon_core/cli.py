@@ -436,8 +436,5 @@ def main(*args, **kwargs):
             args=(sys.argv[1:]),
         )
     except Exception:  # noqa
-        exc_info = sys.exc_info()
-        logger.error("AYON crashed", exc_info=exc_info)
-        print("!!! AYON crashed:")
-        traceback.print_exception(*exc_info)
+        logger.error("AYON crashed", exc_info=True)
         sys.exit(1)
