@@ -538,7 +538,7 @@
                 "high": {
                     "background-color": "--md-sys-color-surface-container-dark"
                 },
-                "dialog": {
+                "high-dark": {
                     "background-color": "--md-sys-color-surface-container-high-dark"
                 },
                 "tag": {
