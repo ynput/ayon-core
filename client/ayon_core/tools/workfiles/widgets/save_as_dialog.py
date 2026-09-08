@@ -169,9 +169,8 @@ class SaveAsDialog(QtWidgets.QDialog):
             parent=btns_widget,
         )
 
-        btns_layout = btns_widget.layout()
-        btns_layout.addWidget(btn_ok)
-        btns_layout.addWidget(btn_cancel)
+        btns_widget.add_widget(btn_ok)
+        btns_widget.add_widget(btn_cancel)
 
         # Inputs widget
         inputs_widget = AYContainer(
