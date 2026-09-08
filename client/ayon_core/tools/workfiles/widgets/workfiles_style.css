@@ -10,65 +10,21 @@
 }
 
 QWidget {
-color: #D3D8DE;
-    background: #2C313A;
+    color: #f4f5f5;
+    background: #272d35;
     border-radius: 0px;
 }
 
 QWidget:disabled {
-color: #5b6779;
+    color: #5b6779;
 }
 
-/* Splitter */ QSplitter::handle {
-border: 3px solid transparent;
+/* Splitter */
+QSplitter::handle {
+    border: 3px solid transparent;
 }
 
 QSplitter::handle:horizontal, QSplitter::handle:vertical, QSplitter::handle:horizontal:hover, QSplitter::handle:vertical:hover {
-/* must be single like because of Nuke*/
+    /* must be single like because of Nuke */
     background: transparent;
-}
-
-QHeaderView {
-border: 0px solid #373D48;
-    border-radius: 0px;
-    margin: 0px;
-    padding: 0px;
-}
-
-QHeaderView::section {
-background: #373D48;
-    padding: 4px;
-    border-top: 0px; /* Substance Painter fix */
-    border-right: 1px solid #21252B;
-    border-radius: 0px;
-    text-align: center;
-    color: #D3D8DE;
-    font-weight: bold;
-}
-
-QHeaderView::section:first {
-border-left: none;
-}
-
-QHeaderView::section:last {
-border-right: none;
-}
-
-QHeaderView::section:only-one {
-border-left: none;
-    border-right: none;
-}
-
-QHeaderView::down-arrow {
-image: url(:/openpype/images/down_arrow.png);
-    padding-right: 4px;
-    subcontrol-origin: padding;
-    subcontrol-position: center right;
-}
-
-QHeaderView::up-arrow {
-image: url(:/openpype/images/up_arrow.png);
-    padding-right: 4px;
-    subcontrol-origin: padding;
-    subcontrol-position: center right;
 }
