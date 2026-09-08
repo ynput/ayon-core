@@ -501,7 +501,8 @@ class _IconsCache:
             color = icon_def.get("color") or DEFAULT_WEB_ICON_COLOR
             if isinstance(color, QtGui.QColor):
                 color = color.name()
-            parts = [icon_type, icon_def["name"] or "", color]
+            fill = bool(icon_def.get("fill"))
+            parts = [icon_type, icon_def["name"] or "", color, str(fill)]
 
         elif icon_type in {"url", "ayon_url"}:
             parts = [icon_type, icon_def["url"]]
@@ -566,6 +567,7 @@ class _IconsCache:
                 icon = qtmaterialsymbols.get_icon(
                     icon_def.name,
                     icon_def.color,
+                    fill=icon_def.fill,
                 )
 
         elif isinstance(icon_def, UrlIcon):
@@ -637,7 +639,11 @@ class _IconsCache:
             icon_name = icon_def["name"]
             icon_color = icon_def.get("color") or DEFAULT_WEB_ICON_COLOR
             if qtmaterialsymbols.get_icon_name_char(icon_name) is not None:
-                icon = qtmaterialsymbols.get_icon(icon_name, icon_color)
+                icon = qtmaterialsymbols.get_icon(
+                    icon_name,
+                    icon_color,
+                    fill=bool(icon_def.get("fill")),
+                )
 
         elif icon_type == "url":
             url = icon_def["url"]

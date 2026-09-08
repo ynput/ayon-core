@@ -312,7 +312,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         if folder_type_item is not None:
             icon = get_qt_icon(MaterialSymbolsIcon(
                 folder_type_item.icon,
-                color=get_default_entity_icon_color(),
+                color=(
+                    folder_type_item.color
+                    or get_default_entity_icon_color()
+                ),
             ))
 
         if icon is None:

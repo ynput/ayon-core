@@ -391,7 +391,7 @@ class EntityLinkDelegate(QtWidgets.QStyledItemDelegate):
             icon_color = (
                 row_data.get(f"{column_key}__icon_color") or color.name()
             )
-            get_icon(icon_name, color=icon_color).paint(
+            get_icon(icon_name, color=icon_color, fill=False).paint(
                 painter, icon_rect, QtCore.Qt.AlignmentFlag.AlignCenter
             )
 
@@ -405,7 +405,7 @@ class EntityLinkDelegate(QtWidgets.QStyledItemDelegate):
         )
 
         if hovered:
-            get_icon(self.OPEN_ICON, color=color.name()).paint(
+            get_icon(self.OPEN_ICON, color=color.name(), fill=False).paint(
                 painter, open_rect, QtCore.Qt.AlignmentFlag.AlignCenter
             )
 

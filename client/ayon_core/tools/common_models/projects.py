@@ -114,17 +114,24 @@ class FolderTypeItem:
         name (str): Folder type name ("Shot").
         short (str): Short folder type name ("sh").
         icon (str): Icon name in MaterialIcons ("fiber_new").
+        color (Optional[str]): Folder type color defined on server.
 
     """
     name: str
     short: str
     icon: str
+    color: str | None = None
 
-    def to_data(self) -> dict[str, str]:
-        return dict(name=self.name, short=self.short, icon=self.icon)
+    def to_data(self) -> dict[str, str | None]:
+        return dict(
+            name=self.name,
+            short=self.short,
+            icon=self.icon,
+            color=self.color,
+        )
 
     @classmethod
-    def from_data(cls, data: dict[str, str]) -> FolderTypeItem:
+    def from_data(cls, data: dict[str, str | None]) -> FolderTypeItem:
         return cls(**data)
 
     @classmethod
@@ -135,6 +142,7 @@ class FolderTypeItem:
             name=folder_type_data["name"],
             short=folder_type_data.get("shortName", ""),
             icon=folder_type_data["icon"],
+            color=folder_type_data.get("color"),
         )
 
 

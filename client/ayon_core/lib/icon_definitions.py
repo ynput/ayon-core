@@ -59,19 +59,25 @@ class PathIcon(IconBase):
 
 @dataclass
 class MaterialSymbolsIcon(IconBase):
-    """Material Symbols icon."""
+    """Material Symbols icon.
+
+    Icons are outlined by default, which is how the AYON web frontend
+    draws them. Pass ``fill=True`` for the filled variant.
+    """
     type: ClassVar[str] = "material-symbols"
     name: str
     color: str = field(default=DEFAULT_WEB_ICON_COLOR)
+    fill: bool = False
 
     def get_unique_id(self) -> str:
-        return f"{self.type}|{self.name}|{self.color}"
+        return f"{self.type}|{self.name}|{self.color}|{self.fill}"
 
     def to_data(self) -> dict:
         return {
             "type": self.type,
             "name": self.name,
             "color": self.color,
+            "fill": self.fill,
         }
 
 
@@ -184,6 +190,9 @@ def get_icon_def_from_data(icon_data: dict) -> IconBase:
         color = icon_data.get("color")
         if color:
             kwargs["color"] = color
+        fill = icon_data.get("fill")
+        if fill is not None:
+            kwargs["fill"] = fill
         return MaterialSymbolsIcon(icon_data["name"], **kwargs)
 
     if icon_type == "awesome-font":

@@ -22,6 +22,7 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
+from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.browser.abstract import ActionItem
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
@@ -2313,6 +2314,7 @@ class BrowserWidgetController(QtCore.QObject):
                 f for f in folders if f["id"] in self._folder_id_scope
             ]
         folders.sort(key=_folder_sort_key)
+        default_entity_icon_color = get_default_entity_icon_color()
         return [
             TreeNode(
                 id=f["id"],
@@ -2320,6 +2322,12 @@ class BrowserWidgetController(QtCore.QObject):
                 has_children=f.get("hasChildren", False),
                 icon=self._pinfo(
                     "folderTypes", f.get("folderType", ""), "icon", "folder"
+                ),
+                icon_color=self._pinfo(
+                    "folderTypes",
+                    f.get("folderType", ""),
+                    "color",
+                    default_entity_icon_color,
                 ),
                 data=f,
             )
