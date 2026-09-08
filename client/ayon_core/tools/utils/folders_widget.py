@@ -25,8 +25,12 @@ from ayon_core.ui.components import (
     AYTreeView
 )
 
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
+
 from .models import RecursiveSortFilterProxyModel
 from .lib import get_qt_icon
+from .delegates import CenteredIconDelegate
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -571,6 +575,14 @@ class FoldersWidget(QtWidgets.QWidget):
         )
         header.resizeSection(1, 30)
         folders_view.setColumnHidden(1, True)
+        folders_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

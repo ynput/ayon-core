@@ -6,6 +6,8 @@ import logging
 
 from qtpy import QtWidgets, QtGui, QtCore
 
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+
 log = logging.getLogger(__name__)
 
 
@@ -137,6 +139,28 @@ class PrettyTimeDelegate(QtWidgets.QStyledItemDelegate):
             if value is not None:
                 return value
         return self._default_value
+
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    """Status-icon-only column delegate that centers the icon.
+
+    'AYTreeView' paints entirely by itself (background/hover/selection
+    colors, icon and text layout) via 'TreeViewItemDelegate', bypassing
+    QStyle/QSS so its look stays correct even under a parent stylesheet.
+    A plain 'QStyledItemDelegate' painting through 'QStyle' therefore
+    renders with different colors than the rest of the view. Subclassing
+    'TreeViewItemDelegate' keeps that painting identical and only
+    overrides the content alignment, which is what positions the icon
+    within the column (see 'TreeViewItemDelegate.paint').
+    """
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        # 'TreeViewItemDelegate.paint' centers content on an exact
+        # 'displayAlignment == AlignHCenter' check, so the combined
+        # 'AlignCenter' flag (AlignHCenter | AlignVCenter) would not
+        # match it and silently fall back to left alignment.
+        option.displayAlignment = QtCore.Qt.AlignHCenter
 
 
 class StatusDelegate(QtWidgets.QStyledItemDelegate):
