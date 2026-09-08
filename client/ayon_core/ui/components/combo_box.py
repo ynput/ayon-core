@@ -386,7 +386,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         inverted: bool = False,
         icon_size: int = 20,
         variant: Variants = Variants.Default,
-        show_chevron: bool = False,
+        show_chevron: bool = True,
         **kwargs,
     ) -> None:
         self._uses_incompatible_model = False
