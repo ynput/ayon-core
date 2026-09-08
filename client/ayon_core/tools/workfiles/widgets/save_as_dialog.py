@@ -20,7 +20,7 @@ class SubversionLineEdit(QtWidgets.QWidget):
     text_changed = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs):
-        super(SubversionLineEdit, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         input_field = AYLineEdit(parent=self)
         menu_btn = AYButton(
@@ -185,9 +185,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input.set_placeholder("Will be part of filename.")
 
         extension_combobox = AYComboBox(parent=inputs_widget)
-        # Add styled delegate to use stylesheets
-        extension_delegate = QtWidgets.QStyledItemDelegate()
-        extension_combobox.setItemDelegate(extension_delegate)
 
         version_label = AYLabel("Version:", parent=inputs_widget)
         subversion_label = AYLabel("Subversion:", parent=inputs_widget)
@@ -237,7 +234,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._version_input = version_input
         self._last_version_check = last_version_check
 
-        self._extension_delegate = extension_delegate
         self._extension_combobox = extension_combobox
         self._subversion_input = subversion_input
         self._preview_widget = preview_widget
