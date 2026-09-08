@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qtpy.QtCore import QRect, QPointF, QRectF, QSize, Qt
+from qtpy.QtCore import QRect, QRectF, QSize, Qt
 from qtpy.QtGui import (
     QBrush, QColor, QPainter, QPaintEvent, QPalette, QPen, QIcon
 )
@@ -287,7 +287,7 @@ class AYSpinBox(StyleMixin, QSpinBox):
         style = self.variant_style()
         padding = style.get("padding", [4, 4])
         button_width = style.get("button-width", 18)
-        
+
         # Add horizontal padding and button width
         size.setWidth(size.width() + padding[0] * 2 + button_width)
         # Ensure minimum height with vertical padding

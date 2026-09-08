@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from qtpy.QtGui import QPainter
-from qtpy.QtCore import QSize
 from qtpy.QtWidgets import (
     QSpinBox,
     QStyle,
@@ -14,7 +13,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ._utils import enum_to_str, style_font
+from ._utils import enum_to_str
 
 if TYPE_CHECKING:
     from ..style import AYONStyle
@@ -93,7 +92,7 @@ class SpinBoxDrawer:
             return
 
         option = QStyleOptionSpinBox()
-        widget.initStyleOption(opt)
+        widget.initStyleOption(option)
         self._super.drawComplexControl(
             QStyle.ComplexControl.CC_SpinBox, option, painter, widget
         )

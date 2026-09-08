@@ -470,9 +470,11 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         painter.restore()
+
 # =============================================================================
 # __main__ - visual test harness
 # =============================================================================
+
 
 if __name__ == "__main__":
     from qtpy import QtWidgets
