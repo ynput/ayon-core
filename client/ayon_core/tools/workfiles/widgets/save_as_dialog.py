@@ -266,7 +266,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         surface.add_widget(btns_widget)
 
         main_layout = AYVBoxLayout(self, margin=0, spacing=0)
-        main_layout.addWidget(surface)
+        main_layout.addWidget(surface, 1)
 
         # Signal callback registration
         version_input.valueChanged.connect(self._on_version_spinbox_change)
