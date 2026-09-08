@@ -320,8 +320,7 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         menu = self._subversion_menu
         button = self._subversion_menu_btn
-
-        button.setEnabled(any(values))
+        button.setEnabled(bool(values))
         if not button.isEnabled():
             return
 
