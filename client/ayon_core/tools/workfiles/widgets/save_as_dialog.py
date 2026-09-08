@@ -209,9 +209,8 @@ class SaveAsDialog(QtWidgets.QDialog):
             QtWidgets.QSizePolicy.Fixed,
         )
 
-        version_layout = version_widget.layout()
-        version_layout.addWidget(version_input)
-        version_layout.addWidget(last_version_check)
+        version_widget.add_widget(version_input)
+        version_widget.add_widget(last_version_check)
 
         # Artist note widget. AYTextEdit does not paint a background of its
         # own, so it is framed the same way as the side panel's note field.
@@ -263,13 +262,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(description_label, 4, 0, 1, 2)
         inputs_layout.addWidget(description_frame, 5, 0, 1, 2)
 
-        # Build layout
-        surface_layout = surface.layout()
-        surface_layout.addWidget(inputs_widget)
-        surface_layout.addWidget(btns_widget)
+        surface.add_widget(inputs_widget)
+        surface.add_widget(btns_widget)
 
-        # The surface fills the dialog so nothing of the dialog's own
-        # (host-provided) background is left showing.
         main_layout = AYVBoxLayout(self, margin=0, spacing=0)
         main_layout.addWidget(surface)
 
