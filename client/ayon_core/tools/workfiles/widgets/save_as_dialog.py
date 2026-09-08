@@ -1,28 +1,41 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.utils import PlaceholderPlainTextEdit
 from ayon_core.ui.components import (
     AYButton,
     AYCheckBox,
     AYComboBox,
+    AYContainer,
     AYLabel,
-    AYHBoxLayout,
+    AYMenu,
     AYVBoxLayout,
-    AYGridLayout,
     AYLineEdit,
     AYSpinBox,
+    AYTextEdit,
 )
 
+# Surface variant used by the dialog and by every plain wrapper widget
+# inside it, so the wrappers blend into the dialog surface instead of
+# falling back to the host/legacy stylesheet background.
+SURFACE_VARIANT = AYContainer.Variants.Dialog
 
-class SubversionLineEdit(QtWidgets.QWidget):
+
+class SubversionLineEdit(AYContainer):
     """QLineEdit with QPushButton for drop down selection of list of strings"""
 
     text_changed = QtCore.Signal(str)
 
-    def __init__(self, *args, **kwargs):
-        super(SubversionLineEdit, self).__init__(*args, **kwargs)
+    def __init__(self, parent=None):
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            variant=SURFACE_VARIANT,
+            layout_margin=0,
+            layout_spacing=3,
+        )
 
-        input_field = AYLineEdit(parent=self)
+        input_field = AYLineEdit(
+            parent=self, variant=AYLineEdit.Variants.Low
+        )
         menu_btn = AYButton(
             variant=AYButton.Variants.Surface,
             icon="arrow_drop_down",
@@ -30,11 +43,10 @@ class SubversionLineEdit(QtWidgets.QWidget):
         )
         menu_btn.setFixedWidth(18)
 
-        menu = QtWidgets.QMenu(self)
+        menu = AYMenu(self)
         menu_btn.setMenu(menu)
 
-        layout = AYHBoxLayout(self, margin=0, spacing=3)
-
+        layout = self.layout()
         layout.addWidget(input_field, 1)
         layout.addWidget(menu_btn, 0)
 
@@ -108,7 +120,7 @@ class SaveAsDialog(QtWidgets.QDialog):
 
     def __init__(self, controller, parent):
         super(SaveAsDialog, self).__init__(parent=parent)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        self.setWindowTitle("Save Workfile As")
         self.setMinimumWidth(330)
 
         self._controller = controller
@@ -126,8 +138,25 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         self._result = None
 
+        # Dialog surface. Every visible widget lives inside this container so
+        # the dialog is painted from the AYON surface ramp rather than
+        # inheriting the host's (or the tool's legacy) stylesheet background.
+        surface = AYContainer(
+            self,
+            layout=AYContainer.Layout.VBox,
+            variant=SURFACE_VARIANT,
+            layout_margin=8,
+            layout_spacing=4,
+        )
+
         # Btns widget
-        btns_widget = QtWidgets.QWidget(self)
+        btns_widget = AYContainer(
+            surface,
+            layout=AYContainer.Layout.HBox,
+            variant=SURFACE_VARIANT,
+            layout_margin=0,
+            layout_spacing=4,
+        )
 
         btn_ok = AYButton(
             "Ok",
@@ -140,19 +169,32 @@ class SaveAsDialog(QtWidgets.QDialog):
             parent=btns_widget,
         )
 
-        btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=4)
+        btns_layout = btns_widget.layout()
         btns_layout.addWidget(btn_ok)
         btns_layout.addWidget(btn_cancel)
 
         # Inputs widget
-        inputs_widget = QtWidgets.QWidget(self)
+        inputs_widget = AYContainer(
+            surface,
+            layout=AYContainer.Layout.Grid,
+            variant=SURFACE_VARIANT,
+            layout_margin=0,
+            layout_spacing=4,
+        )
 
         # Version widget
-        version_widget = QtWidgets.QWidget(inputs_widget)
+        version_widget = AYContainer(
+            inputs_widget,
+            layout=AYContainer.Layout.HBox,
+            variant=SURFACE_VARIANT,
+            layout_margin=0,
+            layout_spacing=4,
+        )
 
         # Version number input
         version_input = AYSpinBox(
             parent=version_widget,
+            variant=AYSpinBox.Variants.Low,
             minimum=1,
             maximum=9999,
         )
@@ -167,14 +209,26 @@ class SaveAsDialog(QtWidgets.QDialog):
             QtWidgets.QSizePolicy.Fixed,
         )
 
-        version_layout = AYHBoxLayout(version_widget, margin=0, spacing=4)
+        version_layout = version_widget.layout()
         version_layout.addWidget(version_input)
         version_layout.addWidget(last_version_check)
 
-        # Artist note widget
-        description_input = PlaceholderPlainTextEdit(inputs_widget)
+        # Artist note widget. AYTextEdit does not paint a background of its
+        # own, so it is framed the same way as the side panel's note field.
+        description_frame = AYContainer(
+            inputs_widget,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=4,
+            layout_spacing=0,
+        )
+        description_input = AYTextEdit(
+            description_frame, variant=AYTextEdit.Variants.Low
+        )
         description_input.setPlaceholderText(
             "Provide a note about this workfile.")
+        description_input.setMinimumHeight(60)
+        description_frame.add_widget(description_input, stretch=1)
 
         # Preview widget
         preview_widget = AYLabel("Preview filename", parent=inputs_widget)
@@ -184,10 +238,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input = SubversionLineEdit(inputs_widget)
         subversion_input.set_placeholder("Will be part of filename.")
 
-        extension_combobox = AYComboBox(parent=inputs_widget)
-        # Add styled delegate to use stylesheets
-        extension_delegate = QtWidgets.QStyledItemDelegate()
-        extension_combobox.setItemDelegate(extension_delegate)
+        # Use the same fill as the other inputs so the form rows match
+        extension_combobox = AYComboBox(
+            parent=inputs_widget,
+            variant=AYComboBox.Variants.Low,
+        )
 
         version_label = AYLabel("Version:", parent=inputs_widget)
         subversion_label = AYLabel("Subversion:", parent=inputs_widget)
@@ -196,7 +251,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         description_label = AYLabel("Artist Note:", parent=inputs_widget)
 
         # Build inputs
-        inputs_layout = AYGridLayout(inputs_widget, margin=0, spacing=4)
+        inputs_layout = inputs_widget.layout()
         inputs_layout.addWidget(version_label, 0, 0)
         inputs_layout.addWidget(version_widget, 0, 1)
         inputs_layout.addWidget(subversion_label, 1, 0)
@@ -206,12 +261,17 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(preview_label, 3, 0)
         inputs_layout.addWidget(preview_widget, 3, 1)
         inputs_layout.addWidget(description_label, 4, 0, 1, 2)
-        inputs_layout.addWidget(description_input, 5, 0, 1, 2)
+        inputs_layout.addWidget(description_frame, 5, 0, 1, 2)
 
         # Build layout
-        main_layout = AYVBoxLayout(self, margin=8, spacing=4)
-        main_layout.addWidget(inputs_widget)
-        main_layout.addWidget(btns_widget)
+        surface_layout = surface.layout()
+        surface_layout.addWidget(inputs_widget)
+        surface_layout.addWidget(btns_widget)
+
+        # The surface fills the dialog so nothing of the dialog's own
+        # (host-provided) background is left showing.
+        main_layout = AYVBoxLayout(self, margin=0, spacing=0)
+        main_layout.addWidget(surface)
 
         # Signal callback registration
         version_input.valueChanged.connect(self._on_version_spinbox_change)
@@ -237,7 +297,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._version_input = version_input
         self._last_version_check = last_version_check
 
-        self._extension_delegate = extension_delegate
         self._extension_combobox = extension_combobox
         self._subversion_input = subversion_input
         self._preview_widget = preview_widget

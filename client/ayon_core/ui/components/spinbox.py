@@ -65,6 +65,24 @@ class AYSpinBox(StyleMixin, QSpinBox):
         # Suppress the native Qt frame
         self.setFrame(False)
 
+        # Neutralise any ancestor stylesheet that would intercept the spin
+        # box painting via QStyleSheetStyle and draw its own frame and
+        # up/down buttons on top of the ones we paint ourselves. The
+        # property selector is there for specificity: a bare type selector
+        # ties with an ancestor's "QAbstractSpinBox" rule, and the ancestor
+        # then wins.
+        self.setProperty("ayonPainted", True)
+        self.setStyleSheet(
+            "AYSpinBox[ayonPainted=\"true\"] { background: transparent; "
+            "border: none; padding: 0px; "
+            "selection-background-color: none; selection-color: none; }"
+            "AYSpinBox[ayonPainted=\"true\"]::up-button, "
+            "AYSpinBox[ayonPainted=\"true\"]::down-button { "
+            "background: transparent; border: none; }"
+            "AYSpinBox[ayonPainted=\"true\"]::up-arrow, "
+            "AYSpinBox[ayonPainted=\"true\"]::down-arrow { image: none; }"
+        )
+
         # Suppress macOS native focus ring (we draw our own)
         self.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
 
