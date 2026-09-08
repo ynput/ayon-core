@@ -8,6 +8,7 @@ from qtpy.QtWidgets import QTextEdit
 from ..style_types import get_ayon_style
 from ..variants import QTextEditVariants
 from .style_mixin import StyleMixin
+from .scroll_area import AYScrollBar
 
 
 class AYTextEdit(StyleMixin, QTextEdit):
@@ -39,3 +40,12 @@ class AYTextEdit(StyleMixin, QTextEdit):
         super().__init__(*args, **kwargs)
         self.setStyle(get_ayon_style())
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+        self.setVerticalScrollBar(AYScrollBar(Qt.Orientation.Vertical))
+        self.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.setHorizontalScrollBar(AYScrollBar(Qt.Orientation.Horizontal))
+        self.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )

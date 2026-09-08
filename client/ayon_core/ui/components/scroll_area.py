@@ -22,8 +22,8 @@ class AYScrollBar(StyleMixin, QScrollBar):
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.
 
     Args:
-        *args: Positional arguments passed to QTextEdit.
-        **kwargs: Keyword arguments passed to QTextEdit.
+        *args: Positional arguments passed to QScrollBar.
+        **kwargs: Keyword arguments passed to QScrollBar.
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -47,7 +47,6 @@ class AYScrollBar(StyleMixin, QScrollBar):
         get_ayon_style().drawComplexControl(
             QStyle.ComplexControl.CC_ScrollBar, option, p, self
         )
-        return
 
 
 class AYScrollArea(StyleMixin, QScrollArea):
