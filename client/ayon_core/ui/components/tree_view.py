@@ -484,6 +484,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         painter.restore()
+
 # =============================================================================
 # __main__ - visual test harness
 # =============================================================================
