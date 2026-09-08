@@ -422,6 +422,16 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         view.setHorizontalScrollBar(AYScrollBar(Qt.Orientation.Horizontal))
         view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
+        # Paint popup rows with the AYON styled delegate, so every combo-box
+        # gets the same row height, padding and menu colors instead of Qt's
+        # cramped default rows.
+        self.setItemDelegate(
+            ComboBoxItemDelegate(
+                parent=view,
+                style_model=get_ayon_style().model,
+            )
+        )
+
         self.update_items(items)
 
     def _assert_compatible_model(self) -> None:
