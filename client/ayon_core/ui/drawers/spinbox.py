@@ -91,8 +91,6 @@ class SpinBoxDrawer:
         if isinstance(widget, AYSpinBox):
             return
 
-        option = QStyleOptionSpinBox()
-        widget.initStyleOption(option)
         self._super.drawComplexControl(
             QStyle.ComplexControl.CC_SpinBox, option, painter, widget
         )
