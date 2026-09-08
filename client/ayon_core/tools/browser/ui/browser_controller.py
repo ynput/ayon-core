@@ -1542,6 +1542,7 @@ class BrowserWidgetController(QtCore.QObject):
         color: str | None = None,
         label: str | None = None,
         product_type: str | None = None,
+        product_base_type: str = "",
         featured_version: dict[str, Any] | None = None,
         num_versions: int | None = None,
     ) -> dict[str, Any]:
@@ -1558,6 +1559,8 @@ class BrowserWidgetController(QtCore.QObject):
                 ``"product/version"`` column instead of *value*.
             product_type: Optional product type string, required when
                 *featured_version* is provided.
+            product_base_type: Optional base type of *product_type*,
+                which is what carries the icon and color.
             featured_version: Optional dict representing the featured
                 version.
             num_versions: Number of versions in the group, or ``None``
@@ -1610,13 +1613,15 @@ class BrowserWidgetController(QtCore.QObject):
             row["status__short"] = self._pinfo(
                 "statuses", row["status"], "shortName", ""
             )
+            icon, icon_color = self._product_appearance(
+                product_type, product_base_type
+            )
             row["productType"] = product_type
-            row["productType__icon"] = self._pinfo(
-                "productTypes", product_type, "icon", "category"
-            )
-            row["productType__color"] = self._pinfo(
-                "productTypes", product_type, "color", ""
-            )
+            row["productType__icon"] = icon
+            row["productType__icon_color"] = icon_color
+            row["productBaseType"] = product_base_type or product_type
+            row["productBaseType__icon"] = icon
+            row["productBaseType__icon_color"] = icon_color
             row["folderName"] = featured_version.get("parents", ["", ""])[-2]
             row["author"] = featured_version.get("author", "")
             row["author__label"] = self._user_full_names.get(
@@ -1663,6 +1668,7 @@ class BrowserWidgetController(QtCore.QObject):
                 GROUP_BY_PRODUCT_TYPE_KEY,
                 "category",
                 group_counts,
+                appearance_category="productBaseTypes",
             )
         elif self.group_by_key == GROUP_BY_PRODUCT_KEY:
             rows = self._fetch_product_group_headers(group_counts)
@@ -1877,20 +1883,33 @@ class BrowserWidgetController(QtCore.QObject):
         group_by_key: str,
         default_icon: str,
         group_counts: dict[str, int] | None,
+        appearance_category: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return group rows for a plain project-info-backed category.
 
         Covers the group-by axes whose values, icons and colors all come
         straight from project info (statuses, product types, tags, task
         types) with filter-aware version counts.
+
+        Args:
+            category: Project-info category the group values come from.
+            group_by_key: Group-by axis being built.
+            default_icon: Icon for values with no appearance.
+            group_counts: Filter-aware version counts per value.
+            appearance_category: Category to read the icon and color
+                from, when it differs from the one holding the values.
+                Product types keep their appearance on the base types.
         """
         values = self._group_values(category, group_counts)
+        style_category = appearance_category or category
         return [
             self._build_group_header_row(
                 self._group_by_options[group_by_key],
                 value,
-                icon=self._pinfo(category, value, "icon", default_icon),
-                color=self._pinfo(category, value, "color"),
+                icon=self._pinfo(
+                    style_category, value, "icon", default_icon
+                ),
+                color=self._pinfo(style_category, value, "color"),
                 num_versions=(
                     group_counts.get(value, 0)
                     if group_counts is not None
@@ -2010,7 +2029,7 @@ class BrowserWidgetController(QtCore.QObject):
     @staticmethod
     def _extract_product_group_data(
         edges: list[dict[str, Any]],
-    ) -> list[tuple[str, str, str, dict[str, Any]]]:
+    ) -> list[tuple[str, str, str, str, dict[str, Any]]]:
         """Transform raw product edges into structured tuples.
 
         Args:
@@ -2019,14 +2038,15 @@ class BrowserWidgetController(QtCore.QObject):
 
         Returns:
             List of ``(product_id, product_name, product_type,
-            featured_version)`` tuples.
+            product_base_type, featured_version)`` tuples.
         """
-        result: list[tuple[str, str, str, dict[str, Any]]] = []
+        result: list[tuple[str, str, str, str, dict[str, Any]]] = []
         for edge in edges:
             node = edge.get("node", {})
             product_id = _normalize_entity_id(node.get("id", ""))
             product_name = node.get("name", "")
             product_type = node.get("productType", "")
+            product_base_type = node.get("productBaseType") or ""
             featured_version = node.get("featuredVersion", {})
             if product_id and product_name:
                 result.append(
@@ -2034,6 +2054,7 @@ class BrowserWidgetController(QtCore.QObject):
                         product_id,
                         product_name,
                         product_type,
+                        product_base_type,
                         featured_version,
                     )
                 )
@@ -2101,7 +2122,7 @@ class BrowserWidgetController(QtCore.QObject):
         # Keep first-seen product order while dropping duplicates.
         seen_product_ids: set[str] = set()
         unique_product_data: list[
-            tuple[str, str, str, dict[str, Any]]
+            tuple[str, str, str, str, dict[str, Any]]
         ] = []
         for item in product_data:
             product_id = item[0]
@@ -2117,23 +2138,29 @@ class BrowserWidgetController(QtCore.QObject):
                 if group_counts.get(item[0], 0) > 0
             ]
 
-        return [
-            self._build_group_header_row(
+        rows = []
+        for p_id, p_name, p_type, p_base_type, featured_v in (
+            unique_product_data
+        ):
+            icon, color = self._product_appearance(
+                p_type, p_base_type, "view_in_ar"
+            )
+            rows.append(self._build_group_header_row(
                 self._group_by_options[GROUP_BY_PRODUCT_KEY],
                 value=p_id,
                 label=p_name,
-                icon=self._pinfo("productTypes", p_type, "icon", "view_in_ar"),
-                color=self._pinfo("productTypes", p_type, "color"),
+                icon=icon,
+                color=color,
                 product_type=p_type,
+                product_base_type=p_base_type,
                 featured_version=featured_v,
                 num_versions=(
                     group_counts.get(p_id, 0)
                     if group_counts is not None
                     else None
                 ),
-            )
-            for p_id, p_name, p_type, featured_v in unique_product_data
-        ]
+            ))
+        return rows
 
     @staticmethod
     def _parse_group_id(group_id: str) -> tuple[str, str]:
@@ -2405,7 +2432,10 @@ class BrowserWidgetController(QtCore.QObject):
         self._project_info = dict(project_entity)
         config = project_entity.get("config", {})
         product_base_types = config.get("productBaseTypes", {})
-        product_type_items = project_entity.get("productTypes") or []
+        product_type_items = (
+            project_entity.get("productTypes")
+            or self._fetch_product_types(name)
+        )
         base_type_items = _collect_product_base_types(
             product_base_types.get("definitions", []),
             product_type_items,
@@ -2460,6 +2490,41 @@ class BrowserWidgetController(QtCore.QObject):
         self._version_attributes = self._attributes_by_scope["version"]
         self._rebuild_group_by_options()
 
+    def _fetch_product_types(
+        self, project_name: str
+    ) -> list[dict[str, Any]]:
+        """Return the product types in use in the project.
+
+        ``get_project_entity`` serves the REST project payload, which
+        does not carry ``productTypes`` - that field only exists on the
+        GraphQL project. Without it the Product Type filter and the
+        group-by-product-type axis have no values to offer.
+
+        These entries carry names only; a product type's icon and color
+        live on its base type, see :meth:`_product_appearance`.
+
+        Args:
+            project_name: Project to query.
+
+        Returns:
+            The project's ``productTypes`` entries, or an empty list
+            when the query fails.
+        """
+        try:
+            project = ayon_api.get_project(
+                project_name, fields={"productTypes"}
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to fetch product types for project '%s'",
+                project_name,
+                exc_info=True,
+            )
+            return []
+        if not project:
+            return []
+        return project.get("productTypes") or []
+
     def _rebuild_group_by_options(self) -> None:
         """Recompute available group-by options from project metadata."""
         old_options = self._group_by_options.copy()
@@ -2501,6 +2566,40 @@ class BrowserWidgetController(QtCore.QObject):
                 return option.key
 
         return GROUP_BY_NONE_KEY
+
+    def _product_appearance(
+        self,
+        product_type: str,
+        product_base_type: str = "",
+        default_icon: str = "category",
+    ) -> tuple[str, str]:
+        """Return the icon and color to paint for a product type.
+
+        Product types carry no appearance of their own - the server
+        keeps icons and colors on the project anatomy's product *base*
+        types ("Product Types / Appearance overrides"), and anything
+        without an override falls back to the anatomy's default
+        appearance. So ``preview``, whose base type is ``render``, has
+        to resolve through ``render`` to get its icon.
+
+        Args:
+            product_type: Product type name of the row.
+            product_base_type: The row's base type, when known. Rows
+                that do not carry one fall back to *product_type*,
+                which resolves identically for every product type that
+                names its own base type.
+            default_icon: Icon to paint when the anatomy defines no
+                default appearance either.
+
+        Returns:
+            Tuple of ``(icon name, color)``. The color is an empty
+            string when nothing defines one.
+        """
+        name = product_base_type or product_type
+        return (
+            self._pinfo("productBaseTypes", name, "icon", default_icon),
+            self._pinfo("productBaseTypes", name, "color", ""),
+        )
 
     def _pinfo(
         self, category: str, name: str, key: str, default: Any = None
@@ -2748,6 +2847,9 @@ class BrowserWidgetController(QtCore.QObject):
         folder_attrib = self._decode_attributes(folder.get("allAttrib"))
         product_type = product.get("productType", "")
         product_base_type = product.get("productBaseType", "")
+        product_icon, product_icon_color = self._product_appearance(
+            product_type, product_base_type
+        )
         folder_type = folder.get("folderType", "")
         task = n.get("task", {}) or {}
         task_attrib = self._decode_attributes(task.get("allAttrib"))
@@ -2785,12 +2887,10 @@ class BrowserWidgetController(QtCore.QObject):
             "entityType__icon": "layers",
             "productType": product_type,
             "productBaseType": product_base_type or product_type,
-            "productType__icon": self._pinfo(
-                "productTypes", product_type, "icon"
-            ),
-            "productType__color": self._pinfo(
-                "productTypes", product_type, "color"
-            ),
+            "productType__icon": product_icon,
+            "productType__icon_color": product_icon_color,
+            "productBaseType__icon": product_icon,
+            "productBaseType__icon_color": product_icon_color,
             "folderName": folder.get("name", ""),
             "folderName__icon": self._pinfo(
                 "folderTypes", folder_type, "icon", "folder"

@@ -257,6 +257,7 @@ query GetProducts(
           id
           name
           productType
+          productBaseType
           featuredVersion(order: $featuredVersionOrder) {
             name
             id
