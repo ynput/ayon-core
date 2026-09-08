@@ -71,7 +71,7 @@ class QFrameVariants(Enum):
     Low_Framed_Thin = "low-framed-thin"
     Low_Table_Editor = "low-table-editor"
     High = "high"
-    Dialog = "high-dark"
+    High_Dark = "high-dark"
     Tag = "tag"
     Item_View = "item-view"
     Criterion = "criterion"
