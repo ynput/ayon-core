@@ -105,14 +105,14 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         # Subversion input
         subversion_input = AYLineEdit(
-            parent=self, variant=AYLineEdit.Variants.Low
+            parent=surface, variant=AYLineEdit.Variants.Low
         )
         subversion_input.setPlaceholderText("Will be part of filename.")
 
         subversion_menu_btn = AYButton(
             variant=AYButton.Variants.Surface,
             icon="arrow_drop_down",
-            parent=self,
+            parent=surface,
         )
         subversion_menu_btn.setFixedWidth(18)
 
