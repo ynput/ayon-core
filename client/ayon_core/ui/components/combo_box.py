@@ -73,6 +73,7 @@ from ..data_models import MenuSize
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QComboBoxVariants
 from .style_mixin import StyleMixin
+from .scroll_area import AYScrollBar
 
 
 class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
@@ -413,6 +414,13 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         # setup model
         model = AYComboBoxModel(self)
         self.setModel(model)
+
+        view = self.view()
+
+        view.setVerticalScrollBar(AYScrollBar(Qt.Orientation.Vertical))
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        view.setHorizontalScrollBar(AYScrollBar(Qt.Orientation.Horizontal))
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         self.update_items(items)
 
