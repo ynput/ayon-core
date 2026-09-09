@@ -151,6 +151,9 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
         ) = None
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
+        # Check if the model supports beginFilterChange / endFilterChange
+        #   (since Qt 6.10).
+        # The invalidateFilter is deprecated, available up to 6.13.
         self._use_filter_change = hasattr(self, "beginFilterChange")
 
     def set_row_value_getter(
