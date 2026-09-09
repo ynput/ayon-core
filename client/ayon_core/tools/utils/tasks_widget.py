@@ -15,6 +15,10 @@ from ayon_core.style import (
 )
 from ayon_core.ui.components import AYTreeView
 
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+
 from .lib import RefreshThread, get_qt_icon
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
@@ -25,6 +29,12 @@ TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
 TASK_TYPE_ORDER_ROLE = QtCore.Qt.UserRole + 5
 TASK_STATUS_ROLE = QtCore.Qt.UserRole + 6
 TASK_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 7
+
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = QtCore.Qt.AlignHCenter
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
@@ -491,6 +501,14 @@ class TasksWidget(QtWidgets.QWidget):
         )
         header.resizeSection(1, 30)
         tasks_view.setColumnHidden(1, True)
+        tasks_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=tasks_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
