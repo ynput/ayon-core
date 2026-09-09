@@ -23,7 +23,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from qtpy.QtGui import QColor, QFont, QFontDatabase, QPalette
+from qtpy.QtGui import QColor, QFont, QPalette
 from qtpy.QtWidgets import QWidget
 
 from .drawers._utils import style_font
@@ -492,39 +492,13 @@ class StyleData:
 
 class _LocalContext:
     ayon_style_instance: AYONStyle | None = None
-    font_ids: list[int] | None = None
 
 
 def _load_fonts() -> None:
     """Load and register fonts into Qt application."""
+    # Load fonts the same as the old ayon style.
     from ayon_core.style import _load_font
-
-    # Load fonts from old ayon stylesheets too (monospaced font).
     _load_font()
-
-    # Check if font ids are still loaded
-    if _LocalContext.font_ids is not None:
-        for font_id in tuple(_LocalContext.font_ids):
-            font_families = QFontDatabase.applicationFontFamilies(
-                font_id
-            )
-            # Reset font if font id is not available
-            if not font_families:
-                _LocalContext.font_ids = None
-                break
-
-    if _LocalContext.font_ids is None:
-        _LocalContext.font_ids = []
-        path = Path(__file__).parent / "resources" / "NunitoSans.ttf"
-
-        font_path = str(path)
-        font_id = QFontDatabase.addApplicationFont(font_path)
-        if font_id == -1:
-            log.error(f"Failed to load base font from {font_path}")
-        else:
-            _LocalContext.font_ids.append(font_id)
-            family = QFontDatabase.applicationFontFamilies(font_id)
-            log.debug(f"Loaded base font file {font_path} ('{family}')")
 
 
 def get_ayon_style() -> AYONStyle:
