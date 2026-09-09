@@ -1025,7 +1025,10 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
     )
     output_ext: str = SettingsField(
         "png",
-        title="Output extension"
+        title="Output extension",
+        # TODO: need to work-out the plugin logic
+        # before we allow more than 'png' extension.
+        disabled=True,
     )
     default_to_width: int = SettingsField(
         0,
@@ -1039,17 +1042,6 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
         le=100000,
         title="Default height"
     )
-
-    @validator("output_ext")
-    def validate_name(cls, value):
-        """Ensure output extension is supported by OTIO extractor."""
-        value = value.lower().lstrip(".")
-        if value not in ("png", "jpg", "jpeg"):
-            raise ValueError(
-                f"Unsupported output extension '{value}' "
-                "(supported: png, jpg, jpeg)"
-            )
-        return value
 
 
 # --- [START] Extract Review ---
