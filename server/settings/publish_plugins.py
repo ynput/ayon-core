@@ -1045,7 +1045,10 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
         """Ensure output extension is supported by OTIO extractor."""
         value = value.lower().lstrip(".")
         if value not in ("png", "jpg", "jpeg"):
-            raise ValueError(f"Unsupported output extension '{value}' (supported: png, jpg, jpeg)")
+            raise ValueError(
+                f"Unsupported output extension '{value}' "
+                "(supported: png, jpg, jpeg)"
+            )
         return value
 
 
