@@ -456,17 +456,24 @@ def show_workfiles(*args, **kwargs) -> QWidget | None:
     )
 
 
-def show_loader(parent: QWidget | None = None) -> QWidget | None:
+def show_loader(
+    parent: QWidget | None = None,
+    *,
+    use_context: bool = False
+) -> QWidget | None:
     """Show loader tool.
 
     Args:
-        parent: tool parent,
+        parent: tool parent
+        use_context: use context
 
     Returns:
         QWidget of the tool
 
     """
-    return _SingletonPoint.show_tool_by_name("loader", parent)
+    return _SingletonPoint.show_tool_by_name(
+        "loader", parent, use_context=use_context
+    )
 
 
 def show_scene_inventory(
