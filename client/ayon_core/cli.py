@@ -3,7 +3,6 @@
 import os
 import sys
 import code
-import traceback
 from pathlib import Path
 
 import click
