@@ -559,7 +559,10 @@
                     "menu-background-color": "--md-sys-color-surface-container-low-dark",
                     "menu-selected-background-color": "--md-sys-color-primary-container-dark",
                     "menu-selected-hover-background-color": "--md-sys-color-primary-container-dark-hover",
-                    "menu-selected-color": "--md-sys-color-on-primary-container-dark"
+                    "menu-selected-color": "--md-sys-color-on-primary-container-dark",
+                    "hover": {
+                        "background-color": "--md-sys-color-surface-container-highest-dark-hover"
+                    }
                 },
                 "low": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
