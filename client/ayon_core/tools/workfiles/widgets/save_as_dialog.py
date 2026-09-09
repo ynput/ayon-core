@@ -24,16 +24,17 @@ class SaveAsDialog(QtWidgets.QDialog):
     The filename is calculated in controller where UI sends values from
     dialog inputs.
 
-    Args:
-        controller (AbstractWorkfilesFrontend): The control object.
+    controller (AbstractWorkfilesFrontend): The control object.
+        parent (QtWidgets.QWidget): Parent widget.
+        extension (str | None): Limit extensions to specific one.
     """
-
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, extension=None):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowTitle("Save Workfile As")
         self.setMinimumWidth(330)
 
         self._controller = controller
+        self._extension = extension
 
         self._folder_id = None
         self._task_id = None
@@ -177,7 +178,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_input.textChanged.connect(self._on_comment_change)
         extension_combobox.currentIndexChanged.connect(
             self._on_extension_change)
-
         btn_ok.pressed.connect(self._on_ok_pressed)
         btn_cancel.pressed.connect(self._on_cancel_pressed)
 
@@ -246,7 +246,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._last_version = data["last_version"]
 
         self._extension_combobox.clear()
-        self._extension_combobox.addItems(data["extensions"])
+        extensions = data["extensions"]
+        if self._extension:
+            extensions = [self._extension]
+
+        self._extension_combobox.addItems(extensions)
 
         self._version_input.setValue(last_version)
 
