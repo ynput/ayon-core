@@ -151,6 +151,8 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
         ) = None
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
+        self._use_filter_change = hasattr(self, "beginFilterChange")
+
     def set_row_value_getter(
         self,
         getter: Callable[[QModelIndex, str], Any] | None,
@@ -179,6 +181,8 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             criteria: List of active filter criteria.
             columns: Column definitions from the source model.
         """
+        if self._use_filter_change:
+            self.beginFilterChange()
         self._criteria = [c for c in criteria if c.values]
         self._columns = columns
         self._source_column_indices = {
@@ -192,7 +196,10 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             for entry in (filter_entries or [])
             if entry.key not in self._source_column_indices
         }
-        self.invalidateFilter()
+        if self._use_filter_change:
+            self.endFilterChange()
+        else:
+            self.invalidateFilter()
 
     def _direct_match(
         self,
@@ -302,7 +309,11 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
     def refresh_filter(self) -> None:
         """Re-apply the current filter criteria (e.g. after source data
         changes)."""
-        self.invalidateFilter()
+        if hasattr(self, "beginFilterChange"):
+            self.beginFilterChange()
+            self.endFilterChange()
+        else:
+            self.invalidateFilter()
 
 
 # ---------------------------------------------------------------------------

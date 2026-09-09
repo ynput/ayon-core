@@ -213,14 +213,16 @@ function Run-Tests {
 }
 
 function Update-Tests-Visuals {
-    & docker build -t "$IMAGE_FULL_NAME" -f "$repo_dir/tools/VisualTestsDocker" .
+    $IMAGE_FULL_NAME = "ayon-core-tests:v1"
+    & docker build -t $IMAGE_FULL_NAME -f "$($RepoRoot)/tools/VisualTestsDocker" .
 
     $visuals_subdir = "tests/client/ayon_core/ui/test_visual"
-    $dst_dir = "$($repo_dir)/$($visuals_subdir)"
+    $dst_dir = "$($RepoRoot)/$($visuals_subdir)"
     & docker run --rm -ti `
-      -v "$($dst_dir):/core/$($visuals_subdir)" `
+      -v "$($RepoRoot)/tests:/core/tests" `
+      -v "$($RepoRoot)/client:/core/client" `
       --hostname coreuitests `
-      "$IMAGE_FULL_NAME" uv run pytest ./tests/client/ayon_core/ui --store-images
+      $IMAGE_FULL_NAME uv run pytest ./tests/client/ayon_core/ui --store-images
 }
 
 function Write-Help {
