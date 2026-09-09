@@ -71,6 +71,11 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
         self._key_to_col: dict[str, int] = {}
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
+        # Check if the model supports beginFilterChange / endFilterChange
+        #   (since Qt 6.10).
+        # The invalidateFilter is deprecated, available up to 6.13.
+        self._use_filter_change = hasattr(self, "beginFilterChange")
+
     def set_criteria(
         self,
         criteria: list[FilterCriterion],
@@ -82,10 +87,15 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             criteria: List of active filter criteria.
             columns: Column definitions from the source model.
         """
+        if self._use_filter_change:
+            self.beginFilterChange()
         self._criteria = [c for c in criteria if c.values]
         self._columns = columns
         self._key_to_col = {col.key: idx for idx, col in enumerate(columns)}
-        self.invalidateFilter()
+        if self._use_filter_change:
+            self.endFilterChange()
+        else:
+            self.invalidateFilter()
 
     def _direct_match(
         self,
@@ -191,7 +201,11 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
     def refresh_filter(self) -> None:
         """Re-apply the current filter criteria (e.g. after source data
         changes)."""
-        self.invalidateFilter()
+        if hasattr(self, "beginFilterChange"):
+            self.beginFilterChange()
+            self.endFilterChange()
+        else:
+            self.invalidateFilter()
 
 
 # ---------------------------------------------------------------------------

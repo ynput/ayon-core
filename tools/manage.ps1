@@ -212,6 +212,19 @@ function Run-Tests {
     & uv $RunArgs @arguments
 }
 
+function Update-Tests-Visuals {
+    $IMAGE_FULL_NAME = "ayon-core-tests:v1"
+    & docker build -t $IMAGE_FULL_NAME -f "$($RepoRoot)/tools/VisualTestsDocker" .
+
+    $visuals_subdir = "tests/client/ayon_core/ui/test_visual"
+    $dst_dir = "$($RepoRoot)/$($visuals_subdir)"
+    & docker run --rm -ti `
+      -v "$($RepoRoot)/tests:/core/tests" `
+      -v "$($RepoRoot)/client:/core/client" `
+      --hostname coreuitests `
+      $IMAGE_FULL_NAME uv run pytest ./tests/client/ayon_core/ui --store-images
+}
+
 function Write-Help {
     <#
     .SYNOPSIS
@@ -229,6 +242,7 @@ function Write-Help {
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
     Write-Info -Text "  run                           ", "Run a uv command in the repository environment" -Color White, Cyan
     Write-Info -Text "  run-tests                     ", "Run ayon-core tests" -Color White, Cyan
+    Write-Info -Text "  update-tests-visuals          ", "Run ayon-core tests to update visual images" -Color White, Cyan
     Write-Host ""
 }
 
@@ -256,6 +270,9 @@ function Resolve-Function {
     } elseif ($FunctionName -eq "runtests") {
         Set-Cwd
         Run-Tests
+    } elseif ($FunctionName -eq "updatetestsvisuals") {
+        Set-Cwd
+        Update-Tests-Visuals
     } else {
         Write-Host "Unknown function ""$FunctionName"""
         Write-Help

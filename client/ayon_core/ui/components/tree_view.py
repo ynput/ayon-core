@@ -407,7 +407,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
                 icon_rect.moveTop(
                     (opt.rect.bottom() - icon_size.height()) + 1
                 )
-            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignHCenter:
+            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignVCenter:
                 icon_rect.moveTop(
                     (opt.rect.center().y() - (icon_size.height() // 2)) + 1
                 )
@@ -433,9 +433,9 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
             opt.text = elided_text
 
-        if opt.displayAlignment == Qt.AlignmentFlag.AlignRight:
+        if opt.displayAlignment & Qt.AlignmentFlag.AlignRight:
             content_left = content_rect.right() - content_width
-        elif opt.displayAlignment == Qt.AlignmentFlag.AlignHCenter:
+        elif opt.displayAlignment & Qt.AlignmentFlag.AlignHCenter:
             content_left = content_rect.left() + (
                 content_rect.width() - content_width
             ) // 2

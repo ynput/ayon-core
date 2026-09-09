@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from qtpy import QtWidgets
 from qtpy.QtCore import QRect, Qt
-from qtpy.QtGui import QBrush, QColor, QPainter, QPen
+from qtpy.QtGui import QBrush, QColor, QPainter
 from qtpy.QtWidgets import (
     QStyle,
     QStyleOption,
@@ -171,12 +171,30 @@ class ScrollBarDrawer:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Draw slider background
-        painter.setBrush(QBrush(QColor(style.get("slider-color"))))
-        pen = QPen(QColor(style.get("background-color")))
-        pen.setWidth(style.get("border-width"))
-        painter.setPen(pen)
+        rect = option.rect
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(style["background-color"])))
+        painter.drawRect(rect)
+
         radius = style.get("border-radius")
-        painter.drawRoundedRect(option.rect, radius, radius)
+        size = style["slider-width"]
+        center = rect.center()
+        if option.orientation == Qt.Orientation.Vertical:
+            rect.setWidth(size)
+        else:
+            rect.setHeight(size)
+        rect.moveCenter(center)
+
+        radius = min(
+            radius, rect.width() / 2, rect.height() / 2
+        )
+        if option.activeSubControls & QStyle.SubControl.SC_ScrollBarSlider:
+            slider_color = QColor(style.get("slider-hover-color"))
+        else:
+            slider_color = QColor(style.get("slider-color"))
+        painter.setBrush(QBrush(slider_color))
+        painter.drawRoundedRect(rect, radius, radius)
 
         painter.restore()
 
