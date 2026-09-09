@@ -39,8 +39,6 @@ RUN uv python install 3.11.9
 FROM testsbase
 RUN mkdir /core
 COPY ./pyproject.toml /core/pyproject.toml
-COPY ./client /core/client
-COPY ./tests /core/tests
 WORKDIR /core
 
 RUN uv sync
