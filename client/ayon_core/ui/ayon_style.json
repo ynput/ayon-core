@@ -1029,6 +1029,7 @@
         "--md-sys-color-outline-variant-dark": "#41474d",
         "--md-sys-color-scrim-dark": "#000000",
         "--md-sys-color-surface-container-highest-dark": "#424a57",
+        "--md-sys-color-surface-container-highest-dark-hover": "#4d5560",
         "--md-sys-color-surface-container-high-dark": "#353b46",
         "--md-sys-color-surface-container-dark": "#272d35",
         "--md-sys-color-surface-container-low-dark": "#1c2026",
