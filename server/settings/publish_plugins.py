@@ -1024,7 +1024,7 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
         )
     )
     output_ext: str = SettingsField(
-        "",
+        "png",
         title="Output extension"
     )
     default_to_width: int = SettingsField(
@@ -1043,8 +1043,9 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
     @validator("output_ext")
     def validate_name(cls, value):
         """Ensure output extension is supported by OTIO extractor."""
+        value = value.lower().lstrip(".")
         if value not in ("png", "jpg", "jpeg"):
-            raise ValueError("Unsupported output extension {value}")
+            raise ValueError(f"Unsupported output extension '{value}' (supported: png, jpg, jpeg)")
         return value
 
 
