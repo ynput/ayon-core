@@ -38,6 +38,10 @@ def get_icon(*args, **kwargs):
 
 class CharIconPainter:
     """Char icon painter."""
+
+    def __init__(self):
+        self._glyph_path_cache = {}
+
     def paint(self, iconic, painter, rect, mode, state, options):
         """Main paint method."""
         self._paint_icon(iconic, painter, rect, mode, state, options)
@@ -49,8 +53,6 @@ class CharIconPainter:
         color = options.get_color_for_state(state, mode)
         char = options.get_char_for_state(state, mode)
 
-        painter.setPen(QtGui.QColor(color))
-
         draw_size = round(rect.height() * options.scale_factor)
 
         font = iconic.get_font(
@@ -58,7 +60,6 @@ class CharIconPainter:
             options.get_fill_for_state(state, mode)
         )
 
-        painter.setFont(font)
         if options.offset is not None:
             rect = QtCore.QRect(rect)
             rect.translate(
@@ -83,9 +84,52 @@ class CharIconPainter:
             painter.translate(-x_center, -y_center)
 
         painter.setOpacity(options.opacity)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
 
-        painter.drawText(rect, QtCore.Qt.AlignCenter, char)
+        path = self._get_glyph_path(font, char)
+        print(path)
+        if path is not None and not path.isEmpty():
+            metrics = QtGui.QFontMetricsF(font)
+            bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
+            painter.translate(
+                bounds.x(), bounds.bottom() - metrics.descent()
+            )
+            painter.fillPath(path, QtGui.QColor(color))
+
         painter.restore()
+
+    def _get_glyph_path(
+        self, font: QtGui.QFont, char: str
+    ) -> Optional[QtGui.QPainterPath]:
+        """Resolve the outline path for a single glyph.
+
+        Uses ``QRawFont`` glyph outlines instead of ``QPainter.drawText``.
+        Some platform text-shaping/rendering backends (observed with
+        PySide6 + DirectWrite on Windows) silently fail to paint glyphs
+        from private-use-area codepoints via ``drawText``, even though the
+        font itself resolves and contains the glyph. Painting the raw
+        glyph outline sidesteps text shaping entirely and is unaffected
+        by that issue.
+        """
+        if not char:
+            return None
+
+        cache_key = (font.family(), font.pixelSize(), char)
+        path = self._glyph_path_cache.get(cache_key)
+        if path is not None:
+            return path
+
+        raw_font = QtGui.QRawFont.fromFont(font)
+        if not raw_font.isValid():
+            return None
+
+        glyph_indexes = raw_font.glyphIndexesForString(char)
+        if not glyph_indexes or glyph_indexes[0] == 0:
+            return None
+
+        path = raw_font.pathForGlyph(glyph_indexes[0])
+        self._glyph_path_cache[cache_key] = path
+        return path
 
 
 class CharIconEngine(QtGui.QIconEngine):
