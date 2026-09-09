@@ -68,6 +68,8 @@ class ComboBoxTest(WidgetTest):
             size=MenuSize.Full,
             variant=AYComboBox.Variants.Default,
             placeholder="Select status…",
+            show_chevron=False,
+
         )
         self._default_full.setCurrentIndex(2)  # In progress
         row1.add_widget(self._default_full)
@@ -77,6 +79,7 @@ class ComboBoxTest(WidgetTest):
             items=EXAMPLE_STATUSES,
             size=MenuSize.Full,
             variant=AYComboBox.Variants.Low,
+            show_chevron=False,
         )
         self._low_full.setCurrentIndex(3)  # Pending review
         row1.add_widget(self._low_full)
@@ -92,6 +95,7 @@ class ComboBoxTest(WidgetTest):
         self._short_combo = AYComboBox(
             items=EXAMPLE_STATUSES,
             size=MenuSize.Short,
+            show_chevron=False,
         )
         self._short_combo.setCurrentIndex(4)  # Approved
         row2.add_widget(self._short_combo)
@@ -99,6 +103,7 @@ class ComboBoxTest(WidgetTest):
         self._icon_combo = AYComboBox(
             items=EXAMPLE_STATUSES,
             size=MenuSize.Icon,
+            show_chevron=False,
         )
         self._icon_combo.setCurrentIndex(5)  # On hold
         row2.add_widget(self._icon_combo)
