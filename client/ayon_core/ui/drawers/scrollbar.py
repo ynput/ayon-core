@@ -189,8 +189,11 @@ class ScrollBarDrawer:
         radius = min(
             radius, rect.width() / 2, rect.height() / 2
         )
-
-        painter.setBrush(QBrush(QColor(style.get("slider-color"))))
+        if option.activeSubControls & QStyle.SubControl.SC_ScrollBarSlider:
+            slider_color = QColor(style.get("slider-hover-color"))
+        else:
+            slider_color = QColor(style.get("slider-color"))
+        painter.setBrush(QBrush(slider_color))
         painter.drawRoundedRect(rect, radius, radius)
 
         painter.restore()
