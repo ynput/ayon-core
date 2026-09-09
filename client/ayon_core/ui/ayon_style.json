@@ -476,6 +476,13 @@
                         "opacity": 0.5
                     }
                 },
+                "low": {
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-low-dark",
+                        "opacity": 0.5
+                    }
+                },
                 "search-field": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
                     "selection-background-color": "--md-sys-color-secondary-container-dark",
@@ -518,6 +525,13 @@
                     },
                     "disabled": {
                         "background-color": "--md-sys-color-surface-container-dark",
+                        "opacity": 0.5
+                    }
+                },
+                "low": {
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-low-dark",
                         "opacity": 0.5
                     }
                 }
@@ -636,6 +650,9 @@
                 },
                 "high": {
                     "background-color": "--md-sys-color-surface-container-dark"
+                },
+                "high-dark": {
+                    "background-color": "--md-sys-color-surface-container-high-dark"
                 },
                 "tag": {
                     "border-radius": 10,

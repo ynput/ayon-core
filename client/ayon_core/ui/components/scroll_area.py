@@ -23,11 +23,11 @@ class AYScrollBar(StyleMixin, QScrollBar):
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.
 
     Args:
-        *args: Positional arguments passed to QTextEdit.
+        *args: Positional arguments passed to QScrollBar.
         variant: Visual variant — ``Default`` (opaque track, matches
             the table) or ``Transparent_Track`` (no track fill, just
             the thumb).
-        **kwargs: Keyword arguments passed to QTextEdit.
+        **kwargs: Keyword arguments passed to QScrollBar.
     """
 
     Variants = QScrollBarVariants
@@ -82,7 +82,6 @@ class AYScrollBar(StyleMixin, QScrollBar):
         get_ayon_style().drawComplexControl(
             QStyle.ComplexControl.CC_ScrollBar, option, p, self
         )
-        return
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Drag the painted thumb even when custom hit geometry differs."""

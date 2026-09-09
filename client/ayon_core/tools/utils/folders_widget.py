@@ -25,6 +25,10 @@ from ayon_core.ui.components import (
     AYTreeView
 )
 
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+
 from .models import RecursiveSortFilterProxyModel
 from .lib import get_qt_icon
 
@@ -36,6 +40,12 @@ FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
 FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 5
 FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 6
+
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = QtCore.Qt.AlignHCenter
 
 
 class RefreshTask(QtCore.QObject, QtCore.QRunnable):
@@ -574,6 +584,14 @@ class FoldersWidget(QtWidgets.QWidget):
         )
         header.resizeSection(1, 30)
         folders_view.setColumnHidden(1, True)
+        folders_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
