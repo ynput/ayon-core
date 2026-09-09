@@ -739,6 +739,11 @@
                         "shortcut-background-color": "--md-sys-color-surface-container-high-dark"
                     }
                 },
+                "tooltip": {
+                    "border-width": 1,
+                    "border-color": "--md-sys-color-outline-variant-dark",
+                    "background-color": "--md-sys-color-surface-container-lowest-dark"
+                },
                 "debug-r": {
                     "background-color": "#664444"
                 },
@@ -761,8 +766,9 @@
                     ],
                     "border-radius": 4,
                     "border-width": 1,
-                    "border-color": "--md-sys-color-outline-dark",
-                    "background-color": "--md-sys-color-background-lowest-dark"
+                    "border-color": "--md-sys-color-outline-variant-dark",
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "color": "--md-sys-color-on-surface-dark"
                 }
             }
         },
@@ -880,6 +886,9 @@
                     "hover": {
                         "background-color": "--md-sys-color-surface-container-dark"
                     }
+                },
+                "tooltip": {
+                    "color": "--md-sys-color-on-surface-dark"
                 }
             }
         },

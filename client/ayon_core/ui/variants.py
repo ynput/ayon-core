@@ -88,6 +88,7 @@ class QFrameVariants(Enum):
     Popover_Square = "popover-square"
     Pill = "pill"
     Contextual_Menu = "contextual-menu"
+    Tooltip = "tooltip"
     Debug_R = "debug-r"
     Debug_G = "debug-g"
     Debug_B = "debug-b"
@@ -112,6 +113,7 @@ class QLabelVariants(Enum):
     Entity_Label_Filled = "entity-label-filled"
     Order_Option = "order-option"
     Optional_Action = "optional-action"
+    Tooltip = "tooltip"
 
 
 class QTreeViewVariants(Enum):

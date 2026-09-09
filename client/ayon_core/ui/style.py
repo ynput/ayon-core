@@ -23,6 +23,7 @@ from qtpy.shiboken import isValid
 
 from .components.combo_box import ComboBoxItemDelegate
 from .components.table_view import TableItemDelegate
+from .components.tooltip import AYToolTip
 from .components.tree_view import TreeViewItemDelegate
 from .drawers import (
     ButtonDrawer,
@@ -65,6 +66,7 @@ class AYONStyle(QCommonStyle):
         super().__init__()
         self.model = StyleData()
         self._in_widget_key = False
+        self._tooltip_widget = None
         self.drawers = {}
         self.sizers = {}
         self.metrics = {}
@@ -120,6 +122,42 @@ class AYONStyle(QCommonStyle):
             sorted(self.base_classes.items(), key=cmp_to_key(_specificity_cmp))
         )
 
+    def _get_tooltip_widget(self) -> "AYToolTip":
+        if self._tooltip_widget is None:
+            self._tooltip_widget = AYToolTip()
+        return self._tooltip_widget
+
+    def _hide_tooltip(self) -> None:
+        if self._tooltip_widget is not None and isValid(self._tooltip_widget):
+            self._tooltip_widget.hide_tooltip()
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Show a custom, always-themed tooltip for AYON widgets.
+
+        Qt's native tooltip is rendered through a single, reused ``QLabel``
+        that lives outside the widget hierarchy and always falls back to
+        ``QApplication.style()`` - ``widget.setStyle(get_ayon_style())``
+        never reaches it. Rather than fight that singleton, this is
+        installed (see :meth:`style_widget`) on every AYON widget to
+        swallow its native ``QEvent.ToolTip`` and show :class:`AYToolTip`
+        instead, which is styled from ``"QToolTip"`` directly.
+        """
+        event_type = event.type()
+        if event_type == QtCore.QEvent.Type.ToolTip:
+            self._get_tooltip_widget().track(
+                obj,
+                event.globalPos(),
+            )
+            return True
+        elif event_type in (
+            QtCore.QEvent.Type.Leave,
+            QtCore.QEvent.Type.Hide,
+            QtCore.QEvent.Type.MouseButtonPress,
+            QtCore.QEvent.Type.Wheel,
+        ):
+            self._hide_tooltip()
+        return super().eventFilter(obj, event)
+
     def widget_key(self, w: QWidget | None) -> str:
         if self._in_widget_key or not w or not isValid(w):
             return ""
@@ -174,6 +212,22 @@ class AYONStyle(QCommonStyle):
         """Apply AYON style to a widget (palette, font, hover tracking)."""
         if not isinstance(widget, QWidget):
             return
+
+        if not getattr(widget, "_ay_tooltip_hooked", False):
+            widget._ay_tooltip_hooked = True
+            widget.installEventFilter(self)
+
+        # Item views deliver position-based events (incl. ToolTip) to
+        # their viewport, not to the view itself - setStyle() on the view
+        # does not propagate to an already-created viewport, so it never
+        # gets polished (and thus never gets the filter above) on its own.
+        if isinstance(widget, QtWidgets.QAbstractItemView):
+            viewport = widget.viewport()
+            if viewport is not None and not getattr(
+                viewport, "_ay_tooltip_hooked", False
+            ):
+                viewport._ay_tooltip_hooked = True
+                viewport.installEventFilter(self)
 
         variant = getattr(widget, "_variant_str", "default")
         if hasattr(widget, "_style_data") and not widget._style_data:
