@@ -171,12 +171,27 @@ class ScrollBarDrawer:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Draw slider background
-        painter.setBrush(QBrush(QColor(style.get("slider-color"))))
-        pen = QPen(QColor(style.get("background-color")))
-        pen.setWidth(style.get("border-width"))
-        painter.setPen(pen)
+        rect = option.rect
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(style["background-color"])))
+        painter.drawRect(rect)
+
         radius = style.get("border-radius")
-        painter.drawRoundedRect(option.rect, radius, radius)
+        size = style["slider-width"]
+        center = rect.center()
+        if option.orientation == Qt.Orientation.Vertical:
+            rect.setWidth(size)
+        else:
+            rect.setHeight(size)
+        rect.moveCenter(center)
+
+        radius = min(
+            radius, rect.width() / 2, rect.height() / 2
+        )
+
+        painter.setBrush(QBrush(QColor(style.get("slider-color"))))
+        painter.drawRoundedRect(rect, radius, radius)
 
         painter.restore()
 

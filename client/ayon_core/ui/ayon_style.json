@@ -476,9 +476,9 @@
                     "background-color": "--md-sys-color-surface-container-low-dark",
                     "slider-color": "--md-sys-color-surface-container-highest-dark",
                     "slider-hover-color": "--md-sys-color-primary-dark",
-                    "border-width": 10,
-                    "border-radius": 8,
-                    "width": 16,
+                    "slider-width": 8,
+                    "width": 12,
+                    "border-radius": 3,
                     "min-length": 32
                 }
             }
