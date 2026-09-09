@@ -41,11 +41,13 @@ class QTextEditVariants(Enum):
 
 class QLineEditVariants(Enum):
     Default = "default"
+    Low = "low"
     Search_Field = "search-field"
 
 
 class QSpinBoxVariants(Enum):
     Default = "default"
+    Low = "low"
 
 
 class QComboBoxVariants(Enum):
@@ -69,6 +71,7 @@ class QFrameVariants(Enum):
     Low_Framed_Thin = "low-framed-thin"
     Low_Table_Editor = "low-table-editor"
     High = "high"
+    High_Dark = "high-dark"
     Tag = "tag"
     Item_View = "item-view"
     Criterion = "criterion"
@@ -108,6 +111,10 @@ class QTreeViewVariants(Enum):
 
 
 class QStyledItemDelegateVariants(Enum):
+    Default = "default"
+
+
+class AYHeaderViewVariants(Enum):
     Default = "default"
 
 

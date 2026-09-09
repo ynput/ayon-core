@@ -64,7 +64,6 @@ class AYSpinBox(StyleMixin, QSpinBox):
 
         # Suppress the native Qt frame
         self.setFrame(False)
-
         # Suppress macOS native focus ring (we draw our own)
         self.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
 
