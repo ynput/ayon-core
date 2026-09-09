@@ -53,10 +53,13 @@ class ExtractOTIOReview(
     label = "Extract OTIO review"
     families = ["otio.clip.review"]
 
-    # plugin default attributes
-    to_width = 1280
-    to_height = 720
-    output_ext = ".png"
+    settings_category = "core"
+
+    # Configurable by Settings
+    representation_name = None
+    output_ext = None
+    default_to_width = None
+    default_to_height = None
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -93,9 +96,9 @@ class ExtractOTIOReview(
         self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
         self.to_width = instance.data.get(
-            "resolutionWidth") or self.to_width
+            "resolutionWidth") or self.default_to_width
         self.to_height = instance.data.get(
-            "resolutionHeight") or self.to_height
+            "resolutionHeight") or self.default_to_height
 
         # skip instance if no reviewable data available
         if (
@@ -317,7 +320,7 @@ class ExtractOTIOReview(
 
         collection = clique.Collection(
             self.temp_file_head,
-            tail=self.output_ext,
+            tail=f".{self.output_ext}",
             padding=self.padding,
             indexes=set(self.used_frames)
         )
@@ -330,7 +333,7 @@ class ExtractOTIOReview(
             files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
-            "name": ext[1:],
+            "name": self.representation_name or ext[1:],
             "ext": ext[1:],
             "files": files,
             "frameStart": start,
@@ -561,7 +564,7 @@ class ExtractOTIOReview(
         # add copying if extensions are matching
         if (
             input_extension
-            and self.output_ext == input_extension
+            and self.output_ext.lower() == input_extension.lower().strip(".")
         ):
             command.extend(["-c", "copy"])
         else:
@@ -624,8 +627,8 @@ class ExtractOTIOReview(
         """
         output_file = "{}{}{}".format(
             self.temp_file_head,
-            "%0{}d".format(self.padding),
-            self.output_ext
+            f"%0{self.padding}d",
+            f".{self.output_ext}"
         )
         # create path to destination
         output_path = os.path.join(self.staging_dir, output_file)
