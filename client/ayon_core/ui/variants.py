@@ -60,7 +60,6 @@ class QComboBoxVariants(Enum):
 
 class QScrollBarVariants(Enum):
     Default = "default"
-    Transparent_Track = "transparent-track"
 
 
 class QScrollAreaVariants(Enum):

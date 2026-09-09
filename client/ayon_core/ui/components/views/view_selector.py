@@ -355,9 +355,7 @@ class AYViewSelector(AYButtonMenu):
             no_views_label.setContentsMargins(8, 4, 8, 4)
             scroll_content.add_widget(no_views_label)
 
-        scroll_area = AYScrollArea(
-            scrollbar_variant=AYScrollArea.Variants.Transparent_Track
-        )
+        scroll_area = AYScrollArea()
         scroll_area.setWidget(scroll_content)
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(
