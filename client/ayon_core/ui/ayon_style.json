@@ -33,7 +33,7 @@
                     "border-color": "--md-sys-color-on-surface-dark",
                     "focus-outline-color": "--md-sys-color-primary-dark",
                     "hover": {
-                        "background-color": "--md-ref-palette-neutral-variant35"
+                        "background-color": "--md-sys-color-surface-container-highest-dark-hover"
                     },
                     "pressed": {
                         "background-color": "--md-ref-palette-neutral40"
