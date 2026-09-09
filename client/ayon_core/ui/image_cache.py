@@ -111,14 +111,30 @@ class ImageCache:
         Raises:
             ValueError: If max_size_in_MB is not positive.
         """
+        if cls._instance is not None:
+            return cls._instance
+        if max_size_in_MB <= 0:
+            raise ValueError("max_size_in_MB must be positive")
+
         with cls._lock:
+            # A concurrent (possibly reentrant, same-thread) call may have
+            # published an instance while we were waiting for the lock.
             if cls._instance is not None:
                 return cls._instance
-            if max_size_in_MB <= 0:
-                raise ValueError("max_size_in_MB must be positive")
             instance = object.__new__(cls)
-            instance._initialize(cache_path, max_size_in_MB)
-            cls._instance = instance
+
+        # Deliberately runs outside cls._lock: _initialize() logs, and
+        # some hosts (e.g. Silhouette) pump the Qt event loop
+        # synchronously from inside their stdout/stderr redirect's
+        # flush(), which a logging call can trigger. That reentrant pump
+        # can create more widgets that call back into get_instance() on
+        # this same thread; if _initialize() ran under the lock, that
+        # reentrant call would deadlock trying to re-acquire it.
+        instance._initialize(cache_path, max_size_in_MB)
+
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = instance
             return cls._instance
 
     # ------------------------------------------------------------------
