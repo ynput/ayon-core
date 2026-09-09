@@ -95,6 +95,7 @@ class ExtractOTIOReview(
         #       end frame since start could be lower then 1000
         self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
+        self.output_ext = self.output_ext or "png"
         self.to_width = instance.data.get(
             "resolutionWidth") or self.default_to_width
         self.to_height = instance.data.get(
