@@ -57,7 +57,7 @@ def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
 
 
 def file_size_to_string(file_size):
-    if not file_size:
+    if file_size is None:
         return "N/A"
     size = 0
     size_ending_mapping = {
