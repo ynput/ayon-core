@@ -32,9 +32,7 @@ from . import (
     deregister_inventory_action_path
 )
 
-import structlog
-from structlog.contextvars import bind_contextvars, clear_contextvars
-
+from structlog.contextvars import bind_contextvars
 
 
 _is_installed = False
