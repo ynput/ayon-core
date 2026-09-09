@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from qtpy import QtWidgets
 from qtpy.QtCore import QRect, Qt
-from qtpy.QtGui import QBrush, QColor, QPainter, QPen
+from qtpy.QtGui import QBrush, QColor, QPainter
 from qtpy.QtWidgets import (
     QStyle,
     QStyleOption,
