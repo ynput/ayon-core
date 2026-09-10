@@ -90,8 +90,14 @@ class CharIconPainter:
         if path is not None and not path.isEmpty():
             metrics = QtGui.QFontMetricsF(font)
             bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
+
+            # Bounds width returns zero in Qt 6.5.4 (in e.g. Silhouette)
+            offset_x = bounds.x()
+            if bounds.width() == 0:
+                pixel_size = font.pixelSize()
+                offset_x = rect.x() + ((rect.width() - pixel_size) // 2)
             painter.translate(
-                bounds.x(), bounds.bottom() - metrics.descent()
+                offset_x, bounds.bottom() - metrics.descent()
             )
             painter.fillPath(path, QtGui.QColor(color))
 
