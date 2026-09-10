@@ -444,11 +444,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.stackUnder(group_label)
 
         # Background draw
-        bg_frame = AYFrame(parent=self)
+        bg_frame = QtWidgets.QFrame(parent=self)
         bg_frame.setObjectName("ShadowFrame")
         bg_frame.stackUnder(view)
 
-        wrapper = AYFrame(parent=self)
+        wrapper = QtWidgets.QFrame(parent=self)
         wrapper.setObjectName("Wrapper")
 
         effect = QtWidgets.QGraphicsBlurEffect(wrapper)
