@@ -47,7 +47,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
     _default_task_icon = None
     refreshed = QtCore.Signal()
     project_changed = QtCore.Signal()
-    column_labels = ["Tasks", "Status"]
+    column_labels = ["Tasks", ""]
 
     def __init__(self, controller):
         super().__init__()

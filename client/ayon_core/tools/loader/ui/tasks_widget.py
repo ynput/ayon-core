@@ -34,7 +34,7 @@ class LoaderTasksQtModel(TasksQtModel):
         "Task name",
         "Task type",
         "Folder",
-        "Status",
+        "",
     ]
 
     def __init__(self, controller):
