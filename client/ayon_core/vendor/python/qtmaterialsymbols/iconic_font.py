@@ -49,6 +49,7 @@ class CharIconPainter:
     def _paint_icon(self, iconic, painter, rect, mode, state, options):
         """Paint a single icon."""
         painter.save()
+        painter.setClipRect(rect)
 
         color = options.get_color_for_state(state, mode)
         char = options.get_char_for_state(state, mode)
@@ -71,9 +72,8 @@ class CharIconPainter:
         scale_y = -1 if options.vflip else 1
 
         if options.vflip or options.hflip or options.rotate:
-            x_center = rect.width() * 0.5
-            y_center = rect.height() * 0.5
-            painter.translate(x_center, y_center)
+            center = rect.center()
+            painter.translate(center)
 
             transfrom = QtGui.QTransform()
             transfrom.scale(scale_x, scale_y)
@@ -81,7 +81,7 @@ class CharIconPainter:
 
             if options.rotate:
                 painter.rotate(options.rotate)
-            painter.translate(-x_center, -y_center)
+            painter.translate(-center)
 
         painter.setOpacity(options.opacity)
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
@@ -129,10 +129,10 @@ class CharIconPainter:
             return None
 
         glyph_indexes = raw_font.glyphIndexesForString(char)
-        if not glyph_indexes or glyph_indexes[0] == 0:
+        glyph_index = next(iter(glyph_indexes), None)
+        if glyph_index is None:
             return None
-
-        path = raw_font.pathForGlyph(glyph_indexes[0])
+        path = raw_font.pathForGlyph(glyph_index)
         self._glyph_path_cache[cache_key] = path
         return path
 
