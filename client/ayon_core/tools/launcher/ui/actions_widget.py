@@ -16,7 +16,7 @@ from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
-from ayon_core.ui.components import AYContainer, AYLabel, AYFrame, AYGridLayout
+from ayon_core.ui.components import AYContainer, AYLabel, AYGridLayout
 from ayon_core.ui.components.scroll_area import AYScrollBar
 
 ANIMATION_LEN = 7
