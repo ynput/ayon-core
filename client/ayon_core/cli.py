@@ -22,7 +22,6 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
-import structlog
 
 
 configure_logger()
@@ -278,8 +277,8 @@ def deliver(
         version_ids (str): Comma separated version ids.
 
     """
-    log = structlog.get_logger("delivery")
-    log.debug("Launching browser for Delivery action.", project=project)
+    log = Logger.get_logger("delivery")
+    log.debug(f"Launching browser for Delivery action for '{project}'.")
 
     try:
         from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
@@ -402,7 +401,7 @@ def _cleanup_project_args():
 
 
 def main(*args, **kwargs):
-    logger = structlog.get_logger("main")
+    logger = Logger.get_logger("main")
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)

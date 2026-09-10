@@ -13,11 +13,39 @@ import socket
 import sys
 import time
 import threading
+from typing import Any
 import warnings
 
-import structlog
-
 from . import Terminal
+
+
+# If structlog is missing (ayon-launcher is outdated),
+# the library will fall back to standard logging.
+
+structlog: Any = None
+try:
+    import structlog as _structlog
+except ImportError:
+    pass
+else:
+    structlog = _structlog
+
+
+def bind_contextvars(**kwargs):
+    if structlog is None:
+        return {}
+    return structlog.contextvars.bind_contextvars(**kwargs)
+
+
+def clear_contextvars():
+    if structlog is not None:
+        structlog.contextvars.clear_contextvars()
+
+
+def unbind_contextvars(*keys):
+    if structlog is not None:
+        structlog.contextvars.unbind_contextvars(*keys)
+
 
 VECTOR_LOG_URL = os.getenv("AYON_VECTOR_LOG_URL", None)
 
@@ -76,6 +104,9 @@ def configure_logger() -> None:
     duplicate handlers.
 
     """
+    if structlog is None:
+        return
+
     # 'structlog.is_configured()' is process-wide, so it also guards
     # against other packages configuring logging first.
     if structlog.is_configured():
@@ -299,13 +330,13 @@ class Logger:
 
     @classmethod
     @_deprecated_getter
-    def get_logger(cls, name: str) -> structlog.BoundLogger | logging.Logger:
+    def get_logger(cls, name: str) -> Any | logging.Logger:
         if not cls.initialized:
             cls.initialize()
 
         # Delegate to structlog when configured so records share the same
         # processors (e.g. 'site_id', timestamps) as the rest of the app.
-        if structlog.is_configured():
+        if structlog is not None and structlog.is_configured():
             return structlog.get_logger(name or "__main__")
 
         logger = logging.getLogger(name or "__main__")
@@ -361,7 +392,7 @@ class Logger:
         root_logger.setLevel(cls.log_level)
         # Skip own handler when structlog already owns the output pipeline
         # to avoid double-formatting/handling the same records.
-        if not structlog.is_configured():
+        if structlog is None or not structlog.is_configured():
             root_logger.addHandler(cls._get_console_handler())
         cls._root_logger = root_logger
 

@@ -8,15 +8,14 @@ from dataclasses import dataclass
 
 import ayon_api
 
-import structlog
-from structlog.contextvars import (
+from ayon_core.lib import emit_event
+from ayon_core.lib.log import (
+    Logger,
     bind_contextvars,
     clear_contextvars,
+    configure_logger,
     unbind_contextvars,
 )
-
-from ayon_core.lib import emit_event
-from ayon_core.lib.log import configure_logger
 
 from .constants import ContextChangeReason
 from .abstract import AbstractHost, ApplicationInformation
@@ -135,9 +134,9 @@ class HostBase(AbstractHost):
         """
 
     @property
-    def log(self) -> structlog.BoundLogger:
+    def log(self):
         if self._log is None:
-            self._log = structlog.get_logger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_current_project_name(self) -> str:

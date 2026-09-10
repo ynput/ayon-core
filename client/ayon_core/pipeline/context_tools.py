@@ -18,6 +18,7 @@ from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
 )
+from ayon_core.lib.log import bind_contextvars
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -31,9 +32,6 @@ from . import (
     register_creator_plugin_path,
     deregister_inventory_action_path
 )
-
-from structlog.contextvars import bind_contextvars
-
 
 _is_installed = False
 _process_id = None
