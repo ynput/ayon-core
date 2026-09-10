@@ -20,7 +20,7 @@ from ayon_core.tools.common_models import (
     HierarchyExpectedSelection,
 )
 from ayon_core.ui.components import (
-    AYCheckBox,
+    AYButton,
     AYLineEdit,
     AYTreeView
 )
@@ -997,12 +997,13 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
             parent=self,
         )
 
-        my_tasks_tooltip = (
-            "Filter folders and task to only those you are assigned to."
+        my_tasks_checkbox = AYButton(
+            icon="assignment_ind",
+            checkable=True,
+            tooltip="Only show folders that have a task assigned to you.",
+            parent=parent,
         )
-        my_tasks_checkbox = AYCheckBox("My tasks", parent=self)
         my_tasks_checkbox.setChecked(False)
-        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1011,7 +1012,7 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         layout.addWidget(my_tasks_checkbox, 0)
 
         folders_filter_input.textChanged.connect(self.text_changed)
-        my_tasks_checkbox.stateChanged.connect(self._on_my_tasks_change)
+        my_tasks_checkbox.toggled.connect(self.my_tasks_changed)
 
         self._folders_filter_input = folders_filter_input
         self._my_tasks_checkbox = my_tasks_checkbox
@@ -1028,5 +1029,5 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
     def set_my_tasks_checked(self, checked: bool) -> None:
         self._my_tasks_checkbox.setChecked(checked)
 
-    def _on_my_tasks_change(self, _state: int) -> None:
-        self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())
+    def _on_my_tasks_change(self, state: bool) -> None:
+        self.my_tasks_changed.emit(state)
