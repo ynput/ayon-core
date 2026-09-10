@@ -116,7 +116,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
-        self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
+        self.setHeaderData(1, QtCore.Qt.Horizontal, "")
 
         self._controller = controller
         self._items_by_id = {}
