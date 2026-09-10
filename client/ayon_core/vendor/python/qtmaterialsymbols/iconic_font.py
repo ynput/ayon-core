@@ -17,8 +17,7 @@ import warnings
 from packaging.version import parse
 from typing import Dict, Optional, Union
 
-from qtpy import QtCore, QtGui, QtWidgets
-from qtpy import QT_VERSION
+from qtpy import QtCore, QtGui, QtWidgets, QT_VERSION
 
 from .structures import IconOptions, Position
 from .utils import get_char_mapping, _get_font_name_filled, _get_font_name
