@@ -14,9 +14,11 @@ methods returning instances of ``QIcon``.
 """
 import warnings
 
+from packaging.version import parse
 from typing import Dict, Optional, Union
 
 from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QT_VERSION
 
 from .structures import IconOptions, Position
 from .utils import get_char_mapping, _get_font_name_filled, _get_font_name
@@ -40,6 +42,8 @@ class CharIconPainter:
     """Char icon painter."""
 
     def __init__(self):
+        qt_version = parse(QT_VERSION)
+        self._use_path = parse("6.0") < qt_version < parse("6.6")
         self._glyph_path_cache = {}
 
     def paint(self, iconic, painter, rect, mode, state, options):
@@ -86,20 +90,25 @@ class CharIconPainter:
         painter.setOpacity(options.opacity)
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
 
-        path = self._get_glyph_path(font, char)
-        if path is not None and not path.isEmpty():
-            metrics = QtGui.QFontMetricsF(font)
-            bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
+        if self._use_path:
+            path = self._get_glyph_path(font, char)
+            if path is not None and not path.isEmpty():
+                metrics = QtGui.QFontMetricsF(font)
+                bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
 
-            # Bounds width returns zero in Qt 6.5.4 (in e.g. Silhouette)
-            offset_x = bounds.x()
-            if bounds.width() == 0:
-                pixel_size = font.pixelSize()
-                offset_x = rect.x() + ((rect.width() - pixel_size) // 2)
-            painter.translate(
-                offset_x, bounds.bottom() - metrics.descent()
-            )
-            painter.fillPath(path, QtGui.QColor(color))
+                # Bounds width returns zero in Qt 6.5.4 (in e.g. Silhouette)
+                offset_x = bounds.x()
+                if bounds.width() == 0:
+                    pixel_size = font.pixelSize()
+                    offset_x = rect.x() + ((rect.width() - pixel_size) // 2)
+                painter.translate(
+                    offset_x, bounds.bottom() - metrics.descent()
+                )
+                painter.fillPath(path, QtGui.QColor(color))
+        else:
+            painter.setFont(font)
+            painter.setPen(QtGui.QColor(color))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, char)
 
         painter.restore()
 
