@@ -87,7 +87,6 @@ class CharIconPainter:
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
 
         path = self._get_glyph_path(font, char)
-        print(path)
         if path is not None and not path.isEmpty():
             metrics = QtGui.QFontMetricsF(font)
             bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
