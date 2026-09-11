@@ -35,6 +35,7 @@ from .drawers import (
     MenuDrawer,
     ScrollAreaDrawer,
     ScrollBarDrawer,
+    SpinBoxDrawer,
     TableHeaderDrawer,
     TooltipDrawer,
     TreeViewDrawer,
@@ -76,6 +77,7 @@ class AYONStyle(QCommonStyle):
             CheckboxDrawer(self),
             ComboBoxDrawer(self),
             ScrollBarDrawer(self),
+            SpinBoxDrawer(self),
             FrameDrawer(self),
             TreeViewDrawer(self),
             TableHeaderDrawer(self),
@@ -201,9 +203,11 @@ class AYONStyle(QCommonStyle):
 
         if isinstance(widget, QComboBox):
             widget.setMinimumContentsLength(1)
-            widget.setItemDelegate(
-                ComboBoxItemDelegate(parent=widget, style_model=self.model)
-            )
+            # Only set default delegate if no custom delegate was set.
+            if widget.itemDelegate() is None:
+                widget.setItemDelegate(
+                    ComboBoxItemDelegate(parent=widget, style_model=self.model)
+                )
             widget.setSizeAdjustPolicy(
                 QComboBox.SizeAdjustPolicy.AdjustToContents
             )

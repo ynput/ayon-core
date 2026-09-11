@@ -32,7 +32,7 @@
                     "border-color": "--md-sys-color-on-surface-dark",
                     "focus-outline-color": "--md-sys-color-primary-dark",
                     "hover": {
-                        "background-color": "--md-ref-palette-neutral-variant35"
+                        "background-color": "--md-sys-color-surface-container-highest-dark-hover"
                     },
                     "pressed": {
                         "background-color": "--md-ref-palette-neutral40"
@@ -385,6 +385,13 @@
                         "opacity": 0.5
                     }
                 },
+                "low": {
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-low-dark",
+                        "opacity": 0.5
+                    }
+                },
                 "search-field": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
                     "selection-background-color": "--md-sys-color-secondary-container-dark",
@@ -393,6 +400,49 @@
                     "icon-size": 16,
                     "icon-color": "--md-sys-color-on-surface-dark",
                     "icon-padding": 4
+                }
+            }
+        },
+        "QSpinBox": {
+            "states": [
+                "hover",
+                "disabled"
+            ],
+            "default-variant": "default",
+            "variants": {
+                "default": {
+                    "background-color": "--md-sys-color-surface-container-dark",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "selection-background-color": "--md-sys-color-secondary-container-dark",
+                    "selection-color": "--md-sys-color-on-secondary-container-dark",
+                    "border-color": "--md-sys-color-outline-variant-dark",
+                    "border-width": 1,
+                    "border-radius": 4,
+                    "focus-outline-width": 1,
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "padding": [
+                        4,
+                        4
+                    ],
+                    "button-width": 18,
+                    "button-background-color": "transparent",
+                    "button-border-color": "--md-sys-color-outline-variant-dark",
+                    "button-hover-background-color": "--md-ref-palette-neutral-variant35",
+                    "arrow-color": "--md-sys-color-on-surface-dark",
+                    "hover": {
+                        "border-color": "--md-sys-color-outline-dark"
+                    },
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-dark",
+                        "opacity": 0.5
+                    }
+                },
+                "low": {
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "disabled": {
+                        "background-color": "--md-sys-color-surface-container-low-dark",
+                        "opacity": 0.5
+                    }
                 }
             }
         },
@@ -425,10 +475,11 @@
                 "default": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
                     "slider-color": "--md-sys-color-surface-container-highest-dark",
-                    "slider-hover-color": "--md-sys-color-primary-dark",
-                    "border-width": 10,
-                    "border-radius": 8,
-                    "width": 16,
+                    "slider-hover-color": "--md-sys-color-surface-container-highest-dark-hover",
+                    "slider-active-color": "--md-sys-color-surface-container-highest-dark-active",
+                    "slider-width": 8,
+                    "width": 12,
+                    "border-radius": 3,
                     "min-length": 32
                 }
             }
@@ -487,6 +538,9 @@
                 },
                 "high": {
                     "background-color": "--md-sys-color-surface-container-dark"
+                },
+                "high-dark": {
+                    "background-color": "--md-sys-color-surface-container-high-dark"
                 },
                 "tag": {
                     "border-radius": 10,
@@ -693,10 +747,10 @@
                     "border-width": 0,
                     "border-color": "--md-sys-color-background-dark",
                     "indent": 22,
-                    "item-height": 28,
+                    "item-height": 24,
                     "item-padding": [
-                        4,
-                        8
+                        1,
+                        2
                     ],
                     "icon-text-spacing": 6,
                     "branch-indicator-color": "--md-sys-color-on-surface-dark",
@@ -748,6 +802,25 @@
                 }
             }
         },
+        "AYHeaderView": {
+            "default-variant": "default",
+            "variants": {
+                "default": {
+                    "background-color": "--md-sys-color-surface-container-lowest-dark",
+                    "color": "--md-sys-color-on-surface-variant-dark",
+                    "border-color": "--md-sys-color-surface-container-dark",
+                    "border-width": 1,
+                    "height": 36,
+                    "padding": [
+                        4,
+                        8
+                    ],
+                    "sort-indicator-color": "--md-sys-color-on-surface-dark",
+                    "sort-indicator-icon": "sort",
+                    "sort-indicator-size": 18
+                }
+            }
+        },
         "AYTableView": {
             "states": [
                 "hover",
@@ -763,10 +836,10 @@
                     "border-radius": 0,
                     "border-width": 1,
                     "border-color": "--md-sys-color-surface-container-dark",
-                    "item-height": 32,
+                    "item-height": 24,
                     "item-padding": [
-                        4,
-                        8
+                        1,
+                        2
                     ],
                     "icon-text-spacing": 6,
                     "branch-indicator-color": "--md-sys-color-on-surface-dark",
@@ -957,6 +1030,8 @@
         "--md-sys-color-outline-variant-dark": "#41474d",
         "--md-sys-color-scrim-dark": "#000000",
         "--md-sys-color-surface-container-highest-dark": "#424a57",
+        "--md-sys-color-surface-container-highest-dark-hover": "#4d5560",
+        "--md-sys-color-surface-container-highest-dark-active": "#535965",
         "--md-sys-color-surface-container-high-dark": "#353b46",
         "--md-sys-color-surface-container-dark": "#272d35",
         "--md-sys-color-surface-container-low-dark": "#1c2026",
@@ -1084,7 +1159,7 @@
         "qt-active-button-text": "--md-sys-color-on-surface-dark",
         "qt-active-placeholder-text": "--md-ref-palette-neutral-variant50",
         "qt-active-highlight": "--md-sys-color-primary-dark",
-        "qt-active-highlight-text": "--md-sys-color-on-primary-dark",
+        "qt-active-highlight-text": "--md-sys-color-on-surface-dark",
         "qt-active-light": "--md-sys-color-surface-container-highest-dark",
         "qt-active-midlight": "--md-sys-color-surface-container-high-dark",
         "qt-active-dark": "--md-sys-color-surface-container-dark",
