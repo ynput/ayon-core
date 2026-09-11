@@ -205,11 +205,10 @@ class AYViewSelector(AYButtonMenu):
             dropdown_variant=AYContainer.Variants.Popover,
             dropdown_margin=6,
             tooltip="Views",
-            width=32,
-            height=32,
             parent=parent,
         )
         self.setObjectName("AYViewSelector")
+        self.setFixedSize(32, 32)
 
         # Applying a view, or a single user gesture, moves several widgets
         # at once. Coalesce the resulting saves into one round trip.
