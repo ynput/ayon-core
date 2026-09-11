@@ -45,71 +45,6 @@ if typing.TYPE_CHECKING:
 NOT_SET = object()
 
 
-class ExpectedSelection:
-    def __init__(self, controller):
-        self._project_name = None
-        self._folder_id = None
-
-        self._project_selected = True
-        self._folder_selected = True
-
-        self._controller = controller
-
-    def _emit_change(self):
-        self._controller.emit_event(
-            "expected_selection_changed",
-            self.get_expected_selection_data(),
-        )
-
-    def set_expected_selection(self, project_name, folder_id):
-        self._project_name = project_name
-        self._folder_id = folder_id
-
-        self._project_selected = False
-        self._folder_selected = False
-        self._emit_change()
-
-    def get_expected_selection_data(self):
-        project_current = False
-        folder_current = False
-        if not self._project_selected:
-            project_current = True
-        elif not self._folder_selected:
-            folder_current = True
-        return {
-            "project": {
-                "name": self._project_name,
-                "current": project_current,
-                "selected": self._project_selected,
-            },
-            "folder": {
-                "id": self._folder_id,
-                "current": folder_current,
-                "selected": self._folder_selected,
-            },
-        }
-
-    def is_expected_project_selected(self, project_name):
-        return project_name == self._project_name and self._project_selected
-
-    def is_expected_folder_selected(self, folder_id):
-        return folder_id == self._folder_id and self._folder_selected
-
-    def expected_project_selected(self, project_name):
-        if project_name != self._project_name:
-            return False
-        self._project_selected = True
-        self._emit_change()
-        return True
-
-    def expected_folder_selected(self, folder_id):
-        if folder_id != self._folder_id:
-            return False
-        self._folder_selected = True
-        self._emit_change()
-        return True
-
-
 class BrowserController(AbstractBrowserController):
     """
 
@@ -134,7 +69,6 @@ class BrowserController(AbstractBrowserController):
         self._addons_manager = AddonsManager()
 
         self._selection_model = SelectionModel(self)
-        self._expected_selection = ExpectedSelection(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._products_model = ProductsModel(self)
@@ -179,9 +113,6 @@ class BrowserController(AbstractBrowserController):
     def reset(self):
         self._emit_event("controller.reset.started")
 
-        project_name = self.get_selected_project_name()
-        folder_ids = self.get_selected_folder_ids()
-
         self._project_settings = {}
 
         self._project_anatomy_cache.reset()
@@ -199,28 +130,7 @@ class BrowserController(AbstractBrowserController):
 
         self._projects_model.refresh()
 
-        if not project_name and not folder_ids:
-            context = self.get_current_context()
-            project_name = context["project_name"]
-            folder_id = context["folder_id"]
-            self.set_expected_selection(project_name, folder_id)
-
         self._emit_event("controller.reset.finished")
-
-    # Expected selection helpers
-    def get_expected_selection_data(self):
-        return self._expected_selection.get_expected_selection_data()
-
-    def set_expected_selection(self, project_name, folder_id):
-        self._expected_selection.set_expected_selection(
-            project_name, folder_id
-        )
-
-    def expected_project_selected(self, project_name):
-        self._expected_selection.expected_project_selected(project_name)
-
-    def expected_folder_selected(self, folder_id):
-        self._expected_selection.expected_folder_selected(folder_id)
 
     # Entity model wrappers
     def get_project_items(self, sender=None):

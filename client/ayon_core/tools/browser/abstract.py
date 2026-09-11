@@ -395,32 +395,6 @@ class AbstractBrowserController(ABC):
 
         pass
 
-    # Expected selection helpers
-    @abstractmethod
-    def get_expected_selection_data(self):
-        """Full expected selection information.
-
-        Expected selection is a selection that may not be yet selected in UI
-        e.g. because of refreshing, this data tell the UI what should be
-        selected when they finish their refresh.
-
-        Returns:
-            dict[str, Any]: Expected selection data.
-        """
-
-        pass
-
-    @abstractmethod
-    def set_expected_selection(self, project_name, folder_id):
-        """Set expected selection.
-
-        Args:
-            project_name (str): Name of project to be selected.
-            folder_id (str): Id of folder to be selected.
-        """
-
-        pass
-
     @abstractmethod
     def emit_event(self, topic, data=None, source=None):
         """Emit event with a certain topic, data and source.
@@ -489,27 +463,6 @@ class AbstractBrowserController(ABC):
         Args:
             topic (str): Event topic name.
             callback (func): Callback triggered when the event is emitted.
-        """
-
-        pass
-
-    # Expected selection helpers
-    @abstractmethod
-    def expected_project_selected(self, project_name):
-        """Expected project was selected in frontend.
-
-        Args:
-            project_name (str): Project name.
-        """
-
-        pass
-
-    @abstractmethod
-    def expected_folder_selected(self, folder_id):
-        """Expected folder was selected in frontend.
-
-        Args:
-            folder_id (str): Folder id.
         """
 
         pass
