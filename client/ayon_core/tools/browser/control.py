@@ -589,13 +589,6 @@ class BrowserController(AbstractBrowserController):
             project_name, version_ids
         )
 
-    def get_representations_sync_status(
-        self, project_name, representation_ids
-    ):
-        return self._sitesync_model.get_representations_sync_status(
-            project_name, representation_ids
-        )
-
     def is_loaded_products_supported(self):
         return self._host is not None
 

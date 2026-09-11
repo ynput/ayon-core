@@ -1186,19 +1186,3 @@ class AbstractBrowserController(ABC):
         """
 
         pass
-
-    @abstractmethod
-    def get_representations_sync_status(
-        self, project_name, representation_ids
-    ):
-        """Representations sync status.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            dict[str, tuple[int, int]]: Sync status by representation id.
-        """
-
-        pass
