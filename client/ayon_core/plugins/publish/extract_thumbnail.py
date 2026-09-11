@@ -4,7 +4,7 @@ import copy
 import os
 import subprocess
 import tempfile
-from typing import Dict, Any, Tuple, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 import pyblish.api
 from ayon_core.lib import (
@@ -71,7 +71,7 @@ class ThumbnailDef:
         self.ffmpeg_args: dict[str, list[Any]] = ffmpeg_args
         # Background color defined as (R, G, B, A) tuple.
         # Note: Use float for alpha channel (0.0 to 1.0).
-        self.background_color: Tuple[int, int, int, float] = background_color
+        self.background_color: tuple[int, int, int, float] = background_color
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ThumbnailDef:
@@ -80,7 +80,7 @@ class ThumbnailDef:
         any keys in the dictionary that are not fields in the dataclass.
 
         Args:
-            data (Dict[str, Any]): The dictionary containing configuration data
+            data (dict[str, Any]): The dictionary containing configuration data
 
         Returns:
             MediaConfig: A new instance of the dataclass.
@@ -468,8 +468,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 keys:
                     colorspace (str)
                     config (dict)
-                    display (Optional[str])
-                    view (Optional[str])
+                    display (str | None)
+                    view (str | None)
             thumbnail_def (ThumbnailDefinition): Thumbnail definition.
             anatomy (Anatomy): Current project Anatomy.
             review_layers (list[str]): List of reviewable layers.
@@ -688,7 +688,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         video_file_path: str,
         output_dir: str,
         thumbnail_def: ThumbnailDef,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Convert video file to one frame image via ffmpeg"""
         # create output file path
         base_name = os.path.basename(video_file_path)
@@ -827,7 +827,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     def _get_config_from_profile(
         self,
         instance: pyblish.api.Instance
-    ) -> Optional[ThumbnailDef]:
+    ) -> ThumbnailDef | None:
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
         product_base_type = instance.data.get("productBaseType")
