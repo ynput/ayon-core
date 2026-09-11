@@ -188,6 +188,7 @@ class ScrollBarDrawer:
         """Draw the scrollbar slider/thumb."""
         style = self.model.get_style("QScrollBar")
         style.set_context(widget)
+        option = _get_slider_option(option, widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
