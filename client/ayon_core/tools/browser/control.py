@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from collections import defaultdict
 import logging
 import uuid
 import typing
-from typing import Optional, Any
+from typing import Any
 
 import ayon_api
 
-from ayon_core.addon import AddonsManager
 from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
@@ -23,16 +21,8 @@ from ayon_core.tools.common_models import (
     UsersModel,
 )
 
-from .abstract import (
-    AbstractBrowserController,
-    ActionItem,
-)
-from .models import (
-    ProductsModel,
-    LoaderActionsModel,
-    SiteSyncModel
-)
-
+from .abstract import AbstractBrowserController, ActionItem
+from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models.settings import TaskSortMode
@@ -44,10 +34,10 @@ class BrowserController(AbstractBrowserController):
     """
 
     Args:
-        host (Optional[AbstractHost]): Host object. Defaults to None.
+        host (AbstractHost | None): Host object. Defaults to None.
     """
 
-    def __init__(self, host: Optional[AbstractHost] = None) -> None:
+    def __init__(self, host: AbstractHost | None = None) -> None:
         self._log = None
         self._host = host
 
@@ -61,15 +51,11 @@ class BrowserController(AbstractBrowserController):
             default_factory=set, lifetime=60)
         self._loaded_versions_cache = CacheItem(
             default_factory=set, lifetime=60)
-        self._addons_manager = AddonsManager()
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._products_model = ProductsModel()
         self._loader_actions_model = LoaderActionsModel(self)
-        self._sitesync_model = SiteSyncModel(
-            self._addons_manager,
-        )
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
 
@@ -79,21 +65,21 @@ class BrowserController(AbstractBrowserController):
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
-    @property
-    def addons_manager(self) -> AddonsManager:
-        """Return the shared initialized addon manager."""
-        return self._addons_manager
-
     # ---------------------------------
     # Implementation of abstract methods
     # ---------------------------------
-    def get_window_subtitle(self) -> Optional[str]:
+    def get_window_subtitle(self) -> str | None:
         if self._host is None:
             return None
         return self._host.name
 
     # Events system
-    def emit_event(self, topic, data=None, source=None):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
         """Use implemented event system to trigger event."""
 
         if data is None:
@@ -116,7 +102,6 @@ class BrowserController(AbstractBrowserController):
         self._hierarchy_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
-        self._sitesync_model.reset()
         self._users_model.reset()
         self._settings_model.reset()
 
@@ -183,15 +168,9 @@ class BrowserController(AbstractBrowserController):
         entity_ids: set[str],
         entity_type: str,
     ) -> list[ActionItem]:
-        action_items = self._loader_actions_model.get_action_items(
+        return self._loader_actions_model.get_action_items(
             project_name, entity_ids, entity_type
         )
-
-        site_sync_items = self._sitesync_model.get_sitesync_action_items(
-            project_name, entity_ids, entity_type
-        )
-        action_items.extend(site_sync_items)
-        return action_items
 
     def trigger_action_item(
         self,
@@ -199,17 +178,10 @@ class BrowserController(AbstractBrowserController):
         project_name: str,
         selected_ids: set[str],
         selected_entity_type: str,
-        data: Optional[dict[str, Any]],
+        data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
-        if self._sitesync_model.is_sitesync_action(identifier):
-            self._sitesync_model.trigger_action_item(
-                project_name,
-                data,
-            )
-            return
-
         self._loader_actions_model.trigger_action_item(
             identifier=identifier,
             project_name=project_name,
@@ -309,26 +281,6 @@ class BrowserController(AbstractBrowserController):
         else:
             context = get_current_context()
         return context.get("project_name")
-
-    def is_sitesync_enabled(self, project_name=None):
-        return self._sitesync_model.is_sitesync_enabled(project_name)
-
-    def get_active_site_icon_def(self, project_name):
-        return self._sitesync_model.get_active_site_icon_def(project_name)
-
-    def get_remote_site_icon_def(self, project_name):
-        return self._sitesync_model.get_remote_site_icon_def(project_name)
-
-    def get_active_site(self, project_name):
-        return self._sitesync_model.get_active_site(project_name)
-
-    def get_remote_site(self, project_name):
-        return self._sitesync_model.get_remote_site(project_name)
-
-    def get_version_sync_availability(self, project_name, version_ids):
-        return self._sitesync_model.get_version_sync_availability(
-            project_name, version_ids
-        )
 
     def is_loaded_products_supported(self):
         return self._host is not None

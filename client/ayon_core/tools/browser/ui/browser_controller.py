@@ -215,10 +215,7 @@ class BrowserWidgetController(QtCore.QObject):
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
             providers=[
-                SiteSyncBrowserColumnProvider(
-                    loader_controller,
-                    column_services,
-                )
+                SiteSyncBrowserColumnProvider(column_services),
             ],
         )
         self.log = Logger.get_logger(self.__class__.__name__)

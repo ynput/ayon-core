@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import typing
-from typing import Iterable, Any, Optional
+from typing import Iterable, Any, Callable
 
 from ayon_core.lib.icon_definitions import (
     IconBase,
@@ -15,10 +15,7 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     serialize_attr_defs,
 )
-from ayon_core.tools.common_models import (
-    TaskItem,
-    ProductTypeIconMapping,
-)
+from ayon_core.tools.common_models import TaskItem, ProjectItem
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models.settings import TaskSortMode
@@ -131,16 +128,16 @@ class AbstractBrowserController(ABC):
     """
 
     @abstractmethod
-    def get_window_subtitle(self) -> Optional[str]:
+    def get_window_subtitle(self) -> str | None:
         """Get window subtitle.
 
         Returns:
-            Optional[str]: Window subtitle.
+            str | None: Window subtitle.
 
         """
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         """Reset all cached data to reload everything.
 
         Triggers events "controller.reset.started" and
@@ -150,32 +147,39 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def emit_event(self, topic, data=None, source=None):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
         """Emit event with a certain topic, data and source.
 
         The event should be sent to both frontend and backend.
 
         Args:
             topic (str): Event topic name.
-            data (Optional[dict[str, Any]]): Event data.
-            source (Optional[str]): Event source.
+            data (dict[str, Any] | None): Event data.
+            source (str | None): Event source.
 
         """
         pass
 
     @abstractmethod
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(
+        self, topic: str, callback: Callable
+    ) -> None:
         """Register callback for an event topic.
 
         Args:
             topic (str): Event topic name.
             callback (func): Callback triggered when the event is emitted.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_current_context(self):
+    def get_current_context(self) -> dict[str, str | None]:
         """Current context is a context of the current scene.
 
         Example output:
@@ -192,7 +196,9 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_project_items(self, sender=None):
+    def get_project_items(
+        self, sender: str | None = None
+    ) -> list[ProjectItem]:
         """Items for all projects available on server.
 
         Triggers event topics "projects.refresh.started" and
@@ -205,7 +211,7 @@ class AbstractBrowserController(ABC):
             Filtering of projects is done in UI.
 
         Args:
-            sender (Optional[str]): Sender who requested the items.
+            sender (str | None): Sender who requested the items.
 
         Returns:
             list[ProjectItem]: List of project items.
@@ -230,12 +236,16 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_folder_items(self, project_name, sender=None):
+    def get_folder_items(
+        self,
+        project_name: str,
+        sender: str | None = None,
+    ):
         """Folder items for a project.
 
         Args:
             project_name (str): Project name.
-            sender (Optional[str]): Sender who requested the name.
+            sender (str | None): Sender who requested the name.
 
         Returns:
             dict[str, FolderItem]: Folder items by folder id.
@@ -248,14 +258,14 @@ class AbstractBrowserController(ABC):
         self,
         project_name: str,
         folder_ids: Iterable[str],
-        sender: Optional[str] = None,
+        sender: str | None = None,
     ) -> list[TaskItem]:
         """Task items for folder ids.
 
         Args:
             project_name (str): Project name.
             folder_ids (Iterable[str]): Folder ids.
-            sender (Optional[str]): Sender who requested the items.
+            sender (str | None): Sender who requested the items.
 
         Returns:
             list[TaskItem]: List of task items.
@@ -312,8 +322,8 @@ class AbstractBrowserController(ABC):
 
     @abstractmethod
     def get_representation_items(
-        self, project_name, version_ids
-    ):
+        self, project_name: str, version_ids: Iterable[str]
+    ) -> list[RepreItem]:
         """Representation items for version ids.
 
         Triggers event topics "model.representations.refresh.started" and
@@ -336,8 +346,8 @@ class AbstractBrowserController(ABC):
 
     @abstractmethod
     def get_versions_representation_count(
-        self, project_name, version_ids
-    ):
+        self, project_name: str, version_ids: set[str]
+    ) -> dict[str, int]:
         """
         Args:
             project_name (str): Project name.
@@ -350,7 +360,7 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def set_selected_project(self, project_name):
+    def set_selected_project(self, project_name: str) -> None:
         """Set selected project.
 
         Project selection changed in UI. This is required method
@@ -386,7 +396,7 @@ class AbstractBrowserController(ABC):
         project_name: str,
         selected_ids: set[str],
         selected_entity_type: str,
-        data: Optional[dict[str, Any]],
+        data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
@@ -410,7 +420,7 @@ class AbstractBrowserController(ABC):
             project_name (str): Project name.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
-            data (Optional[dict[str, Any]]): Additional action item data.
+            data (dict[str, Any] | None): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
 
@@ -426,8 +436,8 @@ class AbstractBrowserController(ABC):
 
         Returns:
             bool: True if it is supported.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -440,94 +450,6 @@ class AbstractBrowserController(ABC):
         Returns:
             bool: Frontend should filter out non-library projects, except
                 current context project.
-        """
-
-        pass
-
-    # Site sync functions
-    @abstractmethod
-    def is_sitesync_enabled(self, project_name=None):
-        """Is site sync enabled.
-
-        Site sync addon can be enabled but can be disabled per project.
-
-        When asked for enabled state without project name, it should return
-            True if site sync addon is available and enabled.
-
-        Args:
-            project_name (Optional[str]): Project name.
-
-        Returns:
-            bool: True if site sync is enabled.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_active_site_icon_def(self, project_name):
-        """Active site icon definition.
-
-        Args:
-            project_name (Union[str, None]): Project name.
-
-        Returns:
-            Union[dict[str, Any], None]: Icon definition or None if site sync
-                is not enabled for the project.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_remote_site_icon_def(self, project_name):
-        """Remote site icon definition.
-
-        Args:
-            project_name (Union[str, None]): Project name.
-
-        Returns:
-            Union[dict[str, Any], None]: Icon definition or None if site sync
-                is not enabled for the project.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_active_site(self, project_name: str) -> str | None:
-        """Active site name.
-
-        Args:
-            project_name (str): Project name.
-
-        Returns:
-            Union[str, None]: Site name or None if site sync is not enabled.
 
         """
-        pass
-
-    @abstractmethod
-    def get_remote_site(self, project_name: str) -> str | None:
-        """Remote site name.
-
-        Args:
-            project_name (str): Project name.
-
-        Returns:
-            Union[str, None]: Site name or None if site sync is not enabled.
-
-        """
-
-        pass
-
-    @abstractmethod
-    def get_version_sync_availability(self, project_name, version_ids):
-        """Version sync availability.
-
-        Args:
-            project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-
-        Returns:
-            dict[str, tuple[int, int]]: Sync availability by version id.
-        """
-
         pass
