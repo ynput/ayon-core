@@ -563,32 +563,30 @@ class ImageCache:
 
     def set_path(self, key: str, file_path: str) -> Path:
         """Manually set a cache entry for a given key and file path."""
-        with self._access_lock:
-            source_path = Path(file_path)
-            if not source_path.exists():
-                raise ValueError(
-                    f"Provided file does not exist: {source_path}"
-                )
+        source_path = Path(file_path)
+        if not source_path.exists():
+            raise ValueError(
+                f"Provided file does not exist: {source_path}"
+            )
 
+        with self._get_key_lock(key):
             cache_filename = self._generate_cache_filename(key, source_path)
             cached_path = self.cache_path / cache_filename
 
-            try:
-                with open(source_path, "rb") as src:
-                    with open(cached_path, "wb") as dst:
-                        dst.write(src.read())
-            except IOError as e:
-                raise IOError(f"Failed to set cache file: {e}") from e
+            self._atomic_copy(source_path, cached_path)
 
+            conn = self._get_conn()
             file_size = cached_path.stat().st_size
-            self._metadata[key] = {
-                "file_path": str(cached_path),
-                "size_bytes": file_size,
-                "access_count": 0,
-                "last_accessed": time.time(),
-            }
-            self._evict_if_needed()
-            return cached_path
+            conn.execute(
+                "INSERT OR REPLACE INTO cache "
+                "(key, file_path, size_bytes, access_count, last_accessed) "
+                "VALUES (?, ?, ?, 0, ?)",
+                (key, str(cached_path), file_size, time.time()),
+            )
+            conn.commit()
+
+        self._evict_if_needed()
+        return cached_path
 
     def _generate_cache_filename(self, key: str, source_path: Path) -> str:
         """Build a cache filename from a SHA-256 hash of *key*.
