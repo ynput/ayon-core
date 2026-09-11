@@ -299,12 +299,39 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         the visible viewport, the real widget (and its expensive
         constructor) is never created for off-screen rows.
 
+        The actual creation/reparenting/``show()`` is deferred to the
+        next event-loop iteration via ``QTimer.singleShot(0, ...)``
+        rather than done here directly: Qt widgets must not be shown,
+        resized or reparented from within their own ``paintEvent()``,
+        and some bindings (PySide2) corrupt the in-flight
+        ``QPaintEvent`` when that happens anyway, later raising a
+        spurious "paintEvent() called with wrong argument types"
+        ``TypeError`` from this method's own ``super().paintEvent()``
+        call below.
+
         Args:
             event: The paint event forwarded to the real widget.
         """
         if self._make_real and self._real is None:
-            self._real = self._make_real()
-            if self._real:
-                self._real.setParent(self)
-                self._update_thumbnail_geometry()
+            make_real, self._make_real = self._make_real, None
+            QtCore.QTimer.singleShot(
+                0, lambda: self._materialize_real(make_real)
+            )
         super().paintEvent(event)
+
+    def _materialize_real(self, make_real: Callable) -> None:
+        """Create, parent, and position the real thumbnail widget.
+
+        Runs on the next event-loop iteration after the placeholder's
+        first paint (see :meth:`paintEvent`), never synchronously from
+        within a paint event.
+
+        Args:
+            make_real: Callable returning the real thumbnail widget.
+        """
+        if not shiboken.isValid(self) or self._real is not None:
+            return
+        self._real = make_real()
+        if self._real:
+            self._real.setParent(self)
+            self._update_thumbnail_geometry()
