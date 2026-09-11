@@ -349,11 +349,6 @@ class BrowserController(AbstractBrowserController):
             project_name, entity_type, entity_ids
         )
 
-    def change_products_group(self, project_name, product_ids, group_name):
-        self._products_model.change_products_group(
-            project_name, product_ids, group_name
-        )
-
     def get_action_items(
         self,
         project_name: str,

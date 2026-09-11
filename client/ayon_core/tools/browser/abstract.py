@@ -1036,31 +1036,6 @@ class AbstractBrowserController(ABC):
         """
         pass
 
-    @abstractmethod
-    def change_products_group(
-        self,
-        project_name: str,
-        product_ids: set[str],
-        group_name: str,
-    ):
-        """Change group of products.
-
-        Triggers event "products.group.changed" with data:
-            {
-                "project_name": project_name,
-                "folder_ids": folder_ids,
-                "product_ids": product_ids,
-                "group_name": group_name,
-            }
-
-        Args:
-            project_name (str): Project name.
-            product_ids (Iterable[str]): Product ids.
-            group_name (str): New group name.
-
-        """
-        pass
-
     # NOTE: Methods 'is_loaded_products_supported' and
     #   'is_standard_projects_filter_enabled' are both based on being in host
     #   or not. Maybe we could implement only single method 'is_in_host'?
