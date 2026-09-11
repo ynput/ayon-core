@@ -16,18 +16,13 @@ from ayon_core.addon import AddonsManager, get_bundle_information
 
 
 class AddonInfo:
-    name: str
-    version: str | None
-    server_version: str | None
-    label: str | None = None
-
     def __init__(
         self,
         name: str,
-        version: str | None    ,
+        version: str | None,
         server_version: str | None,
         label: str | None = None,
-    ):
+    ) -> None:
         self.name = name
         self.version = version
         self.server_version = server_version
