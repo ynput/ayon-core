@@ -256,8 +256,6 @@ class GroupingDef:
 DEFAULT_SORT_BY = None
 DEFAULT_SORT_DESC = False
 DEFAULT_ROW_HEIGHT = 0
-DEFAULT_GROUPING = GroupingDef()
-DEFAULT_FILTER = FilterDef()
 DEFAULT_EXTRA: dict[str, Any] = {}
 
 
@@ -286,8 +284,8 @@ class ViewSettings:
     sort_by: str | None = DEFAULT_SORT_BY
     sort_desc: bool = DEFAULT_SORT_DESC
     row_height: int = DEFAULT_ROW_HEIGHT
-    grouping: GroupingDef = field(default_factory=lambda: DEFAULT_GROUPING)
-    filter: FilterDef = field(default_factory=lambda: DEFAULT_FILTER)
+    grouping: GroupingDef = field(default_factory=GroupingDef)
+    filter: FilterDef = field(default_factory=FilterDef)
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
