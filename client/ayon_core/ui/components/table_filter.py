@@ -721,7 +721,6 @@ class _FilterDropdown(AYDropdownPopup):
         entity: str | None = None,
     ) -> None:
         """Show matching scopes and filters in one search result list."""
-        scoped_entity = entity
         while self._attr_layout.count():
             item = self._attr_layout.takeAt(0)
             if item and item.widget():
@@ -738,20 +737,22 @@ class _FilterDropdown(AYDropdownPopup):
         )
 
         matching_entities = [
-            entity for entity in entities if query in entity.lower()
+            entity_name
+            for entity_name in entities
+            if query in entity_name.lower()
         ]
         matching_attributes: list[tuple[str, FilterEntry]] = []
-        for entity in entities:
-            for entry in self._filters_by_entity[entity]:
+        for entity_name in entities:
+            for entry in self._filters_by_entity[entity_name]:
                 if (
                     query in entry.label.lower()
                     or query in entry.key.lower()
                 ):
-                    matching_attributes.append((entity, entry))
+                    matching_attributes.append((entity_name, entry))
 
         if entity is None:
-            for entity in matching_entities:
-                self._add_entity_button(entity)
+            for entity_name in matching_entities:
+                self._add_entity_button(entity_name)
 
         if entity is None and matching_entities and matching_attributes:
             separator = QFrame()
@@ -768,13 +769,13 @@ class _FilterDropdown(AYDropdownPopup):
             self._attr_layout.addWidget(separator)
             self._search_separator = separator
 
-        for entity, entry in matching_attributes:
+        for entity_name, entry in matching_attributes:
             self._add_attribute_button(
                 entry,
                 (
                     entry.label
-                    if scoped_entity is not None
-                    else f"{entity} > {entry.label}"
+                    if entity is not None
+                    else f"{entity_name} > {entry.label}"
                 ),
             )
 
