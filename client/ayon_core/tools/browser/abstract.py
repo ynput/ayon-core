@@ -1061,17 +1061,6 @@ class AbstractBrowserController(ABC):
         """
         pass
 
-    @abstractmethod
-    def fill_root_in_source(self, source):
-        """Fill root in source path.
-
-        Args:
-            source (Union[str, None]): Source of a published version. Usually
-                rootless workfile path.
-        """
-
-        pass
-
     # NOTE: Methods 'is_loaded_products_supported' and
     #   'is_standard_projects_filter_enabled' are both based on being in host
     #   or not. Maybe we could implement only single method 'is_in_host'?

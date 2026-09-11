@@ -429,17 +429,6 @@ class BrowserController(AbstractBrowserController):
     def set_selected_representations(self, repre_ids):
         self._selection_model.set_selected_representations(repre_ids)
 
-    def fill_root_in_source(self, source):
-        project_name = self.get_selected_project_name()
-        anatomy = self._get_project_anatomy(project_name)
-        if anatomy is None:
-            return source
-
-        try:
-            return anatomy.fill_root(source)
-        except Exception:
-            return source
-
     def get_current_context(self):
         if self._host is None:
             return {
