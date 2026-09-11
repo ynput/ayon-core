@@ -5,7 +5,6 @@ import tempfile
 import platform
 import shutil
 
-import clique
 import pyblish.api
 
 from ayon_core import resources, AYON_CORE_ROOT
@@ -22,7 +21,8 @@ from ayon_core.lib import (
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.pipeline.publish.lib import (
     add_repre_files_for_cleanup,
-    get_default_reviewable_layers
+    get_default_reviewable_layers,
+    get_file_collections,
 )
 
 
@@ -619,7 +619,7 @@ class ExtractBurnin(publish.Extractor):
         # - not used if input is not a sequence
         first_frame = None
         if is_sequence:
-            collections, _ = clique.assemble(input_filenames)
+            collections, _ = get_file_collections(input_filenames)
             if not collections:
                 is_sequence = False
             else:
