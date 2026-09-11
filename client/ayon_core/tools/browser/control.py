@@ -19,7 +19,6 @@ from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
     HierarchyModel,
-    ThumbnailsModel,
     TagItem,
     ProductTypeIconMapping,
     UsersModel,
@@ -69,7 +68,6 @@ class BrowserController(AbstractBrowserController):
         self._hierarchy_model = HierarchyModel(self)
         self._products_model = ProductsModel(self)
         self._loader_actions_model = LoaderActionsModel(self)
-        self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(
             self._addons_manager,
         )
@@ -119,7 +117,6 @@ class BrowserController(AbstractBrowserController):
         self._hierarchy_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
-        self._thumbnails_model.reset()
         self._sitesync_model.reset()
         self._users_model.reset()
         self._settings_model.reset()
@@ -233,26 +230,6 @@ class BrowserController(AbstractBrowserController):
     ):
         return self._products_model.get_versions_repre_count(
             project_name, version_ids, sender
-        )
-
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        return self._thumbnails_model.get_folder_thumbnail_ids(
-            project_name, folder_ids
-        )
-
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        return self._thumbnails_model.get_version_thumbnail_ids(
-            project_name, version_ids
-        )
-
-    def get_thumbnail_paths(
-        self,
-        project_name,
-        entity_type,
-        entity_ids,
-    ):
-        return self._thumbnails_model.get_thumbnail_paths(
-            project_name, entity_type, entity_ids
         )
 
     def get_action_items(
