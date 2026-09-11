@@ -1,0 +1,15 @@
+{
+  "version": "1.0.4.dev0",
+  "integration_state_schema": 1,
+  "installed_integrations": [
+    "kilocode"
+  ],
+  "integration_settings": {
+    "kilocode": {
+      "script": "sh",
+      "invoke_separator": "."
+    }
+  },
+  "integration": "kilocode",
+  "default_integration": "kilocode"
+}
