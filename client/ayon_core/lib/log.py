@@ -29,14 +29,10 @@ from .local_settings import get_launcher_local_dir
 
 # If structlog is missing (ayon-launcher is outdated),
 # the library will fall back to standard logging.
-
-structlog: Any = None
 try:
-    import structlog as _structlog
+    import structlog
 except ImportError:
-    pass
-else:
-    structlog = _structlog
+    structlog: Any = None
 
 
 def bind_contextvars(**kwargs):
