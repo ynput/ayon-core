@@ -142,7 +142,6 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(
-            self,
             self._addons_manager,
         )
         self._users_model = UsersModel(self)

@@ -38,9 +38,7 @@ class SiteSyncModel:
     lifetime = 60  # In seconds (minute by default)
     status_lifetime = 20
 
-    def __init__(self, controller, addons_manager=None):
-        self._controller = controller
-
+    def __init__(self, addons_manager: AddonsManager | None) -> None:
         self._site_icons = None
         self._sitesync_enabled_cache = NestedCacheItem(
             levels=1, lifetime=self.lifetime
@@ -61,9 +59,9 @@ class SiteSyncModel:
             default_factory=_default_repre_status,
             lifetime=self.status_lifetime
         )
-
-        manager = addons_manager or AddonsManager()
-        self._sitesync_addon = manager.get("sitesync")
+        if addons_manager is None:
+            addons_manager = AddonsManager()
+        self._sitesync_addon = addons_manager.get("sitesync")
 
     def reset(self):
         self._site_icons = None
