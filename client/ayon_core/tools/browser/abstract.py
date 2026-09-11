@@ -4,11 +4,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import typing
-from typing import Iterable, Any, Optional
+from typing import Iterable, Any, Callable
 
 from ayon_core.lib.icon_definitions import (
     IconBase,
-    AwesomeFontIcon,
     get_icon_def_from_data,
 )
 from ayon_core.lib.attribute_definitions import (
@@ -16,235 +15,10 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     serialize_attr_defs,
 )
-from ayon_core.tools.common_models import (
-    TaskItem,
-    TagItem,
-    ProductTypeIconMapping,
-)
+from ayon_core.tools.common_models import TaskItem, ProjectItem
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models.settings import TaskSortMode
-
-
-@dataclass
-class ProductTypeItem:
-    """Item representing product type.
-
-    Args:
-        name (str): Product type name.
-        icon (dict[str, Any]): Product type icon definition.
-    """
-    name: str
-    icon: dict[str, Any]
-
-    def to_data(self):
-        return dict(name=self.name, icon=self.icon)
-
-    @classmethod
-    def from_data(cls, data):
-        return cls(**data)
-
-
-@dataclass
-class ProductBaseTypeItem:
-    """Item representing the product base type."""
-    name: str
-    icon: AwesomeFontIcon
-
-    def to_data(self) -> dict[str, Any]:
-        """Convert item to data dictionary.
-
-        Returns:
-            dict[str, Any]: Data representation of the item.
-
-        """
-        return {
-            "name": self.name,
-            "icon": {
-                "name": self.icon.name,
-                "color": self.icon.color,
-            },
-        }
-
-    @classmethod
-    def from_data(
-        cls, data: dict[str, Any]
-    ) -> ProductBaseTypeItem:
-        """Create item from data dictionary.
-
-        Args:
-            data (dict[str, Any]): Data to create item from.
-
-        Returns:
-            ProductBaseTypeItem: Item created from the provided data.
-
-        """
-        icon = data["icon"]
-        data["icon"] = AwesomeFontIcon(icon["name"], color=icon["color"])
-        return cls(**data)
-
-
-@dataclass
-class ProductItem:
-    """Product item with it versions.
-
-    Attributes:
-        product_id (str): Product id.
-        product_type (str): Product type.
-        product_name (str): Product name.
-        product_icon (dict[str, Any]): Product icon definition.
-        product_in_scene (bool): Is product in scene (only when used in DCC).
-        group_name (str | None]): Group name.
-        folder_id (str): Folder id.
-        folder_label (str): Folder label.
-        version_items (dict[str, VersionItem]): Version items by id.
-    """
-    product_id: str
-    product_type: str
-    product_base_type: str
-    product_name: str
-    product_icon: dict[str, Any]
-    group_name: str | None
-    folder_id: str
-    folder_label: str
-    version_items: dict[str, VersionItem]
-    product_in_scene: bool
-
-    def to_data(self) -> dict[str, Any]:
-        return dict(
-            product_id=self.product_id,
-            product_type=self.product_type,
-            product_base_type=self.product_base_type,
-            product_name=self.product_name,
-            product_icon=self.product_icon,
-            product_in_scene=self.product_in_scene,
-            group_name=self.group_name,
-            folder_id=self.folder_id,
-            folder_label=self.folder_label,
-            version_items={
-                version_id: version_item.to_data()
-                for version_id, version_item in self.version_items.items()
-            },
-        )
-
-    @classmethod
-    def from_data(cls, data):
-        version_items = {
-            version_id: VersionItem.from_data(version)
-            for version_id, version in data["version_items"].items()
-        }
-        data["version_items"] = version_items
-        return cls(**data)
-
-
-@dataclass
-class VersionItem:
-    """Version item.
-
-    Object have implemented comparison operators to be sortable.
-
-    Attributes:
-        version_id (str): Version id.
-        version (int): Version. Can be negative when is hero version.
-        is_hero (bool): Is hero version.
-        product_id (str): Product id.
-        task_id (str | None): Task id.
-        thumbnail_id (str | None): Thumbnail id.
-        published_time (str | None): Published time in format
-            '%Y%m%dT%H%M%SZ'.
-        status (str | None): Status name.
-        tags (list[str] | None): Tags.
-        author (str | None): Author.
-        frame_range (str | None): Frame range.
-        duration (int | None): Duration.
-        handles (str | None): Handles.
-        step (int | None): Step.
-        comment (str | None): Comment.
-        source (str | None): Source.
-
-    """
-    version_id: str
-    version: int
-    is_hero: bool
-    product_id: str
-    task_id: str | None
-    thumbnail_id: str | None
-    published_time: str | None
-    tags: list[str] | None
-    author: str | None
-    status: str | None
-    frame_range: str | None
-    duration: int | None
-    handles: str | None
-    step: int | None
-    comment: str | None
-    source: str | None
-
-    def __eq__(self, other):
-        if not isinstance(other, VersionItem):
-            return False
-        return (
-            self.is_hero == other.is_hero
-            and self.version == other.version
-            and self.version_id == other.version_id
-            and self.product_id == other.product_id
-            and self.task_id == other.task_id
-        )
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __gt__(self, other):
-        if not isinstance(other, VersionItem):
-            return False
-        # Make sure hero versions are positive
-        version = abs(self.version)
-        other_version = abs(other.version)
-        # Hero version is greater than non-hero
-        if version == other_version:
-            return not self.is_hero
-        return version > other_version
-
-    def __lt__(self, other):
-        if not isinstance(other, VersionItem):
-            return True
-        # Make sure hero versions are positive
-        version = abs(self.version)
-        other_version = abs(other.version)
-        # Non-hero version is lesser than hero
-        if version == other_version:
-            return self.is_hero
-        return version < other_version
-
-    def __ge__(self, other):
-        return self.__eq__(other) or self.__gt__(other)
-
-    def __le__(self, other):
-        return self.__eq__(other) or self.__lt__(other)
-
-    def to_data(self) -> dict[str, Any]:
-        return dict(
-            version_id=self.version_id,
-            product_id=self.product_id,
-            task_id=self.task_id,
-            thumbnail_id=self.thumbnail_id,
-            version=self.version,
-            is_hero=self.is_hero,
-            published_time=self.published_time,
-            author=self.author,
-            tags=self.tags,
-            status=self.status,
-            frame_range=self.frame_range,
-            duration=self.duration,
-            handles=self.handles,
-            step=self.step,
-            comment=self.comment,
-            source=self.source,
-        )
-
-    @classmethod
-    def from_data(cls, data: dict[str, Any]) -> VersionItem:
-        return cls(**data)
 
 
 @dataclass
@@ -354,7 +128,58 @@ class AbstractBrowserController(ABC):
     """
 
     @abstractmethod
-    def get_current_context(self):
+    def get_window_subtitle(self) -> str | None:
+        """Get window subtitle.
+
+        Returns:
+            str | None: Window subtitle.
+
+        """
+
+    @abstractmethod
+    def reset(self) -> None:
+        """Reset all cached data to reload everything.
+
+        Triggers events "controller.reset.started" and
+        "controller.reset.finished".
+        """
+
+        pass
+
+    @abstractmethod
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
+        """Emit event with a certain topic, data and source.
+
+        The event should be sent to both frontend and backend.
+
+        Args:
+            topic (str): Event topic name.
+            data (dict[str, Any] | None): Event data.
+            source (str | None): Event source.
+
+        """
+        pass
+
+    @abstractmethod
+    def register_event_callback(
+        self, topic: str, callback: Callable
+    ) -> None:
+        """Register callback for an event topic.
+
+        Args:
+            topic (str): Event topic name.
+            callback (func): Callback triggered when the event is emitted.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_current_context(self) -> dict[str, str | None]:
         """Current context is a context of the current scene.
 
         Example output:
@@ -365,111 +190,15 @@ class AbstractBrowserController(ABC):
             }
 
         Returns:
-            dict[str, Union[str, None]]: Context data.
-        """
-
-        pass
-
-    @abstractmethod
-    def reset(self):
-        """Reset all cached data to reload everything.
-
-        Triggers events "controller.reset.started" and
-        "controller.reset.finished".
-        """
-
-        pass
-
-    # Model wrappers
-    @abstractmethod
-    def get_folder_items(self, project_name, sender=None):
-        """Folder items for a project.
-
-        Args:
-            project_name (str): Project name.
-            sender (Optional[str]): Sender who requested the name.
-
-        Returns:
-            dict[str, FolderItem]: Folder items by folder id.
-        """
-
-        pass
-
-    @abstractmethod
-    def emit_event(self, topic, data=None, source=None):
-        """Emit event with a certain topic, data and source.
-
-        The event should be sent to both frontend and backend.
-
-        Args:
-            topic (str): Event topic name.
-            data (Optional[dict[str, Any]]): Event data.
-            source (Optional[str]): Event source.
+            dict[str, str | None]: Context data.
 
         """
         pass
 
     @abstractmethod
-    def get_loaded_product_ids(self):
-        """Return set of loaded product ids.
-
-        Returns:
-            set[str]: Set of loaded product ids.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_project_settings(self, project_name: str | None) -> dict:
-        pass
-
-    @abstractmethod
-    def get_product_type_icons_mapping(
-        self, project_name: Optional[str]
-    ) -> ProductTypeIconMapping:
-        """Product type icons mapping.
-
-        Returns:
-            ProductTypeIconMapping: Product type icons mapping.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_window_subtitle(self) -> Optional[str]:
-        """Get window subtitle.
-
-        Returns:
-            Optional[str]: Window subtitle.
-
-        """
-
-    @abstractmethod
-    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
-        """Used by tasks widget to define how tasks are sorted.
-
-        Args:
-            project_name (str | None): Name of the project.
-
-        Returns:
-            TaskSortMode: Task sorting mode.
-
-        """
-
-    @abstractmethod
-    def register_event_callback(self, topic, callback):
-        """Register callback for an event topic.
-
-        Args:
-            topic (str): Event topic name.
-            callback (func): Callback triggered when the event is emitted.
-        """
-
-        pass
-
-    # Model wrapper calls
-    @abstractmethod
-    def get_project_items(self, sender=None):
+    def get_project_items(
+        self, sender: str | None = None
+    ) -> list[ProjectItem]:
         """Items for all projects available on server.
 
         Triggers event topics "projects.refresh.started" and
@@ -482,7 +211,7 @@ class AbstractBrowserController(ABC):
             Filtering of projects is done in UI.
 
         Args:
-            sender (Optional[str]): Sender who requested the items.
+            sender (str | None): Sender who requested the items.
 
         Returns:
             list[ProjectItem]: List of project items.
@@ -507,34 +236,19 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
-        """Tag items defined on project anatomy.
+    def get_folder_items(
+        self,
+        project_name: str,
+        sender: str | None = None,
+    ):
+        """Folder items for a project.
 
         Args:
             project_name (str): Project name.
+            sender (str | None): Sender who requested the name.
 
         Returns:
-            list[TagItem]: Tag definition items.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_folder_type_items(self, project_name, sender=None):
-        """Folder type items for a project.
-
-        This function may trigger events with topics
-        'projects.folder_types.refresh.started' and
-        'projects.folder_types.refresh.finished' which will contain 'sender'
-        value in data.
-        That may help to avoid re-refresh of items in UI elements.
-
-        Args:
-            project_name (str): Project name.
-            sender (str): Who requested folder type items.
-
-        Returns:
-            list[FolderTypeItem]: Folder type information.
+            dict[str, FolderItem]: Folder items by folder id.
 
         """
         pass
@@ -544,14 +258,14 @@ class AbstractBrowserController(ABC):
         self,
         project_name: str,
         folder_ids: Iterable[str],
-        sender: Optional[str] = None,
+        sender: str | None = None,
     ) -> list[TaskItem]:
         """Task items for folder ids.
 
         Args:
             project_name (str): Project name.
             folder_ids (Iterable[str]): Folder ids.
-            sender (Optional[str]): Sender who requested the items.
+            sender (str | None): Sender who requested the items.
 
         Returns:
             list[TaskItem]: List of task items.
@@ -580,18 +294,16 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_folder_labels(self, project_name, folder_ids):
-        """Get folder labels for folder ids.
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
 
         Args:
-            project_name (str): Project name.
-            folder_ids (Iterable[str]): Folder ids.
+            project_name (str | None): Name of the project.
 
         Returns:
-            dict[str, Optional[str]]: Folder labels by folder id.
+            TaskSortMode: Task sorting mode.
 
         """
-        pass
 
     @abstractmethod
     def get_my_tasks_entity_ids(
@@ -609,97 +321,9 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_available_tags_by_entity_type(
-        self, project_name: str
-    ) -> dict[str, list[str]]:
-        """Get available tags by entity type.
-
-        Args:
-            project_name (str): Project name.
-
-        Returns:
-            dict[str, list[str]]: Available tags by entity type.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_project_status_items(self, project_name, sender=None):
-        """Items for all projects available on server.
-
-        Triggers event topics "projects.statuses.refresh.started" and
-        "projects.statuses.refresh.finished" with data:
-            {
-                "sender": sender,
-                "project_name": project_name
-            }
-
-        Args:
-            project_name (Union[str, None]): Project name.
-            sender (Optional[str]): Sender who requested the items.
-
-        Returns:
-            list[StatusItem]: List of status items.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_product_items(self, project_name, folder_ids, sender=None):
-        """Product items for folder ids.
-
-        Triggers event topics "products.refresh.started" and
-        "products.refresh.finished" with data:
-            {
-                "project_name": project_name,
-                "folder_ids": folder_ids,
-                "sender": sender
-            }
-
-        Args:
-            project_name (str): Project name.
-            folder_ids (Iterable[str]): Folder ids.
-            sender (Optional[str]): Sender who requested the items.
-
-        Returns:
-            list[ProductItem]: List of product items.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_product_item(self, project_name, product_id):
-        """Receive single product item.
-
-        Args:
-            project_name (str): Project name.
-            product_id (str): Product id.
-
-        Returns:
-             Union[ProductItem, None]: Product info or None if not found.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_product_type_items(self, project_name):
-        """Product type items for a project.
-
-        Product types have defined if are checked for filtering or not.
-
-        Args:
-            project_name (Union[str, None]): Project name.
-
-        Returns:
-            list[ProductTypeItem]: List of product type items for a project.
-        """
-
-        pass
-
-    @abstractmethod
     def get_representation_items(
-        self, project_name, version_ids, sender=None
-    ):
+        self, project_name: str, version_ids: Iterable[str]
+    ) -> list[RepreItem]:
         """Representation items for version ids.
 
         Triggers event topics "model.representations.refresh.started" and
@@ -713,84 +337,30 @@ class AbstractBrowserController(ABC):
         Args:
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
-            sender (Optional[str]): Sender who requested the items.
 
         Returns:
             list[RepreItem]: List of representation items.
+
         """
-
-        pass
-
-    @abstractmethod
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        """Get thumbnail ids for version ids.
-
-        Args:
-            project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-
-        Returns:
-            dict[str, Union[str, Any]]: Thumbnail id by version id.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        """Get thumbnail ids for folder ids.
-
-        Args:
-            project_name (str): Project name.
-            folder_ids (Iterable[str]): Folder ids.
-
-        Returns:
-            dict[str, Union[str, Any]]: Thumbnail id by folder id.
-        """
-
         pass
 
     @abstractmethod
     def get_versions_representation_count(
-        self, project_name, version_ids, sender=None
-    ):
+        self, project_name: str, version_ids: set[str]
+    ) -> dict[str, int]:
         """
         Args:
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            sender (Optional[str]): Sender who requested the items.
+            version_ids (set[str]): Version ids.
 
         Returns:
             dict[str, int]: Representation count by version id.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_thumbnail_paths(
-        self,
-        project_name,
-        entity_type,
-        entity_ids
-    ):
-        """Get thumbnail path for thumbnail id.
-
-        This method should get a path to a thumbnail based on thumbnail id.
-        Which probably means to download the thumbnail from server and store
-        it locally.
-
-        Args:
-            project_name (str): Project name.
-            entity_type (str): Entity type.
-            entity_ids (set[str]): Entity ids.
-
-        Returns:
-            dict[str, Union[str, None]]: Thumbnail path by entity id.
-        """
-
-        pass
-
-    @abstractmethod
-    def set_selected_project(self, project_name):
+    def set_selected_project(self, project_name: str) -> None:
         """Set selected project.
 
         Project selection changed in UI. This is required method
@@ -826,7 +396,7 @@ class AbstractBrowserController(ABC):
         project_name: str,
         selected_ids: set[str],
         selected_entity_type: str,
-        data: Optional[dict[str, Any]],
+        data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
@@ -850,7 +420,7 @@ class AbstractBrowserController(ABC):
             project_name (str): Project name.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
-            data (Optional[dict[str, Any]]): Additional action item data.
+            data (dict[str, Any] | None): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
 
@@ -866,8 +436,8 @@ class AbstractBrowserController(ABC):
 
         Returns:
             bool: True if it is supported.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -880,94 +450,6 @@ class AbstractBrowserController(ABC):
         Returns:
             bool: Frontend should filter out non-library projects, except
                 current context project.
-        """
-
-        pass
-
-    # Site sync functions
-    @abstractmethod
-    def is_sitesync_enabled(self, project_name=None):
-        """Is site sync enabled.
-
-        Site sync addon can be enabled but can be disabled per project.
-
-        When asked for enabled state without project name, it should return
-            True if site sync addon is available and enabled.
-
-        Args:
-            project_name (Optional[str]): Project name.
-
-        Returns:
-            bool: True if site sync is enabled.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_active_site_icon_def(self, project_name):
-        """Active site icon definition.
-
-        Args:
-            project_name (Union[str, None]): Project name.
-
-        Returns:
-            Union[dict[str, Any], None]: Icon definition or None if site sync
-                is not enabled for the project.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_remote_site_icon_def(self, project_name):
-        """Remote site icon definition.
-
-        Args:
-            project_name (Union[str, None]): Project name.
-
-        Returns:
-            Union[dict[str, Any], None]: Icon definition or None if site sync
-                is not enabled for the project.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_active_site(self, project_name: str) -> str | None:
-        """Active site name.
-
-        Args:
-            project_name (str): Project name.
-
-        Returns:
-            Union[str, None]: Site name or None if site sync is not enabled.
 
         """
-        pass
-
-    @abstractmethod
-    def get_remote_site(self, project_name: str) -> str | None:
-        """Remote site name.
-
-        Args:
-            project_name (str): Project name.
-
-        Returns:
-            Union[str, None]: Site name or None if site sync is not enabled.
-
-        """
-
-        pass
-
-    @abstractmethod
-    def get_version_sync_availability(self, project_name, version_ids):
-        """Version sync availability.
-
-        Args:
-            project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-
-        Returns:
-            dict[str, tuple[int, int]]: Sync availability by version id.
-        """
-
         pass

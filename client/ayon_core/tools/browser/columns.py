@@ -28,17 +28,6 @@ class BrowserColumnServices:
             version_ids,
         )
 
-    def get_representation_items(
-        self,
-        project_name: str,
-        version_ids: set[str],
-    ) -> list[Any]:
-        """Return pre-cached representation items for version IDs."""
-        return self._loader_controller.get_representation_items(
-            project_name,
-            version_ids,
-        )
-
 
 @dataclass(frozen=True)
 class BrowserFilter:
