@@ -605,62 +605,6 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
 
-    def get_product_types_filter(self):
-        output = ProductTypesFilter(
-            is_allow_list=False,
-            product_types=[]
-        )
-        # Without host is not determined context
-        if self._host is None:
-            return output
-
-        context = self.get_current_context()
-        project_name = context.get("project_name")
-        if not project_name:
-            return output
-        settings = self.get_project_settings(project_name)
-        profiles = (
-            settings
-            ["core"]
-            ["tools"]
-            ["loader"]
-            ["product_type_filter_profiles"]
-        )
-        if not profiles:
-            return output
-
-        folder_id = context.get("folder_id")
-        task_name = context.get("task_name")
-        task_type = None
-        if folder_id and task_name:
-            task_entity = ayon_api.get_task_by_name(
-                project_name,
-                folder_id,
-                task_name,
-                fields={"taskType"}
-            )
-            if task_entity:
-                task_type = task_entity.get("taskType")
-
-        host_name = getattr(self._host, "name", get_current_host_name())
-        profile = filter_profiles(
-            profiles,
-            {
-                "host_names": host_name,
-                "task_types": task_type,
-            }
-        )
-        if profile:
-            # TODO remove 'is_include' after release '0.4.3'
-            is_allow_list = profile.get("is_include")
-            if is_allow_list is None:
-                is_allow_list = profile["filter_type"] == "is_allow_list"
-            output = ProductTypesFilter(
-                is_allow_list=is_allow_list,
-                product_types=profile["filter_product_types"]
-            )
-        return output
-
     def _create_event_system(self):
         return QueuedEventSystem()
 

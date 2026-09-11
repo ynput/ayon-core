@@ -347,26 +347,6 @@ class ActionItem:
         return cls(**data)
 
 
-@dataclass
-class ProductTypesFilter:
-    """Product types filter.
-
-    Defines the filtering for product types.
-    """
-    product_types: list[str]
-    is_allow_list: bool
-
-    def to_data(self) -> dict[str, Any]:
-        return dict(
-            product_types=self.product_types,
-            is_allow_list=self.is_allow_list,
-        )
-
-    @classmethod
-    def from_data(cls, data: dict[str, Any]) -> ProductTypesFilter:
-        return cls(**data)
-
-
 class _BaseLoaderController(ABC):
     """Base loader controller abstraction.
 
@@ -1228,16 +1208,6 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, tuple[int, int]]: Sync status by representation id.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_product_types_filter(self):
-        """Return product type filter for current context.
-
-        Returns:
-            ProductTypesFilter: Product type filter for current context
         """
 
         pass
