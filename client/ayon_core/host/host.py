@@ -13,7 +13,6 @@ from ayon_core.lib.log import (
     Logger,
     bind_contextvars,
     clear_contextvars,
-    configure_logger,
     unbind_contextvars,
 )
 
@@ -106,7 +105,6 @@ class HostBase(AbstractHost):
             to implement 'install' method which is triggered after global
             'install'.
         """
-        configure_logger()
         clear_contextvars()
         bind_contextvars(host=self.__class__.__name__)
 

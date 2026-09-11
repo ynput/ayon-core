@@ -15,17 +15,12 @@ from ayon_core.lib import (
     initialize_ayon_connection,
     is_running_from_build,
     Logger,
-    configure_logger,
 )
 from ayon_core.lib.env_tools import (
     parse_env_variables_structure,
     compute_env_variables_structure,
     merge_env_variables,
 )
-
-
-configure_logger()
-
 
 @click.group(invoke_without_command=True)
 @click.pass_context
