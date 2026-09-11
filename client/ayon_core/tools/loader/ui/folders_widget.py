@@ -3,14 +3,15 @@ from typing import Optional
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_objected_colors
-from ayon_core.tools.utils import DeselectableTreeView
-from ayon_core.tools.utils.folders_widget import FoldersProxyModel
-
 from ayon_core.tools.utils import (
+    DeselectableTreeView,
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
 )
-from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
+from ayon_core.tools.utils.folders_widget import (
+    FoldersProxyModel,
+    FOLDER_ID_ROLE,
+)
 
 UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 50
 
@@ -25,7 +26,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
     bar_height = 3
 
     def __init__(self, *args, **kwargs):
-        super(UnderlinesFolderDelegate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         colors = get_objected_colors("loader", "asset-view")
         self._selected_color = colors["selected"].get_qcolor()
         self._hover_color = colors["hover"].get_qcolor()
@@ -33,7 +34,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
     def sizeHint(self, option, index):
         """Add bar height to size hint."""
-        result = super(UnderlinesFolderDelegate, self).sizeHint(option, index)
+        result = super().sizeHint(option, index)
         height = result.height()
         result.setHeight(height + self.bar_height)
 
@@ -41,7 +42,6 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
     def paint(self, painter, option, index):
         """Replicate painting of an item and draw color bars if needed."""
-
         painter.save()
 
         item_rect = QtCore.QRect(option.rect)
@@ -260,13 +260,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         folders_view.setModel(folders_proxy_model)
         folders_view.setItemDelegate(folders_label_delegate)
 
-        header = folders_view.header()
-        header.setStretchLastSection(False)
-        header.setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Fixed)
-        header.resizeSection(1, 30)
+        folders_view.setColumnHidden(1, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

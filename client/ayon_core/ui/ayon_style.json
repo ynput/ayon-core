@@ -578,7 +578,8 @@
                 "default": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
                     "slider-color": "--md-sys-color-surface-container-highest-dark",
-                    "slider-hover-color": "--md-sys-color-primary-dark",
+                    "slider-hover-color": "--md-sys-color-surface-container-highest-dark-hover",
+                    "slider-active-color": "--md-sys-color-surface-container-highest-dark-active",
                     "slider-width": 8,
                     "width": 12,
                     "border-radius": 3,
@@ -1194,6 +1195,7 @@
         "--md-sys-color-scrim-dark": "#000000",
         "--md-sys-color-surface-container-highest-dark": "#424a57",
         "--md-sys-color-surface-container-highest-dark-hover": "#4d5560",
+        "--md-sys-color-surface-container-highest-dark-active": "#535965",
         "--md-sys-color-surface-container-high-dark": "#353b46",
         "--md-sys-color-surface-container-high-dark-hover": "#424852",
         "--md-sys-color-surface-container-dark": "#272d35",

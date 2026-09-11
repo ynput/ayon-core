@@ -34,7 +34,7 @@ class LoaderTasksQtModel(TasksQtModel):
         "Task name",
         "Task type",
         "Folder",
-        "Status",
+        "",
     ]
 
     def __init__(self, controller):
@@ -357,19 +357,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view.setModel(tasks_proxy_model)
         # Hide folder column by default
         tasks_view.setColumnHidden(2, True)
-
-        header = tasks_view.header()
-        header.setStretchLastSection(False)
-        header.setSectionResizeMode(
-            1, QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
-        header.setSectionResizeMode(
-            2, QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
-        header.setSectionResizeMode(
-            3, QtWidgets.QHeaderView.ResizeMode.Fixed
-        )
-        header.resizeSection(3, 30)
+        tasks_view.setColumnHidden(3, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

@@ -14,9 +14,10 @@ methods returning instances of ``QIcon``.
 """
 import warnings
 
+from packaging.version import parse
 from typing import Dict, Optional, Union
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets, QT_VERSION
 
 from .structures import IconOptions, Position
 from .utils import get_char_mapping, _get_font_name_filled, _get_font_name
@@ -38,6 +39,12 @@ def get_icon(*args, **kwargs):
 
 class CharIconPainter:
     """Char icon painter."""
+
+    def __init__(self):
+        qt_version = parse(QT_VERSION)
+        self._use_path = parse("6.0") < qt_version < parse("6.6")
+        self._glyph_path_cache = {}
+
     def paint(self, iconic, painter, rect, mode, state, options):
         """Main paint method."""
         self._paint_icon(iconic, painter, rect, mode, state, options)
@@ -45,11 +52,10 @@ class CharIconPainter:
     def _paint_icon(self, iconic, painter, rect, mode, state, options):
         """Paint a single icon."""
         painter.save()
+        painter.setClipRect(rect)
 
         color = options.get_color_for_state(state, mode)
         char = options.get_char_for_state(state, mode)
-
-        painter.setPen(QtGui.QColor(color))
 
         draw_size = round(rect.height() * options.scale_factor)
 
@@ -58,7 +64,6 @@ class CharIconPainter:
             options.get_fill_for_state(state, mode)
         )
 
-        painter.setFont(font)
         if options.offset is not None:
             rect = QtCore.QRect(rect)
             rect.translate(
@@ -70,9 +75,8 @@ class CharIconPainter:
         scale_y = -1 if options.vflip else 1
 
         if options.vflip or options.hflip or options.rotate:
-            x_center = rect.width() * 0.5
-            y_center = rect.height() * 0.5
-            painter.translate(x_center, y_center)
+            center = rect.center()
+            painter.translate(center)
 
             transfrom = QtGui.QTransform()
             transfrom.scale(scale_x, scale_y)
@@ -80,12 +84,62 @@ class CharIconPainter:
 
             if options.rotate:
                 painter.rotate(options.rotate)
-            painter.translate(-x_center, -y_center)
+            painter.translate(-center)
 
         painter.setOpacity(options.opacity)
 
-        painter.drawText(rect, QtCore.Qt.AlignCenter, char)
+        if self._use_path:
+            painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+            path = self._get_glyph_path(font, char)
+            if not path.isEmpty():
+                metrics = QtGui.QFontMetricsF(font)
+                bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
+
+                # Bounds width returns zero in Qt 6.5.4 (in e.g. Silhouette)
+                offset_x = bounds.x()
+                if bounds.width() == 0:
+                    pixel_size = font.pixelSize()
+                    offset_x = rect.x() + ((rect.width() - pixel_size) // 2)
+                painter.translate(
+                    offset_x, bounds.bottom() - metrics.descent()
+                )
+                painter.fillPath(path, QtGui.QColor(color))
+        else:
+            painter.setFont(font)
+            painter.setPen(QtGui.QColor(color))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, char)
+
         painter.restore()
+
+    def _get_glyph_path(
+        self, font: QtGui.QFont, char: str
+    ) -> QtGui.QPainterPath:
+        """Get the outline path for a single glyph.
+
+        Args:
+            font (QtGui.QFont): The font to use for the glyph.
+            char (str): The character to get the path for.
+
+        """
+        if not char:
+            return QtGui.QPainterPath()
+
+        cache_key = (font.family(), font.pixelSize(), char)
+        path = self._glyph_path_cache.get(cache_key)
+        if path is not None:
+            return path
+
+        raw_font = QtGui.QRawFont.fromFont(font)
+        if not raw_font.isValid():
+            return QtGui.QPainterPath()
+
+        glyph_indexes = raw_font.glyphIndexesForString(char)
+        glyph_index = next(iter(glyph_indexes), None)
+        if glyph_index is None:
+            return QtGui.QPainterPath()
+        path = raw_font.pathForGlyph(glyph_index)
+        self._glyph_path_cache[cache_key] = path
+        return path
 
 
 class CharIconEngine(QtGui.QIconEngine):

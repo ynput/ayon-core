@@ -210,7 +210,9 @@ class ScrollBarDrawer:
         radius = min(
             radius, rect.width() / 2, rect.height() / 2
         )
-        if option.activeSubControls & QStyle.SubControl.SC_ScrollBarSlider:
+        if option.state & QStyle.StateFlag.State_Sunken:
+            slider_color = QColor(style.get("slider-active-color"))
+        elif option.activeSubControls & QStyle.SubControl.SC_ScrollBarSlider:
             slider_color = QColor(style.get("slider-hover-color"))
         else:
             slider_color = QColor(style.get("slider-color"))
