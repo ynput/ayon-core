@@ -1979,7 +1979,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "tags": [
                             "ftrackreview",
                             "kitsureview",
-                            "webreview"
+                            "webreview",
+                            "delete",
+                            "need_thumbnail"
                         ],
                         "burnins": [],
                         "ffmpeg_args": {
