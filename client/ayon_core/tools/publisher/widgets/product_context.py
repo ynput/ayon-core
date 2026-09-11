@@ -713,13 +713,19 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         folder_path = None
         task_name = None
         if self.variant_input.has_value_changed():
-            variant_value = self.variant_input.get_value()[0]
+            variant_value = next(iter(
+                self.variant_input.get_value()
+            ))
 
         if self.folder_value_widget.has_value_changed():
-            folder_path = self.folder_value_widget.get_selected_items()[0]
+            folder_path = next(iter(
+                self.folder_value_widget.get_selected_items()
+            ))
 
         if self.task_value_widget.has_value_changed():
-            task_name = self.task_value_widget.get_selected_items()[0]
+            task_name = next(iter(
+                self.task_value_widget.get_selected_items()
+            ))
 
         product_names = set()
         invalid_tasks = False
