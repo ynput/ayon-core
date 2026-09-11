@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 import logging
 import uuid
 import typing
@@ -19,8 +20,6 @@ from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
     HierarchyModel,
-    TagItem,
-    ProductTypeIconMapping,
     UsersModel,
 )
 
@@ -66,7 +65,7 @@ class BrowserController(AbstractBrowserController):
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
-        self._products_model = ProductsModel(self)
+        self._products_model = ProductsModel()
         self._loader_actions_model = LoaderActionsModel(self)
         self._sitesync_model = SiteSyncModel(
             self._addons_manager,
@@ -129,23 +128,6 @@ class BrowserController(AbstractBrowserController):
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
-    def get_folder_type_items(self, project_name, sender=None):
-        return self._projects_model.get_folder_type_items(
-            project_name, sender
-        )
-
-    def get_project_status_items(self, project_name, sender=None):
-        return self._projects_model.get_project_status_items(
-            project_name, sender
-        )
-
-    def get_product_type_icons_mapping(
-        self, project_name: Optional[str]
-    ) -> ProductTypeIconMapping:
-        return self._projects_model.get_product_type_icons_mapping(
-            project_name
-        )
-
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -162,18 +144,6 @@ class BrowserController(AbstractBrowserController):
             project_name, sender
         )
 
-    def get_folder_labels(self, project_name, folder_ids):
-        folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
-            project_name, folder_ids
-        )
-        output = {}
-        for folder_id, folder_item in folder_items_by_id.items():
-            label = None
-            if folder_item is not None:
-                label = folder_item.label
-            output[folder_id] = label
-        return output
-
     def get_my_tasks_entity_ids(
         self, project_name: str
     ) -> dict[str, list[str]]:
@@ -185,16 +155,6 @@ class BrowserController(AbstractBrowserController):
             project_name, assignees
         )
 
-    def get_available_tags_by_entity_type(
-        self, project_name: str
-    ) -> dict[str, list[str]]:
-        return self._hierarchy_model.get_available_tags_by_entity_type(
-            project_name
-        )
-
-    def get_project_settings(self, project_name: str | None) -> dict:
-        return self._settings_model.get_settings(project_name)
-
     def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
         return self._settings_model.get_task_sorting_mode(project_name)
 
@@ -203,33 +163,18 @@ class BrowserController(AbstractBrowserController):
     ) -> dict[str, Any] | None:
         return self._projects_model.get_project_entity(project_name)
 
-    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
-        return self._projects_model.get_project_anatomy_tags(project_name)
-
-    def get_product_items(self, project_name, folder_ids, sender=None):
-        return self._products_model.get_product_items(
-            project_name, folder_ids, sender)
-
-    def get_product_item(self, project_name, product_id):
-        return self._products_model.get_product_item(
-            project_name, product_id
-        )
-
-    def get_product_type_items(self, project_name):
-        return self._products_model.get_product_type_items(project_name)
-
     def get_representation_items(
-        self, project_name, version_ids, sender=None
+        self, project_name, version_ids
     ):
         return self._products_model.get_repre_items(
-            project_name, version_ids, sender
+            project_name, version_ids
         )
 
     def get_versions_representation_count(
-        self, project_name, version_ids, sender=None
+        self, project_name, version_ids
     ):
         return self._products_model.get_versions_repre_count(
-            project_name, version_ids, sender
+            project_name, version_ids
         )
 
     def get_action_items(
@@ -304,49 +249,6 @@ class BrowserController(AbstractBrowserController):
             "folder_id": folder_id,
             "task_name": context.get("task_name"),
         }
-
-    def get_loaded_product_ids(self):
-        if self._host is None:
-            return set()
-        if self._loaded_products_cache.is_valid:
-            return self._loaded_products_cache.get_data()
-
-        project_name = self._get_current_project_name()
-        if not project_name:
-            return set()
-
-        try:
-            if isinstance(self._host, ILoadHost):
-                containers = self._host.get_containers()
-            else:
-                containers = self._host.ls()
-
-        except BaseException:
-            self.log.error(
-                "Failed to collect loaded products.", exc_info=True
-            )
-            containers = []
-
-        repre_ids = set()
-        for container in containers:
-            try:
-                repre_id = container.get("representation")
-                # Ignore invalid representation ids.
-                # - invalid representation ids may be available if e.g. is
-                #   opened scene from OpenPype whe 'ObjectId' was used
-                #   instead of 'uuid'.
-                # NOTE: Server call would crash if there is any invalid id.
-                #   That would cause crash we won't get any information.
-                uuid.UUID(repre_id)
-                repre_ids.add(repre_id)
-            except (ValueError, TypeError, AttributeError):
-                pass
-
-        product_ids = self._products_model.get_product_ids_by_repre_ids(
-            project_name, repre_ids
-        )
-        self._loaded_products_cache.update_data(product_ids)
-        return self._loaded_products_cache.get_data()
 
     def get_loaded_version_ids(self):
         """Return version IDs represented by current scene containers."""
