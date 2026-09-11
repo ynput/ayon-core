@@ -7,6 +7,7 @@ from typing import Any
 
 from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 
+from .abstract import AbstractBrowserController
 from .columns import (
     BrowserColumnContext,
     BrowserColumnProvider,
@@ -39,10 +40,10 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
 
     def __init__(
         self,
-        sitesync_api: Any,
+        browser_controller: AbstractBrowserController,
         services: BrowserColumnServices,
     ) -> None:
-        self._sitesync_api = sitesync_api
+        self._browser_controller = browser_controller
         self._services = services
 
     def get_columns(
@@ -101,7 +102,7 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
         project_name = context.project_name
         if (
             not project_name
-            or not self._sitesync_api.is_sitesync_enabled(project_name)
+            or not self._browser_controller.is_sitesync_enabled(project_name)
         ):
             return
 
@@ -119,7 +120,7 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
 
         version_ids = set(rows_by_version_id)
         availability = (
-            self._sitesync_api.get_version_sync_availability(
+            self._browser_controller.get_version_sync_availability(
                 project_name,
                 version_ids,
             )
@@ -131,12 +132,16 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
             )
         )
 
-        active_site_name = self._sitesync_api.get_active_site(project_name)
-        remote_site_name = self._sitesync_api.get_remote_site(project_name)
-        active_icon_def = self._sitesync_api.get_active_site_icon_def(
+        active_site_name = self._browser_controller.get_active_site(
             project_name
         )
-        remote_icon_def = self._sitesync_api.get_remote_site_icon_def(
+        remote_site_name = self._browser_controller.get_remote_site(
+            project_name
+        )
+        active_icon_def = self._browser_controller.get_active_site_icon_def(
+            project_name
+        )
+        remote_icon_def = self._browser_controller.get_remote_site_icon_def(
             project_name
         )
 
@@ -175,6 +180,6 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
         return PARTIAL
 
     def _is_enabled(self, context: BrowserColumnContext) -> bool:
-        return self._sitesync_api.is_sitesync_enabled(
+        return self._browser_controller.is_sitesync_enabled(
             context.project_name
         )

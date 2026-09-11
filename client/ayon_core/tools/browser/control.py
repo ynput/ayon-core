@@ -8,11 +8,9 @@ from typing import Optional, Any
 import ayon_api
 
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import get_current_host_name
 from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
-    filter_profiles,
 )
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
@@ -28,13 +26,10 @@ from ayon_core.tools.common_models import (
 )
 
 from .abstract import (
-    BackendLoaderController,
-    FrontendLoaderController,
-    ProductTypesFilter,
+    AbstractBrowserController,
     ActionItem,
 )
 from .models import (
-    SelectionModel,
     ProductsModel,
     LoaderActionsModel,
     SiteSyncModel
@@ -47,72 +42,7 @@ if typing.TYPE_CHECKING:
 NOT_SET = object()
 
 
-class ExpectedSelection:
-    def __init__(self, controller):
-        self._project_name = None
-        self._folder_id = None
-
-        self._project_selected = True
-        self._folder_selected = True
-
-        self._controller = controller
-
-    def _emit_change(self):
-        self._controller.emit_event(
-            "expected_selection_changed",
-            self.get_expected_selection_data(),
-        )
-
-    def set_expected_selection(self, project_name, folder_id):
-        self._project_name = project_name
-        self._folder_id = folder_id
-
-        self._project_selected = False
-        self._folder_selected = False
-        self._emit_change()
-
-    def get_expected_selection_data(self):
-        project_current = False
-        folder_current = False
-        if not self._project_selected:
-            project_current = True
-        elif not self._folder_selected:
-            folder_current = True
-        return {
-            "project": {
-                "name": self._project_name,
-                "current": project_current,
-                "selected": self._project_selected,
-            },
-            "folder": {
-                "id": self._folder_id,
-                "current": folder_current,
-                "selected": self._folder_selected,
-            },
-        }
-
-    def is_expected_project_selected(self, project_name):
-        return project_name == self._project_name and self._project_selected
-
-    def is_expected_folder_selected(self, folder_id):
-        return folder_id == self._folder_id and self._folder_selected
-
-    def expected_project_selected(self, project_name):
-        if project_name != self._project_name:
-            return False
-        self._project_selected = True
-        self._emit_change()
-        return True
-
-    def expected_folder_selected(self, folder_id):
-        if folder_id != self._folder_id:
-            return False
-        self._folder_selected = True
-        self._emit_change()
-        return True
-
-
-class BrowserController(BackendLoaderController, FrontendLoaderController):
+class BrowserController(AbstractBrowserController):
     """
 
     Args:
@@ -135,15 +65,12 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
             default_factory=set, lifetime=60)
         self._addons_manager = AddonsManager()
 
-        self._selection_model = SelectionModel(self)
-        self._expected_selection = ExpectedSelection(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._products_model = ProductsModel(self)
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(
-            self,
             self._addons_manager,
         )
         self._users_model = UsersModel(self)
@@ -182,9 +109,6 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
     def reset(self):
         self._emit_event("controller.reset.started")
 
-        project_name = self.get_selected_project_name()
-        folder_ids = self.get_selected_folder_ids()
-
         self._project_settings = {}
 
         self._project_anatomy_cache.reset()
@@ -202,28 +126,7 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
 
         self._projects_model.refresh()
 
-        if not project_name and not folder_ids:
-            context = self.get_current_context()
-            project_name = context["project_name"]
-            folder_id = context["folder_id"]
-            self.set_expected_selection(project_name, folder_id)
-
         self._emit_event("controller.reset.finished")
-
-    # Expected selection helpers
-    def get_expected_selection_data(self):
-        return self._expected_selection.get_expected_selection_data()
-
-    def set_expected_selection(self, project_name, folder_id):
-        self._expected_selection.set_expected_selection(
-            project_name, folder_id
-        )
-
-    def expected_project_selected(self, project_name):
-        self._expected_selection.expected_project_selected(project_name)
-
-    def expected_folder_selected(self, folder_id):
-        self._expected_selection.expected_folder_selected(folder_id)
 
     # Entity model wrappers
     def get_project_items(self, sender=None):
@@ -352,11 +255,6 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
             project_name, entity_type, entity_ids
         )
 
-    def change_products_group(self, project_name, product_ids, group_name):
-        self._products_model.change_products_group(
-            project_name, product_ids, group_name
-        )
-
     def get_action_items(
         self,
         project_name: str,
@@ -400,48 +298,9 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
             form_values=form_values,
         )
 
-    # Selection model wrappers
-    def get_selected_project_name(self):
-        return self._selection_model.get_selected_project_name()
-
     def set_selected_project(self, project_name):
-        self._selection_model.set_selected_project(project_name)
-
-    # Selection model wrappers
-    def get_selected_folder_ids(self):
-        return self._selection_model.get_selected_folder_ids()
-
-    def set_selected_folders(self, folder_ids):
-        self._selection_model.set_selected_folders(folder_ids)
-
-    def get_selected_task_ids(self):
-        return self._selection_model.get_selected_task_ids()
-
-    def set_selected_tasks(self, task_ids):
-        self._selection_model.set_selected_tasks(task_ids)
-
-    def get_selected_version_ids(self):
-        return self._selection_model.get_selected_version_ids()
-
-    def set_selected_versions(self, version_ids):
-        self._selection_model.set_selected_versions(version_ids)
-
-    def get_selected_representation_ids(self):
-        return self._selection_model.get_selected_representation_ids()
-
-    def set_selected_representations(self, repre_ids):
-        self._selection_model.set_selected_representations(repre_ids)
-
-    def fill_root_in_source(self, source):
-        project_name = self.get_selected_project_name()
-        anatomy = self._get_project_anatomy(project_name)
-        if anatomy is None:
-            return source
-
-        try:
-            return anatomy.fill_root(source)
-        except Exception:
-            return source
+        # ProjectsCombobox does require this method
+        pass
 
     def get_current_context(self):
         if self._host is None:
@@ -592,74 +451,11 @@ class BrowserController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids
         )
 
-    def get_representations_sync_status(
-        self, project_name, representation_ids
-    ):
-        return self._sitesync_model.get_representations_sync_status(
-            project_name, representation_ids
-        )
-
     def is_loaded_products_supported(self):
         return self._host is not None
 
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
-
-    def get_product_types_filter(self):
-        output = ProductTypesFilter(
-            is_allow_list=False,
-            product_types=[]
-        )
-        # Without host is not determined context
-        if self._host is None:
-            return output
-
-        context = self.get_current_context()
-        project_name = context.get("project_name")
-        if not project_name:
-            return output
-        settings = self.get_project_settings(project_name)
-        profiles = (
-            settings
-            ["core"]
-            ["tools"]
-            ["loader"]
-            ["product_type_filter_profiles"]
-        )
-        if not profiles:
-            return output
-
-        folder_id = context.get("folder_id")
-        task_name = context.get("task_name")
-        task_type = None
-        if folder_id and task_name:
-            task_entity = ayon_api.get_task_by_name(
-                project_name,
-                folder_id,
-                task_name,
-                fields={"taskType"}
-            )
-            if task_entity:
-                task_type = task_entity.get("taskType")
-
-        host_name = getattr(self._host, "name", get_current_host_name())
-        profile = filter_profiles(
-            profiles,
-            {
-                "host_names": host_name,
-                "task_types": task_type,
-            }
-        )
-        if profile:
-            # TODO remove 'is_include' after release '0.4.3'
-            is_allow_list = profile.get("is_include")
-            if is_allow_list is None:
-                is_allow_list = profile["filter_type"] == "is_allow_list"
-            output = ProductTypesFilter(
-                is_allow_list=is_allow_list,
-                product_types=profile["filter_product_types"]
-            )
-        return output
 
     def _create_event_system(self):
         return QueuedEventSystem()

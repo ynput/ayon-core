@@ -347,27 +347,7 @@ class ActionItem:
         return cls(**data)
 
 
-@dataclass
-class ProductTypesFilter:
-    """Product types filter.
-
-    Defines the filtering for product types.
-    """
-    product_types: list[str]
-    is_allow_list: bool
-
-    def to_data(self) -> dict[str, Any]:
-        return dict(
-            product_types=self.product_types,
-            is_allow_list=self.is_allow_list,
-        )
-
-    @classmethod
-    def from_data(cls, data: dict[str, Any]) -> ProductTypesFilter:
-        return cls(**data)
-
-
-class _BaseLoaderController(ABC):
+class AbstractBrowserController(ABC):
     """Base loader controller abstraction.
 
     Abstract base class that is required for both frontend and backed.
@@ -415,39 +395,6 @@ class _BaseLoaderController(ABC):
 
         pass
 
-    # Expected selection helpers
-    @abstractmethod
-    def get_expected_selection_data(self):
-        """Full expected selection information.
-
-        Expected selection is a selection that may not be yet selected in UI
-        e.g. because of refreshing, this data tell the UI what should be
-        selected when they finish their refresh.
-
-        Returns:
-            dict[str, Any]: Expected selection data.
-        """
-
-        pass
-
-    @abstractmethod
-    def set_expected_selection(self, project_name, folder_id):
-        """Set expected selection.
-
-        Args:
-            project_name (str): Name of project to be selected.
-            folder_id (str): Id of folder to be selected.
-        """
-
-        pass
-
-
-class BackendLoaderController(_BaseLoaderController):
-    """Backend loader controller abstraction.
-
-    What backend logic requires from a controller for proper logic.
-    """
-
     @abstractmethod
     def emit_event(self, topic, data=None, source=None):
         """Emit event with a certain topic, data and source.
@@ -488,8 +435,6 @@ class BackendLoaderController(_BaseLoaderController):
         """
         pass
 
-
-class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
     def get_window_subtitle(self) -> Optional[str]:
         """Get window subtitle.
@@ -518,27 +463,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Args:
             topic (str): Event topic name.
             callback (func): Callback triggered when the event is emitted.
-        """
-
-        pass
-
-    # Expected selection helpers
-    @abstractmethod
-    def expected_project_selected(self, project_name):
-        """Expected project was selected in frontend.
-
-        Args:
-            project_name (str): Project name.
-        """
-
-        pass
-
-    @abstractmethod
-    def expected_folder_selected(self, folder_id):
-        """Expected folder was selected in frontend.
-
-        Args:
-            folder_id (str): Folder id.
         """
 
         pass
@@ -865,145 +789,13 @@ class FrontendLoaderController(_BaseLoaderController):
 
         pass
 
-    # Selection model wrapper calls
-    @abstractmethod
-    def get_selected_project_name(self):
-        """Get selected project name.
-
-        The information is based on last selection from UI.
-
-        Returns:
-            Union[str, None]: Selected project name.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_selected_folder_ids(self):
-        """Get selected folder ids.
-
-        The information is based on last selection from UI.
-
-        Returns:
-            list[str]: Selected folder ids.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_selected_task_ids(self):
-        """Get selected task ids.
-
-        The information is based on last selection from UI.
-
-        Returns:
-            list[str]: Selected folder ids.
-
-        """
-        pass
-
-    @abstractmethod
-    def set_selected_tasks(self, task_ids):
-        """Set selected tasks.
-
-        Args:
-            task_ids (Iterable[str]): Selected task ids.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_selected_version_ids(self):
-        """Get selected version ids.
-
-        The information is based on last selection from UI.
-
-        Returns:
-            list[str]: Selected version ids.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_selected_representation_ids(self):
-        """Get selected representation ids.
-
-        The information is based on last selection from UI.
-
-        Returns:
-            list[str]: Selected representation ids.
-        """
-
-        pass
-
     @abstractmethod
     def set_selected_project(self, project_name):
         """Set selected project.
 
-        Project selection changed in UI. Method triggers event with topic
-        "selection.project.changed" with data:
-            {
-                "project_name": self._project_name
-            }
-
-        Args:
-            project_name (Union[str, None]): Selected project name.
+        Project selection changed in UI. This is required method
+            by ProjectsCombobox.
         """
-
-        pass
-
-    @abstractmethod
-    def set_selected_folders(self, folder_ids):
-        """Set selected folders.
-
-        Folder selection changed in UI. Method triggers event with topic
-        "selection.folders.changed" with data:
-            {
-                "project_name": project_name,
-                "folder_ids": folder_ids
-            }
-
-        Args:
-            folder_ids (Iterable[str]): Selected folder ids.
-        """
-
-        pass
-
-    @abstractmethod
-    def set_selected_versions(self, version_ids):
-        """Set selected versions.
-
-        Version selection changed in UI. Method triggers event with topic
-        "selection.versions.changed" with data:
-            {
-                "project_name": project_name,
-                "folder_ids": folder_ids,
-                "version_ids": version_ids
-            }
-
-        Args:
-            version_ids (Iterable[str]): Selected version ids.
-        """
-
-        pass
-
-    @abstractmethod
-    def set_selected_representations(self, repre_ids):
-        """Set selected representations.
-
-        Representation selection changed in UI. Method triggers event with
-        topic "selection.representations.changed" with data:
-            {
-                "project_name": project_name,
-                "folder_ids": folder_ids,
-                "version_ids": version_ids,
-                "representation_ids": representation_ids
-            }
-
-        Args:
-            repre_ids (Iterable[str]): Selected representation ids.
-        """
-
         pass
 
     # Load action items
@@ -1063,42 +855,6 @@ class FrontendLoaderController(_BaseLoaderController):
             form_values (dict[str, Any]): Action form values from UI.
 
         """
-        pass
-
-    @abstractmethod
-    def change_products_group(
-        self,
-        project_name: str,
-        product_ids: set[str],
-        group_name: str,
-    ):
-        """Change group of products.
-
-        Triggers event "products.group.changed" with data:
-            {
-                "project_name": project_name,
-                "folder_ids": folder_ids,
-                "product_ids": product_ids,
-                "group_name": group_name,
-            }
-
-        Args:
-            project_name (str): Project name.
-            product_ids (Iterable[str]): Product ids.
-            group_name (str): New group name.
-
-        """
-        pass
-
-    @abstractmethod
-    def fill_root_in_source(self, source):
-        """Fill root in source path.
-
-        Args:
-            source (Union[str, None]): Source of a published version. Usually
-                rootless workfile path.
-        """
-
         pass
 
     # NOTE: Methods 'is_loaded_products_supported' and
@@ -1212,32 +968,6 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, tuple[int, int]]: Sync availability by version id.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_representations_sync_status(
-        self, project_name, representation_ids
-    ):
-        """Representations sync status.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            dict[str, tuple[int, int]]: Sync status by representation id.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_product_types_filter(self):
-        """Return product type filter for current context.
-
-        Returns:
-            ProductTypesFilter: Product type filter for current context
         """
 
         pass

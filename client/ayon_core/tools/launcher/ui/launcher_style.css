@@ -86,3 +86,46 @@ ActionMenuPopup ActionsView {
     border: none;
     margin: 4px;
 }
+
+ActionsView {
+    /* font size can't be set on items */
+    font-size: 8pt;
+    border: 0px;
+    padding: 0px;
+    margin: 0px;
+}
+
+ActionsView::icon {}
+
+ActionsView::item {
+    padding-top: 8px;
+    padding-bottom: 4px;
+    border: 0px;
+    border-radius: 5px;
+}
+
+ActionsView::item:hover {
+    color: {color:font-hover};
+    background: #424A57;
+}
+
+ActionMenuPopup #GroupLabel {
+    padding: 5px;
+    color: #ffffff;
+}
+
+ActionMenuPopup #ShadowFrame {
+    border-radius: 5px;
+    background: rgba(12, 13, 24, 0.5);
+}
+
+ActionMenuPopup #Wrapper {
+    border-radius: 5px;
+    background: #252A31;
+}
+
+ActionMenuPopup ActionsView {
+    background: transparent;
+    border: none;
+    margin: 4px;
+}

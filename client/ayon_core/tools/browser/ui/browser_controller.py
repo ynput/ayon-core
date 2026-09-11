@@ -187,6 +187,7 @@ class BrowserWidgetController(QtCore.QObject):
         )
         self._selected_folder_ids: list[str] = []
         self._folder_parent_ids: dict[str, str | None] = {}
+        self._selected_task_ids: list[str] = []
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
         self._attributes_by_scope: dict[
@@ -385,6 +386,7 @@ class BrowserWidgetController(QtCore.QObject):
         self._review_sessions_loaded = False
         self._reset_pagination()
         self._selected_folder_ids = []
+        self._selected_task_ids = []
         self._folder_parent_ids = {}
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
@@ -414,6 +416,7 @@ class BrowserWidgetController(QtCore.QObject):
             return
         self._current_category = category
         self._selected_folder_ids = []
+        self._selected_task_ids = []
         self._review_session_version_ids = None
 
         if category == BrowserSlicerCategory.REVIEWS.value:
@@ -537,6 +540,9 @@ class BrowserWidgetController(QtCore.QObject):
 
         self._reset_pagination()
         self.selection_changed.emit(ids, names)
+
+    def set_selected_task_ids(self, task_ids: list[str]) -> None:
+        self._selected_task_ids = task_ids
 
     def set_tree_mode(self, enabled: bool) -> None:
         """Enable or disable tree mode for the version table.
@@ -1339,9 +1345,7 @@ class BrowserWidgetController(QtCore.QObject):
             project_name=self._current_project or None,
             category=self._current_category,
             selected_folder_ids=tuple(self._selected_folder_ids),
-            selected_task_ids=tuple(
-                self._loader_controller.get_selected_task_ids()
-            ),
+            selected_task_ids=tuple(self._selected_task_ids),
             enabled_column_keys=frozenset(
                 self._requested_column_keys or set()
             ),
