@@ -260,16 +260,30 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
+        self._styles_cache: dict[str, dict] | None = None
 
     def _tv_styles(self) -> dict[str, dict]:
-        """Return *base*, *hover* and *selected* style dicts at once."""
-        if self._style_model is None:
-            return {"base": {}, "hover": {}, "selected": {}}
-        return self._style_model.get_styles(
-            "QTreeView",
-            self._variant_str,
-            ["base", "hover", "selected"],
-        )
+        """Return *base*, *hover* and *selected* style dicts at once.
+
+        Resolved once and kept: every state lookup deep-copies the style
+        data, which is too costly to repeat for each painted row.  The
+        underlying style data is loaded once per process, so the cached
+        result never goes stale.
+        """
+        if self._styles_cache is None:
+            if self._style_model is None:
+                return {
+                    "base": {},
+                    "hover": {},
+                    "selected": {},
+                    "selected-hover": {},
+                }
+            self._styles_cache = self._style_model.get_styles(
+                "QTreeView",
+                self._variant_str,
+                ["base", "hover", "selected", "selected-hover"],
+            )
+        return self._styles_cache
 
     def initStyleOption(
         self,
@@ -305,11 +319,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._style_model:
-            style = self._style_model.get_style("QTreeView", self._variant_str)
-            h = int(style.get("item-height", 28))
-        else:
-            h = 28
+        h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
     def paint(
@@ -339,6 +349,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         base_style = styles["base"]
         hover_style = styles["hover"]
         selected_style = styles["selected"]
+        # Same rule as the table: a selected row that is hovered keeps
+        # its selected colour, brightened.
+        if is_selected and is_hovered:
+            selected_style = styles["selected-hover"]
 
         item_padding = base_style.get("item-padding", [4, 8])
         icon_text_spacing = int(base_style.get("icon-text-spacing", 6))

@@ -88,6 +88,8 @@ class ImageCache:
 
     _instance: ImageCache | None = None
     _lock: threading.Lock = threading.Lock()
+    _init_thread_id: int | None = None
+    _initialized_event: threading.Event = threading.Event()
 
     @classmethod
     def get_instance(
@@ -111,14 +113,63 @@ class ImageCache:
         Raises:
             ValueError: If max_size_in_MB is not positive.
         """
+        if cls._instance is not None:
+            return cls._instance
+        if max_size_in_MB <= 0:
+            raise ValueError("max_size_in_MB must be positive")
+
+        current_thread = threading.get_ident()
+        reentrant = False
+
         with cls._lock:
             if cls._instance is not None:
                 return cls._instance
-            if max_size_in_MB <= 0:
-                raise ValueError("max_size_in_MB must be positive")
-            instance = object.__new__(cls)
+            if cls._init_thread_id is None:
+                # We are the first caller; claim initialization.
+                cls._init_thread_id = current_thread
+                cls._initialized_event.clear()
+                instance = object.__new__(cls)
+            elif cls._init_thread_id == current_thread:
+                # Reentrant call from the thread that is already
+                # initializing (e.g. a logging call inside _initialize()
+                # pumps the Qt event loop, which recurses back into
+                # get_instance() on this same thread). We can't wait for
+                # ourselves without deadlocking, so build an independent,
+                # throwaway instance instead.
+                instance = object.__new__(cls)
+                reentrant = True
+            else:
+                # A different thread is already initializing; wait for
+                # it instead of racing to build a second instance.
+                instance = None
+
+        if instance is None:
+            cls._initialized_event.wait()
+            if cls._instance is not None:
+                return cls._instance
+            # The owning thread failed to initialize; retry so the
+            # error (or a fresh attempt) surfaces to this caller too.
+            return cls.get_instance(cache_path, max_size_in_MB)
+
+        try:
+            # Deliberately runs outside cls._lock: _initialize() logs, and
+            # some hosts (e.g. Silhouette) pump the Qt event loop
+            # synchronously from inside their stdout/stderr redirect's
+            # flush(), which a logging call can trigger. That reentrant
+            # pump can create more widgets that call back into
+            # get_instance() on this same thread; if _initialize() ran
+            # under the lock, that reentrant call would deadlock trying
+            # to re-acquire it.
             instance._initialize(cache_path, max_size_in_MB)
-            cls._instance = instance
+        finally:
+            if not reentrant:
+                with cls._lock:
+                    cls._init_thread_id = None
+                    cls._initialized_event.set()
+
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = instance
             return cls._instance
 
     # ------------------------------------------------------------------
@@ -547,32 +598,30 @@ class ImageCache:
 
     def set_path(self, key: str, file_path: str) -> Path:
         """Manually set a cache entry for a given key and file path."""
-        with self._access_lock:
-            source_path = Path(file_path)
-            if not source_path.exists():
-                raise ValueError(
-                    f"Provided file does not exist: {source_path}"
-                )
+        source_path = Path(file_path)
+        if not source_path.exists():
+            raise ValueError(
+                f"Provided file does not exist: {source_path}"
+            )
 
+        with self._get_key_lock(key):
             cache_filename = self._generate_cache_filename(key, source_path)
             cached_path = self.cache_path / cache_filename
 
-            try:
-                with open(source_path, "rb") as src:
-                    with open(cached_path, "wb") as dst:
-                        dst.write(src.read())
-            except IOError as e:
-                raise IOError(f"Failed to set cache file: {e}") from e
+            self._atomic_copy(source_path, cached_path)
 
+            conn = self._get_conn()
             file_size = cached_path.stat().st_size
-            self._metadata[key] = {
-                "file_path": str(cached_path),
-                "size_bytes": file_size,
-                "access_count": 0,
-                "last_accessed": time.time(),
-            }
-            self._evict_if_needed()
-            return cached_path
+            conn.execute(
+                "INSERT OR REPLACE INTO cache "
+                "(key, file_path, size_bytes, access_count, last_accessed) "
+                "VALUES (?, ?, ?, 0, ?)",
+                (key, str(cached_path), file_size, time.time()),
+            )
+            conn.commit()
+
+        self._evict_if_needed()
+        return cached_path
 
     def _generate_cache_filename(self, key: str, source_path: Path) -> str:
         """Build a cache filename from a SHA-256 hash of *key*.

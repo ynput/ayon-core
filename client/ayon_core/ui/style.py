@@ -317,9 +317,6 @@ class AYONStyle(QCommonStyle):
         """Calculate rectangles for sub-elements."""
         key = enum_to_str(QStyle.SubElement, element, self.widget_key(widget))
 
-        if isinstance(widget, QLabel):
-            log.debug("%s %s", type(widget).__name__, key)
-
         sizer = self.sizers.get(key)
         if sizer is None:
             # Fall back to parent implementation
@@ -344,9 +341,6 @@ class AYONStyle(QCommonStyle):
     ) -> QRect:
         key = enum_to_str(QStyle.ComplexControl, cc, self.widget_key(w))
 
-        if isinstance(w, QLabel):
-            log.debug("%s %s", type(w).__name__, key)
-
         sizer = self.sizers.get(key)
         if sizer is None:
             # Fall back to parent implementation
@@ -365,9 +359,6 @@ class AYONStyle(QCommonStyle):
     ) -> int:
         """Return pixel measurements for various style metrics."""
         key = enum_to_str(QStyle.PixelMetric, metric, self.widget_key(widget))
-
-        if isinstance(widget, QLabel):
-            log.debug("%s %s", type(widget), key)
 
         metric_func = self.metrics.get(key)
         if metric_func is None:
@@ -406,9 +397,6 @@ class AYONStyle(QCommonStyle):
         key = enum_to_str(
             QStyle.ContentsType, contents_type, self.widget_key(widget)
         )
-
-        if isinstance(widget, QLabel):
-            log.debug("%s", widget)
 
         sizer = self.sizers.get(key)
         if sizer is not None:

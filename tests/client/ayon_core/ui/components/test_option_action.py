@@ -11,7 +11,12 @@ with and without option boxes:
 
 from __future__ import annotations
 
-from ayon_core.ui.components import AYButton, AYMenu, AYOptionalAction
+from ayon_core.ui.components import (
+    AYButton,
+    AYMenu,
+    AYOptionalAction,
+    AYOptionalMenu,
+)
 from qtpy import QtCore, QtWidgets
 from utils.composite_widget import CompositeWidget
 from widget_test import WidgetTest
@@ -37,7 +42,7 @@ class OptionalMenuTest(WidgetTest):
         Returns:
             The root ``CompositeWidget`` for snapshot comparison.
         """
-        self._menu = AYMenu()
+        self._menu = AYOptionalMenu()
 
         self._action_with_option = AYOptionalAction(
             "Open File",
@@ -112,8 +117,8 @@ class OptionalMenuTest(WidgetTest):
         assert self._qbot is not None
         self._open_menu()
         QtWidgets.QApplication.processEvents()
-        self._qbot.mouseMove(self._menu.actions()[0].widget)
-        self._qbot.mouseMove(self._menu.actions()[0].widget.option)
+        widget = self._menu.actions()[0].widget
+        self._qbot.mouseMove(widget, widget._option_rect().center())
         QtWidgets.QApplication.processEvents()
 
     def cleanup(self, step_name: str) -> None:
@@ -129,3 +134,58 @@ class OptionalMenuTest(WidgetTest):
 
     def steps(self) -> list:
         return [self.show_menu, self.hover_action_body, self.hover_option_box]
+
+
+def test_optional_action_main_and_option_hit_regions(qtbot) -> None:
+    menu = AYOptionalMenu()
+    action = AYOptionalAction("Load", use_option=True, parent=menu)
+    menu.addAction(action)
+    qtbot.addWidget(menu)
+
+    triggered = []
+    optioned = []
+    action.triggered.connect(lambda: triggered.append(True))
+    action.option_clicked.connect(lambda: optioned.append(True))
+
+    menu.popup(QtCore.QPoint(100, 100))
+    qtbot.waitExposed(menu)
+    widget = action.widget
+    qtbot.mouseClick(
+        widget,
+        QtCore.Qt.MouseButton.LeftButton,
+        pos=QtCore.QPoint(4, widget.height() // 2),
+    )
+
+    menu.popup(QtCore.QPoint(100, 100))
+    qtbot.waitExposed(menu)
+    widget = action.widget
+    qtbot.mouseClick(
+        widget,
+        QtCore.Qt.MouseButton.LeftButton,
+        pos=widget._option_rect().center(),
+    )
+
+    assert triggered == [True]
+    assert optioned == [True]
+
+
+def test_optional_menu_updates_explicit_hover_state(qtbot) -> None:
+    menu = AYOptionalMenu()
+    action = AYOptionalAction("Load", use_option=True, parent=menu)
+    menu.addAction(action)
+    qtbot.addWidget(menu)
+
+    menu.popup(QtCore.QPoint(100, 100))
+    qtbot.waitExposed(menu)
+    menu.hovered.emit(action)
+
+    assert action.widget._hovered is True
+
+
+def test_optional_menu_inherits_application_style(qtbot, qapp) -> None:
+    menu = AYOptionalMenu()
+    qtbot.addWidget(menu)
+
+    assert menu.style() is qapp.style()
+    assert "paintEvent" not in AYOptionalMenu.__dict__
+    assert AYOptionalMenu.paintEvent is AYMenu.paintEvent

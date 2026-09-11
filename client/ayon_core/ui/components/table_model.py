@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from qtmaterialsymbols import get_icon
@@ -117,6 +117,27 @@ class BatchFetchRequest:
 
 
 @dataclass
+class FilterEntry:
+    """A filter available in a table filter menu.
+
+    Attributes:
+        label: Label relative to the entity scope.
+        entity: Entity level used to group the filter in the menu.
+        text_search: Whether values are entered as fuzzy text instead of
+            selected from a distinct-value list.
+    """
+    key: str
+    label: str
+    values: list[str] = field(default_factory=list)
+    icon: str | None = None
+    entity: str = "Other"
+    value_labels: dict[str, str] = field(default_factory=dict)
+    value_icons: dict[str, str] = field(default_factory=dict)
+    value_colors: dict[str, str] = field(default_factory=dict)
+    text_search: bool = False
+
+
+@dataclass
 class TableColumn:
     """Describes a single column in a PaginatedTableModel.
 
@@ -145,6 +166,8 @@ class TableColumn:
     icon: str | None = None
     tree_position: bool = False
     widget_factory: "Callable[[Any, Any], Any] | None" = None
+    delegate: Any = None
+    entity: str = "Other"
 
 
 class PaginatedTableModel(QAbstractItemModel):
@@ -260,6 +283,11 @@ class PaginatedTableModel(QAbstractItemModel):
         # _fetch_page_batch is set, consumed by _dispatch_batch).
         self._pending_batch_nodes: list[_TableNode] = []
         self._batch_scheduled: bool = False
+
+        # Column states received by apply_settings that do not match any
+        # column in the current data source.  Preserved so a subsequent
+        # capture_settings() can emit them losslessly.
+        self._unknown_column_states: list[Any] = []
 
         self._fetch_next_page(self._root)
 
@@ -437,6 +465,13 @@ class PaginatedTableModel(QAbstractItemModel):
         Args:
             parent: Parent index (invalid = root).
         """
+        self.fetch_more(parent)
+
+    def fetch_more(
+        self,
+        parent: QModelIndex | QPersistentModelIndex = QModelIndex(),
+    ) -> None:
+        """Explicitly fetch the next page for a view-approved parent."""
         self._fetch_next_page(self._node_from_index(parent))
 
     def data(
@@ -473,11 +508,28 @@ class PaginatedTableModel(QAbstractItemModel):
 
         if role == Qt.ItemDataRole.DecorationRole:
             icon_key = f"{col_key}__icon"
-            icon_name = row_dict.get(icon_key)
-            if icon_name:
-                icon_color = row_dict.get(f"{col_key}__color", "#ffffff")
+            icon_value = row_dict.get(icon_key)
+            if not icon_value:
+                return None
+            if isinstance(icon_value, str):
+                # ``__icon_color`` colors the icon alone; ``__color``
+                # colors icon and text together.
+                icon_color = (
+                    row_dict.get(f"{col_key}__icon_color")
+                    or row_dict.get(f"{col_key}__color")
+                    or "#ffffff"
+                )
                 icon_fill = row_dict.get(f"{col_key}__icon_fill", False)
-                return get_icon(icon_name, color=icon_color, fill=icon_fill)
+                return get_icon(icon_value, color=icon_color, fill=icon_fill)
+            if isinstance(icon_value, dict):
+                # Icon definition (e.g. an addon-supplied provider icon)
+                # rather than a material symbol name. Resolved to a QIcon
+                # here rather than by the row producer, since row
+                # enrichment may run on a background worker thread where
+                # building Qt icon objects is unsafe.
+                from ayon_core.tools.utils.lib import get_qt_icon
+
+                return get_qt_icon(icon_value, default=None)
             return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
@@ -487,10 +539,44 @@ class PaginatedTableModel(QAbstractItemModel):
                 return QBrush(QColor(color))
             return None
 
+        if role == Qt.ItemDataRole.ToolTipRole:
+            tooltip_key = f"{col_key}__tooltip"
+            return row_dict.get(tooltip_key) or None
+
         if role == Qt.ItemDataRole.UserRole:
             return row_dict
 
         return None
+
+    def replace_row(
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+        row_data: dict[str, Any],
+    ) -> bool:
+        """Replace one loaded row without resetting or refetching the model.
+
+        Args:
+            index: Source-model index identifying the row.
+            row_data: New complete row dictionary.
+
+        Returns:
+            ``True`` when the row was replaced, otherwise ``False``.
+        """
+        if not index.isValid():
+            return False
+        node: _TableNode | None = index.internalPointer()  # type: ignore[assignment]
+        if node is None or node.is_root or node not in self._all_nodes:
+            return False
+
+        node.row_data = row_data
+        left = self.index(index.row(), 0, self.parent(index))
+        right = self.index(
+            index.row(),
+            max(len(self._columns) - 1, 0),
+            self.parent(index),
+        )
+        self.dataChanged.emit(left, right, [])
+        return True
 
     def headerData(  # noqa: N802
         self,
@@ -536,7 +622,7 @@ class PaginatedTableModel(QAbstractItemModel):
 
     # Public interface --------------------------------------------------------
 
-    def set_tree_mode(self, enabled: bool) -> None:
+    def set_tree_mode(self, enabled: bool, reset_data: bool = True) -> None:
         """Switch between flat table mode and hierarchical tree mode.
 
         Emits ``tree_mode_changed`` and reloads from page 0.
@@ -548,7 +634,8 @@ class PaginatedTableModel(QAbstractItemModel):
             return
         self._tree_mode = enabled
         self.tree_mode_changed.emit(enabled)
-        self.reset_data()
+        if reset_data:
+            self.reset_data()
 
     def set_page(self, page: int) -> None:
         """Reset the model and begin fetching from the given page.
@@ -583,14 +670,19 @@ class PaginatedTableModel(QAbstractItemModel):
         self._page_size = size
         self.reset_data()
 
-    def set_columns(self, columns: list[TableColumn]) -> None:
+    def set_columns(
+        self,
+        columns: list[TableColumn],
+        reset_data: bool = True,
+    ) -> None:
         """Set the columns and reset the model from page 0.
 
         Args:
             columns: List of columns to display.
         """
         self._explicit_columns = columns
-        self.reset_data()
+        if reset_data:
+            self.reset_data()
 
     def reset_data(self) -> None:
         """Reset the model and re-fetch from page 0."""
@@ -610,6 +702,122 @@ class PaginatedTableModel(QAbstractItemModel):
         # connected to loading_changed observes a consistent model state.
         self._update_loading_state()
         self._fetch_next_page(self._root)
+
+    def apply_settings(self, settings: Any) -> None:
+        """Apply a :class:`ViewSettings` to this model.
+
+        Hides and resizes columns then sets the active sort. All changes
+        are batched into a single :meth:`reset_data` call so the model
+        only refetches page 0 once.  Column order is left unchanged
+        because the incoming settings already carry columns in the
+        correct display order.
+
+        Width semantics: a :attr:`ColumnState.width` of ``None`` leaves
+        the current column width untouched; an explicit integer
+        overrides :attr:`TableColumn.width`.  ``0`` is treated as *auto*
+        for compatibility with :class:`TableColumn`.
+
+        Unknown column keys are tracked internally so a subsequent
+        :meth:`capture_settings` can re-emit them losslessly even
+        though they do not exist in the current data source.
+
+        Args:
+            settings: A :class:`ViewSettings` instance.  Imported lazily
+                to avoid a circular import between ``views`` and
+                ``table_model``.
+        """
+        from .views.data_models import ColumnState, ViewSettings
+
+        if not isinstance(settings, ViewSettings):
+            raise TypeError(
+                f"apply_settings expected ViewSettings, got "
+                f"{type(settings).__name__}"
+            )
+
+        # Clone every column so different views sharing the same
+        # TableColumn catalog cannot leak widths into one another.
+        import dataclasses as _dc
+
+        catalog: list[TableColumn] = list(self._explicit_columns or [])
+        cloned_catalog: list[TableColumn] = [_dc.replace(c) for c in catalog]
+        by_key: dict[str, TableColumn] = {
+            c.key: c for c in cloned_catalog
+        }
+
+        # Apply width overrides; collect states for unknown keys so a
+        # subsequent capture_settings round-trips them losslessly.
+        unknown_states: list[ColumnState] = []
+        for state in settings.columns:
+            col = by_key.get(state.name)
+            if col is None:
+                unknown_states.append(state)
+                continue
+            if state.width is not None:
+                # 0 means auto (matches TableColumn semantics); any other
+                # value overrides the column's default width.
+                col.width = max(0, int(state.width))
+
+        # Match the sort column by key against the (unchanged) column order.
+        sort_column = -1
+        if settings.sort_by:
+            for i, col in enumerate(cloned_catalog):
+                if col.key == settings.sort_by:
+                    sort_column = i
+                    break
+
+        sort_order = (
+            Qt.SortOrder.DescendingOrder
+            if settings.sort_desc
+            else Qt.SortOrder.AscendingOrder
+        )
+
+        self._explicit_columns = cloned_catalog
+        self._sort_column = sort_column
+        self._sort_order = sort_order
+        self._tree_position = -1  # force recomputation on next read
+        self._unknown_column_states = list(unknown_states)
+
+        self.reset_data()
+
+    def capture_settings(self) -> Any:
+        """Capture the current model state as a :class:`ViewSettings`.
+
+        The returned settings contain the column order/widths and sort
+        configuration only — visibility, pinning, filter and grouping
+        are owned by the view widgets and are filled in by
+        :class:`ViewBindings` (Phase 2).
+
+        Any unknown column states preserved by the most recent
+        :meth:`apply_settings` call are appended verbatim so a
+        roundtrip stays lossless.
+
+        Returns:
+            A new :class:`ViewSettings` instance.
+        """
+        from .views.data_models import ColumnState, ViewSettings
+
+        cols: list[ColumnState] = [
+            ColumnState(
+                name=c.key,
+                visible=True,
+                width=c.width if c.width > 0 else None,
+            )
+            for c in self._columns
+        ]
+        # Re-emit unknown column states that were preserved on apply so
+        # roundtripping through a model that doesn't recognise them
+        # still produces the original payload.
+        cols.extend(getattr(self, "_unknown_column_states", []))
+
+        sort_by: str | None = None
+        if 0 <= self._sort_column < len(self._columns):
+            sort_by = self._columns[self._sort_column].key
+
+        return ViewSettings(
+            columns=cols,
+            sort_by=sort_by,
+            sort_desc=(self._sort_order == Qt.SortOrder.DescendingOrder),
+        )
 
     def get_distinct_values(self, key: str) -> list[str]:
         """Return sorted distinct non-empty string values for a column.
@@ -1001,7 +1209,9 @@ class PaginatedTableModel(QAbstractItemModel):
         """Infer column definitions from a sample row dictionary.
 
         Reserved keys (``id``, ``has_children``) and decorator suffixes
-        (``__icon``, ``__color``, ``__fill``) are excluded.
+        (``__icon``, ``__icon_color``, ``__icon_fill``, ``__color``,
+        ``__fill``, ``__short``, ``__tooltip``, ``__chips``) are
+        excluded.
 
         Args:
             row: A representative row dictionary.
@@ -1013,7 +1223,18 @@ class PaginatedTableModel(QAbstractItemModel):
         for key in row:
             if key in ("id", "has_children"):
                 continue
-            if key.endswith(("__icon", "__color", "__fill")):
+            if key.endswith(
+                (
+                    "__icon",
+                    "__icon_color",
+                    "__icon_fill",
+                    "__color",
+                    "__fill",
+                    "__short",
+                    "__tooltip",
+                    "__chips",
+                )
+            ):
                 continue
             label = key.replace("_", " ").title()
             columns.append(TableColumn(key=key, label=label))
