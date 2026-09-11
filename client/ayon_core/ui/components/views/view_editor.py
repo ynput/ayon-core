@@ -407,6 +407,7 @@ class AYViewEditor(QDialog):
         """Populate access control rows from _access_dict."""
         # Clear existing rows
         for widget in self._access_row_widgets.values():
+            widget.setVisible(False)
             widget.deleteLater()
         self._access_row_widgets.clear()
 
@@ -476,9 +477,9 @@ class AYViewEditor(QDialog):
 
             # Find the full name from usernames_and_groups
             user_full_name = user_name
-            for user in self.usernames_and_groups.get("users", []):
-                if user.get("name") == user_name:
-                    user_full_name = user.get("fullName", "") or user_name
+            for user in self.usernames_and_groups["users"]:
+                if user["name"] == user_name:
+                    user_full_name = user["fullName"] or user_name
                     break
 
             # Create container with avatar and text

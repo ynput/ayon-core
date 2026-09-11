@@ -225,9 +225,7 @@ class DefaultViewControl:
 
     def build_row(self) -> AYContainer:
         """Build and return the full Studio + Project default-view row."""
-        self.studio_default_view, self.project_default_view = (
-            self._fetch_default_views()
-        )
+        self._fetch_default_views()
 
         row = AYContainer(
             layout=AYContainer.Layout.HBox,
@@ -275,6 +273,7 @@ class DefaultViewControl:
             item = layout.takeAt(0)
             widget = item.widget() if item is not None else None
             if widget is not None:
+                widget.setVisible(False)
                 widget.deleteLater()
 
     def _build_pill(

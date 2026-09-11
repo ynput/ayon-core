@@ -205,10 +205,11 @@ class AYViewSelector(AYButtonMenu):
             dropdown_variant=AYContainer.Variants.Popover,
             dropdown_margin=6,
             tooltip="Views",
+            width=32,
+            height=32,
             parent=parent,
         )
         self.setObjectName("AYViewSelector")
-        self.setFixedSize(32, 32)
 
         # Applying a view, or a single user gesture, moves several widgets
         # at once. Coalesce the resulting saves into one round trip.
@@ -508,10 +509,10 @@ class AYViewSelector(AYButtonMenu):
 
     def _make_row(self, view: View) -> AYContainer:
         """Build one selectable row for *view*."""
-        not_modified = (
-                self._current_view
-                and view.id == self._current_view.id
-                and not self._view_modified
+        modified = not (
+            self._current_view
+            and view.id == self._current_view.id
+            and not self._view_modified
         )
 
         row = AYClickableRow(
@@ -523,13 +524,13 @@ class AYViewSelector(AYButtonMenu):
             on_click=lambda v=view: self._on_view_selected(v),
         )
         self._style_row(row)
-        row.set_selected(bool(not_modified))
+        row.set_selected(not modified)
 
         row.add_widget(self._make_view_label(view), stretch=1)
         hover_watched = []
 
         if view.can_edit(self._current_user, self._user_access):
-            if not not_modified:
+            if modified:
                 save_btn = self._make_save_btn(view, row)
                 row.add_widget(save_btn)
                 hover_watched.append(save_btn)
@@ -606,13 +607,13 @@ class AYViewSelector(AYButtonMenu):
         self._views = []
         self._views_loaded = False
 
-        working = self._ensure_working_view_exists()
+        working_view = self._ensure_working_view_exists()
         if (
-            working is not None
+            working_view is not None
             and self._current_view is None
             and not self._suppress_auto_apply
         ):
-            self._apply_view(working, emit=True)
+            self._apply_view(working_view, emit=True)
             return
 
     def _ensure_views_listed(self) -> None:
@@ -732,11 +733,11 @@ class AYViewSelector(AYButtonMenu):
     def _on_edit_clicked(self, view: View) -> None:
         """Open the editor for an existing view."""
         self._close_menu()
-        editable = View.from_payload(view.to_payload())
-        self._capture_into(editable)
+        view_copy = View.from_payload(view.to_payload())
+        self._capture_into(view_copy)
         usernames_and_groups = self._get_usernames_and_groups()
         editor = AYViewEditor(
-            editable,
+            view_copy,
             current_user=self._current_user,
             allow_studio_scope=self._allow_studio_scope,
             current_project=self._current_project_name(),

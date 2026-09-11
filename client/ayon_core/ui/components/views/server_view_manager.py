@@ -388,7 +388,12 @@ class ServerViewManager(ViewManager):
         self.views_changed.emit(saved.view_type)
         return saved
 
-    def patch_view_access(self, view_id: str, access_data: dict[str, Any], should_share_access) -> None:
+    def patch_view_access(
+        self,
+        view_id: str,
+        access_data: dict[str, Any],
+        should_share_access: bool,
+    ) -> None:
         """Patch per-view access data via the share endpoint.
 
         Args:
@@ -417,7 +422,11 @@ class ServerViewManager(ViewManager):
         if not powerpack_version:
             self.error.emit("Could not resolve powerpack addon version")
             return
-        visibility = Visibility.PUBLIC.value if should_share_access else Visibility.PRIVATE.value
+        visibility = (
+            Visibility.PUBLIC.value
+            if should_share_access
+            else Visibility.PRIVATE.value
+        )
         try:
             con = ayon_api.get_server_api_connection()
             con.raw_post(
@@ -467,13 +476,8 @@ class ServerViewManager(ViewManager):
         is_studio = view_scope == Scope.STUDIO
 
         try:
-            if is_studio:
-                ayon_api.delete(f"views/{view_type}/{view_id}")
-            else:
-                ayon_api.delete(
-                    f"views/{view_type}/{view_id}",
-                    project_name=self._project_name,
-                )
+            body = {} if is_studio else {"project_name": self._project_name}
+            ayon_api.delete(f"views/{view_type}/{view_id}", **body)
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to delete view %s", view_id)
             self.error.emit(f"Failed to delete view: {exc}")

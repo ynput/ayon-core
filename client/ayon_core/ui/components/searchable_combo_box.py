@@ -166,6 +166,7 @@ class _SearchableDropdown(AYDropdownPopup):
             item = self._list_layout.takeAt(0)
             w = item.widget()
             if w:
+                w.setVisible(False)
                 w.deleteLater()
         self.all_items.clear()
 
@@ -192,10 +193,10 @@ class _SearchableDropdown(AYDropdownPopup):
         Args:
             text: Search string typed into the line edit.
         """
-        needle = text.lower()
+        text_filter = text.lower()
         for key, label, row in self.all_items:
-            visible = not needle or (
-                needle in key.lower() or needle in label.lower()
+            visible = not text_filter or (
+                text_filter in key.lower() or text_filter in label.lower()
             )
             row.setVisible(visible)
         self._update_height()
