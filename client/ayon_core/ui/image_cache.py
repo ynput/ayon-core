@@ -88,6 +88,8 @@ class ImageCache:
 
     _instance: ImageCache | None = None
     _lock: threading.Lock = threading.Lock()
+    _init_thread_id: int | None = None
+    _initialized_event: threading.Event = threading.Event()
 
     @classmethod
     def get_instance(
@@ -116,21 +118,54 @@ class ImageCache:
         if max_size_in_MB <= 0:
             raise ValueError("max_size_in_MB must be positive")
 
+        current_thread = threading.get_ident()
+        reentrant = False
+
         with cls._lock:
-            # A concurrent (possibly reentrant, same-thread) call may have
-            # published an instance while we were waiting for the lock.
             if cls._instance is not None:
                 return cls._instance
-            instance = object.__new__(cls)
+            if cls._init_thread_id is None:
+                # We are the first caller; claim initialization.
+                cls._init_thread_id = current_thread
+                cls._initialized_event.clear()
+                instance = object.__new__(cls)
+            elif cls._init_thread_id == current_thread:
+                # Reentrant call from the thread that is already
+                # initializing (e.g. a logging call inside _initialize()
+                # pumps the Qt event loop, which recurses back into
+                # get_instance() on this same thread). We can't wait for
+                # ourselves without deadlocking, so build an independent,
+                # throwaway instance instead.
+                instance = object.__new__(cls)
+                reentrant = True
+            else:
+                # A different thread is already initializing; wait for
+                # it instead of racing to build a second instance.
+                instance = None
 
-        # Deliberately runs outside cls._lock: _initialize() logs, and
-        # some hosts (e.g. Silhouette) pump the Qt event loop
-        # synchronously from inside their stdout/stderr redirect's
-        # flush(), which a logging call can trigger. That reentrant pump
-        # can create more widgets that call back into get_instance() on
-        # this same thread; if _initialize() ran under the lock, that
-        # reentrant call would deadlock trying to re-acquire it.
-        instance._initialize(cache_path, max_size_in_MB)
+        if instance is None:
+            cls._initialized_event.wait()
+            if cls._instance is not None:
+                return cls._instance
+            # The owning thread failed to initialize; retry so the
+            # error (or a fresh attempt) surfaces to this caller too.
+            return cls.get_instance(cache_path, max_size_in_MB)
+
+        try:
+            # Deliberately runs outside cls._lock: _initialize() logs, and
+            # some hosts (e.g. Silhouette) pump the Qt event loop
+            # synchronously from inside their stdout/stderr redirect's
+            # flush(), which a logging call can trigger. That reentrant
+            # pump can create more widgets that call back into
+            # get_instance() on this same thread; if _initialize() ran
+            # under the lock, that reentrant call would deadlock trying
+            # to re-acquire it.
+            instance._initialize(cache_path, max_size_in_MB)
+        finally:
+            if not reentrant:
+                with cls._lock:
+                    cls._init_thread_id = None
+                    cls._initialized_event.set()
 
         with cls._lock:
             if cls._instance is None:
