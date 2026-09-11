@@ -18,6 +18,7 @@ import socket
 import sys
 import time
 import threading
+from collections.abc import Callable
 from typing import Any
 import warnings
 
@@ -32,7 +33,7 @@ from .local_settings import get_launcher_local_dir
 try:
     import structlog
 except ImportError:
-    structlog: Any = None
+    structlog: Any = None  # type: ignore[no-redef]
 
 
 def bind_contextvars(**kwargs):
@@ -484,7 +485,7 @@ class Logger:
             event_dict.pop("site_id", None)
             return event_dict
 
-        shared_processors = [
+        shared_processors: list[Callable] = [
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.stdlib.add_logger_name,
