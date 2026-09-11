@@ -1,7 +1,6 @@
 """Collect AYON addons."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
 
 import pyblish.api
@@ -16,12 +15,23 @@ from ayon_core.lib.ayon_info import (
 from ayon_core.addon import AddonsManager, get_bundle_information
 
 
-@dataclass
 class AddonInfo:
     name: str
     version: str | None
     server_version: str | None
     label: str | None = None
+
+    def __init__(
+        self,
+        name: str,
+        version: str | None    ,
+        server_version: str | None,
+        label: str | None = None,
+    ):
+        self.name = name
+        self.version = version
+        self.server_version = server_version
+        self.label = label
 
     def get_row(
         self, name_width: int, version_width: int, server_version_width: int
