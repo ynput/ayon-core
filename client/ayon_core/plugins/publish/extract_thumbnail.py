@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import copy
-from dataclasses import dataclass, field, fields
 import os
 import subprocess
 import tempfile
-from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
+from typing import Dict, Any, Tuple, Optional, TYPE_CHECKING
 
 import pyblish.api
 from ayon_core.lib import (
@@ -33,41 +34,47 @@ if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
 
-@dataclass
 class ThumbnailDef:
     """
     Data class representing the full configuration for selected profile
 
     Any change of controllable fields in Settings must propagate here!
     """
-    integrate_thumbnail: bool = False
+    def __init__(
+        self,
+        integrate_thumbnail: bool = False,
+        target_size: dict[str, Any] | None = None,
+        duration_split: float = 0.5,
+        oiiotool_defaults: dict[str, str] | None = None,
+        ffmpeg_args: dict[str, list[Any]] | None = None,
+        background_color: tuple[int, int, int, float] = (0, 0, 0, 0.0)
+    ) -> None:
+        if target_size is None:
+            target_size = {
+                "type": "source",
+                "resize": {"width": 1920, "height": 1080},
+            }
 
-    target_size: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "type": "source",
-            "resize": {"width": 1920, "height": 1080},
-        }
-    )
+        if oiiotool_defaults is None:
+            oiiotool_defaults = {
+                "type": "colorspace",
+                "colorspace": "color_picking"
+            }
 
-    duration_split: float = 0.5
+        if ffmpeg_args is None:
+            ffmpeg_args = {"input": [], "output": []}
 
-    oiiotool_defaults: Dict[str, str] = field(
-        default_factory=lambda: {
-            "type": "colorspace",
-            "colorspace": "color_picking"
-        }
-    )
-
-    ffmpeg_args: Dict[str, List[Any]] = field(
-        default_factory=lambda: {"input": [], "output": []}
-    )
-
-    # Background color defined as (R, G, B, A) tuple.
-    # Note: Use float for alpha channel (0.0 to 1.0).
-    background_color: Tuple[int, int, int, float] = (0, 0, 0, 0.0)
+        self.integrate_thumbnail: bool = integrate_thumbnail
+        self.target_size: dict[str, Any] = target_size
+        self.duration_split: float = duration_split
+        self.oiiotool_defaults: dict[str, str] = oiiotool_defaults
+        self.ffmpeg_args: dict[str, list[Any]] = ffmpeg_args
+        # Background color defined as (R, G, B, A) tuple.
+        # Note: Use float for alpha channel (0.0 to 1.0).
+        self.background_color: Tuple[int, int, int, float] = background_color
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ThumbnailDef":
+    def from_dict(cls, data: dict[str, Any]) -> ThumbnailDef:
         """
         Creates a ThumbnailDef instance from a dictionary, safely ignoring
         any keys in the dictionary that are not fields in the dataclass.
@@ -79,7 +86,14 @@ class ThumbnailDef:
             MediaConfig: A new instance of the dataclass.
         """
         # Get all field names defined in the dataclass
-        field_names = {f.name for f in fields(cls)}
+        field_names = {
+            "integrate_thumbnail",
+            "target_size",
+            "duration_split",
+            "oiiotool_defaults",
+            "ffmpeg_args",
+            "background_color",
+        }
 
         # Filter the input dictionary to include only keys matching field names
         filtered_data = {k: v for k, v in data.items() if k in field_names}
