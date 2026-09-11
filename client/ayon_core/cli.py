@@ -22,6 +22,7 @@ from ayon_core.lib.env_tools import (
     merge_env_variables,
 )
 
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.option(
