@@ -383,7 +383,7 @@ class BrowserSlicer(AYContainer):
         back in step, since those describe the current context.
         """
         self._tasks.set_selected_task_names(self._task_names)
-        self._loader_controller.set_selected_tasks(
+        self._controller.set_selected_task_ids(
             self._tasks.selected_task_ids()
         )
 
@@ -393,7 +393,7 @@ class BrowserSlicer(AYContainer):
         task_ids: list[str],
     ) -> None:
         """Update loader selection IDs and the name-based table filter."""
-        self._loader_controller.set_selected_tasks(set(task_ids))
+        self._controller.set_selected_task_ids(task_ids)
         self.task_names_changed.emit(names)
 
     def current_category(self) -> str:

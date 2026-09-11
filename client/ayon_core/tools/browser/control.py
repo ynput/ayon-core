@@ -8,11 +8,9 @@ from typing import Optional, Any
 import ayon_api
 
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import get_current_host_name
 from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
-    filter_profiles,
 )
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
@@ -32,7 +30,6 @@ from .abstract import (
     ActionItem,
 )
 from .models import (
-    SelectionModel,
     ProductsModel,
     LoaderActionsModel,
     SiteSyncModel
@@ -68,7 +65,6 @@ class BrowserController(AbstractBrowserController):
             default_factory=set, lifetime=60)
         self._addons_manager = AddonsManager()
 
-        self._selection_model = SelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._products_model = ProductsModel(self)
@@ -302,37 +298,9 @@ class BrowserController(AbstractBrowserController):
             form_values=form_values,
         )
 
-    # Selection model wrappers
-    def get_selected_project_name(self):
-        return self._selection_model.get_selected_project_name()
-
     def set_selected_project(self, project_name):
-        self._selection_model.set_selected_project(project_name)
-
-    # Selection model wrappers
-    def get_selected_folder_ids(self):
-        return self._selection_model.get_selected_folder_ids()
-
-    def set_selected_folders(self, folder_ids):
-        self._selection_model.set_selected_folders(folder_ids)
-
-    def get_selected_task_ids(self):
-        return self._selection_model.get_selected_task_ids()
-
-    def set_selected_tasks(self, task_ids):
-        self._selection_model.set_selected_tasks(task_ids)
-
-    def get_selected_version_ids(self):
-        return self._selection_model.get_selected_version_ids()
-
-    def set_selected_versions(self, version_ids):
-        self._selection_model.set_selected_versions(version_ids)
-
-    def get_selected_representation_ids(self):
-        return self._selection_model.get_selected_representation_ids()
-
-    def set_selected_representations(self, repre_ids):
-        self._selection_model.set_selected_representations(repre_ids)
+        # ProjectsCombobox does require this method
+        pass
 
     def get_current_context(self):
         if self._host is None:
