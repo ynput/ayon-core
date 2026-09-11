@@ -647,7 +647,7 @@ if __name__ == "__main__":
         current_user="Donald",
         current_project="Make_Projects_Great_Again",
     )
-    if dialog.exec_():
+    if dialog.exec():
         if dialog.delete_requested():
             print(">> View deletion requested")
         elif dialog.mode() == AYViewEditor.Mode.CREATE:
