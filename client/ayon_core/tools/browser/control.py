@@ -28,8 +28,7 @@ from ayon_core.tools.common_models import (
 )
 
 from .abstract import (
-    BackendLoaderController,
-    FrontendLoaderController,
+    AbstractBrowserController,
     ActionItem,
 )
 from .models import (
@@ -111,7 +110,7 @@ class ExpectedSelection:
         return True
 
 
-class BrowserController(BackendLoaderController, FrontendLoaderController):
+class BrowserController(AbstractBrowserController):
     """
 
     Args:

@@ -347,7 +347,7 @@ class ActionItem:
         return cls(**data)
 
 
-class _BaseLoaderController(ABC):
+class AbstractBrowserController(ABC):
     """Base loader controller abstraction.
 
     Abstract base class that is required for both frontend and backed.
@@ -421,13 +421,6 @@ class _BaseLoaderController(ABC):
 
         pass
 
-
-class BackendLoaderController(_BaseLoaderController):
-    """Backend loader controller abstraction.
-
-    What backend logic requires from a controller for proper logic.
-    """
-
     @abstractmethod
     def emit_event(self, topic, data=None, source=None):
         """Emit event with a certain topic, data and source.
@@ -468,8 +461,6 @@ class BackendLoaderController(_BaseLoaderController):
         """
         pass
 
-
-class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
     def get_window_subtitle(self) -> Optional[str]:
         """Get window subtitle.
