@@ -30,7 +30,6 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     BackendLoaderController,
     FrontendLoaderController,
-    ProductTypesFilter,
     ActionItem,
 )
 from .models import (
