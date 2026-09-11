@@ -101,7 +101,7 @@ class LogFormatter(logging.Formatter):
 
     def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
         return (
-            datetime.fromtimestamp(record.created)
+            datetime.datetime.fromtimestamp(record.created)
             .astimezone(datetime.timezone.utc)
             .isoformat(timespec="milliseconds")
         )
