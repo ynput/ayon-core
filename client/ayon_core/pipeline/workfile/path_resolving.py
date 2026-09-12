@@ -23,6 +23,14 @@ if typing.TYPE_CHECKING:
     from ayon_core.pipeline.anatomy import AnatomyTemplateResult
 
 
+@dataclass
+class LastWorkfileInfo:
+    filepath: str
+    rootless_path: str
+    version: int
+    exists: bool
+
+
 def get_workfile_template_key_from_context(
     project_name: str,
     folder_path: str,
@@ -613,6 +621,133 @@ def get_last_workfile(
     if full_path:
         return os.path.normpath(filepath)
     return os.path.basename(filepath)
+
+
+def get_last_workfile_info(
+    project_name: str,
+    folder_path: str,
+    task_name: str,
+    host_name: str,
+    extensions: set[str],
+    *,
+    project_entity: dict[str, Any] | None = None,
+    folder_entity: dict[str, Any] | None = None,
+    task_entity: dict[str, Any] | None = None,
+    project_settings: dict[str, Any] | None = None,
+    anatomy: Anatomy | None = None,
+    template_key: str | None = None,
+    template_data: dict[str, Any] | None = None,
+    workdir: AnatomyTemplateResult | None = None,
+) -> LastWorkfileInfo:
+    """Return last the workfile information.
+
+    Returns first filepath if there are not workfiles yet.
+
+    Args:
+        project_name (str): Project name.
+        folder_path (str): Folder path.
+        task_name (str): Task name.
+        host_name (str): Host name for which workfiles are meant.
+        extensions: (set[str]): File extension workfile can have.
+
+        project_entity (dict[str, Any] | None): Prepared project entity.
+        folder_entity (dict[str, Any] | None): Prepared folder entity.
+        task_entity (dict[str, Any] | None): Prepared task entity.
+        project_settings (dict[str, Any] | None): Project settings.
+        anatomy (Anatomy | None): Project anatomy.
+        template_key (str | None): Template key used to get file template.
+        template_data (dict[str, Any] | None): Base template data for workfile
+            calculation.
+        workdir (AnatomyTemplateResult | None): Prepared workdir.
+
+    Returns:
+        LastWorkfileInfo: Information about last workfile.
+
+    """
+    if project_entity is None:
+        project_entity = ayon_api.get_project_entity(project_name)
+
+    if folder_entity is None:
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+
+    if task_entity is None:
+        task_entity = ayon_api.get_task_by_name(
+            project_name,
+            folder_id=folder_entity["id"],
+            task_name=task_name,
+        )
+
+    if anatomy is None:
+        anatomy = Anatomy(project_name, project_entity=project_entity)
+
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+
+    if template_data is None:
+        template_data = get_template_data(
+            project_entity,
+            folder_entity,
+            task_entity,
+            host_name,
+            settings=project_settings,
+        )
+
+    if template_key is None:
+        template_key = get_workfile_template_key(
+            project_name,
+            task_entity["taskType"],
+            host_name,
+            project_settings=project_settings,
+        )
+
+    if workdir is None:
+        workdir = get_workdir_with_workdir_data(
+            template_data,
+            project_name,
+            anatomy=anatomy,
+            template_key=template_key,
+            project_settings=project_settings,
+        )
+
+    file_template = anatomy.get_template_item(
+        "work", template_key, "file"
+    )
+
+    rootless_workdir = workdir.rootless
+    if platform.system().lower() == "windows":
+        rootless_workdir = rootless_workdir.replace("\\", "/")
+
+    filepaths, dotted_extensions = _filter_dir_files_by_ext(
+        workdir, extensions
+    )
+    filepath, version = get_last_workfile_with_version_from_paths(
+        filepaths, file_template, template_data, extensions
+    )
+    if filepath is None:
+        data = copy.deepcopy(template_data)
+        version = version_start.get_versioning_start(
+            project_name,
+            host_name,
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
+            product_base_type="workfile",
+        )
+        data["version"] = version
+        data.pop("comment", None)
+        if data.get("ext") is None:
+            data["ext"] = next(iter(extensions), "")
+        data["ext"] = data["ext"].lstrip(".")
+        filename = StringTemplate.format_strict_template(file_template, data)
+        filepath = os.path.join(workdir, filename)
+    filename = os.path.basename(filepath)
+    rootless_path = f"{rootless_workdir}/{filename}"
+
+    return LastWorkfileInfo(
+        filepath=os.path.normpath(filepath),
+        rootless_path=rootless_path,
+        version=version,
+        exists=os.path.exists(filepath),
+    )
 
 
 def get_custom_workfile_template(
