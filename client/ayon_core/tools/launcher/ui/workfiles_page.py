@@ -18,7 +18,7 @@ from ayon_core.tools.utils.delegates import (
     file_size_to_string,
 )
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
-from ayon_core.ui.components import AYContainer, AYTreeView
+from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
@@ -426,11 +426,7 @@ class WorkfilesPage(AYContainer):
         if action_title is None:
             return
 
-        # TODO: using AYMenu breaking the tool need to figure out the issue
-        # menu = AYMenu(self._workfiles_view)
-        # Found that in AYMenu Forcing the menu to use AYONStyle for drawing
-        # it causing the application collapse
-        menu = QtWidgets.QMenu(self._workfiles_view)
+        menu = AYMenu(self._workfiles_view)
         menu.addAction(action_title)
 
         global_pos = self._workfiles_view.viewport().mapToGlobal(point)
