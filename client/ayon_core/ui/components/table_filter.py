@@ -36,7 +36,14 @@ from .frame import AYFrame, HoverReveal, RowHoverTracker
 from .label import AYLabel
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
-from .table_model import FilterEntry, PaginatedTableModel, TableColumn
+from .table_model import (
+    EMPTY_VALUE_OPTIONS,
+    HAS_VALUE,
+    NO_VALUE,
+    FilterEntry,
+    PaginatedTableModel,
+    TableColumn,
+)
 
 ENTITY_ICONS = {
     "Folder": "folder",
@@ -120,7 +127,12 @@ def criterion_text(criterion: "FilterCriterion") -> str:
     Returns:
         Text of the form ``"Label: value or other"``.
     """
-    values_text = " or ".join(criterion.values) if criterion.values else "…"
+    names = {NO_VALUE: "No value", HAS_VALUE: "Has value"}
+    values_text = (
+        " or ".join(names.get(value, value) for value in criterion.values)
+        if criterion.values
+        else "…"
+    )
     return f"{criterion.attribute_label}: {values_text}"
 
 
@@ -242,9 +254,15 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             else:
                 continue
             cell_str = "" if cell_value is None else str(cell_value).lower()
+            is_empty = cell_str in ("", "[]")
 
             matched = False
             for val in criterion.values:
+                if val in EMPTY_VALUE_OPTIONS:
+                    if is_empty == (val == NO_VALUE):
+                        matched = True
+                        break
+                    continue
                 val_lower = val.lower()
                 if criterion.use_substring:
                     if val_lower in cell_str:
@@ -367,6 +385,10 @@ class _FilterDropdown(AYDropdownPopup):
         self._value_back_btn: AYButton | None = None
         self._attr_selection_index = -1
         self._applying = False
+        # Whether the checked value was picked for the user rather than by
+        # them, so dismissing the popup does not apply a filter they never
+        # chose.
+        self._preselected = False
 
         self.setMinimumWidth(220)
 
@@ -782,7 +804,7 @@ class _FilterDropdown(AYDropdownPopup):
         self._attr_layout.addStretch()
 
     def _on_attr_selected(self, key: str, label: str) -> None:
-        self._populate_value_page(key, label, [])
+        self._populate_value_page(key, label, [], preselect=True)
         self._stack.setCurrentIndex(1)
         self._adjust_height()
         self._attr_search.setFocus()
@@ -836,6 +858,7 @@ class _FilterDropdown(AYDropdownPopup):
         key: str,
         label: str,
         selected_values: list[str],
+        preselect: bool = False,
     ) -> None:
         """Rebuild the value content area for the given column.
 
@@ -843,10 +866,13 @@ class _FilterDropdown(AYDropdownPopup):
             key: Column key.
             label: Column label shown in header.
             selected_values: Values currently selected (for edit mode).
+            preselect: Check the first value of a single-select filter
+                when nothing is selected, so it only needs confirming.
         """
         self._current_key = key
         self._current_label = label
         self._value_buttons = {}
+        self._preselected = False
         self._attr_search.blockSignals(True)
         self._attr_search.clear()
         self._attr_search.setPlaceholderText("Search")
@@ -887,13 +913,27 @@ class _FilterDropdown(AYDropdownPopup):
                 selected_values,
             ):
                 for value in source:
-                    if value not in distinct:
+                    if value not in distinct and value not in (
+                        EMPTY_VALUE_OPTIONS
+                    ):
                         distinct.append(value)
         if key == "task" and "No task" not in distinct:
             distinct.append("No task")
 
-        if distinct:
-            self._is_free_text = False
+        # Like the web frontend: "No {label}" and "Has {label}" lead the
+        # list, and exist for text filters too, next to the typed text.
+        empty_labels: dict[str, str] = {}
+        empty_icons: dict[str, str] = {}
+        if entry is not None and entry.allow_empty:
+            empty_labels = {
+                NO_VALUE: f"No {entry.label}",
+                HAS_VALUE: f"Has {entry.label}",
+            }
+            empty_icons = {NO_VALUE: "unpublished", HAS_VALUE: "check"}
+        self._is_free_text = is_text_search or not distinct
+        options = [*empty_labels, *distinct]
+
+        if options:
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setHorizontalScrollBarPolicy(
@@ -907,11 +947,14 @@ class _FilterDropdown(AYDropdownPopup):
             inner = AYFrame(variant=AYFrame.Variants.Low)
             inner_layout = AYVBoxLayout(inner, margin=0, spacing=0)
 
-            for val in distinct:
+            for val in options:
                 value_label = val
                 value_icon = None
                 value_color = None
-                if entry is not None:
+                if val in empty_labels:
+                    value_label = empty_labels[val]
+                    value_icon = empty_icons[val]
+                elif entry is not None:
                     value_label = entry.value_labels.get(val, val)
                     value_icon = entry.value_icons.get(val)
                     value_color = entry.value_colors.get(val)
@@ -934,6 +977,9 @@ class _FilterDropdown(AYDropdownPopup):
                     QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
                 )
                 btn.setChecked(val in selected_values)
+                btn.clicked.connect(
+                    lambda _checked=False, v=val: self._on_value_clicked(v)
+                )
                 self._value_buttons[val] = btn
                 btn.installEventFilter(self)
                 inner_layout.addWidget(btn)
@@ -942,16 +988,62 @@ class _FilterDropdown(AYDropdownPopup):
             scroll.setWidget(inner)
             self._value_content_layout.addWidget(scroll)
             self._value_scroll = scroll
+
+            if (
+                preselect
+                and entry is not None
+                and entry.single_select
+                and distinct
+                and not selected_values
+            ):
+                self._value_buttons[distinct[0]].setChecked(True)
+                self._preselected = True
         else:
-            self._is_free_text = True
             self._value_scroll = None
-            # Only a text filter carries its value in the search box; a
-            # multi-select shows its values in the list above and leaves
-            # the box free for searching.
-            if is_text_search and selected_values:
-                self._attr_search.setText(selected_values[0])
+
+        # Only a text filter carries its value in the search box; a
+        # multi-select shows its values in the list above and leaves the
+        # box free for searching.
+        if is_text_search:
+            text = next(
+                (
+                    value
+                    for value in selected_values
+                    if value not in EMPTY_VALUE_OPTIONS
+                ),
+                None,
+            )
+            if text:
+                self._attr_search.setText(text)
 
         self._apply_btn.installEventFilter(self)
+
+    def _on_value_clicked(self, value: str) -> None:
+        """Keep mutually exclusive values from being selected together.
+
+        A single-select filter behaves like radio buttons. "No value" and
+        "Has value" exclude only each other, as both together would match
+        everything; either still combines with regular values (OR).
+        """
+        self._preselected = False
+        button = self._value_buttons.get(value)
+        if button is None:
+            return
+        entry = self._filters_by_key.get(self._current_key)
+        single_select = entry is not None and entry.single_select
+        if not button.isChecked():
+            if single_select:
+                button.setChecked(True)
+            return
+
+        is_empty_option = value in EMPTY_VALUE_OPTIONS
+        for other_value, other_button in self._value_buttons.items():
+            if other_value == value:
+                continue
+            if single_select or (
+                is_empty_option and other_value in EMPTY_VALUE_OPTIONS
+            ):
+                other_button.setChecked(False)
 
     def _get_value_navigation_widgets(self) -> list[QWidget]:
         """Return controls in the value-page keyboard navigation order.
@@ -1048,6 +1140,13 @@ class _FilterDropdown(AYDropdownPopup):
                         )
                         if first is not None:
                             first.click()
+                            entry = self._filters_by_key.get(
+                                self._current_key
+                            )
+                            if entry is not None and entry.single_select:
+                                # Only one value can be picked, so picking
+                                # it is the whole choice.
+                                self._on_apply()
                 elif isinstance(widget, AYButton):
                     widget.click()
                 return True
@@ -1119,7 +1218,14 @@ class _FilterDropdown(AYDropdownPopup):
         """Return the current value-page selection and match mode."""
         if self._is_free_text:
             text = self._attr_search.text().strip()
-            return ([text] if text else []), True
+            values = [
+                val
+                for val, btn in self._value_buttons.items()
+                if btn.isChecked()
+            ]
+            if text:
+                values.append(text)
+            return values, bool(text)
         return (
             [
                 val
@@ -1133,6 +1239,7 @@ class _FilterDropdown(AYDropdownPopup):
         """Commit a non-empty value selection when dismissing the popup."""
         if (
             not self._applying
+            and not self._preselected
             and self._stack.currentIndex() == 1
             and self._current_key
         ):

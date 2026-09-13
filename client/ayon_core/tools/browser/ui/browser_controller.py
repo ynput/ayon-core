@@ -14,6 +14,8 @@ import arrow
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
 from ayon_core.ui.components.table_model import (
+    EMPTY_VALUE_OPTIONS,
+    HAS_VALUE,
     BatchFetchRequest,
     FilterEntry,
     TableColumn,
@@ -616,13 +618,48 @@ class BrowserWidgetController(QtCore.QObject):
         for key, values, use_substring in self._query_filter_criteria:
             if key in extension_filter_keys:
                 continue
+            # "No/Has value" may be picked next to regular values; the
+            # criterion then matches either of them.
+            empty_value = next(
+                (value for value in values if value in EMPTY_VALUE_OPTIONS),
+                None,
+            )
+            if empty_value is not None:
+                values = [
+                    value
+                    for value in values
+                    if value not in EMPTY_VALUE_OPTIONS
+                ]
             if key.startswith("attr:"):
                 _, scope, attribute_name = key.split(":", 2)
-                condition = {
-                    "key": f"attrib.{attribute_name}",
-                    "value": values[0] if use_substring else values,
-                    "operator": "like" if use_substring else "in",
-                }
+                attribute_type = str(
+                    self._attributes_by_scope
+                    .get(scope, {})
+                    .get(attribute_name, {})
+                    .get("type", "")
+                )
+                attribute_key = f"attrib.{attribute_name}"
+                condition = None
+                if attribute_type == "boolean" and values:
+                    condition = {
+                        "key": attribute_key,
+                        "value": values[0].lower() == "true",
+                        "operator": "eq",
+                    }
+                elif values:
+                    condition = {
+                        "key": attribute_key,
+                        "value": values[0] if use_substring else values,
+                        "operator": "like" if use_substring else "in",
+                    }
+                condition = self._or_empty_value_condition(
+                    condition,
+                    empty_value,
+                    attribute_key,
+                    attribute_type.startswith("list_of_"),
+                )
+                if condition is None:
+                    continue
                 if scope == "version":
                     version_conditions.append(condition)
                 elif scope == "product":
@@ -690,6 +727,32 @@ class BrowserWidgetController(QtCore.QObject):
                 continue
             if key == "product/version":
                 search = " ".join(values)
+                continue
+            if empty_value is not None and key in {
+                "author", "tags", "taskTags"
+            }:
+                is_list = key != "author"
+                server_key = "tags" if is_list else "author"
+                condition = None
+                if values and is_list:
+                    condition = {
+                        "key": server_key,
+                        "value": values,
+                        "operator": "includesany",
+                    }
+                elif values:
+                    condition = {
+                        "key": server_key,
+                        "value": values[0] if use_substring else values,
+                        "operator": "like" if use_substring else "in",
+                    }
+                condition = self._or_empty_value_condition(
+                    condition, empty_value, server_key, is_list
+                )
+                if key == "taskTags":
+                    task_conditions.append(condition)
+                else:
+                    version_conditions.append(condition)
                 continue
 
             operator = "like" if use_substring else "in"
@@ -791,6 +854,79 @@ class BrowserWidgetController(QtCore.QObject):
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
+        }
+
+    @staticmethod
+    def _empty_value_condition(
+        key: str,
+        is_list: bool,
+        has_value: bool,
+    ) -> dict[str, Any]:
+        """Return a condition matching whether a field is empty.
+
+        Mirrors the web frontend: a list is empty when it equals ``[]``,
+        while a cleared text field may be stored as either null or ``""``,
+        so both states count as empty.
+
+        Args:
+            key: Server filter key, e.g. ``"attrib.comment"``.
+            is_list: Whether the field holds a list.
+            has_value: Match non-empty values instead of empty ones.
+
+        Returns:
+            A condition or nested condition group.
+        """
+        if is_list:
+            return {
+                "key": key,
+                "value": [],
+                "operator": "ne" if has_value else "eq",
+            }
+        if has_value:
+            return {
+                "operator": "and",
+                "conditions": [
+                    {"key": key, "operator": "notnull"},
+                    {"key": key, "value": "", "operator": "ne"},
+                ],
+            }
+        return {
+            "operator": "or",
+            "conditions": [
+                {"key": key, "operator": "isnull"},
+                {"key": key, "value": "", "operator": "eq"},
+            ],
+        }
+
+    @classmethod
+    def _or_empty_value_condition(
+        cls,
+        condition: dict[str, Any] | None,
+        empty_value: str | None,
+        key: str,
+        is_list: bool,
+    ) -> dict[str, Any] | None:
+        """Combine a value condition with a "No/Has value" one using OR.
+
+        Args:
+            condition: Condition for the regular values, if any.
+            empty_value: ``NO_VALUE``, ``HAS_VALUE`` or ``None``.
+            key: Server filter key of the field.
+            is_list: Whether the field holds a list.
+
+        Returns:
+            The combined condition, or ``None`` when there is neither.
+        """
+        if empty_value is None:
+            return condition
+        empty_condition = cls._empty_value_condition(
+            key, is_list, empty_value == HAS_VALUE
+        )
+        if condition is None:
+            return empty_condition
+        return {
+            "operator": "or",
+            "conditions": [empty_condition, condition],
         }
 
     @staticmethod
