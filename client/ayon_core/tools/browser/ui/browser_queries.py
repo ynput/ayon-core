@@ -14,6 +14,7 @@ query GetVersions(
   $productFilter: String,
   $taskFilter: String,
   $folderFilter: String,
+  $representationFilter: String,
   $featuredOnly: [String!],
   $latestPerFolder: Boolean,
   $hasReviewables: Boolean,
@@ -34,6 +35,7 @@ query GetVersions(
       productFilter: $productFilter
       taskFilter: $taskFilter
       folderFilter: $folderFilter
+      representationFilter: $representationFilter
       featuredOnly: $featuredOnly
       latestPerFolder: $latestPerFolder
       hasReviewables: $hasReviewables
@@ -79,6 +81,7 @@ query GetVersionGroupCounts(
   $productFilter: String,
   $taskFilter: String,
   $folderFilter: String,
+  $representationFilter: String,
   $folderIds: [String!],
   $versionIds: [String!],
   $includeFolderChildren: Boolean,
@@ -96,6 +99,7 @@ query GetVersionGroupCounts(
       productFilter: $productFilter
       taskFilter: $taskFilter
       folderFilter: $folderFilter
+      representationFilter: $representationFilter
       folderIds: $folderIds
       includeFolderChildren: $includeFolderChildren
       featuredOnly: $featuredOnly

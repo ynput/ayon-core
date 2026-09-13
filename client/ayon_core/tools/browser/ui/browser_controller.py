@@ -6,6 +6,7 @@ Centralises all business logic and data fetching for the reviews UI.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -605,6 +606,7 @@ class BrowserWidgetController(QtCore.QObject):
         product_conditions: list[dict[str, Any]] = []
         task_conditions: list[dict[str, Any]] = []
         folder_conditions: list[dict[str, Any]] = []
+        representation_conditions: list[dict[str, Any]] = []
         featured_only: list[str] = []
         search: str | None = None
         version_ids: list[str] | None = None
@@ -631,6 +633,8 @@ class BrowserWidgetController(QtCore.QObject):
                     task_conditions.append(condition)
                 elif scope == "folder":
                     folder_conditions.append(condition)
+                elif scope == "representation":
+                    representation_conditions.append(condition)
                 continue
             if key in {"featuredVersionType", "version"}:
                 mapping = {
@@ -774,6 +778,28 @@ class BrowserWidgetController(QtCore.QObject):
                     "value": condition["value"],
                     "operator": condition["operator"],
                 })
+            elif key == "representationName":
+                representation_conditions.append({
+                    "key": "name",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "representationExtension":
+                extension_condition = self._build_extension_condition(values)
+                if extension_condition is not None:
+                    representation_conditions.append(extension_condition)
+            elif key == "representationStatus":
+                representation_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "representationTags":
+                representation_conditions.append({
+                    "key": "tags",
+                    "value": values,
+                    "operator": "includesany",
+                })
             else:
                 version_conditions.append(condition)
 
@@ -787,11 +813,52 @@ class BrowserWidgetController(QtCore.QObject):
             "product_filter": encode(product_conditions),
             "task_filter": encode(task_conditions),
             "folder_filter": encode(folder_conditions),
+            "representation_filter": encode(representation_conditions),
             "featured_only": featured_only or None,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
         }
+
+    @staticmethod
+    def _build_extension_condition(
+        values: list[str],
+    ) -> dict[str, Any] | None:
+        """Build a representation condition matching path extensions.
+
+        Each value may hold several extensions separated by commas or
+        whitespace, with or without the leading dot. The pattern is
+        anchored to the end of ``attrib.path`` so ``exr`` does not match
+        ``render.exr.json``. ``like`` is case-insensitive on the server,
+        so ``.EXR`` matches too.
+
+        Args:
+            values: Extensions as entered in the filter.
+
+        Returns:
+            A single condition, an ``or`` group for multiple
+            extensions, or ``None`` when no extension was given.
+        """
+        extensions: list[str] = []
+        for value in values:
+            for part in re.split(r"[\s,]+", value):
+                extension = part.strip().lstrip(".")
+                if extension and extension not in extensions:
+                    extensions.append(extension)
+        conditions = []
+        for extension in extensions:
+            # Escape the LIKE wildcards so they match literally.
+            escaped = re.sub(r"([\\%_])", r"\\\1", extension)
+            conditions.append({
+                "key": "attrib.path",
+                "value": f"%.{escaped}",
+                "operator": "like",
+            })
+        if not conditions:
+            return None
+        if len(conditions) == 1:
+            return conditions[0]
+        return {"operator": "or", "conditions": conditions}
 
     @staticmethod
     def _decode_attributes(value: Any) -> dict[str, Any]:
@@ -860,6 +927,7 @@ class BrowserWidgetController(QtCore.QObject):
             ),
             "task_filter": query_filters["task_filter"],
             "folder_filter": query_filters["folder_filter"],
+            "representation_filter": query_filters["representation_filter"],
             "featured_only": query_filters["featured_only"],
             "latest_per_folder": (
                 self._latest_per_folder
@@ -1741,6 +1809,7 @@ class BrowserWidgetController(QtCore.QObject):
             "productFilter": query_filters["product_filter"],
             "taskFilter": query_filters["task_filter"],
             "folderFilter": query_filters["folder_filter"],
+            "representationFilter": query_filters["representation_filter"],
             "folderIds": folder_ids,
             "versionIds": version_ids,
             "includeFolderChildren": self._include_folder_children,
@@ -2474,7 +2543,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._user_full_names = self._fetch_user_full_names(name)
         self._attributes_by_scope = {
             scope: ayon_api.get_attributes_for_type(scope)
-            for scope in ("folder", "task", "product", "version")
+            for scope in (
+                "folder", "task", "product", "version", "representation"
+            )
         }
         # The server omits attributes an entity never set, so a boolean
         # column would have no value to paint for exactly the rows where
@@ -2705,6 +2776,7 @@ class BrowserWidgetController(QtCore.QObject):
         product_filter: str = "",
         task_filter: str = "",
         folder_filter: str = "",
+        representation_filter: str = "",
         featured_only: list[str] | None = None,
         latest_per_folder: bool = False,
         search: str | None = None,
@@ -2741,6 +2813,8 @@ class BrowserWidgetController(QtCore.QObject):
             product_filter: JSON-encoded product filter string.
             task_filter: JSON-encoded task filter string.
             folder_filter: JSON-encoded folder filter string.
+            representation_filter: JSON-encoded representation filter
+                string; keeps versions with a matching representation.
             featured_only: Featured version types to query.
             latest_per_folder: Whether to return one version per folder.
             search: Full-text versions search string.
@@ -2770,6 +2844,7 @@ class BrowserWidgetController(QtCore.QObject):
             "productFilter": product_filter or "",
             "taskFilter": task_filter or "",
             "folderFilter": folder_filter or "",
+            "representationFilter": representation_filter or "",
             "featuredOnly": featured_only,
             "latestPerFolder": latest_per_folder,
             "search": search,

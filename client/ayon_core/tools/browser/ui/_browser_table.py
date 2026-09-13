@@ -741,12 +741,14 @@ class BrowserTable(AYContainer):
             "productStatus": [],
             "folderStatus": [],
             "taskStatus": [],
+            "representationStatus": [],
         }
         status_scopes = {
             "version": "status",
             "product": "productStatus",
             "folder": "folderStatus",
             "task": "taskStatus",
+            "representation": "representationStatus",
         }
         for status in statuses:
             for scope in status.get("scope", []) or []:
@@ -768,6 +770,7 @@ class BrowserTable(AYContainer):
             "taskType": sorted(by_name.get("taskTypes", {})),
             "tags": sorted(by_name.get("tags", {})),
             "taskTags": sorted(by_name.get("tags", {})),
+            "representationTags": sorted(by_name.get("tags", {})),
         }
 
     def on_project_info_changed(self) -> None:
@@ -1692,6 +1695,11 @@ class BrowserTable(AYContainer):
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
+            # A version has many representations, so their attributes
+            # have no single value to show in a version row. They are
+            # offered as filters only.
+            if scope == "representation":
+                continue
             entity = scope.capitalize()
             for name, data in definitions.items():
                 if name in builtin_attribute_names:
@@ -1964,6 +1972,26 @@ class BrowserTable(AYContainer):
                 "taskTags", "Tags",
                 values=enum_values["taskTags"],
                 icon="local_offer", entity="Task",
+            ),
+            FilterEntry(
+                "representationName", "Name",
+                icon="view_in_ar", entity="Representation",
+                text_search=True,
+            ),
+            FilterEntry(
+                "representationExtension", "Extension",
+                icon="description", entity="Representation",
+                text_search=True,
+            ),
+            FilterEntry(
+                "representationStatus", "Status",
+                values=enum_values["representationStatus"],
+                icon="arrow_circle_right", entity="Representation",
+            ),
+            FilterEntry(
+                "representationTags", "Tags",
+                values=enum_values["representationTags"],
+                icon="local_offer", entity="Representation",
             ),
 
             # "Loaded in Scene" filter is a special case, not an attribute, so
