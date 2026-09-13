@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -83,6 +84,52 @@ def test_has_reviewables_filter_is_forwarded_to_versions_query(
 
     assert query_filters["has_reviewables"] is expected
     assert query_filters["version_filter"] == ""
+
+
+@pytest.mark.parametrize(
+    ("attribute_name", "values", "use_substring", "expected"),
+    [
+        (
+            "families", ["render", "review"], False,
+            {
+                "key": "attrib.families",
+                "value": ["render", "review"],
+                "operator": "includesany",
+            },
+        ),
+        (
+            "comment", ["final"], True,
+            {"key": "attrib.comment", "value": "final", "operator": "like"},
+        ),
+        (
+            "intent", ["wip"], False,
+            {"key": "attrib.intent", "value": ["wip"], "operator": "in"},
+        ),
+    ],
+)
+def test_attribute_filter_operator_follows_attribute_type(
+    attribute_name, values, use_substring, expected,
+):
+    controller = BrowserWidgetController(BrowserController())
+    controller._attributes_by_scope = {
+        "version": {
+            "families": {"type": "list_of_strings"},
+            "comment": {"type": "string"},
+            "intent": {"type": "string"},
+        },
+    }
+    controller.set_filter_criteria([
+        FilterCriterion(
+            key=f"attr:version:{attribute_name}",
+            attribute_label=attribute_name,
+            values=values,
+            use_substring=use_substring,
+        )
+    ])
+
+    version_filter = controller._get_query_filters()["version_filter"]
+
+    assert json.loads(version_filter)["conditions"] == [expected]
 
 
 def test_controller_uses_browser_view_defaults():
