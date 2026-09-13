@@ -17,6 +17,8 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractLauncherFrontEnd,
     AbstractLauncherBackend,
+    ActionItem,
+    ContextLabels,
     RecentActionItem,
     WebactionContext,
     WorkfileItem,
@@ -56,6 +58,11 @@ class BaseLauncherController(
         self._recent_actions_model = RecentActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
+
+        self.register_event_callback(
+            "controller.refresh.finished",
+            self._on_controller_refresh_finished,
+        )
 
     @property
     def log(self):
@@ -157,6 +164,63 @@ class BaseLauncherController(
     def get_task_entity(self, project_name, task_id):
         return self._hierarchy_model.get_task_entity(project_name, task_id)
 
+    def get_context_labels(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        workfile_id: Optional[str],
+    ) -> ContextLabels:
+        labels = ContextLabels()
+        if not project_name:
+            return labels
+
+        if folder_id:
+            folder_entity = self.get_folder_entity(project_name, folder_id)
+            if folder_entity:
+                labels.folder_path = folder_entity["path"]
+
+        if not task_id:
+            return labels
+
+        task_entity = self.get_task_entity(project_name, task_id)
+        if task_entity:
+            labels.task_name = task_entity["name"]
+
+        if workfile_id:
+            for workfile_item in self.get_workfile_items(
+                project_name, task_id
+            ):
+                if workfile_item.workfile_id == workfile_id:
+                    labels.workfile_name = workfile_item.filename
+                    break
+        return labels
+
+    def get_action_item(
+        self,
+        action_type: str,
+        identifier: str,
+        addon_name: Optional[str],
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        workfile_id: Optional[str],
+    ) -> Optional[ActionItem]:
+        return self._actions_model.get_action_item(
+            identifier,
+            action_type,
+            addon_name,
+            project_name,
+            folder_id,
+            task_id,
+            workfile_id,
+        )
+
+    def get_local_action_label_icon(
+        self, identifier: str
+    ) -> Optional[tuple[str, Optional[dict[str, str]]]]:
+        return self._actions_model.get_local_action_label_icon(identifier)
+
     # Selection methods
     def get_selected_project_name(self):
         return self._selection_model.get_selected_project_name()
@@ -244,6 +308,7 @@ class BaseLauncherController(
         self._projects_model.reset()
         self._hierarchy_model.reset()
         self._users_model.reset()
+        self._workfiles_model.reset()
 
         self._actions_model.refresh()
         self._projects_model.refresh()
@@ -278,17 +343,62 @@ class BaseLauncherController(
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
 
+    def _on_controller_refresh_finished(self, event):
+        # Start-up is done, so loading the history in the background now
+        # cannot hold anything up and the first open finds it ready.
+        self._recent_actions_model.prewarm()
+
     # Recent actions
     def get_recent_action_items(self) -> list[RecentActionItem]:
         return self._recent_actions_model.get_recent_action_items()
+
+    def are_recent_action_items_loaded(self) -> bool:
+        return self._recent_actions_model.is_loaded()
+
+    def refresh_recent_action_items(self):
+        self._recent_actions_model.refresh()
+
+    def set_recent_action_favorite(self, record_id: str, favorite: bool):
+        self._recent_actions_model.set_favorite(record_id, favorite)
+
+    def remove_recent_action(self, record_id: str):
+        self._recent_actions_model.remove_recent_action(record_id)
 
     def trigger_recent_action(self, record_id: str):
         """Re-run a recent action against its stored context.
 
         The launcher's current selection is intentionally NOT changed.
+
+        What is stored with an entry is only a snapshot of how the action
+        looked when it ran, so the action is looked up in its stored context
+        first, against the addon versions of the bundle that is enabled now.
+        An entry that cannot run anymore is reported and dropped from the
+        history instead.
         """
-        item = self._recent_actions_model.get_recent_action_record(record_id)
+        item = self._recent_actions_model.get_recent_action_item(record_id)
         if item is None:
+            return
+
+        action_item = self.get_action_item(
+            item.action_type,
+            item.identifier,
+            item.addon_name,
+            item.project_name,
+            item.folder_id,
+            item.task_id,
+            item.workfile_id,
+        )
+        if action_item is None:
+            self.log.warning(
+                "Action '%s' is not available in its stored context anymore,"
+                " removing it from recent actions.",
+                item.identifier,
+            )
+            self._recent_actions_model.remove_recent_action(record_id)
+            self._emit_event(
+                "recent_action.unavailable",
+                {"record_id": record_id, "full_label": item.label},
+            )
             return
 
         if item.action_type == "local":
@@ -307,9 +417,13 @@ class BaseLauncherController(
                 task_id=item.task_id,
                 workfile_id=item.workfile_id,
                 addon_name=item.addon_name,
-                addon_version=item.addon_version,
+                # Version of the addon that provides the action now, not
+                # the one that happened to provide it back then.
+                addon_version=action_item.addon_version,
             )
-            self._actions_model.trigger_webaction(context, item.label, None)
+            self._actions_model.trigger_webaction(
+                context, action_item.full_label, None
+            )
 
     def apply_recent_action_context(self, record_id: str):
         """Apply stored context of a recent action to the current selection.
@@ -321,15 +435,17 @@ class BaseLauncherController(
         Emits ``locate.context.requested`` after updating the selection so
         that UI widgets can visibly navigate to the stored context.
         """
-        item = self._recent_actions_model.get_recent_action_record(record_id)
+        item = self._recent_actions_model.get_recent_action_item(record_id)
         if item is None:
             return
 
-        task_name = None
-        if item.project_name and item.task_id:
-            task_entity = self.get_task_entity(item.project_name, item.task_id)
+        task_name = item.task_name
+        if task_name is None and item.project_name and item.task_id:
+            task_entity = self.get_task_entity(
+                item.project_name, item.task_id
+            )
             if task_entity:
-                task_name = task_entity.get("name")
+                task_name = task_entity["name"]
 
         self.set_selected_project(item.project_name)
         self.set_selected_folder(item.folder_id)

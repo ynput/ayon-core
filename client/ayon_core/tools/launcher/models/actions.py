@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 import os
 from typing import Any
+import threading
 import uuid
 from urllib.parse import urlencode, urlparse
 import webbrowser
@@ -110,6 +111,9 @@ class ActionsModel:
         self._webaction_items = NestedCacheItem(
             levels=2, default_factory=list, lifetime=20,
         )
+        # Discovery is slow and is triggered lazily, so it can be entered
+        # from a worker thread while a refresh is running on the main one.
+        self._discovery_lock = threading.Lock()
 
         self._variant = get_settings_variant()
 
@@ -167,6 +171,86 @@ class ActionsModel:
 
         return output
 
+    def get_action_item(
+        self,
+        identifier: str,
+        action_type: str,
+        addon_name: str | None,
+        project_name: str | None,
+        folder_id: str | None,
+        task_id: str | None,
+        workfile_id: str | None,
+    ) -> ActionItem | None:
+        """Get a single, already known action available in a context.
+
+        Unlike 'get_action_items' this does not build the full list of
+        actions for the context. A local action is resolved from the per
+        project cache without contacting the server, webactions are only
+        queried when a webaction is asked for.
+
+        An action is identified by its identifier and the addon providing
+        it, never by an addon version. The returned item is the action as
+        the currently enabled bundle provides it, so callers re-triggering
+        a previously seen action use the version that is enabled now.
+
+        Args:
+            identifier (str): Action identifier.
+            action_type (str): Type of action, 'local' or 'webaction'.
+            addon_name (str | None): Addon name (webactions only).
+            project_name (str | None): Project name.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
+            workfile_id (str | None): Workfile id.
+
+        Returns:
+            ActionItem | None: Matching action item, 'None' if the action
+                does not exist or is not compatible with the context.
+
+        """
+        selection = self._prepare_selection(
+            project_name, folder_id, task_id, workfile_id
+        )
+        if action_type == "local":
+            action = self._get_action_objects().get(identifier)
+            if action is None or not action.is_compatible(selection):
+                return None
+            return self._get_action_items(project_name).get(identifier)
+
+        for action_item in self._get_webactions(selection):
+            if (
+                action_item.identifier == identifier
+                and action_item.addon_name == addon_name
+            ):
+                return action_item
+        return None
+
+    def get_local_action_label_icon(
+        self, identifier: str
+    ) -> tuple[str, dict[str, str] | None] | None:
+        """Get how a local action is labelled right now.
+
+        Reads the discovered action itself, so it needs no project context
+        and issues no requests. Meant for relabelling an action that is
+        already known, when paying for a compatibility check is not worth
+        it.
+
+        Args:
+            identifier (str): Action identifier.
+
+        Returns:
+            tuple[str, dict[str, str] | None] | None: Full label and icon
+                definition of the action, 'None' if no such action exists.
+
+        """
+        action = self._get_action_objects().get(identifier)
+        if action is None:
+            return None
+        full_label = self.calculate_full_label(
+            action.label or identifier,
+            getattr(action, "label_variant", None),
+        )
+        return full_label, get_action_icon(action)
+
     def trigger_action(
         self,
         identifier,
@@ -183,12 +267,10 @@ class ActionsModel:
         action_label = identifier
         action_items = self._get_action_items(project_name)
         trigger_id = uuid.uuid4().hex
-        icon = None
         try:
             action = self._actions[identifier]
             action_item = action_items[identifier]
             action_label = action_item.full_label
-            icon = action_item.icon
             self._controller.emit_event(
                 "action.trigger.started",
                 {
@@ -218,7 +300,6 @@ class ActionsModel:
                 "workfile_id": workfile_id,
                 "addon_name": None,
                 "addon_version": None,
-                "icon": icon,
             }
         )
 
@@ -260,7 +341,6 @@ class ActionsModel:
 
         trigger_id = uuid.uuid4().hex
         failed = False
-        icon = None
         try:
             self._controller.emit_event(
                 "webaction.trigger.started",
@@ -284,20 +364,6 @@ class ActionsModel:
                 error_message="Failed to trigger webaction.",
             )
 
-        # Get icon from webactions list
-        selection = self._prepare_selection(
-            project_name, folder_id, task_id, workfile_id
-        )
-        webactions = self._get_webactions(selection)
-        for webaction in webactions:
-            if (
-                webaction.identifier == identifier
-                and webaction.addon_name == addon_name
-                and webaction.addon_version == addon_version
-            ):
-                icon = webaction.icon
-                break
-
         data = asdict(handle_response)
         data.update({
             "trigger_failed": failed,
@@ -310,7 +376,6 @@ class ActionsModel:
             "workfile_id": workfile_id,
             "addon_name": addon_name,
             "addon_version": addon_version,
-            "icon": icon,
         })
         self._controller.emit_event(
             "webaction.trigger.finished",
@@ -618,16 +683,17 @@ class ActionsModel:
         return self._discovered_actions
 
     def _get_action_objects(self):
-        if self._actions is None:
-            actions = {}
-            for cls in self._get_discovered_action_classes():
-                obj = cls()
-                identifier = getattr(obj, "identifier", None)
-                if identifier is None:
-                    identifier = cls.__name__
-                actions[identifier] = obj
-            self._actions = actions
-        return self._actions
+        with self._discovery_lock:
+            if self._actions is None:
+                actions = {}
+                for cls in self._get_discovered_action_classes():
+                    obj = cls()
+                    identifier = getattr(obj, "identifier", None)
+                    if identifier is None:
+                        identifier = cls.__name__
+                    actions[identifier] = obj
+                self._actions = actions
+            return self._actions
 
     def _get_action_items(self, project_name):
         action_items = self._action_items.get(project_name)

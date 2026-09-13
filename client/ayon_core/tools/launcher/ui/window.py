@@ -169,6 +169,10 @@ class LauncherWindow(AYContainer):
             "webaction.trigger.finished",
             self._on_webaction_trigger_finished,
         )
+        controller.register_event_callback(
+            "recent_action.unavailable",
+            self._on_recent_action_unavailable,
+        )
 
         self._overlay_object = overlay_object
 
@@ -262,6 +266,13 @@ class LauncherWindow(AYContainer):
 
         self._overlay_object.add_message(
             message, message_type, message_id=message_id
+        )
+
+    def _on_recent_action_unavailable(self, event):
+        self._show_toast_message(
+            "Not available anymore: {}".format(event["full_label"]),
+            success=False,
+            message_id=event["record_id"],
         )
 
     def _on_action_trigger_started(self, event):

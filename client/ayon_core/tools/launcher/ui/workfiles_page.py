@@ -172,6 +172,29 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
         self._controller.set_grouped_host_names(list(self._group_host_names))
 
+    def get_index_by_workfile_id(
+        self, workfile_id: str
+    ) -> QtCore.QModelIndex:
+        """Get index of a workfile item by its id.
+
+        Workfiles of a host that is grouped are not part of the model, an
+        invalid index is returned for those.
+
+        Args:
+            workfile_id (str): Workfile id.
+
+        Returns:
+            QtCore.QModelIndex: Index of the workfile item, invalid index
+                if the workfile is not in the model.
+
+        """
+        root_item = self.invisibleRootItem()
+        for row in range(root_item.rowCount()):
+            item = root_item.child(row)
+            if item.data(WORKFILE_ID_ROLE) == workfile_id:
+                return self.indexFromItem(item)
+        return QtCore.QModelIndex()
+
     def flags(self, index):
         if index.column() != 0:
             index = self.index(index.row(), 0, index.parent())
@@ -352,36 +375,48 @@ class WorkfilesPage(AYContainer):
     def select_workfile(self, workfile_id: Optional[str]) -> None:
         """Visibly select a workfile row by its id.
 
-        If the row is not yet present (model still loading), the selection is
-        deferred and applied automatically after the next model refresh.
+        When the row is not in the model yet the selection is deferred and
+        retried once the model is refreshed.
 
         Args:
-            workfile_id: Workfile id to select, or ``None`` to clear any
-                pending deferred selection.
+            workfile_id (Optional[str]): Workfile id to select, or 'None' to
+                drop a pending deferred selection.
+
         """
-        if workfile_id is None:
-            self._pending_locate_workfile_id = None
-            return
         self._pending_locate_workfile_id = workfile_id
-        self._apply_pending_workfile_selection()
+        if workfile_id is not None:
+            self._apply_pending_workfile_selection()
 
     def _apply_pending_workfile_selection(self) -> None:
         workfile_id = self._pending_locate_workfile_id
         if workfile_id is None:
             return
-        model = self._workfiles_model
-        for row in range(model.rowCount()):
-            index = model.index(row, 0)
-            if index.data(WORKFILE_ID_ROLE) == workfile_id:
-                proxy_index = self._workfiles_proxy.mapFromSource(index)
-                if proxy_index.isValid():
-                    self._workfiles_view.setCurrentIndex(proxy_index)
-                    self._pending_locate_workfile_id = None
-                    return
+
+        index = self._workfiles_model.get_index_by_workfile_id(workfile_id)
+        if not index.isValid():
+            return
+
+        proxy_index = self._workfiles_proxy.mapFromSource(index)
+        if not proxy_index.isValid():
+            return
+
+        selection_model = self._workfiles_view.selectionModel()
+        selection_model.setCurrentIndex(
+            proxy_index,
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows
+        )
+        self._workfiles_view.scrollTo(proxy_index)
+        self._pending_locate_workfile_id = None
 
     def refresh(self) -> None:
         self._workfiles_model.refresh()
+        # Model content is authoritative right after a refresh. Apply a
+        # deferred selection and stop waiting for it either way, so that a
+        # workfile which is gone - or hidden inside a grouped host - cannot
+        # hijack a later, unrelated refresh.
         self._apply_pending_workfile_selection()
+        self._pending_locate_workfile_id = None
 
     def deselect(self):
         sel_model = self._workfiles_view.selectionModel()

@@ -147,6 +147,10 @@ class HierarchyPage(QtWidgets.QWidget):
         projects_combobox.set_listen_to_selection_change(self._is_visible)
 
         controller.register_event_callback(
+            "selection.project.changed",
+            self._on_selection_project_changed,
+        )
+        controller.register_event_callback(
             "locate.context.requested",
             self._on_locate_context_requested,
         )
@@ -170,6 +174,27 @@ class HierarchyPage(QtWidgets.QWidget):
         self._on_my_tasks_checkbox_state_changed(
             self._filters_widget.is_my_tasks_checked()
         )
+
+    def _on_selection_project_changed(self, event):
+        """Keep the header in sync with the selected project.
+
+        The window hands the project name to this page only when switching
+        over from the projects page. A project change happening while this
+        page is already visible - e.g. locating a recent action that ran in
+        another project - has to update the header on its own, otherwise the
+        combobox keeps showing the previous project while the folders and
+        tasks views already show the new one.
+        """
+        if not self._is_visible:
+            return
+
+        project_name = event["project_name"]
+        if project_name == self._project_name:
+            return
+
+        self._project_name = project_name
+        if project_name:
+            self._projects_combobox.set_selection(project_name)
 
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
