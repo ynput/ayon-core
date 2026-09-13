@@ -409,6 +409,19 @@ class AYONStyle(QCommonStyle):
             return 0
         elif hint == QStyle.StyleHint.SH_ComboBox_PopupFrameStyle:
             return QFrame.Shape.NoFrame
+        elif hint in (
+            QStyle.StyleHint.SH_Menu_MouseTracking,
+            QStyle.StyleHint.SH_MenuBar_MouseTracking,
+        ):
+            # AYONStyle subclasses 'QCommonStyle', a minimal base that
+            # answers this '0' (off) - real platform styles (Fusion,
+            # WindowsVista, ...) answer '1'. With it off, QMenu only
+            # updates its hover highlight while a mouse button is held
+            # down since the menu was opened; plain mouse movement after
+            # an ordinary click or right-click never highlights anything,
+            # even though the menu paints its rows (including the
+            # highlighted state) correctly once told to.
+            return 1
         # Fall back to parent implementation
         return super().styleHint(hint, opt, w, shret)
 
