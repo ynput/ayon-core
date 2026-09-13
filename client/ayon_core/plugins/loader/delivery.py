@@ -13,7 +13,7 @@ class DeliveryAction(LoaderSimpleActionPlugin):
     identifier = "core.delivery"
     label = "Deliver Versions"
     order = 35
-    icon = MaterialSymbolsIcon("uload", color="#d8d8d8")
+    icon = MaterialSymbolsIcon("upload", color="#d8d8d8")
 
     def is_compatible(self, selection: LoaderActionSelection) -> bool:
         if self.host_name is not None:

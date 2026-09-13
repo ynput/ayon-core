@@ -50,6 +50,7 @@ from .comment_completion import (
     on_completer_text_changed,
     on_users_updated,
     setup_user_completer,
+    strip_user_mention_display,
 )
 from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
@@ -272,7 +273,8 @@ class AYTextEditor(AYTextEdit):
         """
         if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
             return self._checkbox_handler.to_markdown()
-        return self.document().toMarkdown(MD_DIALECT)
+        rendered_md = self.document().toMarkdown(MD_DIALECT)
+        return strip_user_mention_display(rendered_md, self._user_list)
 
     def _is_checkbox_at_cursor(
         self, click_pos: QPoint
@@ -774,7 +776,7 @@ class AYTextBox(AYContainer):
         # comment category if available
         if self.show_categories:
             self.com_cat = AYComboBox(
-                parent=self, items=self.comment_categories
+                parent=self, items=self.comment_categories, show_chevron=False
             )
             self.com_cat.currentTextChanged.connect(self._on_category_changed)
             lyt.addWidget(self.com_cat)

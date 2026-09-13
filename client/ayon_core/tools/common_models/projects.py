@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import json
-import contextlib
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+import contextlib
 from dataclasses import dataclass
+import json
+import typing
+from typing import Any, Generator, Callable
 
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
@@ -13,8 +14,14 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib.icon_definitions import (
     MaterialSymbolsIcon,
     AwesomeFontIcon,
+    get_icon_def_from_data,
 )
 from ayon_core.lib import CacheItem, NestedCacheItem
+
+if typing.TYPE_CHECKING:
+    from typing import Literal
+
+    ProjectItemType = Literal["statuses", "folder_types", "task_types"]
 
 PROJECTS_MODEL_SENDER = "projects.model"
 
@@ -28,10 +35,16 @@ class StatusStates:
 
 class AbstractHierarchyController(ABC):
     @abstractmethod
-    def emit_event(self, topic, data, source):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
         pass
 
 
+@dataclass
 class StatusItem:
     """Item representing status of project.
 
@@ -43,35 +56,29 @@ class StatusItem:
         state (str): Status state.
 
     """
-    def __init__(
-        self,
-        name: str,
-        color: str,
-        short: str,
-        icon: str,
-        state: str
-    ):
-        self.name: str = name
-        self.color: str = color
-        self.short: str = short
-        self.icon: str = icon
-        self.state: str = state
+    name: str
+    color: str
+    short: str
+    icon: str
+    state: str
 
     def to_data(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "color": self.color,
-            "short": self.short,
-            "icon": self.icon,
-            "state": self.state,
-        }
+        return dict(
+            name=self.name,
+            color=self.color,
+            short=self.short,
+            icon=self.icon,
+            state=self.state,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, str]) -> StatusItem:
         return cls(**data)
 
     @classmethod
-    def from_project_item(cls, status_data):
+    def from_project_item(
+        cls, status_data: dict[str, str]
+    ) -> StatusItem:
         return cls(
             name=status_data["name"],
             color=status_data["color"],
@@ -87,7 +94,15 @@ class TagItem:
     name: str
     color: str
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(name=self.name, color=self.color)
 
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> TagItem:
+        return cls(**data)
+
+
+@dataclass
 class FolderTypeItem:
     """Item representing folder type of project.
 
@@ -97,24 +112,21 @@ class FolderTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(self, name, short, icon):
-        self.name = name
-        self.short = short
-        self.icon = icon
+    name: str
+    short: str
+    icon: str
 
-    def to_data(self):
-        return {
-            "name": self.name,
-            "short": self.short,
-            "icon": self.icon,
-        }
+    def to_data(self) -> dict[str, str]:
+        return dict(name=self.name, short=self.short, icon=self.icon)
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, str]) -> FolderTypeItem:
         return cls(**data)
 
     @classmethod
-    def from_project_item(cls, folder_type_data):
+    def from_project_item(
+        cls, folder_type_data: dict[str, str]
+    ) -> FolderTypeItem:
         return cls(
             name=folder_type_data["name"],
             short=folder_type_data.get("shortName", ""),
@@ -122,6 +134,7 @@ class FolderTypeItem:
         )
 
 
+@dataclass
 class TaskTypeItem:
     """Item representing task type of project.
 
@@ -131,32 +144,27 @@ class TaskTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(
-        self,
-        name: str,
-        short: str,
-        icon: str,
-        color: Optional[str],
-    ):
-        self.name = name
-        self.short = short
-        self.icon = icon
-        self.color = color
+    name: str
+    short: str
+    icon: str
+    color: str | None
 
-    def to_data(self):
-        return {
-            "name": self.name,
-            "short": self.short,
-            "icon": self.icon,
-            "color": self.color,
-        }
+    def to_data(self) -> dict[str, str | None]:
+        return dict(
+            name=self.name,
+            short=self.short,
+            icon=self.icon,
+            color=self.color,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, str | None]) -> TaskTypeItem:
         return cls(**data)
 
     @classmethod
-    def from_project_item(cls, task_type_data):
+    def from_project_item(
+        cls, task_type_data: dict[str, str]
+    ) -> TaskTypeItem:
         return cls(
             name=task_type_data["name"],
             short=task_type_data["shortName"],
@@ -167,15 +175,7 @@ class TaskTypeItem:
 
 @dataclass
 class ProjectItem:
-    """Item representing folder entity on a server.
-
-    Folder can be a child of another folder or a project.
-
-    Args:
-        name (str): Project name.
-        active (Union[str, None]): Parent folder id. If 'None' then project
-            is parent.
-    """
+    """Item representing Project entity on a server."""
     name: str
     active: bool
     is_library: bool
@@ -183,7 +183,7 @@ class ProjectItem:
     is_pinned: bool = False
 
     @classmethod
-    def from_entity(cls, project_entity: dict[str, Any]) -> "ProjectItem":
+    def from_entity(cls, project_entity: dict[str, Any]) -> ProjectItem:
         """Creates folder item from entity.
 
         Args:
@@ -204,86 +204,96 @@ class ProjectItem:
             icon
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         """Converts folder item to data.
 
         Returns:
             dict[str, Any]: Folder item data.
-        """
 
-        return {
-            "name": self.name,
-            "active": self.active,
-            "is_library": self.is_library,
-            "icon": {
-                "name": self.icon.name,
-                "color": self.icon.color,
-            },
-        }
+        """
+        return dict(
+            name=self.name,
+            active=self.active,
+            is_library=self.is_library,
+            icon=self.icon.to_data(),
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> ProjectItem:
         """Re-creates folder item from data.
 
         Args:
             data (dict[str, Any]): Folder item data.
 
         Returns:
-            FolderItem: Folder item.
+            ProjectItem: Folder item.
+
         """
         icon = data["icon"]
         if isinstance(icon, dict):
-            data["icon"] = AwesomeFontIcon(icon["name"], color=icon["color"])
+            data["icon"] = get_icon_def_from_data(icon)
         return cls(**data)
 
 
 class ProductTypeIconMapping:
     def __init__(
         self,
-        default: Optional[dict[str, str]] = None,
-        definitions: Optional[list[dict[str, str]]] = None,
+        default: dict[str, str] | None = None,
+        definitions: list[dict[str, str]] | None = None,
     ):
-        self._default = default or {}
-        self._definitions = definitions or []
+        self._default: dict[str, str] = default or {}
+        self._definitions: list[dict[str, str]] = definitions or []
 
-        self._default_def = None
-        self._definitions_by_name = None
+        self._default_def: MaterialSymbolsIcon = MaterialSymbolsIcon(
+            self._default.get("icon", "deployed_code"),
+            self._default.get("color", "#cccccc"),
+        )
+        self._definitions_by_name: dict[str, MaterialSymbolsIcon] | None = (
+            None
+        )
 
     def get_icon(
         self,
-        product_base_type: Optional[str] = None,
-        product_type: Optional[str] = None,
-    ) -> dict[str, str]:
+        product_base_type: str | None = None,
+        product_type: str | None = None,
+    ) -> MaterialSymbolsIcon:
         defs = self._get_defs_by_name()
         icon = defs.get(product_type)
-        if icon is None:
-            icon = defs.get(product_base_type)
-            if icon is None:
-                icon = self._get_default_def()
+        if icon is not None:
+            return icon
 
-        if isinstance(icon, dict):
-            return icon.copy()
-        return icon
-
-    def _get_default_def(self) -> dict[str, str]:
-        if self._default_def is None:
-            self._default_def = MaterialSymbolsIcon(
-                self._default.get("icon", "deployed_code"),
-                self._default.get("color", "#cccccc"),
-            )
+        icon = defs.get(product_base_type)
+        if icon is not None:
+            return icon
 
         return self._default_def
 
-    def _get_defs_by_name(self) -> dict[str, dict[str, str]]:
-        if self._definitions_by_name is None:
-            self._definitions_by_name = {
-                product_base_type_def["name"]: MaterialSymbolsIcon(
-                    product_base_type_def.get("icon", "deployed_code"),
-                    product_base_type_def.get("color", "#cccccc"),
-                )
-                for product_base_type_def in self._definitions
-            }
-        return self._definitions_by_name
+    def _get_defs_by_name(self) -> dict[str, MaterialSymbolsIcon]:
+        if self._definitions_by_name is not None:
+            return self._definitions_by_name
+
+        definitions_by_name = {
+            product_base_type_def["name"]: MaterialSymbolsIcon(
+                product_base_type_def.get("icon", "deployed_code"),
+                product_base_type_def.get("color", "#cccccc"),
+            )
+            for product_base_type_def in self._definitions
+        }
+        self._definitions_by_name = definitions_by_name
+        return definitions_by_name
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            default=self._default,
+            definitions=self._definitions,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ProductTypeIconMapping:
+        return cls(
+            default=data["default"],
+            definitions=data["definitions"],
+        )
 
 
 def _get_project_items_from_entity(
@@ -305,7 +315,7 @@ def _get_project_items_from_entity(
     ]
 
 
-class ProjectsModel(object):
+class ProjectsModel:
     def __init__(self, controller):
         self._projects_cache = CacheItem(default_factory=list)
         self._projects_by_name = NestedCacheItem(
@@ -339,14 +349,16 @@ class ProjectsModel(object):
         """
         self._refresh_projects_cache()
 
-    def get_project_items(self, sender):
+    def get_project_items(
+        self, sender: str | None
+    ) -> list[ProjectItem] | None:
         """
 
         Args:
             sender (str): Name of sender who asked for items.
 
         Returns:
-            Union[list[ProjectItem], None]: List of project items, or None
+            list[ProjectItem] | None: List of project items, or None
                 if model is refreshing.
         """
 
@@ -354,14 +366,16 @@ class ProjectsModel(object):
             return self._refresh_projects_cache(sender)
         return self._projects_cache.get_data()
 
-    def get_project_entity(self, project_name):
+    def get_project_entity(
+        self, project_name: str | None
+    ) -> dict[str, Any] | None:
         """Get project entity.
 
         Args:
-            project_name (str): Project name.
+            project_name (str | None): Project name.
 
         Returns:
-            Union[dict[str, Any], None]: Project entity or None if project
+            dict[str, Any] | None: Project entity or None if project
                 was not found by name.
 
         """
@@ -373,28 +387,34 @@ class ProjectsModel(object):
             project_cache.update_data(entity)
         return project_cache.get_data()
 
-    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+    def get_project_anatomy_tags(
+        self, project_name: str | None
+    ) -> list[TagItem]:
         """Get project anatomy tags.
 
         Args:
-            project_name (str): Project name.
+            project_name (str | None): Project name.
 
         Returns:
             list[TagItem]: Tag definitions.
 
         """
+        if project_name is None:
+            return []
         project_entity = self.get_project_entity(project_name)
         return [
             TagItem(tag["name"], tag["color"])
             for tag in project_entity["tags"]
         ]
 
-    def get_project_status_items(self, project_name, sender):
+    def get_project_status_items(
+        self, project_name: str | None, sender: str | None
+    ) -> list[StatusItem]:
         """Get project status items.
 
         Args:
-            project_name (str): Project name.
-            sender (Union[str, None]): Name of sender who asked for items.
+            project_name (str | None): Project name.
+            sender (str | None): Name of sender who asked for items.
 
         Returns:
             list[StatusItem]: Status items for project.
@@ -425,15 +445,17 @@ class ProjectsModel(object):
             self._project_statuses_cache[project_name] = statuses_cache
         return list(statuses_cache)
 
-    def get_folder_type_items(self, project_name, sender):
-        """Get project status items.
+    def get_folder_type_items(
+        self, project_name: str | None, sender: str | None
+    ) -> list[FolderTypeItem]:
+        """Get project folder type items.
 
         Args:
-            project_name (str): Project name.
-            sender (Union[str, None]): Name of sender who asked for items.
+            project_name (str | None): Project name.
+            sender (str | None): Name of sender who asked for items.
 
         Returns:
-            list[FolderType]: Folder type items for project.
+            list[FolderTypeItem]: Folder type items for project.
 
         """
         return self._get_project_items(
@@ -444,12 +466,14 @@ class ProjectsModel(object):
             self._folder_type_items_getter,
         )
 
-    def get_task_type_items(self, project_name, sender):
+    def get_task_type_items(
+        self, project_name: str | None, sender: str | None
+    ) -> list[TaskTypeItem]:
         """Get project task type items.
 
         Args:
-            project_name (str): Project name.
-            sender (Union[str, None]): Name of sender who asked for items.
+            project_name (str | None): Project name.
+            sender (str | None): Name of sender who asked for items.
 
         Returns:
             list[TaskTypeItem]: Task type items for project.
@@ -464,7 +488,7 @@ class ProjectsModel(object):
         )
 
     def get_product_type_icons_mapping(
-        self, project_name: Optional[str]
+        self, project_name: str | None
     ) -> ProductTypeIconMapping:
         cache = self._product_type_icons_mapping[project_name]
         if cache.is_valid:
@@ -485,8 +509,13 @@ class ProjectsModel(object):
         return icons_mapping
 
     def _get_project_items(
-        self, project_name, sender, item_type, cache_obj, getter
-    ):
+        self,
+        project_name: str | None,
+        sender: str | None,
+        item_type: ProjectItemType,
+        cache_obj: dict[str | None, Any],
+        getter: Callable[[dict[str, Any]], list],
+    ) -> list:
         if (
             project_name in cache_obj
             and (
@@ -504,7 +533,9 @@ class ProjectsModel(object):
         return cache_value
 
     @contextlib.contextmanager
-    def _project_refresh_event_manager(self, sender):
+    def _project_refresh_event_manager(
+        self, sender: str | None
+    ) -> Generator[None, None, None]:
         self._is_refreshing = True
         self._controller.emit_event(
             "projects.refresh.started",
@@ -524,8 +555,11 @@ class ProjectsModel(object):
 
     @contextlib.contextmanager
     def _project_items_refresh_event_manager(
-        self, sender, project_name, item_type
-    ):
+        self,
+        sender: str | None,
+        project_name: str | None,
+        item_type: ProjectItemType,
+    ) -> Generator[None, None, None]:
         self._controller.emit_event(
             f"projects.{item_type}.refresh.started",
             {"sender": sender, "project_name": project_name},
@@ -541,7 +575,9 @@ class ProjectsModel(object):
                 PROJECTS_MODEL_SENDER
             )
 
-    def _refresh_projects_cache(self, sender=None):
+    def _refresh_projects_cache(
+        self, sender: str | None = None
+    ) -> list[ProjectItem] | None:
         if self._is_refreshing:
             return None
 
@@ -589,7 +625,9 @@ class ProjectsModel(object):
             project.is_pinned = project.name in pinned_projects
         return project_items
 
-    def _status_items_getter(self, project_entity):
+    def _status_items_getter(
+        self, project_entity: dict[str, Any] | None
+    ) -> list[StatusItem]:
         if not project_entity:
             return []
         return [
@@ -597,7 +635,9 @@ class ProjectsModel(object):
             for status in project_entity["statuses"]
         ]
 
-    def _folder_type_items_getter(self, project_entity):
+    def _folder_type_items_getter(
+        self, project_entity: dict[str, Any] | None
+    ) -> list[FolderTypeItem]:
         if not project_entity:
             return []
         return [
@@ -605,7 +645,9 @@ class ProjectsModel(object):
             for folder_type in project_entity["folderTypes"]
         ]
 
-    def _task_type_items_getter(self, project_entity):
+    def _task_type_items_getter(
+        self, project_entity: dict[str, Any] | None
+    ) -> list[TaskTypeItem]:
         if not project_entity:
             return []
         return [

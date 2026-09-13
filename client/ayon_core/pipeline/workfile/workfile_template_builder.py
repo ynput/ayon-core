@@ -667,6 +667,11 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
+        if not preset.profile:
+            raise TemplateProfileNotFound(
+                "No matching profile found for current context."
+            )
+
         if not preset.has_valid_path():
             raise TemplateLoadFailed(
                 f"Template path '{preset.path}' does not exist."
@@ -728,6 +733,15 @@ class AbstractTemplateBuilder(ABC):
             or create_first_version is None
         ):
             preset = self.get_template_preset()
+            # Path may e.g. be none if there's no active workfile template
+            # set for current context, which would indicate it's just disabled.
+            # In that case, do nothing
+
+            if not preset.profile:
+                raise TemplateProfileNotFound(
+                    "No matching profile found for current context."
+                )
+
             if not preset.has_valid_path():
                 raise TemplateLoadFailed(
                     f"Template path '{preset.path}' does not exist."
@@ -1175,6 +1189,9 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholder = True
         if create_first_version is None:
             create_first_version = True
+
+        if resolved_path:
+            resolved_path = os.path.normpath(resolved_path)
 
         return TemplatePreset(
             path=resolved_path,

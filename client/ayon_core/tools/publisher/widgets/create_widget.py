@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import re
 import collections
 import typing
-from typing import Optional, Union
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -47,7 +48,7 @@ class ResizeControlWidget(QtWidgets.QWidget):
 
 # TODO add creator identifier/label to details
 class CreatorShortDescWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent=parent)
 
         # --- Short description widget ---
@@ -87,8 +88,8 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
 
     def set_creator_item(
         self,
-        creator_item: Optional["CreatorItem"] = None,
-        product_type: Optional[str] = None,
+        creator_item: CreatorItem | None = None,
+        product_type: str | None = None,
     ) -> None:
         if not creator_item:
             self._icon_widget.set_icon_def(None)
@@ -122,7 +123,11 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class CreateWidget(QtWidgets.QWidget):
-    def __init__(self, controller, parent=None):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
@@ -134,7 +139,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._prereq_available = False
 
-        name_pattern = "^[{}]*$".format(PRODUCT_NAME_ALLOWED_SYMBOLS)
+        name_pattern = f"^[{PRODUCT_NAME_ALLOWED_SYMBOLS}]*$"
         self._name_pattern = name_pattern
         self._compiled_name_pattern = re.compile(name_pattern)
 
@@ -316,28 +321,28 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
         self._current_creator_variant_hints = []
 
-    def get_current_folder_path(self):
+    def get_current_folder_path(self) -> str | None:
         return self._controller.get_current_folder_path()
 
-    def get_current_task_name(self):
+    def get_current_task_name(self) -> str | None:
         return self._controller.get_current_task_name()
 
-    def _context_change_is_enabled(self):
+    def _context_change_is_enabled(self) -> bool:
         return self._context_widget.is_enabled()
 
-    def _get_folder_path(self):
+    def _get_folder_path(self) -> str | None:
         folder_path = None
         if self._context_change_is_enabled():
             folder_path = self._context_widget.get_selected_folder_path()
         return folder_path or None
 
-    def _get_folder_id(self):
+    def _get_folder_id(self) -> str | None:
         folder_id = None
         if self._context_widget.is_enabled():
             folder_id = self._context_widget.get_selected_folder_id()
         return folder_id
 
-    def _get_task_name(self):
+    def _get_task_name(self) -> str | None:
         task_name = None
         if self._context_change_is_enabled():
             # Don't use selection of task if folder is not set
@@ -346,19 +351,19 @@ class CreateWidget(QtWidgets.QWidget):
                 task_name = self._context_widget.get_selected_task_name()
         return task_name
 
-    def _set_context_enabled(self, enabled):
+    def _set_context_enabled(self, enabled: bool) -> None:
         check_prereq = self._context_widget.is_enabled() != enabled
         self._context_widget.set_enabled(enabled)
         if check_prereq:
             self._invalidate_prereq()
 
-    def _on_main_window_close(self):
+    def _on_main_window_close(self) -> None:
         """Publisher window was closed."""
 
         # Use current context on next refresh
         self._use_current_context = True
 
-    def refresh(self):
+    def refresh(self) -> None:
         current_folder_path = self._controller.get_current_folder_path()
         current_task_name = self._controller.get_current_task_name()
 
@@ -405,10 +410,10 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._invalidate_prereq_deffered()
 
-    def _invalidate_prereq_deffered(self):
+    def _invalidate_prereq_deffered(self) -> None:
         self._prereq_timer.start()
 
-    def _invalidate_prereq(self):
+    def _invalidate_prereq(self) -> None:
         prereq_available = True
         creator_btn_tooltips = []
 
@@ -442,7 +447,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._on_variant_change()
 
-    def _refresh_product_name(self):
+    def _refresh_product_name(self) -> None:
         folder_path = self._get_folder_path()
 
         # Skip if folder did not change
@@ -463,7 +468,7 @@ class CreateWidget(QtWidgets.QWidget):
         if product_names is None:
             self.product_name_input.setText("< Folder is not set >")
 
-    def _refresh_creators(self):
+    def _refresh_creators(self) -> None:
         # Refresh creators and add their product base types to list
         existing_items = collections.defaultdict(dict)
         for row in range(self._creators_model.rowCount()):
@@ -535,11 +540,11 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._set_creator(create_item, product_type)
 
-    def _on_controler_reset(self):
+    def _on_controler_reset(self) -> None:
         # Trigger refresh only if is visible
         self.refresh()
 
-    def _pre_create_attr_changed(self, event):
+    def _pre_create_attr_changed(self, event) -> None:
         if (
             self._selected_creator_identifier is None
             or self._selected_creator_identifier not in event["identifiers"]
@@ -551,20 +556,20 @@ class CreateWidget(QtWidgets.QWidget):
             self._selected_product_type,
         )
 
-    def _on_folder_change(self):
+    def _on_folder_change(self) -> None:
         self._refresh_product_name()
         if self._context_change_is_enabled():
             self._invalidate_prereq_deffered()
 
-    def _on_task_change(self):
+    def _on_task_change(self) -> None:
         if self._context_change_is_enabled():
             self._invalidate_prereq_deffered()
 
-    def _on_thumbnail_create(self, thumbnail_path):
+    def _on_thumbnail_create(self, thumbnail_path: str) -> None:
         self._last_thumbnail_path = thumbnail_path
         self._thumbnail_widget.set_current_thumbnails([thumbnail_path])
 
-    def _on_thumbnail_clear(self):
+    def _on_thumbnail_clear(self) -> None:
         self._last_thumbnail_path = None
 
     def _on_creator_item_change(self, new_index, _old_index):
@@ -575,7 +580,9 @@ class CreateWidget(QtWidgets.QWidget):
             product_type = new_index.data(PRODUCT_TYPE_ROLE)
         self._set_creator_by_identifier(identifier, product_type)
 
-    def _set_creator_detailed_text(self, creator_item):
+    def _set_creator_detailed_text(
+        self, creator_item: CreatorItem | None
+    ) -> None:
         # TODO implement
         description = ""
         if creator_item is not None:
@@ -590,8 +597,8 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _set_creator_by_identifier(
         self,
-        identifier: Union[str, None],
-        product_type: Union[str, None],
+        identifier: str | None,
+        product_type: str | None,
     ) -> None:
         creator_item = self._controller.get_creator_item_by_id(
             identifier
@@ -600,8 +607,8 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _set_creator(
         self,
-        creator_item: Union["CreatorItem", None],
-        product_type: Union[str, None],
+        creator_item: CreatorItem | None,
+        product_type: str | None,
     ) -> None:
         """Set current creator item.
 
@@ -655,7 +662,7 @@ class CreateWidget(QtWidgets.QWidget):
         else:
             self._variant_widget.setText(variant_text)
 
-    def _on_variant_change(self, variant_value=None):
+    def _on_variant_change(self, variant_value: str | None = None) -> None:
         if not self._prereq_available:
             return
 
@@ -702,7 +709,9 @@ class CreateWidget(QtWidgets.QWidget):
         self._create_btn.setEnabled(True)
         self._validate_product_name(product_name, variant_value)
 
-    def _validate_product_name(self, product_name, variant_value):
+    def _validate_product_name(
+        self, product_name: str, variant_value: str
+    ) -> None:
         # Get all products of the current folder
         if self._product_names:
             existing_product_names = set(self._product_names)
@@ -749,10 +758,11 @@ class CreateWidget(QtWidgets.QWidget):
         if variant_is_valid != self._create_btn.isEnabled():
             self._create_btn.setEnabled(variant_is_valid)
 
-    def _set_variant_state_property(self, state):
+    def _set_variant_state_property(self, state: str) -> None:
+        # "" | "empty" | "exists" | "new" | "invalid"
         self._variant_widget.set_text_widget_property("state", state)
 
-    def _on_first_show(self):
+    def _on_first_show(self) -> None:
         width = self.width()
         part = int(width / 9)
         context_width = part * 3
@@ -762,18 +772,18 @@ class CreateWidget(QtWidgets.QWidget):
         rem_width -= create_sel_width
         self._creators_splitter.setSizes([create_sel_width, rem_width])
 
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         super().showEvent(event)
         if self._first_show:
             self._first_show = False
             self._on_first_show()
 
-    def _on_creator_basics_resize(self):
+    def _on_creator_basics_resize(self) -> None:
         self._thumbnail_widget.set_height(
             self._creator_basics_widget.sizeHint().height()
         )
 
-    def _on_create(self):
+    def _on_create(self) -> None:
         indexes = self._creators_view.selectedIndexes()
         if not indexes or len(indexes) > 1:
             return

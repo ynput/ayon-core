@@ -9,13 +9,15 @@ from ayon_core.lib.icon_definitions import (
     AwesomeFontIcon,
     MaterialSymbolsIcon,
 )
-
-from ayon_core.ui.components import AYTreeView
-
 from ayon_core.style import (
     get_disabled_entity_icon_color,
     get_default_entity_icon_color,
 )
+from ayon_core.ui.components import AYTreeView
+
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 
 from .lib import RefreshThread, get_qt_icon
 
@@ -29,6 +31,12 @@ TASK_STATUS_ROLE = QtCore.Qt.UserRole + 6
 TASK_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 7
 
 
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = QtCore.Qt.AlignHCenter
+
+
 class TasksQtModel(QtGui.QStandardItemModel):
     """Tasks model which cares about refresh of tasks by folder id.
 
@@ -39,7 +47,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
     _default_task_icon = None
     refreshed = QtCore.Signal()
     project_changed = QtCore.Signal()
-    column_labels = ["Tasks", "Status"]
+    column_labels = ["Tasks", ""]
 
     def __init__(self, controller):
         super().__init__()
@@ -469,7 +477,7 @@ class TasksWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent, handle_expected_selection=False):
         super().__init__(parent)
 
-        tasks_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        tasks_view = AYTreeView(self)
         tasks_view.setIndentation(0)
         tasks_view.setHeaderHidden(False)
         tasks_view.setSelectionMode(
@@ -491,8 +499,16 @@ class TasksWidget(QtWidgets.QWidget):
         header.setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Fixed
         )
-        header.resizeSection(1, 50)
+        header.resizeSection(1, 30)
         tasks_view.setColumnHidden(1, True)
+        tasks_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=tasks_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -610,7 +626,9 @@ class TasksWidget(QtWidgets.QWidget):
 
         selection_model = self._tasks_view.selectionModel()
         selection_model.setCurrentIndex(
-            proxy_index, QtCore.QItemSelectionModel.SelectCurrent
+            proxy_index,
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows
         )
         return True
 
@@ -715,16 +733,23 @@ class TasksWidget(QtWidgets.QWidget):
             return
 
         use_task_type_sorting = False
-        if hasattr(self._controller, "get_project_settings"):
-            settings = self._controller.get_project_settings(project_name)
-            use_task_type_sorting = (
-                settings["core"]["tools"]["general"]["use_task_type_sorting"]
-            )
+        if hasattr(self._controller, "get_task_sorting_mode"):
+            mode = self._controller.get_task_sorting_mode(project_name)
+            if mode == "type":
+                use_task_type_sorting = True
+            elif mode == "name":
+                pass
+            else:
+                self.log.warning(
+                    f"Unknown sort type '{mode}' falling to 'type'"
+                )
+
         else:
+            use_task_type_sorting = False
             self.log.warning(
                 f"Controller '{self._controller}' doesn't have"
-                " 'get_project_settings' method, task type"
-                " sorting will be disabled."
+                " 'get_task_sorting_mode' method."
+                f" The sorting will be disabled.."
             )
 
         self._tasks_proxy_model.set_task_type_sorting_enabled(

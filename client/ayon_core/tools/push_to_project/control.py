@@ -154,6 +154,9 @@ class PushToContextController:
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
 
+    def get_task_sorting_mode(self, project_name):
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
@@ -358,8 +361,8 @@ class PushToContextController:
             "task": task_name
         })
         try:
-            product_s = template_s.format(**fill_data)
-            product_e = template_e.format(**fill_data)
+            product_s = template_s.format_map(fill_data)
+            product_e = template_e.format_map(fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""

@@ -6,8 +6,6 @@ import platform
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.ui.components import AYContainer, AYLabel, AYFrame, AYGridLayout
-
 from ayon_core.lib import Logger
 from ayon_core.lib.icon_definitions import (
     MaterialSymbolsIcon,
@@ -18,6 +16,7 @@ from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
+from ayon_core.ui.components import AYContainer, AYLabel, AYGridLayout
 from ayon_core.ui.components.scroll_area import AYScrollBar
 
 ANIMATION_LEN = 7
@@ -445,11 +444,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.stackUnder(group_label)
 
         # Background draw
-        bg_frame = AYFrame(parent=self)
+        bg_frame = QtWidgets.QFrame(parent=self)
         bg_frame.setObjectName("ShadowFrame")
         bg_frame.stackUnder(view)
 
-        wrapper = AYFrame(parent=self)
+        wrapper = QtWidgets.QFrame(parent=self)
         wrapper.setObjectName("Wrapper")
 
         effect = QtWidgets.QGraphicsBlurEffect(wrapper)

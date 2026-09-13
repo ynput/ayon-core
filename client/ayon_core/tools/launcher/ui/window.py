@@ -1,4 +1,13 @@
 from pathlib import Path
+
+from qtpy import QtWidgets, QtCore, QtGui
+
+from ayon_core import resources
+from ayon_core.tools.launcher.control import BaseLauncherController
+from ayon_core.tools.utils import (
+    MessageOverlayObject,
+    ProjectsWidget,
+)
 from ayon_core.ui.components import (
     AYContainer,
     AYHBoxLayout,
@@ -6,19 +15,12 @@ from ayon_core.ui.components import (
     AYLineEdit,
     AYButton,
 )
-from qtpy import QtWidgets, QtCore, QtGui
-
-from ayon_core import resources
-
-from ayon_core.tools.launcher.control import BaseLauncherController
-from ayon_core.tools.utils import (
-    MessageOverlayObject,
-    ProjectsWidget,
-)
 
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
 from .recent_actions_widget import RecentActionsButton
+
+LAUNCHER_CSS_PATH = Path(__file__).parent / "launcher_style.css"
 
 
 class LauncherWindow(AYContainer):
@@ -43,13 +45,7 @@ class LauncherWindow(AYContainer):
         self.setWindowTitle("Launcher")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
-
-        #TODO: Find right place and logic to handle this
-        #  launcher-specific styles
-        launcher_css_path = Path(__file__).parent / "launcher_style.css"
-        with open(launcher_css_path, "r") as f:
-            launcher_stylesheet = f.read()
-        self.setStyleSheet(launcher_stylesheet)
+        self.setStyleSheet(LAUNCHER_CSS_PATH.read_text())
 
         # Allow minimize
         self.setWindowFlags(
@@ -87,9 +83,13 @@ class LauncherWindow(AYContainer):
             parent=projects_header_widget,
         )
 
-        recent_actions_btn = RecentActionsButton(controller, projects_header_widget)
+        projects_header_layout = AYHBoxLayout(
+            projects_header_widget, margin=0, spacing=4
+        )
+        recent_actions_btn = RecentActionsButton(
+            controller, projects_header_widget
+        )
 
-        projects_header_layout = AYHBoxLayout(projects_header_widget, margin=0, spacing=4)
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)
         projects_header_layout.addWidget(recent_actions_btn, 0)

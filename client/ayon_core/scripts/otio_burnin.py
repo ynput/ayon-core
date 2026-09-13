@@ -27,6 +27,7 @@ from ayon_core.lib import (
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
     convert_ffprobe_fps_value,
+    is_ffmpeg_option_supported,
     StringTemplate,
 )
 
@@ -513,7 +514,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             for value, new_values in zip(values, new_listed_keys):
                 sub_value[last_item_key] = value
                 try:
-                    value = key.format(**sub_value)
+                    value = key.format_map(sub_value)
                 except (TypeError, KeyError, ValueError):
                     value = MISSING_KEY_VALUE
                 new_values[key] = value
@@ -646,7 +647,13 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
             ) as temp:
                 temp.write(filter_string)
                 filters_path = temp.name
-            filters = '-filter_script:v "{}"'.format(filters_path)
+
+            # "-filter_script" was removed in FFmpeg 9 in favor of "-/filter"
+            if is_ffmpeg_option_supported("filter_script"):
+                filters = f'-filter_script:v "{filters_path}"'
+            else:
+                filters = f'-/filter:v "{filters_path}"'
+
             print("Filters:", filter_string)
             self.cleanup_paths.append(filters_path)
 
@@ -790,7 +797,7 @@ def prepare_fill_values(burnin_template, data):
                     "values": key_value,
                     "keys": keys}
             else:
-                fill_values[orig_key] = orig_key.format(**data)
+                fill_values[orig_key] = orig_key.format_map(data)
         except (KeyError, TypeError):
             missing_keys.add(orig_key)
             continue
@@ -989,7 +996,7 @@ def burnins_from_data(
             args = [align, frame_start, frame_end, source_timecode]
             if not value.startswith(SOURCE_TIMECODE_KEY):
                 value_items = value.split(SOURCE_TIMECODE_KEY)
-                text = value_items[0].format(**data)
+                text = value_items[0].format_map(data)
                 args.append(text)
 
             burnin.add_timecode(*args)
@@ -999,13 +1006,13 @@ def burnins_from_data(
             args = [align, frame_start, frame_end, frame_start_tc]
             if not value.startswith(TIMECODE_KEY):
                 value_items = value.split(TIMECODE_KEY)
-                text = value_items[0].format(**data)
+                text = value_items[0].format_map(data)
                 args.append(text)
 
             burnin.add_timecode(*args)
             continue
 
-        text = value.format(**data)
+        text = value.format_map(data)
 
         burnin.add_text(text, align, frame_start, frame_end)
 

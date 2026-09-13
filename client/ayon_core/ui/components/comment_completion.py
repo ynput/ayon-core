@@ -13,6 +13,7 @@ from qtpy.QtGui import (
     QTextBlockFormat,
     QTextCharFormat,
     QTextCursor,
+    QPalette,
 )
 from qtpy.QtWidgets import (
     QCompleter,
@@ -32,6 +33,45 @@ from .user_image import AYUserImage
 # use the same value.
 CODE_BG: QColor = QColor("#1e1e1e")
 CODE_FG: QColor = QColor("#eeeeee")
+
+# Match plain user mentions like "@Joe" or "@Joe Smith".
+# The optional second token must start with a letter to avoid swallowing
+# trailing numbers (e.g. "@Joe 1234" should only match "@Joe").
+USER_MENTION_PATTERN = re.compile(
+    r"(?<![\w\[])@(?!@)\w+(?: [^\W\d_][\w'-]*)?"
+)
+# Match stored user links like "[Joe](user:admin)".
+USER_MENTION_LINK_PATTERN = re.compile(
+    r"\[(?P<label>[^\]]+)\]\(user:(?P<username>[^)]+)\)"
+)
+
+
+def strip_user_mention_display(md: str, user_list: list[User]) -> str:
+    """Convert display @mentions back to storage links.
+
+    Existing links like [label](user:id) are preserved unchanged.
+    Plain @mentions are replaced with [name](user:name) if the user exists.
+
+    Args:
+        md: Markdown text.
+        user_list: Available users for mention lookup.
+
+    Returns:
+        Markdown text with @mentions replaced by links e.g. [name](user:name).
+    """
+    if "@" not in md:
+        return md
+
+    for user in sorted(
+        user_list,
+        key=lambda u: len(u.full_name),
+        reverse=True
+    ):
+        mention = f"@{user.full_name}"
+        if mention not in md:
+            continue
+        md = md.replace(mention, f"[{user.full_name}](user:{user.name})")
+    return md
 
 
 class UserCompleterDelegate(QStyledItemDelegate):
@@ -55,10 +95,20 @@ class UserCompleterDelegate(QStyledItemDelegate):
             return
 
         # Draw background
+        text_color = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Text
+        )
         if option.state & QStyle.StateFlag.State_Selected:
-            painter.fillRect(option.rect, option.palette.light())
+            palette = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Light
+            )
+            painter.fillRect(option.rect, palette)
+            painter.setPen(text_color)
         else:
-            painter.fillRect(option.rect, option.palette.midlight())
+            palette = get_ayon_style().model.base_palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Midlight)
+            painter.fillRect(option.rect, palette)
+            painter.setPen(text_color)
 
         # Draw user icon
         try:
@@ -203,6 +253,14 @@ def on_completer_text_changed(
     # Get text after '@'
     prefix = text[at_pos + 1 : pos_in_block]
 
+    # Once whitespace appears after '@', the mention token has ended.
+    # Hide the popup so trailing words are not captured into the link label.
+    if any(char.isspace() for char in prefix):
+        popup = text_edit.completer.popup()
+        if popup:
+            popup.hide()
+        return
+
     # Show completer if '@' is followed by nothing or non-space characters
     if not prefix or (prefix and not prefix[0].isspace()):
         text_edit.completer.setCompletionPrefix(prefix)
@@ -323,8 +381,8 @@ class MentionHighlighter(QSyntaxHighlighter):
     Patterns highlighted:
 
     - Fenced code blocks (```\\`\\`\\` ... \\`\\`\\```) spanning multiple
-      lines - black background, white monospace text.
-      Block state ``1`` tracks whether the current block is inside a fence.
+      lines - black background, white monospace text.  Block state ``1``
+      tracks whether the current block is inside a fence.
     - Qt-rendered code blocks (from ``setMarkdown()``) — detected via
       ``nonBreakableLines`` on the block format.
     - Qt-rendered inline code spans (from ``setMarkdown()``) — detected via
@@ -359,6 +417,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
         self._code_fmt = None
+        self._plain_fmt = self._get_plain_char_format()
 
     def update_user_list(self, user_list: list) -> None:
         """Replace the user list and trigger a full rehighlight.
@@ -441,14 +500,27 @@ class MentionHighlighter(QSyntaxHighlighter):
 
         # ── Mentions and URLs (applied before inline code) ───────────────
         users = {u.full_name for u in self._user_list}
+        mention_ranges: list[tuple[int, int]] = []
+
+        def _mark_mention(start: int, length: int) -> None:
+            """Mark mention highlight for certain pattern matches.
+
+            Args:
+                start: Start index of the mention in the block.
+                length: Length of the mention text.
+            """
+            if length <= 0:
+                return
+            self.setFormat(start, length, self._mention_fmt)
+            mention_ranges.append((start, start + length))
 
         # Task mentions (@@@)
         for m in self._P_TASK.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
 
         # Version mentions (@@)
         for m in self._P_VERSION.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
 
         # User mentions (@) — highlight only the first word unless the full
         # two-word name is in the known user list.
@@ -460,11 +532,34 @@ class MentionHighlighter(QSyntaxHighlighter):
             else:
                 # Highlight only up to the first word (no trailing space+word)
                 length = len(full_match.split()[0])
-            self.setFormat(m.start(), length, self._mention_fmt)
+            _mark_mention(m.start(), length)
 
         # Raw URLs
         for m in self._P_RAW_LINK.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), self._mention_fmt)
+            _mark_mention(m.start(), m.end() - m.start())
+
+        # Apply plain style only outside mention/url ranges so mention
+        # formatting stays intact while the rest of the line is normalized.
+        if not mention_ranges:
+            self.setFormat(0, len(text), self._plain_fmt)
+        else:
+            mention_ranges.sort()
+            merged: list[tuple[int, int]] = []
+            for start, end in mention_ranges:
+                if not merged or start > merged[-1][1]:
+                    merged.append((start, end))
+                else:
+                    prev_start, prev_end = merged[-1]
+                    merged[-1] = (prev_start, max(prev_end, end))
+
+            cursor = 0
+            for start, end in merged:
+                if start > cursor:
+                    self.setFormat(cursor, start - cursor, self._plain_fmt)
+                cursor = max(cursor, end)
+
+            if cursor < len(text):
+                self.setFormat(cursor, len(text) - cursor, self._plain_fmt)
 
         # ── Inline code (applied last, overrides mention formatting) ─────
 
@@ -472,7 +567,6 @@ class MentionHighlighter(QSyntaxHighlighter):
         # editing where backtick characters are still present:
         for m in self._P_CODE_INLINE.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), code_fmt)
-
         # Qt-rendered inline code spans — after setMarkdown() the backticks
         # are consumed and individual fragments carry fontFixedPitch=True:
         it = block.begin()
@@ -494,6 +588,12 @@ class MentionHighlighter(QSyntaxHighlighter):
         fmt.setBackground(CODE_BG)
         fmt.setForeground(CODE_FG)
         self._code_fmt = fmt
+        return fmt
+
+    def _get_plain_char_format(self) -> QTextCharFormat:
+        fmt = QTextCharFormat()
+        pal = get_ayon_style().model.base_palette
+        fmt.setForeground(pal.text())
         return fmt
 
 

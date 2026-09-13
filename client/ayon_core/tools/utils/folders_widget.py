@@ -1,6 +1,10 @@
 from __future__ import annotations
+
 import collections
-from typing import Optional
+from functools import partial
+import sys
+from typing import Callable, Any, Optional
+import traceback
 
 from qtpy import QtWidgets, QtGui, QtCore
 
@@ -16,13 +20,17 @@ from ayon_core.tools.common_models import (
     HierarchyExpectedSelection,
 )
 from ayon_core.ui.components import (
-    AYCheckBox,
+    AYButton,
     AYLineEdit,
     AYTreeView
 )
 
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+
 from .models import RecursiveSortFilterProxyModel
-from .lib import RefreshThread, get_qt_icon
+from .lib import get_qt_icon
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -32,6 +40,62 @@ FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
 FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 5
 FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 6
+
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = QtCore.Qt.AlignHCenter
+
+
+class RefreshTask(QtCore.QObject, QtCore.QRunnable):
+    finished = QtCore.Signal(str, bool)
+
+    def __init__(
+        self,
+        refresh_task_id: str,
+        default_output: Any,
+        func: Callable,
+        *args,
+        **kwargs,
+    ):
+        QtCore.QObject.__init__(self)
+        QtCore.QRunnable.__init__(self)
+
+        self.id = refresh_task_id
+        self.started = False
+        self._callback = partial(func, *args, **kwargs)
+        self._exception = None
+        self._traceback = None
+        self._result = default_output
+
+    def is_failed(self) -> bool:
+        return self._exception is not None
+
+    def get_result(self):
+        return self._result
+
+    def print_traceback(self):
+        if self._traceback:
+            print(self._traceback)
+
+    def run(self) -> None:
+        self.started = True
+        success = False
+        try:
+            self._result = self._callback()
+
+            success = True
+        except Exception as exc:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            err_traceback = "".join(traceback.format_exception(
+                exc_type, exc_value, exc_traceback
+            ))
+            self._traceback = err_traceback
+            self._exception = exc
+
+        finally:
+            self.finished.emit(self.id, success)
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
@@ -47,18 +111,22 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     def __init__(self, controller):
         super().__init__()
+        refresh_threadpool = QtCore.QThreadPool()
+        refresh_threadpool.setMaxThreadCount(2)
 
         self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
-        self.setHeaderData(1, QtCore.Qt.Horizontal, "Status")
+        self.setHeaderData(1, QtCore.Qt.Horizontal, "")
 
         self._controller = controller
         self._items_by_id = {}
         self._parent_id_by_id = {}
 
-        self._refresh_threads = {}
-        self._current_refresh_thread = None
+        self._refresh_threadpool = refresh_threadpool
+        self._refresh_tasks = {}
+        self._current_refresh_task = None
         self._last_project_name = None
+        self._current_refresh_thread = None
 
         self._has_content = False
         self._is_refreshing = False
@@ -146,20 +214,27 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._clear_items()
         self._last_project_name = project_name
 
-        thread = self._refresh_threads.get(project_name)
-        if thread is not None:
-            self._current_refresh_thread = thread
+        refresh_task = self._refresh_tasks.get(project_name)
+        if refresh_task is not None:
+            self._current_refresh_task = refresh_task
             return
 
-        thread = RefreshThread(
+        refresh_task = RefreshTask(
             project_name,
+            ({}, []),
             self._thread_getter,
-            project_name
+            project_name,
         )
-        self._current_refresh_thread = thread
-        self._refresh_threads[thread.id] = thread
-        thread.refresh_finished.connect(self._on_refresh_thread)
-        thread.start()
+
+        self._current_refresh_task = refresh_task
+        self._refresh_tasks[refresh_task.id] = refresh_task
+        refresh_task.finished.connect(self._on_refresh_task)
+        self._refresh_threadpool.start(refresh_task)
+        # NOTE: The `msleep` was added to fix workfiles tool refresh in
+        #   3ds Max 2027. It looks like there must be one more line running
+        #   code after the start of the thread task. Otherwise, the thread
+        #   would not be started but will trigger 'finished' signal directly.
+        QtCore.QThread.msleep(5)
 
     @classmethod
     def _get_default_folder_icon(cls):
@@ -196,7 +271,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             )
         return folder_items, folder_type_items, status_items
 
-    def _on_refresh_thread(self, thread_id):
+    def _on_refresh_task(self, refresh_task_id: str, success: bool):
         """Callback when refresh thread is finished.
 
         Technically can be running multiple refresh threads at the same time,
@@ -206,21 +281,27 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         Folders are stored by id.
 
         Args:
-            thread_id (str): Thread id.
-        """
+            refresh_task_id (str): Thread id.
+            success (bool): True if refresh was successful.
 
+        """
         # Make sure to remove thread from '_refresh_threads' dict
-        thread = self._refresh_threads.pop(thread_id)
+        refresh_task = self._refresh_tasks.pop(refresh_task_id)
+        refresh_task.print_traceback()
         if (
-            self._current_refresh_thread is None
-            or thread_id != self._current_refresh_thread.id
+            self._current_refresh_task is None
+            or refresh_task_id != self._current_refresh_task.id
         ):
             return
-        if thread.failed:
-            # TODO visualize that refresh failed
-            folder_items, folder_type_items, status_items = {}, [], []
-        else:
-            folder_items, folder_type_items, status_items = thread.get_result()
+
+        folder_items, folder_type_items, status_items = {}, [], []
+        # TODO visualize that refresh failed
+        if not refresh_task.is_failed():
+            (
+                folder_items,
+                folder_type_items,
+                status_items
+            ) = refresh_task.get_result()
         self._fill_items(folder_items, folder_type_items, status_items)
         self._current_refresh_thread = None
 
@@ -255,15 +336,17 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_item,
         folder_type_item_by_name,
         folder_type_icon_cache,
-        status_icon_by_name                 ,
+        status_icon_by_name,
     ):
         """
+
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
             folder_type_item_by_name: Mapping of folder type names to items.
             folder_type_icon_cache: Cache for folder type icons.
             status_icon_by_name: Mapping of status name to QIcon.
+
         """
         icon = self._get_folder_item_icon(
             folder_item,
@@ -295,7 +378,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         if index.column() != 0:
             return self._get_index_flags(index)
         return super().flags(index)
-    
+
     def _get_index_flags(self, index):
         index = index.sibling(index.row(), 0)
         return super().flags(index)
@@ -478,9 +561,7 @@ class FoldersWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        folders_view = AYTreeView(
-            self, item_height=23, item_padding=[1, 6]
-        )
+        folders_view = AYTreeView(self)
         folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         folders_model = FoldersQtModel(controller)
@@ -498,8 +579,16 @@ class FoldersWidget(QtWidgets.QWidget):
         header.setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Fixed
         )
-        header.resizeSection(1, 50)
+        header.resizeSection(1, 30)
         folders_view.setColumnHidden(1, True)
+        folders_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -675,7 +764,9 @@ class FoldersWidget(QtWidgets.QWidget):
 
         selection_model = self._folders_view.selectionModel()
         selection_model.setCurrentIndex(
-            proxy_index, QtCore.QItemSelectionModel.SelectCurrent
+            proxy_index,
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows
         )
         return True
 
@@ -906,12 +997,13 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
             parent=self,
         )
 
-        my_tasks_tooltip = (
-            "Filter folders and task to only those you are assigned to."
+        my_tasks_checkbox = AYButton(
+            icon="assignment_ind",
+            checkable=True,
+            tooltip="Only show folders that have a task assigned to you.",
+            parent=parent,
         )
-        my_tasks_checkbox = AYCheckBox("My tasks", parent=self)
         my_tasks_checkbox.setChecked(False)
-        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -920,7 +1012,7 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         layout.addWidget(my_tasks_checkbox, 0)
 
         folders_filter_input.textChanged.connect(self.text_changed)
-        my_tasks_checkbox.stateChanged.connect(self._on_my_tasks_change)
+        my_tasks_checkbox.toggled.connect(self.my_tasks_changed)
 
         self._folders_filter_input = folders_filter_input
         self._my_tasks_checkbox = my_tasks_checkbox
@@ -937,5 +1029,5 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
     def set_my_tasks_checked(self, checked: bool) -> None:
         self._my_tasks_checkbox.setChecked(checked)
 
-    def _on_my_tasks_change(self, _state: int) -> None:
-        self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())
+    def _on_my_tasks_change(self, state: bool) -> None:
+        self.my_tasks_changed.emit(state)

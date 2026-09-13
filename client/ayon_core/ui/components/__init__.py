@@ -11,7 +11,7 @@ from .container import AYContainer
 from .label import AYLabel
 from .layouts import AYGridLayout, AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
-from .spin_box import AYSpinBox
+from .spinbox import AYSpinBox
 from .option_action import (
     AYMenu,
     AYOptionalAction,

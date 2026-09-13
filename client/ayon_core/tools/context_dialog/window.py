@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import json
+import typing
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
@@ -20,6 +21,9 @@ from ayon_core.tools.utils import (
     get_ayon_qt_app,
 )
 from ayon_core.tools.utils.lib import center_window
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class SelectionModel(object):
@@ -232,6 +236,9 @@ class ContextDialogController:
     # Data model functions
     def get_project_settings(self, project_name: str | None) -> dict:
         return self._settings_model.get_settings(project_name)
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
 
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)

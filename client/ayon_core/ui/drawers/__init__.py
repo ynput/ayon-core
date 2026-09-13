@@ -18,6 +18,7 @@ from .lineedit import LineEditDrawer
 from .menu import MenuDrawer
 from .scroll_area import ScrollAreaDrawer
 from .scrollbar import ScrollBarDrawer
+from .spinbox import SpinBoxDrawer
 from .table_header import TableHeaderDrawer
 from .tooltip import TooltipDrawer
 from .tree_view import TreeViewDrawer
@@ -37,6 +38,7 @@ __all__ = [
     "MenuDrawer",
     "ScrollAreaDrawer",
     "ScrollBarDrawer",
+    "SpinBoxDrawer",
     "TableHeaderDrawer",
     "TooltipDrawer",
     "TreeViewDrawer",

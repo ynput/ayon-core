@@ -6,19 +6,24 @@ from ayon_core.pipeline import publish
 
 
 class ExtractOTIOFile(publish.Extractor):
-    """
-    Extractor export OTIO file
-    """
+    """Prepare workfile representation from OTIO file.
 
-    label = "Extract OTIO file"
+    Uses the OTIO timeline stored in context.data["otioTimeline"] to create
+        workfile representation.
+
+    """
+    label = "Extract OTIO workfile"
     order = pyblish.api.ExtractorOrder - 0.45
-    families = ["workfile"]
-    hosts = ["resolve", "hiero", "traypublisher"]
+    families = ["otio.timeline.workfile"]
+
+    HAS_RUN_KEY = "__ExtractOTIOFile_Run__"
 
     def process(self, instance):
         # Not all hosts can import this module.
         import opentimelineio as otio
 
+        # Mark instance for 'ExtractOTIOWorkfileOld'
+        instance.data[self.HAS_RUN_KEY] = True
         if not instance.context.data.get("otioTimeline"):
             return
         # create representation data
@@ -45,3 +50,17 @@ class ExtractOTIOFile(publish.Extractor):
 
         self.log.info("Added OTIO file representation: {}".format(
             representation_otio))
+
+
+class ExtractOTIOFileOld(ExtractOTIOFile):
+    label = "Extract OTIO file (old)"
+    order = ExtractOTIOFile.order + 0.00001
+    families = ["workfile"]
+    hosts = ["resolve", "hiero", "traypublisher"]
+
+    def process(self, instance):
+        if instance.data.pop(ExtractOTIOFile.HAS_RUN_KEY, False) is True:
+            self.log.debug("Skipping, ExtractOTIOFile has run.")
+            return
+        self.log.debug("Using old ExtractOTIOFile plugin")
+        super().process(instance)

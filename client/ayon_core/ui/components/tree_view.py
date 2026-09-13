@@ -36,6 +36,7 @@ from ..style_types import StyleData, get_ayon_style
 from ..variants import QTreeViewVariants
 from .scroll_area import AYScrollBar
 from .style_mixin import StyleMixin
+from .header_view import AYHeaderView
 
 
 class AYTreeView(StyleMixin, QTreeView):
@@ -59,16 +60,21 @@ class AYTreeView(StyleMixin, QTreeView):
         self,
         parent: QWidget | None = None,
         variant: QTreeViewVariants = QTreeViewVariants.Default,
-        item_height: int | None = None,
-        item_padding: list[int] | None = None,
     ) -> None:
         self._variant_str: str = variant.value
-        self._item_height = item_height
-        self._item_padding = item_padding
 
         super().__init__(parent)
 
         style = get_ayon_style()
+
+        header = AYHeaderView(
+            Qt.Orientation.Horizontal,
+            parent=self,
+            style_model=style.model,
+            variant=self._variant_str,
+        )
+        self.setHeader(header)
+
         self.setStyle(style)
 
         # Self-contained: do not inherit parent background or stylesheet.
@@ -91,8 +97,6 @@ class AYTreeView(StyleMixin, QTreeView):
             parent=self,
             style_model=style.model,
             variant=self._variant_str,
-            item_height=item_height,
-            item_padding=item_padding,
         )
         self.setItemDelegate(delegate)
 
@@ -105,7 +109,6 @@ class AYTreeView(StyleMixin, QTreeView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         # No header — single-column hierarchical browser.
-        self.setHeaderHidden(True)
 
         # Indentation from style data.
         tv_style = style.model.get_style("QTreeView", self._variant_str)
@@ -252,15 +255,11 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         parent: QWidget | None = None,
         style_model: StyleData | None = None,
         variant: str = "default",
-        item_height: int | None = None,
-        item_padding: list[int] | None = None,
     ) -> None:
         super().__init__(parent)
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
-        self._item_custom_height = item_height
-        self._item_custom_padding = item_padding
 
     def _tv_styles(self) -> dict[str, dict]:
         """Return *base*, *hover* and *selected* style dicts at once."""
@@ -287,6 +286,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         super().initStyleOption(option, index)
         option.font = self.font()
         option.fontMetrics = self.fontMetrics()
+        option.decorationAlignment = Qt.AlignmentFlag.AlignCenter
+        option.displayAlignment = (
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
 
     def sizeHint(
         self,
@@ -302,9 +305,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._item_custom_height is not None:
-            h = self._item_custom_height
-        elif self._style_model:
+        if self._style_model:
             style = self._style_model.get_style("QTreeView", self._variant_str)
             h = int(style.get("item-height", 28))
         else:
@@ -393,45 +394,87 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             -item_padding[1],
             -item_padding[0],
         )
-        content_left = content_rect.left()
 
-        if not opt.icon.isNull():
+        icon = opt.icon
+        icon_rect = QRect(0, 0, 0, 0)
+        text_rect = QRect(0, 0, 0, 0)
+        icon_offset = 0
+        if not icon.isNull():
             icon_size = opt.decorationSize
-            icon_rect = QRect(
-                content_left,
-                opt.rect.center().y() - icon_size.height() // 2,
-                icon_size.width(),
-                icon_size.height(),
+            icon_rect = QRect(opt.rect)
+            icon_rect.setSize(icon_size)
+            if opt.decorationAlignment & Qt.AlignmentFlag.AlignBottom:
+                icon_rect.moveTop(
+                    (opt.rect.bottom() - icon_size.height()) + 1
+                )
+            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignVCenter:
+                icon_rect.moveTop(
+                    (opt.rect.center().y() - (icon_size.height() // 2)) + 1
+                )
+
+            icon_offset = icon_rect.width()
+            if opt.text:
+                icon_offset += icon_text_spacing
+
+        if opt.text:
+            metrics = opt.fontMetrics
+            bound = metrics.boundingRect(opt.text)
+            text_rect = QRect(opt.rect)
+            text_rect.setWidth(bound.width())
+
+        content_width = icon_offset + text_rect.width()
+        if content_width > content_rect.width():
+            # Text is too long to fit in the available space, so elide it.
+            metrics = opt.fontMetrics
+            elided_text = metrics.elidedText(
+                opt.text,
+                opt.textElideMode,
+                content_rect.width() - icon_offset,
             )
+            opt.text = elided_text
+
+        if opt.displayAlignment & Qt.AlignmentFlag.AlignRight:
+            content_left = content_rect.right() - content_width
+        elif opt.displayAlignment & Qt.AlignmentFlag.AlignHCenter:
+            content_left = content_rect.left() + (
+                content_rect.width() - content_width
+            ) // 2
+
+        else:
+            content_left = content_rect.left()
+
+        if not icon.isNull():
+            icon_rect.moveLeft(content_left)
             mode = (
                 QIcon.Mode.Normal
                 if state & QStyle.StateFlag.State_Enabled
                 else QIcon.Mode.Disabled
             )
-            opt.icon.paint(
+            icon.paint(
                 painter,
                 icon_rect,
-                Qt.AlignmentFlag.AlignCenter,
+                opt.decorationAlignment,
                 mode,
             )
             content_left = icon_rect.right() + icon_text_spacing
 
         if opt.text:
-            text_rect = QRect(opt.rect)
             text_rect.setLeft(content_left)
             text_rect.setRight(content_rect.right())
             painter.setPen(text_color)
             painter.setFont(opt.font)
             painter.drawText(
                 text_rect,
-                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                opt.displayAlignment,
                 opt.text,
             )
 
         painter.restore()
+
 # =============================================================================
 # __main__ - visual test harness
 # =============================================================================
+
 
 if __name__ == "__main__":
     from qtpy import QtWidgets

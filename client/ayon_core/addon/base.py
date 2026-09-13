@@ -1054,7 +1054,7 @@ class AddonsManager:
             report_row
             for report_row in sorted(
                 self._report_by_name.values(),
-                key=lambda item: (int(item.server_addon), item.name)
+                key=lambda item: item.name
             )
         ]
         sorted_rows.append(self._total_row)
@@ -1097,7 +1097,7 @@ class AddonsManager:
         ]
 
         # Convert columns to rows for print
-        rows = list(zip(*cols, strict=True))
+        rows = list(zip(*cols))
         # Top row contains labels
         top_row = rows.pop(0)
         # Last row contains totals

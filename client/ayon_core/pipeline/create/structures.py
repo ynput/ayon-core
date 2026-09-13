@@ -527,6 +527,18 @@ class InstanceContextInfo:
     def is_valid(self) -> bool:
         return self.folder_is_valid and self.task_is_valid
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            folder_path=self.folder_path,
+            task_name=self.task_name,
+            folder_is_valid=self.folder_is_valid,
+            task_is_valid=self.task_is_valid,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> InstanceContextInfo:
+        return cls(**data)
+
 
 class CreatedInstance:
     """Instance entity with data that will be stored to workfile.

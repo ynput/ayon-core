@@ -6,17 +6,16 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.tools.common_models import (
+    ProjectItem,
+    PROJECTS_MODEL_SENDER,
+)
 from ayon_core.ui.components import AYComboBox, AYTreeView
 from ayon_core.ui.style import (
     TreeViewItemDelegate,
     get_ayon_style,
     ComboBoxItemDelegate,
-)
-
-from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
-from ayon_core.tools.common_models import (
-    ProjectItem,
-    PROJECTS_MODEL_SENDER,
 )
 
 from .lib import RefreshThread, get_qt_icon
@@ -71,6 +70,9 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
 
     def __init__(self, controller: AbstractProjectController):
         super().__init__()
+
+        self.setColumnCount(1)
+
         self._controller = controller
 
         self._project_items = {}
@@ -617,9 +619,9 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._expected_selection = None
 
         self._projects_combobox = projects_combobox
+        self._combobox_delegate = combobox_delegate
         self._projects_model = projects_model
         self._projects_proxy_model = projects_proxy_model
-
 
     def refresh(self):
         self._projects_model.refresh()
@@ -787,7 +789,7 @@ class ProjectsWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent=parent)
 
-        projects_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        projects_view = AYTreeView(self)
         projects_view.setIndentation(0)
         projects_view.setHeaderHidden(True)
         projects_view.setSelectionMode(
@@ -799,9 +801,7 @@ class ProjectsWidget(QtWidgets.QWidget):
         projects_delegate = ProjectsTreeDelegate(
             parent=projects_view,
             style_model=ayon_style.model,
-            variant=projects_view._variant_str,
-            item_height=23,
-            item_padding=[1, 6],
+            variant=projects_view._variant_str
         )
         projects_view.setItemDelegate(projects_delegate)
 
@@ -877,10 +877,15 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_proxy_model.invalidateFilter()
         self.refreshed.emit()
 
-    def _on_selection_change(self, _new_selection=None, _old_selection=None):
-        project_name = self.get_selected_project()
-        self._controller.set_selected_project(project_name)
+    def _on_selection_change(self, new_selection, _old_selection):
+        project_name = None
+        for index in new_selection.indexes():
+            name = index.data(PROJECT_NAME_ROLE)
+            if name:
+                project_name = name
+                break
         self.selection_changed.emit(project_name or "")
+        self._controller.set_selected_project(project_name)
 
     def _on_projects_refresh_finished(self, event):
         if event["sender"] != PROJECTS_MODEL_SENDER:

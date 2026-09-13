@@ -1,18 +1,29 @@
 from __future__ import annotations
 
+from typing import Any
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib import AbstractAttrDef, ButtonDef, UILabelDef
-
-from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.tools.attribute_defs import (
+    BaseAttrDefWidget,
+    create_widget_for_attr_def,
+)
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    INPUTS_LAYOUT_HSPACING,
+    INPUTS_LAYOUT_VSPACING,
+)
 
 from .utils import PreCreateButtonCallback
 
-from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
-
 
 class PreCreateWidget(QtWidgets.QWidget):
-    def __init__(self, controller, parent):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         # Precreate attribute defininitions of Creator
@@ -86,7 +97,11 @@ class PreCreateWidget(QtWidgets.QWidget):
 
 
 class AttributesWidget(QtWidgets.QWidget):
-    def __init__(self, controller, parent=None):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         layout = QtWidgets.QGridLayout(self)
@@ -96,11 +111,11 @@ class AttributesWidget(QtWidgets.QWidget):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
-        self._controller = controller
-        self._layout = layout
-        self._widgets = []
+        self._controller: AbstractPublisherFrontend = controller
+        self._layout: QtWidgets.QGridLayout = layout
+        self._widgets: list[BaseAttrDefWidget] = []
 
-    def current_value(self):
+    def current_value(self) -> dict[str, Any]:
         output = {}
         for widget in self._widgets:
             attr_def = widget.attr_def
@@ -108,7 +123,7 @@ class AttributesWidget(QtWidgets.QWidget):
                 output[attr_def.key] = widget.current_value()
         return output
 
-    def clear_attr_defs(self):
+    def clear_attr_defs(self) -> None:
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()

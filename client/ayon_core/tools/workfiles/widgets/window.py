@@ -2,6 +2,14 @@ from pathlib import Path
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core import resources
+from ayon_core.tools.utils import (
+    FoldersWidget,
+    MessageOverlayObject,
+    TasksWidget,
+    FoldersFiltersWidget,
+)
+from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.ui.components import (
     AYButton,
     AYCheckBox,
@@ -12,18 +20,11 @@ from ayon_core.ui.components import (
     AYLineEdit
 )
 
-from ayon_core import resources, style
-from ayon_core.tools.utils import (
-    FoldersWidget,
-    MessageOverlayObject,
-    TasksWidget,
-    FoldersFiltersWidget,
-)
-from ayon_core.tools.workfiles.control import BaseWorkfileController
-
 from .files_widget import FilesWidget
 from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
+
+WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
 
 
 class InvalidHostOverlay(BaseOverlayFrame):
@@ -48,7 +49,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
 
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
-#TODO: Headers style need to match with launcher ones
+
 class WorkfilesToolWindow(AYContainer):
     """WorkFiles Window.
 
@@ -104,6 +105,7 @@ class WorkfilesToolWindow(AYContainer):
         tasks_widget = TasksWidget(
             controller, home_body_widget, handle_expected_selection=True
         )
+        tasks_widget.set_status_column_visible(True)
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
         side_panel = SidePanelWidget(controller, home_body_widget)
 
@@ -212,6 +214,7 @@ class WorkfilesToolWindow(AYContainer):
         folder_widget = FoldersWidget(
             controller, col_widget, handle_expected_selection=True
         )
+        folder_widget.set_status_column_visible(True)
 
         col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
@@ -316,13 +319,7 @@ class WorkfilesToolWindow(AYContainer):
         self._show_timer.start()
         if self._first_show:
             self._first_show = False
-            # TODO: Find right place and logic to handle this
-            # launcher-specific styles
-            launcher_css_path = Path(__file__).parent / "workfiles_style.css"
-            with open(launcher_css_path, "r") as f:
-                launcher_stylesheet = f.read()
-            self.setStyleSheet(launcher_stylesheet)
-
+            self.setStyleSheet(WORKFILE_CSS_PATH.read_text())
 
     def keyPressEvent(self, event):
         """Custom keyPressEvent.

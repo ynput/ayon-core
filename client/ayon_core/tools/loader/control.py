@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+import typing
 from typing import Optional, Any
 
 import ayon_api
@@ -37,6 +38,10 @@ from .models import (
     LoaderActionsModel,
     SiteSyncModel
 )
+
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()
 
@@ -277,6 +282,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_project_settings(self, project_name: str | None) -> dict:
         return self._settings_model.get_settings(project_name)
 
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
         return self._projects_model.get_project_anatomy_tags(project_name)
 
@@ -304,16 +312,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     ):
         return self._products_model.get_versions_repre_count(
             project_name, version_ids, sender
-        )
-
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        return self._thumbnails_model.get_folder_thumbnail_ids(
-            project_name, folder_ids
-        )
-
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        return self._thumbnails_model.get_version_thumbnail_ids(
-            project_name, version_ids
         )
 
     def get_thumbnail_paths(

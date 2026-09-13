@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Optional
 
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
+    has_trait_representations,
     OptionalPyblishPluginMixin,
     PublishError,
 )
@@ -96,6 +97,22 @@ class IntegrateHeroVersionTraits(
 
     use_hardlinks = False
 
+    @classmethod
+    def apply_settings(cls, settings):
+        # Inherit settings from IntegrateHeroVersion so that essentially
+        # the enabled state is shared between the two plugins.
+        integrate_hero_settings = (
+            settings["core"]["publish"]["IntegrateHeroVersion"]
+        )
+        for option, value in integrate_hero_settings.items():
+            cls.log.debug(
+                "Plugin %s - Attr: %s -> %s",
+                cls.__name__,
+                option,
+                value,
+            )
+            setattr(cls, option, value)
+
     def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate Hero version with representation traits.
 
@@ -105,6 +122,32 @@ class IntegrateHeroVersionTraits(
         """
         if not self.is_active(instance.data):
             return
+
+        if not instance.data.get("published_representations"):
+            self.log.debug(
+                "Instance has no published representations. "
+                "Skipping hero version with traits integration."
+            )
+            return
+
+        if not has_trait_representations(instance):
+            self.log.debug(
+                f"Instance '{instance.name}' has no representations with "
+                "traits. Skipping")
+            return
+
+        # don't allow both representations
+        # with traits and standard representations
+        if instance.data.get("representations"):
+            msg = (
+                f"Instance '{instance.name}' has representations with traits "
+                "but also has standard representations. This is not allowed. "
+                "Please use either representations with traits or "
+                "standard representations, not both."
+            )
+            raise PublishError(
+                msg
+            )
 
         anatomy: Anatomy = instance.context.data["anatomy"]
         project_name = anatomy.project_name

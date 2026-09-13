@@ -13,14 +13,12 @@ from ayon_core.lib.icon_definitions import (
     TransparentIcon,
 )
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.delegates import pretty_timestamp, file_size_to_string
-from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
-
-from ayon_core.ui.components import (
-    AYContainer,
-    AYTreeView,
-    AYMenu,
+from ayon_core.tools.utils.delegates import (
+    pretty_timestamp,
+    file_size_to_string,
 )
+from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
+from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
@@ -83,15 +81,17 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
             host_name = workfile_item.host_name
-
+            file_size = ""
+            if workfile_item.file_size is not None:
+                file_size = file_size_to_string(workfile_item.file_size)
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
-            item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
+            item.setData(file_size, FILE_SIZE_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
-            item.setColumnCount(3)
+            item.setColumnCount(self.columnCount())
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -114,7 +114,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_item.setData(host_name, HOST_NAME_ROLE)
             host_item.setData(1, ITEM_TYPE_ROLE)
             host_item.setFlags(QtCore.Qt.ItemIsEnabled)
-            host_item.setColumnCount(3)
+            host_item.setColumnCount(self.columnCount())
             host_items_by_name[host_name] = host_item
             if host_name in self._group_host_names:
                 new_items.append(host_item)
@@ -185,18 +185,21 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             FILE_SIZE_ROLE
         }:
             if index.column() != 0:
-                index = self.index(index.row(), 0, index.parent())
+                index = index.sibling(index.row(), 0)
             return super().data(index, role)
 
         col = index.column()
         if col != 0:
             if role != QtCore.Qt.DisplayRole:
                 return None
+
             if col == 1:
                 role = UPDATED_AT_ROLE
-            else:
+            elif col == 2:
                 role = FILE_SIZE_ROLE
-            index = self.index(index.row(), 0, index.parent())
+            else:
+                return None
+            index = index.sibling(index.row(), 0)
 
         return super().data(index, role)
 
@@ -273,21 +276,16 @@ class WorkfilesDelegate(TreeViewItemDelegate):
         super().initStyleOption(option, index)
         if index.column() == 0:
             option.textElideMode = QtCore.Qt.ElideMiddle
+
         elif index.column() == 1:
             # Column 1 exposes timestamp through DisplayRole in WorkfilesModel.
             raw = index.data(QtCore.Qt.DisplayRole)
+            text = ""
             if raw is not None:
                 pretty = pretty_timestamp(raw)
                 if pretty is not None:
-                    option.text = pretty
-                    return
-            option.text = ""
-        elif index.column() == 2:
-            raw = index.data(FILE_SIZE_ROLE)
-            if raw is not None:
-                option.text = file_size_to_string(raw)
-            else:
-                option.text = ""
+                    text = pretty
+            option.text = text
 
 
 class WorkfilesPage(AYContainer):
@@ -303,11 +301,14 @@ class WorkfilesPage(AYContainer):
             layout_spacing=0,
         )
 
-        workfiles_view = AYTreeView(self, item_height=23, item_padding=[1, 6])
+        workfiles_view = AYTreeView(self)
         workfiles_view.setHeaderHidden(False)
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        workfiles_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
 
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = WorkfileSortFilterProxy()
@@ -317,9 +318,7 @@ class WorkfilesPage(AYContainer):
 
         workfiles_delegate = WorkfilesDelegate(
             parent=workfiles_view,
-            style_model=get_ayon_style().model,
-            item_height=23,
-            item_padding=[1, 6]
+            style_model=get_ayon_style().model
         )
         workfiles_view.setItemDelegate(workfiles_delegate)
 
@@ -458,11 +457,7 @@ class WorkfilesPage(AYContainer):
         if action_title is None:
             return
 
-        # TODO: using AYMenu breaking the tool need to figure out the issue
-        # menu = AYMenu(self._workfiles_view)
-        # Found that in AYMenu Forcing the menu to use AYONStyle for drawing
-        # it causing the application collapse
-        menu = QtWidgets.QMenu(self._workfiles_view)
+        menu = AYMenu(self._workfiles_view)
         menu.addAction(action_title)
 
         global_pos = self._workfiles_view.viewport().mapToGlobal(point)
