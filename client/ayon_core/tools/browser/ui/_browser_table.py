@@ -1973,26 +1973,6 @@ class BrowserTable(AYContainer):
                 values=enum_values["taskTags"],
                 icon="local_offer", entity="Task",
             ),
-            FilterEntry(
-                "representationName", "Name",
-                icon="view_in_ar", entity="Representation",
-                text_search=True,
-            ),
-            FilterEntry(
-                "representationExtension", "Extension",
-                icon="description", entity="Representation",
-                text_search=True,
-            ),
-            FilterEntry(
-                "representationStatus", "Status",
-                values=enum_values["representationStatus"],
-                icon="arrow_circle_right", entity="Representation",
-            ),
-            FilterEntry(
-                "representationTags", "Tags",
-                values=enum_values["representationTags"],
-                icon="local_offer", entity="Representation",
-            ),
 
             # "Loaded in Scene" filter is a special case, not an attribute, so
             # it is added here as a built-in filter.
@@ -2002,11 +1982,44 @@ class BrowserTable(AYContainer):
                 icon="how_to_reg", entity="Version",
             ),
         ]
+        # Older servers cannot filter versions by their representations,
+        # so the whole Representation scope is left out for them.
+        supports_representation_filter = (
+            self._controller.supports_representation_filter
+        )
+        if supports_representation_filter:
+            filters.extend([
+                FilterEntry(
+                    "representationName", "Name",
+                    icon="view_in_ar", entity="Representation",
+                    text_search=True,
+                ),
+                FilterEntry(
+                    "representationExtension", "Extension",
+                    icon="description", entity="Representation",
+                    text_search=True,
+                ),
+                FilterEntry(
+                    "representationStatus", "Status",
+                    values=enum_values["representationStatus"],
+                    icon="arrow_circle_right", entity="Representation",
+                ),
+                FilterEntry(
+                    "representationTags", "Tags",
+                    values=enum_values["representationTags"],
+                    icon="local_offer", entity="Representation",
+                ),
+            ])
 
         # Add all attribute filters per entity type
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
+            if (
+                scope == "representation"
+                and not supports_representation_filter
+            ):
+                continue
             entity = scope.capitalize()
             for name, data in definitions.items():
                 attribute_type = str(data.get("type", "")).lower()

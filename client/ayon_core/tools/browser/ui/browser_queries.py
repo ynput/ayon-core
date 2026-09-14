@@ -2,8 +2,57 @@
 
 from __future__ import annotations
 
+import functools
 from types import MappingProxyType
 from typing import Any
+
+import ayon_api
+
+
+@functools.cache
+def server_supports_representation_filter() -> bool:
+    """Return whether the versions resolver takes ``representationFilter``.
+
+    The server's GraphQL schema is introspected rather than its version
+    compared, so a development build that has the argument before the
+    release that ships it is detected correctly.
+
+    The result is cached for the lifetime of the process. A call that
+    raises is not cached, so a failed request is retried on the next call.
+
+    Returns:
+        ``True`` when the argument exists. ``False`` when it does not,
+        or when the server refuses the introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    con = ayon_api.get_server_api_connection()
+    if not con:
+        raise RuntimeError("No server connection")
+    response = con.query_graphql("""
+query ProjectNodeArguments {
+  __type(name: "ProjectNode") {
+    fields {
+      name
+      args {
+        name
+      }
+    }
+  }
+}
+""")
+    if response.errors:
+        return False
+    project_type = response.data["data"].get("__type") or {}
+    for field in project_type.get("fields") or []:
+        if field.get("name") == "versions":
+            return any(
+                arg.get("name") == "representationFilter"
+                for arg in field.get("args") or []
+            )
+    return False
+
 
 GET_VERSIONS_QUERY = """
 query GetVersions(
@@ -14,7 +63,7 @@ query GetVersions(
   $productFilter: String,
   $taskFilter: String,
   $folderFilter: String,
-  $representationFilter: String,
+  __REPRESENTATION_FILTER_VARIABLE__
   $featuredOnly: [String!],
   $latestPerFolder: Boolean,
   $hasReviewables: Boolean,
@@ -35,7 +84,7 @@ query GetVersions(
       productFilter: $productFilter
       taskFilter: $taskFilter
       folderFilter: $folderFilter
-      representationFilter: $representationFilter
+      __REPRESENTATION_FILTER_ARGUMENT__
       featuredOnly: $featuredOnly
       latestPerFolder: $latestPerFolder
       hasReviewables: $hasReviewables
@@ -81,7 +130,7 @@ query GetVersionGroupCounts(
   $productFilter: String,
   $taskFilter: String,
   $folderFilter: String,
-  $representationFilter: String,
+  __REPRESENTATION_FILTER_VARIABLE__
   $folderIds: [String!],
   $versionIds: [String!],
   $includeFolderChildren: Boolean,
@@ -99,7 +148,7 @@ query GetVersionGroupCounts(
       productFilter: $productFilter
       taskFilter: $taskFilter
       folderFilter: $folderFilter
-      representationFilter: $representationFilter
+      __REPRESENTATION_FILTER_ARGUMENT__
       folderIds: $folderIds
       includeFolderChildren: $includeFolderChildren
       featuredOnly: $featuredOnly
@@ -117,6 +166,38 @@ query GetVersionGroupCounts(
   }
 }
 """
+
+
+def _resolve_representation_filter(query: str) -> str:
+    """Add or strip the ``representationFilter`` query argument.
+
+    Servers up to 1.16.6 reject the argument outright, even when its
+    value is empty, so it is only part of the query on servers whose
+    versions resolver has it. A ``representationFilter`` variable sent
+    along with a query that does not declare it is ignored.
+
+    Args:
+        query: Query template containing the representation markers.
+
+    Returns:
+        The query with the markers resolved.
+    """
+    if server_supports_representation_filter():
+        variable = "  $representationFilter: String,\n"
+        argument = "      representationFilter: $representationFilter\n"
+    else:
+        variable = argument = ""
+    query = query.replace(
+        "  __REPRESENTATION_FILTER_VARIABLE__\n", variable
+    )
+    return query.replace(
+        "      __REPRESENTATION_FILTER_ARGUMENT__\n", argument
+    )
+
+
+def get_version_group_counts_query() -> str:
+    """Build the version group counts query."""
+    return _resolve_representation_filter(GET_VERSION_GROUP_COUNTS_QUERY)
 
 
 def get_versions_query(column_keys: set[str] | None = None) -> str:
@@ -215,7 +296,7 @@ def get_versions_query(column_keys: set[str] | None = None) -> str:
     query = GET_VERSIONS_QUERY
     for marker, value in replacements.items():
         query = query.replace(marker, value)
-    return query
+    return _resolve_representation_filter(query)
 
 
 GET_PRODUCTS_QUERY = """

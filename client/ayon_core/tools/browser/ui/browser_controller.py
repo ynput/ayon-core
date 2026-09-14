@@ -52,7 +52,8 @@ from ayon_core.tools.browser.ui.browser_queries import (
     COLUMN_TO_SORT_BY,
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
-    GET_VERSION_GROUP_COUNTS_QUERY,
+    get_version_group_counts_query,
+    server_supports_representation_filter,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
@@ -285,6 +286,24 @@ class BrowserWidgetController(QtCore.QObject):
     def attributes_by_scope(self) -> dict[str, dict[str, dict[str, Any]]]:
         """Return custom attribute definitions grouped by entity scope."""
         return self._attributes_by_scope
+
+    @property
+    def supports_representation_filter(self) -> bool:
+        """Whether the server can filter versions by representations.
+
+        Servers up to 1.16.6 have no ``representationFilter`` argument
+        on the versions resolver.
+        """
+        try:
+            return server_supports_representation_filter()
+        except Exception:
+            # Not cached, so a temporary connection problem is retried
+            # the next time this is asked.
+            self.log.debug(
+                "Failed to check for representation filter support",
+                exc_info=True,
+            )
+            return False
 
     @property
     def has_selection(self) -> bool:
@@ -1809,7 +1828,6 @@ class BrowserWidgetController(QtCore.QObject):
             "productFilter": query_filters["product_filter"],
             "taskFilter": query_filters["task_filter"],
             "folderFilter": query_filters["folder_filter"],
-            "representationFilter": query_filters["representation_filter"],
             "folderIds": folder_ids,
             "versionIds": version_ids,
             "includeFolderChildren": self._include_folder_children,
@@ -1820,6 +1838,7 @@ class BrowserWidgetController(QtCore.QObject):
             ),
             "hasReviewables": query_filters["has_reviewables"],
             "search": query_filters["search"],
+            "representationFilter": query_filters["representation_filter"],
             "targets": [{
                 "field": target_field,
                 "aggregations": [
@@ -1830,7 +1849,7 @@ class BrowserWidgetController(QtCore.QObject):
             }],
         }
         response = con.query_graphql(
-            GET_VERSION_GROUP_COUNTS_QUERY,
+            get_version_group_counts_query(),
             variables,
         )
         if response.errors:
@@ -2844,7 +2863,6 @@ class BrowserWidgetController(QtCore.QObject):
             "productFilter": product_filter or "",
             "taskFilter": task_filter or "",
             "folderFilter": folder_filter or "",
-            "representationFilter": representation_filter or "",
             "featuredOnly": featured_only,
             "latestPerFolder": latest_per_folder,
             "search": search,
@@ -2854,6 +2872,7 @@ class BrowserWidgetController(QtCore.QObject):
             "versionIds": version_ids if version_ids is not None else None,
             "productIds": product_ids if product_ids else None,
             "hasReviewables": has_reviewables,
+            "representationFilter": representation_filter or "",
         }
         if descending:
             variables["last"] = page_size
