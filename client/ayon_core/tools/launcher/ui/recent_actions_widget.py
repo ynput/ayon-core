@@ -10,7 +10,6 @@ from ayon_core.ui.components.dropdown import AYDropdownPopup
 from ayon_core.ui.components.layouts import AYVBoxLayout, AYHBoxLayout
 from ayon_core.ui.components.scroll_area import AYScrollArea
 
-_QWIDGETSIZE_MAX = (1 << 24) - 1
 # Material Symbols has a single star glyph, filled and outlined are the
 # same codepoint drawn with a different value of the font's FILL axis. The
 # color makes the difference obvious even where that axis is unavailable.
@@ -279,10 +278,8 @@ class RecentActionsPopup(AYDropdownPopup):
         self._refresh_thread = None
         self._rebuild_rows(self._controller.get_recent_action_items())
 
-        # Rows may have arrived after the popup was placed, so size and
-        # position it again for the content it shows now.
         if self.isVisible() and self._anchor_widget is not None:
-            self._apply_geometry(self._anchor_widget)
+            self._place(self._anchor_widget)
 
         if self._refresh_again:
             self._refresh_again = False
@@ -291,56 +288,32 @@ class RecentActionsPopup(AYDropdownPopup):
     def show_near(self, widget):
         self._anchor_widget = widget
         self.refresh()
-        self._apply_geometry(widget)
+        self._place(widget)
         self.show()
 
-    def _apply_geometry(self, widget):
-        min_width = max(int(widget.topLevelWidget().width() / 1.5), 320)
-        btn_br = widget.mapToGlobal(
-            QtCore.QPoint(widget.width(), widget.height())
-        )
-        screen = (
-            QtWidgets.QApplication.screenAt(btn_br)
-            or QtWidgets.QApplication.primaryScreen()
-        )
-        preferred_width = self.sizeHint().width()
-        if screen is not None:
-            avail = screen.availableGeometry()
-            max_width = max(min_width, btn_br.x() - avail.left() - 2)
-            # Grow with the content. Only the screen is a limit, the popup
-            # is moved up rather than clipped when it does not fit below
-            # the button.
-            self._scroll_area.setMaximumHeight(max(50, avail.height() - 4))
-        else:
-            avail = None
-            max_width = max(min_width, preferred_width)
-        target_w = min(max(preferred_width, min_width), max_width)
-        self.setMinimumWidth(target_w)
-        self.setMaximumWidth(max_width)
-        self.resize(target_w, self.height())
+    def _place(self, widget):
+        """Size the popup to its rows and right-align it below 'widget'.
 
-        # Height follows the content. A 'QScrollArea' reports a fixed
-        # default size hint that ignores what is inside it, so asking the
-        # popup to size itself would cap it after a handful of entries -
-        # measure the rows instead and only let the screen limit it.
-        self.layout().activate()
-        margins = self.layout().contentsMargins()
-        target_h = (
-            self._rows_container.sizeHint().height()
-            + margins.top()
-            + margins.bottom()
+        Long context paths elide, so rows never need more than a fixed
+        width. Height follows the rows up to the screen height, beyond
+        which the scroll area takes over.
+        """
+        screen = widget.screen().availableGeometry()
+        width = max(320, int(widget.window().width() / 1.5))
+        # 'QScrollArea.sizeHint()' is capped and ignores its content, so
+        # measure the rows instead.
+        height = min(
+            self._rows_container.sizeHint().height(), screen.height()
         )
-        if avail is not None:
-            target_h = min(target_h, avail.height() - 8)
-        target_h = max(target_h, 50)
+        self.setFixedSize(width, height)
 
-        x = btn_br.x() - target_w
-        y = btn_br.y() + 2
-        if avail is not None:
-            x = max(avail.left(), min(x, avail.right() - target_w))
-            y = max(avail.top(), min(y, avail.bottom() - target_h))
-        self.move(x, y)
-        self.resize(target_w, target_h)
+        pos = widget.mapToGlobal(
+            QtCore.QPoint(widget.width() - width, widget.height() + 2)
+        )
+        self.move(
+            max(screen.left(), min(pos.x(), screen.right() + 1 - width)),
+            max(screen.top(), min(pos.y(), screen.bottom() + 1 - height)),
+        )
 
     def _rebuild_rows(self, items):
         for row in self._rows:
@@ -381,7 +354,6 @@ class RecentActionsPopup(AYDropdownPopup):
             self._add_row_widget(row)
             self._rows.append(row)
         self._rows_layout.addStretch(1)
-        self._scroll_area.setMaximumHeight(_QWIDGETSIZE_MAX)
 
     def _add_row_widget(self, widget):
         """Add a widget to the list and let it count towards its size.
@@ -457,12 +429,12 @@ class RecentActionsPopup(AYDropdownPopup):
         """Show the history as it is now and resize for what is left."""
         self._rebuild_rows(self._controller.get_recent_action_items())
         if self.isVisible() and self._anchor_widget is not None:
-            self._apply_geometry(self._anchor_widget)
+            self._place(self._anchor_widget)
 
     def _on_recent_action_unavailable(self, event):
         # The entry was dropped from the history, take it off screen too.
         if self.isVisible():
-            self._rebuild_rows(self._controller.get_recent_action_items())
+            self._reload_rows()
 
 
 class RecentActionsButton(AYButton):
