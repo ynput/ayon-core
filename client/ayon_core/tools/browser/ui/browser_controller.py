@@ -618,11 +618,27 @@ class BrowserWidgetController(QtCore.QObject):
                 continue
             if key.startswith("attr:"):
                 _, scope, attribute_name = key.split(":", 2)
-                condition = {
-                    "key": f"attrib.{attribute_name}",
-                    "value": values[0] if use_substring else values,
-                    "operator": "like" if use_substring else "in",
-                }
+                attribute_type = str(
+                    self._attributes_by_scope
+                    .get(scope, {})
+                    .get(attribute_name, {})
+                    .get("type", "")
+                )
+                if attribute_type.startswith("list_of_"):
+                    # "in" compares the whole list against each value and
+                    # never matches; a list matches when it holds any of
+                    # the picked values, as in the web frontend.
+                    condition = {
+                        "key": f"attrib.{attribute_name}",
+                        "value": values,
+                        "operator": "includesany",
+                    }
+                else:
+                    condition = {
+                        "key": f"attrib.{attribute_name}",
+                        "value": values[0] if use_substring else values,
+                        "operator": "like" if use_substring else "in",
+                    }
                 if scope == "version":
                     version_conditions.append(condition)
                 elif scope == "product":
