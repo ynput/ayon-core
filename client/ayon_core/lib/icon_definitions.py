@@ -59,11 +59,7 @@ class PathIcon(IconBase):
 
 @dataclass
 class MaterialSymbolsIcon(IconBase):
-    """Material Symbols icon.
-
-    Icons are outlined by default, which is how the AYON web frontend
-    draws them. Pass ``fill=True`` for the filled variant.
-    """
+    """Material Symbols icon."""
     type: ClassVar[str] = "material-symbols"
     name: str
     color: str = field(default=DEFAULT_WEB_ICON_COLOR)
