@@ -98,7 +98,7 @@ class _RecentActionRow(QtWidgets.QWidget):
         label = action_item.label
         tooltip_lines = []
         if breadcrumb:
-            tooltip_lines.append(f"Go to context:\n{breadcrumb}")
+            tooltip_lines.append(f"Run: {label}\n{breadcrumb}")
         if timestamp_label:
             tooltip_lines.append(f"Triggered: {timestamp_label}")
         if tooltip_lines:
@@ -116,7 +116,6 @@ class _RecentActionRow(QtWidgets.QWidget):
             breadcrumb, dim=True,
             elide_mode=QtCore.Qt.ElideMiddle,
             flexible=True,
-            tool_tip=breadcrumb,
             parent=self,
         )
         breadcrumb_label.setAlignment(
@@ -152,14 +151,13 @@ class _RecentActionRow(QtWidgets.QWidget):
         favorite_btn.setCursor(QtCore.Qt.PointingHandCursor)
         favorite_btn.setObjectName("RecentFavoriteBtn")
 
-        play_btn = AYButton(
+        go_to_btn = AYButton(
             variant=AYButton.Variants.Surface,
-            icon="play_arrow", icon_size=18,
-            tooltip=f"Re-run action: {label}",
+            icon="my_location", icon_size=18,
+            tooltip=f"Go to: {breadcrumb}",
             parent=self,
         )
-        play_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        play_btn.setObjectName("RecentPlayBtn")
+        go_to_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         top_row = AYHBoxLayout(margin=0, spacing=8)
         top_row.addWidget(text_label, 1)
@@ -173,16 +171,16 @@ class _RecentActionRow(QtWidgets.QWidget):
         row_layout.addWidget(icon_label, 0, QtCore.Qt.AlignVCenter)
         row_layout.addLayout(text_col, 1)
         row_layout.addWidget(favorite_btn, 0)
-        row_layout.addWidget(play_btn, 0)
+        row_layout.addWidget(go_to_btn, 0)
 
         self._favorite_btn = favorite_btn
-        self._play_btn = play_btn
+        self._play_btn = go_to_btn
         favorite_btn.clicked.connect(self._on_favorite_clicked)
-        play_btn.clicked.connect(self._on_play_clicked)
+        go_to_btn.clicked.connect(self._on_go_to_clicked)
         self.setObjectName("RecentActionRow")
 
-    def _on_play_clicked(self):
-        self.replay_requested.emit(self._record_id)
+    def _on_go_to_clicked(self):
+        self.navigate_requested.emit(self._record_id)
 
     def _on_favorite_clicked(self):
         self.favorite_toggled.emit(
@@ -193,7 +191,7 @@ class _RecentActionRow(QtWidgets.QWidget):
         if event.button() == QtCore.Qt.LeftButton:
             child = self.childAt(event.pos())
             if not isinstance(child, QtWidgets.QPushButton):
-                self.navigate_requested.emit(self._record_id)
+                self.replay_requested.emit(self._record_id)
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -297,7 +295,7 @@ class RecentActionsPopup(AYDropdownPopup):
         self.show()
 
     def _apply_geometry(self, widget):
-        min_width = max(widget.topLevelWidget().width() // 2, 320)
+        min_width = max(int(widget.topLevelWidget().width() / 1.5), 320)
         btn_br = widget.mapToGlobal(
             QtCore.QPoint(widget.width(), widget.height())
         )
