@@ -690,7 +690,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         is_sequence_representation = isinstance(files, (list, tuple))
         if is_sequence_representation:
             self.log.debug(
-                f"Handling sequence representation {repre['name']}: {files}"
+                f"Handling sequence representation {repre['name']}: "
+                f"{len(files)} files"
             )
         else:
             self.log.debug(
