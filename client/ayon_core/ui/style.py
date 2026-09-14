@@ -220,22 +220,8 @@ class AYONStyle(QCommonStyle):
             widget.setAttribute(
                 Qt.WidgetAttribute.WA_TranslucentBackground, True
             )
-            # 'style_widget' runs more than once per widget - once
-            # explicitly from 'AYMenu.__init__', and again automatically
-            # through Qt's own 'polish()' the first time the menu is
-            # shown. 'setWindowFlags' tears down and recreates the
-            # widget's native window every time it is called, whether or
-            # not the flags actually changed. A menu is frequently shown
-            # while it is a child of another already-open popup (a
-            # submenu, or a context menu opened from within a dropdown),
-            # and recreating its native window while an ancestor still
-            # holds the platform's implicit popup grab is what corrupts
-            # that grab - the menu can crash outright, or silently stop
-            # receiving the native mouse-move events its hover highlight
-            # depends on, depending on timing. Only ever touching the
-            # flags once, the first time, keeps the (necessary) native
-            # window recreation confined to before the menu has ever
-            # been shown or nested inside anything.
+            # Add NoDropShadowWindowHint only once to avoid reinitialization of
+            # the window
             flags = widget.windowFlags()
             if not (flags & Qt.WindowType.NoDropShadowWindowHint):
                 widget.setWindowFlags(
@@ -413,14 +399,7 @@ class AYONStyle(QCommonStyle):
             QStyle.StyleHint.SH_Menu_MouseTracking,
             QStyle.StyleHint.SH_MenuBar_MouseTracking,
         ):
-            # AYONStyle subclasses 'QCommonStyle', a minimal base that
-            # answers this '0' (off) - real platform styles (Fusion,
-            # WindowsVista, ...) answer '1'. With it off, QMenu only
-            # updates its hover highlight while a mouse button is held
-            # down since the menu was opened; plain mouse movement after
-            # an ordinary click or right-click never highlights anything,
-            # even though the menu paints its rows (including the
-            # highlighted state) correctly once told to.
+            # Make sure the mouse movement is tracked.
             return 1
         # Fall back to parent implementation
         return super().styleHint(hint, opt, w, shret)
