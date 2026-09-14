@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from typing import Generator
 
 from . import Terminal
+from .env_tools import env_value_to_bool
 
 # force the logger to use the same format for all log levels.
 USE_STD_FMT = bool(os.environ.get("AYON_USE_STD_LOG_FORMAT", 0))
