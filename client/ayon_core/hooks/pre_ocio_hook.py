@@ -19,6 +19,7 @@ class OCIOEnvHook(PreLaunchHook):
         "maya",
         "nuke",
         "hiero",
+        "flame",
         "photoshop",
         "resolve",
         "openrv",

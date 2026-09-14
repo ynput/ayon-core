@@ -1037,6 +1037,8 @@ class OptionBox(QtWidgets.QLabel):
         if global_pos is None:
             return False
         pos = self.mapFromGlobal(global_pos)
+        if isinstance(pos, QtCore.QPointF):
+            pos = pos.toPoint()
         return self.rect().contains(pos)
 
 

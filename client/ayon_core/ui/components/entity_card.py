@@ -320,7 +320,6 @@ class _CardHeader(QWidget):
 
     def update_content(
         self,
-        project: str,
         path: str | list[str],
         header: str,
         show_path: bool,
@@ -504,7 +503,7 @@ class AYEntityCard(AYContainer):
 
     def _rebuild_header(self) -> None:
         self._header_widget.update_content(
-            self._project, self._path, self._header, self._show_path
+            self._path, self._header, self._show_path
         )
 
     def _rebuild_thumbnail(self) -> None:

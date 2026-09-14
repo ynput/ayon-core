@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import ayon_api
 
@@ -48,7 +48,7 @@ class UsersModel:
         self._controller = controller
         self._users_cache = NestedCacheItem(default_factory=list)
 
-    def get_current_username(self) -> Optional[str]:
+    def get_current_username(self) -> str | None:
         if self._current_username is NOT_SET:
             self._current_username = get_ayon_username()
         return self._current_username
@@ -56,24 +56,26 @@ class UsersModel:
     def reset(self) -> None:
         self._users_cache.reset()
 
-    def get_user_items(self, project_name):
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
         """Get user items.
 
         Returns:
-            List[UserItem]: List of user items.
+            list[UserItem]: List of user items.
 
         """
         self._invalidate_cache(project_name)
         return self._users_cache[project_name].get_data()
 
-    def get_user_items_by_name(self, project_name):
+    def get_user_items_by_name(
+        self, project_name: str | None
+    ) -> dict[str, UserItem]:
         """Get user items by name.
 
         Implemented as most of cases using this model will need to find
             user information by username.
 
         Returns:
-            Dict[str, UserItem]: Dictionary of user items by name.
+            dict[str, UserItem]: Dictionary of user items by name.
 
         """
         return {
@@ -81,14 +83,17 @@ class UsersModel:
             for user_item in self.get_user_items(project_name)
         }
 
-    def get_user_item_by_username(self, project_name, username):
+    def get_user_item_by_username(
+        self, project_name: str | None, username: str
+    ) -> UserItem | None:
         """Get user item by username.
 
         Args:
+            project_name (str | None): Project name.
             username (str): Username.
 
         Returns:
-            Union[UserItem, None]: User item or None if not found.
+            UserItem | None: User item or None if not found.
 
         """
         self._invalidate_cache(project_name)
@@ -97,7 +102,7 @@ class UsersModel:
                 return user_item
         return None
 
-    def _invalidate_cache(self, project_name):
+    def _invalidate_cache(self, project_name: str | None) -> None:
         cache = self._users_cache[project_name]
         if cache.is_valid:
             return

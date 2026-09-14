@@ -26,8 +26,7 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
     """
     order = pyblish.api.ExtractorOrder
     label = "Extract OTIO trim longer video"
-    families = ["trim"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.trim.video"]
 
     def process(self, instance):
         self.staging_dir = self.staging_dir(instance)

@@ -1190,6 +1190,9 @@ class AbstractTemplateBuilder(ABC):
         if create_first_version is None:
             create_first_version = True
 
+        if resolved_path:
+            resolved_path = os.path.normpath(resolved_path)
+
         return TemplatePreset(
             path=resolved_path,
             keep_placeholder=keep_placeholder,
