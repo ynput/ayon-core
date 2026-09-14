@@ -385,6 +385,15 @@ class Logger:
             root_logger.addHandler(cls._get_console_handler())
         cls._root_logger = root_logger
 
+        info_level = logging.getLevelNamesMapping()['INFO']
+        if (
+                os.getenv("AYON_DEBUG") == "1" or
+                int(os.getenv("AYON_LOG_LEVEL", info_level)) < info_level):
+            # force silence for some very noisy loggers
+            logging.getLogger("urllib3").setLevel(logging.WARNING)
+            logging.getLogger("requests").setLevel(logging.WARNING)
+            logging.getLogger("GlobalServerAPI").setLevel(logging.WARNING)
+
         # Mark as initialized
         cls.initialized = True
 
