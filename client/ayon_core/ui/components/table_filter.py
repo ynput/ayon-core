@@ -216,6 +216,33 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
         else:
             self.invalidateFilter()
 
+    def _is_empty_value(
+        self,
+        source_model: Any,
+        source_row: int,
+        source_parent: QModelIndex | QPersistentModelIndex,
+        key: str,
+        cell_value: Any,
+    ) -> bool:
+        """Return whether a row's value for *key* counts as empty.
+
+        Judged on the raw row value where available: a column's display
+        text has already been stringified, which would make an empty list
+        read as ``"[]"`` and a text value of ``"[]"`` indistinguishable
+        from it.
+        """
+        if self._row_value_getter is not None:
+            index = source_model.index(source_row, 0, source_parent)
+            cell_value = self._row_value_getter(index, key)
+        return (
+            cell_value is None
+            or cell_value == ""
+            or (
+                isinstance(cell_value, (list, tuple, set))
+                and not cell_value
+            )
+        )
+
     def _direct_match(
         self,
         source_row: int,
@@ -254,12 +281,14 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             else:
                 continue
             cell_str = "" if cell_value is None else str(cell_value).lower()
-            is_empty = cell_str in ("", "[]")
 
             matched = False
             for val in criterion.values:
                 if val in EMPTY_VALUE_OPTIONS:
-                    if is_empty == (val == NO_VALUE):
+                    if self._is_empty_value(
+                        source_model, source_row, source_parent,
+                        criterion.key, cell_value,
+                    ) == (val == NO_VALUE):
                         matched = True
                         break
                     continue
