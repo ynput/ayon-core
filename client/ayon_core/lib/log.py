@@ -282,47 +282,47 @@ class Logger:
 
 
 # Dedicated logger for timing with a concise format
-if os.environ.get("AYON_CORE_TIMERS", 0):
-    _timing_logger = Logger.get_logger("ayon-core-timers")
-    _timing_logger.setLevel(logging.INFO)
+_log_timing_enabled = env_value_to_bool("AYON_CORE_TIMERS")
+_timing_logger = Logger.get_logger("ayon-core-timers")
+_timing_logger.setLevel(logging.INFO)
 
-    @contextmanager
-    def log_timing(message: str) -> Generator[None, None, None]:
-        """Context manager to log the execution time of a code block.
+@contextmanager
+def log_timing(message: str) -> Generator[None, None, None]:
+    """Context manager to log the execution time of a code block.
 
-        Args:
-            message (str): Description of the operation being timed.
+    Args:
+        message (str): Description of the operation being timed.
 
-        Yields:
-            None
+    Yields:
+        None
 
-        Example:
-            with log_timing("Loading activities"):
-                # Your code here
-                data = fetch_data()
-        """
-        # Get the caller's function name with simple error handling
-        func_name = "unknown"
-        try:
-            frame = inspect.currentframe()
-            if frame and frame.f_back and frame.f_back.f_back:
-                func_name = frame.f_back.f_back.f_code.co_name
-        except (AttributeError, ValueError):
-            pass  # Use default "unknown" if inspection fails
+    Example:
+        with log_timing("Loading activities"):
+            # Your code here
+            data = fetch_data()
+    """
 
-        start = time.perf_counter()
-        try:
-            yield
-        finally:
-            elapsed = time.perf_counter() - start
-            _timing_logger.info(
-                "TIMER:  %s :: %s took %.3f seconds",
-                func_name,
-                message,
-                elapsed,
-            )
-else:
-    # Dummy context manager if timing is not enabled
-    @contextmanager
-    def log_timing(message: str) -> Generator[None, None, None]:
+    if not _log_timing_enabled:
         yield
+        return
+
+    # Get the caller's function name with simple error handling
+    func_name = "unknown"
+    try:
+        frame = inspect.currentframe()
+        if frame and frame.f_back and frame.f_back.f_back:
+            func_name = frame.f_back.f_back.f_code.co_name
+    except (AttributeError, ValueError):
+        pass  # Use default "unknown" if inspection fails
+
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = time.perf_counter() - start
+        _timing_logger.info(
+            "TIMER:  %s :: %s took %.3f seconds",
+            func_name,
+            message,
+            elapsed,
+        )
