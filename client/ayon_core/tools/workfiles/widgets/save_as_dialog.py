@@ -121,7 +121,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_layout.addWidget(subversion_input, 1)
         subversion_layout.addWidget(subversion_menu_btn, 0)
 
-        subversion_menu = AYMenu()
+        subversion_menu = AYMenu(self)
         subversion_menu_btn.setMenu(subversion_menu)
 
         # Use the same fill as the other inputs so the form rows match
@@ -317,7 +317,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._update_filename()
 
     def _on_subversion_action_clicked(self, action) -> None:
-        self._subversion_input.setText(action.text())
+        self._subversion_input.setText(action.data())
 
     def _set_subversion_items(self, values: list[str] | None) -> None:
         values = values or []
@@ -330,8 +330,6 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         # Include an empty string
         values.sort()
-        if "" not in values:
-            values.insert(0, "")
 
         # Get and destroy the action group
         group = button.findChild(QtWidgets.QActionGroup)
@@ -340,8 +338,12 @@ class SaveAsDialog(QtWidgets.QDialog):
 
         # Build new action group
         group = QtWidgets.QActionGroup(button)
+        action = group.addAction("< Empty >")
+        action.setData("")
+        menu.addAction(action)
         for name in values:
             action = group.addAction(name)
+            action.setData(name)
             menu.addAction(action)
 
         group.triggered.connect(self._on_subversion_action_clicked)
