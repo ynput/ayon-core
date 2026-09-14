@@ -1427,6 +1427,12 @@ def get_file_collections(
         tuple[list[clique.Collection], list[str]]: tuple of collections
         and remainders from clique.
     """
+    if len(files) == 1:
+        filename = os.path.basename(files[0])
+        stem = os.path.splitext(filename)[0]
+        if re.fullmatch(r"sh\d+", stem, flags=re.IGNORECASE):
+            return [], files
+
     pattern = "(?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
     minimum_items = 1 if len(files) == 1 else 2
     collections, remainders = clique.assemble(
