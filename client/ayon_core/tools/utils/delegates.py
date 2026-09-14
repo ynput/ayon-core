@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 from datetime import datetime
 import logging
@@ -49,7 +51,7 @@ def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
         if second_diff < 86400:
             minutes = (second_diff % 3600) // 60
             hours = second_diff // 3600
-            return "{0}:{1:02d} hours ago".format(hours, minutes)
+            return f"{hours}:{minutes:02d} hours ago"
 
     return t.strftime(strftime)
 
@@ -83,8 +85,7 @@ def pretty_timestamp(t, now=None):
     if isinstance(t, float):
         dt = datetime.fromtimestamp(t)
     else:
-        # Parse the time format as if it is `str` result from
-        # `pyblish.lib.time()` which usually is stored in Avalon database.
+        # Parse the time from datetime format
         try:
             t = time.strptime(t, "%Y%m%dT%H%M%SZ")
         except ValueError as e:
@@ -103,9 +104,21 @@ class PrettyTimeDelegate(QtWidgets.QStyledItemDelegate):
 
     """
 
+    def __init__(
+        self,
+        *,
+        default: str | None = None,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        self._default_value = default
+        super().__init__(parent)
+
     def displayText(self, value, locale):
         if value is not None:
-            return pretty_timestamp(value)
+            value = pretty_timestamp(value)
+            if value is not None:
+                return value
+        return self._default_value
 
 
 class StatusDelegate(QtWidgets.QStyledItemDelegate):

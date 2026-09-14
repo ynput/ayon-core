@@ -1,17 +1,21 @@
+from __future__ import annotations
+
 import copy
 import collections
 from uuid import uuid4
+from dataclasses import dataclass
 from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
+    ButtonDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
-
 
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
@@ -22,7 +26,10 @@ from .exceptions import ImmutableKeyError
 from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
+    from .context import CreateContext
     from .creator_plugins import BaseCreator
+
+log = Logger.get_logger(__name__)
 
 
 class IntEnum(int, Enum):
@@ -40,6 +47,56 @@ class ParentFlags(IntEnum):
     # NOTE It might be helpful to have a function that would return "real"
     #   active state for instances
     share_active = 1 << 1
+
+
+@dataclass
+class ButtonCallbackInfo:
+    """Button callback info passed to button definition callback."""
+    create_context: "CreateContext"
+    instance_ids: list[str | None]
+
+
+@dataclass
+class ProductTypeItem:
+    """Structure to define product types for a create plugin.
+
+    Product types can be used as studio definitions of a product base type.
+
+    It is expected that attributes will be added/removed in the future,
+        in that regards it is recommended to use pre-defined methods
+        'new' and 'from_data' that do safely handle those cases and
+        can contain backwards/forwards compatibility if needed.
+
+    Attributes:
+        product_type (str): Name of a product type.
+        label (str): Product type label shown in Create view.
+
+    """
+    product_type: str
+    label: Optional[str] = None
+
+    @classmethod
+    def new(
+        cls,
+        *,
+        product_type: str,
+        label: str,
+        **unknown,
+    ) -> "ProductTypeItem":
+        if unknown:
+            unknown_keys = ", ".join(f"'{k}'" for k in unknown.keys())
+            log.info(
+                f"Unknown keys in ProductTypeItem: {unknown_keys}"
+            )
+
+        return cls(
+            product_type=product_type,
+            label=label,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ProductTypeItem":
+        return cls.new(**data)
 
 
 class ConvertorItem:
@@ -119,11 +176,14 @@ class AttributeValues:
             origin_data = copy.deepcopy(values)
         self._origin_data = origin_data
 
-        attr_defs_by_key = {
-            attr_def.key: attr_def
-            for attr_def in attr_defs
-            if attr_def.is_value_def
-        }
+        attr_defs_by_key = {}
+        button_defs_by_key = {}
+        for attr_def in attr_defs:
+            if attr_def.is_value_def:
+                attr_defs_by_key[attr_def.key] = attr_def
+            elif isinstance(attr_def, ButtonDef):
+                button_defs_by_key[attr_def.key] = attr_def
+
         for key, value in values.items():
             if key not in attr_defs_by_key:
                 new_def = UnknownDef(key, label=key, default=value)
@@ -132,6 +192,7 @@ class AttributeValues:
 
         self._attr_defs = attr_defs
         self._attr_defs_by_key = attr_defs_by_key
+        self._button_defs_by_key = button_defs_by_key
 
         self._data = {}
         for attr_def in attr_defs:
@@ -178,6 +239,9 @@ class AttributeValues:
             yield key, self._data.get(key)
 
     def get_attr_def(self, key, default=None):
+        button_def = self._button_defs_by_key.get(key)
+        if button_def is not None:
+            return button_def
         return self._attr_defs_by_key.get(key, default)
 
     def update(self, value):
@@ -463,6 +527,18 @@ class InstanceContextInfo:
     def is_valid(self) -> bool:
         return self.folder_is_valid and self.task_is_valid
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            folder_path=self.folder_path,
+            task_name=self.task_name,
+            folder_is_valid=self.folder_is_valid,
+            task_is_valid=self.task_is_valid,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> InstanceContextInfo:
+        return cls(**data)
+
 
 class CreatedInstance:
     """Instance entity with data that will be stored to workfile.
@@ -687,22 +763,22 @@ class CreatedInstance:
         return self._data["productBaseType"]
 
     @property
-    def product_type(self):
+    def product_type(self) -> str:
         return self._data["productType"]
 
     @property
-    def product_name(self):
+    def product_name(self) -> str:
         return self._data["productName"]
 
     @property
-    def label(self):
+    def label(self) -> str:
         label = self._data.get("label")
         if not label:
             label = self.product_name
         return label
 
     @property
-    def group_label(self):
+    def group_label(self) -> str:
         label = self._data.get("group")
         if label:
             return label
@@ -851,21 +927,21 @@ class CreatedInstance:
         self.publish_attributes.mark_as_stored()
 
     @property
-    def creator_attributes(self):
+    def creator_attributes(self) -> CreatorAttributeValues:
         return self._data["creator_attributes"]
 
     @property
-    def creator_attribute_defs(self):
+    def creator_attribute_defs(self) -> list[AbstractAttrDef]:
         """Attribute definitions defined by creator plugin.
 
         Returns:
-              List[AbstractAttrDef]: Attribute definitions.
-        """
+              list[AbstractAttrDef]: Attribute definitions.
 
+        """
         return self.creator_attributes.attr_defs
 
     @property
-    def publish_attributes(self):
+    def publish_attributes(self) -> PublishAttributes:
         return self._data["publish_attributes"]
 
     @property

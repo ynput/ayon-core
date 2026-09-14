@@ -111,6 +111,7 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
     """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setMaxLength(2147483647)
         # Change placeholder palette color
         if hasattr(QtGui.QPalette, "PlaceholderText"):
             filter_palette = self.palette()
@@ -1036,6 +1037,8 @@ class OptionBox(QtWidgets.QLabel):
         if global_pos is None:
             return False
         pos = self.mapFromGlobal(global_pos)
+        if isinstance(pos, QtCore.QPointF):
+            pos = pos.toPoint()
         return self.rect().contains(pos)
 
 

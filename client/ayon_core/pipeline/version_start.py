@@ -70,7 +70,7 @@ def get_versioning_start(
 
     filtering_criteria = {
         "host_names": host_name,
-        "product_types": product_base_type,
+        "product_base_types": product_base_type,
         "product_names": product_name,
         "task_names": task_name,
         "task_types": task_type,

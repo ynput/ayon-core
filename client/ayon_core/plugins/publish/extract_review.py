@@ -10,7 +10,6 @@ from typing import Any, Optional
 import tempfile
 
 import clique
-import speedcopy
 import pyblish.api
 
 from ayon_core.lib import (
@@ -22,6 +21,7 @@ from ayon_core.lib import (
 from ayon_core.pipeline.publish.lib import (
     fill_sequence_gaps_with_previous_version
 )
+from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
@@ -31,10 +31,13 @@ from ayon_core.lib.transcoding import (
 )
 from ayon_core.pipeline import get_temp_dir
 from ayon_core.pipeline.publish import (
-    KnownPublishError,
+    PublishError,
     get_publish_instance_label,
 )
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers,
+)
 
 
 class TempData:
@@ -144,29 +147,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
     label = "Extract Review"
     order = pyblish.api.ExtractorOrder + 0.02
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "blender",
-        "houdini",
-        "max",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "batchdelivery",
-        "photoshop",
-        "substancepainter",
-        "workflow",
-    ]
 
     settings_category = "core"
     # Supported extensions
@@ -187,11 +167,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if not instance.data.get("review", True):
             return
 
+        orig_representations = tuple(instance.data["representations"])
+
         # Run processing
         self.main_process(instance)
 
         # Make sure cleanup happens and pop representations with "delete" tag.
-        for repre in tuple(instance.data["representations"]):
+        for repre in orig_representations:
             tags = repre.get("tags") or []
             # Representation is not marked to be deleted
             if "delete" not in tags:
@@ -225,9 +207,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
         profile = filter_profiles(
             self.profiles,
             {
-                "hosts": host_name,
-                "product_types": product_base_type,
-                "task_types": task_type
+                "host_names": host_name,
+                "product_base_types": product_base_type,
+                "task_types": task_type,
             },
             logger=self.log)
         if not profile:
@@ -343,6 +325,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             instance, profile_outputs
         )
 
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for repre, output_defs in outputs_per_repres:
             # Check if input should be preconverted before processing
             # Store original staging dir (it's value may change)
@@ -382,7 +366,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, review_layers=review_layers
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -392,7 +378,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 ))
                 continue
 
-            layer_name = get_review_layer_name(first_input_path)
+            layer_name = get_review_layer_name(
+                first_input_path, review_layers=review_layers
+            )
 
             # Do conversion if needed
             #   - change staging dir of source representation
@@ -407,7 +395,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
                     new_staging_dir,
-                    self.log
+                    review_layers=review_layers,
+                    logger=self.log,
                 )
                 # The OIIO conversion will remap the RGBA channels just to
                 # `R,G,B,A` so we will pass the intermediate file to FFMPEG
@@ -500,8 +489,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     files,
                 )[0]
                 if len(collections) != 1:
-                    raise KnownPublishError(
-                        "Multiple collections {} found.".format(collections))
+                    raise PublishError(
+                        "Found multiple collections, expected one."
+                        f" {collections}"
+                    )
 
                 collection = collections[0]
 
@@ -556,9 +547,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     ]
                     frame_start = min(collection.indexes)
                     frame_end = max(collection.indexes)
-                    # modify range for burnins
-                    instance.data["frameStart"] = frame_start
-                    instance.data["frameEnd"] = frame_end
                     temp_data.frame_start = frame_start
                     temp_data.frame_end = frame_end
 
@@ -809,7 +797,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not value:
                 continue
             try:
-                value = value.format(**fill_data)
+                value = value.format_map(fill_data)
             except Exception:
                 self.log.warning(
                     "Failed to format ffmpeg argument: {}".format(value),
@@ -1094,7 +1082,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     staging_dir, extension, resolution_width, resolution_height
                 )
                 temp_data.paths_to_remove.append(blank_frame_path)
-            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            copyfile(blank_frame_path, hole_fpath)
             added_files[frame] = hole_fpath
 
         return added_files
@@ -1151,9 +1139,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 is done.
 
         Raises:
-            KnownPublishError: if more than one collection is obtained.
-        """
+            PublishError: if more than one collection is obtained.
 
+        """
         # Prepare which hole is filled with what frame
         #   - the frame is filled only with already existing frames
         prev_frame = next(iter(collection.indexes))
@@ -1172,10 +1160,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
             hole_fpath = os.path.join(staging_dir, col_format % hole_frame)
             src_fpath = os.path.join(staging_dir, col_format % src_frame)
             if not os.path.isfile(src_fpath):
-                raise KnownPublishError(
-                    "Missing previously detected file: {}".format(src_fpath))
+                raise PublishError(
+                    f"Missing previously detected file: {src_fpath}"
+                )
 
-            speedcopy.copyfile(src_fpath, hole_fpath)
+            copyfile(src_fpath, hole_fpath)
             added_files[hole_frame] = hole_fpath
 
         return added_files
@@ -1315,22 +1304,33 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            offset_seconds = 0
-            if offset_seconds > 0:
-                audio_in_args.append(
-                    "-ss {}".format(offset_seconds)
+            # 'offset' was set only by maya addon and it used frame offset
+            #     instead of seconds offset. To prevent issues the value is
+            #     ignored and logged as skipped.
+            if audio.get("offset"):
+                self.log.warning(
+                    "Ignored deprecated audio input attribute 'offset'. "
+                    "Use 'offset_in_seconds' instead."
                 )
 
+            offset_seconds = audio.get("offset_in_seconds", 0)
+            # Delay audio start to match its timeline position.
+            if offset_seconds > 0:
+                # "all=1" applies to every channel (mono, stereo, 5.1…).
+                delay_ms = int(round(offset_seconds * 1000))
+                audio_filters.append(
+                    "adelay={}:all=1".format(delay_ms)
+                )
+            # Crop audio file input.
             elif offset_seconds < 0:
                 audio_in_args.append(
-                    "-itsoffset {}".format(abs(offset_seconds))
+                    "-ss {}".format(abs(offset_seconds))
                 )
 
-            # Audio duration is offset from `-ss`
-            audio_duration = duration_seconds + offset_seconds
-
-            # Set audio duration
-            audio_in_args.append("-to {:0.10f}".format(audio_duration))
+            # Audio duration
+            audio_in_args.append(
+                "-to {:0.10f}".format(duration_seconds - offset_seconds)
+            )
 
             # Ignore video data from audio input
             audio_in_args.append("-vn")
@@ -1346,6 +1346,23 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if len(audio_inputs) > 1:
             audio_out_args.append("-filter_complex amerge")
             audio_out_args.append("-ac {}".format(len(audio_inputs)))
+
+        # Resample audio to ensure block duration from AAC
+        # encoder never exceeds one video frame duration.
+        # Pick the lowest video standard rate satisfying this constraint.
+        # For non-AAC codecs, this has no negative effect.
+
+        # TODO: Replace with once https://trac.ffmpeg.org/ticket/11668 is fixed
+        # audio_filters.append("apad")
+        # audio_out_args.append("-shortest")
+
+        standard_audio_rates = (48000, 96000, 192000)
+        min_audio_rate = 1024 * temp_data.fps  # 1 AAC block = 1024 samples
+        sample_rate = next(
+            (rate for rate in standard_audio_rates if rate > min_audio_rate),
+            standard_audio_rates[-1]
+        )
+        audio_out_args.append(f"-ar {sample_rate}")
 
         return audio_in_args, audio_filters, audio_out_args
 

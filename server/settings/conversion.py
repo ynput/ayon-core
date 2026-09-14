@@ -1,10 +1,122 @@
 import re
 import copy
+import json
 from typing import Any
+
+from semver import VersionInfo
 
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
 
 PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
+
+
+def _convert_product_base_types_1_8_0(overrides):
+    # Staging dir, standard/hero publish templase
+    all_profiles = []
+    publish_settings = overrides.get("tools", {}).get("publish", {})
+    for profile_name in (
+        "custom_staging_dir_profiles",
+        "template_name_profiles",
+        "hero_template_name_profiles",
+    ):
+        profiles = publish_settings.get(profile_name)
+        if profiles:
+            all_profiles.append(profiles)
+
+    # Version start
+    version_start_s = (
+        overrides
+        .get("version_start_category", {})
+        .get("profiles")
+    )
+    if version_start_s:
+        all_profiles.append(version_start_s)
+
+    # Publish plugins
+    publish_plugins = overrides.get("publish", {})
+    for settings_parts in (
+        ("CollectUSDLayerContributions", "profiles"),
+        ("ExtractThumbnail", "profiles"),
+        ("ExtractOIIOTranscode", "profiles"),
+        ("ExtractOIIOPostProcess", "profiles"),
+        ("ExtractReview", "profiles"),
+        ("ExtractBurnin", "profiles"),
+        ("IntegrateProductGroup", "product_grouping_profiles"),
+        ("PreIntegrateThumbnails", "integrate_profiles"),
+    ):
+        found = True
+        plugin_settings = publish_plugins
+        for part in settings_parts:
+            if part not in plugin_settings:
+                found = False
+                break
+            plugin_settings = plugin_settings[part]
+
+        if found and plugin_settings:
+            all_profiles.append(plugin_settings)
+
+    # Convert data in profiles
+    for profiles in all_profiles:
+        for profile in profiles:
+            for old, new in (
+                ("product_types", "product_base_types"),
+                ("hosts", "host_names"),
+                ("tasks", "task_names"),
+            ):
+                if old in profile and new not in profile:
+                    profile[new] = profile.pop(old)
+
+    collect_exp_res = publish_plugins.get("CollectExplicitResolution") or {}
+    if (
+        "product_types" in collect_exp_res
+        and "product_base_types" not in collect_exp_res
+    ):
+        collect_exp_res["product_base_types"] = collect_exp_res.pop(
+            "product_types"
+        )
+
+
+def _convert_unify_profile_keys_1_8_0(overrides):
+    workfiles_settings = overrides.get("tools", {}).get("Workfiles", {})
+
+    profiles_settings = []
+    for key in (
+        "workfile_template_profiles",
+        "last_workfile_on_startup",
+        "open_workfile_tool_on_startup",
+        "extra_folders",
+        "workfile_lock_profiles",
+    ):
+        value = workfiles_settings.get(key)
+        if value:
+            profiles_settings.append(value)
+
+    load_settings = overrides.get("tools", {}).get("loader", {})
+
+    for key in (
+        "product_type_filter_profiles",
+    ):
+        value = load_settings.get(key)
+        if value:
+            profiles_settings.append(value)
+
+    validate_intent_p = (
+        overrides
+        .get("publish", {})
+        .get("ValidateIntent", {})
+        .get("profiles")
+    )
+    if validate_intent_p:
+        profiles_settings.append(validate_intent_p)
+
+    for profiles in profiles_settings:
+        for profile in profiles:
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in profile and new_key not in profile:
+                    profile[new_key] = profile.pop(old_key)
 
 
 def _convert_product_name_templates_1_7_0(overrides):
@@ -175,19 +287,87 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
             }
 
 
-def _convert_publish_plugins(overrides):
+def _convert_usd_contribution_variant_default_policy_1_9_11(overrides):
+    """Convert the USD contribution default boolean to a policy enum."""
+    profiles = (
+        overrides
+        .get("publish", {})
+        .get("CollectUSDLayerContributions", {})
+        .get("profiles")
+    )
+    if not profiles:
+        return
+
+    for profile in profiles:
+        if "contribution_variant_default_policy" in profile:
+            continue
+
+        if "contribution_variant_is_default" not in profile:
+            continue
+
+        is_default = profile.pop("contribution_variant_is_default")
+        profile["contribution_variant_default_policy"] = (
+            "always" if is_default else "if_not_set"
+        )
+
+
+def _convert_usd_contribution_uri_modes_1_9_11(
+    publish_overrides,
+    version: VersionInfo
+):
+    """Convert legacy USD contribution URI booleans to URI modes."""
+    if (version.major, version.minor, version.patch) >= (1, 9, 11):
+        return
+    for plugin_name in (
+        "ExtractUSDAssetContribution",
+        "ExtractUSDLayerContribution",
+    ):
+        plugin_settings = publish_overrides.get(plugin_name)
+        if not plugin_settings:
+            continue
+
+        value = plugin_settings.get("use_ayon_entity_uri")
+        if not isinstance(value, bool):
+            continue
+
+        plugin_settings["use_ayon_entity_uri"] = (
+            "ayon_entity_uri" if value else "filepath"
+        )
+
+
+def _convert_publish_plugins(overrides, version: VersionInfo):
     if "publish" not in overrides:
         return
     _convert_validate_version_0_3_3(overrides["publish"])
     _convert_oiio_transcode_0_4_5(overrides["publish"])
+    _convert_usd_contribution_variant_default_policy_1_9_11(overrides)
+    _convert_usd_contribution_uri_modes_1_9_11(overrides["publish"], version)
 
 
-def _convert_extract_thumbnail(overrides):
+def _convert_extract_thumbnail(overrides, version: VersionInfo):
     """ExtractThumbnail config settings did change to profiles."""
+
+    if (version.major, version.minor, version.patch) >= (1, 7, 0):
+        return
+
     extract_thumbnail_overrides = (
-        overrides.get("publish", {}).get("ExtractThumbnail")
+        overrides.get("publish", {}).get("ExtractThumbnail", {})
     )
-    if extract_thumbnail_overrides is None:
+    if not extract_thumbnail_overrides:
+        return
+
+    # Check if there are legacy overrides to the root keys
+    keys = (
+        "product_names",
+        "integrate_thumbnail",
+        "target_size",
+        "duration_split",
+        "oiiotool_defaults",
+        "ffmpeg_args",
+    )
+    if not any(
+        key in extract_thumbnail_overrides for key in keys
+    ):
         return
 
     base_value = {
@@ -205,14 +385,7 @@ def _convert_extract_thumbnail(overrides):
         },
         "ffmpeg_args": {"input": ["-apply_trc gamma22"], "output": []},
     }
-    for key in (
-        "product_names",
-        "integrate_thumbnail",
-        "target_size",
-        "duration_split",
-        "oiiotool_defaults",
-        "ffmpeg_args",
-    ):
+    for key in keys:
         if key in extract_thumbnail_overrides:
             base_value[key] = extract_thumbnail_overrides.pop(key)
 
@@ -222,14 +395,77 @@ def _convert_extract_thumbnail(overrides):
     extract_thumbnail_profiles.append(base_value)
 
 
+def _convert_burnin_offset_1_8_6(
+    overrides: dict[str, Any], version: VersionInfo
+) -> None:
+    """Burnins changed that the padding is also considered as offset."""
+    # Ignore newer versions
+    if (version.major, version.minor, version.patch) > (1, 8, 6):
+        return
+
+    burnin_options = (
+        overrides
+        .get("publish", {})
+        .get("ExtractBurnin", {})
+        .get("options")
+    )
+    if not burnin_options:
+        return
+
+    x_offset = burnin_options.get("x_offset")
+    y_offset = burnin_options.get("y_offset")
+    bg_padding = burnin_options.get("bg_padding")
+    if bg_padding is None:
+        return
+
+    if x_offset is not None:
+        burnin_options["x_offset"] = max(x_offset - bg_padding, 0)
+    if y_offset is not None:
+        burnin_options["x_offset"] = max(y_offset - bg_padding, 0)
+
+
+def _fix_duplicates_extract_thumbnail(overrides, version: VersionInfo):
+    """Fix issue where settings conversion may have duplicated the base
+    profile each time on settings copy due to bug in
+    `_convert_extract_thumbnail` implementation."""
+    if (version.major, version.minor, version.patch) > (1, 9, 8):
+        # Nothing to fix anymore
+        return
+
+    extract_thumbnail_overrides = (
+        overrides.get("publish", {})
+        .get("ExtractThumbnail", {})
+    )
+    profiles: list[dict] = extract_thumbnail_overrides.get("profiles", [])
+    if not profiles:
+        return
+
+    processed_profiles: set[str] = set()
+    non_duplicate_profiles = []
+    for profile in list(profiles):
+        profile_hash = json.dumps(profile, sort_keys=True)
+        if profile_hash in processed_profiles:
+            # Skip duplicate
+            continue
+        processed_profiles.add(profile_hash)
+        non_duplicate_profiles.append(profile)
+
+    extract_thumbnail_overrides["profiles"] = non_duplicate_profiles
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
+    version = VersionInfo.parse(source_version)
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
     _convert_product_name_templates_1_6_5(overrides)
     _convert_product_name_templates_1_7_0(overrides)
-    _convert_publish_plugins(overrides)
-    _convert_extract_thumbnail(overrides)
+    _convert_publish_plugins(overrides, version)
+    _convert_extract_thumbnail(overrides, version)
+    _convert_product_base_types_1_8_0(overrides)
+    _convert_unify_profile_keys_1_8_0(overrides)
+    _convert_burnin_offset_1_8_6(overrides, version)
+    _fix_duplicates_extract_thumbnail(overrides, version)
     return overrides

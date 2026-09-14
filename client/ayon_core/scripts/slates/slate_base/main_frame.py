@@ -23,7 +23,7 @@ class MainFrame(BaseObj):
 
     def fill_data_format(self):
         if re.match(self.fill_data_regex, self.dst_path):
-            self.dst_path = self.dst_path.format(**self.fill_data)
+            self.dst_path = self.dst_path.format_map(self.fill_data)
 
     @property
     def fill_data(self):

@@ -21,11 +21,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Qt runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
       - name: Install requirements
         run: ./tools/manage.sh create-env
       - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: ./tools/manage.sh run-tests

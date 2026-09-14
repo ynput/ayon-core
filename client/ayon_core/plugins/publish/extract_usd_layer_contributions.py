@@ -1,9 +1,10 @@
-from operator import attrgetter
+import copy
 import dataclasses
 import os
 import platform
 from collections import defaultdict
-from typing import Any, Dict, List
+from operator import attrgetter
+from typing import Any, Dict, List, Literal
 
 import pyblish.api
 try:
@@ -38,7 +39,7 @@ from ayon_core.pipeline.entity_uri import (
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
-from ayon_core.pipeline import publish, KnownPublishError
+from ayon_core.pipeline import publish, PublishError
 
 
 # This global toggle is here mostly for debugging purposes and should usually
@@ -48,6 +49,13 @@ from ayon_core.pipeline import publish, KnownPublishError
 # individual publishes instead of requiring to republish each contribution
 # all the time at the same time
 BUILD_INTO_LAST_VERSIONS = True
+
+USDContributionURI = Literal[
+    "filepath",
+    "ayon_entity_uri",
+    "ayon_entity_uri_latest",
+    "ayon_entity_uri_latest_approved",
+]
 
 
 @dataclasses.dataclass
@@ -73,7 +81,16 @@ class VariantContribution(_BaseContribution):
     # Variant
     variant_set_name: str
     variant_name: str
-    variant_is_default: bool  # Whether to author variant selection opinion
+    variant_default_policy: Literal[
+        "if_not_set", "always", "never"
+    ]  # Policy controlling variant selection opinion
+
+
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_not_set": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set"
+}
 
 
 def get_representation_path_in_publish_context(
@@ -141,57 +158,73 @@ def get_representation_path_in_publish_context(
 
 
 def get_instance_uri_path(
-        instance,
-        resolve=True
-):
+    instance: pyblish.api.Instance,
+    uri_mode: USDContributionURI = "filepath"
+) -> str:
     """Return path for instance's usd representation"""
     context = instance.context
-    folder_path = instance.data["folderPath"]
-    product_name = instance.data["productName"]
-    project_name = context.data["projectName"]
-    version_name = instance.data["version"]
+    project_name: str = context.data["projectName"]
+    folder_path: str = instance.data["folderPath"]
+    product_name: str = instance.data["productName"]
+    version: int = instance.data["version"]
+    representation_name: str = "usd"
 
-    # Get the layer's published path
-    path = construct_ayon_entity_uri(
-        project_name=project_name,
-        folder_path=folder_path,
-        product=product_name,
-        version=version_name,
-        representation_name="usd"
-    )
-
-    # Resolve contribution path
-    # TODO: Remove this when Asset Resolver is used
-    if resolve:
-        query = parse_ayon_entity_uri(path)
-        names = {
-            "project_name": query["project"],
-            "folder_path": query["folderPath"],
-            "product_name": query["product"],
-            "version_name": query["version"],
-            "representation_name": query["representation"],
-        }
-
-        # We want to resolve the paths live from the publishing context
-        path = get_representation_path_in_publish_context(context, **names)
-        if path:
-            return path
-
-        # If for whatever reason we were unable to retrieve from the context
-        # then get the path from an existing database entry
-        path = get_representation_path_by_names(
-            anatomy=context.data["anatomy"],
-            **names
+    # Handle AYON entity URI modes
+    if uri_mode in {
+        "ayon_entity_uri",
+        "ayon_entity_uri_latest",
+        "ayon_entity_uri_latest_approved",
+    }:
+        uri_version: int | str = version
+        if uri_mode == "ayon_entity_uri_latest":
+            uri_version = "latest"
+        elif uri_mode == "ayon_entity_uri_latest_approved":
+            uri_version = "latestDone"
+        return construct_ayon_entity_uri(
+            project_name=project_name,
+            folder_path=folder_path,
+            product=product_name,
+            version=uri_version,
+            representation_name=representation_name
         )
-        if not path:
-            raise RuntimeError(f"Unable to resolve publish path for: {names}")
 
-        # Ensure `None` for now is also a string
-        path = str(path)
-        if platform.system().lower() == "windows":
-            path = path.replace("\\", "/")
+    # Resolve the layer's published path.
+    names = {
+        "project_name": project_name,
+        "folder_path": folder_path,
+        "product_name": product_name,
+        "version_name": version,
+        "representation_name": representation_name,
+    }
+
+    # We want to resolve the paths live from the publishing context.
+    path = get_representation_path_in_publish_context(context, **names)
+    if path:
+        return path
+
+    # If for whatever reason we were unable to retrieve from the context
+    # then get the path from an existing database entry.
+    path = get_representation_path_by_names(
+        anatomy=context.data["anatomy"],
+        **names
+    )
+    if not path:
+        raise RuntimeError(f"Unable to resolve publish path for: {names}")
+
+    # Ensure `None` for now is also a string.
+    path = str(path)
+    if platform.system().lower() == "windows":
+        path = path.replace("\\", "/")
 
     return path
+
+
+def _layer_contents(layer: Sdf.Layer | None) -> str | None:
+    """Return a stable serialized representation of an SDF layer."""
+    if layer is None:
+        return None
+    layer: Sdf.Layer
+    return layer.ExportToString()
 
 
 def get_last_publish(instance, representation="usd"):
@@ -343,18 +376,21 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "contribution_variant_set_name",
             "contribution_variant"
         ]:
-            attr_values[key] = attr_values[key].format(**data)
+            attr_values[key] = attr_values[key].format_map(data)
 
         # Define contribution
         in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
+            variant_default_policy = attr_values[
+                "contribution_variant_default_policy"]
+
             contribution = VariantContribution(
                 instance=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
-                variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
+                variant_default_policy=variant_default_policy,
                 order=in_layer_order
             )
         else:
@@ -448,11 +484,11 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # contributing to the same layer or asset - so we first check for
         # existence
         context = source_instance.context
+        task_name = source_instance.data.get("task")
 
         # Required matching vars
         data = {
             "folderPath": source_instance.data["folderPath"],
-            "task": source_instance.data.get("task"),
             "productName": product_name,
             "variant": variant,
             "families": families
@@ -462,6 +498,25 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         if existing_instance:
             existing_instance.append(source_instance.id)
             existing_instance.data["source_instances"].append(source_instance)
+
+            # If the instance already exists, we want to ensure the task name
+            # is set if any of the source instances specify it.
+            existing_instance_task_name = existing_instance.data.get("task")
+            if task_name and existing_instance_task_name != task_name:
+                if existing_instance_task_name:
+                    # Log the difference, but do not change task name
+                    # on the existing instance
+                    self.log.debug(
+                        "Instance has different task name"
+                        f" '{existing_instance_task_name}' than source"
+                        f" instance '{task_name}' because it already "
+                        " inherited the task name from another source "
+                        " instance."
+                    )
+                else:
+                    # Set the task name
+                    existing_instance.data["task"] = task_name
+
             return existing_instance
 
         # Otherwise create the instance
@@ -479,12 +534,23 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         new_instance.data["comment"] = "Automated bootstrap USD file."
         new_instance.append(source_instance.id)
         new_instance.data["source_instances"] = [source_instance]
+        if task_name:
+            new_instance.data["task"] = task_name
 
         # The contribution target publishes should never match versioning of
         # the workfile but should just always increment from their last version
         # so that there will never be conflicts between contributions from
         # different departments and scenes.
         new_instance.data["followWorkfileVersion"] = False
+
+        # Transfer any creator and publish attributes, to ensure any optional
+        # validators that may also apply to these instances will have the
+        # state inherited from its parent
+        for key in ("creator_attributes", "publish_attributes"):
+            if key in source_instance.data:
+                new_instance.data[key] = copy.deepcopy(
+                    source_instance.data[key]
+                )
 
         return new_instance
 
@@ -499,30 +565,49 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         product_base_type = instance.data.get("productBaseType")
         if not product_base_type:
             product_base_type = instance.data["productType"]
-        profile = filter_profiles(cls.profiles, {
-            "product_types": product_base_type,
-            "task_types": current_context_task_type
-        })
+        filtering_criteria = {
+            "product_base_types": product_base_type,
+            "task_types": current_context_task_type,
+            "task_names": create_context.get_current_task_name()
+        }
+        profile = filter_profiles(cls.profiles, filtering_criteria)
+
         if not profile:
-            profile = {}
+            profile = {
+                "contribution_enabled": True,
+                "contribution_layer": None,
+                "contribution_target_product": "usdAsset",
+                "contribution_apply_as_variant": False,
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_default_policy":
+                    "if_not_set",
+            }
 
         # Define defaults
-        default_enabled: bool = profile.get("contribution_enabled", True)
-        default_contribution_layer = profile.get(
-            "contribution_layer", None)
-        default_apply_as_variant: bool = profile.get(
-            "contribution_apply_as_variant", False)
-        default_target_product: str = profile.get(
-            "contribution_target_product", "usdAsset")
+        default_target_product: str = profile["contribution_target_product"]
         default_init_as: str = (
             "asset"
-            if profile.get("contribution_target_product") == "usdAsset"
-            else "shot")
+            if default_target_product == "usdAsset"
+            else "shot"
+        )
         init_as_visible = True
 
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
+
+        # Convert legacy attribute value
+        if "contribution_variant_is_default" in publish_attributes:
+            contribution_variant_is_default = publish_attributes.pop(
+                "contribution_variant_is_default"
+            )
+
+            publish_attributes["contribution_variant_default_policy"] = (
+                "always"
+                if contribution_variant_is_default
+                else "if_not_set"
+            )
 
         visible = publish_attributes.get("contribution_enabled", True)
         variant_visible = visible and publish_attributes.get(
@@ -548,7 +633,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "In both cases the USD data itself is free to have "
                         "references and sublayers of its own."
                     ),
-                    default=default_enabled),
+                    default=profile["contribution_enabled"]),
             TextDef("contribution_target_product",
                     label="Target product",
                     tooltip=(
@@ -583,7 +668,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(contribution_layers.keys()),
-                    default=default_contribution_layer,
+                    default=profile["contribution_layer"],
                     visible=visible),
             # TODO: We may want to make the visibility of this optional
             #  based on studio preference, to avoid complexity when not needed
@@ -608,28 +693,41 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=default_apply_as_variant,
+                    default=profile["contribution_apply_as_variant"],
                     visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
-                    default="{layer}",
+                    default=profile["contribution_variant_set_name"],
                     visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
-                    default="{variant}",
+                    default=profile["contribution_variant"],
                     visible=variant_visible),
-            BoolDef("contribution_variant_is_default",
-                    label="Set as default variant selection",
-                    tooltip=(
-                        "Whether to set this instance's variant name as the "
-                        "default selected variant name for the variant set.\n"
-                        "It is always expected to be enabled for only one "
-                        "variant name in the variant set.\n"
-                        "The behavior is unpredictable if multiple instances "
-                        "for the same variant set have this enabled."
-                    ),
-                    default=False,
-                    visible=variant_visible),
+            EnumDef(
+                "contribution_variant_default_policy",
+                label="Set as default variant selection",
+                tooltip=(
+                    "Controls whether this contribution's variant name is "
+                    "authored as the selected default for the variant set.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' leaves "
+                    "the variant selection unchanged.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' "
+                    "sets it only when "
+                    "the variant set has no default selection yet.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' always"
+                    " sets it as the default and may "
+                    "override a selection authored by another contribution.\n"
+                    f"When multiple contributions use "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}', "
+                    "the final result depends on their contribution order."
+                ),
+                items=CONTRIBUTION_VARIANT_DEFAULT_POLICY,
+                default=profile.get(
+                    "contribution_variant_default_policy",
+                    "if_not_set",
+                ),
+                visible=variant_visible,
+            ),
             UISeparatorDef("usd_container_settings3"),
         ]
 
@@ -675,7 +773,7 @@ class ValidateUSDDependencies(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         if Sdf is None:
-            raise KnownPublishError("USD library 'Sdf' is not available.")
+            raise PublishError("USD library 'Sdf' is not available.")
 
 
 class ExtractUSDLayerContribution(publish.Extractor):
@@ -686,7 +784,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
     settings_category = "core"
 
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
     enforce_default_prim = False
 
     def process(self, instance):
@@ -698,6 +796,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
         path = get_last_publish(instance)
         if path and BUILD_INTO_LAST_VERSIONS:
             sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
+            original_contents = _layer_contents(sdf_layer)
 
             # If enabled in settings, ignore any default prim specified on
             # older publish versions and always publish with the AYON
@@ -712,11 +811,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
             default_prim = get_standard_default_prim_name(folder_path)
             sdf_layer = Sdf.Layer.CreateAnonymous()
             set_layer_defaults(sdf_layer, default_prim=default_prim)
+            original_contents = None
 
         contributions = instance.data.get("usd_contributions", [])
         for contribution in sorted(contributions, key=attrgetter("order")):
-            path = get_instance_uri_path(contribution.instance,
-                                         resolve=not self.use_ayon_entity_uri)
+            path = get_instance_uri_path(
+                contribution.instance,
+                uri_mode=self.use_ayon_entity_uri
+            )
             if isinstance(contribution, VariantContribution):
                 # Add contribution as a reference inside a variant
                 self.log.debug(f"Adding variant: {contribution}")
@@ -754,8 +856,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 # Set default variant selection
                 variant_set_name = contribution.variant_set_name
                 variant_name = contribution.variant_name
-                if contribution.variant_is_default or \
-                        variant_set_name not in prim_spec.variantSelections:
+                policy = contribution.variant_default_policy
+                if (
+                    policy == "always"
+                    or (
+                        policy == "if_not_set"
+                        and variant_set_name not in prim_spec.variantSelections
+                    )
+                ):
                     prim_spec.variantSelections[variant_set_name] = variant_name  # noqa: E501
 
             elif isinstance(contribution, SublayerContribution):
@@ -775,6 +883,18 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 )
             else:
                 raise TypeError(f"Unsupported contribution: {contribution}")
+
+        # Only publish if there are changes compared to last version,
+        # otherwise do not generate a new file.
+        if (
+            original_contents is not None
+            and original_contents == _layer_contents(sdf_layer)
+        ):
+            self.log.info(
+                "USD contribution layer is unchanged; skipping publish."
+            )
+            instance.data["publish"] = False
+            return
 
         # Save the file
         staging_dir = self.staging_dir(instance)
@@ -800,6 +920,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
             ref: "Sdf.Reference"
 
             uri = ref.customData.get("ayon_uri")
+            if not uri or not parse_ayon_entity_uri(uri):
+                uri = ref.customData.get("ayon_entity_uri")
             if uri and self.instance_match_ayon_uri(instance, uri):
                 self.log.debug("Removing existing reference: %s", ref)
                 remove_indices.add(index)
@@ -860,7 +982,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
 
     settings_category = "core"
 
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
 
     def process(self, instance):
 
@@ -873,14 +995,18 @@ class ExtractUSDAssetContribution(publish.Extractor):
         # Use existing asset and add to it, or initialize a new asset layer
         path = get_last_publish(instance)
         payload_layer = None
+        original_asset_contents = None
+        original_payload_contents = None
         if path and BUILD_INTO_LAST_VERSIONS:
             # If there's a payload file, put it in the payload instead
             folder = os.path.dirname(path)
             payload_path = os.path.join(folder, "payload.usd")
             if os.path.exists(payload_path):
                 payload_layer = Sdf.Layer.OpenAsAnonymous(payload_path)
+                original_payload_contents = _layer_contents(payload_layer)
 
             asset_layer = Sdf.Layer.OpenAsAnonymous(path)
+            original_asset_contents = _layer_contents(asset_layer)
         else:
             # If no existing publish of this product exists then we initialize
             # the layer as either a default asset or shot structure.
@@ -938,8 +1064,10 @@ class ExtractUSDAssetContribution(publish.Extractor):
             layer_id = layer_instance.data["usd_layer_id"]
             order = layer_instance.data["usd_layer_order"]
 
-            path = get_instance_uri_path(instance=layer_instance,
-                                         resolve=not self.use_ayon_entity_uri)
+            path = get_instance_uri_path(
+                instance=layer_instance,
+                uri_mode=self.use_ayon_entity_uri
+            )
             add_ordered_sublayer(target_layer,
                                  contribution_path=path,
                                  layer_id=layer_id,
@@ -948,6 +1076,16 @@ class ExtractUSDAssetContribution(publish.Extractor):
                                  # us to later detect whether another path
                                  # has the same layer id, so we can replace it.
                                  add_sdf_arguments_metadata=True)
+        if (
+            original_asset_contents is not None
+            and original_asset_contents == _layer_contents(asset_layer)
+            and original_payload_contents == _layer_contents(payload_layer)
+        ):
+            self.log.info(
+                "USD asset contribution is unchanged; skipping publish."
+            )
+            instance.data["publish"] = False
+            return
 
         # Save the file
         staging_dir = self.staging_dir(instance)

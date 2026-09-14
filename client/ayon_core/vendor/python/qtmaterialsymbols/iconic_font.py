@@ -14,12 +14,13 @@ methods returning instances of ``QIcon``.
 """
 import warnings
 
+from packaging.version import parse
 from typing import Dict, Optional, Union
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets, QT_VERSION
 
 from .structures import IconOptions, Position
-from .utils import get_char_mapping, get_icon_name_char, _get_font_name
+from .utils import get_char_mapping, _get_font_name_filled, _get_font_name
 
 
 class _Cache:
@@ -38,6 +39,12 @@ def get_icon(*args, **kwargs):
 
 class CharIconPainter:
     """Char icon painter."""
+
+    def __init__(self):
+        qt_version = parse(QT_VERSION)
+        self._use_path = parse("6.0") < qt_version < parse("6.6")
+        self._glyph_path_cache = {}
+
     def paint(self, iconic, painter, rect, mode, state, options):
         """Main paint method."""
         self._paint_icon(iconic, painter, rect, mode, state, options)
@@ -45,21 +52,18 @@ class CharIconPainter:
     def _paint_icon(self, iconic, painter, rect, mode, state, options):
         """Paint a single icon."""
         painter.save()
+        painter.setClipRect(rect)
 
         color = options.get_color_for_state(state, mode)
         char = options.get_char_for_state(state, mode)
 
-        painter.setPen(QtGui.QColor(color))
-
-        # A 16 pixel-high icon yields a font size of 14, which is pixel perfect
-        # for font-awesome. 16 * 0.875 = 14
-        # The reason why the glyph size is smaller than the icon size is to
-        # account for font bearing.
-        # draw_size = round(0.875 * rect.height() * options.scale_factor)
-
         draw_size = round(rect.height() * options.scale_factor)
 
-        painter.setFont(iconic.get_font(draw_size))
+        font = iconic.get_font(
+            draw_size,
+            options.get_fill_for_state(state, mode)
+        )
+
         if options.offset is not None:
             rect = QtCore.QRect(rect)
             rect.translate(
@@ -71,9 +75,8 @@ class CharIconPainter:
         scale_y = -1 if options.vflip else 1
 
         if options.vflip or options.hflip or options.rotate:
-            x_center = rect.width() * 0.5
-            y_center = rect.height() * 0.5
-            painter.translate(x_center, y_center)
+            center = rect.center()
+            painter.translate(center)
 
             transfrom = QtGui.QTransform()
             transfrom.scale(scale_x, scale_y)
@@ -81,12 +84,62 @@ class CharIconPainter:
 
             if options.rotate:
                 painter.rotate(options.rotate)
-            painter.translate(-x_center, -y_center)
+            painter.translate(-center)
 
         painter.setOpacity(options.opacity)
 
-        painter.drawText(rect, QtCore.Qt.AlignCenter, char)
+        if self._use_path:
+            painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+            path = self._get_glyph_path(font, char)
+            if not path.isEmpty():
+                metrics = QtGui.QFontMetricsF(font)
+                bounds = metrics.boundingRect(rect, QtCore.Qt.AlignCenter, char)
+
+                # Bounds width returns zero in Qt 6.5.4 (in e.g. Silhouette)
+                offset_x = bounds.x()
+                if bounds.width() == 0:
+                    pixel_size = font.pixelSize()
+                    offset_x = rect.x() + ((rect.width() - pixel_size) // 2)
+                painter.translate(
+                    offset_x, bounds.bottom() - metrics.descent()
+                )
+                painter.fillPath(path, QtGui.QColor(color))
+        else:
+            painter.setFont(font)
+            painter.setPen(QtGui.QColor(color))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, char)
+
         painter.restore()
+
+    def _get_glyph_path(
+        self, font: QtGui.QFont, char: str
+    ) -> QtGui.QPainterPath:
+        """Get the outline path for a single glyph.
+
+        Args:
+            font (QtGui.QFont): The font to use for the glyph.
+            char (str): The character to get the path for.
+
+        """
+        if not char:
+            return QtGui.QPainterPath()
+
+        cache_key = (font.family(), font.pixelSize(), char)
+        path = self._glyph_path_cache.get(cache_key)
+        if path is not None:
+            return path
+
+        raw_font = QtGui.QRawFont.fromFont(font)
+        if not raw_font.isValid():
+            return QtGui.QPainterPath()
+
+        glyph_indexes = raw_font.glyphIndexesForString(char)
+        glyph_index = next(iter(glyph_indexes), None)
+        if glyph_index is None:
+            return QtGui.QPainterPath()
+        path = raw_font.pathForGlyph(glyph_index)
+        self._glyph_path_cache[cache_key] = path
+        return path
 
 
 class CharIconEngine(QtGui.QIconEngine):
@@ -98,7 +151,7 @@ class CharIconEngine(QtGui.QIconEngine):
         painter: QtGui.QPainter,
         options: IconOptions
     ):
-        super(CharIconEngine, self).__init__()
+        super().__init__()
         self._iconic = iconic
         self._painter = painter
         self._options = options
@@ -137,9 +190,12 @@ class IconicFont(QtCore.QObject):
     def get_charmap(self) -> Dict[str, int]:
         return get_char_mapping()
 
-    def get_font(self, size: int) -> QtGui.QFont:
+    def get_font(self, size: int, filled: bool) -> QtGui.QFont:
         """Return a QFont corresponding to the given size."""
-        font = QtGui.QFont(_get_font_name())
+        if filled:
+            font = QtGui.QFont(_get_font_name_filled())
+        else:
+            font = QtGui.QFont(_get_font_name())
         font.setPixelSize(round(size))
         return font
 
@@ -166,37 +222,11 @@ class IconicFont(QtCore.QObject):
         opacity: Optional[float] = None,
         scale_factor: Optional[float] = None,
         offset: Optional[Position] = None,
-        hflip: Optional[bool] = False,
-        vflip: Optional[bool] = False,
-        rotate: Optional[int] = 0,
-        icon_name_normal: Optional[str] = None,
-        icon_name_active: Optional[str] = None,
-        icon_name_selected: Optional[str] = None,
-        icon_name_disabled: Optional[str] = None,
-        icon_name_on: Optional[str] = None,
-        icon_name_off: Optional[str] = None,
-        icon_name_on_normal: Optional[str] = None,
-        icon_name_off_normal: Optional[str] = None,
-        icon_name_on_active: Optional[str] = None,
-        icon_name_off_active: Optional[str] = None,
-        icon_name_on_selected: Optional[str] = None,
-        icon_name_off_selected: Optional[str] = None,
-        icon_name_on_disabled: Optional[str] = None,
-        icon_name_off_disabled: Optional[str] = None,
-        color_normal: Optional[Union[QtGui.QColor, str]] = None,
-        color_active: Optional[Union[QtGui.QColor, str]] = None,
-        color_selected: Optional[Union[QtGui.QColor, str]] = None,
-        color_disabled: Optional[Union[QtGui.QColor, str]] = None,
-        color_on: Optional[Union[QtGui.QColor, str]] = None,
-        color_off: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_normal: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_normal: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_active: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_active: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_selected: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_selected: Optional[Union[QtGui.QColor, str]] = None,
-        color_on_disabled: Optional[Union[QtGui.QColor, str]] = None,
-        color_off_disabled: Optional[Union[QtGui.QColor, str]] = None,
+        hflip: bool = False,
+        vflip: bool = False,
+        rotate: int = 0,
+        fill: bool = True,
+        **kwargs
     ) -> QtGui.QIcon:
         """Return a QIcon object corresponding to the provided icon name."""
         if QtWidgets.QApplication.instance() is None:
@@ -214,34 +244,8 @@ class IconicFont(QtCore.QObject):
             hflip=hflip,
             vflip=vflip,
             rotate=rotate,
-            icon_name_normal=icon_name_normal,
-            icon_name_active=icon_name_active,
-            icon_name_selected=icon_name_selected,
-            icon_name_disabled=icon_name_disabled,
-            icon_name_on=icon_name_on,
-            icon_name_off=icon_name_off,
-            icon_name_on_normal=icon_name_on_normal,
-            icon_name_off_normal=icon_name_off_normal,
-            icon_name_on_active=icon_name_on_active,
-            icon_name_off_active=icon_name_off_active,
-            icon_name_on_selected=icon_name_on_selected,
-            icon_name_off_selected=icon_name_off_selected,
-            icon_name_on_disabled=icon_name_on_disabled,
-            icon_name_off_disabled=icon_name_off_disabled,
-            color_normal=color_normal,
-            color_active=color_active,
-            color_selected=color_selected,
-            color_disabled=color_disabled,
-            color_on=color_on,
-            color_off=color_off,
-            color_on_normal=color_on_normal,
-            color_off_normal=color_off_normal,
-            color_on_active=color_on_active,
-            color_off_active=color_off_active,
-            color_on_selected=color_on_selected,
-            color_off_selected=color_off_selected,
-            color_on_disabled=color_on_disabled,
-            color_off_disabled=color_off_disabled,
+            fill=fill,
+            **kwargs
         )
         cache_key = options.identifier
         if cache_key in self._icon_cache:

@@ -1,6 +1,7 @@
 """Backend models that can be used in controllers."""
 
 from .cache import CacheItem, NestedCacheItem
+from .settings import SettingsModel
 from .projects import (
     TagItem,
     StatusItem,
@@ -20,12 +21,14 @@ from .hierarchy import (
 )
 from .thumbnails import ThumbnailsModel
 from .selection import HierarchyExpectedSelection
-from .users import UsersModel
+from .users import UsersModel, UserItem
 
 
 __all__ = (
     "CacheItem",
     "NestedCacheItem",
+
+    "SettingsModel",
 
     "TagItem",
     "StatusItem",
@@ -47,4 +50,5 @@ __all__ = (
     "HierarchyExpectedSelection",
 
     "UsersModel",
+    "UserItem",
 )

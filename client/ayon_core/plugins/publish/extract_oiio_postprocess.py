@@ -26,7 +26,8 @@ class ExtractOIIOPostProcess(publish.Extractor):
     """
 
     label = "OIIO Post Process"
-    order = pyblish.api.ExtractorOrder + 0.020
+    # After ExtractOIIOTranscode, before ExtractReview
+    order = pyblish.api.ExtractorOrder + 0.0195
 
     settings_category = "core"
 
@@ -283,7 +284,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
         repre_ext: str = repre["ext"]
         filtering_criteria = {
             "host_names": host_name,
-            "product_types": product_base_type,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,

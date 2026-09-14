@@ -139,10 +139,10 @@ def get_staging_dir_config(
         product_base_type = product_type
 
     filtering_criteria = {
-        "hosts": host_name,
+        "host_names": host_name,
         "task_types": task_type,
         "task_names": task_name,
-        "product_types": product_base_type,
+        "product_base_types": product_base_type,
         "product_names": product_name,
     }
     profile = filter_profiles(

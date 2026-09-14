@@ -18,7 +18,7 @@ class CollectExplicitResolution(
 
     default_resolution_item = (None, "Don't override")
     # Settings
-    product_types = []
+    product_base_types = []
     options = []
 
     # caching resoluton items
@@ -85,7 +85,7 @@ class CollectExplicitResolution(
     def get_attr_defs_for_instance(
         cls, create_context, instance,
     ):
-        if instance.product_type not in cls.product_types:
+        if instance.product_base_type not in cls.product_base_types:
             return []
 
         # Get the resolution items

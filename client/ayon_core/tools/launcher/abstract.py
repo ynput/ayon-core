@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import typing
 from typing import Optional, Any
 
 from ayon_core.addon import AddonsManager
@@ -12,6 +13,9 @@ from ayon_core.tools.common_models import (
     TaskItem,
     TaskTypeItem,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 @dataclass
@@ -34,6 +38,7 @@ class ActionItem:
         action_type (Literal["webaction", "local"]): Type of action.
         identifier (str): Unique identifier of action item.
         order (int): Action ordering.
+        suborder (int): Internal ordering used for webactions order.
         label (str): Action label.
         variant_label (Optional[str]): Variant label, full label is
             concatenated with space. Actions are grouped under single
@@ -49,6 +54,7 @@ class ActionItem:
     action_type: str
     identifier: str
     order: int
+    suborder: int
     label: str
     variant_label: Optional[str]
     full_label: str
@@ -63,8 +69,10 @@ class WorkfileItem:
     workfile_id: str
     filename: str
     exists: bool
-    icon: Optional[str]
-    version: Optional[int]
+    host_name: str | None
+    icon: str | None
+    version: int | None
+    updated_at_time: float | None
 
 
 class AbstractLauncherCommon(ABC):
@@ -156,6 +164,26 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 
 
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
+    @abstractmethod
+    def get_grouped_host_names(self) -> list[str | None]:
+        """Get list of host names that will group workfiles."""
+
+    @abstractmethod
+    def set_grouped_host_names(self, host_names: list[str | None]):
+        """Set list of host names that will group workfiles."""
+
     # Entity items for UI
     @abstractmethod
     def get_project_items(

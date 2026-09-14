@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import os
 import re
 import copy
 import platform
 import collections
+from typing import TYPE_CHECKING, Any
 
 import ayon_api
 
@@ -17,7 +20,12 @@ from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
 from .roots import AnatomyRoots
-from .templates import AnatomyTemplates
+from .templates import AnatomyTemplates, NOT_SET
+
+
+if TYPE_CHECKING:
+    from .templates import TemplateItem
+
 
 log = Logger.get_logger(__name__)
 
@@ -104,7 +112,13 @@ class BaseAnatomy(object):
         """Return `AnatomyTemplates` object of current Anatomy instance."""
         return self._templates_obj
 
-    def get_template_item(self, *args, **kwargs):
+    def get_template_item(
+            self,
+            category_name: str,
+            template_name: str,
+            subkey: str | None = None,
+            default: Any = NOT_SET,
+    ) -> TemplateItem | Any:
         """Get template item from category.
 
         Args:
@@ -117,7 +131,9 @@ class BaseAnatomy(object):
             Any: Template item, subkey value as AnatomyStringTemplate or None.
 
         """
-        return self._templates_obj.get_template_item(*args, **kwargs)
+        return self._templates_obj.get_template_item(
+            category_name, template_name, subkey, default
+        )
 
     def format(self, *args, **kwargs):
         """Wrap `format` method of Anatomy's `templates_obj`."""
@@ -221,7 +237,7 @@ class BaseAnatomy(object):
         if not root_templates:
             return None
 
-        return root_templates[0].format(**{"root": self.roots})
+        return root_templates[0].format(root=self.roots)
 
     def root_names_from_templates(self, templates):
         """Extract root names form anatomy templates.
@@ -271,7 +287,7 @@ class BaseAnatomy(object):
             str: formatted path
         """
         # NOTE does not care if there are different keys than "root"
-        return template_path.format(**{"root": self.roots})
+        return template_path.format(root=self.roots)
 
     @classmethod
     def fill_root_with_path(cls, rootless_path, root_path):
@@ -343,7 +359,7 @@ class BaseAnatomy(object):
             )
 
         data = self.root_environmets_fill_data(template)
-        return rootless_path.format(**data)
+        return rootless_path.format_map(data)
 
     def _project_entity_to_anatomy_data(self, project_entity):
         """Convert project document to anatomy data.

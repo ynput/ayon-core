@@ -1,7 +1,6 @@
 from qtpy import QtCore, QtGui
 
 # ID of context item in instance view
-CONTEXT_ID = "context"
 CONTEXT_LABEL = "Context"
 # Not showed anywhere - used as identifier
 CONTEXT_GROUP = "__ContextGroup__"
@@ -35,7 +34,6 @@ ResetKeySequence = QtGui.QKeySequence(
 )
 
 __all__ = (
-    "CONTEXT_ID",
     "CONTEXT_LABEL",
 
     "CONTEXT_GROUP",

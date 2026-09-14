@@ -21,7 +21,7 @@ from ayon_core.lib.file_transaction import (
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
     OptionalPyblishPluginMixin,
-    KnownPublishError,
+    PublishError,
 )
 
 
@@ -243,6 +243,12 @@ class IntegrateHeroVersion(
         if old_version:
             entity_id = old_version["id"]
 
+        tags = instance.data.get("versionTags")
+        if tags is not None:
+            # Tags contents are checked at earlier step "IntegrateAsset"
+            # Force the type to be list for the new_version_entity call.
+            tags = list(tags)
+
         new_hero_version = new_version_entity(
             - src_version_entity["version"],
             src_version_entity["productId"],
@@ -250,6 +256,7 @@ class IntegrateHeroVersion(
             data=copy.deepcopy(src_version_entity["data"]),
             attribs=copy.deepcopy(src_version_entity["attrib"]),
             entity_id=entity_id,
+            tags=tags,
         )
 
         if old_version:
@@ -380,6 +387,7 @@ class IntegrateHeroVersion(
                 }
 
                 dst_paths = []
+                is_udim = bool(repre_context.get("udim"))
                 # Prepare paths of source and destination files
                 if len(published_files) == 1:
                     dst_paths.append(str(template_filled))
@@ -400,7 +408,10 @@ class IntegrateHeroVersion(
 
                     # Get head and tail for collection
                     frame_splitter = "_-_FRAME_SPLIT_-_"
-                    anatomy_data["frame"] = frame_splitter
+                    if is_udim:
+                        anatomy_data["udim"] = frame_splitter
+                    else:
+                        anatomy_data["frame"] = frame_splitter
                     _template_filled = path_template_obj.format_strict(
                         anatomy_data
                     )
@@ -442,10 +453,10 @@ class IntegrateHeroVersion(
                 file_transactions.process()
 
             except DuplicateDestinationError as exc:
-                # Raise DuplicateDestinationError as KnownPublishError
+                # Raise DuplicateDestinationError as PublishError
                 # and rollback the transactions
                 file_transactions.rollback()
-                raise KnownPublishError(exc).with_traceback(sys.exc_info()[2])
+                raise PublishError(str(exc)).with_traceback(sys.exc_info()[2])
 
             except Exception as exc:
                 # Rollback the transactions

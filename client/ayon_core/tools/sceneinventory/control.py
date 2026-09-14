@@ -41,6 +41,11 @@ class SceneInventoryController:
         self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
 
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
+
     def get_host(self) -> ILoadHost:
         return self._host
 

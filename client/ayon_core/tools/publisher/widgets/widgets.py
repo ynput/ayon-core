@@ -1,9 +1,13 @@
-# -*- coding: utf-8 -*-
-import os
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 import functools
+import os
+
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
+from ayon_core.lib import MaterialSymbolsIcon
 from ayon_core.style import get_objected_colors
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
@@ -22,8 +26,17 @@ from .icons import (
 FA_PREFIXES = ["", "fa.", "fa5.", "fa5b.", "fa5s.", "ei.", "mdi."]
 
 
+@dataclass
+class InstancesSelection:
+    instance_ids: set[str] = field(default_factory=set)
+    context_selected: bool = False
+    convertor_identifiers: set[str] = field(default_factory=set)
+
+
 def parse_icon_def(
-    icon_def, default_width=None, default_height=None, color=None
+    icon_def,
+    default_width=None,
+    default_height=None,
 ):
     if not icon_def:
         return None
@@ -31,28 +44,32 @@ def parse_icon_def(
     if isinstance(icon_def, QtGui.QPixmap):
         return icon_def
 
-    color = color or "white"
     default_width = default_width or 512
     default_height = default_height or 512
 
     if isinstance(icon_def, QtGui.QIcon):
         return icon_def.pixmap(default_width, default_height)
 
-    try:
+    if isinstance(icon_def, str):
         if os.path.exists(icon_def):
-            return QtGui.QPixmap(icon_def)
-    except Exception:
-        # TODO logging
-        pass
+            try:
+                return QtGui.QPixmap(icon_def)
+            except Exception:
+                # TODO logging
+                return None
 
-    for prefix in FA_PREFIXES:
-        try:
-            icon_name = "{}{}".format(prefix, icon_def)
-            icon = qtawesome.icon(icon_name, color=color)
-            return icon.pixmap(default_width, default_height)
-        except Exception:
-            # TODO logging
-            continue
+        for prefix in FA_PREFIXES:
+            try:
+                icon_name = f"{prefix}{icon_def}"
+                icon = qtawesome.icon(icon_name, color="white")
+                return icon.pixmap(default_width, default_height)
+            except Exception:
+                # TODO logging
+                continue
+        return None
+
+    icon_def = get_qt_icon(icon_def)
+    return icon_def.pixmap(default_width, default_height)
 
 
 class PublishPixmapLabel(PixmapLabel):
@@ -308,10 +325,7 @@ class ChangeViewBtn(IconButton):
 
         # "format_align_right"
         # "segment"
-        icon = get_qt_icon({
-            "type": "material-symbols",
-            "name": icon_name,
-        })
+        icon = get_qt_icon(MaterialSymbolsIcon(icon_name))
         self.setIcon(icon)
         self.setToolTip(tooltip)
 
@@ -331,13 +345,13 @@ class AbstractInstanceView(QtWidgets.QWidget):
         """
         self.refreshed = refreshed
 
-    def refresh(self):
+    def refresh(self) -> None:
         """Refresh instances in the view from current `CreatedContext`."""
-        raise NotImplementedError((
-            "{} Method 'refresh' is not implemented."
-        ).format(self.__class__.__name__))
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'refresh' is not implemented."
+        )
 
-    def has_items(self):
+    def has_items(self) -> bool:
         """View has at least one item.
 
         This is more a question for controller but is called from widget
@@ -345,53 +359,55 @@ class AbstractInstanceView(QtWidgets.QWidget):
 
         Returns:
             bool: There is at least one instance or conversion item.
+
         """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'has_items'"
+            " is not implemented."
+        )
 
-        raise NotImplementedError((
-            "{} Method 'has_items' is not implemented."
-        ).format(self.__class__.__name__))
-
-    def get_selected_items(self):
+    def get_selected_items(self) -> InstancesSelection:
         """Selected instances required for callbacks.
 
         Example: When delete button is clicked to know what should be deleted.
+
         """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'get_selected_items'"
+            " is not implemented."
+        )
 
-        raise NotImplementedError((
-            "{} Method 'get_selected_items' is not implemented."
-        ).format(self.__class__.__name__))
-
-    def set_selected_items(
-        self, instance_ids, context_selected, convertor_identifiers
-    ):
+    def set_selected_items(self, selection: InstancesSelection) -> None:
         """Change selection for instances and context.
 
         Used to applying selection from one view to other.
 
         Args:
-            instance_ids (List[str]): Selected instance ids.
-            context_selected (bool): Context is selected.
-            convertor_identifiers (List[str]): Selected convertor identifiers.
+            selection (InstancesSelection): Selected instances and context.
 
         """
-        raise NotImplementedError((
-            "{} Method 'set_selected_items' is not implemented."
-        ).format(self.__class__.__name__))
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'set_selected_items'"
+            " is not implemented."
+        )
 
-    def set_active_toggle_enabled(self, enabled):
+    def set_active_toggle_enabled(self, enabled: bool) -> None:
         """Instances are disabled for changing enabled state.
 
         Active state should stay the same until is "unset".
 
         Args:
             enabled (bool): Instance state can be changed.
+
         """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'set_active_toggle_enabled'"
+            " is not implemented."
+        )
 
-        raise NotImplementedError((
-            "{} Method 'set_active_toggle_enabled' is not implemented."
-        ).format(self.__class__.__name__))
-
-    def refresh_instance_states(self, instance_ids=None):
+    def refresh_instance_states(
+        self, instance_ids: set[str] | None = None
+    ) -> None:
         """Refresh instance states.
 
         Args:
