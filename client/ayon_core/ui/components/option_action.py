@@ -233,18 +233,9 @@ class AYMenu(QtWidgets.QMenu):
         # Force the menu to use AYONStyle for drawing, even if the app's style
         # is something else.
         self.setStyle(style)
-        # Apply it eagerly, here at construction, rather than leaving it
-        # to Qt's own lazy 'polish()' the first time the menu is shown.
-        # 'style_widget' changes this widget's own window flags, which
-        # tears down and recreates its native window - safe to do now,
-        # while the menu is still inert, but not once it may already be
-        # nested inside another open popup (a context menu opened from a
-        # dropdown, or a submenu): recreating the native window while an
-        # ancestor still holds the platform's implicit popup grab is what
-        # corrupts it, causing anything from a hard crash to a hover
-        # highlight that silently never lights up again. 'style_widget'
-        # itself guards against touching the flags a second time, so
-        # whatever triggers Qt's own automatic polish later is a no-op.
+        # Apply eagerly, rather than leaving it to the first time the menu
+        # is shown to avoid changing WindowFlags after the menu is already
+        # open which recreates the native window and can cause crashes.
         style.style_widget(self)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
