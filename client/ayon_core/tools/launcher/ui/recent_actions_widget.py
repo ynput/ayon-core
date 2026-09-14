@@ -114,7 +114,10 @@ class _RecentActionRow(QtWidgets.QWidget):
 
         breadcrumb_label = AYLabel(
             breadcrumb, dim=True,
-            elide_mode=QtCore.Qt.ElideMiddle, parent=self,
+            elide_mode=QtCore.Qt.ElideMiddle,
+            flexible=True,
+            tool_tip=breadcrumb,
+            parent=self,
         )
         breadcrumb_label.setAlignment(
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
