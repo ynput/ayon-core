@@ -220,22 +220,8 @@ class AYONStyle(QCommonStyle):
             widget.setAttribute(
                 Qt.WidgetAttribute.WA_TranslucentBackground, True
             )
-            # 'style_widget' runs more than once per widget - once
-            # explicitly from 'AYMenu.__init__', and again automatically
-            # through Qt's own 'polish()' the first time the menu is
-            # shown. 'setWindowFlags' tears down and recreates the
-            # widget's native window every time it is called, whether or
-            # not the flags actually changed. A menu is frequently shown
-            # while it is a child of another already-open popup (a
-            # submenu, or a context menu opened from within a dropdown),
-            # and recreating its native window while an ancestor still
-            # holds the platform's implicit popup grab is what corrupts
-            # that grab - the menu can crash outright, or silently stop
-            # receiving the native mouse-move events its hover highlight
-            # depends on, depending on timing. Only ever touching the
-            # flags once, the first time, keeps the (necessary) native
-            # window recreation confined to before the menu has ever
-            # been shown or nested inside anything.
+            # Add NoDropShadowWindowHint only once to avoid reinitialization of
+            # the window
             flags = widget.windowFlags()
             if not (flags & Qt.WindowType.NoDropShadowWindowHint):
                 widget.setWindowFlags(
