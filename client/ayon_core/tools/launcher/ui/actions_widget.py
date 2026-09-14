@@ -141,6 +141,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             self._on_selection_workfile_changed,
         )
 
+        # Coalesces a burst of selection changes into a single refresh -
+        # see '_schedule_refresh'.
+        self._refresh_scheduled = False
+
         self._controller = controller
 
         self._items_by_id = {}
@@ -292,33 +296,56 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             return action_item.config_fields
         return None
 
+    def _schedule_refresh(self):
+        """Coalesce selection changes fired in the same call stack.
+
+        'apply_recent_action_context' (Recent Actions -> "Locate") sets
+        project, folder, task and workfile in one go, each of which fires
+        its own selection-changed event synchronously. Refreshing on every
+        one of those would query actions - webactions included, one live
+        request per distinct context - for each throwaway intermediate
+        selection on the way to the final one. Deferring to the next
+        iteration of the event loop instead means whichever selection is
+        current by the time anyone actually looks is the only one that
+        gets queried. A single manual click still refreshes on the very
+        next tick, imperceptibly different from immediately.
+        """
+        if self._refresh_scheduled:
+            return
+        self._refresh_scheduled = True
+        QtCore.QTimer.singleShot(0, self._run_scheduled_refresh)
+
+    def _run_scheduled_refresh(self):
+        self._refresh_scheduled = False
+        self.refresh()
+
     def _on_selection_project_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
         self._selected_workfile_id = None
-        self.refresh()
+        self._schedule_refresh()
 
     def _on_selection_folder_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
         self._selected_workfile_id = None
-        self.refresh()
+        self._schedule_refresh()
 
     def _on_selection_task_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
         self._selected_workfile_id = None
-        self.refresh()
+        self._schedule_refresh()
 
     def _on_selection_workfile_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
         self._selected_workfile_id = event["workfile_id"]
-        self.refresh()
+        self._schedule_refresh()
 
 
 class ActionMenuPopupModel(QtGui.QStandardItemModel):
