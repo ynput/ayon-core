@@ -220,9 +220,13 @@ class AYONStyle(QCommonStyle):
             widget.setAttribute(
                 Qt.WidgetAttribute.WA_TranslucentBackground, True
             )
-            widget.setWindowFlags(
-                widget.windowFlags() | Qt.WindowType.NoDropShadowWindowHint
-            )
+            # Add NoDropShadowWindowHint only once to avoid reinitialization of
+            # the window
+            flags = widget.windowFlags()
+            if not (flags & Qt.WindowType.NoDropShadowWindowHint):
+                widget.setWindowFlags(
+                    flags | Qt.WindowType.NoDropShadowWindowHint
+                )
 
             # make icons visible in menus (MacOS)
             def _setup_actions(menu):
@@ -391,6 +395,12 @@ class AYONStyle(QCommonStyle):
             return 0
         elif hint == QStyle.StyleHint.SH_ComboBox_PopupFrameStyle:
             return QFrame.Shape.NoFrame
+        elif hint in (
+            QStyle.StyleHint.SH_Menu_MouseTracking,
+            QStyle.StyleHint.SH_MenuBar_MouseTracking,
+        ):
+            # Make sure the mouse movement is tracked.
+            return 1
         # Fall back to parent implementation
         return super().styleHint(hint, opt, w, shret)
 
