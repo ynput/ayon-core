@@ -489,9 +489,16 @@ class Logger:
             )
             return event_dict
 
-        def _drop_site_id(logger, method_name, event_dict):
-            # Keep 'site_id' in JSON sent to Vector but not in console output
+        def _add_session_id(logger, method_name, event_dict):
+            session_id = os.environ.get("AYON_SESSION_ID")
+            if session_id:
+                event_dict.setdefault("session_id", session_id)
+            return event_dict
+
+        def _drop_log_context(logger, method_name, event_dict):
+            # Keep context fields in JSON sent to Vector but not in console output
             event_dict.pop("site_id", None)
+            event_dict.pop("session_id", None)
             return event_dict
 
         shared_processors: list[Callable] = [
@@ -501,6 +508,7 @@ class Logger:
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
             _add_site_id,
+            _add_session_id,
         ]
 
         structlog.configure(
@@ -519,7 +527,7 @@ class Logger:
             ],
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                _drop_site_id,
+                _drop_log_context,
                 structlog.dev.ConsoleRenderer(
                     exception_formatter=structlog.dev.rich_traceback,
                 ),
@@ -580,11 +588,3 @@ class Logger:
                 os.getenv("AYON_LOG_LEVEL", logging.INFO)))
         if os.getenv("AYON_DEBUG") is not None:
             root_logger.setLevel(logging.DEBUG)
-
-        # 'Logger' (ayon_core.lib.log) may have attached its own fallback
-        # console handler to the "AYON" logger before structlog was configured.
-        # Drop it and let records propagate to the root logger instead, which
-        # now owns the shared handlers - avoids logging each record twice.
-        ayon_logger = logging.getLogger("AYON")
-        for old_handler in list(ayon_logger.handlers):
-            ayon_logger.removeHandler(old_handler)
