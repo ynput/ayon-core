@@ -144,14 +144,14 @@ class InventoryModel(QtGui.QStandardItemModel):
                 only some of them are locked.
 
         """
-        locked_states = [
+        locked_states = {
             container_item.version_locked
             for container_item in container_items
-        ]
-        if all(locked_states):
+        }
+        if True in locked_states:
+            if False in locked_states:
+                return CONTAINER_VERSION_PARTIALLY_LOCKED
             return True
-        if any(locked_states):
-            return CONTAINER_VERSION_PARTIALLY_LOCKED
         return False
 
     def refresh(self, selected=None):
