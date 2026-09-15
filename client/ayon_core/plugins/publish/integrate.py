@@ -367,10 +367,9 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 instance.data["folderEntity"]["id"],
                 instance.data["productName"],
             )
-            version_entity = version_entities[(
-                product_entities[product_key]["id"],
-                instance.data["version"],
-            )]
+            product_entity = product_entities[product_key]
+            version_key = (product_entity["id"], instance.data["version"])
+            version_entity = version_entities[version_key]
             instance.data["versionEntity"] = version_entity
             prepared_instances.append(self._prepare_instance(
                 instance,
