@@ -18,6 +18,7 @@ from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
 )
+from ayon_core.lib.log import bind_contextvars
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -31,7 +32,6 @@ from . import (
     register_creator_plugin_path,
     deregister_inventory_action_path
 )
-
 
 _is_installed = False
 _process_id = None
@@ -162,6 +162,8 @@ def install_host(host: AbstractHost) -> None:
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
+
+    bind_contextvars(host_name=host_name, project=project_name)
 
     install_ayon_plugins(project_name, host_name)
 
