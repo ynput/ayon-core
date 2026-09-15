@@ -58,6 +58,10 @@ CI gates: lint `.github/workflows/pr_linting.yml`, tests
 
 ## Spec Kit
 
-`.specify/memory/constitution.md` is authoritative for any `/speckit.*` work
-(anatomy, pipeline contracts, settings conventions, style, verification
-ladder).
+This repo is harness-agnostic — no agent config is committed; each teammate
+installs their own Spec Kit integration and links `.agents-main`
+(`ln -s ../ayon-agentic-instructions .agents-main`, gitignored). See
+`SPEC_KIT.md` for setup. For any `/speckit.*` work (anatomy, pipeline
+contracts, settings conventions, style, verification ladder), the active
+constitution is `.agents-main/memory/ayon-constitution.md` — the tracked
+`.specify/memory/constitution.md` is a symlink to it.

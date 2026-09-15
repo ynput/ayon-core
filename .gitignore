@@ -88,3 +88,31 @@ poetry.lock
 
 # ignore mkdocs build
 site/
+
+# Agent harness / Spec Kit state (this repo is harness-agnostic)
+# Each teammate installs their own AI-coding-agent integration and links
+# .agents-main themselves (see SPEC_KIT.md). Never commit harness output.
+.agents/
+.agents-main
+.github/skills/
+.github/agents/
+.github/prompts/
+.github/copilot-instructions.md
+.goose/
+.kilo/
+.zed/
+.specify/*
+!.specify/memory/
+.specify/memory/*
+!.specify/memory/constitution.md
+# (keeps only the tracked symlink to the shared constitution above)
+
+# Common agent config dirs (add any further agent config here)
+.claude/
+CLAUDE.md
+.cursor/
+.copilot/
+.windsurf/
+.grok/
+.codex/
+.gemini/
