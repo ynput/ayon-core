@@ -496,7 +496,8 @@ class Logger:
             return event_dict
 
         def _drop_log_context(logger, method_name, event_dict):
-            # Keep context fields in JSON sent to Vector but not in console output
+            # Keep context fields in JSON sent to Vector but not
+            # in console output
             event_dict.pop("site_id", None)
             event_dict.pop("session_id", None)
             return event_dict
