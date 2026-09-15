@@ -184,11 +184,18 @@ class ModulesResult:
         return [self.modules, self.crashed][index]
 
 
-def modules_from_path(dir_path: str) -> ModulesResult:
+def modules_from_path(
+    path: str | Path,
+    *,
+    reset_dir_module_hash: bool = True,
+) -> ModulesResult:
     """Get python scripts as modules from a path.
 
     Arguments:
-        dir_path (str): Path to folder containing python scripts.
+        path (str | Path): Path to folder containing python scripts or path
+            to a python script.
+        reset_dir_module_hash (bool): If True, will reset all sys.modules
+            under the directory.
 
     Returns:
         ModulesResult: Contains successfully imported modules and
@@ -196,45 +203,50 @@ def modules_from_path(dir_path: str) -> ModulesResult:
 
     """
     result = ModulesResult()
-    # Just skip and return empty list if path is not set
-    if not dir_path:
-        return result
 
-    # Do not allow relative imports
-    if dir_path.startswith("."):
-        log.warning(
-            "BUG: Relative paths are not allowed for security reasons."
-            f" {dir_path}"
-        )
-        return result
+    if isinstance(path, str):
+        # Just skip and return empty result if path is not set
+        if not path:
+            return result
 
-    dir_path = os.path.normpath(dir_path)
+        # Do not allow relative imports
+        if path.startswith("."):
+            log.warning(
+                "BUG: Relative paths are not allowed for security reasons."
+                f" {path}"
+            )
+            return result
 
-    if not os.path.isdir(dir_path):
-        log.warning(f"Not a directory path: {dir_path}")
-        return result
+        path = Path(path)
 
-    for filename in os.listdir(dir_path):
-        # Ignore files which start with underscore
-        if filename.startswith("_"):
+    filepaths = []
+    if path.is_file():
+        filepaths.append(path)
+
+    elif path.is_dir():
+        for file in path.iterdir():
+            # Ignore files which start with underscore
+            if file.name.startswith("_"):
+                continue
+
+            filepaths.append(file)
+
+    for filepath in filepaths:
+        if not filepath.is_file():
             continue
 
-        mod_name, mod_ext = os.path.splitext(filename)
-        if not mod_ext == ".py":
-            continue
-
-        full_path = os.path.join(dir_path, filename)
-        if not os.path.isfile(full_path):
+        _, mod_ext = os.path.splitext(filepath.name)
+        if mod_ext.lower() != ".py":
             continue
 
         try:
-            module = import_filepath(full_path, mod_name)
-            result.add_module(full_path, module)
+            module = import_filepath(filepath)
+            result.add_module(filepath.as_posix(), module)
 
         except Exception:
-            result.add_crashed_module(full_path, sys.exc_info())
+            result.add_crashed_module(filepath.as_posix(), sys.exc_info())
             log.warning(
-                f"Failed to load path: \"{full_path}\"",
+                f"Failed to load path: \"{filepath}\"",
                 exc_info=True
             )
             continue
