@@ -45,6 +45,7 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         contrast_color: QColor | None = None,
         elide_mode: Qt.TextElideMode = Qt.TextElideMode.ElideNone,
         copy_text: bool = False,
+        flexible: bool = False,
         **kwargs,
     ):
         # style params
@@ -97,7 +98,8 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
         self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
 
         self.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Ignored if flexible
+            else QtWidgets.QSizePolicy.Policy.Minimum,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
 
@@ -184,6 +186,11 @@ class AYLabel(StyleMixin, QtWidgets.QLabel):
                     fill=self._icon_fill,
                 )
             self.setPixmap(icn.pixmap(QSize(self._icon_size, self._icon_size)))
+
+    def set_text_color(self, color: str) -> None:
+        self._text_color = color
+        self._configure_palette()
+        self.repaint()
 
     def _configure_font(self, font: QFont) -> QFont:
         """Return a freshly configured font derived from the base font."""

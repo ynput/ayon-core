@@ -35,6 +35,7 @@ from .drawers import (
     MenuDrawer,
     ScrollAreaDrawer,
     ScrollBarDrawer,
+    SpinBoxDrawer,
     TableHeaderDrawer,
     TooltipDrawer,
     TreeViewDrawer,
@@ -76,6 +77,7 @@ class AYONStyle(QCommonStyle):
             CheckboxDrawer(self),
             ComboBoxDrawer(self),
             ScrollBarDrawer(self),
+            SpinBoxDrawer(self),
             FrameDrawer(self),
             TreeViewDrawer(self),
             TableHeaderDrawer(self),
@@ -201,9 +203,11 @@ class AYONStyle(QCommonStyle):
 
         if isinstance(widget, QComboBox):
             widget.setMinimumContentsLength(1)
-            widget.setItemDelegate(
-                ComboBoxItemDelegate(parent=widget, style_model=self.model)
-            )
+            # Only set default delegate if no custom delegate was set.
+            if widget.itemDelegate() is None:
+                widget.setItemDelegate(
+                    ComboBoxItemDelegate(parent=widget, style_model=self.model)
+                )
             widget.setSizeAdjustPolicy(
                 QComboBox.SizeAdjustPolicy.AdjustToContents
             )
@@ -216,9 +220,13 @@ class AYONStyle(QCommonStyle):
             widget.setAttribute(
                 Qt.WidgetAttribute.WA_TranslucentBackground, True
             )
-            widget.setWindowFlags(
-                widget.windowFlags() | Qt.WindowType.NoDropShadowWindowHint
-            )
+            # Add NoDropShadowWindowHint only once to avoid reinitialization of
+            # the window
+            flags = widget.windowFlags()
+            if not (flags & Qt.WindowType.NoDropShadowWindowHint):
+                widget.setWindowFlags(
+                    flags | Qt.WindowType.NoDropShadowWindowHint
+                )
 
             # make icons visible in menus (MacOS)
             def _setup_actions(menu):
@@ -387,6 +395,12 @@ class AYONStyle(QCommonStyle):
             return 0
         elif hint == QStyle.StyleHint.SH_ComboBox_PopupFrameStyle:
             return QFrame.Shape.NoFrame
+        elif hint in (
+            QStyle.StyleHint.SH_Menu_MouseTracking,
+            QStyle.StyleHint.SH_MenuBar_MouseTracking,
+        ):
+            # Make sure the mouse movement is tracked.
+            return 1
         # Fall back to parent implementation
         return super().styleHint(hint, opt, w, shret)
 
