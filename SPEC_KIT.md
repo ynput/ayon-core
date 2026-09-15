@@ -24,14 +24,11 @@ manually:
 
 ```bash
 # Clone next to this repository's root (sibling directory), e.g.:
-git clone -b agentic-sdd-dev \
+git clone \
   https://github.com/ynput/ayon-agentic-instructions ../ayon-agentic-instructions
 # ...then symlink it in this repo (gitignored, never committed):
 ln -s ../ayon-agentic-instructions .agents-main
 ```
-
-(The branch name follows the shared repo's feature branch; update it once that
-branch is merged to the default branch.)
 
 Key files provided by the shared repo:
 
