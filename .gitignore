@@ -105,7 +105,26 @@ site/
 !.specify/memory/
 .specify/memory/*
 !.specify/memory/constitution.md
-# (keeps only the tracked symlink to the shared constitution above)
+# Bug triage records (speckit.bug.assess/fix/test) — durable, commit them:
+!.specify/bugs/
+.specify/bugs/*
+!.specify/bugs/*/
+.specify/bugs/*/*
+!.specify/bugs/*/assessment.md
+!.specify/bugs/*/fix.md
+!.specify/bugs/*/test.md
+# (keeps only the tracked constitution symlink and bug reports above)
+
+# Feature spec records — commit the durable record for agents
+# (spec = what/why, plan = how/decisions, tasks = what was done);
+# ignore plan-phase working artifacts (research, data-model, quickstart,
+# contracts, checklists) — regenerate them with /speckit.plan if needed.
+specs/*
+!specs/*/
+specs/*/*
+!specs/*/spec.md
+!specs/*/plan.md
+!specs/*/tasks.md
 
 # Common agent config dirs (add any further agent config here)
 .claude/

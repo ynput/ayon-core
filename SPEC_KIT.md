@@ -91,6 +91,23 @@ it and the files are not committed. The shared `.specify/.gitignore`
   `.agents-main/memory/ayon-constitution.md`; the actual file comes from
   the shared repo, so amendments propagate automatically.
 
+## Spec & bug records (what gets committed)
+
+Version control keeps the durable decision record, not the working files —
+this is what future agents (and reviewers) read to understand past choices:
+
+| File | Produced by | Kept |
+| --- | --- | --- |
+| `specs/<NNN-feature>/spec.md` | `/speckit.specify` | ✅ what & why (requirements, acceptance criteria) |
+| `specs/<NNN-feature>/plan.md` | `/speckit.plan` | ✅ how & why (approach, decisions) |
+| `specs/<NNN-feature>/tasks.md` | `/speckit.tasks` | ✅ what was done (task breakdown) |
+| `specs/<NNN-feature>/research.md`, `data-model.md`, `quickstart.md`, `contracts/`, `checklists/` | plan phase / checklists | ❌ working artifacts — regenerate with `/speckit.plan` if needed |
+| `.specify/bugs/<slug>/assessment.md` | `speckit.bug.assess` | ✅ root cause & remediation decision |
+| `.specify/bugs/<slug>/fix.md` | `speckit.bug.fix` | ✅ what changed (+ deviations) |
+| `.specify/bugs/<slug>/test.md` | `speckit.bug.test` | ✅ verification report |
+
+Commit the spec files with the feature's code on the feature branch.
+
 ## Keep it clean
 
 - Never commit harness output or per-machine state (`.specify/*.json`
