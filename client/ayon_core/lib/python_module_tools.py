@@ -187,14 +187,14 @@ class ModulesResult:
 def modules_from_path(
     path: str | Path,
     *,
-    reset_dir_module_hash: bool = True,
+    reset_dir_module: bool = True,
 ) -> ModulesResult:
     """Get python scripts as modules from a path.
 
     Arguments:
         path (str | Path): Path to folder containing python scripts or path
             to a python script.
-        reset_dir_module_hash (bool): If True, will reset all sys.modules
+        reset_dir_module (bool): If True, will reset all sys.modules
             under the directory.
 
     Returns:
@@ -222,14 +222,15 @@ def modules_from_path(
     filepaths = []
     if path.is_file():
         filepaths.append(path)
-        reset_dir_module_hash = False
+        # Disable dir module reset if explicit filepath was passed in
+        reset_dir_module = False
 
     elif path.is_dir():
         dirpath_hash = get_import_module_name(path)
         # Remove all modules under the directory hash from sys.modules
         # - This allows to re-import the modules and reload them if they have
         #   changed. Also allows to use relative imports within the directory.
-        if reset_dir_module_hash:
+        if reset_dir_module:
             for module_name in list(sys.modules.keys()):
                 if module_name.startswith(dirpath_hash):
                     del sys.modules[module_name]
@@ -264,9 +265,9 @@ def modules_from_path(
 
         try:
             # The module might be already imported with relative imports
-            # - this is checked ONLY if 'reset_dir_module_hash' is enabled
+            # - this is checked ONLY if 'reset_dir_module' is enabled
             module = None
-            if reset_dir_module_hash:
+            if reset_dir_module:
                 module_name = get_import_module_name(
                     filepath.parent, filepath.name
                 )
