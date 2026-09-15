@@ -43,13 +43,14 @@ ENTITY_ICONS = {
     "Product": "inventory_2",
     "Task": "check_circle",
     "Version": "layers",
+    "Representation": "view_in_ar",
 }
 
 #: Order the entity scopes are offered in on the dropdown's first page,
 #: from the entity the table's rows actually are outwards to their
 #: context. Scopes not listed here (attribute groups, anything an addon
 #: contributes) follow, in the order they were declared.
-ENTITY_ORDER = ("Version", "Product", "Task", "Folder")
+ENTITY_ORDER = ("Version", "Product", "Task", "Folder", "Representation")
 
 # ---------------------------------------------------------------------------
 # Data model
