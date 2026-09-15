@@ -365,6 +365,10 @@ class DeleteOldVersions(LoaderActionPlugin):
         _, repre_ids_by_version_id, filepaths_by_repre_id = (
             self._get_representations_data(selection, set(version_ids))
         )
+        product_ids_to_delete = self._get_products_to_delete(
+            selection, version_ids
+        )
+
         op_session = OperationsSession()
         total_versions = len(version_ids)
         try:
@@ -391,6 +395,14 @@ class DeleteOldVersions(LoaderActionPlugin):
                 op_session.delete_entity(
                     project_name, "version", version_id
                 )
+
+            for product_id in product_ids_to_delete:
+                self.log.info(
+                    f"Deleting product {product_id} without versions left"
+                )
+                op_session.delete_entity(
+                    project_name, "product", product_id
+                )
             self.log.info("All done")
 
         except Exception:
@@ -407,6 +419,41 @@ class DeleteOldVersions(LoaderActionPlugin):
             message="Deleted versions",
             success=True,
         )
+
+    def _get_products_to_delete(
+        self,
+        selection: LoaderActionSelection,
+        version_ids: list[str],
+    ) -> set[str]:
+        """Get ids of products that would be left without any version.
+
+        Used to also remove products for which all versions are deleted,
+        as products without any version are not expected/supported on
+        the server.
+
+        """
+        deleted_version_ids = set(version_ids)
+        product_ids = {
+            version["productId"]
+            for version in selection.entities.get_versions(
+                deleted_version_ids
+            )
+        }
+        version_ids_by_product_id = collections.defaultdict(set)
+        for version in selection.entities.get_products_versions(
+            product_ids
+        ):
+            version_ids_by_product_id[version["productId"]].add(
+                version["id"]
+            )
+
+        return {
+            product_id
+            for product_id, product_version_ids in (
+                version_ids_by_product_id.items()
+            )
+            if product_version_ids <= deleted_version_ids
+        }
 
     def _get_delete_form(
         self,
