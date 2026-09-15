@@ -1058,7 +1058,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             transfers=transfers,
             # todo: avoid the need for 'published_files' used by Integrate Hero
             # backwards compatibility
-            published_files=[transfer[1] for transfer in transfers],
+            published_files=[dst_path for _, dst_path in transfers],
         )
 
     def create_version_data(
