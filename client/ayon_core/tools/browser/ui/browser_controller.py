@@ -14,11 +14,13 @@ import arrow
 import ayon_api
 from ayon_api.graphql_queries import projects_graphql_query
 from ayon_core.ui.components.table_model import (
-    EMPTY_VALUE_OPTIONS,
-    HAS_VALUE,
     BatchFetchRequest,
     FilterEntry,
     TableColumn,
+)
+from ayon_core.ui.components.table_filter import (
+    EMPTY_VALUE_OPTIONS,
+    HAS_VALUE,
 )
 from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore

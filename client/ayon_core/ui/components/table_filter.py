@@ -37,9 +37,6 @@ from .label import AYLabel
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
 from .table_model import (
-    EMPTY_VALUE_OPTIONS,
-    HAS_VALUE,
-    NO_VALUE,
     FilterEntry,
     PaginatedTableModel,
     TableColumn,
@@ -57,6 +54,12 @@ ENTITY_ICONS = {
 #: context. Scopes not listed here (attribute groups, anything an addon
 #: contributes) follow, in the order they were declared.
 ENTITY_ORDER = ("Version", "Product", "Task", "Folder")
+
+#: Criterion value matching rows where the filtered field is empty.
+NO_VALUE = "noValue"
+#: Criterion value matching rows where the filtered field is not empty.
+HAS_VALUE = "hasValue"
+EMPTY_VALUE_OPTIONS = (NO_VALUE, HAS_VALUE)
 
 # ---------------------------------------------------------------------------
 # Data model

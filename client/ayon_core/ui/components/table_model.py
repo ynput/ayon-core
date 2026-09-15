@@ -116,13 +116,6 @@ class BatchFetchRequest:
     parent_id: str | None
 
 
-#: Criterion value matching rows where the filtered field is empty.
-NO_VALUE = "noValue"
-#: Criterion value matching rows where the filtered field is not empty.
-HAS_VALUE = "hasValue"
-EMPTY_VALUE_OPTIONS = (NO_VALUE, HAS_VALUE)
-
-
 @dataclass
 class FilterEntry:
     """A filter available in a table filter menu.
