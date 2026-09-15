@@ -45,9 +45,18 @@ This repo has a real CI unit-test gate (`.github/workflows/pr_unittests.yaml`):
 - Line length 79, Ruff `preview = true`, Google docstring convention.
 - Never lint/format `vendor/` or `client/ayon_core/scripts/slates/__init__.py`
   (both excluded in `ruff.toml`).
+- `ruff.toml` is the only authoritative style config; `setup.cfg` (flake8/
+  isort/pylint) is legacy and may be obsolete — don't follow it.
+
+## Open items (TODO)
+
+- The verification ladder above reflects documented commands, not verified
+  CI steps. Before citing exact CI commands in guidance, inspect
+  `.github/workflows/pr_unittests.yaml` and `pr_linting.yml` and reconcile
+  with `tools/manage.sh run-tests`. Remove this item once verified.
 
 ## SDD workflow
 
 `.specify/memory/constitution.md` is authoritative for any `/speckit.*` work
 (anatomy, pipeline contracts, settings conventions, style, verification
-ladder). Spec Kit skills live in `.agents/skills/speckit-*`.
+ladder).
