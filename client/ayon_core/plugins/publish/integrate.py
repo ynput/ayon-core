@@ -357,9 +357,9 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             str, dict[str, dict[str, Any]]
         ] = {}
         for repre in representations:
-            repres_by_version.setdefault(repre["versionId"], {})[
-                repre["name"].lower()
-            ] = repre
+            version_id = repre["versionId"]
+            repre_name = repre["name"].lower()
+            repres_by_version[version_id][repre_name] = repre
 
         prepared_instances = []
         for instance, filtered_repres in instances:
