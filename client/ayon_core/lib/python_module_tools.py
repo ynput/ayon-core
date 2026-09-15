@@ -19,7 +19,7 @@ log = Logger.get_logger(__name__)
 IS_WINDOWS = platform.platform().lower() == "windows"
 
 
-def get_dir_module_hash(dirpath: Path | str) -> str:
+def get_import_module_name(dirpath: Path | str, filename: str | None = None) -> str:
     """Get hash of directory path.
 
     Args:
@@ -34,7 +34,10 @@ def get_dir_module_hash(dirpath: Path | str) -> str:
     unified_path = dirpath.absolute().as_posix()
     if IS_WINDOWS:
         unified_path = unified_path.lower()
-    return hashlib.md5(unified_path.encode("utf-8")).hexdigest()
+    dirhash = hashlib.md5(unified_path.encode("utf-8")).hexdigest()
+    if not filename:
+        return dirhash
+    return f"{dirhash}.{os.path.splitext(filename)[0]}"
 
 
 def import_filepath(
@@ -62,7 +65,7 @@ def import_filepath(
         module_name = os.path.splitext(filepath.name)[0]
 
     if not sys_module_name:
-        dirpath_hash = get_dir_module_hash(filepath.parent)
+        dirpath_hash = get_import_module_name(filepath.parent)
         sys_module_name = f"{dirpath_hash}.{module_name}"
 
     # Prepare module object where content of file will be parsed
