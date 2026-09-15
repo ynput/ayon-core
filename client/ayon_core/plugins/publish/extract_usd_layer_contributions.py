@@ -1,5 +1,4 @@
 import copy
-import dataclasses
 import os
 import platform
 from collections import defaultdict
@@ -58,32 +57,44 @@ USDContributionURI = Literal[
 ]
 
 
-@dataclasses.dataclass
 class _BaseContribution:
-    # What are we contributing?
-    instance: pyblish.api.Instance  # instance that contributes it
-
-    # Where are we contributing to?
-    layer_id: str  # usually the department or task name
-    target_product: str  # target product the layer should merge to
-
-    order: int
+    def __init__(
+        self,
+        # What are we contributing?
+        # instance that contributes it
+        instance: pyblish.api.Instance,
+        # Where are we contributing to?
+        # usually the department or task name
+        layer_id: str,
+        # target product the layer should merge to
+        target_product: str,
+        order: int,
+    ):
+        self.instance = instance
+        self.layer_id = layer_id
+        self.target_product = target_product
+        self.order = order
 
 
 class SublayerContribution(_BaseContribution):
     """Sublayer contribution"""
 
 
-@dataclasses.dataclass
 class VariantContribution(_BaseContribution):
     """Reference contribution within a Variant Set"""
-
-    # Variant
-    variant_set_name: str
-    variant_name: str
-    variant_default_policy: Literal[
-        "if_not_set", "always", "never"
-    ]  # Policy controlling variant selection opinion
+    def __init__(
+        self,
+        # Variant
+        variant_set_name: str,
+        variant_name: str,
+        # Policy controlling variant selection opinion
+        variant_default_policy: Literal["if_not_set", "always", "never"],
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.variant_set_name = variant_set_name
+        self.variant_name = variant_name
+        self.variant_default_policy = variant_default_policy
 
 
 CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
