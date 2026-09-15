@@ -355,7 +355,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             ))
         repres_by_version: dict[
             str, dict[str, dict[str, Any]]
-        ] = {}
+        ] = defaultdict(dict)
         for repre in representations:
             version_id = repre["versionId"]
             repre_name = repre["name"].lower()
