@@ -70,6 +70,7 @@ addopts = "-ra -q"
 testpaths = [
     "client/ayon_core/tests",
     "tests/client/ayon_core/ui",
+    "tests/client/ayon_core/lib",
 ]
 pythonpath = [
     "client",
