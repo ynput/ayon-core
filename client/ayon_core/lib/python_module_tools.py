@@ -69,17 +69,14 @@ def import_filepath(
         sys_module_name = f"{dirpath_hash}.{module_name}"
 
     # Prepare module object where content of file will be parsed
-    module = types.ModuleType(sys_module_name)
-    module.__file__ = filepath.as_posix()
+    spec = importlib.util.spec_from_file_location(sys_module_name, filepath)
+    module = importlib.util.module_from_spec(spec)
 
     sys.modules[sys_module_name] = module
 
     # Use loader so module has full specs
-    module_loader = importlib.machinery.SourceFileLoader(
-        sys_module_name, filepath.as_posix()
-    )
+    spec.loader.exec_module(module)
 
-    module_loader.exec_module(module)
     return module
 
 
@@ -225,14 +222,37 @@ def modules_from_path(
     filepaths = []
     if path.is_file():
         filepaths.append(path)
+        reset_dir_module_hash = False
 
     elif path.is_dir():
+        dirpath_hash = get_import_module_name(path)
+        # Remove all modules under the directory hash from sys.modules
+        # - This allows to re-import the modules and reload them if they have
+        #   changed. Also allows to use relative imports within the directory.
+        if reset_dir_module_hash:
+            for module_name in list(sys.modules.keys()):
+                if module_name.startswith(dirpath_hash):
+                    del sys.modules[module_name]
+
+        dir_module = sys.modules.get(dirpath_hash)
+        init_path = path / "__init__.py"
+        if dir_module is None and init_path.is_file():
+            # Create directory module if it does not exist
+            #   and __init__.py is present
+            dir_module = types.ModuleType(dirpath_hash)
+            dir_module.__file__ = init_path.as_posix()
+            dir_module.__package__ = dirpath_hash
+            dir_module.__path__ = [path.as_posix()]
+            sys.modules[dirpath_hash] = dir_module
+
         for file in path.iterdir():
             # Ignore files which start with underscore
             if file.name.startswith("_"):
                 continue
 
             filepaths.append(file)
+    else:
+        return result
 
     for filepath in filepaths:
         if not filepath.is_file():
@@ -243,7 +263,17 @@ def modules_from_path(
             continue
 
         try:
-            module = import_filepath(filepath)
+            # The module might be already imported with relative imports
+            # - this is checked ONLY if 'reset_dir_module_hash' is enabled
+            module = None
+            if reset_dir_module_hash:
+                module_name = get_import_module_name(
+                    filepath.parent, filepath.name
+                )
+                module = sys.modules.get(module_name)
+
+            if module is None:
+                module = import_filepath(filepath)
             result.add_module(filepath.as_posix(), module)
 
         except Exception:
