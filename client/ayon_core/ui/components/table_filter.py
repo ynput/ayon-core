@@ -366,6 +366,51 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             self.invalidateFilter()
 
 
+@dataclass
+class _ValueOption:
+    """One resolved row of the value-selection list.
+
+    Built once per value (empty-value rows and per-distinct-value rows
+    alike) before the list is drawn, so the draw loop only reads
+    attributes instead of branching on ``val in empty_labels`` and
+    re-looking values up per row.
+
+    Attributes:
+        value: Value stored on the criterion when this row is picked.
+        label: Row text, before icon spacing is applied.
+        icon: Row icon, if any.
+        color: Icon color, if any.
+    """
+
+    value: str
+    label: str
+    icon: str | None = None
+    color: str | None = None
+
+    @classmethod
+    def from_value(
+        cls,
+        val: str,
+        entry: "FilterEntry | None",
+    ) -> "_ValueOption":
+        """Build the row for one distinct column value.
+
+        Args:
+            val: Raw value from the column/model.
+            entry: Filter entry *val* belongs to, if any - supplies the
+                label/icon/color overrides. ``None`` falls back to *val*
+                itself as the label, with no icon or color.
+        """
+        if entry is None:
+            return cls(val, val)
+        return cls(
+            val,
+            entry.value_labels.get(val, val),
+            icon=entry.value_icons.get(val),
+            color=entry.value_colors.get(val),
+        )
+
+
 # ---------------------------------------------------------------------------
 # Floating two-page dropdown
 # ---------------------------------------------------------------------------
@@ -951,16 +996,23 @@ class _FilterDropdown(AYDropdownPopup):
 
         # Like the web frontend: "No {label}" and "Has {label}" lead the
         # list, and exist for text filters too, next to the typed text.
-        empty_labels: dict[str, str] = {}
-        empty_icons: dict[str, str] = {}
+        empty_options: dict[str, _ValueOption] = {}
         if entry is not None and entry.allow_empty:
-            empty_labels = {
-                NO_VALUE: f"No {entry.label}",
-                HAS_VALUE: f"Has {entry.label}",
+            empty_options = {
+                NO_VALUE: _ValueOption(
+                    NO_VALUE, f"No {entry.label}", icon="unpublished",
+                ),
+                HAS_VALUE: _ValueOption(
+                    HAS_VALUE, f"Has {entry.label}", icon="check",
+                ),
             }
-            empty_icons = {NO_VALUE: "unpublished", HAS_VALUE: "check"}
         self._is_free_text = is_text_search or not distinct
-        options = [*empty_labels, *distinct]
+        # `distinct` never contains an EMPTY_VALUE_OPTIONS value (excluded
+        # above), so these rows and empty_options can't collide.
+        options = [
+            *empty_options.values(),
+            *(_ValueOption.from_value(val, entry) for val in distinct),
+        ]
 
         if options:
             scroll = QScrollArea()
@@ -976,25 +1028,15 @@ class _FilterDropdown(AYDropdownPopup):
             inner = AYFrame(variant=AYFrame.Variants.Low)
             inner_layout = AYVBoxLayout(inner, margin=0, spacing=0)
 
-            for val in options:
-                value_label = val
-                value_icon = None
-                value_color = None
-                if val in empty_labels:
-                    value_label = empty_labels[val]
-                    value_icon = empty_icons[val]
-                elif entry is not None:
-                    value_label = entry.value_labels.get(val, val)
-                    value_icon = entry.value_icons.get(val)
-                    value_color = entry.value_colors.get(val)
+            for option in options:
                 value_label = self._label_with_icon_spacing(
-                    value_label,
-                    value_icon,
+                    option.label,
+                    option.icon,
                 )
                 btn = AYButton(
                     value_label,
-                    icon=value_icon,
-                    icon_color=value_color,
+                    icon=option.icon,
+                    icon_color=option.color,
                     variant=AYButton.Variants.Text,
                     fixed_width=False,
                     checkable=True,
@@ -1005,11 +1047,13 @@ class _FilterDropdown(AYDropdownPopup):
                 btn.setSizePolicy(
                     QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
                 )
-                btn.setChecked(val in selected_values)
+                btn.setChecked(option.value in selected_values)
                 btn.clicked.connect(
-                    lambda _checked=False, v=val: self._on_value_clicked(v)
+                    lambda _checked=False, v=option.value: (
+                        self._on_value_clicked(v)
+                    )
                 )
-                self._value_buttons[val] = btn
+                self._value_buttons[option.value] = btn
                 btn.installEventFilter(self)
                 inner_layout.addWidget(btn)
 
