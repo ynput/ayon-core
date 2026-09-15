@@ -79,6 +79,7 @@ class ServerViewManager(ViewManager):
         self._id_to_view_attributes: dict[str, tuple[str, Scope]] = {}
         self._powerpack_version: str | None = None
         self._powerpack_resolved: bool = False
+        self._supports_sharing: bool | None = None
 
     # ------------------------------------------------------------------
     # Project scope
@@ -224,6 +225,10 @@ class ServerViewManager(ViewManager):
             # draw its rows; settings arrive via :meth:`load_view` when a
             # view is actually applied or saved.
             view.loaded = False
+            # Nor does it carry the view type, which every per-view
+            # endpoint needs in its path.
+            if not view.view_type:
+                view.view_type = view_type
             views.append(view)
 
         views.sort(key=lambda v: (v.position, v.label.lower()))
@@ -353,11 +358,14 @@ class ServerViewManager(ViewManager):
             else:
                 # Project-scoped views use project-specific endpoints
                 if is_update:
-                    endpoint = self._endpoint(f"views/{view.view_type}/{view.id}")
+                    endpoint = self._endpoint(
+                        f"views/{view.view_type}/{view.id}"
+                    )
                     resp = ayon_api.patch(endpoint, **payload)
                 else:
                     endpoint = self._endpoint(f"views/{view.view_type}")
                     resp = ayon_api.post(endpoint, **payload)
+            resp.raise_for_status()
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to save view %s", view.id)
             self.error.emit(f"Failed to save view: {exc}")
@@ -382,7 +390,10 @@ class ServerViewManager(ViewManager):
         self._upsert_cache(saved)
 
         # Access grants are managed by the dedicated share endpoint.
-        self.patch_view_access(saved.id, access_data, should_share_access)
+        if self.supports_sharing():
+            self.patch_view_access(
+                saved.id, access_data, should_share_access
+            )
 
         self.view_saved.emit(saved.id)
         self.views_changed.emit(saved.view_type)
@@ -429,7 +440,7 @@ class ServerViewManager(ViewManager):
         )
         try:
             con = ayon_api.get_server_api_connection()
-            con.raw_post(
+            resp = con.raw_post(
                 "addons/"
                 f"{_POWERPACK_ADDON_NAME}/{powerpack_version}"
                 f"/views/{view_type}/{view_id}/share",
@@ -439,6 +450,7 @@ class ServerViewManager(ViewManager):
                     "access": payload_access,
                 },
             )
+            resp.raise_for_status()
             # Update cache with new visibility
             view_list = self._cache.get(view_type)
             if view_list is not None:
@@ -574,6 +586,22 @@ class ServerViewManager(ViewManager):
         """Return True when any access level is above zero."""
         return any(level > 0 for level in access_data.values())
 
+    def supports_sharing(self) -> bool:
+        """Whether view sharing is available on the server.
+
+        Sharing is a powerpack feature: it requires the powerpack addon
+        in the current bundle. The result is cached for the lifetime of the
+        manager.
+
+        Returns:
+            True when powerpack is available and licensed.
+        """
+        if self._supports_sharing is None:
+            self._supports_sharing = bool(
+                self._get_powerpack_version()
+            )
+        return self._supports_sharing
+
     def _get_powerpack_version(self) -> str | None:
         """Return powerpack version from the current session bundle."""
         if self._powerpack_resolved:
@@ -594,4 +622,3 @@ class ServerViewManager(ViewManager):
                 return self._powerpack_version
 
         return None
-
