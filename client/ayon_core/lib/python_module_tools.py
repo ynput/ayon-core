@@ -4,7 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import importlib
 import inspect
+import hashlib
 import os
+from pathlib import Path
+import platform
 import sys
 import types
 import warnings
@@ -13,38 +16,70 @@ from .log import Logger
 
 log = Logger.get_logger(__name__)
 
+IS_WINDOWS = platform.platform().lower() == "windows"
+
+
+def get_import_module_name(
+    dirpath: Path | str,
+    filename: str | None = None,
+) -> str:
+    """Get hash of directory path.
+
+    Args:
+        dirpath (Path | str): Directory path to hash.
+
+    Returns:
+        str: Hash of directory path.
+
+    """
+    if isinstance(dirpath, str):
+        dirpath = Path(dirpath)
+    unified_path = dirpath.absolute().as_posix()
+    if IS_WINDOWS:
+        unified_path = unified_path.lower()
+    dirhash = hashlib.md5(unified_path.encode("utf-8")).hexdigest()
+    if not filename:
+        return dirhash
+    return f"{dirhash}.{os.path.splitext(filename)[0]}"
+
 
 def import_filepath(
-    filepath: str,
+    filepath: str | Path,
     module_name: str | None = None,
     sys_module_name: str | None = None,
 ) -> types.ModuleType:
     """Import python file as python module.
 
+    It is recommended to pass in only 'filepath' and let function generate
+        module names automatically.
+
     Args:
-        filepath (str): Path to python file.
-        module_name (str): Name of loaded module. Only for Python 3. By default
-            is filled with filename of filepath.
+        filepath (str | Path): Path to python file.
+        module_name (str): Name of loaded module. Only for Python 3.
+            By default is filled with filename of filepath.
         sys_module_name (str): Name of module in `sys.modules` where to store
-            loaded module. By default is None so module is not added to
-            `sys.modules`.
+            loaded module. By default is used directory hash and module name.
 
     """
+    if isinstance(filepath, str):
+        filepath = Path(filepath)
+
     if module_name is None:
-        module_name = os.path.splitext(os.path.basename(filepath))[0]
+        module_name = filepath.stem
+
+    if not sys_module_name:
+        dirpath_hash = get_import_module_name(filepath.parent)
+        sys_module_name = f"{dirpath_hash}.{module_name}"
 
     # Prepare module object where content of file will be parsed
-    module = types.ModuleType(module_name)
-    module.__file__ = filepath
+    spec = importlib.util.spec_from_file_location(sys_module_name, filepath)
+    module = importlib.util.module_from_spec(spec)
+
+    sys.modules[sys_module_name] = module
 
     # Use loader so module has full specs
-    module_loader = importlib.machinery.SourceFileLoader(
-        module_name, filepath
-    )
-    # only add to sys.modules if requested
-    if sys_module_name:
-        sys.modules[sys_module_name] = module
-    module_loader.exec_module(module)
+    spec.loader.exec_module(module)
+
     return module
 
 
@@ -152,11 +187,18 @@ class ModulesResult:
         return [self.modules, self.crashed][index]
 
 
-def modules_from_path(dir_path: str) -> ModulesResult:
+def modules_from_path(
+    path: str | Path,
+    *,
+    reset_dir_module: bool = True,
+) -> ModulesResult:
     """Get python scripts as modules from a path.
 
     Arguments:
-        dir_path (str): Path to folder containing python scripts.
+        path (str | Path): Path to folder containing python scripts or path
+            to a python script.
+        reset_dir_module (bool): If True, will reset all sys.modules
+            under the directory.
 
     Returns:
         ModulesResult: Contains successfully imported modules and
@@ -164,45 +206,84 @@ def modules_from_path(dir_path: str) -> ModulesResult:
 
     """
     result = ModulesResult()
-    # Just skip and return empty list if path is not set
-    if not dir_path:
+
+    if isinstance(path, str):
+        # Just skip and return empty result if path is not set
+        if not path:
+            return result
+
+        # Do not allow relative imports
+        if path.startswith("."):
+            log.warning(
+                "BUG: Relative paths are not allowed for security reasons."
+                f" {path}"
+            )
+            return result
+
+        path = Path(path)
+
+    filepaths = []
+    if path.is_file():
+        filepaths.append(path)
+        # Disable dir module reset if explicit filepath was passed in
+        reset_dir_module = False
+
+    elif path.is_dir():
+        dirpath_hash = get_import_module_name(path)
+        # Remove all modules under the directory hash from sys.modules
+        # - This allows to re-import the modules and reload them if they have
+        #   changed. Also allows to use relative imports within the directory.
+        if reset_dir_module:
+            for module_name in list(sys.modules.keys()):
+                if module_name.startswith(dirpath_hash):
+                    del sys.modules[module_name]
+
+        dir_module = sys.modules.get(dirpath_hash)
+        init_path = path / "__init__.py"
+        if dir_module is None and init_path.is_file():
+            # Create directory module if it does not exist
+            #   and __init__.py is present
+            dir_module = types.ModuleType(dirpath_hash)
+            dir_module.__file__ = init_path.as_posix()
+            dir_module.__package__ = dirpath_hash
+            dir_module.__path__ = [path.as_posix()]
+            sys.modules[dirpath_hash] = dir_module
+
+        for file in path.iterdir():
+            # Ignore files which start with underscore
+            if file.name.startswith("_"):
+                continue
+
+            filepaths.append(file)
+    else:
         return result
 
-    # Do not allow relative imports
-    if dir_path.startswith("."):
-        log.warning(
-            "BUG: Relative paths are not allowed for security reasons."
-            f" {dir_path}"
-        )
-        return result
-
-    dir_path = os.path.normpath(dir_path)
-
-    if not os.path.isdir(dir_path):
-        log.warning(f"Not a directory path: {dir_path}")
-        return result
-
-    for filename in os.listdir(dir_path):
-        # Ignore files which start with underscore
-        if filename.startswith("_"):
+    for filepath in filepaths:
+        if not filepath.is_file():
             continue
 
-        mod_name, mod_ext = os.path.splitext(filename)
-        if not mod_ext == ".py":
-            continue
-
-        full_path = os.path.join(dir_path, filename)
-        if not os.path.isfile(full_path):
+        _, mod_ext = os.path.splitext(filepath.name)
+        if mod_ext.lower() != ".py":
             continue
 
         try:
-            module = import_filepath(full_path, mod_name)
-            result.add_module(full_path, module)
+            # The module might be already imported with relative imports
+            # - this is checked ONLY if 'reset_dir_module' is enabled
+            module = None
+            if reset_dir_module:
+                module_name = get_import_module_name(
+                    filepath.parent, filepath.name
+                )
+                module = sys.modules.get(module_name)
+
+            if module is None:
+                module = import_filepath(filepath)
+            result.add_module(filepath.as_posix(), module)
 
         except Exception:
-            result.add_crashed_module(full_path, sys.exc_info())
+            result.add_crashed_module(filepath.as_posix(), sys.exc_info())
             log.warning(
-                f"Failed to load path: \"{full_path}\"",
+                f"Failed to load path: \"{filepath}\"",
                 exc_info=True
             )
             continue
