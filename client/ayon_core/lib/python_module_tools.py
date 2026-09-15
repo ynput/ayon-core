@@ -4,7 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import importlib
 import inspect
+import hashlib
 import os
+from pathlib import Path
+import platform
 import sys
 import types
 import warnings
@@ -13,37 +16,66 @@ from .log import Logger
 
 log = Logger.get_logger(__name__)
 
+IS_WINDOWS = platform.platform().lower() == "windows"
+
+
+def get_dir_module_hash(dirpath: Path | str) -> str:
+    """Get hash of directory path.
+
+    Args:
+        dirpath (Path | str): Directory path to hash.
+
+    Returns:
+        str: Hash of directory path.
+
+    """
+    if isinstance(dirpath, str):
+        dirpath = Path(dirpath)
+    unified_path = dirpath.absolute().as_posix()
+    if IS_WINDOWS:
+        unified_path = unified_path.lower()
+    return hashlib.md5(unified_path.encode("utf-8")).hexdigest()
+
 
 def import_filepath(
-    filepath: str,
+    filepath: str | Path,
     module_name: str | None = None,
     sys_module_name: str | None = None,
 ) -> types.ModuleType:
     """Import python file as python module.
 
+    It is recommended to pass in only 'filepath' and let function generate
+        module names automatically.
+
     Args:
-        filepath (str): Path to python file.
-        module_name (str): Name of loaded module. Only for Python 3. By default
-            is filled with filename of filepath.
+        filepath (str | Path): Path to python file.
+        module_name (str): Name of loaded module. Only for Python 3.
+            By default is filled with filename of filepath.
         sys_module_name (str): Name of module in `sys.modules` where to store
-            loaded module. By default is None so module is not added to
-            `sys.modules`.
+            loaded module. By default is used directory hash and module name.
 
     """
+    if isinstance(filepath, str):
+        filepath = Path(filepath)
+
     if module_name is None:
-        module_name = os.path.splitext(os.path.basename(filepath))[0]
+        module_name = os.path.splitext(filepath.name)[0]
+
+    if not sys_module_name:
+        dirpath_hash = get_dir_module_hash(filepath.parent)
+        sys_module_name = f"{dirpath_hash}.{module_name}"
 
     # Prepare module object where content of file will be parsed
-    module = types.ModuleType(module_name)
-    module.__file__ = filepath
+    module = types.ModuleType(sys_module_name)
+    module.__file__ = filepath.as_posix()
+
+    sys.modules[sys_module_name] = module
 
     # Use loader so module has full specs
     module_loader = importlib.machinery.SourceFileLoader(
-        module_name, filepath
+        sys_module_name, filepath.as_posix()
     )
-    # only add to sys.modules if requested
-    if sys_module_name:
-        sys.modules[sys_module_name] = module
+
     module_loader.exec_module(module)
     return module
 
