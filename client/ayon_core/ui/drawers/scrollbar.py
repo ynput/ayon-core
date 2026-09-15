@@ -21,6 +21,26 @@ if TYPE_CHECKING:
     from ..style import AYONStyle
 
 
+def _get_slider_option(
+    option: QStyleOptionComplex,
+    widget: QtWidgets.QScrollBar,
+) -> QStyleOptionSlider:
+    """Return a complete slider option across Qt binding versions.
+
+    Older PySide versions may slice a ``QStyleOptionSlider`` to its
+    ``QStyleOptionComplex`` base when it passes through a Python style
+    override. Reinitializing the concrete option restores range and
+    position attributes required for scrollbar geometry.
+    """
+    required = ("minimum", "maximum", "sliderPosition", "upsideDown")
+    if all(hasattr(option, attr) for attr in required):
+        return option  # type: ignore[return-value]
+
+    slider_option = QStyleOptionSlider()
+    widget.initStyleOption(slider_option)
+    return slider_option
+
+
 class ScrollBarDrawer:
     def __init__(self, style_inst: AYONStyle) -> None:
         self.style_inst = style_inst
@@ -93,8 +113,9 @@ class ScrollBarDrawer:
                 "Widget required to calculate scrollbar sub-control rects"
             )
 
-        if not isinstance(opt, (QStyleOptionSlider, QStyleOptionComplex)):
+        if not isinstance(opt, QStyleOptionComplex):
             raise ValueError(f"Unexpected option type: {type(opt)}")
+        opt = _get_slider_option(opt, w)
 
         sup = self._super
         try:
@@ -167,6 +188,7 @@ class ScrollBarDrawer:
         """Draw the scrollbar slider/thumb."""
         style = self.model.get_style("QScrollBar")
         style.set_context(widget)
+        option = _get_slider_option(option, widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 

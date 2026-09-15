@@ -104,8 +104,18 @@ class ComboBoxDrawer:
         if not isinstance(w, QComboBox):
             return
 
+        state = (
+            "hover"
+            if (
+                opt.state & QStyle.StateFlag.State_MouseOver
+                or w.underMouse()
+            )
+            else "base"
+        )
         _style = self.model.get_style(
-            "QComboBox", variant=getattr(w, "_variant_str", None)
+            "QComboBox",
+            variant=getattr(w, "_variant_str", None),
+            state=state,
         )
         _style.set_context(w)
         style_bg_color = _style.get("background-color", None)
