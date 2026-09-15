@@ -19,7 +19,10 @@ log = Logger.get_logger(__name__)
 IS_WINDOWS = platform.platform().lower() == "windows"
 
 
-def get_import_module_name(dirpath: Path | str, filename: str | None = None) -> str:
+def get_import_module_name(
+    dirpath: Path | str,
+    filename: str | None = None,
+) -> str:
     """Get hash of directory path.
 
     Args:
