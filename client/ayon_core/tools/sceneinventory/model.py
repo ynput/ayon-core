@@ -415,7 +415,7 @@ class InventoryModel(QtGui.QStandardItemModel):
 
     def _get_version_lock_tooltip(self, index):
         if index.column() != 0:
-            index = self.index(index.row(), 0, index.parent())
+            index = index.sibling(index.row(), 0)
 
         lock_state = super().data(index, CONTAINER_VERSION_LOCKED_ROLE)
         if lock_state is True:
