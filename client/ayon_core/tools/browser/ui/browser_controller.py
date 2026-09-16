@@ -1827,7 +1827,7 @@ class BrowserWidgetController(QtCore.QObject):
             }
         )
         if color:
-            row["product/version__color"] = color
+            row["product/version__icon_color"] = color
         if featured_version:
             assert product_type is not None, (
                 "product_type is required when featured_version is provided"
