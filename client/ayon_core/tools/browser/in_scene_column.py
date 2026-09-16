@@ -61,7 +61,7 @@ class InSceneColumnProvider(BrowserColumnProvider):
     #: than unset) so a container loaded/removed through some other tool
     #: still shows up without waiting on the "load.finished" event this
     #: provider listens for below.
-    lifetime = 60  # seconds
+    lifetime = 15  # seconds
 
     def __init__(
         self,
