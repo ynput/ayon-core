@@ -74,7 +74,7 @@ GITIGNORE_COPIED: List[str] = [
     ".specify/memory/constitution.md",
     ".specify/memory/ayon-constitution-evidence.md",
 ]
-DEFAULT_INTEGRATION: str = "copilot-cli"
+DEFAULT_INTEGRATION: str = "copilot"
 
 LOG = logging.getLogger("agentic_setup")
 
