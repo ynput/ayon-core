@@ -84,14 +84,15 @@ class VariantContribution(_BaseContribution):
     """Reference contribution within a Variant Set"""
     def __init__(
         self,
-        # Variant
+        instance: pyblish.api.Instance,
+        layer_id: str,
+        target_product: str,
+        order: int,
         variant_set_name: str,
         variant_name: str,
-        # Policy controlling variant selection opinion
         variant_default_policy: Literal["if_not_set", "always", "never"],
-        **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(instance, layer_id, target_product, order)
         self.variant_set_name = variant_set_name
         self.variant_name = variant_name
         self.variant_default_policy = variant_default_policy
