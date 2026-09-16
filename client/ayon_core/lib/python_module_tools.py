@@ -59,7 +59,7 @@ def import_filepath(
         filepath = Path(filepath)
 
     if module_name is None:
-        module_name = os.path.splitext(filepath.name)[0]
+        module_name = filepath.stem
 
     if not sys_module_name:
         dirpath_hash = get_dir_module_hash(filepath.parent)
