@@ -1107,14 +1107,14 @@ def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
     #   should be used bitrate from source.
     # - related attributes 'bit_rate_defined', 'bit_rate_must_be_defined'
     bit_rate_must_be_defined = True
-    dnx_profiles = (
+    dnx_profiles = {
         "dnxhd",
         "dnxhr_lb",
         "dnxhr_sq",
         "dnxhr_hq",
         "dnxhr_hqx",
         "dnxhr_444",
-    )
+    }
     if cleaned_profile in dnx_profiles:
         if cleaned_profile != "dnxhd":
             bit_rate_must_be_defined = False
