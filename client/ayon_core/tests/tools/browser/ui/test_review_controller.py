@@ -132,6 +132,93 @@ def test_attribute_filter_operator_follows_attribute_type(
     assert json.loads(version_filter)["conditions"] == [expected]
 
 
+def _conditions(encoded: str) -> list:
+    return json.loads(encoded)["conditions"] if encoded else []
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "filter_name", "expected"),
+    [
+        (
+            "attr:version:comment", "noValue", "version_filter",
+            {"operator": "or", "conditions": [
+                {"key": "attrib.comment", "operator": "isnull"},
+                {"key": "attrib.comment", "value": "", "operator": "eq"},
+            ]},
+        ),
+        (
+            "author", "hasValue", "version_filter",
+            {"operator": "and", "conditions": [
+                {"key": "author", "operator": "notnull"},
+                {"key": "author", "value": "", "operator": "ne"},
+            ]},
+        ),
+        (
+            "tags", "noValue", "version_filter",
+            {"key": "tags", "value": [], "operator": "eq"},
+        ),
+        (
+            "taskTags", "hasValue", "task_filter",
+            {"key": "tags", "value": [], "operator": "ne"},
+        ),
+        (
+            "attr:version:families", "noValue", "version_filter",
+            {"key": "attrib.families", "value": [], "operator": "eq"},
+        ),
+        (
+            "attr:version:forReview", "false", "version_filter",
+            {"key": "attrib.forReview", "value": False, "operator": "eq"},
+        ),
+        (
+            "tags", ["noValue", "wip"], "version_filter",
+            {"operator": "or", "conditions": [
+                {"key": "tags", "value": [], "operator": "eq"},
+                {"key": "tags", "value": ["wip"], "operator": "includesany"},
+            ]},
+        ),
+        (
+            "attr:version:comment", ["noValue", "%fin%"], "version_filter",
+            {"operator": "or", "conditions": [
+                {"operator": "or", "conditions": [
+                    {"key": "attrib.comment", "operator": "isnull"},
+                    {"key": "attrib.comment", "value": "", "operator": "eq"},
+                ]},
+                {
+                    "key": "attrib.comment",
+                    "value": "%fin%",
+                    "operator": "like",
+                },
+            ]},
+        ),
+    ],
+)
+def test_empty_and_boolean_filters_build_server_conditions(
+    key, value, filter_name, expected,
+):
+    controller = BrowserWidgetController(BrowserController())
+    controller._attributes_by_scope = {
+        "version": {
+            "comment": {"type": "string"},
+            "families": {"type": "list_of_strings"},
+            "forReview": {"type": "boolean"},
+        },
+    }
+    controller.set_filter_criteria([
+        FilterCriterion(
+            key=key,
+            attribute_label=key,
+            values=value if isinstance(value, list) else [value],
+            # Typed text next to "No value" arrives as a substring match.
+            use_substring=key == "attr:version:comment"
+            and isinstance(value, list),
+        )
+    ])
+
+    query_filters = controller._get_query_filters()
+
+    assert _conditions(query_filters[filter_name]) == [expected]
+
+
 def test_controller_uses_browser_view_defaults():
     controller = BrowserWidgetController(BrowserController())
     defaults = BROWSER_VIEW_DEFAULTS

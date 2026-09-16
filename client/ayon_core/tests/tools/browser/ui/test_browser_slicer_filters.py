@@ -24,6 +24,7 @@ from ayon_core.tools.browser.ui.tasks_widget import (
     TASK_DATA_ROLE,
     BrowserTasksWidget,
 )
+from ayon_core.ui.components.table_filter import NO_VALUE
 
 
 @pytest.fixture(autouse=True)
@@ -182,8 +183,8 @@ def test_set_task_id_scope_filters_cached_rows_without_refetch(qtbot):
     # No server round trip: the controller is never asked for tasks.
     widget._controller.get_task_items.assert_not_called()
     assert names == ["Lighting"]
-    # "No task" isn't a real task id, so it can't be "mine".
-    assert "No task" not in names
+    # The "No task" row isn't a real task id, so it can't be "mine".
+    assert NO_VALUE not in names
 
 
 def test_set_task_id_scope_none_restores_no_task_row(qtbot):
@@ -200,7 +201,7 @@ def test_set_task_id_scope_none_restores_no_task_row(qtbot):
         widget._model.index(row, 0).data(TASK_DATA_ROLE)["name"]
         for row in range(widget._model.rowCount())
     ]
-    assert names == ["Animation", "No task"]
+    assert names == ["Animation", NO_VALUE]
 
 
 # ---------------------------------------------------------------------

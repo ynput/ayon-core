@@ -12,7 +12,11 @@ from ayon_core.ui.components.table_filter import (
     AYTableFilter,
     FilterCriterion,
 )
-from ayon_core.ui.components.table_model import FilterEntry, TableColumn
+from ayon_core.ui.components.table_model import (
+    FilterEntry,
+    TableColumn,
+    ValueOption,
+)
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.user_avatars import UserAvatarCache
@@ -741,12 +745,14 @@ class BrowserTable(AYContainer):
             "productStatus": [],
             "folderStatus": [],
             "taskStatus": [],
+            "representationStatus": [],
         }
         status_scopes = {
             "version": "status",
             "product": "productStatus",
             "folder": "folderStatus",
             "task": "taskStatus",
+            "representation": "representationStatus",
         }
         for status in statuses:
             for scope in status.get("scope", []) or []:
@@ -768,6 +774,7 @@ class BrowserTable(AYContainer):
             "taskType": sorted(by_name.get("taskTypes", {})),
             "tags": sorted(by_name.get("tags", {})),
             "taskTags": sorted(by_name.get("tags", {})),
+            "representationTags": sorted(by_name.get("tags", {})),
         }
 
     def on_project_info_changed(self) -> None:
@@ -1692,6 +1699,11 @@ class BrowserTable(AYContainer):
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
+            # A version has many representations, so their attributes
+            # have no single value to show in a version row. They are
+            # offered as filters only.
+            if scope == "representation":
+                continue
             entity = scope.capitalize()
             for name, data in definitions.items():
                 if name in builtin_attribute_names:
@@ -1903,27 +1915,27 @@ class BrowserTable(AYContainer):
             ),
             FilterEntry(
                 "productType", "Type",
-                values=enum_values["productType"],
+                options=enum_values["productType"],
                 icon="category", entity="Product",
             ),
             FilterEntry(
                 "productBaseType", "Base Type",
-                values=enum_values["productBaseType"],
+                options=enum_values["productBaseType"],
                 icon="category", entity="Product",
             ),
             FilterEntry(
                 "productStatus", "Status",
-                values=enum_values["productStatus"],
+                options=enum_values["productStatus"],
                 icon="arrow_circle_right", entity="Product",
             ),
             FilterEntry(
                 "status", "Status",
-                values=enum_values["status"],
+                options=enum_values["status"],
                 icon="arrow_circle_right", entity="Version",
             ),
             FilterEntry(
                 "version", "Version",
-                values=["Latest", "Latest Done", "Hero"],
+                options=["Latest", "Latest Done", "Hero"],
                 icon="history", entity="Version",
             ),
             FilterEntry(
@@ -1932,13 +1944,15 @@ class BrowserTable(AYContainer):
             ),
             FilterEntry(
                 "hasReviewables", "Has Reviewables",
-                values=["Yes", "No"],
-                icon="play_circle", entity="Version",
+                options=["Yes", "No"],
+                icon="play_circle", entity="Version", single_select=True,
             ),
             FilterEntry(
                 "tags", "Tags",
-                values=enum_values["tags"],
-                icon="local_offer", entity="Version",
+                options=enum_values["tags"],
+                icon="local_offer",
+                entity="Version",
+                show_has_value_filters=True,
             ),
             FilterEntry(
                 "folderName", "Name",
@@ -1946,39 +1960,76 @@ class BrowserTable(AYContainer):
             ),
             FilterEntry(
                 "folderStatus", "Status",
-                values=enum_values["folderStatus"],
+                options=enum_values["folderStatus"],
                 icon="arrow_circle_right", entity="Folder",
             ),
-            FilterEntry("task", "Task", icon="task", entity="Task"),
+            FilterEntry(
+                "task", "Task",
+                icon="task", entity="Task",
+                show_has_value_filters=True,
+            ),
             FilterEntry(
                 "taskType", "Type",
-                values=enum_values["taskType"],
+                options=enum_values["taskType"],
                 icon="task_alt", entity="Task",
             ),
             FilterEntry(
                 "taskStatus", "Status",
-                values=enum_values["taskStatus"],
+                options=enum_values["taskStatus"],
                 icon="arrow_circle_right", entity="Task",
             ),
             FilterEntry(
                 "taskTags", "Tags",
-                values=enum_values["taskTags"],
-                icon="local_offer", entity="Task",
+                options=enum_values["taskTags"],
+                icon="local_offer", entity="Task", show_has_value_filters=True,
             ),
 
             # "Loaded in Scene" filter is a special case, not an attribute, so
             # it is added here as a built-in filter.
             FilterEntry(
                 "inScene", "In Scene",
-                values=["Yes", "No"],
-                icon="how_to_reg", entity="Version",
+                options=["Yes", "No"],
+                icon="how_to_reg", entity="Version", single_select=True,
             ),
         ]
+        # Older servers cannot filter versions by their representations,
+        # so the whole Representation scope is left out for them.
+        supports_representation_filter = (
+            self._controller.supports_representation_filter
+        )
+        if supports_representation_filter:
+            filters.extend([
+                FilterEntry(
+                    "representationName", "Name",
+                    icon="view_in_ar", entity="Representation",
+                    text_search=True,
+                ),
+                FilterEntry(
+                    "representationExtension", "Extension",
+                    icon="description", entity="Representation",
+                    text_search=True,
+                ),
+                FilterEntry(
+                    "representationStatus", "Status",
+                    options=enum_values["representationStatus"],
+                    icon="arrow_circle_right", entity="Representation",
+                ),
+                FilterEntry(
+                    "representationTags", "Tags",
+                    options=enum_values["representationTags"],
+                    icon="local_offer", entity="Representation",
+                ),
+            ])
 
         # Add all attribute filters per entity type
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
+            if (
+                scope == "representation"
+                and not supports_representation_filter
+            ):
+                continue
             entity = scope.capitalize()
             for name, data in definitions.items():
                 attribute_type = str(data.get("type", "")).lower()
@@ -1990,14 +2041,12 @@ class BrowserTable(AYContainer):
                 }:
                     continue
                 enum = data.get("enum")
-                values = []
-                value_labels = {}
+                options: list[ValueOption] = []
                 if isinstance(enum, dict):
-                    values = [str(value) for value in enum]
-                    value_labels = {
-                        str(value): str(label)
+                    options = [
+                        ValueOption(value=str(value), label=str(label))
                         for value, label in enum.items()
-                    }
+                    ]
                 elif isinstance(enum, (list, tuple)):
                     for item in enum:
                         if isinstance(item, dict):
@@ -2006,22 +2055,43 @@ class BrowserTable(AYContainer):
                         else:
                             value, label = item, item
                         if value is not None:
-                            values.append(str(value))
-                            value_labels[str(value)] = str(label)
+                            options.append(ValueOption(
+                                value=str(value),
+                                label=str(label),
+                            ))
+                is_boolean = attribute_type == "boolean"
+                if is_boolean:
+                    options = [
+                        ValueOption(value="true", label="Yes"),
+                        ValueOption(value="false", label="No")
+                    ]
+                # Like the web frontend, offer "No/Has value" only where a
+                # field can actually be empty: not for booleans (unset
+                # already reads as "No") nor for attributes whose default
+                # inherits down to every entity. Numbers are left out too.
+                always_has_value = (
+                    data.get("default") is not None
+                    and data.get("inherit") is not False
+                )
+                allow_empty = (
+                    (
+                        attribute_type == "string"
+                        or attribute_type.startswith("list_of_")
+                    )
+                    and not always_has_value
+                )
                 key = f"attr:{scope}:{name}"
                 filters.append(FilterEntry(
                     key,
                     data.get("title", name),
-                    values=values,
+                    options=options,
                     icon=get_attribute_icon(
                         name, data.get("type"), bool(enum)
                     ),
                     entity=entity,
-                    value_labels=value_labels,
-                    text_search=(
-                        str(data.get("type", "")).lower() == "string"
-                        and not enum
-                    ),
+                    text_search=attribute_type == "string" and not enum,
+                    single_select=is_boolean,
+                    show_has_value_filters=allow_empty,
                 ))
         core_keys = {item.key for item in filters}
         filters.extend(

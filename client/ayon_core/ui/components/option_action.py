@@ -346,7 +346,12 @@ class AYMenu(QtWidgets.QMenu):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         style = get_ayon_style()
+        # Force the menu to use AYONStyle for drawing, even if the app's style
+        # is something else.
         self.setStyle(style)
+        # Apply eagerly, rather than leaving it to the first time the menu
+        # is shown to avoid changing WindowFlags after the menu is already
+        # open which recreates the native window and can cause crashes.
         style.style_widget(self)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
