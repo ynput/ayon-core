@@ -597,10 +597,10 @@ class ServerViewManager(ViewManager):
             True when powerpack is available and licensed.
         """
         if self._supports_sharing is None:
-            self._supports_sharing = bool(
-                self._get_powerpack_version()
-            )
-        return self._supports_sharing
+            powerpack_version = self._get_powerpack_version()
+            if powerpack_version is None and not self._powerpack_resolved:
+                return False
+            self._supports_sharing = bool(powerpack_version)
 
     def _get_powerpack_version(self) -> str | None:
         """Return powerpack version from the current session bundle."""
