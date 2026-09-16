@@ -212,7 +212,7 @@ def modules_from_path(path: str | Path) -> ModulesResult:
         path = Path(path)
 
     # Do not allow relative imports
-    if path.is_absolute():
+    if not path.is_absolute():
         log.warning(
             "BUG: Relative paths are not allowed for security reasons."
             f" {path}"
