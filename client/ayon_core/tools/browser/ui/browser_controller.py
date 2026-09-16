@@ -785,9 +785,23 @@ class BrowserWidgetController(QtCore.QObject):
                         "value": values,
                         "operator": operator,
                     }
-                condition = self._or_empty_value_condition(
-                    condition, empty_value, "id", False
-                )
+                if empty_value is not None:
+                    # Can't use `_or_empty_value_condition` because "id" is a
+                    # UUID field server-side, which rejects "" as an entity id.
+                    empty_condition = {
+                        "key": "id",
+                        "operator": (
+                            "notnull" if empty_value == HAS_VALUE
+                            else "isnull"
+                        ),
+                    }
+                    condition = (
+                        empty_condition if condition is None
+                        else {
+                            "operator": "or",
+                            "conditions": [empty_condition, condition],
+                        }
+                    )
                 if condition is not None:
                     task_conditions.append(condition)
             elif key == "taskType":
