@@ -734,9 +734,12 @@ class AYViewSelector(AYButtonMenu):
         self._close_menu()
         # A row from the listing lacks the view's access grants; the
         # editor must start from the stored ones or saving wipes them.
-        view_copy = View.from_payload(
-            self._manager.load_view(view).to_payload()
-        )
+        loaded_view = self._manager.load_view(view)
+        if not loaded_view.loaded:
+            # On failure to load, just stop here. Manager would've already
+            # emitted the error
+            return
+        view_copy = View.from_payload(loaded_view.to_payload())
         self._capture_into(view_copy)
         editor = self._create_editor(view_copy)
         if editor.exec() != QDialog.DialogCode.Accepted:
