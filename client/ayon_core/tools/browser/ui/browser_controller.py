@@ -36,6 +36,7 @@ from ayon_core.tools.browser.columns import (
     BrowserFilter,
 )
 from ayon_core.tools.browser.control import BrowserController
+from ayon_core.tools.browser.in_scene_column import InSceneColumnProvider
 from ayon_core.tools.browser.sitesync_columns import (
     SiteSyncBrowserColumnProvider,
 )
@@ -222,6 +223,7 @@ class BrowserWidgetController(QtCore.QObject):
         self._column_manager = BrowserColumnManager(
             providers=[
                 SiteSyncBrowserColumnProvider(column_services),
+                InSceneColumnProvider(loader_controller=loader_controller),
             ],
         )
         self.log = Logger.get_logger(self.__class__.__name__)
@@ -270,6 +272,16 @@ class BrowserWidgetController(QtCore.QObject):
         return self._column_manager.get_filter_keys(
             self._get_column_context()
         )
+
+    def enrich_loaded_rows(self, rows: list[dict[str, Any]]) -> None:
+        """Re-run column-provider enrichment on already-loaded rows.
+
+        Mutates *rows* in place. A provider that owns no currently
+        visible column and no active filter is skipped for free by
+        `BrowserColumnManager.enrich_rows`, so calling this when nothing
+        is listening is inexpensive.
+        """
+        self._column_manager.enrich_rows(self._get_column_context(), rows)
 
     @property
     def current_category(self) -> str:
@@ -726,29 +738,6 @@ class BrowserWidgetController(QtCore.QObject):
                     has_reviewables = True
                 elif selected in ({"no"}, {"false"}):
                     has_reviewables = False
-                continue
-            if key == "inScene":
-                selected = set(values)
-                loaded_ids = self._loader_controller.get_loaded_version_ids()
-                if selected == {"Yes"}:
-                    if loaded_ids:
-                        version_conditions.append({
-                            "key": "id",
-                            "value": list(loaded_ids),
-                            "operator": "in",
-                        })
-                    else:
-                        version_conditions.append({
-                            "key": "id",
-                            "value": [],
-                            "operator": "in",
-                        })
-                elif selected == {"No"} and loaded_ids:
-                    version_conditions.append({
-                        "key": "id",
-                        "value": list(loaded_ids),
-                        "operator": "notin",
-                    })
                 continue
             if key == "product/version":
                 search = " ".join(values)
@@ -1777,9 +1766,10 @@ class BrowserWidgetController(QtCore.QObject):
 
         Args:
             group_option: Group-by axis.
-            value: The specific group value (e.g. ``"In Progress"``).
-                Stored in the row ``id`` and used as the display label
-                when *label* is not provided.
+            value: The specific group value (e.g. ``"In Progress"``, or
+                the product id for the product axis). Stored in the row
+                ``id`` and used as the display label when *label* is not
+                provided.
             icon: Material icon name for the tree cell.
             color: Optional colour hint for the status/type badge.
             label: Optional display label. When provided, used for the
@@ -1813,9 +1803,13 @@ class BrowserWidgetController(QtCore.QObject):
                 "entityType": group_option.label,
                 "entityType__icon": group_option.icon,
                 "project_name": self._current_project,
-                "inScene": False,
             }
         )
+        if group_option.key == GROUP_BY_PRODUCT_KEY:
+            # Lets providers that only know representation-level state
+            # (e.g. In Scene) resolve "any version of this product" -
+            # `value` is the product id only for this axis.
+            row["_product_id"] = value
         if color:
             row["product/version__color"] = color
         if featured_version:
@@ -1824,12 +1818,6 @@ class BrowserWidgetController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
-            row["inScene"] = (
-                True
-                if row["_version_id"]
-                in self._loader_controller.get_loaded_version_ids()
-                else False
-            )
             row["status"] = featured_version.get("status", "")
             row["status__icon"] = self._pinfo(
                 "statuses", row["status"], "icon", ""
@@ -3094,11 +3082,6 @@ class BrowserWidgetController(QtCore.QObject):
         if is_hero:
             version_number = abs(int(n.get("version", 0)))
             version_name = f"★ (v{version_number:03d})"
-        in_scene = (
-            True
-            if n.get("id") in self._loader_controller.get_loaded_version_ids()
-            else False
-        )
         row = {
             "project_name": self._current_project,
             "thumbnail": n.get("thumbnailId") or "",
@@ -3111,7 +3094,6 @@ class BrowserWidgetController(QtCore.QObject):
             "productStatus": product.get("status", ""),
             "folderStatus": folder.get("status", ""),
             "featuredVersionType": n.get("featuredVersionType", ""),
-            "inScene": in_scene,
             "status__color": self._pinfo("statuses", status, "color"),
             "status__icon": self._pinfo("statuses", status, "icon"),
             "status__short": self._pinfo(

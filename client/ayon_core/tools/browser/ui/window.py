@@ -195,7 +195,6 @@ class BrowserWindow(AYContainer):
     def _on_load_finished(self, event):
         error_info = event["error_info"]
         if not error_info:
-            self._controller.invalidate_loaded_containers()
             self.browser_widget.refresh_loaded_state()
             return
 
