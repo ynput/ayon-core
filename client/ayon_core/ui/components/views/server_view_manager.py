@@ -79,7 +79,6 @@ class ServerViewManager(ViewManager):
         self._id_to_view_attributes: dict[str, tuple[str, Scope]] = {}
         self._powerpack_version: str | None = None
         self._powerpack_resolved: bool = False
-        self._supports_sharing: bool | None = None
 
     # ------------------------------------------------------------------
     # Project scope
@@ -590,17 +589,12 @@ class ServerViewManager(ViewManager):
         """Whether view sharing is available on the server.
 
         Sharing is a powerpack feature: it requires the powerpack addon
-        in the current bundle. The result is cached for the lifetime of the
-        manager.
+        in the current bundle.
 
         Returns:
             True when powerpack is available and licensed.
         """
-        if self._supports_sharing is None:
-            powerpack_version = self._get_powerpack_version()
-            if powerpack_version is None and not self._powerpack_resolved:
-                return False
-            self._supports_sharing = bool(powerpack_version)
+        return self._get_powerpack_version() is not None
 
     def _get_powerpack_version(self) -> str | None:
         """Return powerpack version from the current session bundle."""
