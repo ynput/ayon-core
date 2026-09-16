@@ -12,7 +12,6 @@ import pyblish.api
 import pyblish.logic
 import pyblish.plugin
 
-from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
