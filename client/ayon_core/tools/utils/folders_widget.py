@@ -421,6 +421,25 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
         self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         self._folder_ids_filter = None
+        self._name_filter_terms = []
+
+    def set_name_filter(self, name: str) -> None:
+        self._name_filter_terms = name.casefold().split()
+        self.invalidateFilter()
+
+    def _match_name_filter(self, source_index) -> bool:
+        if not self._name_filter_terms:
+            return True
+
+        path_labels = []
+        while source_index.isValid():
+            display_role = source_index.data(QtCore.Qt.DisplayRole)
+            if display_role:
+                path_labels.append(str(display_role).casefold())
+            source_index = source_index.parent()
+
+        path = " ".join(reversed(path_labels))
+        return all(term in path for term in self._name_filter_terms)
 
     def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
         if self._folder_ids_filter == folder_ids:
@@ -429,13 +448,17 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
         self.invalidateFilter()
 
     def filterAcceptsRow(self, row, parent_index):
+        source_index = self.sourceModel().index(row, 0, parent_index)
         if self._folder_ids_filter is not None:
             if not self._folder_ids_filter:
                 return False
-            source_index = self.sourceModel().index(row, 0, parent_index)
             folder_id = source_index.data(FOLDER_ID_ROLE)
             if folder_id not in self._folder_ids_filter:
                 return False
+
+        if self._name_filter_terms:
+            return self._match_name_filter(source_index)
+
         return super().filterAcceptsRow(row, parent_index)
 
 
@@ -547,7 +570,7 @@ class FoldersWidget(QtWidgets.QWidget):
             name (str): The string filter.
         """
 
-        self._folders_proxy_model.setFilterFixedString(name)
+        self._folders_proxy_model.set_name_filter(name)
         if name:
             self._folders_view.expandAll()
 
