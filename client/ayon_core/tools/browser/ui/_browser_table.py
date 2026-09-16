@@ -1933,12 +1933,12 @@ class BrowserTable(AYContainer):
             FilterEntry(
                 "hasReviewables", "Has Reviewables",
                 values=["Yes", "No"],
-                icon="play_circle", entity="Version",
+                icon="play_circle", entity="Version", single_select=True,
             ),
             FilterEntry(
                 "tags", "Tags",
                 values=enum_values["tags"],
-                icon="local_offer", entity="Version",
+                icon="local_offer", entity="Version", show_has_value_filters=True,
             ),
             FilterEntry(
                 "folderName", "Name",
@@ -1963,7 +1963,7 @@ class BrowserTable(AYContainer):
             FilterEntry(
                 "taskTags", "Tags",
                 values=enum_values["taskTags"],
-                icon="local_offer", entity="Task",
+                icon="local_offer", entity="Task", show_has_value_filters=True,
             ),
 
             # "Loaded in Scene" filter is a special case, not an attribute, so
@@ -1971,7 +1971,7 @@ class BrowserTable(AYContainer):
             FilterEntry(
                 "inScene", "In Scene",
                 values=["Yes", "No"],
-                icon="how_to_reg", entity="Version",
+                icon="how_to_reg", entity="Version", single_select=True,
             ),
         ]
 
@@ -2008,6 +2008,25 @@ class BrowserTable(AYContainer):
                         if value is not None:
                             values.append(str(value))
                             value_labels[str(value)] = str(label)
+                is_boolean = attribute_type == "boolean"
+                if is_boolean:
+                    values = ["true", "false"]
+                    value_labels = {"true": "Yes", "false": "No"}
+                # Like the web frontend, offer "No/Has value" only where a
+                # field can actually be empty: not for booleans (unset
+                # already reads as "No") nor for attributes whose default
+                # inherits down to every entity. Numbers are left out too.
+                always_has_value = (
+                    data.get("default") is not None
+                    and data.get("inherit") is not False
+                )
+                allow_empty = (
+                    (
+                        attribute_type == "string"
+                        or attribute_type.startswith("list_of_")
+                    )
+                    and not always_has_value
+                )
                 key = f"attr:{scope}:{name}"
                 filters.append(FilterEntry(
                     key,
@@ -2018,10 +2037,9 @@ class BrowserTable(AYContainer):
                     ),
                     entity=entity,
                     value_labels=value_labels,
-                    text_search=(
-                        str(data.get("type", "")).lower() == "string"
-                        and not enum
-                    ),
+                    text_search=attribute_type == "string" and not enum,
+                    single_select=is_boolean,
+                    show_has_value_filters=allow_empty,
                 ))
         core_keys = {item.key for item in filters}
         filters.extend(

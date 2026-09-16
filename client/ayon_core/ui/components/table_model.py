@@ -125,6 +125,12 @@ class FilterEntry:
         entity: Entity level used to group the filter in the menu.
         text_search: Whether values are entered as fuzzy text instead of
             selected from a distinct-value list.
+        single_select: Whether the values are mutually exclusive, e.g. a
+            Yes/No filter. The first value is preselected when the filter
+            is picked from the menu.
+        show_has_value_filters: When true, also show "No {label}" and
+            "Has {label}" filter options. Usually, enabled for fields where
+            values may be optional or can be empty, e.g. None or empty string.
     """
     key: str
     label: str
@@ -135,6 +141,8 @@ class FilterEntry:
     value_icons: dict[str, str] = field(default_factory=dict)
     value_colors: dict[str, str] = field(default_factory=dict)
     text_search: bool = False
+    single_select: bool = False
+    show_has_value_filters: bool = False
 
 
 @dataclass
