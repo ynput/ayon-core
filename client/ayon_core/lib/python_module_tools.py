@@ -209,15 +209,15 @@ def modules_from_path(path: str | Path) -> ModulesResult:
         if not path:
             return result
 
-        # Do not allow relative imports
-        if path.startswith("."):
-            log.warning(
-                "BUG: Relative paths are not allowed for security reasons."
-                f" {path}"
-            )
-            return result
-
         path = Path(path)
+
+    # Do not allow relative imports
+    if path.is_absolute():
+        log.warning(
+            "BUG: Relative paths are not allowed for security reasons."
+            f" {path}"
+        )
+        return result
 
     filepaths = []
     if path.is_file():
