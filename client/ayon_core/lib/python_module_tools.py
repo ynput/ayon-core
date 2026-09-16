@@ -190,18 +190,12 @@ class ModulesResult:
         return [self.modules, self.crashed][index]
 
 
-def modules_from_path(
-    path: str | Path,
-    *,
-    reset_dir_module_hash: bool = True,
-) -> ModulesResult:
+def modules_from_path(path: str | Path) -> ModulesResult:
     """Get python scripts as modules from a path.
 
     Arguments:
         path (str | Path): Path to folder containing python scripts or path
             to a python script.
-        reset_dir_module_hash (bool): If True, will reset all sys.modules
-            under the directory.
 
     Returns:
         ModulesResult: Contains successfully imported modules and
