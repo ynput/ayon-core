@@ -11,6 +11,7 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import TASKS_MODEL_SENDER_NAME
 from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
+from ayon_core.ui.components.table_filter import NO_VALUE
 from ayon_core.ui.components.table_view import AYTableView
 
 
@@ -385,9 +386,9 @@ class BrowserTasksWidget(QtWidgets.QWidget):
                 color=get_default_entity_icon_color(),
             )
         )
-        name_item = QtGui.QStandardItem(icon, "No task")
+        name_item = QtGui.QStandardItem(icon, "No Task")
         name_item.setData(
-            {"ids": [], "name": "No task"},
+            {"ids": [], "name": NO_VALUE},
             TASK_DATA_ROLE,
         )
         empty_type = QtGui.QStandardItem("")

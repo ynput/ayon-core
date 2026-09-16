@@ -54,7 +54,7 @@ class _TestProvider(BrowserColumnProvider):
             FilterEntry(
                 "test:status",
                 "Test Status",
-                values=["Keep"],
+                options=["Keep"],
             )
         ]
 
