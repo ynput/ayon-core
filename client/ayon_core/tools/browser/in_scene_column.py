@@ -14,6 +14,7 @@ withheld until a host is registered.
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -22,13 +23,14 @@ import ayon_api
 
 from ayon_core.host import AbstractHost, ILoadHost
 from ayon_core.lib import CacheItem, Logger
-from ayon_core.pipeline import get_current_context, registered_host
+from ayon_core.pipeline import registered_host
 from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 
 from .columns import (
     BrowserColumnContext,
     BrowserColumnProvider,
 )
+from .server_capabilities import server_supports_representation_filter
 
 log = Logger.get_logger(__name__)
 
@@ -36,6 +38,27 @@ IN_SCENE_KEY = "inScene"
 
 _LOADED_COLOR = "#50aa50"
 _NOT_LOADED_COLOR = "#5a5a5a"
+
+
+# Minimal GraphQL query to get version id + product id from representation
+# in a single query
+_VERSIONS_BY_REPRESENTATIONS_QUERY = """
+query GetVersionsByRepresentations(
+  $projectName: String!,
+  $representationFilter: String,
+) {
+  project(name: $projectName) {
+    versions(representationFilter: $representationFilter) {
+      edges {
+        node {
+          id
+          productId
+        }
+      }
+    }
+  }
+}
+"""
 
 
 @dataclass(frozen=True)
@@ -75,6 +98,8 @@ class InSceneColumnProvider(BrowserColumnProvider):
         self._loaded_ids_cache = CacheItem(
             default_factory=_LoadedIds, lifetime=self.lifetime
         )
+        self._last_repre_ids: frozenset[str] | None = None
+        self._last_project_name: str | None = None
         # Subscribing directly to Browser's own event bus - rather than
         # the controller pushing an "invalidate everything" call into
         # every provider - keeps this provider the only place that knows
@@ -126,7 +151,7 @@ class InSceneColumnProvider(BrowserColumnProvider):
         host = self._get_host()
         if host is None:
             return
-        loaded = self._get_loaded_ids(host)
+        loaded = self._get_loaded_ids(host, context.project_name)
         supported_entity_types = {"Product", "Version"}
         for row in rows:
             if row.get("entityType") not in supported_entity_types:
@@ -151,13 +176,9 @@ class InSceneColumnProvider(BrowserColumnProvider):
             )
 
     def _on_load_finished(self, event: dict) -> None:
-        """Drop the cached loaded-ids set.
-
-        A failed Load action didn't change scene state, so only a clean
-        finish invalidates the cache.
-        """
+        """Mark the cached loaded-ids set as needing a recheck."""
         if not event.get("error_info"):
-            self._loaded_ids_cache.reset()
+            self._loaded_ids_cache.set_invalid()
 
     def _is_enabled(self) -> bool:
         return self._get_host() is not None
@@ -167,19 +188,31 @@ class InSceneColumnProvider(BrowserColumnProvider):
             return self._host
         return registered_host()
 
-    def _get_loaded_ids(self, host: AbstractHost) -> _LoadedIds:
-        """Return version and product ids represented by containers.
+    def _get_loaded_ids(
+        self,
+        host: AbstractHost,
+        project_name: str | None,
+    ) -> _LoadedIds:
+        """Return version and product ids represented by loaded containers.
 
-        The product ids cost one extra server round trip (version ->
-        product) over just resolving versions, but only ever happens on
-        a cache miss, and lets a product-grouped row be answered too.
+        Args:
+            host: The registered host to query containers from.
+            project_name: The project name the browser is viewing. Not
+              necessarily the current context's project.
         """
-        if self._loaded_ids_cache.is_valid:
-            return self._loaded_ids_cache.get_data()
-
-        project_name = self._get_host_project_name(host)
         if not project_name:
             return _LoadedIds()
+
+        if project_name != self._last_project_name:
+            # Switching project in the browser invalidates everything, because
+            # we have queried the loaded representation ids against the project
+            # we are viewing only.
+            self._last_project_name = project_name
+            self._last_repre_ids = None
+            self._loaded_ids_cache.set_invalid()
+
+        if self._loaded_ids_cache.is_valid:
+            return self._loaded_ids_cache.get_data()
 
         try:
             if isinstance(host, ILoadHost):
@@ -193,24 +226,117 @@ class InSceneColumnProvider(BrowserColumnProvider):
         repre_ids = set()
         for container in containers:
             repre_id = container.get("representation")
-            try:
-                uuid.UUID(repre_id)
-            except (ValueError, TypeError, AttributeError):
+            if not repre_id or not self._is_uuid(repre_id):
                 continue
+
+            # Skip representations from a project other than the one Browser
+            # is viewing
+            repre_project = container.get("project_name")
+            if repre_project and repre_project != project_name:
+                continue
+
             repre_ids.add(repre_id)
 
-        version_ids: set[str] = set()
-        if repre_ids:
-            representations = ayon_api.get_representations(
-                project_name,
-                repre_ids,
-                fields=["versionId"],
+        repre_ids = frozenset(repre_ids)
+        if repre_ids == self._last_repre_ids:
+            # Same representations as last time, keep previous cache
+            self._loaded_ids_cache.update_data(
+                self._loaded_ids_cache.get_data()
             )
-            version_ids = {
-                representation["versionId"]
-                for representation in representations
-                if representation.get("versionId")
-            }
+            return self._loaded_ids_cache.get_data()
+
+        # Query version and product ids from server
+        loaded = None
+        if repre_ids:
+            if server_supports_representation_filter():
+                loaded = self._resolve_via_representation_filter(
+                    project_name, repre_ids
+                )
+            else:
+                loaded = self._resolve_via_representations_then_versions(
+                    project_name, repre_ids
+                )
+        loaded = loaded or _LoadedIds()
+        self._last_repre_ids = repre_ids
+        self._loaded_ids_cache.update_data(loaded)
+        return self._loaded_ids_cache.get_data()
+
+    @staticmethod
+    def _is_uuid(value: Any) -> bool:
+        try:
+            uuid.UUID(value)
+        except (ValueError, TypeError, AttributeError):
+            return False
+        return True
+
+    @staticmethod
+    def _resolve_via_representation_filter(
+        project_name: str,
+        repre_ids: set[str],
+    ) -> _LoadedIds | None:
+        """Resolve loaded ids in a single round trip, where supported.
+
+        The versions resolver's ``representationFilter`` argument keeps
+        versions that have a matching representation, so this needs no
+        separate representation -> version lookup at all. Only exists
+        on newer servers (see `server_supports_representation_filter`),
+        and ``None`` here means "not attempted" - the caller falls back
+        to the older two-step resolution.
+        """
+        con = ayon_api.get_server_api_connection()
+        if not con:
+            return None
+        response = con.query_graphql(
+            _VERSIONS_BY_REPRESENTATIONS_QUERY,
+            {
+                "projectName": project_name,
+                "representationFilter": json.dumps({
+                    "conditions": [{
+                        "key": "id",
+                        "value": list(repre_ids),
+                        "operator": "in",
+                    }],
+                }),
+            },
+        )
+        if response.errors:
+            log.error(
+                "representationFilter versions query failed: %s",
+                response.errors,
+            )
+            return None
+        edges = (
+            response.data["data"]["project"]["versions"]["edges"]
+        )
+        return _LoadedIds(
+            version_ids=frozenset(edge["node"]["id"] for edge in edges),
+            product_ids=frozenset(
+                edge["node"]["productId"]
+                for edge in edges
+                if edge["node"].get("productId")
+            ),
+        )
+
+    @staticmethod
+    def _resolve_via_representations_then_versions(
+        project_name: str,
+        repre_ids: set[str],
+    ) -> _LoadedIds:
+        """Resolve loaded ids the old way: representations, then versions.
+
+        Two round trips instead of one, for servers whose versions
+        resolver does not accept ``representationFilter``.
+        """
+        representations = ayon_api.get_representations(
+            project_name,
+            repre_ids,
+            fields=["versionId"],
+        )
+        version_ids = {
+            representation["versionId"]
+            for representation in representations
+            if representation.get("versionId")
+        }
 
         product_ids: set[str] = set()
         if version_ids:
@@ -225,23 +351,7 @@ class InSceneColumnProvider(BrowserColumnProvider):
                 if version.get("productId")
             }
 
-        loaded = _LoadedIds(
+        return _LoadedIds(
             version_ids=frozenset(version_ids),
             product_ids=frozenset(product_ids),
         )
-        self._loaded_ids_cache.update_data(loaded)
-        return self._loaded_ids_cache.get_data()
-
-    @staticmethod
-    def _get_host_project_name(host: AbstractHost) -> str | None:
-        """Return the project the scene itself belongs to.
-
-        Deliberately the host's own context, not the project currently
-        browsed in Browser - those can differ, and a representation id
-        only resolves within the project that issued it.
-        """
-        if hasattr(host, "get_current_context"):
-            context = host.get_current_context()
-        else:
-            context = get_current_context()
-        return context.get("project_name")
