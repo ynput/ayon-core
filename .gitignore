@@ -104,7 +104,6 @@ site/
 .specify/*
 !.specify/memory/
 .specify/memory/*
-!.specify/memory/constitution.md
 # Bug triage records (speckit.bug.assess/fix/test) — durable, commit them:
 !.specify/bugs/
 .specify/bugs/*
