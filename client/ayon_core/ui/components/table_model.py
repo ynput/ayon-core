@@ -128,7 +128,8 @@ class FilterEntry:
         single_select: Whether the values are mutually exclusive, e.g. a
             Yes/No filter. The first value is preselected when the filter
             is picked from the menu.
-        allow_empty: Whether to offer "No {label}" and "Has {label}"
+        allow_empty: Whether the value can be empty, e.g. None or empty string.
+            When true, also show "No {label}" and "Has {label}" filter options.
             options, matching rows by whether the field is empty.
     """
     key: str
