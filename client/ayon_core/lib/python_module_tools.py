@@ -236,6 +236,8 @@ def modules_from_path(
                 continue
 
             filepaths.append(file)
+    else:
+        return result
 
     for filepath in filepaths:
         if not filepath.is_file():
