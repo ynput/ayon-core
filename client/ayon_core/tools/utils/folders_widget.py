@@ -456,8 +456,8 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
             if folder_id not in self._folder_ids_filter:
                 return False
 
-        if self._name_filter_terms:
-            return self._match_name_filter(source_index)
+        if not self._match_name_filter(source_index):
+            return False
 
         return super().filterAcceptsRow(row, parent_index)
 
