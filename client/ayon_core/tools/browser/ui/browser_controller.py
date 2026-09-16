@@ -1811,7 +1811,7 @@ class BrowserWidgetController(QtCore.QObject):
             # `value` is the product id only for this axis.
             row["_product_id"] = value
         if color:
-            row["product/version__color"] = color
+            row["product/version__icon_color"] = color
         if featured_version:
             assert product_type is not None, (
                 "product_type is required when featured_version is provided"
