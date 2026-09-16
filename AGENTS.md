@@ -59,9 +59,10 @@ CI gates: lint `.github/workflows/pr_linting.yml`, tests
 ## Spec Kit
 
 This repo is harness-agnostic — no agent config is committed; each teammate
-installs their own Spec Kit integration and links `.agents-main`
-(`ln -s ../ayon-agentic-instructions .agents-main`, gitignored). See
-`SPEC_KIT.md` for setup. For any `/speckit.*` work (anatomy, pipeline
+installs their own Spec Kit integration and links `.agents-main` — run
+`python agentic_setup.py install` (cross-platform; uses a junction on
+Windows), or manually `ln -s ../ayon-agentic-instructions .agents-main`
+(gitignored). See `SPEC_KIT.md` for setup. For any `/speckit.*` work (anatomy, pipeline
 contracts, settings conventions, style, verification ladder), the active
 constitution is `.agents-main/memory/ayon-constitution.md` — the tracked
 `.specify/memory/constitution.md` is a symlink to it.

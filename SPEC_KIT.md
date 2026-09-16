@@ -17,10 +17,16 @@ Zed, ...): you pick the agent, install the integration, and use the
 
 ### 1. Link the shared AYON instructions (`.agents-main`)
 
-`AGENTS.md` and the SpeckIt workflow read shared AYON guidance from a
-symlink `.agents-main -> ../ayon-agentic-instructions` at the repo root.
-The link is expected to be created by tooling/CI, but can be set up
-manually:
+Recommended — run the setup script from the repo root (idempotent,
+cross-platform; see `python agentic_setup.py install --help`):
+
+```bash
+python agentic_setup.py install
+# optional: also install the specify CLI and an agent integration:
+python agentic_setup.py install --specify --integration=goose
+```
+
+Manual fallback (macOS/Linux):
 
 ```bash
 # Clone next to this repository's root (sibling directory), e.g.:
@@ -29,6 +35,10 @@ git clone \
 # ...then symlink it in this repo (gitignored, never committed):
 ln -s ../ayon-agentic-instructions .agents-main
 ```
+
+On Windows, do not use `ln -s` (Git Bash copies instead of linking) —
+let `agentic_setup.py` handle the platform-specific linking and the
+constitution; see its module docstring for details.
 
 Key files provided by the shared repo:
 
@@ -46,8 +56,10 @@ Spec Kit):
 uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
 ```
 
-Then install your integration. On a fresh checkout, initialize; in this
-existing repo, just install the integration for your agent:
+Then install your integration (or let the setup script do it:
+`python agentic_setup.py install --specify [--integration=<agent>]
+[--skills]`). On a fresh checkout, initialize; in this existing repo,
+just install the integration for your agent:
 
 ```bash
 specify integration install <your-agent>
