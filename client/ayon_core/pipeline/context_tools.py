@@ -158,12 +158,11 @@ def install_host(host: AbstractHost) -> None:
         pyblish.api.register_target("automated")
 
     host_name = os.environ.get("AYON_HOST_NAME")
+    bind_contextvars(host_name=host_name, project=project_name)
 
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
-
-    bind_contextvars(host_name=host_name, project=project_name)
 
     install_ayon_plugins(project_name, host_name)
 
