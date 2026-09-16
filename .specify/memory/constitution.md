@@ -1,1 +1,0 @@
-../../.agents-main/memory/ayon-constitution.md
