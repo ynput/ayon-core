@@ -157,7 +157,9 @@ def install_host(host: AbstractHost) -> None:
         print("Registering pyblish target: automated")
         pyblish.api.register_target("automated")
 
-    host_name = os.environ.get("AYON_HOST_NAME")
+    host_name = os.environ.get("AYON_HOST_NAME") or getattr(
+        host, "name", None
+    )
     bind_contextvars(host_name=host_name, project=project_name)
 
     # Give option to handle host installation

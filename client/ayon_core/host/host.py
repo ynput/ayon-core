@@ -106,7 +106,10 @@ class HostBase(AbstractHost):
             'install'.
         """
         clear_contextvars()
-        bind_contextvars(host=self.__class__.__name__)
+        bind_contextvars(
+            host=self.__class__.__name__,
+            host_name=getattr(self, "name", self.__class__.__name__),
+        )
 
     def get_app_information(self) -> ApplicationInformation:
         """Running application information.
