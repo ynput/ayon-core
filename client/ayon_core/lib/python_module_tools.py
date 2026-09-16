@@ -62,7 +62,7 @@ def import_filepath(
 
     """
     if isinstance(filepath, str):
-        filepath = Path(filepath)
+        filepath = Path(filepath).resolve()
 
     if module_name is None:
         module_name = filepath.stem
