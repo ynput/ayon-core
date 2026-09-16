@@ -128,9 +128,9 @@ class FilterEntry:
         single_select: Whether the values are mutually exclusive, e.g. a
             Yes/No filter. The first value is preselected when the filter
             is picked from the menu.
-        allow_empty: Whether the value can be empty, e.g. None or empty string.
-            When true, also show "No {label}" and "Has {label}" filter options.
-            options, matching rows by whether the field is empty.
+        show_has_value_filters: When true, also show "No {label}" and
+            "Has {label}" filter options. Usually, enabled for fields where
+            values may be optional or can be empty, e.g. None or empty string.
     """
     key: str
     label: str
@@ -142,7 +142,7 @@ class FilterEntry:
     value_colors: dict[str, str] = field(default_factory=dict)
     text_search: bool = False
     single_select: bool = False
-    allow_empty: bool = False
+    show_has_value_filters: bool = False
 
 
 @dataclass

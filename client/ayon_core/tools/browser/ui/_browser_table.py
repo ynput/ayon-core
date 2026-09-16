@@ -1938,7 +1938,7 @@ class BrowserTable(AYContainer):
             FilterEntry(
                 "tags", "Tags",
                 values=enum_values["tags"],
-                icon="local_offer", entity="Version", allow_empty=True,
+                icon="local_offer", entity="Version", show_has_value_filters=True,
             ),
             FilterEntry(
                 "folderName", "Name",
@@ -1963,7 +1963,7 @@ class BrowserTable(AYContainer):
             FilterEntry(
                 "taskTags", "Tags",
                 values=enum_values["taskTags"],
-                icon="local_offer", entity="Task", allow_empty=True,
+                icon="local_offer", entity="Task", show_has_value_filters=True,
             ),
 
             # "Loaded in Scene" filter is a special case, not an attribute, so
@@ -2039,7 +2039,7 @@ class BrowserTable(AYContainer):
                     value_labels=value_labels,
                     text_search=attribute_type == "string" and not enum,
                     single_select=is_boolean,
-                    allow_empty=allow_empty,
+                    show_has_value_filters=allow_empty,
                 ))
         core_keys = {item.key for item in filters}
         filters.extend(

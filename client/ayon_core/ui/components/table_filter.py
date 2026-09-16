@@ -1000,7 +1000,7 @@ class _FilterDropdown(AYDropdownPopup):
         # Like the web frontend: "No {label}" and "Has {label}" lead the
         # list, and exist for text filters too, next to the typed text.
         empty_options: dict[str, _ValueOption] = {}
-        if entry is not None and entry.allow_empty:
+        if entry is not None and entry.show_has_value_filters:
             empty_options = {
                 NO_VALUE: _ValueOption(
                     NO_VALUE, f"No {entry.label}", icon="unpublished",

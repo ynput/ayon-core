@@ -86,7 +86,7 @@ def test_single_select_values_are_exclusive(qtbot, boolean_entry):
 
 def test_empty_options_combine_with_other_values(qtbot):
     entry = FilterEntry(
-        "tags", "Tags", values=["a", "b"], allow_empty=True,
+        "tags", "Tags", values=["a", "b"], show_has_value_filters=True,
     )
     dropdown = _dropdown(qtbot, [entry])
     dropdown._on_attr_selected("tags", "Tags")
@@ -110,7 +110,7 @@ def test_empty_options_combine_with_other_values(qtbot):
 def test_text_filter_combines_empty_option_with_typed_text(qtbot):
     entry = FilterEntry(
         "attr:version:comment", "Comment",
-        text_search=True, allow_empty=True,
+        text_search=True, show_has_value_filters=True,
     )
     dropdown = _dropdown(qtbot, [entry])
     dropdown._on_attr_selected("attr:version:comment", "Comment")
@@ -128,7 +128,7 @@ def test_text_filter_combines_empty_option_with_typed_text(qtbot):
 def test_editing_text_criterion_restores_text_and_empty_option(qtbot):
     entry = FilterEntry(
         "attr:version:comment", "Comment",
-        text_search=True, allow_empty=True,
+        text_search=True, show_has_value_filters=True,
     )
     dropdown = _dropdown(qtbot, [entry])
     dropdown._populate_value_page(
