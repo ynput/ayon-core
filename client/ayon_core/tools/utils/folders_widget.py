@@ -438,8 +438,8 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
                 path_labels.append(str(display_role).casefold())
             source_index = source_index.parent()
 
-        path = " ".join(reversed(path_labels))
-        return all(term in path for term in self._name_filter_terms)
+        label_path = "/".join(reversed(path_labels))
+        return all(term in label_path for term in self._name_filter_terms)
 
     def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
         if self._folder_ids_filter == folder_ids:
