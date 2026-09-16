@@ -117,15 +117,51 @@ class BatchFetchRequest:
 
 
 @dataclass
+class ValueOption:
+    """One resolved row of the value-selection list.
+
+    Built once per value (empty-value rows and per-distinct-value rows
+    alike) before the list is drawn, so the draw loop only reads
+    attributes instead of branching on ``val in empty_labels`` and
+    re-looking values up per row.
+
+    Attributes:
+        value: Value stored on the criterion when this row is picked.
+        label: Row text, before icon spacing is applied.
+        icon: Row icon, if any.
+        color: Icon color, if any.
+    """
+
+    value: str
+    label: str
+    icon: str | None = None
+    color: str | None = None
+
+    @classmethod
+    def from_value(
+        cls,
+        val: str | ValueOption,
+    ) -> "ValueOption":
+        """Build the row for one distinct column value.
+
+        Args:
+            val: Raw value from the column/model.
+        """
+        if isinstance(val, ValueOption):
+            return val
+        return cls(val, val)
+
+
+@dataclass
 class FilterEntry:
     """A filter available in a table filter menu.
 
     Attributes:
         label: Label relative to the entity scope.
         entity: Entity level used to group the filter in the menu.
-        text_search: Whether values are entered as fuzzy text instead of
+        text_search: Whether options are entered as fuzzy text instead of
             selected from a distinct-value list.
-        single_select: Whether the values are mutually exclusive, e.g. a
+        single_select: Whether the options are mutually exclusive, e.g. a
             Yes/No filter. The first value is preselected when the filter
             is picked from the menu.
         show_has_value_filters: When true, also show "No {label}" and
@@ -134,12 +170,9 @@ class FilterEntry:
     """
     key: str
     label: str
-    values: list[str] = field(default_factory=list)
+    options: list[ValueOption | str] = field(default_factory=list)
     icon: str | None = None
     entity: str = "Other"
-    value_labels: dict[str, str] = field(default_factory=dict)
-    value_icons: dict[str, str] = field(default_factory=dict)
-    value_colors: dict[str, str] = field(default_factory=dict)
     text_search: bool = False
     single_select: bool = False
     show_has_value_filters: bool = False

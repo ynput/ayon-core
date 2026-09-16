@@ -17,6 +17,7 @@ from ayon_core.ui.components.table_filter import (
 )
 from ayon_core.ui.components.table_model import (
     FilterEntry,
+    ValueOption,
 )
 
 
@@ -42,7 +43,7 @@ def _checked(dropdown: _FilterDropdown) -> list[str]:
 def boolean_entry() -> FilterEntry:
     return FilterEntry(
         "hasReviewables", "Has Reviewables",
-        values=["Yes", "No"], single_select=True,
+        options=["Yes", "No"], single_select=True,
     )
 
 
@@ -86,7 +87,7 @@ def test_single_select_values_are_exclusive(qtbot, boolean_entry):
 
 def test_empty_options_combine_with_other_values(qtbot):
     entry = FilterEntry(
-        "tags", "Tags", values=["a", "b"], show_has_value_filters=True,
+        "tags", "Tags", options=["a", "b"], show_has_value_filters=True,
     )
     dropdown = _dropdown(qtbot, [entry])
     dropdown._on_attr_selected("tags", "Tags")
@@ -140,7 +141,7 @@ def test_editing_text_criterion_restores_text_and_empty_option(qtbot):
 
 
 def test_entries_without_flags_are_unchanged(qtbot):
-    entry = FilterEntry("productType", "Type", values=["render", "model"])
+    entry = FilterEntry("productType", "Type", options=["render", "model"])
     dropdown = _dropdown(qtbot, [entry])
     dropdown._on_attr_selected("productType", "Type")
 
@@ -149,6 +150,31 @@ def test_entries_without_flags_are_unchanged(qtbot):
     dropdown._value_buttons["render"].click()
     dropdown._value_buttons["model"].click()
     assert _checked(dropdown) == ["render", "model"]
+
+
+def test_value_options_accept_mixed_str_and_valueoption(qtbot):
+    entry = FilterEntry(
+        "status", "Status",
+        options=[
+            ValueOption("in_progress", "In Progress", icon="autorenew"),
+            "done",
+        ],
+        single_select=True,
+    )
+    dropdown = _dropdown(qtbot, [entry])
+    # The model reports the same raw values back (e.g. from loaded rows);
+    # they must not duplicate the configured ValueOption entries.
+    dropdown._model.get_distinct_values.return_value = ["in_progress", "done"]
+
+    dropdown._on_attr_selected("status", "Status")
+
+    assert list(dropdown._value_buttons) == ["in_progress", "done"]
+    assert dropdown._value_buttons["in_progress"].text().strip() == (
+        "In Progress"
+    )
+    # The configured ValueOption is preselected like a plain string would
+    # be for a single-select filter.
+    assert _checked(dropdown) == ["in_progress"]
 
 
 @pytest.mark.parametrize(

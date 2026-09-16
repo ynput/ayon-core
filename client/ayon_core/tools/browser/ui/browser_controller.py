@@ -778,31 +778,18 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": condition["operator"],
                 })
             elif key == "task":
-                no_task = "No task" in values
-                task_names = [value for value in values if value != "No task"]
-                if no_task and task_names:
-                    task_conditions.append({
-                        "operator": "or",
-                        "conditions": [
-                            {"key": "id", "operator": "isnull"},
-                            {
-                                "key": "name",
-                                "value": task_names,
-                                "operator": "in",
-                            },
-                        ],
-                    })
-                elif no_task:
-                    task_conditions.append({
-                        "key": "id",
-                        "operator": "isnull",
-                    })
-                else:
-                    task_conditions.append({
+                condition = None
+                if values:
+                    condition = {
                         "key": "name",
                         "value": values,
                         "operator": operator,
-                    })
+                    }
+                condition = self._or_empty_value_condition(
+                    condition, empty_value, "id", False
+                )
+                if condition is not None:
+                    task_conditions.append(condition)
             elif key == "taskType":
                 task_conditions.append({
                     "key": "taskType",

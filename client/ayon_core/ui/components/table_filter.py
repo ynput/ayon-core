@@ -40,6 +40,7 @@ from .table_model import (
     FilterEntry,
     PaginatedTableModel,
     TableColumn,
+    ValueOption,
 )
 
 ENTITY_ICONS = {
@@ -367,51 +368,6 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
             self.endFilterChange()
         else:
             self.invalidateFilter()
-
-
-@dataclass
-class _ValueOption:
-    """One resolved row of the value-selection list.
-
-    Built once per value (empty-value rows and per-distinct-value rows
-    alike) before the list is drawn, so the draw loop only reads
-    attributes instead of branching on ``val in empty_labels`` and
-    re-looking values up per row.
-
-    Attributes:
-        value: Value stored on the criterion when this row is picked.
-        label: Row text, before icon spacing is applied.
-        icon: Row icon, if any.
-        color: Icon color, if any.
-    """
-
-    value: str
-    label: str
-    icon: str | None = None
-    color: str | None = None
-
-    @classmethod
-    def from_value(
-        cls,
-        val: str,
-        entry: "FilterEntry | None",
-    ) -> "_ValueOption":
-        """Build the row for one distinct column value.
-
-        Args:
-            val: Raw value from the column/model.
-            entry: Filter entry *val* belongs to, if any - supplies the
-                label/icon/color overrides. ``None`` falls back to *val*
-                itself as the label, with no icon or color.
-        """
-        if entry is None:
-            return cls(val, val)
-        return cls(
-            val,
-            entry.value_labels.get(val, val),
-            icon=entry.value_icons.get(val),
-            color=entry.value_colors.get(val),
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -983,29 +939,35 @@ class _FilterDropdown(AYDropdownPopup):
             # gave a different list. Configured values lead, in their
             # configured order; values only the data knows about follow.
             distinct = []
+            seen_ids: set[str] = set()
             for source in (
-                list(entry.values) if entry is not None else [],
+                list(entry.options) if entry is not None else [],
                 self._column_values.get(key) or [],
                 self._model.get_distinct_values(key),
                 selected_values,
             ):
                 for value in source:
-                    if value not in distinct and value not in (
-                        EMPTY_VALUE_OPTIONS
+                    value_id: str = (
+                        value.value
+                        if isinstance(value, ValueOption)
+                        else value
+                    )
+                    if (
+                        value_id not in seen_ids
+                        and value_id not in EMPTY_VALUE_OPTIONS
                     ):
+                        seen_ids.add(value_id)
                         distinct.append(value)
-        if key == "task" and "No task" not in distinct:
-            distinct.append("No task")
 
         # Like the web frontend: "No {label}" and "Has {label}" lead the
         # list, and exist for text filters too, next to the typed text.
-        empty_options: dict[str, _ValueOption] = {}
+        empty_options: dict[str, ValueOption] = {}
         if entry is not None and entry.show_has_value_filters:
             empty_options = {
-                NO_VALUE: _ValueOption(
+                NO_VALUE: ValueOption(
                     NO_VALUE, f"No {entry.label}", icon="unpublished",
                 ),
-                HAS_VALUE: _ValueOption(
+                HAS_VALUE: ValueOption(
                     HAS_VALUE, f"Has {entry.label}", icon="check",
                 ),
             }
@@ -1014,7 +976,7 @@ class _FilterDropdown(AYDropdownPopup):
         # above), so these rows and empty_options can't collide.
         options = [
             *empty_options.values(),
-            *(_ValueOption.from_value(val, entry) for val in distinct),
+            *(ValueOption.from_value(val) for val in distinct),
         ]
 
         if options:
@@ -1072,7 +1034,11 @@ class _FilterDropdown(AYDropdownPopup):
                 and distinct
                 and not selected_values
             ):
-                self._value_buttons[distinct[0]].setChecked(True)
+                first = distinct[0]
+                first_id: str = (
+                    first.value if isinstance(first, ValueOption) else first
+                )
+                self._value_buttons[first_id].setChecked(True)
                 self._preselected = True
         else:
             self._value_scroll = None
@@ -1660,7 +1626,7 @@ class AYTableFilter(AYContainer):
                 FilterEntry(
                     key=column.key,
                     label=column.label,
-                    values=[],
+                    options=[],
                     icon=column.icon,
                     entity=column.entity,
                 )
@@ -1844,7 +1810,7 @@ class AYTableFilter(AYContainer):
         """Update the fixed values offered by an extra filter entry."""
         for entry in self._filters:
             if entry.key == key:
-                entry.values = list(values)
+                entry.options = list(values)
                 return
 
     def set_column_filter_values(

@@ -102,14 +102,14 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
             FilterEntry(
                 ACTIVE_FILTER_KEY,
                 "Active Site",
-                values=list(STATUS_VALUES),
+                options=list(STATUS_VALUES),
                 icon="download",
                 entity="Site Sync",
             ),
             FilterEntry(
                 REMOTE_FILTER_KEY,
                 "Remote Site",
-                values=list(STATUS_VALUES),
+                options=list(STATUS_VALUES),
                 icon="upload",
                 entity="Site Sync",
             ),
