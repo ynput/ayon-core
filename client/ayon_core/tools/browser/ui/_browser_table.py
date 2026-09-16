@@ -2011,12 +2011,12 @@ class BrowserTable(AYContainer):
                 ),
                 FilterEntry(
                     "representationStatus", "Status",
-                    values=enum_values["representationStatus"],
+                    options=enum_values["representationStatus"],
                     icon="arrow_circle_right", entity="Representation",
                 ),
                 FilterEntry(
                     "representationTags", "Tags",
-                    values=enum_values["representationTags"],
+                    options=enum_values["representationTags"],
                     icon="local_offer", entity="Representation",
                 ),
             ])
