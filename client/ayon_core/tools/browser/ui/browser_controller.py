@@ -6,6 +6,7 @@ Centralises all business logic and data fetching for the reviews UI.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -17,6 +18,10 @@ from ayon_core.ui.components.table_model import (
     BatchFetchRequest,
     FilterEntry,
     TableColumn,
+)
+from ayon_core.ui.components.table_filter import (
+    EMPTY_VALUE_OPTIONS,
+    HAS_VALUE,
 )
 from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
@@ -51,7 +56,8 @@ from ayon_core.tools.browser.ui.browser_queries import (
     COLUMN_TO_SORT_BY,
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
-    GET_VERSION_GROUP_COUNTS_QUERY,
+    get_version_group_counts_query,
+    server_supports_representation_filter,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
@@ -284,6 +290,24 @@ class BrowserWidgetController(QtCore.QObject):
     def attributes_by_scope(self) -> dict[str, dict[str, dict[str, Any]]]:
         """Return custom attribute definitions grouped by entity scope."""
         return self._attributes_by_scope
+
+    @property
+    def supports_representation_filter(self) -> bool:
+        """Whether the server can filter versions by representations.
+
+        Servers up to 1.16.6 have no ``representationFilter`` argument
+        on the versions resolver.
+        """
+        try:
+            return server_supports_representation_filter()
+        except Exception:
+            # Not cached, so a temporary connection problem is retried
+            # the next time this is asked.
+            self.log.debug(
+                "Failed to check for representation filter support",
+                exc_info=True,
+            )
+            return False
 
     @property
     def has_selection(self) -> bool:
@@ -605,6 +629,7 @@ class BrowserWidgetController(QtCore.QObject):
         product_conditions: list[dict[str, Any]] = []
         task_conditions: list[dict[str, Any]] = []
         folder_conditions: list[dict[str, Any]] = []
+        representation_conditions: list[dict[str, Any]] = []
         featured_only: list[str] = []
         search: str | None = None
         version_ids: list[str] | None = None
@@ -616,13 +641,48 @@ class BrowserWidgetController(QtCore.QObject):
         for key, values, use_substring in self._query_filter_criteria:
             if key in extension_filter_keys:
                 continue
+            # "No/Has value" may be picked next to regular values; the
+            # criterion then matches either of them.
+            empty_value = next(
+                (value for value in values if value in EMPTY_VALUE_OPTIONS),
+                None,
+            )
+            if empty_value is not None:
+                values = [
+                    value
+                    for value in values
+                    if value not in EMPTY_VALUE_OPTIONS
+                ]
             if key.startswith("attr:"):
                 _, scope, attribute_name = key.split(":", 2)
-                condition = {
-                    "key": f"attrib.{attribute_name}",
-                    "value": values[0] if use_substring else values,
-                    "operator": "like" if use_substring else "in",
-                }
+                attribute_type = str(
+                    self._attributes_by_scope
+                    .get(scope, {})
+                    .get(attribute_name, {})
+                    .get("type", "")
+                )
+                attribute_key = f"attrib.{attribute_name}"
+                condition = None
+                if attribute_type == "boolean" and values:
+                    condition = {
+                        "key": attribute_key,
+                        "value": values[0].lower() == "true",
+                        "operator": "eq",
+                    }
+                elif values:
+                    condition = {
+                        "key": attribute_key,
+                        "value": values[0] if use_substring else values,
+                        "operator": "like" if use_substring else "in",
+                    }
+                condition = self._or_empty_value_condition(
+                    condition,
+                    empty_value,
+                    attribute_key,
+                    attribute_type.startswith("list_of_"),
+                )
+                if condition is None:
+                    continue
                 if scope == "version":
                     version_conditions.append(condition)
                 elif scope == "product":
@@ -631,6 +691,8 @@ class BrowserWidgetController(QtCore.QObject):
                     task_conditions.append(condition)
                 elif scope == "folder":
                     folder_conditions.append(condition)
+                elif scope == "representation":
+                    representation_conditions.append(condition)
                 continue
             if key in {"featuredVersionType", "version"}:
                 mapping = {
@@ -691,6 +753,32 @@ class BrowserWidgetController(QtCore.QObject):
             if key == "product/version":
                 search = " ".join(values)
                 continue
+            if empty_value is not None and key in {
+                "author", "tags", "taskTags"
+            }:
+                is_list = key != "author"
+                server_key = "tags" if is_list else "author"
+                condition = None
+                if values and is_list:
+                    condition = {
+                        "key": server_key,
+                        "value": values,
+                        "operator": "includesany",
+                    }
+                elif values:
+                    condition = {
+                        "key": server_key,
+                        "value": values[0] if use_substring else values,
+                        "operator": "like" if use_substring else "in",
+                    }
+                condition = self._or_empty_value_condition(
+                    condition, empty_value, server_key, is_list
+                )
+                if key == "taskTags":
+                    task_conditions.append(condition)
+                else:
+                    version_conditions.append(condition)
+                continue
 
             operator = "like" if use_substring else "in"
             condition = {
@@ -713,31 +801,32 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": condition["operator"],
                 })
             elif key == "task":
-                no_task = "No task" in values
-                task_names = [value for value in values if value != "No task"]
-                if no_task and task_names:
-                    task_conditions.append({
-                        "operator": "or",
-                        "conditions": [
-                            {"key": "id", "operator": "isnull"},
-                            {
-                                "key": "name",
-                                "value": task_names,
-                                "operator": "in",
-                            },
-                        ],
-                    })
-                elif no_task:
-                    task_conditions.append({
-                        "key": "id",
-                        "operator": "isnull",
-                    })
-                else:
-                    task_conditions.append({
+                condition = None
+                if values:
+                    condition = {
                         "key": "name",
                         "value": values,
                         "operator": operator,
-                    })
+                    }
+                if empty_value is not None:
+                    # Can't use `_or_empty_value_condition` because "id" is a
+                    # UUID field server-side, which rejects "" as an entity id.
+                    empty_condition = {
+                        "key": "id",
+                        "operator": (
+                            "notnull" if empty_value == HAS_VALUE
+                            else "isnull"
+                        ),
+                    }
+                    condition = (
+                        empty_condition if condition is None
+                        else {
+                            "operator": "or",
+                            "conditions": [empty_condition, condition],
+                        }
+                    )
+                if condition is not None:
+                    task_conditions.append(condition)
             elif key == "taskType":
                 task_conditions.append({
                     "key": "taskType",
@@ -774,6 +863,28 @@ class BrowserWidgetController(QtCore.QObject):
                     "value": condition["value"],
                     "operator": condition["operator"],
                 })
+            elif key == "representationName":
+                representation_conditions.append({
+                    "key": "name",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "representationExtension":
+                extension_condition = self._build_extension_condition(values)
+                if extension_condition is not None:
+                    representation_conditions.append(extension_condition)
+            elif key == "representationStatus":
+                representation_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
+            elif key == "representationTags":
+                representation_conditions.append({
+                    "key": "tags",
+                    "value": values,
+                    "operator": "includesany",
+                })
             else:
                 version_conditions.append(condition)
 
@@ -787,10 +898,124 @@ class BrowserWidgetController(QtCore.QObject):
             "product_filter": encode(product_conditions),
             "task_filter": encode(task_conditions),
             "folder_filter": encode(folder_conditions),
+            "representation_filter": encode(representation_conditions),
             "featured_only": featured_only or None,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
+        }
+
+    @staticmethod
+    def _build_extension_condition(
+        values: list[str],
+    ) -> dict[str, Any] | None:
+        """Build a representation condition matching path extensions.
+
+        Each value may hold several extensions separated by commas or
+        whitespace, with or without the leading dot. The pattern is
+        anchored to the end of ``attrib.path`` so ``exr`` does not match
+        ``render.exr.json``. ``like`` is case-insensitive on the server,
+        so ``.EXR`` matches too.
+
+        Args:
+            values: Extensions as entered in the filter.
+
+        Returns:
+            A single condition, an ``or`` group for multiple
+            extensions, or ``None`` when no extension was given.
+        """
+        extensions: list[str] = []
+        for value in values:
+            for part in re.split(r"[\s,]+", value):
+                extension = part.strip().lstrip(".")
+                if extension and extension not in extensions:
+                    extensions.append(extension)
+        conditions = []
+        for extension in extensions:
+            # Escape the LIKE wildcards so they match literally.
+            escaped = re.sub(r"([\\%_])", r"\\\1", extension)
+            conditions.append({
+                "key": "attrib.path",
+                "value": f"%.{escaped}",
+                "operator": "like",
+            })
+        if not conditions:
+            return None
+        if len(conditions) == 1:
+            return conditions[0]
+        return {"operator": "or", "conditions": conditions}
+
+    @staticmethod
+    def _empty_value_condition(
+        key: str,
+        is_list: bool,
+        has_value: bool,
+    ) -> dict[str, Any]:
+        """Return a condition matching whether a field is empty.
+
+        Mirrors the web frontend: a list is empty when it equals ``[]``,
+        while a cleared text field may be stored as either null or ``""``,
+        so both states count as empty.
+
+        Args:
+            key: Server filter key, e.g. ``"attrib.comment"``.
+            is_list: Whether the field holds a list.
+            has_value: Match non-empty values instead of empty ones.
+
+        Returns:
+            A condition or nested condition group.
+        """
+        if is_list:
+            return {
+                "key": key,
+                "value": [],
+                "operator": "ne" if has_value else "eq",
+            }
+        if has_value:
+            return {
+                "operator": "and",
+                "conditions": [
+                    {"key": key, "operator": "notnull"},
+                    {"key": key, "value": "", "operator": "ne"},
+                ],
+            }
+        return {
+            "operator": "or",
+            "conditions": [
+                {"key": key, "operator": "isnull"},
+                {"key": key, "value": "", "operator": "eq"},
+            ],
+        }
+
+    @classmethod
+    def _or_empty_value_condition(
+        cls,
+        condition: dict[str, Any] | None,
+        empty_value: str | None,
+        key: str,
+        is_list: bool,
+    ) -> dict[str, Any] | None:
+        """Combine a value condition with a "No/Has value" one using OR.
+
+        Args:
+            condition: Condition for the regular values, if any.
+            empty_value: ``NO_VALUE``, ``HAS_VALUE`` or ``None``.
+            key: Server filter key of the field.
+            is_list: Whether the field holds a list.
+
+        Returns:
+            The combined condition, or ``None`` when there is neither.
+        """
+        if empty_value is None:
+            return condition
+        empty_condition = cls._empty_value_condition(
+            key, is_list, empty_value == HAS_VALUE
+        )
+        if condition is None:
+            return empty_condition
+        return {
+            "operator": "or",
+            "conditions": [empty_condition, condition],
         }
 
     @staticmethod
@@ -860,6 +1085,7 @@ class BrowserWidgetController(QtCore.QObject):
             ),
             "task_filter": query_filters["task_filter"],
             "folder_filter": query_filters["folder_filter"],
+            "representation_filter": query_filters["representation_filter"],
             "featured_only": query_filters["featured_only"],
             "latest_per_folder": (
                 self._latest_per_folder
@@ -1751,6 +1977,7 @@ class BrowserWidgetController(QtCore.QObject):
             ),
             "hasReviewables": query_filters["has_reviewables"],
             "search": query_filters["search"],
+            "representationFilter": query_filters["representation_filter"],
             "targets": [{
                 "field": target_field,
                 "aggregations": [
@@ -1761,7 +1988,7 @@ class BrowserWidgetController(QtCore.QObject):
             }],
         }
         response = con.query_graphql(
-            GET_VERSION_GROUP_COUNTS_QUERY,
+            get_version_group_counts_query(),
             variables,
         )
         if response.errors:
@@ -2474,7 +2701,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._user_full_names = self._fetch_user_full_names(name)
         self._attributes_by_scope = {
             scope: ayon_api.get_attributes_for_type(scope)
-            for scope in ("folder", "task", "product", "version")
+            for scope in (
+                "folder", "task", "product", "version", "representation"
+            )
         }
         # The server omits attributes an entity never set, so a boolean
         # column would have no value to paint for exactly the rows where
@@ -2705,6 +2934,7 @@ class BrowserWidgetController(QtCore.QObject):
         product_filter: str = "",
         task_filter: str = "",
         folder_filter: str = "",
+        representation_filter: str = "",
         featured_only: list[str] | None = None,
         latest_per_folder: bool = False,
         search: str | None = None,
@@ -2741,6 +2971,8 @@ class BrowserWidgetController(QtCore.QObject):
             product_filter: JSON-encoded product filter string.
             task_filter: JSON-encoded task filter string.
             folder_filter: JSON-encoded folder filter string.
+            representation_filter: JSON-encoded representation filter
+                string; keeps versions with a matching representation.
             featured_only: Featured version types to query.
             latest_per_folder: Whether to return one version per folder.
             search: Full-text versions search string.
@@ -2779,6 +3011,7 @@ class BrowserWidgetController(QtCore.QObject):
             "versionIds": version_ids if version_ids is not None else None,
             "productIds": product_ids if product_ids else None,
             "hasReviewables": has_reviewables,
+            "representationFilter": representation_filter or "",
         }
         if descending:
             variables["last"] = page_size
