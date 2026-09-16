@@ -4,7 +4,7 @@ import os
 import contextlib
 import typing
 from typing import Optional, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 import ayon_api
 
@@ -243,11 +243,11 @@ class HostBase(AbstractHost):
         self._set_current_context(context_change_data)
         self._after_context_change(context_change_data)
         unbind_contextvars("ayon_context")
-        bind_contextvars(ayon_context=AyonLogContext(
+        bind_contextvars(ayon_context=asdict(AyonLogContext(
             project=project_name,
             folder=folder_path,
             task=task_name,
-        ))
+        )))
         return self._emit_context_change_event(
             project_name,
             folder_path,
