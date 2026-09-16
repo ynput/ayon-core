@@ -209,10 +209,6 @@ def modules_from_path(path: str | Path) -> ModulesResult:
         if not path:
             return result
 
-        path = Path(path).resolve()
-    else:
-        path = path.resolve()
-
     # Do not allow relative imports
     if not path.is_absolute():
         log.warning(
@@ -220,6 +216,8 @@ def modules_from_path(path: str | Path) -> ModulesResult:
             f" {path}"
         )
         return result
+
+    path = path.resolve()
 
     filepaths = []
     if path.is_file():
