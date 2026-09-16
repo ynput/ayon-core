@@ -58,8 +58,9 @@ uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
 
 Then install your integration (or let the setup script do it:
 `python agentic_setup.py install --specify [--integration=<agent>]
-[--skills]`). On a fresh checkout, initialize; in this existing repo,
-just install the integration for your agent:
+[<extra args passed verbatim to specify>]`). On a fresh checkout,
+initialize; in this existing repo, just install the integration for
+your agent:
 
 ```bash
 specify integration install <your-agent>

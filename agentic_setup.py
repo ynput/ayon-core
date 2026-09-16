@@ -22,9 +22,16 @@ Usage::
 
     python agentic_setup.py install
     python agentic_setup.py install --specify --integration=goose
+    python agentic_setup.py install --force --specify \\
+        --integration=goose --arbitrary-arg arbitrary-arg-value
+
+Unknown options are passed verbatim to ``specify integration
+install <integration>``, so the script does not need updates when the
+specify CLI changes its interface. Place the script's own options
+(``--force``, ``--integration``, ``--constitution``) before the
+pass-through arguments, or separate them with ``--``.
 
 Windows notes:
-
 - ``.agents-main`` is created as a directory junction via
   ``cmd /c mklink /J`` — junctions need no administrator rights and
   no Developer Mode. Do **not** use ``ln -s`` in Git Bash: it copies
@@ -60,11 +67,12 @@ SHARED_REPO_DIR: str = os.path.join(
 AGENTS_MAIN: str = os.path.join(CURRENT_ROOT, ".agents-main")
 AGENTS_MAIN_REL: str = "../ayon-agentic-instructions"
 SPECIFY_CLI_URL: str = "git+https://github.com/github/spec-kit.git"
-# Files of the shared constitution memory (names kept as in the shared
-# repository). The first one is the tracked symlink target.
-MEMORY_FILES: List[str] = [
-    "ayon-constitution.md",
-    "ayon-constitution-evidence.md",
+# Constitution memory files: local name in .specify/memory -> source name
+# in the shared repository. 'constitution.md' is the file spec-kit's
+# init/constitution commands read, so it links to 'ayon-constitution.md'.
+MEMORY_FILES: List[tuple[str, str]] = [
+    ("constitution.md", "ayon-constitution.md"),
+    ("ayon-constitution-evidence.md", "ayon-constitution-evidence.md"),
 ]
 CONSTITUTION_LINK: str = os.path.join(
     CURRENT_ROOT, ".specify", "memory", "constitution.md"
@@ -234,8 +242,8 @@ def setup_agents_main(force: bool = False) -> bool:
 def _constitution_link_paths() -> List[str]:
     """Full paths of constitution memory files inside .specify/memory."""
     return [
-        os.path.join(CURRENT_ROOT, ".specify", "memory", name)
-        for name in MEMORY_FILES
+        os.path.join(CURRENT_ROOT, ".specify", "memory", local_name)
+        for local_name, _ in MEMORY_FILES
     ]
 
 
@@ -260,8 +268,8 @@ def _ensure_gitignore_entries(paths: List[str]) -> None:
 
 def _copy_constitution() -> None:
     """Copy constitution files from shared repo into .specify/memory."""
-    for source_name, dest_path in zip(
-        MEMORY_FILES, _constitution_link_paths()
+    for dest_path, (_, source_name) in zip(
+        _constitution_link_paths(), MEMORY_FILES
     ):
         source = os.path.join(SHARED_REPO_DIR, "memory", source_name)
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
@@ -274,8 +282,8 @@ def _copy_constitution() -> None:
 
 def _create_constitution_links() -> bool:
     """Symlink constitution memory files into .specify/memory."""
-    for source_name, dest_path in zip(
-        MEMORY_FILES, _constitution_link_paths()
+    for dest_path, (_, source_name) in zip(
+        _constitution_link_paths(), MEMORY_FILES
     ):
         target = CONSTITUTION_REL_TARGET.format(source_name)
         if os.path.islink(dest_path):
@@ -377,7 +385,10 @@ def setup_constitution(mode: str) -> bool:
     return _create_constitution_links()
 
 
-def install_specify(integration: str, skills: bool) -> bool:
+def install_specify(
+    integration: str,
+    specify_args: Optional[List[str]] = None,
+) -> bool:
     """Install the 'specify' CLI (via uv) and the agent integration."""
     if shutil.which("specify") is None:
         uv_path = shutil.which("uv")
@@ -403,8 +414,7 @@ def install_specify(integration: str, skills: bool) -> bool:
         LOG.info("'specify' CLI already installed, skipping.")
 
     args = ["specify", "integration", "install", integration]
-    if skills:
-        args.append("--integration-options=--skills")
+    args.extend(specify_args or [])
     LOG.info("Installing integration: %s", integration)
     if _run(args) != 0:
         LOG.error(
@@ -462,7 +472,7 @@ def command_install(args: argparse.Namespace) -> int:
         return 1
     ensure_git_exclude()
     if args.specify:
-        if not install_specify(args.integration, args.skills):
+        if not install_specify(args.integration, args.specify_args):
             return 1
     LOG.info("Done.")
     return 0
@@ -475,11 +485,12 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                     "integration for this repository."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
-
     install = subparsers.add_parser(
         "install",
         help="Clone/link shared instructions and set up the "
-             "constitution.",
+             "constitution. Unknown extra arguments are passed "
+             "verbatim to 'specify integration install' (only "
+             "meaningful with --specify).",
     )
     install.add_argument(
         "--force",
@@ -489,8 +500,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     install.add_argument(
         "--specify",
         action="store_true",
-        help="Also install the 'specify' CLI (via uv) and run the "
-             "agent integration install.",
+        help="Also install the 'specify' CLI (via uv) and run "
+             "'specify integration install <integration>' with any "
+             "unknown arguments passed verbatim.",
     )
     install.add_argument(
         "--integration",
@@ -501,21 +513,28 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
              ),
     )
     install.add_argument(
-        "--skills",
-        action="store_true",
-        help="Pass '--integration-options=--skills' to the specify "
-             "install (for agents supporting skills mode).",
-    )
-    install.add_argument(
         "--constitution",
         default="ask",
         choices=["ask", "symlink", "copy", "skip"],
-        help="Windows-only: what to do when a real constitution "
-             "symlink cannot be created (Developer Mode disabled). "
-             "'ask' prompts interactively; 'skip' also skips the "
-             "specify installation. (default: ask)",
+        help=(
+            "Windows-only: what to do when a real constitution "
+            "symlink cannot be created (Developer Mode disabled). "
+            "'ask' prompts interactively; 'skip' also skips the "
+            "specify installation. (default: ask)"
+        ),
     )
-    return parser.parse_args(argv)
+    args, extras = parser.parse_known_args(argv)
+    # 'install -- --foo bar' keeps a literal '--' at the front.
+    while extras and extras[0] == "--":
+        extras = extras[1:]
+    args.specify_args = extras
+    if extras and not args.specify:
+        parser.error(
+            "unexpected arguments {!r} - they are only meaningful "
+            "with --specify (passed to 'specify integration "
+            "install')".format(extras)
+        )
+    return args
 
 
 def main() -> int:
