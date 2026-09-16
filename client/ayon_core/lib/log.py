@@ -54,7 +54,14 @@ def unbind_contextvars(*keys):
 
 VECTOR_LOG_URL = os.getenv("AYON_VECTOR_LOG_URL", None)
 LOG_FILE_ENABLED = os.getenv("AYON_LOG_FILE") == "1"
-LOG_FILE_RETENTION_DAYS = int(os.getenv("AYON_LOG_RETENTION_DAYS", "1"))
+try:
+    LOG_FILE_RETENTION_DAYS = int(
+        max(1, int(
+            os.getenv("AYON_LOG_RETENTION_DAYS", "1")
+        ))
+    )
+except ValueError:
+    LOG_FILE_RETENTION_DAYS = 1
 LOG_FILE_NAME = "ayon.ndjson"
 
 # Max records buffered for Vector delivery. Beyond this, new records are
@@ -220,7 +227,7 @@ class LogStreamHandler(logging.StreamHandler):
             self.handleError(record)
 
         except Exception:
-            print(repr(record))
+            sys.stderr.write(f"{record!r}\n")
             self.handleError(record)
 
 
@@ -334,10 +341,10 @@ class Logger:
         return logger
 
     @classmethod
-    def get_root_logger(cls) -> logging.Logger | None:
+    def get_root_logger(cls) -> logging.Logger:
         if not cls.initialized:
             cls.initialize()
-        return cls._root_logger
+        return cls._root_logger  # type: ignore[invalid-return-type, return-value]
 
     @classmethod
     def _get_console_handler(cls):
@@ -351,13 +358,13 @@ class Logger:
     @classmethod
     def initialize(cls):
         # TODO update already created loggers on re-initialization
-        if not cls._init_lock.locked():
-            with cls._init_lock:
-                cls._initialize()
-        else:
-            # If lock is locked wait until is finished
-            while cls._init_lock.locked():
-                time.sleep(0.1)
+        if cls.initialized:
+            return
+
+        with cls._init_lock:
+            if cls.initialized:
+                return
+            cls._initialize()
 
     @classmethod
     def _initialize(cls):
@@ -366,16 +373,26 @@ class Logger:
         cls.initialized = False
         cls.configure_logger()
 
+        info_level = logging.getLevelNamesMapping()['INFO']
+
         # Define what is logging level
-        log_level = os.getenv("AYON_LOG_LEVEL")
+        try:
+            log_level = int(os.getenv("AYON_LOG_LEVEL", info_level))
+        except (TypeError, ValueError):
+            log_level = None
+
+        try:
+            op_debug = int(os.getenv("AYON_DEBUG", "0"))
+        except (TypeError, ValueError):
+            op_debug = 0
+
         if not log_level:
             # Check AYON_DEBUG for debug level
-            op_debug = os.getenv("AYON_DEBUG")
-            if op_debug and int(op_debug) > 0:
+            if op_debug > 0:
                 log_level = 10
             else:
                 log_level = 20
-        cls.log_level = int(log_level)
+        cls.log_level = log_level
         root_logger = logging.getLogger("AYON")
         # root_logger.propagate = False
         root_logger.setLevel(cls.log_level)
@@ -385,10 +402,7 @@ class Logger:
             root_logger.addHandler(cls._get_console_handler())
         cls._root_logger = root_logger
 
-        info_level = logging.getLevelNamesMapping()['INFO']
-        if (
-                os.getenv("AYON_DEBUG") == "1" or
-                int(os.getenv("AYON_LOG_LEVEL", info_level)) < info_level):
+        if op_debug > 0 or log_level < info_level:
             # force silence for some very noisy loggers
             logging.getLogger("urllib3").setLevel(logging.WARNING)
             logging.getLogger("requests").setLevel(logging.WARNING)
@@ -585,7 +599,15 @@ class Logger:
         # allow override via AYON_LOG_LEVEL or AYON_DEBUG
         root_logger.setLevel(logging.INFO)
         if os.getenv("AYON_LOG_LEVEL") is not None:
-            root_logger.setLevel(int(
-                os.getenv("AYON_LOG_LEVEL", logging.INFO)))
+            try:
+                log_level = int(os.getenv("AYON_LOG_LEVEL", logging.INFO))
+                root_logger.setLevel(log_level)
+            except (TypeError, ValueError):
+                pass
         if os.getenv("AYON_DEBUG") is not None:
-            root_logger.setLevel(logging.DEBUG)
+            try:
+                op_debug = int(os.getenv("AYON_DEBUG", "0"))
+                if op_debug > 0:
+                    root_logger.setLevel(logging.DEBUG)
+            except (TypeError, ValueError):
+                pass
