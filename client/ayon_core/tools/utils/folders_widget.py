@@ -32,6 +32,7 @@ FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
 FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
+FOLDER_PATH_FILTER_ROLE = QtCore.Qt.UserRole + 5
 
 
 class RefreshTask(QtCore.QObject, QtCore.QRunnable):
@@ -311,7 +312,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item,
         folder_item,
         folder_type_item_by_name,
-        folder_type_icon_cache
+        folder_type_icon_cache,
+        folder_label_path
     ):
         """
 
@@ -330,6 +332,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
+        folder_path_filter = f"{folder_item.path} {folder_label_path}"
+        item.setData(folder_path_filter.casefold(), FOLDER_PATH_FILTER_ROLE)
         item.setData(icon, QtCore.Qt.DecorationRole)
 
     def _fill_items(self, folder_items_by_id, folder_type_items):
@@ -359,14 +363,14 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             ) = folder_item
 
         hierarchy_queue = collections.deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None))
+        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
 
         # Keep pointers to removed items until the refresh finishes
         #   - some children of the items could be moved and reused elsewhere
         removed_items = []
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
-            parent_item, parent_id = item
+            parent_item, parent_id, parent_path = item
             folder_items = folder_items_by_parent[parent_id]
 
             items_by_id = {}
@@ -389,19 +393,20 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     item.setEditable(False)
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
-
+                folder_label_path = f"{parent_path}/{folder_item.label}"
                 self._fill_item_data(
                     item,
                     folder_item,
                     folder_type_item_by_name,
-                    folder_type_icon_cache
+                    folder_type_icon_cache,
+                    folder_label_path
                 )
                 if is_new:
                     new_items.append(item)
                 self._items_by_id[item_id] = item
                 self._parent_id_by_id[item_id] = parent_id
 
-                hierarchy_queue.append((item, item_id))
+                hierarchy_queue.append((item, item_id, folder_label_path))
 
             if new_items:
                 parent_item.appendRows(new_items)
@@ -430,16 +435,8 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def _match_name_filter(self, source_index) -> bool:
         if not self._name_filter_terms:
             return True
-
-        path_labels = []
-        while source_index.isValid():
-            display_role = source_index.data(QtCore.Qt.DisplayRole)
-            if display_role:
-                path_labels.append(str(display_role).casefold())
-            source_index = source_index.parent()
-
-        label_path = "/".join(reversed(path_labels))
-        return all(term in label_path for term in self._name_filter_terms)
+        folder_path_filter = source_index.data(FOLDER_PATH_FILTER_ROLE) or ""
+        return all(term in folder_path_filter for term in self._name_filter_terms)
 
     def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
         if self._folder_ids_filter == folder_ids:
