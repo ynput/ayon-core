@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 import logging
-import uuid
 import typing
 from typing import Any
 
 import ayon_api
 
-from ayon_core.lib import (
-    NestedCacheItem,
-    CacheItem,
-)
+from ayon_core.lib import NestedCacheItem
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
-from ayon_core.host import ILoadHost, AbstractHost
+from ayon_core.host import AbstractHost
 from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
@@ -47,10 +43,6 @@ class BrowserController(AbstractBrowserController):
 
         self._project_anatomy_cache = NestedCacheItem(
             levels=1, lifetime=60)
-        self._loaded_products_cache = CacheItem(
-            default_factory=set, lifetime=60)
-        self._loaded_versions_cache = CacheItem(
-            default_factory=set, lifetime=60)
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
@@ -95,8 +87,6 @@ class BrowserController(AbstractBrowserController):
         self._project_settings = {}
 
         self._project_anatomy_cache.reset()
-        self._loaded_products_cache.reset()
-        self._loaded_versions_cache.reset()
 
         self._products_model.reset()
         self._hierarchy_model.reset()
@@ -221,69 +211,6 @@ class BrowserController(AbstractBrowserController):
             "folder_id": folder_id,
             "task_name": context.get("task_name"),
         }
-
-    def get_loaded_version_ids(self):
-        """Return version IDs represented by current scene containers."""
-        if self._host is None:
-            return set()
-        if self._loaded_versions_cache.is_valid:
-            return self._loaded_versions_cache.get_data()
-
-        project_name = self._get_current_project_name()
-        if not project_name:
-            return set()
-
-        try:
-            if isinstance(self._host, ILoadHost):
-                containers = self._host.get_containers()
-            else:
-                containers = self._host.ls()
-        except BaseException:
-            self.log.error(
-                "Failed to collect loaded versions.", exc_info=True
-            )
-            containers = []
-
-        repre_ids = set()
-        for container in containers:
-            repre_id = container.get("representation")
-            try:
-                uuid.UUID(repre_id)
-            except (ValueError, TypeError, AttributeError):
-                continue
-            repre_ids.add(repre_id)
-
-        version_ids = set()
-        if repre_ids:
-            representations = ayon_api.get_representations(
-                project_name,
-                repre_ids,
-                fields=["versionId"],
-            )
-            version_ids = {
-                representation["versionId"]
-                for representation in representations
-                if representation.get("versionId")
-            }
-        self._loaded_versions_cache.update_data(version_ids)
-
-        return self._loaded_versions_cache.get_data()
-
-    def invalidate_loaded_containers(self) -> None:
-        """Invalidate cached scene-container product and version IDs."""
-        self._loaded_products_cache.reset()
-        self._loaded_versions_cache.reset()
-
-    def _get_current_project_name(self) -> str | None:
-        """Return the current project without resolving the folder."""
-        if hasattr(self._host, "get_current_context"):
-            context = self._host.get_current_context()
-        else:
-            context = get_current_context()
-        return context.get("project_name")
-
-    def is_loaded_products_supported(self):
-        return self._host is not None
 
     def is_standard_projects_filter_enabled(self):
         return self._host is not None

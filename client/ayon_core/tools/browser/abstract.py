@@ -427,19 +427,6 @@ class AbstractBrowserController(ABC):
         """
         pass
 
-    # NOTE: Methods 'is_loaded_products_supported' and
-    #   'is_standard_projects_filter_enabled' are both based on being in host
-    #   or not. Maybe we could implement only single method 'is_in_host'?
-    @abstractmethod
-    def is_loaded_products_supported(self):
-        """Is capable to get information about loaded products.
-
-        Returns:
-            bool: True if it is supported.
-
-        """
-        pass
-
     @abstractmethod
     def is_standard_projects_filter_enabled(self):
         """Is standard projects filter enabled.

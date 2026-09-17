@@ -29,7 +29,7 @@ class BrowserWidget(AYContainer):
 
     def __init__(
         self,
-        loader_controller: BrowserController,
+        browser_controller: BrowserController,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -42,12 +42,12 @@ class BrowserWidget(AYContainer):
             **kwargs,
         )
         self._controller = BrowserWidgetController(
-            loader_controller,
+            browser_controller,
             parent=self,
         )
         self._slicer = BrowserSlicer(
             self._controller,
-            loader_controller,
+            browser_controller,
             self,
         )
         self._model = LazyTreeModel(
@@ -102,8 +102,15 @@ class BrowserWidget(AYContainer):
         self.add_widget(main_splitter)
 
     def refresh_loaded_state(self) -> None:
-        """Refresh rows that depend on the host's loaded containers."""
-        self._table.reset_data()
+        """Refresh rows that depend on the host's loaded containers.
+
+        A Load action never changes which rows the server would return,
+        only how already-loaded ones should display (and, if an In
+        Scene filter is active, which of them stay visible) - so this
+        re-enriches and repaints in place rather than resetting the
+        table.
+        """
+        self._table.refresh_column_provider_data()
 
     def _on_tree_reset(self) -> None:
         """Reset the tree model while preserving the proxy and view."""

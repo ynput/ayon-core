@@ -860,6 +860,22 @@ class PaginatedTableModel(QAbstractItemModel):
             sort_desc=(self._sort_order == Qt.SortOrder.DescendingOrder),
         )
 
+    def get_loaded_rows(self) -> list[dict[str, Any]]:
+        """Return the row-data dict of every currently loaded node.
+
+        In flat mode returns root-level rows; in tree mode returns every
+        loaded node across all levels, mirroring :meth:`get_distinct_values`.
+
+        The dicts are the model's own ``row_data`` references, not
+        copies: mutating one in place (e.g. re-running column-provider
+        enrichment) updates the model directly. No ``dataChanged`` is
+        emitted here - pair a mutating pass with a repaint yourself.
+        """
+        nodes = (
+            self._all_nodes if self._tree_mode else set(self._root.children)
+        )
+        return [node.row_data for node in nodes if not node.is_root]
+
     def get_distinct_values(self, key: str) -> list[str]:
         """Return sorted distinct non-empty string values for a column.
 
