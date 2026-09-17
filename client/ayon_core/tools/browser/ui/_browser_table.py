@@ -75,36 +75,6 @@ BROWSER_VIEW_TYPE = "desktop.browser"
 ICON_ONLY_COLUMN_WIDTH = 26
 
 
-class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
-    """Display and colorize the loaded-in-scene state."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._colors = {
-            1: QtGui.QColor(80, 170, 80),
-            0: QtGui.QColor(90, 90, 90),
-        }
-        self._default_color = QtGui.QColor(90, 90, 90)
-
-    def displayText(self, value, locale):
-        if value == 0:
-            return "No"
-        if value == 1:
-            return "Yes"
-        return "N/A"
-
-    def initStyleOption(self, option, index):
-        super().initStyleOption(option, index)
-
-        row_data = index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-        value = row_data.get("inScene")
-        if isinstance(value, bool):
-            value = int(value)
-            option.text = self.displayText(value, QtCore.QLocale())
-        color = self._colors.get(value, self._default_color)
-        option.palette.setBrush(QtGui.QPalette.ColorRole.Text, color)
-
-
 # ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
@@ -166,7 +136,6 @@ class BrowserTable(AYContainer):
         self._tags_delegate = TagsDelegate(self._table)
         self._boolean_delegate = BooleanCheckboxDelegate(self._table)
         self._time_delegate = PrettyTimeDelegate(self._table)
-        self._in_scene_delegate = LoadedInSceneDelegate(self._table)
         self._avatar_cache = UserAvatarCache(self)
         self._avatar_cache.avatar_updated.connect(
             lambda _name: self._table.viewport().update()
@@ -645,6 +614,24 @@ class BrowserTable(AYContainer):
         self._model.set_fetch_enabled(self._controller.has_selection)
         self._model.reset_data()
         self._update_empty_state()
+
+    def refresh_column_provider_data(self) -> None:
+        """Re-run column-provider enrichment on already-loaded rows.
+
+        Cheaper than :meth:`reset_data`: nothing is refetched from the
+        server, so loaded/scrolled/expanded/selected state all survive.
+        A provider that owns no currently visible column and no active
+        filter is already skipped for free inside
+        `BrowserColumnManager.enrich_rows`, so calling this when nothing
+        is listening (e.g. no host, so In Scene withheld itself) is
+        inexpensive.
+        """
+        rows = self._model.get_loaded_rows()
+        if not rows:
+            return
+        self._controller.enrich_loaded_rows(rows)
+        self._table.viewport().update()
+        self._table_filter.filter_model.refresh_filter()
 
     def clear_expansion_state(self) -> None:
         """Clear remembered row expansions without reloading the model."""
@@ -1677,14 +1664,6 @@ class BrowserTable(AYContainer):
                 width=_w("Status", 120),
                 icon="circle",
             ),
-            TableColumn(
-                "inScene",
-                "In Scene",
-                width=_w("In Scene", 80),
-                sortable=False,
-                icon="how_to_reg",
-                delegate=self._in_scene_delegate,
-            ),
         ]
 
         builtin_attribute_names = {
@@ -1982,14 +1961,6 @@ class BrowserTable(AYContainer):
                 "taskTags", "Tags",
                 options=enum_values["taskTags"],
                 icon="local_offer", entity="Task", show_has_value_filters=True,
-            ),
-
-            # "Loaded in Scene" filter is a special case, not an attribute, so
-            # it is added here as a built-in filter.
-            FilterEntry(
-                "inScene", "In Scene",
-                options=["Yes", "No"],
-                icon="how_to_reg", entity="Version", single_select=True,
             ),
         ]
         # Older servers cannot filter versions by their representations,
