@@ -674,12 +674,22 @@ class BrowserWidgetController(QtCore.QObject):
                     .get("type", "")
                 )
                 attribute_key = f"attrib.{attribute_name}"
+                is_list_attribute = attribute_type.startswith("list_of_")
                 condition = None
                 if attribute_type == "boolean" and values:
                     condition = {
                         "key": attribute_key,
                         "value": values[0].lower() == "true",
                         "operator": "eq",
+                    }
+                elif is_list_attribute and values:
+                    # "in" compares the whole list against each value and
+                    # never matches; a list matches when it holds any of
+                    # the picked values, as in the web frontend.
+                    condition = {
+                        "key": attribute_key,
+                        "value": values,
+                        "operator": "includesany",
                     }
                 elif values:
                     condition = {
@@ -691,7 +701,7 @@ class BrowserWidgetController(QtCore.QObject):
                     condition,
                     empty_value,
                     attribute_key,
-                    attribute_type.startswith("list_of_"),
+                    is_list_attribute,
                 )
                 if condition is None:
                     continue
