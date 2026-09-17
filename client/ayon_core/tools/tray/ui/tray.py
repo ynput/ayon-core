@@ -790,8 +790,8 @@ def _fix_macos() -> None:
     if platform.system().lower() != "darwin":
         return
 
-    # Issue was fixed in Qt 5.12
-    if parse(QT_VERSION) >= parse("5.12"):
+    # Issue was fixed in Qt 6.12
+    if parse(QT_VERSION) >= parse("6.12"):
         return
 
     try:
