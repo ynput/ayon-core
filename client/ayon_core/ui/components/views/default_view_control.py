@@ -81,15 +81,9 @@ class _DefaultViewPillButton(AYButton):
         )
         style = get_ayon_style_data("QPushButton", self._variant_str)
         icon_padding_x = style.get("icon-padding", [4, 4])[0]
-
-        # Qt centers a drawn glyph by font metrics (advance width / side
-        # bearings), not by its actual ink - measured ~1px left of that
-        # metrics-based center for the "close" glyph in this icon font.
-        icon_ink_x_bias = 1
-        
         content_center_y = content_rect.top() + content_rect.height() // 2
         return QPointF(
-            content_rect.left() + icon_padding_x - icon_ink_x_bias,
+            content_rect.left() + icon_padding_x,
             content_center_y,
         )
 
