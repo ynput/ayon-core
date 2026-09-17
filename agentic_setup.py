@@ -10,12 +10,22 @@ manual steps documented in ``SPEC_KIT.md``:
   (``ayon-agentic-instructions``) is cloned next to this repository
 - link it as ``.agents-main`` (symlink on macOS/Linux; directory
   junction on Windows, which needs no administrator privileges)
-- repair the tracked constitution link ``.specify/memory/constitution.md``
+- link the three shared constitution files (pointer stub
+  ``constitution.md``, canonical ``ayon-constitution.md`` and evidence
+  annex ``ayon-constitution-evidence.md``) from the shared repository's
+  ``.specify/memory/`` into this repository's ``.specify/memory/``
   (on Windows a real symlink is attempted first; if Developer Mode is
   not available the user is asked to enable it, copy the files
   instead, or skip)
-- optionally install the ``specify`` CLI (via ``uv``) and run the
-  integration install for the chosen agent harness (``--specify``)
+- copy the addon-constitution seed ``ayon-addon-constitution.md`` as a
+  real, version-controlled file owned by this repository (a committed
+  ``.gitignore`` exception keeps it tracked; ``--force`` refreshes it
+  from the shared seed, discarding local amendments)
+- optionally install the ``specify`` CLI (via ``uv``), run the
+  integration install for the chosen agent harness, and install the
+  AYON constitution governance preset and extension (which registers
+  the mandatory ``after_constitution`` verification hook) from the
+  shared repository (``--specify``)
 - ensure ``.agents-main`` is ignored by git (``.git/info/exclude``)
 
 Usage::
@@ -36,17 +46,17 @@ Windows notes:
   ``cmd /c mklink /J`` — junctions need no administrator rights and
   no Developer Mode. Do **not** use ``ln -s`` in Git Bash: it copies
   instead of linking.
-- The tracked ``.specify/memory/constitution.md`` symlink checks out
-  as a plain text file on default Windows clones (Git probes and sets
-  ``core.symlinks=false``). A real symlink is attempted first (works
-  when Developer Mode is enabled); otherwise the user is asked to
-  enable Developer Mode and retry, copy the constitution files
-  instead (they are added to ``.gitignore`` and must be refreshed by
-  re-running this script after shared-repo amendments), or skip —
-  which also skips the specify installation.
+- The constitution symlinks are machine-local (gitignored) and are
+  (re)created by this script on every machine. A real symlink is
+  attempted first (works when Developer Mode is enabled); otherwise
+  the user is asked to enable Developer Mode and retry, copy the shared
+  constitution files instead (they are added to ``.gitignore`` and must
+  be refreshed by re-running this script after shared-repo amendments),
+  or skip — which also skips the specify installation.
 """
 
 import argparse
+import json
 import logging
 import os
 import platform
@@ -67,21 +77,45 @@ SHARED_REPO_DIR: str = os.path.join(
 AGENTS_MAIN: str = os.path.join(CURRENT_ROOT, ".agents-main")
 AGENTS_MAIN_REL: str = "../ayon-agentic-instructions"
 SPECIFY_CLI_URL: str = "git+https://github.com/github/spec-kit.git"
-# Constitution memory files: local name in .specify/memory -> source name
-# in the shared repository. 'constitution.md' is the file spec-kit's
-# init/constitution commands read, so it links to 'ayon-constitution.md'.
+# Shared constitution files: local name in .specify/memory -> source name
+# in the shared repository's .specify/memory/. All three are symlinked
+# (machine-local, gitignored). 'constitution.md' is the pointer stub the
+# Spec Kit commands read; 'ayon-constitution.md' is the canonical shared
+# constitution; 'ayon-constitution-evidence.md' is its evidence annex.
 MEMORY_FILES: List[tuple[str, str]] = [
-    ("constitution.md", "ayon-constitution.md"),
+    ("constitution.md", "constitution.md"),
+    ("ayon-constitution.md", "ayon-constitution.md"),
     ("ayon-constitution-evidence.md", "ayon-constitution-evidence.md"),
 ]
+# The addon-constitution seed is COPIED (not symlinked): each consumer
+# repository owns and version-controls its own extension constitution.
+ADDON_CONSTITUTION_NAME: str = "ayon-addon-constitution.md"
+# Governance preset/extension shipped by the shared repository, wrapped
+# around /speckit.constitution and the after_constitution hook.
+GOVERNANCE_PRESET_ID: str = "ayon-constitution"
+GOVERNANCE_PRESET_REL: str = os.path.join(
+    "..", "ayon-agentic-instructions", ".specify", "presets",
+    "ayon-constitution",
+)
+GOVERNANCE_EXTENSION_REL: str = os.path.join(
+    "..", "ayon-agentic-instructions", ".specify", "extensions",
+    "ayon-constitution",
+)
 CONSTITUTION_LINK: str = os.path.join(
     CURRENT_ROOT, ".specify", "memory", "constitution.md"
 )
-CONSTITUTION_REL_TARGET: str = "../../.agents-main/memory/{}"
+CONSTITUTION_REL_TARGET: str = "../../.agents-main/.specify/memory/{}"
 GITIGNORE_COPIED: List[str] = [
     ".specify/memory/constitution.md",
+    ".specify/memory/ayon-constitution.md",
     ".specify/memory/ayon-constitution-evidence.md",
 ]
+# The addon-constitution copy is version-controlled: this negation is
+# appended AFTER the '.specify/memory/*' ignore rule so the copy stays
+# tracked while the symlinked shared files remain ignored.
+GITIGNORE_ADDON_CONSTITUTION: str = (
+    "!.specify/memory/ayon-addon-constitution.md"
+)
 DEFAULT_INTEGRATION: str = "copilot"
 
 LOG = logging.getLogger("agentic_setup")
@@ -271,7 +305,9 @@ def _copy_constitution() -> None:
     for dest_path, (_, source_name) in zip(
         _constitution_link_paths(), MEMORY_FILES
     ):
-        source = os.path.join(SHARED_REPO_DIR, "memory", source_name)
+        source = os.path.join(
+            SHARED_REPO_DIR, ".specify", "memory", source_name
+        )
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         shutil.copy2(source, dest_path)
         LOG.info("Copied %s", dest_path)
@@ -286,9 +322,17 @@ def _create_constitution_links() -> bool:
         _constitution_link_paths(), MEMORY_FILES
     ):
         target = CONSTITUTION_REL_TARGET.format(source_name)
-        if os.path.islink(dest_path):
-            if os.path.exists(dest_path):
+        expected_abs = os.path.normpath(
+            os.path.join(
+                SHARED_REPO_DIR, ".specify", "memory", source_name
+            )
+        )
+        if os.path.islink(dest_path) or _is_reparse_point(dest_path):
+            if os.path.exists(dest_path) and _same_target(
+                dest_path, expected_abs
+            ):
                 continue
+            # Stale link (old target layout or broken): replace it.
             _remove_link(dest_path)
         elif os.path.exists(dest_path):
             os.remove(dest_path)
@@ -325,26 +369,38 @@ def _ask_constitution_fallback() -> str:
     return "skip"
 
 
-def setup_constitution(mode: str) -> bool:
-    """Repair the tracked constitution link '.specify/memory/...'.
+def _constitution_links_ok() -> bool:
+    """Check every shared constitution link exists with the right target."""
+    for dest_path, (_, source_name) in zip(
+        _constitution_link_paths(), MEMORY_FILES
+    ):
+        if not os.path.islink(dest_path) and not _is_reparse_point(dest_path):
+            return False
+        expected_abs = os.path.normpath(
+            os.path.join(
+                SHARED_REPO_DIR, ".specify", "memory", source_name
+            )
+        )
+        if not _same_target(dest_path, expected_abs):
+            return False
+        if not os.path.exists(dest_path):
+            return False
+    return True
 
-    On macOS/Linux a symlink is used. On Windows a real symlink is
+
+def setup_constitution(mode: str) -> bool:
+    """Repair the shared constitution links in '.specify/memory/'.
+
+    On macOS/Linux symlinks are used. On Windows a real symlink is
     attempted first (works when Developer Mode is enabled); otherwise
     the user chooses to retry after enabling Developer Mode, copy the
     files instead, or skip.
     """
-    if os.path.islink(CONSTITUTION_LINK) and os.path.exists(
-        CONSTITUTION_LINK
-    ):
-        LOG.info("Constitution link already OK, skipping.")
+    if _constitution_links_ok():
+        LOG.info("Constitution links already OK, skipping.")
         return True
 
     if IS_WINDOWS:
-        if os.path.islink(CONSTITUTION_LINK) and os.path.exists(
-            CONSTITUTION_LINK
-        ):
-            LOG.info("Constitution symlink already OK, skipping.")
-            return True
         while True:
             # Remove a plain-text/junk checked-out file first, then try
             # a real symlink (needs Developer Mode or elevation).
@@ -370,13 +426,10 @@ def setup_constitution(mode: str) -> bool:
             LOG.warning("Skipping constitution setup.")
             return False
 
-    # macOS/Linux: fix only if the tracked symlink is missing or broken.
-    if os.path.islink(CONSTITUTION_LINK):
-        if os.path.exists(CONSTITUTION_LINK):
-            LOG.info("Constitution link already OK, skipping.")
-            return True
-        _remove_link(CONSTITUTION_LINK)
-    if os.path.exists(CONSTITUTION_LINK):
+    # macOS/Linux: repair missing, broken, or stale-target links.
+    if os.path.exists(CONSTITUTION_LINK) and not os.path.islink(
+        CONSTITUTION_LINK
+    ):
         LOG.warning(
             "'.specify/memory/constitution.md' exists but is not a "
             "symlink - replacing it with the correct symlink."
@@ -429,6 +482,155 @@ def install_specify(
     return True
 
 
+def _copy_addon_constitution(force: bool = False) -> bool:
+    """Copy the addon-constitution seed as this repository's own file.
+
+    Unlike the shared constitution files (symlinked, machine-local), the
+    addon extension constitution is owned and version-controlled by this
+    repository, so it is copied once and kept tracked via a committed
+    '.gitignore' exception. Local amendments are preserved unless
+    'force' refreshes the file from the shared seed.
+    """
+    source = os.path.join(
+        SHARED_REPO_DIR, ".specify", "memory", ADDON_CONSTITUTION_NAME
+    )
+    dest = os.path.join(
+        CURRENT_ROOT, ".specify", "memory", ADDON_CONSTITUTION_NAME
+    )
+    if not os.path.isfile(source):
+        LOG.error(
+            "Addon-constitution seed missing in the shared repository: %s",
+            source,
+        )
+        return False
+    if os.path.islink(dest) or _is_reparse_point(dest):
+        # A misconfigured earlier setup left a link - replace with a
+        # real file.
+        _remove_link(dest)
+    if os.path.exists(dest):
+        if not force:
+            LOG.info(
+                "'%s' already present, skipping (re-run with --force to "
+                "refresh from the seed, discarding local amendments).",
+                ADDON_CONSTITUTION_NAME,
+            )
+            return True
+        LOG.info(
+            "Refreshing '%s' from the shared seed (--force).",
+            ADDON_CONSTITUTION_NAME,
+        )
+        os.remove(dest)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.copy2(source, dest)
+    _ensure_gitignore_entries([GITIGNORE_ADDON_CONSTITUTION])
+    LOG.info(
+        "Copied %s (tracked, owned by this repository).", dest
+    )
+    return True
+
+
+def _preset_ids() -> List[str]:
+    """Return installed preset IDs from the '.specify/presets/.registry' file.
+
+    Read directly instead of parsing CLI output: 'specify preset list'
+    does not support --json in all spec-kit versions.
+    """
+    registry_file = os.path.join(
+        CURRENT_ROOT, ".specify", "presets", ".registry"
+    )
+    if not os.path.isfile(registry_file):
+        return []
+    try:
+        with open(registry_file, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return []
+    presets = data.get("presets", {}) if isinstance(data, dict) else {}
+    if not isinstance(presets, dict):
+        return []
+    return [
+        preset_id
+        for preset_id, meta in presets.items()
+        if isinstance(meta, dict) and meta.get("enabled", True)
+    ]
+
+
+def _installed_extensions() -> List[str]:
+    """Return installed extension IDs from '.specify/extensions.yml'.
+
+    Minimal stdlib parsing (the script avoids non-stdlib dependencies);
+    only the top-level 'installed' list is read.
+    """
+    config_file = os.path.join(
+        CURRENT_ROOT, ".specify", "extensions.yml"
+    )
+    if not os.path.isfile(config_file):
+        return []
+    installed: List[str] = []
+    in_installed = False
+    try:
+        with open(config_file, "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.rstrip("\n")
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                if line[0].isspace() or stripped.startswith("- "):
+                    # List item: '- <value>' (the CLI writes items
+                    # unindented, dict hooks are nested).
+                    if in_installed and stripped.startswith("- ") \
+                            and ": " not in stripped:
+                        installed.append(stripped[2:].strip())
+                else:
+                    in_installed = stripped == "installed:"
+    except OSError:
+        return []
+    return [item for item in installed if item]
+
+
+def install_governance(force: bool = False) -> bool:
+    """Install the AYON constitution governance preset and extension.
+
+    The preset wraps /speckit.constitution so amendments are routed to
+    the correct constitution file (shared 'ayon-constitution.md' in the
+    shared repository, per-addon 'ayon-addon-constitution.md' in
+    consumer repositories). The extension registers the mandatory
+    'after_constitution' verification hook.
+    """
+    if shutil.which("specify") is None:
+        LOG.error(
+            "'specify' CLI not found - re-run with --specify to install "
+            "it before the governance preset/extension."
+        )
+        return False
+
+    ids = _preset_ids()
+    if GOVERNANCE_PRESET_ID in ids and not force:
+        LOG.info("Governance preset already installed, skipping.")
+    else:
+        if GOVERNANCE_PRESET_ID in ids:
+            _run(["specify", "preset", "remove", GOVERNANCE_PRESET_ID])
+        if _run(["specify", "preset", "add", "--dev",
+                 GOVERNANCE_PRESET_REL]) != 0:
+            LOG.error("Governance preset installation failed.")
+            return False
+
+    extension_args = [
+        "specify", "extension", "add", GOVERNANCE_EXTENSION_REL, "--dev",
+    ]
+    if GOVERNANCE_PRESET_ID in _installed_extensions() and not force:
+        LOG.info("Governance extension already installed, skipping.")
+        LOG.info("Governance preset and extension installed.")
+        return True
+    if force:
+        extension_args.append("--force")
+    if _run(extension_args) != 0:
+        LOG.error("Governance extension installation failed.")
+        return False
+    LOG.info("Governance preset and extension installed.")
+    return True
+
+
 def ensure_git_exclude() -> None:
     """Ensure '.agents-main' is ignored by git.
 
@@ -470,9 +672,17 @@ def command_install(args: argparse.Namespace) -> int:
             "installation step."
         )
         return 1
+    if not _copy_addon_constitution(force=args.force):
+        LOG.warning(
+            "Addon constitution seed not copied - /speckit.constitution "
+            "will not have a local extension constitution to amend. "
+            "Fix the shared repository and re-run."
+        )
     ensure_git_exclude()
     if args.specify:
         if not install_specify(args.integration, args.specify_args):
+            return 1
+        if not install_governance(force=args.force):
             return 1
     LOG.info("Done.")
     return 0
@@ -495,7 +705,10 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     install.add_argument(
         "--force",
         action="store_true",
-        help="Replace an existing '.agents-main' link/directory.",
+        help="Replace an existing '.agents-main' link/directory, "
+             "refresh 'ayon-addon-constitution.md' from the shared "
+             "seed (discarding local amendments), and reinstall the "
+             "governance preset/extension.",
     )
     install.add_argument(
         "--specify",

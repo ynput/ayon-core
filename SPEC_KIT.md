@@ -44,8 +44,13 @@ Key files provided by the shared repo:
 
 - `.agents-main/AGENTS.md` — universal AYON instruction entry point.
 - `.agents-main/fragments/core.md` — `ayon-core` repo-type detail.
-- `.agents-main/memory/ayon-constitution.md` — the active SDD constitution
-  (`.specify/memory/constitution.md` is a tracked symlink to it).
+- `.agents-main/.specify/memory/` — the canonical constitution home:
+  `ayon-constitution.md` (shared constitution), `constitution.md`
+  (pointer stub), `ayon-constitution-evidence.md` (evidence annex),
+  `ayon-addon-constitution.md` (seed copied into this repo).
+  `agentic_setup.py` symlinks the first three into
+  `.specify/memory/` and copies the seed as the addon-owned
+  `ayon-addon-constitution.md`.
 
 ### 2. Install Spec Kit for your preferred agent
 
@@ -81,11 +86,15 @@ Run `specify integration list` for all available agents and
 | `.kilo/` | Kilo integration | `speckit.*.md` commands |
 | `.zed/` | Zed integration | tasks/agent config |
 | `.specify/` | Spec Kit core | scripts, templates, workflows, install manifests |
-| `.specify/memory/constitution.md` | Spec Kit core | **tracked** symlink to the shared constitution (see above) |
+| `.specify/memory/constitution.md`, `ayon-constitution.md`, `ayon-constitution-evidence.md` | `agentic_setup.py` | machine-local symlinks into the shared repository's `.specify/memory/` |
+| `.specify/memory/ayon-addon-constitution.md` | `agentic_setup.py` | copied seed — **tracked** extension constitution owned by this repo |
+| `.specify/presets/ayon-constitution/`, `.specify/extensions/ayon-constitution/`, `.specify/extensions.yml` | `agentic_setup.py` | governance preset/extension installing the wrapped `/speckit.constitution` and the mandatory `after_constitution` hook |
 
-Everything except `.specify/memory/constitution.md` is per-machine,
-per-harness, and regenerable by the CLI, so the repo's `.gitignore` ignores
-it and the files are not committed. The shared `.specify/.gitignore`
+Everything except `.specify/memory/ayon-addon-constitution.md` is
+per-machine, per-harness, and regenerable by the CLI or the setup script,
+so the repo's `.gitignore` ignores it and the files are not committed (a
+negation exception keeps the addon constitution tracked). The shared
+`.specify/.gitignore`
 (managed by the CLI) additionally keeps `feature.json` and
 `extensions/*/local-config.yml` out of version control.
 
@@ -100,9 +109,13 @@ it and the files are not committed. The shared `.specify/.gitignore`
   regardless of harness.
 - `client/ayon_core/AGENTS.md` — committed, scoped subsystem guidance.
 - `.agents-main/` — linked shared guidance (enrichment; never commit it).
-- `.specify/memory/constitution.md` — tracked symlink to
-  `.agents-main/memory/ayon-constitution.md`; the actual file comes from
-  the shared repo, so amendments propagate automatically.
+- `.specify/memory/constitution.md`, `ayon-constitution.md`,
+  `ayon-constitution-evidence.md` — machine-local symlinks to
+  `.agents-main/.specify/memory/…`; the actual files come from the shared
+  repo, so amendments propagate automatically.
+- `.specify/memory/ayon-addon-constitution.md` — copied seed, tracked in
+  this repo; this is the only constitution file `/speckit.constitution`
+  amends here (extension layer — it may only tighten the shared one).
 
 ## Spec & bug records (what gets committed)
 

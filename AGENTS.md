@@ -64,5 +64,8 @@ installs their own Spec Kit integration and links `.agents-main` — run
 Windows), or manually `ln -s ../ayon-agentic-instructions .agents-main`
 (gitignored). See `SPEC_KIT.md` for setup. For any `/speckit.*` work (anatomy, pipeline
 contracts, settings conventions, style, verification ladder), the active
-constitution is `.agents-main/memory/ayon-constitution.md` — the tracked
-`.specify/memory/constitution.md` is a symlink to it.
+constitution is `.agents-main/.specify/memory/ayon-constitution.md` — the
+machine-local `.specify/memory/constitution.md` symlinks to the shared
+pointer stub, which routes to it and to the addon-owned
+`.specify/memory/ayon-addon-constitution.md` (created by
+`agentic_setup.py`, version-controlled in this repo).
