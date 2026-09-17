@@ -37,7 +37,7 @@ CI gates: lint `.github/workflows/pr_linting.yml`, tests
 2. `./tools/manage.sh create-env` — installs the uv dev env (CI step).
 3. `./tools/manage.sh run-tests` — CI test command; runs
    `uv sync --extra test` then `uv run pytest ./tests -m "not server"`.
-   Scope is the `tests/` (UI) suite only — intentional; the
+   Scope is the repository's `tests/` suite only — intentional; the
    `client/ayon_core/tests/` suite is not covered by CI, run it explicitly.
    Markers `unit`, `integration`, `api`, `cli`, `slow`, `server`
    (`pyproject.toml`) scope targeted runs, e.g.
