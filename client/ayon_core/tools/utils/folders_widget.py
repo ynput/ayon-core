@@ -435,7 +435,9 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def _match_name_filter(self, source_index) -> bool:
         if not self._name_filter_terms:
             return True
-        folder_path_filter = source_index.data(FOLDER_PATH_FILTER_ROLE) or ""
+        folder_path_filter = source_index.data(FOLDER_PATH_FILTER_ROLE)
+        if not folder_path_filter:
+            return False
         return all(
             term in folder_path_filter for term in self._name_filter_terms
         )
