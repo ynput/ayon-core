@@ -6,6 +6,7 @@ import json
 import shutil
 from typing import Optional, Any
 
+import ayon_api
 from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import (
@@ -365,6 +366,10 @@ class DeleteOldVersions(LoaderActionPlugin):
         _, repre_ids_by_version_id, filepaths_by_repre_id = (
             self._get_representations_data(selection, set(version_ids))
         )
+        candidate_product_ids = self._get_candidate_products_to_delete(
+            selection, version_ids
+        )
+
         op_session = OperationsSession()
         total_versions = len(version_ids)
         try:
@@ -403,10 +408,97 @@ class DeleteOldVersions(LoaderActionPlugin):
         finally:
             op_session.commit()
 
+        if candidate_product_ids:
+            self._delete_empty_products(
+                project_name, candidate_product_ids
+            )
+
         return LoaderActionResult(
             message="Deleted versions",
             success=True,
         )
+
+    def _get_candidate_products_to_delete(
+        self,
+        selection: LoaderActionSelection,
+        version_ids: list[str],
+    ) -> set[str]:
+        """Get ids of products that would be left without any version.
+
+        This is only a preliminary check based on the selection's cached
+        entities, run before any deletes are committed. The result is
+        used to narrow down which products need to be re-checked against
+        the server after the version deletes are committed, see
+        '_delete_empty_products'.
+
+        """
+        # Note that technically this excludes inactive versions in the response
+        # which is ok, because we will do a post version delete more
+        # conservative check on the product to see if it has *any* versions
+        # left, including inactive ones.
+        deleted_version_ids = set(version_ids)
+        product_ids = {
+            version["productId"]
+            for version in selection.entities.get_versions(
+                deleted_version_ids
+            )
+        }
+        version_ids_by_product_id = collections.defaultdict(set)
+        for version in selection.entities.get_products_versions(
+            product_ids
+        ):
+            version_ids_by_product_id[version["productId"]].add(
+                version["id"]
+            )
+
+        return {
+            product_id
+            for product_id, product_version_ids in (
+                version_ids_by_product_id.items()
+            )
+            if product_version_ids <= deleted_version_ids
+        }
+
+    def _delete_empty_products(
+        self,
+        project_name: str,
+        candidate_product_ids: set[str],
+    ) -> None:
+        """Delete products that have no versions left.
+
+        Runs as its own operation session, after the version deletes are
+        already committed, and re-queries the server directly (bypassing
+        the selection's entity cache) to confirm which of the candidate
+        products still have no versions. This keeps the window in which
+        a concurrently published version could be deleted along with its
+        product as small as possible.
+
+        """
+        product_ids_with_versions = {
+            version["productId"]
+            for version in ayon_api.get_versions(
+                project_name,
+                product_ids=candidate_product_ids,
+                fields={"id", "productId"},
+                latest=True,
+                active=None,  # include both active and inactive versions
+            )
+        }
+        empty_product_ids = (
+            candidate_product_ids - product_ids_with_versions
+        )
+        if not empty_product_ids:
+            return
+
+        op_session = OperationsSession()
+        for product_id in empty_product_ids:
+            self.log.info(
+                f"Deleting product {product_id} without versions left"
+            )
+            op_session.delete_entity(
+                project_name, "product", product_id
+            )
+        op_session.commit()
 
     def _get_delete_form(
         self,
