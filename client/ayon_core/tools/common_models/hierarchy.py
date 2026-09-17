@@ -86,10 +86,6 @@ class FolderItem:
     def from_rest_data(cls, data: dict[str, Any]) -> FolderItem:
         """Creates folder item from 'get_rest_folders' flat item.
 
-        Unlike the GraphQl based entity data, the REST flat folder path
-        is not prefixed with a leading '/', so it is added here to keep
-        the same path format as other constructors.
-
         Args:
             data (dict[str, Any]): Flat folder item from REST endpoint.
 
