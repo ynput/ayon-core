@@ -880,7 +880,9 @@ class PaginatedTableModel(QAbstractItemModel):
         """Return sorted distinct non-empty string values for a column.
 
         In flat mode scans root-level rows; in tree mode scans all
-        loaded nodes across all levels.
+        loaded nodes across all levels. A list value contributes each of
+        its items rather than the stringified list, so the values offered
+        can be matched against individual entries.
 
         Args:
             key: Column key to inspect.
@@ -896,8 +898,11 @@ class PaginatedTableModel(QAbstractItemModel):
             if node.is_root:
                 continue
             val = node.row_data.get(key)
-            if val is not None:
-                s = str(val).strip()
+            items = val if isinstance(val, (list, tuple, set)) else [val]
+            for item in items:
+                if item is None:
+                    continue
+                s = str(item).strip()
                 if s:
                     seen.add(s)
         return sorted(seen)
