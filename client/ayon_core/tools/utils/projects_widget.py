@@ -42,7 +42,6 @@ class ProjectItemType:
     PinSeparator = 3
 
 
-
 class AbstractProjectController(ABC):
     @abstractmethod
     def register_event_callback(self, topic: str, callback: Callable):
