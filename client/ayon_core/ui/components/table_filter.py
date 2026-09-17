@@ -657,10 +657,7 @@ class _FilterDropdown(AYDropdownPopup):
     def _populate_attribute_page(self, entity: str | None = None) -> None:
         """Show entity choices or filters for one entity."""
         # Remove old buttons
-        while self._attr_layout.count():
-            item = self._attr_layout.takeAt(0)
-            if item and item.widget():
-                item.widget().deleteLater()
+        self._attr_layout.clear()
 
         self._search_separator = None
         self._attr_buttons = {}
@@ -777,10 +774,7 @@ class _FilterDropdown(AYDropdownPopup):
         entity: str | None = None,
     ) -> None:
         """Show matching scopes and filters in one search result list."""
-        while self._attr_layout.count():
-            item = self._attr_layout.takeAt(0)
-            if item and item.widget():
-                item.widget().deleteLater()
+        self._attr_layout.clear()
 
         self._search_separator = None
         self._attr_buttons = {}
