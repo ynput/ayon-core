@@ -223,18 +223,16 @@ def modules_from_path(path: str | Path) -> ModulesResult:
 
     elif path.is_dir():
         for file in path.iterdir():
+            if not file.is_file():
+                continue
+
             # Ignore files which start with underscore
             if file.name.startswith("_"):
                 continue
 
             filepaths.append(file)
-    else:
-        return result
 
     for filepath in filepaths:
-        if not filepath.is_file():
-            continue
-
         _, mod_ext = os.path.splitext(filepath.name)
         if mod_ext.lower() != ".py":
             continue
