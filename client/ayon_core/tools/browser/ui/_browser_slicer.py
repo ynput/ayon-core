@@ -10,7 +10,7 @@ from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.slicer import AYSlicer
 from ayon_core.ui.components.task_queue import get_task_queue
 from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
-from ayon_core.ui.components.tree_model import LazyTreeModel
+from ayon_core.ui.components.tree_model import BulkTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
 from qtpy import QtCore, QtWidgets
 
@@ -39,7 +39,7 @@ class BrowserSlicer(AYContainer):
     """Left-hand panel with project selector, category slicer and tree."""
 
     #: Attempts, one per 100 ms timer tick, spent waiting for the project
-    #: switch and then the lazily fetched folder rows.
+    #: switch and then the fetched folder rows.
     _MAX_SELECTION_ATTEMPTS = 30
 
     CATEGORIES = [
@@ -168,11 +168,11 @@ class BrowserSlicer(AYContainer):
         )
         self._selector.refresh()
 
-    def set_model(self, model: LazyTreeModel) -> None:
+    def set_model(self, model: BulkTreeModel) -> None:
         """Attach a tree model to the view and slicer proxy.
 
         Args:
-            model: The lazy tree model to display.
+            model: The tree model to display.
         """
         self._slicer.set_model(model, view=self._tree_view)
 
@@ -245,8 +245,8 @@ class BrowserSlicer(AYContainer):
         above is a no-op while the projects combo box is still populating,
         and the hierarchy must not be queried until it has landed -
         ``get_folder_id_path`` would otherwise run against an empty
-        project name. Only then are the tree rows fetched, lazily, which
-        is what :meth:`_select_folder_chain` waits on.
+        project name. Only then does the tree's fetch land,
+        which is what :meth:`_select_folder_chain` waits on.
 
         Args:
             attempt: Number of attempts already spent.

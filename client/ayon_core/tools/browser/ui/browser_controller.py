@@ -5,6 +5,7 @@ Centralises all business logic and data fetching for the reviews UI.
 
 from __future__ import annotations
 
+import collections
 import json
 import re
 import uuid
@@ -62,6 +63,7 @@ from ayon_core.tools.browser.ui.browser_queries import (
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.common_models.hierarchy import FolderItem
 
 log = Logger.get_logger(__name__)
 
@@ -1038,21 +1040,23 @@ class BrowserWidgetController(QtCore.QObject):
                 conditions.extend(json.loads(value).get("conditions", []))
         return json.dumps({"conditions": conditions}) if conditions else ""
 
-    def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
-        """Return tree nodes for the given parent.
+    def fetch_tree_data(self) -> dict[str | None, list[TreeNode]]:
+        """Return the whole slicer tree in one shot for the active category.
 
-        Dispatches to :meth:`_fetch_folders` or
-        :meth:`_fetch_reviews` depending on the current category.
-
-        Args:
-            parent_id: Parent entity ID, or ``None`` for root.
+        Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
+        a background thread via the shared task queue. Dispatches to
+        :meth:`_fetch_all_folders` (a single bulk hierarchy query) for
+        the Hierarchy category, or wraps the flat review-session list
+        for Reviews - which was already a single, flat level.
 
         Returns:
-            List of :class:`TreeNode` instances.
+            Mapping of parent entity ID (``None`` for root) to its
+            children as :class:`TreeNode` instances, covering the
+            whole tree for the active category.
         """
         if self._current_category == BrowserSlicerCategory.HIERARCHY.value:
-            return self._fetch_folders(parent_id)
-        return self._fetch_reviews(parent_id)
+            return self._fetch_all_folders()
+        return {None: self._fetch_reviews(None)}
 
     def _version_query_kwargs(
         self,
@@ -2532,60 +2536,98 @@ class BrowserWidgetController(QtCore.QObject):
             if r.get("entityListType") == "review-session"
         ]
 
-    def _fetch_folders(self, parent_id: str | None) -> list[TreeNode]:
-        """Fetch folder hierarchy level by parent folder id.
+    def _fetch_all_folders(self) -> dict[str | None, list[TreeNode]]:
+        """Fetch the whole folder hierarchy for the current project at once.
 
-        Args:
-            parent_id: Parent folder ID, or ``None`` for root.
+        Uses the single-request bulk hierarchy endpoint
+        (``ayon_api.get_folders_hierarchy``, through the same cached
+        :class:`HierarchyModel` the Launcher's folders widget relies
+        on, via ``get_folder_items``) instead of one GraphQL call per
+        tree level, so the whole tree comes from a single query.
+
+        Each returned :class:`TreeNode` carries a ``filter_text`` built
+        from both the folder's real (name-based) path and a path built
+        from folder labels, for fuzzy search - matching the semantics
+        of the Launcher's folders widget (see ``FoldersProxyModel`` in
+        ``ayon_core.tools.utils.folders_widget``).
 
         Returns:
-            List of :class:`TreeNode` instances.
+            Mapping of parent folder ID (``None`` for root) to its
+            children as TreeNode instances, covering the whole
+            hierarchy. Empty without an active project.
         """
         project = self._current_project
         if not project:
-            return []
+            return {}
 
-        self.log.debug("Fetching product children for %s", parent_id)
-        parent_ids = [parent_id] if parent_id is not None else [None]
-        folders = list(ayon_api.get_folders(
-            project,
-            parent_ids=parent_ids,  # type: ignore[arg-type]
-            fields={
-                "id",
-                "name",
-                "label",
-                "folderType",
-                "hasChildren",
-                "hasTasks",
-                "parentId",
-            },
-        ))
-        for folder in folders:
-            self._folder_parent_ids[folder["id"]] = folder.get("parentId")
+        folder_items: dict[str, FolderItem] = (
+            self._loader_controller.get_folder_items(project)
+        )
+        # Track every folder's parent, even ones the current scope will
+        # filter out below, so ancestor lookups (e.g.
+        # _get_top_level_selected_folder_ids) keep working regardless
+        # of which folders are actually shown right now.
+        for folder_id, item in folder_items.items():
+            self._folder_parent_ids[folder_id] = item.parent_id
         if self._folder_id_scope is not None:
-            folders = [
-                f for f in folders if f["id"] in self._folder_id_scope
-            ]
-        folders.sort(key=_folder_sort_key)
-        default_entity_icon_color = get_default_entity_icon_color()
-        return [
-            TreeNode(
-                id=f["id"],
-                label=f.get("label") or f["name"],
-                has_children=f.get("hasChildren", False),
-                icon=self._pinfo(
-                    "folderTypes", f.get("folderType", ""), "icon", "folder"
-                ),
-                icon_color=self._pinfo(
-                    "folderTypes",
-                    f.get("folderType", ""),
-                    "color",
-                    default_entity_icon_color,
-                ),
-                data=f,
+            folder_items = {
+                folder_id: item
+                for folder_id, item in folder_items.items()
+                if folder_id in self._folder_id_scope
+            }
+
+        children_by_parent: dict[str | None, list[FolderItem]] = (
+            collections.defaultdict(list)
+        )
+        for item in folder_items.values():
+            parent_id = (
+                item.parent_id if item.parent_id in folder_items else None
             )
-            for f in folders
-        ]
+            children_by_parent[parent_id].append(item)
+
+        default_entity_icon_color = get_default_entity_icon_color()
+        result: dict[str | None, list[TreeNode]] = {}
+
+        # Iterative BFS (rather than recursion) so hierarchy depth can
+        # never hit Python's recursion limit.
+        queue = collections.deque([(None, "")])
+        while queue:
+            parent_id, parent_label_path = queue.popleft()
+            items = children_by_parent.get(parent_id)
+            if not items:
+                continue
+            items = sorted(items, key=lambda i: (i.label or i.name).lower())
+            nodes = []
+            for item in items:
+                label_path = f"{parent_label_path}/{item.label}"
+                has_children = item.entity_id in children_by_parent
+                nodes.append(TreeNode(
+                    id=item.entity_id,
+                    label=item.label,
+                    has_children=has_children,
+                    icon=self._pinfo(
+                        "folderTypes", item.folder_type, "icon", "folder"
+                    ),
+                    icon_color=self._pinfo(
+                        "folderTypes",
+                        item.folder_type,
+                        "color",
+                        default_entity_icon_color,
+                    ),
+                    data={
+                        "id": item.entity_id,
+                        "name": item.name,
+                        "label": item.label,
+                        "folderType": item.folder_type,
+                        "hasChildren": has_children,
+                        "parentId": item.parent_id,
+                    },
+                    filter_text=f"{item.path} {label_path}".casefold(),
+                ))
+                queue.append((item.entity_id, label_path))
+            result[parent_id] = nodes
+
+        return result
 
     def _ensure_review_session_list(self) -> None:
         """Fetch review sessions once per project, on first use.

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.components.tree_model import LazyTreeModel
+from ayon_core.ui.components.tree_model import BulkTreeModel
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
@@ -50,8 +50,8 @@ class BrowserWidget(AYContainer):
             browser_controller,
             self,
         )
-        self._model = LazyTreeModel(
-            fetch_children=self._controller.fetch_children
+        self._model = BulkTreeModel(
+            fetch_all=self._controller.fetch_tree_data
         )
         self._slicer.set_model(self._model)
         self._table = BrowserTable(self._controller, self)
