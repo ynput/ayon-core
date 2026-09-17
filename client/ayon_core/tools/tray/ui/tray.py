@@ -794,6 +794,14 @@ def _fix_macos() -> None:
     if parse(QT_VERSION) >= parse("5.12"):
         return
 
+    try:
+        major = int(platform.mac_ver()[0].split(".", 1)[0])
+    except (IndexError, ValueError):
+        major = -1
+
+    if major < 27:
+        return
+
     install_clickcount_fix()
 
 
