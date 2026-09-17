@@ -204,10 +204,9 @@ def modules_from_path(path: str | Path) -> ModulesResult:
     """
     result = ModulesResult()
 
-    if isinstance(path, str):
-        # Just skip and return empty result if path is not set
-        if not path:
-            return result
+    # Just skip and return empty result if path is not set
+    if isinstance(path, str) and not path:
+        return result
 
     # Do not allow relative imports
     if not path.is_absolute():
