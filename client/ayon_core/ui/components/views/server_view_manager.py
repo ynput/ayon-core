@@ -364,9 +364,6 @@ class ServerViewManager(ViewManager):
                 else:
                     endpoint = self._endpoint(f"views/{view.view_type}")
                     resp = ayon_api.post(endpoint, **payload)
-            # Method not allowed -> missing license
-            if resp.status == 405:
-                return
             resp.raise_for_status()
         except Exception as exc:  # noqa: BLE001
             log.exception("Failed to save view %s", view.id)
