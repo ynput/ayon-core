@@ -61,7 +61,7 @@ def from_published_scene(instance, replace_in_path=True):
     anatomy = instance.context.data['anatomy']
     project_name = anatomy.project_name
     task_name = task_type = None
-    task_entity = instance.context.data["taskEntity"]
+    task_entity = instance.context.data.get("taskEntity")
     if task_entity:
         task_name = task_entity["name"]
         task_type = task_entity["taskType"]
