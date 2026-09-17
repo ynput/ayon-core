@@ -19,6 +19,6 @@ Host-agnostic pipeline library. Subsystems, briefly:
   `server/settings/`, constitution Article 3).
 - `vendor/` — excluded from Ruff; never reformat.
 - `tests/` — core-library unit suite (`testpaths` in root
-  `pyproject.toml`). CI's `./tools/manage.sh run-tests` covers only
-  `tests/` (UI suite, `-m "not server"`), so run this suite explicitly,
-  e.g. `./tools/manage.sh run pytest client/ayon_core/tests -m "not server"`.
+  `pyproject.toml`). CI's `./tools/manage.sh run-tests` covers only the
+  repository `tests/` tree (`-m "not server"`), so run
+  `client/ayon_core/tests` explicitly, e.g. `./tools/manage.sh run pytest client/ayon_core/tests -m "not server"`.
