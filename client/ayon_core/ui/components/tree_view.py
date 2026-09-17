@@ -305,6 +305,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
+
         if self._style_model:
             style = self._style_model.get_style("QTreeView", self._variant_str)
             h = int(style.get("item-height", 28))
