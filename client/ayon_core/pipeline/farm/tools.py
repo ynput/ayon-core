@@ -69,7 +69,10 @@ def from_published_scene(instance, replace_in_path=True):
     template_name = get_publish_template_name(
         project_name=project_name,
         host_name=instance.context.data["hostName"],
-        product_base_type=workfile_instance.data.get("productBaseType") or workfile_instance.data["productType"],
+        product_base_type=(
+            workfile_instance.data.get("productBaseType")
+            or workfile_instance.data["productType"]
+        ),
         task_name=task_name,
         task_type=task_type,
         project_settings=project_settings,
