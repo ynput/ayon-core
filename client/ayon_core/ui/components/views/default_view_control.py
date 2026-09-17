@@ -72,15 +72,7 @@ class _DefaultViewPillButton(AYButton):
             self.setMouseTracking(True)
 
     def _icon_center(self) -> QPointF:
-        """Return where the drawer paints the icon glyph's center.
-
-        Mirrors ``ButtonDrawer``'s icon+text layout — icon centered at
-        ``(content_rect.left() + icon-padding[0], content_rect.center().y())``
-        — so the hover badge and the icon-click hit zone both land
-        exactly on the glyph instead of an independently-guessed
-        offset. Note this is ``content_rect``'s own vertical center,
-        not the button widget's — they aren't always the same.
-        """
+        """Return where the drawer paints the icon glyph's center."""
         option = QStyleOptionButton()
         self.initStyleOption(option)
         option.rect = self.rect()
@@ -89,8 +81,16 @@ class _DefaultViewPillButton(AYButton):
         )
         style = get_ayon_style_data("QPushButton", self._variant_str)
         icon_padding_x = style.get("icon-padding", [4, 4])[0]
+
+        # Qt centers a drawn glyph by font metrics (advance width / side
+        # bearings), not by its actual ink - measured ~1px left of that
+        # metrics-based center for the "close" glyph in this icon font.
+        icon_ink_x_bias = 1
+        
+        content_center_y = content_rect.top() + content_rect.height() // 2
         return QPointF(
-            content_rect.left() + icon_padding_x, content_rect.center().y()
+            content_rect.left() + icon_padding_x - icon_ink_x_bias,
+            content_center_y,
         )
 
     def _icon_badge_rect(self) -> QRectF:
@@ -188,7 +188,12 @@ class _DefaultViewPillButton(AYButton):
                 "#8b9198",
             )
             painter.setBrush(QBrush(QColor(badge_color)))
-            painter.drawRoundedRect(self._icon_badge_rect(), 6, 6)
+            # Badge is always square (see _icon_badge_rect) - half its
+            # side as the radius rounds it into a full circle rather
+            # than just a rounded square.
+            badge_rect = self._icon_badge_rect()
+            radius = badge_rect.width() / 2
+            painter.drawRoundedRect(badge_rect, radius, radius)
             painter.restore()
 
         style.drawControl(
