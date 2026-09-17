@@ -96,7 +96,6 @@ class BrowserSlicer(AYContainer):
             variant=AYComboBox.Variants.Low,
         )
         self._selector.set_select_item_visible(True)
-        self._selector.set_libraries_separator_visible(True)
         self._selector.set_standard_filter_enabled(
             loader_controller.is_standard_projects_filter_enabled()
         )
