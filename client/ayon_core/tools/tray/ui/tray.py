@@ -782,7 +782,30 @@ class TrayStarter(QtCore.QObject):
         return splash
 
 
+def _fix_macos() -> None:
+    """Fix issue with click count on MacOS > 27 for PySide6.
+
+    See '_macos_fix.py' for more details.
+    """
+    if platform.system().lower() != "darwin":
+        return
+
+    from packaging.version import parse
+
+    from qtpy import QT_VERSION
+
+    from ._macos_fix import install_clickcount_fix
+
+    # Issue was fixed in Qt 5.12
+    if parse(QT_VERSION) >= parse("5.12"):
+        return
+
+    install_clickcount_fix()
+
+
 def main():
+    _fix_macos()
+
     app = get_ayon_qt_app()
 
     starter = TrayStarter(app)  # noqa F841
