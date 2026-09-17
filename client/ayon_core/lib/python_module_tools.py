@@ -211,8 +211,7 @@ def modules_from_path(path: str | Path) -> ModulesResult:
     # Do not allow relative imports
     if not path.is_absolute():
         log.warning(
-            "BUG: Relative paths are not allowed for security reasons."
-            f" {path}"
+            f"Relative paths are not allowed for security reasons '{path}'."
         )
         return result
 
