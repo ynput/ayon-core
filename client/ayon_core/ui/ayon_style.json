@@ -119,6 +119,33 @@
                         "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
+                "nav-small-circle": {
+                    "background-color": "transparent",
+                    "color": "--md-sys-color-on-surface-dark",
+                    "border-color": "--md-sys-color-shadow-dark",
+                    "focus-outline-color": "--md-sys-color-primary-dark",
+                    "border-radius": 10,
+                    "icon-padding": [
+                        2,
+                        2
+                    ],
+                    "hover": {
+                        "background-color": "--md-sys-color-background-dark"
+                    },
+                    "pressed": {
+                        "background-color": "--md-ref-palette-secondary20"
+                    },
+                    "disabled": {
+                        "background-color": "transparent",
+                        "opacity": 0.5
+                    },
+                    "checked": {
+                        "background-color": "--md-sys-color-primary-container-dark"
+                    },
+                    "checked-hover": {
+                        "background-color": "--md-sys-color-primary-container-dark-hover"
+                    }
+                },
                 "danger": {
                     "background-color": "--md-sys-color-error-container-dark",
                     "color": "--md-sys-color-on-error-container-dark",

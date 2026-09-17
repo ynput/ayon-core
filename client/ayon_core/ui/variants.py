@@ -9,6 +9,7 @@ class QPushButtonVariants(Enum):
     Filled = "filled"
     Nav = "nav"
     Nav_Small = "nav-small"
+    Nav_Small_Circle = "nav-small-circle"
     Danger = "danger"
     Tertiary = "tertiary"
     Text = "text"

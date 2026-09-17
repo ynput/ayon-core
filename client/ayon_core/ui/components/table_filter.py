@@ -1439,7 +1439,7 @@ class _CriterionBadge(AYContainer):
         self._close_btn = AYButton(
             icon="close",
             icon_size=14,
-            variant=AYButton.Variants.Nav_Small,
+            variant=AYButton.Variants.Nav_Small_Circle,
         )
         self._close_btn.setFixedSize(20, 20)
         self._close_btn.clicked.connect(
