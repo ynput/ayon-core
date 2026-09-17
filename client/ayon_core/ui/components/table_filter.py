@@ -850,6 +850,11 @@ class _FilterDropdown(AYDropdownPopup):
             # the page behind it was never built; Back would otherwise
             # land on an empty list.
             self._show_entity_page()
+        else:
+            # Disable the active checked state that was there from potential
+            # arrow keys highlighting whilst in the search text field
+            for button in self._attr_buttons.values():
+                button.setChecked(False)
         self._stack.setCurrentIndex(0)
         self._attr_search.blockSignals(True)
         self._attr_search.clear()
