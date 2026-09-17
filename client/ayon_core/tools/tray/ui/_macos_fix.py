@@ -53,9 +53,11 @@ _MOUSE_EVENT_TYPES: frozenset[int] = frozenset(
     }
 )
 
-# ctypes callback objects must outlive the process – C holds the raw pointer.
-# If Python's GC collects them the pointer becomes dangling → segfault.
+
 class _State:
+    # ctypes callback objects must outlive the process – C holds the raw
+    #   pointer.
+    # If Python's GC collects them the pointer becomes dangling → segfault.
     keepalive: list[object] = []
     patched = False
 
@@ -100,13 +102,17 @@ def _apply_patch() -> None:
     libobjc.sel_registerName.argtypes = [ctypes.c_char_p]
 
     libobjc.class_getInstanceMethod.restype = ctypes.c_void_p
-    libobjc.class_getInstanceMethod.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    libobjc.class_getInstanceMethod.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p
+    ]
 
     libobjc.method_getImplementation.restype = ctypes.c_void_p
     libobjc.method_getImplementation.argtypes = [ctypes.c_void_p]
 
     libobjc.method_setImplementation.restype = ctypes.c_void_p
-    libobjc.method_setImplementation.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    libobjc.method_setImplementation.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p
+    ]
 
     # -- Locate NSEvent and the selectors we need ----------------------------
     ns_event_cls = libobjc.objc_getClass(b"NSEvent")
@@ -175,6 +181,4 @@ def _apply_patch() -> None:
 
     # The closures keep _original and _call_type alive; _new_imp and
     # _safe_click_count must be kept explicitly so C's raw pointer stays valid.
-    _State.keepalive.extend(
-        [_new_imp, _safe_click_count, _original, _call_type]
-    )
+    _State.keepalive = [_new_imp, _safe_click_count, _original, _call_type]
