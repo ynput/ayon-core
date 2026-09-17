@@ -58,7 +58,7 @@ Install the `specify` CLI (version-agnostic — use the current release of
 Spec Kit):
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+uv tool install specify-cli
 ```
 
 Then install your integration (or let the setup script do it:
