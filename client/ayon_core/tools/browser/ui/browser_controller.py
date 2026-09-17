@@ -5,6 +5,7 @@ Centralises all business logic and data fetching for the reviews UI.
 
 from __future__ import annotations
 
+import collections
 import json
 import re
 import uuid
@@ -62,6 +63,7 @@ from ayon_core.tools.browser.ui.browser_queries import (
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.common_models.hierarchy import FolderItem
 
 log = Logger.get_logger(__name__)
 
@@ -194,6 +196,8 @@ class BrowserWidgetController(QtCore.QObject):
         )
         self._selected_folder_ids: list[str] = []
         self._folder_parent_ids: dict[str, str | None] = {}
+        self._folder_names: dict[str, str] = {}
+        self._folder_labels: dict[str, str] = {}
         self._selected_task_ids: list[str] = []
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
@@ -421,6 +425,8 @@ class BrowserWidgetController(QtCore.QObject):
         self._selected_folder_ids = []
         self._selected_task_ids = []
         self._folder_parent_ids = {}
+        self._folder_names = {}
+        self._folder_labels = {}
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
@@ -2562,6 +2568,10 @@ class BrowserWidgetController(QtCore.QObject):
         ))
         for folder in folders:
             self._folder_parent_ids[folder["id"]] = folder.get("parentId")
+            self._folder_names[folder["id"]] = folder["name"]
+            self._folder_labels[folder["id"]] = (
+                folder.get("label") or folder["name"]
+            )
         if self._folder_id_scope is not None:
             folders = [
                 f for f in folders if f["id"] in self._folder_id_scope
@@ -2583,9 +2593,135 @@ class BrowserWidgetController(QtCore.QObject):
                     default_entity_icon_color,
                 ),
                 data=f,
+                filter_text=self._build_folder_filter_text(f["id"]),
             )
             for f in folders
         ]
+
+    def _build_folder_filter_text(self, folder_id: str) -> str:
+        """Build a search string from cached ancestor names and labels.
+
+        Walks ``_folder_parent_ids``/``_folder_names``/``_folder_labels``
+        (populated as folders are lazily fetched) up to the project root,
+        producing a casefolded ``"{name-path} {label-path}"`` string - the
+        same shape :meth:`fetch_all_folders` builds from the bulk
+        hierarchy fetch, but available immediately for a folder as soon
+        as it (and its ancestors) have been fetched at least once,
+        without waiting on the (slower, whole-project) bulk fetch.
+
+        Args:
+            folder_id: ID of the folder to build the filter text for.
+                Must already be present in ``_folder_names``.
+
+        Returns:
+            Casefolded ``"{name-path} {label-path}"`` string.
+        """
+        name_parts = []
+        label_parts = []
+        current_id: str | None = folder_id
+        while current_id is not None:
+            name_parts.append(self._folder_names.get(current_id, ""))
+            label_parts.append(self._folder_labels.get(current_id, ""))
+            current_id = self._folder_parent_ids.get(current_id)
+        name_path = "/" + "/".join(reversed(name_parts))
+        label_path = "/" + "/".join(reversed(label_parts))
+        return f"{name_path} {label_path}".casefold()
+
+    def fetch_all_folders(self) -> dict[str | None, list[TreeNode]]:
+        """Fetch the whole folder hierarchy for the current project at once.
+
+        Used as :class:`LazyTreeModel`'s ``fetch_all`` callback: runs on a
+        background thread via the shared task queue and, unlike
+        :meth:`_fetch_folders`, uses the single-request bulk hierarchy
+        endpoint (``ayon_api.get_folders_hierarchy``, through the same
+        cached :class:`HierarchyModel` the Launcher's folders widget
+        relies on) instead of one GraphQL call per expanded level. This
+        lets the tree back-fill every branch the user has not expanded
+        yet, in one pass, so search can reach folders without waiting on
+        a lazy fetch per node.
+
+        Each returned :class:`TreeNode` carries a ``filter_text`` built
+        from both the folder's real (name-based) path and a path built
+        from folder labels, matching the fuzzy-search semantics of the
+        Launcher's folders widget (see ``FoldersProxyModel`` in
+        ``ayon_core.tools.utils.folders_widget``).
+
+        Returns:
+            Mapping of parent folder ID (``None`` for root) to its
+            children as TreeNode instances, covering the whole
+            hierarchy. Empty outside the Hierarchy category or without
+            an active project.
+        """
+        project = self._current_project
+        if (
+            not project
+            or self._current_category != BrowserSlicerCategory.HIERARCHY.value
+        ):
+            return {}
+
+        folder_items: dict[str, FolderItem] = (
+            self._loader_controller.get_folder_items(project)
+        )
+        if self._folder_id_scope is not None:
+            folder_items = {
+                folder_id: item
+                for folder_id, item in folder_items.items()
+                if folder_id in self._folder_id_scope
+            }
+
+        children_by_parent: dict[str | None, list[FolderItem]] = (
+            collections.defaultdict(list)
+        )
+        for item in folder_items.values():
+            parent_id = (
+                item.parent_id if item.parent_id in folder_items else None
+            )
+            children_by_parent[parent_id].append(item)
+
+        default_entity_icon_color = get_default_entity_icon_color()
+        result: dict[str | None, list[TreeNode]] = {}
+
+        # Iterative BFS (rather than recursion) so hierarchy depth can
+        # never hit Python's recursion limit.
+        queue = collections.deque([(None, "")])
+        while queue:
+            parent_id, parent_label_path = queue.popleft()
+            items = children_by_parent.get(parent_id)
+            if not items:
+                continue
+            items = sorted(items, key=lambda i: (i.label or i.name).lower())
+            nodes = []
+            for item in items:
+                label_path = f"{parent_label_path}/{item.label}"
+                has_children = item.entity_id in children_by_parent
+                nodes.append(TreeNode(
+                    id=item.entity_id,
+                    label=item.label,
+                    has_children=has_children,
+                    icon=self._pinfo(
+                        "folderTypes", item.folder_type, "icon", "folder"
+                    ),
+                    icon_color=self._pinfo(
+                        "folderTypes",
+                        item.folder_type,
+                        "color",
+                        default_entity_icon_color,
+                    ),
+                    data={
+                        "id": item.entity_id,
+                        "name": item.name,
+                        "label": item.label,
+                        "folderType": item.folder_type,
+                        "hasChildren": has_children,
+                        "parentId": item.parent_id,
+                    },
+                    filter_text=f"{item.path} {label_path}".casefold(),
+                ))
+                self._folder_parent_ids[item.entity_id] = item.parent_id
+                queue.append((item.entity_id, label_path))
+            result[parent_id] = nodes
+
+        return result
 
     def _ensure_review_session_list(self) -> None:
         """Fetch review sessions once per project, on first use.

@@ -32,6 +32,10 @@ class TreeNode:
         has_children: Whether this node can have children.
         icon: Optional icon name or path.
         data: Arbitrary extra data associated with this node.
+        filter_text: Casefolded text to match search queries against
+            (e.g. a folder's path plus its label-based path). Falls
+            back to ``label`` when empty; see
+            :attr:`LazyTreeModel.FILTER_ROLE`.
     """
 
     id: str
@@ -41,6 +45,7 @@ class TreeNode:
     icon_color: str = "#f4f5f5"
     icon_fill: bool = False
     data: dict = field(default_factory=dict)
+    filter_text: str = ""
 
 
 class _InternalNode:
@@ -79,6 +84,15 @@ class LazyTreeModel(QAbstractItemModel):
     Args:
         fetch_children: Callable that takes a parent node ID (``None``
             for root) and returns a list of :class:`TreeNode` instances.
+        fetch_all: Optional callable, taking no arguments, that returns
+            the *entire* hierarchy at once as a ``{parent_id: children}``
+            mapping (``None`` for the root's children). When given, it is
+            kicked off in the background alongside the root fetch; once
+            it resolves, every branch not already loaded (or mid-fetch)
+            is filled in from it in one pass, without touching branches
+            the user already expanded. This lets a fast bulk endpoint
+            back-fill the tree for instant search/navigation while the
+            regular lazy ``fetch_children`` keeps the initial paint fast.
         no_async: When ``True``, children are fetched synchronously on
             the main thread instead of via the :class:`AsyncTaskQueue`.
             Useful in tests to avoid worker-thread/paint-event races.
@@ -106,6 +120,10 @@ class LazyTreeModel(QAbstractItemModel):
         model = LazyTreeModel(fetch_children=fetch)
     """
 
+    #: Role exposing TreeNode.filter_text (falls back to the label) for
+    #: search proxies to match against, independent of DisplayRole.
+    FILTER_ROLE = Qt.ItemDataRole.UserRole + 1
+
     loading_changed = Signal(bool)  # True while any fetch is in-flight
     fetch_error = Signal(str)  # error message when a fetch fails
     pending_count_changed = Signal(int)  # number of in-flight fetch tasks
@@ -113,11 +131,13 @@ class LazyTreeModel(QAbstractItemModel):
     def __init__(
         self,
         fetch_children: Callable[[str | None], list[TreeNode]],
+        fetch_all: Callable[[], dict[str | None, list[TreeNode]]] | None = None,
         no_async: bool = False,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._fetch_children = fetch_children
+        self._fetch_all = fetch_all
         self._no_async: bool = no_async
         self._reset_counter: int = 0
         self._context_id: str = f"ltm_{id(self)}_v0"
@@ -126,7 +146,14 @@ class LazyTreeModel(QAbstractItemModel):
         # _all_nodes keeps every node reachable so Python's GC does not
         # collect objects that are held only via QModelIndex.internalPointer().
         self._all_nodes: set[_InternalNode] = {self._root}
+        # Populated once the (optional) bulk fetch_all callback resolves;
+        # kept around so branches loaded lazily *after* that point can
+        # still be topped up immediately, see _on_children_ready.
+        self._bulk_children_by_parent: (
+            dict[str | None, list[TreeNode]] | None
+        ) = None
         self._fetch_children_async(self._root)
+        self._fetch_all_async()
 
     def _update_loading_state(self) -> None:
         """Emit loading-progress signals based on current pending task
@@ -184,6 +211,14 @@ class LazyTreeModel(QAbstractItemModel):
 
         self._pending_tasks = max(0, self._pending_tasks - 1)
 
+        if node.children_loaded:
+            # Already populated in the meantime - most likely the bulk
+            # hierarchy prefetch (see _merge_bulk_children) won the race
+            # against this per-node fetch. Discard this now-redundant
+            # result instead of inserting duplicate rows.
+            self._update_loading_state()
+            return
+
         if results is None:
             node_id = node.tree_node.id if node.tree_node else "root"
             self.fetch_error.emit(
@@ -210,7 +245,113 @@ class LazyTreeModel(QAbstractItemModel):
         else:
             node.children_loaded = True
 
+        # The bulk prefetch may have already resolved by the time this
+        # lazily-fetched branch lands; opportunistically top up its
+        # (guaranteed not-yet-loaded) new children right away instead of
+        # waiting for a future reset to reach them.
+        if self._bulk_children_by_parent is not None:
+            for child in node.children:
+                self._merge_bulk_children(child)
+
         self._update_loading_state()
+
+    def _fetch_all_async(self) -> None:
+        """Enqueue the optional bulk hierarchy fetch, if one was given.
+
+        No-op when ``fetch_all`` was not passed to the constructor.
+        """
+        if self._fetch_all is None:
+            return
+        ctx = self._context_id
+
+        if self._no_async:
+            try:
+                result = self._fetch_all()
+            except Exception:
+                log.exception("fetch_all raised")
+                result = None
+            self._on_bulk_ready(ctx, result)
+            return
+
+        task = AsyncTask(
+            name="fetch_all_children",
+            function=self._fetch_all,
+            callback=lambda result: self._on_bulk_ready(ctx, result),
+            # Lower priority than per-node fetches so an expand click
+            # the user makes while the bulk fetch is still running is
+            # never held up behind it.
+            priority=5,
+            context_id=ctx,
+            cancellable=True,
+        )
+        get_task_queue().enqueue(task)
+
+    def _on_bulk_ready(
+        self,
+        context_id: str,
+        result: dict[str | None, list[TreeNode]] | None,
+    ) -> None:
+        """Handle the bulk hierarchy fetch result on the main thread.
+
+        Args:
+            context_id: The context_id active when the task was
+                enqueued. Used to discard results from a pre-reset fetch.
+            result: ``{parent_id: children}`` mapping for the whole
+                hierarchy, or ``None``/empty on error.
+        """
+        if context_id != self._context_id:
+            return
+        if not result:
+            return
+        self._bulk_children_by_parent = result
+        self._merge_bulk_children(self._root)
+
+    def _merge_bulk_children(self, start: _InternalNode) -> None:
+        """Fill not-yet-loaded descendants of start from the bulk fetch.
+
+        Branches already loaded (or currently being lazily fetched) are
+        left untouched - only walked past - so this never disturbs a
+        branch the user has expanded or clicked on, and never races a
+        per-node fetch already in flight for a given node. Iterative
+        (rather than recursive) so hierarchy depth can never hit
+        Python's recursion limit.
+
+        Args:
+            start: Internal node to fill (or walk past), depth-first.
+        """
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            if node.is_fetching:
+                continue
+            if node.children_loaded:
+                stack.extend(node.children)
+                continue
+
+            parent_id = (
+                None if node.is_root else node.tree_node.id  # type: ignore[union-attr]
+            )
+            children = (
+                self._bulk_children_by_parent.get(parent_id)
+                if self._bulk_children_by_parent
+                else None
+            )
+            if not children:
+                node.children_loaded = True
+                continue
+
+            new_nodes = [
+                _InternalNode(tree_node=tn, parent=node) for tn in children
+            ]
+            parent_index = self._index_for_node(node)
+            self.beginInsertRows(parent_index, 0, len(new_nodes) - 1)
+            node.children = new_nodes
+            for child in new_nodes:
+                self._all_nodes.add(child)
+            node.children_loaded = True
+            self.endInsertRows()
+
+            stack.extend(new_nodes)
 
     def _fetch_children_async(self, node: _InternalNode) -> None:
         """Enqueue an async task to fetch children for *node*.
@@ -376,6 +517,9 @@ class LazyTreeModel(QAbstractItemModel):
         elif role == Qt.ItemDataRole.UserRole:
             if node.tree_node and node.tree_node.data:
                 return node.tree_node.data
+        elif role == self.FILTER_ROLE:
+            if node.tree_node:
+                return node.tree_node.filter_text or node.tree_node.label
         return None
 
     def hasChildren(
@@ -475,8 +619,10 @@ class LazyTreeModel(QAbstractItemModel):
         self.beginResetModel()
         self._root = _InternalNode(tree_node=None, parent=None)
         self._all_nodes = {self._root}
+        self._bulk_children_by_parent = None
         self.endResetModel()
         # Emit loading signals *after* endResetModel so that any slot
         # connected to loading_changed observes a consistent model state.
         self._update_loading_state()
         self._fetch_children_async(self._root)
+        self._fetch_all_async()

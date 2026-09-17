@@ -51,7 +51,8 @@ class BrowserWidget(AYContainer):
             self,
         )
         self._model = LazyTreeModel(
-            fetch_children=self._controller.fetch_children
+            fetch_children=self._controller.fetch_children,
+            fetch_all=self._controller.fetch_all_folders,
         )
         self._slicer.set_model(self._model)
         self._table = BrowserTable(self._controller, self)
