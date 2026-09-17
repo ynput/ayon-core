@@ -339,7 +339,7 @@ class AYViewSelector(AYButtonMenu):
                 for view in private_views:
                     scroll_content.add_widget(self._make_row(view))
 
-        if public_views:
+        if public_views and self._manager.supports_sharing():
             scroll_content.add_widget(
                 self._make_section_header("Shared views", "shared_views")
             )
@@ -732,17 +732,16 @@ class AYViewSelector(AYButtonMenu):
     def _on_edit_clicked(self, view: View) -> None:
         """Open the editor for an existing view."""
         self._close_menu()
-        view_copy = View.from_payload(view.to_payload())
+        # A row from the listing lacks the view's access grants; the
+        # editor must start from the stored ones or saving wipes them.
+        loaded_view = self._manager.load_view(view)
+        if not loaded_view.loaded:
+            # On failure to load, just stop here. Manager would've already
+            # emitted the error
+            return
+        view_copy = View.from_payload(loaded_view.to_payload())
         self._capture_into(view_copy)
-        usernames_and_groups = self._get_usernames_and_groups()
-        editor = AYViewEditor(
-            view_copy,
-            current_user=self._current_user,
-            allow_studio_scope=self._allow_studio_scope,
-            current_project=self._current_project_name(),
-            usernames_and_groups=usernames_and_groups,
-            parent=self,
-        )
+        editor = self._create_editor(view_copy)
         if editor.exec() != QDialog.DialogCode.Accepted:
             return
         with self._suspend_auto_apply():
@@ -761,15 +760,7 @@ class AYViewSelector(AYButtonMenu):
         self._close_menu()
         new_view = View(view_type=self._view_type)
         self._capture_into(new_view)
-        usernames_and_groups = self._get_usernames_and_groups()
-        editor = AYViewEditor(
-            new_view,
-            current_user=self._current_user,
-            allow_studio_scope=self._allow_studio_scope,
-            current_project=self._current_project_name(),
-            usernames_and_groups=usernames_and_groups,
-            parent=self,
-        )
+        editor = self._create_editor(new_view)
         if editor.exec() != QDialog.DialogCode.Accepted:
             return
         with self._suspend_auto_apply():
@@ -779,6 +770,22 @@ class AYViewSelector(AYButtonMenu):
             saved = self._save_view(editor.get_view())
         if saved is not None:
             self._apply_view(saved, emit=True)
+
+    def _create_editor(self, view: View) -> AYViewEditor:
+        """Build the metadata editor dialog for *view*."""
+        allow_sharing = self._manager.supports_sharing()
+        usernames_and_groups = (
+            self._get_usernames_and_groups() if allow_sharing else None
+        )
+        return AYViewEditor(
+            view,
+            current_user=self._current_user,
+            allow_studio_scope=self._allow_studio_scope,
+            current_project=self._current_project_name(),
+            usernames_and_groups=usernames_and_groups,
+            allow_sharing=allow_sharing,
+            parent=self,
+        )
 
     def _delete_view(self, view: View) -> None:
         if not view.id:

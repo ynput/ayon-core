@@ -95,6 +95,18 @@ class ViewManager(QObject):
 
     # -- optional helpers ---------------------------------------------------
 
+    def supports_sharing(self) -> bool:
+        """Whether views can be shared with other users.
+
+        Sharing controls in the UI (the "Shared views" section, the
+        people-with-access editor) are shown only when this returns
+        True.  The default implementation has no restrictions.
+
+        Returns:
+            True when views can be shared.
+        """
+        return True
+
     def load_view(self, view: View) -> View:
         """Return *view* with its :attr:`View.settings` populated.
 

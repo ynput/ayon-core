@@ -349,12 +349,53 @@ def test_save_view_does_not_share_when_access_is_non_positive() -> None:
          patch("ayon_core.ui.components.views.server_view_manager"
                ".get_bundle_information",
                return_value=MagicMock(
-                   addons=[type("Addon", (), {"name": "powerpack", "version": "1.6.3"})()]
+                   addons=[
+                       type(
+                           "Addon",
+                           (),
+                           {"name": "powerpack", "version": "1.6.3"}
+                       )()
+                   ]
                )), \
          patch("ayon_core.ui.components.views.server_view_manager"
                ".ayon_api.get_server_api_connection", return_value=conn):
         mgr.save_view(view)
 
+    conn.raw_post.assert_not_called()
+
+
+def test_save_view_skips_share_endpoint_without_powerpack() -> None:
+    """Without the powerpack addon, save_view must never call share.
+
+    Even a view with positive access levels must not reach the share
+    endpoint when the bundle has no powerpack addon - supports_sharing()
+    should gate the whole patch_view_access() call, not just the
+    positive-vs-non-positive access decision.
+    """
+    mgr = ServerViewManager(project_name="P")
+    view = View(
+        id="v1",
+        label="Shared",
+        view_type="versions",
+        owner="alice",
+        settings=ViewSettings(),
+        access={"__everyone__": 20},
+    )
+
+    fake_patch = MagicMock(return_value=_resp({}))
+    conn = MagicMock()
+    conn.raw_post = MagicMock()
+
+    with patch("ayon_core.ui.components.views.server_view_manager"
+               ".ayon_api.patch", fake_patch), \
+         patch("ayon_core.ui.components.views.server_view_manager"
+               ".get_bundle_information",
+               return_value=MagicMock(addons=[])), \
+         patch("ayon_core.ui.components.views.server_view_manager"
+               ".ayon_api.get_server_api_connection", return_value=conn):
+        mgr.save_view(view)
+
+    fake_patch.assert_called_once()
     conn.raw_post.assert_not_called()
 
 

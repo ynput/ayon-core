@@ -59,6 +59,10 @@ class AYViewEditor(QDialog):
             studio scope when applicable.
         allow_studio_scope: Whether ``Scope.STUDIO`` is offered to the
             user.  Consumer apps gate this via their permission model.
+        usernames_and_groups: Users and access groups offered in the
+            "People with access" selector.
+        allow_sharing: Whether the "People with access" section is
+            shown.  When False the view's access is left unchanged.
         parent: Optional parent widget.
     """
 
@@ -75,6 +79,7 @@ class AYViewEditor(QDialog):
         current_project: str = "",
         allow_studio_scope: bool = False,
         usernames_and_groups: dict[str, list] | None = None,
+        allow_sharing: bool = True,
         parent: QWidget | None = None,
     ) -> None:
         self._dialog_mode = (
@@ -99,6 +104,7 @@ class AYViewEditor(QDialog):
         }
         self._current_project = current_project
         self._allow_studio_scope = bool(allow_studio_scope)
+        self._allow_sharing = bool(allow_sharing)
         self._delete_requested = False
 
         # Access control state: {key: access_level} where key is "user:name" or "group:name"
@@ -145,13 +151,23 @@ class AYViewEditor(QDialog):
         static_layout.add_widget(AYLabel("Scope"))
         static_layout.add_widget(self._scope_combo)
 
+        # Everything about sharing lives in one section, so it can be
+        # hidden as a whole when sharing is unavailable.
+        access_section = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            layout_margin=0,
+            layout_spacing=12,
+        )
+        access_section.setVisible(self._allow_sharing)
+        static_layout.add_widget(access_section)
+
         # User/group selector dropdown
         self._user_selector = AYSearchableComboBox(
             placeholder="Add people or access groups"
         )
 
-        static_layout.add_widget(AYLabel("People with access"))
-        static_layout.add_widget(self._user_selector)
+        access_section.add_widget(AYLabel("People with access"))
+        access_section.add_widget(self._user_selector)
 
         self._user_selector.item_selected.connect(self._on_user_selected)
 
@@ -177,7 +193,7 @@ class AYViewEditor(QDialog):
         owner_row.layout().addSpacerItem(
             QSpacerItem(32, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
         )
-        static_layout.add_widget(owner_row)
+        access_section.add_widget(owner_row)
 
         # Everyone row
         self._everyone_combo = AYComboBox()
@@ -205,7 +221,7 @@ class AYViewEditor(QDialog):
         everyone_row.layout().addSpacerItem(
             QSpacerItem(32, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
         )
-        static_layout.add_widget(everyone_row)
+        access_section.add_widget(everyone_row)
 
         # Dynamic user/group access rows
         self._access_rows_container = AYContainer(
@@ -213,7 +229,7 @@ class AYViewEditor(QDialog):
             layout_spacing=4,
             layout_margin=0,
         )
-        static_layout.add_widget(self._access_rows_container)
+        access_section.add_widget(self._access_rows_container)
 
         root.addWidget(static_layout)
         root.addStretch()
@@ -608,7 +624,10 @@ class AYViewEditor(QDialog):
         else:
             view.scope = Scope.PROJECT
 
-        view.access = dict(self._access_dict)
+        # The access editor is hidden without sharing; keep whatever
+        # access the view already has rather than the editor defaults.
+        if self._allow_sharing:
+            view.access = dict(self._access_dict)
 
         if not view.owner and self._current_user:
             view.owner = self._current_user
