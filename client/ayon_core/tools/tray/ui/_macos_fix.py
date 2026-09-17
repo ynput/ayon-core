@@ -17,7 +17,7 @@ original implementation is called unchanged, so click-detection is unaffected.
 
 Usage:
     # Call ONCE at startup, before QApplication / QSystemTrayIcon
-    from macos_tray_clickcount_fix import install_clickcount_fix
+    from ayon_core.tools.tray.ui._macos_fix import install_clickcount_fix
     install_clickcount_fix()
 """
 
