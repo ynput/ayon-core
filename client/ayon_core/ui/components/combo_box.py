@@ -97,6 +97,9 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
         """Calculate size hint including padding."""
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
 
         # Calculate text dimensions
         font_metrics = option.fontMetrics

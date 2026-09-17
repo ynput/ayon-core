@@ -319,6 +319,9 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
         h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
