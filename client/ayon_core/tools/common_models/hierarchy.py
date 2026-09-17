@@ -42,7 +42,7 @@ class FolderItem:
         label (str): Folder label.
 
     """
-    # TODO: Use `@dataclass(slots=True)' when we drop Python 3.9 support.
+    # TODO: Use `@dataclass(slots=True)` when we drop Python 3.9 support.
     __slots__ = (
         "entity_id", "parent_id", "name", "path", "folder_type", "label",
     )
