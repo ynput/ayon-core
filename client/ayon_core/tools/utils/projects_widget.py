@@ -116,16 +116,6 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
         if self._selected_project is None:
             self._add_select_item()
 
-    def set_libraries_separator_visible(self, visible):
-        """DEPRECATED library projects are not separated anymore."""
-        warnings.warn(
-            (
-                "Function 'set_libraries_separator_visible' is deprecated"
-                " and has no effect."
-            ),
-            DeprecationWarning
-        )
-
     def set_selected_project(self, project_name):
         if not self._select_item_visible:
             return
@@ -633,16 +623,6 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._select_item_visible = visible
         self._projects_model.set_select_item_visible(visible)
         self._update_select_item_visiblity()
-
-    def set_libraries_separator_visible(self, visible):
-        """DEPRECATED library projects are not separated anymore."""
-        warnings.warn(
-            (
-                "Function 'set_libraries_separator_visible' is deprecated"
-                " and has no effect."
-            ),
-            DeprecationWarning
-        )
 
     def is_active_filter_enabled(self):
         return self._projects_proxy_model.is_active_filter_enabled()
