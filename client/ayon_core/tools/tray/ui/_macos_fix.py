@@ -59,7 +59,7 @@ class _State:
     #   pointer.
     # If Python's GC collects them the pointer becomes dangling → segfault.
     keepalive: list[object] = []
-    patched = False
+    tried = False
 
 
 def install_clickcount_fix() -> None:
@@ -71,10 +71,10 @@ def install_clickcount_fix() -> None:
     - Must be called before the first QSystemTrayIcon is shown.
     - Remove this call once PySide6 ships Qt fix 756941.
     """
-    if _State.patched:
+    if _State.tried:
         return
 
-    _State.patched = True
+    _State.tried = True
     if platform.system().lower() != "darwin":
         return
 
