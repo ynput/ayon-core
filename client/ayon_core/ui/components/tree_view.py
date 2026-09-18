@@ -357,9 +357,6 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         if is_selected and is_hovered:
             selected_style = styles["selected-hover"]
 
-        item_padding = base_style.get("item-padding", [4, 8])
-        icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
-
         # --- background ------------------------------------------------
         if is_selected:
             bg_color = QColor(
@@ -405,6 +402,8 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             )
 
         # --- icon + text layout ----------------------------------------
+        item_padding = base_style.get("item-padding", [4, 8])
+        icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
         content_rect = QRect(opt.rect).adjusted(
             item_padding[1],
             item_padding[0],
@@ -413,9 +412,8 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         )
 
         icon = opt.icon
-        icon_rect = QRect(0, 0, 0, 0)
-        text_rect = QRect(0, 0, 0, 0)
         icon_offset = 0
+        content_left = content_rect.left()
         if not icon.isNull():
             icon_size = opt.decorationSize
             icon_rect = QRect(opt.rect)
@@ -433,35 +431,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             if opt.text:
                 icon_offset += icon_text_spacing
 
-        if opt.text:
-            metrics = opt.fontMetrics
-            bound = metrics.boundingRect(opt.text)
-            text_rect = QRect(opt.rect)
-            text_rect.setWidth(bound.width())
-
-        content_width = icon_offset + text_rect.width()
-        if content_width > content_rect.width():
-            # Text is too long to fit in the available space, so elide it.
-            metrics = opt.fontMetrics
-            elided_text = metrics.elidedText(
-                opt.text,
-                opt.textElideMode,
-                content_rect.width() - icon_offset,
-            )
-            opt.text = elided_text
-
-        if opt.displayAlignment & Qt.AlignmentFlag.AlignRight:
-            content_left = content_rect.right() - content_width
-        elif opt.displayAlignment & Qt.AlignmentFlag.AlignHCenter:
-            content_left = content_rect.left() + (
-                content_rect.width() - content_width
-            ) // 2
-
-        else:
-            content_left = content_rect.left()
-
-        if not icon.isNull():
-            icon_rect.moveLeft(content_left)
+            content_left = icon_rect.right() + icon_text_spacing
             mode = (
                 QIcon.Mode.Normal
                 if state & QStyle.StateFlag.State_Enabled
@@ -473,11 +443,25 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
                 opt.decorationAlignment,
                 mode,
             )
-            content_left = icon_rect.right() + icon_text_spacing
 
         if opt.text:
+            metrics = opt.fontMetrics
+            bound = metrics.boundingRect(opt.text)
+
+            content_width = icon_offset + bound.width()
+            if content_width > content_rect.width():
+                # Text is too long to fit in the available space, so elide it.
+                metrics = opt.fontMetrics
+                elided_text = metrics.elidedText(
+                    opt.text,
+                    opt.textElideMode,
+                    content_rect.width() - icon_offset,
+                )
+                opt.text = elided_text
+
+        if opt.text:
+            text_rect = QRect(content_rect)
             text_rect.setLeft(content_left)
-            text_rect.setRight(content_rect.right())
             painter.setPen(text_color)
             painter.setFont(opt.font)
             painter.drawText(
