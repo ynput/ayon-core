@@ -86,7 +86,6 @@ class CenteredIconDelegate(TreeViewItemDelegate):
         if icon.isNull():
             return
 
-
         item_padding = base_style.get("item-padding", [4, 8])
         content_rect = QtCore.QRect(opt.rect).adjusted(
             item_padding[1],
@@ -99,7 +98,6 @@ class CenteredIconDelegate(TreeViewItemDelegate):
         icon_rect.moveCenter(content_rect.center())
         icon.paint(painter, icon_rect, QtCore.Qt.AlignmentFlag.AlignCenter)
         painter.restore()
-
 
 
 class RefreshTask(QtCore.QObject, QtCore.QRunnable):
