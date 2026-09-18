@@ -12,7 +12,6 @@ import pyblish.api
 import pyblish.logic
 import pyblish.plugin
 
-from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
@@ -1017,28 +1016,24 @@ class PublishLogic:
 
     @contextmanager
     def _log_manager(self, plugin: PluginType):
-        root = logging.getLogger()
-        ayon_root = Logger.get_root_logger()
+        plugin_logger = plugin.log
+        orig_propagate = plugin_logger.propagate
         plugin_log_has_handler = False
-        orig_propagate = plugin.log.propagate
-        if not self._log_to_console:
-            plugin.log.propagate = False
 
-        if not plugin.log.propagate:
+        if not self._log_to_console:
+            plugin_logger.propagate = False
+
+        if self._log_handler not in plugin_logger.handlers:
+            plugin_logger.addHandler(self._log_handler)
             plugin_log_has_handler = True
-            plugin.log.addHandler(self._log_handler)
-        root.addHandler(self._log_handler)
-        ayon_root.addHandler(self._log_handler)
 
         try:
             yield self._log_handler
 
         finally:
             if plugin_log_has_handler:
-                plugin.log.removeHandler(self._log_handler)
-            plugin.log.propagate = orig_propagate
-            root.removeHandler(self._log_handler)
-            ayon_root.removeHandler(self._log_handler)
+                plugin_logger.removeHandler(self._log_handler)
+            plugin_logger.propagate = orig_propagate
             self._log_handler.clear_records()
 
     def _process_plugin(
