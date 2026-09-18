@@ -25,19 +25,16 @@ from ayon_core.tools.browser.ui.tasks_widget import (
     BrowserTasksWidget,
 )
 from ayon_core.ui.components.table_filter import NO_VALUE
+from ayon_core.tools.common_models.hierarchy import FolderItem
 
 
 @pytest.fixture(autouse=True)
-def _mock_sitesync_model(monkeypatch):
+def _mock_addons_manager(monkeypatch):
     addon_manager = Mock()
     addon_manager.get_enabled_addons.return_value = []
     monkeypatch.setattr(
-        "ayon_core.tools.browser.control.AddonsManager",
+        "ayon_core.tools.browser.sitesync_columns.AddonsManager",
         lambda: addon_manager,
-    )
-    monkeypatch.setattr(
-        "ayon_core.tools.browser.control.SiteSyncModel",
-        lambda *args: Mock(),
     )
 
 
@@ -119,22 +116,31 @@ def test_set_my_tasks_filter_clears_scope_when_disabled(monkeypatch):
     assert controller.get_task_id_scope() is None
 
 
-def test_fetch_folders_restricts_to_folder_id_scope(monkeypatch):
+def test_fetch_all_folders_restricts_to_folder_id_scope(monkeypatch):
     controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._folder_id_scope = {"shot010"}
 
     monkeypatch.setattr(
-        "ayon_api.get_folders",
-        lambda project_name, parent_ids, fields: [
-            {"id": "shot010", "name": "shot010", "parentId": None},
-            {"id": "shot020", "name": "shot020", "parentId": None},
-        ],
+        controller._loader_controller,
+        "get_folder_items",
+        lambda project_name: {
+            "shot010": FolderItem(
+                entity_id="shot010", parent_id=None, name="shot010",
+                path="/shot010", folder_type="Shot", label="shot010",
+                status="in progress",
+            ),
+            "shot020": FolderItem(
+                entity_id="shot020", parent_id=None, name="shot020",
+                path="/shot020", folder_type="Shot", label="shot020",
+                status="in progress",
+            ),
+        },
     )
 
-    nodes = controller._fetch_folders(None)
+    result = controller._fetch_all_folders()
 
-    assert [n.id for n in nodes] == ["shot010"]
+    assert [n.id for n in result[None]] == ["shot010"]
     # Parent tracking still happens for folders outside the scope too,
     # so ancestor lookups keep working for folders reached later.
     assert controller._folder_parent_ids == {
@@ -143,20 +149,25 @@ def test_fetch_folders_restricts_to_folder_id_scope(monkeypatch):
     }
 
 
-def test_fetch_folders_returns_everything_without_scope(monkeypatch):
+def test_fetch_all_folders_returns_everything_without_scope(monkeypatch):
     controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
 
     monkeypatch.setattr(
-        "ayon_api.get_folders",
-        lambda project_name, parent_ids, fields: [
-            {"id": "shot010", "name": "shot010", "parentId": None},
-        ],
+        controller._loader_controller,
+        "get_folder_items",
+        lambda project_name: {
+            "shot010": FolderItem(
+                entity_id="shot010", parent_id=None, name="shot010",
+                path="/shot010", folder_type="Shot", label="shot010",
+                status="in progress",
+            ),
+        },
     )
 
-    nodes = controller._fetch_folders(None)
+    result = controller._fetch_all_folders()
 
-    assert [n.id for n in nodes] == ["shot010"]
+    assert [n.id for n in result[None]] == ["shot010"]
 
 
 # ---------------------------------------------------------------------

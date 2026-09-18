@@ -16,13 +16,32 @@ from .line_edit import AYLineEdit
 
 
 class TreeFilterProxyModel(QSortFilterProxyModel):
-    """Proxy that filters tree items by label, recursively."""
+    """Proxy that filters tree items, recursively including 'fuzzy' search """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setFilterRole(Qt.ItemDataRole.DisplayRole)
         self.setRecursiveFilteringEnabled(True)  # Qt 5.10+
+        self._filter_terms: list[str] = []
+
+    def set_filter_text(self, text: str) -> None:
+        """Update the active search terms and re-apply the filter."""
+        self._filter_terms = text.casefold().split()
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent) -> bool:
+        if not self._filter_terms:
+            return True
+        source_model = self.sourceModel()
+        if source_model is None:
+            return True
+        index = source_model.index(source_row, 0, source_parent)
+        text = index.data(self.filterRole())
+        if not text:
+            return False
+        text = str(text).casefold()
+        return all(term in text for term in self._filter_terms)
 
 
 class AYSlicer(AYContainer):
@@ -57,6 +76,7 @@ class AYSlicer(AYContainer):
 
         # search filter
         self._proxy: TreeFilterProxyModel | None = None
+        self._view = None
         self._field.installEventFilter(self)
 
         # signals
@@ -98,23 +118,61 @@ class AYSlicer(AYContainer):
         """Insert a filter proxy between model and view.
 
         Args:
-            model: The source model (e.g. LazyTreeModel).
+            model: The source model (e.g. LazyTreeModel or
+                BulkTreeModel). When it exposes a ``FILTER_ROLE`` class
+                attribute (as those do), search matches against that
+                role instead of the plain display label - see
+                :class:`TreeFilterProxyModel`. When it exposes a
+                ``loading_changed`` signal, an active search is
+                re-applied (and the view re-expanded) once loading
+                finishes, so a search typed before the data has
+                arrived still reaches it.
             view: The QAbstractItemView that displays the model.
         """
         if self._proxy is None:
             self._proxy = TreeFilterProxyModel(self)
         if self._proxy.sourceModel() is not model:
             self._proxy.setSourceModel(model)
+            filter_role = getattr(model, "FILTER_ROLE", None)
+            if filter_role is not None:
+                self._proxy.setFilterRole(filter_role)
+
+            # Respond to updates of LazyTreeModel
+            loading_changed = getattr(model, "loading_changed", None)
+            if loading_changed is not None:
+                loading_changed.connect(self._on_model_loading_changed)
         if view is not None:
             if view.model() is not self._proxy:
                 view.setModel(self._proxy)
             self._view = view
 
     def _on_search_changed(self, text: str):
-        """Update the proxy filter when the user types."""
+        """Update the proxy filter when the user types.
+
+        A non-empty search expands the whole tree so recursively
+        matched rows - whose ancestors may otherwise still be
+        collapsed - are actually visible, matching the Launcher
+        folders widget's behaviour on a non-empty filter.
+        """
         if self._proxy is None:
             return
-        self._proxy.setFilterFixedString(text)
+        self._proxy.set_filter_text(text)
+        if text and self._view is not None:
+            self._view.expandAll()
+
+    def _on_model_loading_changed(self, loading: bool) -> None:
+        """Re-expand the view once a still-loading model finishes.
+
+        A search typed while the model's data has not arrived yet
+        filters an (as far as the proxy can tell) empty tree, so the
+        expandAll() in _on_search_changed() has nothing to expand.
+        Once loading finishes and the proxy has re-synced against the
+        now-populated model, re-run it for any search still active.
+        """
+        if loading or self._view is None:
+            return
+        if self._field.text():
+            self._view.expandAll()
 
     def _on_button_toggled(self, checked):
         self._combo.setVisible(not checked)
