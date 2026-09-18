@@ -1,4 +1,5 @@
 import os
+from ayon_core.pipeline.publish import get_publish_template_name
 
 
 def get_published_workfile_instance(context):
@@ -58,7 +59,25 @@ def from_published_scene(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data['anatomy']
-    template_obj = anatomy.get_template_item("publish", "default", "path")
+    project_name = anatomy.project_name
+    task_name = task_type = None
+    task_entity = instance.context.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+    project_settings = instance.context.data["project_settings"]
+    template_name = get_publish_template_name(
+        project_name=project_name,
+        host_name=instance.context.data["hostName"],
+        product_base_type=(
+            workfile_instance.data.get("productBaseType")
+            or workfile_instance.data["productType"]
+        ),
+        task_name=task_name,
+        task_type=task_type,
+        project_settings=project_settings,
+    )
+    template_obj = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template_obj.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
