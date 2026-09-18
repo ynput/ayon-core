@@ -206,6 +206,14 @@ class AYTreeView(StyleMixin, QTreeView):
             )
         ](opt, painter, self)
 
+    def _get_index_rows(self, index: QModelIndex) -> list[int]:
+        """Return a list of row numbers from the root to the given index."""
+        rows = []
+        while index.isValid():
+            rows.append(index.row())
+            index = index.parent()
+        return rows
+
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Emit double_clicked signal on double-click."""
         self.double_clicked.emit(event)
