@@ -18,6 +18,7 @@ from ayon_core.ui.components import (
 
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
+from .recent_actions_widget import RecentActionsButton
 
 LAUNCHER_CSS_PATH = Path(__file__).parent / "launcher_style.css"
 
@@ -85,8 +86,13 @@ class LauncherWindow(AYContainer):
         projects_header_layout = AYHBoxLayout(
             projects_header_widget, margin=0, spacing=4
         )
+        recent_actions_btn = RecentActionsButton(
+            controller, projects_header_widget
+        )
+
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)
+        projects_header_layout.addWidget(recent_actions_btn, 0)
 
         projects_widget = ProjectsWidget(controller, pages_widget)
 
@@ -162,6 +168,10 @@ class LauncherWindow(AYContainer):
         controller.register_event_callback(
             "webaction.trigger.finished",
             self._on_webaction_trigger_finished,
+        )
+        controller.register_event_callback(
+            "recent_action.unavailable",
+            self._on_recent_action_unavailable,
         )
 
         self._overlay_object = overlay_object
@@ -256,6 +266,13 @@ class LauncherWindow(AYContainer):
 
         self._overlay_object.add_message(
             message, message_type, message_id=message_id
+        )
+
+    def _on_recent_action_unavailable(self, event):
+        self._show_toast_message(
+            "Not available anymore: {}".format(event["full_label"]),
+            success=False,
+            message_id=event["record_id"],
         )
 
     def _on_action_trigger_started(self, event):

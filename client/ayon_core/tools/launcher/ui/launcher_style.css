@@ -129,3 +129,40 @@ ActionMenuPopup ActionsView {
     border: none;
     margin: 4px;
 }
+
+/* Recent actions popup */
+#RecentActionsContainer {
+    background: transparent;
+}
+
+#RecentActionRow {
+    border-radius: 5px;
+    background: transparent;
+}
+
+#RecentActionRow QLabel {
+    background: transparent;
+}
+
+#RecentActionRow:hover {
+    /* '--md-sys-color-surface-container-high-dark' - the same token
+       'QStyledItemDelegate' uses for a hovered list/tree row, so this
+       matches the rest of the app's standard hover instead of a
+       bespoke value. Darker than the ActionsView hover (#424A57,
+       '...-highest-dark') because this row sits on the popup's own
+       darker '#1c2026' background rather than a list view. */
+    background: #353B46;
+}
+
+#RecentActionsFavoriteSeparator {
+    background: transparent;
+    border: none;
+    border-top: 1px solid #556072;
+    margin: 4px 8px;
+}
+
+/* The row's context menu is an 'AYMenu' (see recent_actions_widget.py) -
+   it paints itself directly through AYONStyle rather than through Qt
+   stylesheets, so a 'QMenu::item:selected' rule here would never be
+   reached. It already renders its own themed hover; nothing to add. */
+
