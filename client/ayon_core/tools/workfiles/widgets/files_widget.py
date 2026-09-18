@@ -357,6 +357,12 @@ class FilesWidget(AYContainer):
         if result is None:
             return
 
+        description = result["description"]
+        result["description"] = (
+            f"Copied from: {repre_info['filepath']}\n"
+            f"Description: {description}"
+        )
+
         self._controller.copy_workfile_representation(
             repre_info["representation_id"],
             repre_info["filepath"],
