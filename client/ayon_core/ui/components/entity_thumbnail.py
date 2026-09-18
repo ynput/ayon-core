@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from qtmaterialsymbols import get_icon
+from qtpy import shiboken
 from qtpy.QtCore import (
     QEasingCurve,
     QPointF,
@@ -82,6 +83,9 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         size: tuple[int, int] = (85, 48),
         fade_duration: int = 0,
         variant: Variants = Variants.Thumbnail,
+        transparent: bool = False,
+        image_inset: int = 1,
+        fill_area: bool = False,
         **kwargs,
     ):
         """A widget that displays a thumbnail image for an entity, with options
@@ -107,6 +111,11 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             size: ``(width, height)`` in pixels.
             fade_duration: Fade-in animation duration in milliseconds.
             variant: Visual style variant.
+            transparent: Draw only the icon or thumbnail image, leaving the
+                parent widget responsible for the background and border.
+            image_inset: Pixels reserved between the image and widget edges.
+            fill_area: Scale the image to cover the whole widget, cropping
+                the overflowing edges, instead of fitting it inside.
 
         Raises:
             ValueError: If both *file_cacher* and *async_file_cacher* are set.
@@ -127,10 +136,14 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
                 "set, not both."
             )
         self._size = size
+        self._transparent = transparent
+        self._image_inset = max(0, image_inset)
+        self._fill_area = fill_area
         self._variant_str: str = variant.value
         self._placeholder_icon_name = placeholder_icon
         self._placeholder_scale = placeholder_scale
         self._placeholder_icon_fill = placeholder_icon_fill
+        self._showing_placeholder = True
         icn_size = int(size[1] * placeholder_scale)
         self._placeholder_icon = QIcon(
             get_icon(
@@ -211,19 +224,42 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
     def set_size(self, size: tuple[int, int]) -> None:
         """Resize the thumbnail and update the icon size to match.
 
-        Clears the in-memory composite cache since cached composites
-        are size-specific.
+        Loaded pixmaps are regenerated from their source so increasing
+        the widget size does not remain limited by the previous pixmap
+        dimensions. Composite caches are cleared because they are
+        size-specific.
 
         Args:
             size: New ``(width, height)`` in pixels.
         """
+        if self._size == size:
+            return
         self._size = size
         # Cached composites are size-specific; they must be rebuilt.
         self._composite_cache.clear()
         self._placeholder_icon = self._make_placeholder_icon()
         self.setFixedSize(*self._size)
-        if self.icon() and not self.icon().isNull():
-            self.setIconSize(QSize(*self._size))
+        if self._showing_placeholder:
+            self.setIcon(self._placeholder_icon)
+            self.setIconSize(
+                QSize(
+                    int(self._size[1] * self._placeholder_scale),
+                    int(self._size[1] * self._placeholder_scale),
+                )
+            )
+        else:
+            src = str(self._src)
+            if "," in src:
+                self.set_thumbnail(src)
+            elif src and Path(src).exists():
+                pixmap = self._scaled_pixmap_from_path(src)
+                if self._incoming_pixmap is not None:
+                    self._incoming_pixmap = pixmap
+                else:
+                    icon = QIcon()
+                    icon.addPixmap(pixmap)
+                    self.setIcon(icon)
+                    self.setIconSize(QSize(*self._size))
         self.update()
 
     def set_placeholder_icon(self, icon_name: str) -> None:
@@ -288,7 +324,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
 
         def _on_loaded(fpath: str, _k: str = key_str) -> None:
             thumbnail = thumbnail_ref()
-            if thumbnail is None:
+            if thumbnail is None or not shiboken.isValid(thumbnail):
                 return
             thumbnail._pending_async_keys.discard(_k)
             if fpath:
@@ -428,9 +464,15 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         """Handle the completion of the fade-in animation.
 
         Promotes the incoming pixmap to the button's icon and resets
-        the opacity state.
+        the opacity state.  In ``fill_area`` mode the pixmap deliberately
+        overflows the widget, and the button icon would scale it back to
+        fit, so it keeps being painted by :meth:`paintEvent` instead.
         """
         pixmap = self._incoming_pixmap
+        if self._fill_area and pixmap and not pixmap.isNull():
+            self._opacity = 1.0
+            self.update()
+            return
         if pixmap and not pixmap.isNull():
             icon = QIcon()
             icon.addPixmap(pixmap)
@@ -454,16 +496,31 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             fpath: Absolute path to the image file.
         """
         self._src = fpath
+        self._showing_placeholder = False
         self._anim.stop()
-        raw = QPixmap(fpath)
-        raw.setDevicePixelRatio(self.devicePixelRatio())
-        self._incoming_pixmap = raw.scaled(
-            QSize(*self._size) * raw.devicePixelRatio(),
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
+        self._incoming_pixmap = self._scaled_pixmap_from_path(fpath)
         self._opacity = 0.0
         self._anim.start()
+
+    def _scaled_pixmap_from_path(self, fpath: str) -> QPixmap:
+        """Load and smoothly scale an image for the current widget size.
+
+        With ``fill_area`` the image covers the widget and the overflow is
+        cropped by the clip rect in :meth:`paintEvent`; otherwise it is
+        fitted inside the widget.
+        """
+        raw = QPixmap(fpath)
+        raw.setDevicePixelRatio(self.devicePixelRatio())
+        aspect_mode = (
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding
+            if self._fill_area
+            else Qt.AspectRatioMode.KeepAspectRatio
+        )
+        return raw.scaled(
+            QSize(*self._size) * raw.devicePixelRatio(),
+            aspect_mode,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
     def set_thumbnail(self, name: Path | str) -> None:
         """Set the thumbnail image for the button.
@@ -490,6 +547,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
                 self._maybe_schedule_async_fetch(name)
                 self._incoming_pixmap = None
                 self._opacity = 1.0
+                self._showing_placeholder = True
                 self.setIcon(self._placeholder_icon)
             return
 
@@ -538,6 +596,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         self._anim.stop()
         self._incoming_pixmap = None
         self._opacity = 1.0
+        self._showing_placeholder = True
         self.setIcon(self._placeholder_icon)
 
         if not self._async_file_cacher:
@@ -555,7 +614,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         ) -> Callable[[str], None]:
             def _on_slot_loaded(fpath: str) -> None:
                 widget = thumbnail_ref()
-                if widget is None:
+                if widget is None or not shiboken.isValid(widget):
                     return
                 # Discard if a newer set_thumbnail replaced this src.
                 if str(widget._src) != src_str:
@@ -589,8 +648,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
 
         Draws the styled button base using the AYON style model, then
         overlays the incoming pixmap with the current fade opacity for
-        smooth transition animations.  Maintains a 1-pixel inset clip
-        to prevent the image from overlapping the button border.
+        smooth transition animations. The configured image inset prevents
+        the image from overlapping any border drawn around the widget.
 
         Args:
             arg__1: The paint event containing the update region.
@@ -602,18 +661,35 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         size = QSize(*self._size)
         self.setFixedSize(size)
         option.rect = QRect(0, 0, size.width(), size.height())
-        # draw base (current icon)
-        get_ayon_style().drawControl(
-            QStyle.ControlElement.CE_PushButton, option, p, self
-        )
+        if not self._transparent:
+            get_ayon_style().drawControl(
+                QStyle.ControlElement.CE_PushButton, option, p, self
+            )
+
+        elif not self.icon().isNull():
+            self.icon().paint(
+                p,
+                QRect(0, 0, size.width(), size.height()),
+                Qt.AlignmentFlag.AlignCenter,
+            )
         # overlay incoming pixmap with fade opacity
         if self._incoming_pixmap and not self._incoming_pixmap.isNull():
             dpr = self.devicePixelRatio()
             x = (size.width() - self._incoming_pixmap.width() // dpr) // 2
             y = (size.height() - self._incoming_pixmap.height() // dpr) // 2
             p.save()
-            p.setClipRect(QRect(1, 1, size.width() - 2, size.height() - 2))
+            inset = self._image_inset
+            p.setClipRect(
+                QRect(
+                    inset,
+                    inset,
+                    size.width() - inset * 2,
+                    size.height() - inset * 2,
+                )
+            )
             p.setOpacity(self._opacity)
-            p.fillRect(option.rect, self._bg_color)
+            if not self._transparent:
+                p.fillRect(option.rect, self._bg_color)
             p.drawPixmap(x, y, self._incoming_pixmap)
             p.restore()
+        p.end()

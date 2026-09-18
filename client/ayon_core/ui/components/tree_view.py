@@ -260,16 +260,30 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
+        self._styles_cache: dict[str, dict] | None = None
 
     def _tv_styles(self) -> dict[str, dict]:
-        """Return *base*, *hover* and *selected* style dicts at once."""
-        if self._style_model is None:
-            return {"base": {}, "hover": {}, "selected": {}}
-        return self._style_model.get_styles(
-            "QTreeView",
-            self._variant_str,
-            ["base", "hover", "selected"],
-        )
+        """Return *base*, *hover* and *selected* style dicts at once.
+
+        Resolved once and kept: every state lookup deep-copies the style
+        data, which is too costly to repeat for each painted row.  The
+        underlying style data is loaded once per process, so the cached
+        result never goes stale.
+        """
+        if self._styles_cache is None:
+            if self._style_model is None:
+                return {
+                    "base": {},
+                    "hover": {},
+                    "selected": {},
+                    "selected-hover": {},
+                }
+            self._styles_cache = self._style_model.get_styles(
+                "QTreeView",
+                self._variant_str,
+                ["base", "hover", "selected", "selected-hover"],
+            )
+        return self._styles_cache
 
     def initStyleOption(
         self,
@@ -309,11 +323,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         if sh is not None:
             return sh
 
-        if self._style_model:
-            style = self._style_model.get_style("QTreeView", self._variant_str)
-            h = int(style.get("item-height", 28))
-        else:
-            h = 28
+        h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
     def paint(
@@ -341,52 +351,41 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
 
         styles = self._tv_styles()
         base_style = styles["base"]
-        hover_style = styles["hover"]
-        selected_style = styles["selected"]
-
-        # --- background ------------------------------------------------
-        if is_selected:
-            bg_color = QColor(
-                selected_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
+        colors_style = {}
+        if is_selected and is_hovered:
+            colors_style = styles["selected-hover"]
+        elif is_selected:
+            colors_style = styles["selected"]
         elif is_hovered:
-            bg_color = QColor(
-                hover_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
+            colors_style = styles["hover"]
+
+        # --- bg and fg colors ------------------------------------------
+        if state & QStyle.StateFlag.State_Enabled:
+            bg_color = QColor(colors_style.get(
+                "background-color",
+                base_style.get("background-color", "transparent")
+            ))
+            text_color = QColor(colors_style.get(
+                "color",
+                base_style.get("color", "#f4f5f5"),
+            ))
         else:
+            # Use base colors for disabled state
             bg_color = QColor(
                 base_style.get("background-color", "transparent")
             )
-
-        painter.setBrush(QBrush(bg_color))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRect(opt.rect)
-
-        # --- text colour -----------------------------------------------
-        if is_selected:
-            text_color = QColor(
-                selected_style.get(
-                    "color",
-                    base_style.get("color", "#f4f5f5"),
-                )
-            )
-        else:
             text_color = QColor(base_style.get("color", "#f4f5f5"))
-
-        # disabled dimming
-        if not (state & QStyle.StateFlag.State_Enabled):
+            # - apply disabled opacity to text color
             text_color.setAlpha(
                 int(
                     text_color.alpha()
                     * base_style.get("disabled-opacity", 0.5)
                 )
             )
+
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
 
         # --- icon + text layout ----------------------------------------
         item_padding = base_style.get("item-padding", [4, 8])
