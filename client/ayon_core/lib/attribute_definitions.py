@@ -1124,6 +1124,12 @@ class FileDef(AbstractAttrDef):
             and self.allow_sequences == other.allow_sequences
         )
 
+    def serialize(self) -> Dict[str, Any]:
+        data = super().serialize()
+        # Make sure output is JSON serializable
+        data["extensions"] = sorted(self.extensions)
+        return data
+
     def is_value_valid(self, value: Any) -> bool:
         if self.single_item:
             if not isinstance(value, dict):
