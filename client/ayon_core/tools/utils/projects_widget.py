@@ -586,9 +586,11 @@ class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
         pen = painter.pen()
-        pen.setColor(opt.palette.color(
+        color = opt.palette.color(
             QtGui.QPalette.Disabled, QtGui.QPalette.Text
-        ))
+        )
+        color.setAlphaF(0.25)
+        pen.setColor(color)
         pen.setWidth(1)
         painter.setPen(pen)
 
