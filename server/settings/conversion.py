@@ -335,6 +335,15 @@ def _convert_usd_contribution_uri_modes_1_9_11(
         )
 
 
+def _convert_cleanup_patterns_1_9_14(overrides):
+    """Convert legacy 'paterns' setting to 'patterns'."""
+    cleanup_settings = overrides.get("publish", {}).get("CleanUp")
+    if not cleanup_settings or "paterns" not in cleanup_settings:
+        return
+
+    cleanup_settings["patterns"] = cleanup_settings.pop("paterns")
+
+
 def _convert_publish_plugins(overrides, version: VersionInfo):
     if "publish" not in overrides:
         return
@@ -342,6 +351,7 @@ def _convert_publish_plugins(overrides, version: VersionInfo):
     _convert_oiio_transcode_0_4_5(overrides["publish"])
     _convert_usd_contribution_variant_default_policy_1_9_11(overrides)
     _convert_usd_contribution_uri_modes_1_9_11(overrides["publish"], version)
+    _convert_cleanup_patterns_1_9_14(overrides)
 
 
 def _convert_extract_thumbnail(overrides, version: VersionInfo):
