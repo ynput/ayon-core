@@ -561,7 +561,6 @@ class SwitchAssetDialog(QtWidgets.QDialog):
     def _get_current_output_repre_ids(self):
         # NOTE hero versions are not used because it is expected that
         # hero version has same representations as latests
-        selected_project_name = self._projects_combox.currentText()
         selected_folder_id = self._folders_field.get_selected_folder_id()
         selected_product_name = self._products_combox.currentText()
         selected_repre = self._representations_box.currentText()
