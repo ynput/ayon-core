@@ -89,7 +89,7 @@ class AYTreeView(StyleMixin, QTreeView):
         self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.viewport().setMouseTracking(True)
         self.viewport().installEventFilter(self)
-        self._mouse_pos: QPoint = QPoint()
+        self._mouse_pos: QPoint = QPoint(-1, -1)
         self._sync_viewport_palette()
 
         # Custom item delegate — paints items directly, avoids QSS.
@@ -153,7 +153,7 @@ class AYTreeView(StyleMixin, QTreeView):
             if event.type() == QEvent.Type.MouseMove:
                 self._mouse_pos = event.pos()
             elif event.type() == QEvent.Type.Leave:
-                self._mouse_pos = QPoint()
+                self._mouse_pos = QPoint(-1, -1)
         return super().eventFilter(obj, event)
 
     def drawBranches(self, painter, rect, index):
