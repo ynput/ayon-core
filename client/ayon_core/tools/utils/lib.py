@@ -256,16 +256,16 @@ def preserve_expanded_rows(tree_view, column=0, role=None):
     try:
         yield
     finally:
-        if not expanded:
-            return
-
-        for index in iter_model_rows(model, column=column, include_root=False):
-            value = index.data(role)
-            state = value in expanded
-            if state:
-                tree_view.expand(index)
-            else:
-                tree_view.collapse(index)
+        if expanded:
+            for index in iter_model_rows(
+                model, column=column, include_root=False
+            ):
+                value = index.data(role)
+                state = value in expanded
+                if state:
+                    tree_view.expand(index)
+                else:
+                    tree_view.collapse(index)
 
 
 @contextlib.contextmanager
@@ -307,9 +307,6 @@ def preserve_selection(tree_view, column=0, role=None, current_index=True):
     try:
         yield
     finally:
-        if not selected:
-            return
-
         # Go through all indices, select the ones with similar data
         for index in iter_model_rows(model, column=column, include_root=False):
             value = index.data(role)
