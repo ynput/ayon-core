@@ -403,15 +403,17 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         content_left = content_rect.left()
         if not icon.isNull():
             icon_size = opt.decorationSize
-            icon_rect = QRect(opt.rect)
+            icon_rect = QRect(content_rect)
             icon_rect.setSize(icon_size)
             if opt.decorationAlignment & Qt.AlignmentFlag.AlignBottom:
                 icon_rect.moveTop(
-                    (opt.rect.bottom() - icon_size.height()) + 1
+                    (content_rect.bottom() - icon_size.height()) + 1
                 )
             elif opt.decorationAlignment & Qt.AlignmentFlag.AlignVCenter:
                 icon_rect.moveTop(
-                    (opt.rect.center().y() - (icon_size.height() // 2)) + 1
+                    (
+                        content_rect.center().y() - (icon_size.height() // 2)
+                    ) + 1
                 )
 
             icon_offset = icon_rect.width()
