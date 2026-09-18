@@ -408,18 +408,21 @@ class TableField(BaseItem):
             elif last_index is None:
                 add_message = ""
                 if ellide:
-                    add_message = " String was shortened to `{}`."
                     line = ""
-                    for idx, char in enumerate(words[idx]):
+                    for char_idx, char in enumerate(words[idx]):
                         _line = line + char + self.ellide_text
                         _line_width = font.getsize(_line)[0]
                         if _line_width > max_width:
-                            if idx == 0:
-                                line = _line
+                            if char_idx == 0:
+                                line = char
                             break
                         line = line + char
 
+                    line += self.ellide_text
                     lines.append(line)
+                    add_message = (
+                        " String was shortened to `{}`."
+                    ).format(line)
                 # TODO logging
                 self.log.warning((
                     "Font size is too big.{} <{}>"
