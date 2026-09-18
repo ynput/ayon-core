@@ -358,30 +358,33 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         elif is_hovered:
             colors_style = styles["hover"]
 
-        # --- background ------------------------------------------------
-        bg_color = QColor(colors_style.get(
-            "background-color",
-            base_style.get("background-color", "transparent")
-        ))
-
-        painter.setBrush(QBrush(bg_color))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRect(opt.rect)
-
-        # --- text colour -----------------------------------------------
-        text_color = QColor(colors_style.get(
-            "color",
-            base_style.get("color", "#f4f5f5"),
-        ))
-
-        # disabled dimming
-        if not (state & QStyle.StateFlag.State_Enabled):
+        # --- bg and fg colors ------------------------------------------
+        if state & QStyle.StateFlag.State_Enabled:
+            bg_color = QColor(colors_style.get(
+                "background-color",
+                base_style.get("background-color", "transparent")
+            ))
+            text_color = QColor(colors_style.get(
+                "color",
+                base_style.get("color", "#f4f5f5"),
+            ))
+        else:
+            # Use base colors for disabled state
+            bg_color = QColor(
+                base_style.get("background-color", "transparent")
+            )
+            text_color = QColor(base_style.get("color", "#f4f5f5"))
+            # - apply disabled opacity to text color
             text_color.setAlpha(
                 int(
                     text_color.alpha()
                     * base_style.get("disabled-opacity", 0.5)
                 )
             )
+
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
 
         # --- icon + text layout ----------------------------------------
         item_padding = base_style.get("item-padding", [4, 8])
