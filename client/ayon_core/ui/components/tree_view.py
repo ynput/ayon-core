@@ -350,47 +350,29 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
 
         styles = self._tv_styles()
         base_style = styles["base"]
-        hover_style = styles["hover"]
-        selected_style = styles["selected"]
-        # Same rule as the table: a selected row that is hovered keeps
-        # its selected colour, brightened.
+        colors_style = {}
         if is_selected and is_hovered:
-            selected_style = styles["selected-hover"]
+            colors_style = styles["selected-hover"]
+        elif is_selected:
+            colors_style = styles["selected"]
+        elif is_hovered:
+            colors_style = styles["hover"]
 
         # --- background ------------------------------------------------
-        if is_selected:
-            bg_color = QColor(
-                selected_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
-        elif is_hovered:
-            bg_color = QColor(
-                hover_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
-        else:
-            bg_color = QColor(
-                base_style.get("background-color", "transparent")
-            )
+        bg_color = QColor(colors_style.get(
+            "background-color",
+            base_style.get("background-color", "transparent")
+        ))
 
         painter.setBrush(QBrush(bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRect(opt.rect)
 
         # --- text colour -----------------------------------------------
-        if is_selected:
-            text_color = QColor(
-                selected_style.get(
-                    "color",
-                    base_style.get("color", "#f4f5f5"),
-                )
-            )
-        else:
-            text_color = QColor(base_style.get("color", "#f4f5f5"))
+        text_color = QColor(colors_style.get(
+            "color",
+            base_style.get("color", "#f4f5f5"),
+        ))
 
         # disabled dimming
         if not (state & QStyle.StateFlag.State_Enabled):
