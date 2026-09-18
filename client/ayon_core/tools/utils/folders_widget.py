@@ -43,9 +43,63 @@ FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 6
 
 
 class CenteredIconDelegate(TreeViewItemDelegate):
-    def initStyleOption(self, option, index):
-        super().initStyleOption(option, index)
-        option.displayAlignment = QtCore.Qt.AlignHCenter
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        styles = self._tv_styles()
+        base_style = styles["base"]
+        hover_style = styles["hover"]
+        selected_style = styles["selected"]
+
+        if opt.state & QtWidgets.QStyle.StateFlag.State_Selected:
+            bg_color = QtGui.QColor(
+                selected_style.get(
+                    "background-color",
+                    base_style.get("background-color", "transparent"),
+                )
+            )
+        elif opt.state & QtWidgets.QStyle.StateFlag.State_MouseOver:
+            bg_color = QtGui.QColor(
+                hover_style.get(
+                    "background-color",
+                    base_style.get("background-color", "transparent"),
+                )
+            )
+        else:
+            bg_color = QtGui.QColor(
+                base_style.get("background-color", "transparent")
+            )
+
+        painter.setBrush(QtGui.QBrush(bg_color))
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
+
+        icon = opt.icon
+        if icon.isNull():
+            return
+
+
+        item_padding = base_style.get("item-padding", [4, 8])
+        content_rect = QtCore.QRect(opt.rect).adjusted(
+            item_padding[1],
+            item_padding[0],
+            -item_padding[1],
+            -item_padding[0],
+        )
+        icon_rect = QtCore.QRect(content_rect)
+        icon_rect.setSize(opt.decorationSize)
+        icon_rect.moveCenter(content_rect.center())
+        icon.paint(painter, icon_rect, QtCore.Qt.AlignmentFlag.AlignCenter)
+        painter.restore()
+
 
 
 class RefreshTask(QtCore.QObject, QtCore.QRunnable):
