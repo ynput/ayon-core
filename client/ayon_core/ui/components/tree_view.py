@@ -455,6 +455,66 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
 
         painter.restore()
 
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> None:
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        styles = self._tv_styles()
+        base_style = styles["base"]
+        hover_style = styles["hover"]
+        selected_style = styles["selected"]
+
+        if opt.state & QStyle.StateFlag.State_Selected:
+            bg_color = QColor(
+                selected_style.get(
+                    "background-color",
+                    base_style.get("background-color", "transparent"),
+                )
+            )
+        elif opt.state & QStyle.StateFlag.State_MouseOver:
+            bg_color = QColor(
+                hover_style.get(
+                    "background-color",
+                    base_style.get("background-color", "transparent"),
+                )
+            )
+        else:
+            bg_color = QColor(
+                base_style.get("background-color", "transparent")
+            )
+
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
+
+        icon = opt.icon
+        if icon.isNull():
+            painter.restore()
+            return
+
+        item_padding = base_style.get("item-padding", [4, 8])
+        content_rect = QRect(opt.rect).adjusted(
+            item_padding[1],
+            item_padding[0],
+            -item_padding[1],
+            -item_padding[0],
+        )
+        icon_rect = QRect(content_rect)
+        icon_rect.setSize(opt.decorationSize)
+        icon_rect.moveCenter(content_rect.center())
+        icon.paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter)
+        painter.restore()
+
+
 # =============================================================================
 # __main__ - visual test harness
 # =============================================================================
