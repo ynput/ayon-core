@@ -1087,7 +1087,7 @@ class FileDef(AbstractAttrDef):
                 elif isinstance(default, str):
                     default = FileDefItem.from_paths(
                         [default.strip()], allow_sequences
-                    )[0]
+                    )[0].to_dict()
 
                 else:
                     raise TypeError((
