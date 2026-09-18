@@ -108,7 +108,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     label = "Extract Thumbnail"
     order = pyblish.api.ExtractorOrder + 0.49
     families = [
-        "imagesequence", "render", "render2d", "prerender",
+        "imagesequence", "render", "render2d", "prerender", "plate",
         "source", "clip", "take", "online", "image", "editorial_pkg"
     ]
     hosts = [
@@ -496,6 +496,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         repre_display = colorspace_data.get("display")
         repre_view = colorspace_data.get("view")
+        repre_colorspace = colorspace_data.get("colorspace")
         oiio_default_display = None
         oiio_default_view = None
         oiio_default_colorspace = None
@@ -508,6 +509,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     repre_view,
                     repre_display
                 )
+            )
+        elif repre_colorspace:
+            self.log.info(
+                f"Using Colorspace from representation: '{repre_colorspace}'"
             )
         # if representation doesn't have display and view then use
         #   oiiotool_defaults
@@ -531,7 +536,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 source_view=colorspace_data.get("view"),
                 target_display=repre_display or oiio_default_display,
                 target_view=repre_view or oiio_default_view,
-                target_colorspace=oiio_default_colorspace,
+                target_colorspace=repre_colorspace or oiio_default_colorspace,
                 additional_command_args=resolution_arg,
                 review_layers=review_layers,
                 logger=self.log,
