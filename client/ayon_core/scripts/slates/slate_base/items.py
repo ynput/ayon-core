@@ -405,7 +405,8 @@ class TableField(BaseItem):
             if last_index == words_len - 1:
                 break
 
-            elif last_index is None:
+            # Word at 'idx' does not fit on its own line
+            elif not line:
                 add_message = ""
                 if ellide:
                     add_message = " String was shortened to `{}`."
