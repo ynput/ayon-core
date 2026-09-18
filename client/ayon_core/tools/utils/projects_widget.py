@@ -500,10 +500,29 @@ class _ProjectsPinMixin:
         )
         painter.restore()
 
-    def _paint_separator(self, painter, option, index):
+    def _paint_separator(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        bg_color: QtGui.QColor | None,
+    ) -> None:
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
-        pen = painter.pen()
+
+        # NOTE: Background is drawn because AYMenu view background has
+        #   different color from items color.
+        # If that will change we can reduce this to just draw the line.
+        if bg_color is None:
+            bg_color = opt.palette.color(
+                QtGui.QPalette.ColorGroup.Active,
+                QtGui.QPalette.ColorRole.Window,
+            )
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(bg_color)
+        painter.drawRect(option.rect)
+
+        pen = QtGui.QPen()
         color = opt.palette.color(
             QtGui.QPalette.Disabled, QtGui.QPalette.Text
         )
@@ -530,7 +549,9 @@ class ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
         """Paint tree item with pin icon for pinned projects."""
         item_type = index.data(PROJECT_ITEM_TYPE)
         if item_type == ProjectItemType.PinSeparator:
-            self._paint_separator(painter, option, index)
+            self._paint_separator(
+                painter, option, index, QtCore.Qt.transparent
+            )
             return
         super().paint(painter, option, index)
         self._paint_pin_icon(painter, option, index)
@@ -543,7 +564,16 @@ class ProjectsComboBoxDelegate(_ProjectsPinMixin, ComboBoxItemDelegate):
         """Paint combobox item with pin icon for pinned projects."""
         item_type = index.data(PROJECT_ITEM_TYPE)
         if item_type == ProjectItemType.PinSeparator:
-            self._paint_separator(painter, option, index)
+            cb = self.parent()
+            # Menu background from the AYON style JSON
+            menu_bg = None
+            if self._style_model:
+                cb_style = self._style_model.get_style("QComboBox")
+                cb_style.set_context(cb)
+                menu_bg = QtGui.QColor(
+                    cb_style.get("menu-background-color", "#1c2026")
+                )
+            self._paint_separator(painter, option, index, menu_bg)
             return
         super().paint(painter, option, index)
         self._paint_pin_icon(painter, option, index)
