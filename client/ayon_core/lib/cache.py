@@ -233,7 +233,7 @@ class NestedCacheItem:
             lifetime (int): Lifetime of the cache data in seconds.
 
         """
-        self._init_info.lifetime = lifetime
+        self._init_info = self._init_info._replace(lifetime=lifetime)
         for cache in self._data_by_key.values():
             cache.set_lifetime(lifetime)
 
