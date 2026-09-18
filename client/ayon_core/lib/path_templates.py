@@ -100,6 +100,14 @@ class StringTemplate:
             )
 
         self._template: str = template
+        self._parts: list[Union[str, OptionalPart, FormattingPart]] = (
+            self._parse_parts(template)
+        )
+
+    @classmethod
+    def _parse_parts(
+        cls, template: str
+    ) -> list[Union[str, OptionalPart, FormattingPart]]:
         parts = []
         formatter = Formatter()
 
@@ -130,9 +138,7 @@ class StringTemplate:
             if substr:
                 new_parts.append(substr)
 
-        self._parts: list[Union[str, OptionalPart, FormattingPart]] = (
-            self.find_optional_parts(new_parts)
-        )
+        return cls.find_optional_parts(new_parts)
 
     def __str__(self) -> str:
         return self.template
@@ -145,6 +151,7 @@ class StringTemplate:
 
     def replace(self, *args, **kwargs):
         self._template = self.template.replace(*args, **kwargs)
+        self._parts = self._parse_parts(self._template)
         return self
 
     @property
