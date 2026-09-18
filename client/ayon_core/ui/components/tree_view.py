@@ -89,7 +89,7 @@ class AYTreeView(StyleMixin, QTreeView):
         self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.viewport().setMouseTracking(True)
         self.viewport().installEventFilter(self)
-        self._mouse_pos: QPoint = QPoint()
+        self._mouse_pos: QPoint = QPoint(-1, -1)
         self._sync_viewport_palette()
 
         # Custom item delegate — paints items directly, avoids QSS.
@@ -153,7 +153,7 @@ class AYTreeView(StyleMixin, QTreeView):
             if event.type() == QEvent.Type.MouseMove:
                 self._mouse_pos = event.pos()
             elif event.type() == QEvent.Type.Leave:
-                self._mouse_pos = QPoint()
+                self._mouse_pos = QPoint(-1, -1)
         return super().eventFilter(obj, event)
 
     def drawBranches(self, painter, rect, index):
@@ -185,6 +185,16 @@ class AYTreeView(StyleMixin, QTreeView):
         if idx_rows == self._get_index_rows(hovered_idx):
             state |= QStyle.StateFlag.State_MouseOver
 
+        arrow_rect = QRect()
+        if state & QStyle.StateFlag.State_Children:
+            arrow_rect = QRect(rect)
+            arrow_rect.setLeft((len(idx_rows) - 1) * self.indentation())
+
+        # Use 'State_Active' to tell drawers that the mouse is over the arrow,
+        #   not just the row.
+        if arrow_rect.contains(self._mouse_pos):
+            state |= QStyle.StateFlag.State_Active
+
         opt.state = state
 
         # Call our drawer directly, not through self.style().
@@ -195,6 +205,14 @@ class AYTreeView(StyleMixin, QTreeView):
                 "QTreeView",
             )
         ](opt, painter, self)
+
+    def _get_index_rows(self, index: QModelIndex) -> list[int]:
+        """Return a list of row numbers from the root to the given index."""
+        rows = []
+        while index.isValid():
+            rows.append(index.row())
+            index = index.parent()
+        return rows
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Emit double_clicked signal on double-click."""
