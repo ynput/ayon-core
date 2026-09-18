@@ -505,7 +505,7 @@ class NumberDef(AbstractAttrDef):
                 return False
         elif not isinstance(value, float):
             return False
-        if self.minimum > value > self.maximum:
+        if not self.minimum <= value <= self.maximum:
             return False
         return True
 
