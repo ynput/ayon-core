@@ -1004,6 +1004,10 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
         """Return a fixed row height from the style data."""
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
+
         if self._style_model:
             style = self._style_model.get_style(
                 "AYTableView", self._variant_str

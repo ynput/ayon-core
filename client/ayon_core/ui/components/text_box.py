@@ -776,7 +776,7 @@ class AYTextBox(AYContainer):
         # comment category if available
         if self.show_categories:
             self.com_cat = AYComboBox(
-                parent=self, items=self.comment_categories
+                parent=self, items=self.comment_categories, show_chevron=False
             )
             self.com_cat.currentTextChanged.connect(self._on_category_changed)
             lyt.addWidget(self.com_cat)
