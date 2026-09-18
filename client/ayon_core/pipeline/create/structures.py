@@ -587,26 +587,28 @@ class PublishAttributes:
             "attr_defs": {
                 plugin_name: attrs_value.get_serialized_attr_defs()
                 for plugin_name, attrs_value in self._data.items()
+                if isinstance(attrs_value, AttributeValues)
             },
         }
 
     def deserialize_attributes(self, data):
-        attr_defs = deserialize_attr_defs(data["attr_defs"])
-
         origin_data = self._origin_data
-        data = self._data
+        current_data = self._data
         self._data = {}
 
         added_keys = set()
-        for plugin_name, attr_defs_data in attr_defs.items():
+        for plugin_name, attr_defs_data in data["attr_defs"].items():
             attr_defs = deserialize_attr_defs(attr_defs_data)
-            value = data.get(plugin_name) or {}
+            value = current_data.get(plugin_name) or {}
+            if isinstance(value, AttributeValues):
+                value = value.data_to_store()
             orig_value = copy.deepcopy(origin_data.get(plugin_name) or {})
             self._data[plugin_name] = PublishAttributeValues(
                 self, plugin_name, attr_defs, value, orig_value
             )
+            added_keys.add(plugin_name)
 
-        for key, value in data.items():
+        for key, value in current_data.items():
             if key not in added_keys:
                 self._data[key] = value
 
