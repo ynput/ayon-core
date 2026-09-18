@@ -43,9 +43,10 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
 
 
 class ControllerWrap:
-    def __init__(self, controller):
+    def __init__(self, controller, project_name):
         self._controller = controller
         self._selected_folder_id = None
+        self._project_name = project_name
 
     def emit_event(self, *args, **kwargs):
         self._controller.emit_event(*args, **kwargs)
@@ -54,7 +55,13 @@ class ControllerWrap:
         self._controller.register_event_callback(*args, **kwargs)
 
     def get_current_project_name(self):
-        return self._controller.get_current_project_name()
+        return self._project_name
+
+    def set_project_name(self, project_name):
+        self._project_name = project_name
+
+    def get_folder_type_items(self, *args, **kwargs):
+        return self._controller.get_folder_type_items(*args, **kwargs)
 
     def get_folder_items(self, *args, **kwargs):
         return self._controller.get_folder_items(*args, **kwargs)
@@ -69,14 +76,14 @@ class ControllerWrap:
 class FoldersDialog(QtWidgets.QDialog):
     """Dialog to select asset for a context of instance."""
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, project_name, parent):
         super(FoldersDialog, self).__init__(parent)
         self.setWindowTitle("Select folder")
 
         filter_input = PlaceholderLineEdit(self)
         filter_input.setPlaceholderText("Filter folders..")
 
-        controller_wrap = ControllerWrap(controller)
+        controller_wrap = ControllerWrap(controller, project_name)
         folders_widget = FoldersWidget(controller_wrap, self)
         folders_widget.set_deselectable(True)
 
@@ -160,6 +167,11 @@ class FoldersDialog(QtWidgets.QDialog):
         )
         self.done(1)
 
+    def set_project_name(self, project_name):
+        self._project_name = project_name
+        self._controller_wrap.set_project_name(project_name)
+        self.refresh()
+
     def set_selected_folder(self, folder_id):
         """Change preselected folder before showing the dialog.
 
@@ -194,13 +206,13 @@ class FoldersField(BaseClickableFrame):
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, project_name, parent):
         super(FoldersField, self).__init__(parent)
         self.setObjectName("FolderPathInputWidget")
 
         # Don't use 'self' for parent!
         # - this widget has specific styles
-        dialog = FoldersDialog(controller, parent)
+        dialog = FoldersDialog(controller, project_name, parent)
 
         name_input = ClickableLineEdit(self)
         name_input.setObjectName("FolderPathInput")
@@ -235,6 +247,7 @@ class FoldersField(BaseClickableFrame):
         dialog.finished.connect(self._on_dialog_finish)
 
         self._controller = controller
+        self._project_name = project_name
         self._dialog = dialog
         self._name_input = name_input
         self._icon_btn = icon_btn
@@ -246,6 +259,10 @@ class FoldersField(BaseClickableFrame):
 
     def refresh(self):
         self._dialog.refresh()
+
+    def set_project_name(self, project_name):
+        self._project_name = project_name
+        self._dialog.set_project_name(project_name)
 
     def is_valid(self):
         """Is asset valid."""
@@ -283,7 +300,9 @@ class FoldersField(BaseClickableFrame):
         if not folder_id:
             folder_label = None
         elif folder_id and not folder_label:
-            folder_label = self._controller.get_folder_label(folder_id)
+            folder_label = self._controller.get_folder_label(
+                self._project_name, folder_id
+            )
         self._selected_folder_label = folder_label
         self.set_text(folder_label if folder_label else "<folder>")
 
