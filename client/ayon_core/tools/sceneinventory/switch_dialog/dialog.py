@@ -26,6 +26,7 @@ log = logging.getLogger("SwitchAssetDialog")
 
 class ValidationState:
     def __init__(self):
+        self.project_ok = True
         self.folder_ok = True
         self.product_ok = True
         self.repre_ok = True
@@ -33,7 +34,8 @@ class ValidationState:
     @property
     def all_ok(self):
         return (
-            self.folder_ok
+            self.project_ok
+            and self.folder_ok
             and self.product_ok
             and self.repre_ok
         )
@@ -59,13 +61,16 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         # Force and keep focus dialog
         self.setModal(True)
 
-        folders_field = FoldersField(controller, self)
+        project_combobox = SearchComboBox(self)
+        folders_field = FoldersField(controller, project_name, self)
         products_combox = SearchComboBox(self)
         repres_combobox = SearchComboBox(self)
 
+        project_combobox.set_placeholder("<project>")
         products_combox.set_placeholder("<product>")
         repres_combobox.set_placeholder("<representation>")
 
+        project_label = QtWidgets.QLabel(self)
         folder_label = QtWidgets.QLabel(self)
         product_label = QtWidgets.QLabel(self)
         repre_label = QtWidgets.QLabel(self)
@@ -77,28 +82,35 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         accept_btn.setIcon(accept_icon)
 
         main_layout = QtWidgets.QGridLayout(self)
+        # Project column
+        main_layout.addWidget(project_combobox, 1, 0)
+        main_layout.addWidget(project_label, 2, 0)
         # Folder column
         main_layout.addWidget(current_folder_btn, 0, 0)
-        main_layout.addWidget(folders_field, 1, 0)
-        main_layout.addWidget(folder_label, 2, 0)
+        main_layout.addWidget(folders_field, 1, 1)
+        main_layout.addWidget(folder_label, 2, 1)
         # Product column
-        main_layout.addWidget(products_combox, 1, 1)
-        main_layout.addWidget(product_label, 2, 1)
+        main_layout.addWidget(products_combox, 1, 2)
+        main_layout.addWidget(product_label, 2, 2)
         # Representation column
-        main_layout.addWidget(repres_combobox, 1, 2)
-        main_layout.addWidget(repre_label, 2, 2)
+        main_layout.addWidget(repres_combobox, 1, 3)
+        main_layout.addWidget(repre_label, 2, 3)
         # Btn column
-        main_layout.addWidget(accept_btn, 1, 3)
+        main_layout.addWidget(accept_btn, 1, 4)
         main_layout.setColumnStretch(0, 1)
         main_layout.setColumnStretch(1, 1)
         main_layout.setColumnStretch(2, 1)
         main_layout.setColumnStretch(3, 0)
+        main_layout.setColumnStretch(4, 0)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(0)
         show_timer.setSingleShot(False)
 
         show_timer.timeout.connect(self._on_show_timer)
+        project_combobox.currentIndexChanged.connect(
+            self._on_project_changed
+        )
         folders_field.value_changed.connect(
             self._combobox_value_changed
         )
@@ -117,9 +129,11 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self._current_folder_btn = current_folder_btn
 
         self._folders_field = folders_field
+        self._projects_combox = project_combobox
         self._products_combox = products_combox
         self._representations_box = repres_combobox
 
+        self._project_label = project_label
         self._folder_label = folder_label
         self._product_label = product_label
         self._repre_label = repre_label
@@ -132,6 +146,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         # first asset field, this also allows to see the placeholder value.
         accept_btn.setFocus()
 
+        self._project_entities_by_id = {}
         self._folder_entities_by_id = {}
         self._product_entities_by_id = {}
         self._version_entities_by_id = {}
@@ -152,6 +167,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self._init_repre_name = None
 
         self._fill_check = False
+        self._source_project_name = project_name
         self._project_name = project_name
         self._folder_id = folder_id
 
@@ -175,15 +191,25 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         validation_state = ValidationState()
         self._folders_field.refresh()
+
+        if validation_state.project_ok:
+            project_values = self._projects_box_values()
+            self._fill_combobox(project_values, "project")
+            self._is_project_ok(validation_state)
         # Set other comboboxes to empty if any document is missing or
-        #   any folder of loaded representations is archived.
+        # any folder of loaded representations is archived.
         self._is_folder_ok(validation_state)
+
         if validation_state.folder_ok:
             product_values = self._get_product_box_values()
             self._fill_combobox(product_values, "product")
             self._is_product_ok(validation_state)
 
-        if validation_state.folder_ok and validation_state.product_ok:
+        if (
+                validation_state.project_ok and
+                validation_state.folder_ok and
+                validation_state.product_ok
+        ):
             repre_values = sorted(self._representations_box_values())
             self._fill_combobox(repre_values, "repre")
             self._is_repre_ok(validation_state)
@@ -197,6 +223,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         if init_refresh:
             # pre select context if possible
+            self._projects_combox.set_valid_value(self._project_name)
             self._folders_field.set_selected_item(self._init_folder_id)
             self._products_combox.set_valid_value(self._init_product_name)
             self._representations_box.set_valid_value(self._init_repre_name)
@@ -204,11 +231,13 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self._fill_check = True
 
     def set_labels(self):
+        project_label = self._projects_combox.get_valid_value()
         folder_label = self._folders_field.get_selected_folder_label()
         product_label = self._products_combox.get_valid_value()
         repre_label = self._representations_box.get_valid_value()
 
         default = "*No changes"
+        self._project_label.setText(project_label or default)
         self._folder_label.setText(folder_label or default)
         self._product_label.setText(product_label or default)
         self._repre_label.setText(repre_label or default)
@@ -217,6 +246,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         error_msg = "*Please select"
         error_sheet = "border: 1px solid red;"
 
+        project_sheet = None
         product_sheet = None
         repre_sheet = None
         accept_state = ""
@@ -228,10 +258,14 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         elif validation_state.repre_ok is False:
             repre_sheet = error_sheet
             self._repre_label.setText(error_msg)
+        elif validation_state.project_ok is False:
+            project_sheet = error_sheet
+            self._project_label.setText(error_msg)
 
         if validation_state.all_ok:
             accept_state = "1"
 
+        self._projects_combox.setStyleSheet(project_sheet or "")
         self._folders_field.set_valid(validation_state.folder_ok)
         self._products_combox.setStyleSheet(product_sheet or "")
         self._representations_box.setStyleSheet(repre_sheet or "")
@@ -260,7 +294,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             for item in self._items
         }
 
-        project_name = self._project_name
+        project_name = self._source_project_name
         repre_entities = list(ayon_api.get_representations(
             project_name,
             representation_ids=repre_ids,
@@ -384,6 +418,21 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self._inactive_product_ids = inactive_product_ids
         self._inactive_repre_ids = inactive_repre_ids
 
+    def _on_project_changed(self, *args):
+        selected_project_name = self._projects_combox.get_valid_value()
+        project_name = selected_project_name or self._source_project_name
+
+        if project_name != self._project_name:
+            self._project_name = project_name
+            self._folders_field.set_project_name(project_name)
+            self._folders_field.set_selected_item()
+
+        current_project_name = self._controller.get_current_project_name()
+        self._current_folder_btn.setEnabled(
+            project_name == current_project_name
+        )
+        self.refresh()
+
     def _combobox_value_changed(self, *args, **kwargs):
         self.refresh()
 
@@ -474,7 +523,9 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         return loaders
 
     def _fill_combobox(self, values, combobox_type):
-        if combobox_type == "product":
+        if combobox_type == "project":
+            combobox_widget = self._projects_combox
+        elif combobox_type == "product":
             combobox_widget = self._products_combox
         elif combobox_type == "repre":
             combobox_widget = self._representations_box
@@ -484,6 +535,9 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         # Fill combobox
         if values is not None:
+            # Block signals for the combobox to prevent
+            # triggering any connected slots
+            signal_blocker = QtCore.QSignalBlocker(combobox_widget)
             combobox_widget.populate(list(sorted(values)))
             if selected_value and selected_value in values:
                 index = None
@@ -493,6 +547,9 @@ class SwitchAssetDialog(QtWidgets.QDialog):
                         break
                 if index is not None:
                     combobox_widget.setCurrentIndex(index)
+            # Release the signal blocker to
+            # re-enable signals for the combobox
+            del signal_blocker
 
     def _set_style_property(self, widget, name, value):
         cur_value = widget.property(name)
@@ -783,6 +840,8 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if selected_folder_id:
             folder_ids = [selected_folder_id]
         else:
+            if self._project_name != self._source_project_name:
+                return []
             folder_ids = list(self._folder_entities_by_id.keys())
 
         product_entities = ayon_api.get_products(
@@ -811,6 +870,11 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if not possible_product_names:
             return []
         return list(possible_product_names)
+
+    def _projects_box_values(self):
+        project_entities = ayon_api.get_projects(fields={"name"})
+        project_names = sorted(project["name"] for project in project_entities)
+        return project_names
 
     def _representations_box_values(self):
         # NOTE hero versions are not used because it is expected that
@@ -978,11 +1042,23 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         return list(available_repres)
 
+    def _is_project_ok(self, validation_state):
+        selected_project_name = self._projects_combox.get_valid_value()
+        if (
+            self._projects_combox.currentText()
+            and selected_project_name is None
+        ):
+            validation_state.project_ok = False
+
     def _is_folder_ok(self, validation_state):
         selected_folder_id = self._folders_field.get_selected_folder_id()
         if (
             selected_folder_id is None
-            and (self._missing_entities or self._inactive_folder_ids)
+            and (
+                self._project_name != self._source_project_name
+                or self._missing_entities
+                or self._inactive_folder_ids
+            )
         ):
             validation_state.folder_ok = False
 

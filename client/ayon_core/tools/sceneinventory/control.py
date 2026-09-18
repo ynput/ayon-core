@@ -163,10 +163,14 @@ class SceneInventoryController:
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
-    def get_folder_label(self, folder_id):
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_folder_label(self, project_name, folder_id):
         if not folder_id:
             return None
-        project_name = self.get_current_project_name()
         folder_item = self._hierarchy_model.get_folder_item(
             project_name, folder_id)
         if folder_item is None:
