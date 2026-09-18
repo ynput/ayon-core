@@ -185,6 +185,16 @@ class AYTreeView(StyleMixin, QTreeView):
         if idx_rows == self._get_index_rows(hovered_idx):
             state |= QStyle.StateFlag.State_MouseOver
 
+        arrow_rect = QRect()
+        if state & QStyle.StateFlag.State_Children:
+            arrow_rect = QRect(rect)
+            arrow_rect.setLeft((len(idx_rows) - 1) * self.indentation())
+
+        # Use 'State_Active' to tell drawers that the mouse is over the arrow,
+        #   not just the row.
+        if arrow_rect.contains(self._mouse_pos):
+            state |= QStyle.StateFlag.State_Active
+
         opt.state = state
 
         # Call our drawer directly, not through self.style().
