@@ -390,6 +390,11 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         if right_is_active != left_is_active:
             return left_is_active
 
+        left_is_pinned = left_index.data(PROJECT_IS_PINNED_ROLE)
+        right_is_pinned = right_index.data(PROJECT_IS_PINNED_ROLE)
+        if left_is_pinned != right_is_pinned:
+            return left_is_pinned
+
         return super().lessThan(left_index, right_index)
 
     def filterAcceptsRow(self, source_row, source_parent):
