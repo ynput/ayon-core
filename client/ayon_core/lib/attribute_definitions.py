@@ -526,7 +526,7 @@ class NumberDef(AbstractAttrDef):
     def _def_type_compare(self, other: "NumberDef") -> bool:
         return (
             self.decimals == other.decimals
-            and self.maximum == other.maximum
+            and self.minimum == other.minimum
             and self.maximum == other.maximum
         )
 
@@ -1087,7 +1087,7 @@ class FileDef(AbstractAttrDef):
                 elif isinstance(default, str):
                     default = FileDefItem.from_paths(
                         [default.strip()], allow_sequences
-                    )[0]
+                    )[0].to_dict()
 
                 else:
                     raise TypeError((
