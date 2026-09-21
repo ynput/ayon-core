@@ -253,19 +253,18 @@ def preserve_expanded_rows(tree_view, column=0, role=None):
             value = index.data(role)
             expanded.add(value)
 
-    try:
-        yield
-    finally:
-        if expanded:
-            for index in iter_model_rows(
-                model, column=column, include_root=False
-            ):
-                value = index.data(role)
-                state = value in expanded
-                if state:
-                    tree_view.expand(index)
-                else:
-                    tree_view.collapse(index)
+    yield
+
+    if not expanded:
+        return
+
+    for index in iter_model_rows(model, column=column, include_root=False):
+        value = index.data(role)
+        state = value in expanded
+        if state:
+            tree_view.expand(index)
+        else:
+            tree_view.collapse(index)
 
 
 @contextlib.contextmanager
@@ -304,21 +303,23 @@ def preserve_selection(tree_view, column=0, role=None, current_index=True):
         return
 
     selected = set(row.data(role) for row in selected_rows)
-    try:
-        yield
-    finally:
-        # Go through all indices, select the ones with similar data
-        for index in iter_model_rows(model, column=column, include_root=False):
-            value = index.data(role)
-            state = value in selected
-            if state:
-                tree_view.scrollTo(index)  # Ensure item is visible
-                selection_model.select(index, flags)
+    yield
 
-            if current_index_value and value == current_index_value:
-                selection_model.setCurrentIndex(
-                    index, selection_model.NoUpdate
-                )
+    if not selected:
+        return
+
+    # Go through all indices, select the ones with similar data
+    for index in iter_model_rows(model, column=column, include_root=False):
+        value = index.data(role)
+        state = value in selected
+        if state:
+            tree_view.scrollTo(index)  # Ensure item is visible
+            selection_model.select(index, flags)
+
+        if current_index_value and value == current_index_value:
+            selection_model.setCurrentIndex(
+                index, selection_model.NoUpdate
+            )
 
 
 class DynamicQThread(QtCore.QThread):
