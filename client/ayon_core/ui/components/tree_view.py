@@ -207,7 +207,7 @@ class AYTreeView(StyleMixin, QTreeView):
         ](opt, painter, self)
 
     def _get_index_rows(self, index: QModelIndex) -> list[int]:
-        """Return a list of row numbers from the root to the given index."""
+        """Return a list of row numbers from the given index to the root."""
         rows = []
         while index.isValid():
             rows.append(index.row())
