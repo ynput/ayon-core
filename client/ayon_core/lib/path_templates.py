@@ -100,14 +100,14 @@ class StringTemplate:
             )
 
         self._template: str = template
-        self._parts: list[Union[str, OptionalPart, FormattingPart]] = (
+        self._parts: list[str | OptionalPart | FormattingPart] = (
             self._parse_parts(template)
         )
 
     @classmethod
     def _parse_parts(
         cls, template: str
-    ) -> list[Union[str, OptionalPart, FormattingPart]]:
+    ) -> list[str | OptionalPart | FormattingPart]:
         parts = []
         formatter = Formatter()
 
