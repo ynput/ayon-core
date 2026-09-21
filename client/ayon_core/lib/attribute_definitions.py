@@ -526,7 +526,7 @@ class NumberDef(AbstractAttrDef):
     def _def_type_compare(self, other: "NumberDef") -> bool:
         return (
             self.decimals == other.decimals
-            and self.maximum == other.maximum
+            and self.minimum == other.minimum
             and self.maximum == other.maximum
         )
 
