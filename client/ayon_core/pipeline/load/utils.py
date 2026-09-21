@@ -1137,7 +1137,7 @@ def filter_containers(containers, project_name):
     #   where it should be used.
     containers_by_project_name = collections.defaultdict(list)
     for container in containers:
-        if not _is_valid_representation_id(container["representation"]):
+        if not _is_valid_representation_id(container.get("representation")):
             invalid_containers.append(container)
             continue
         container_project = container.get("project_name")
