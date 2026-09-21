@@ -16,7 +16,7 @@ from .log import Logger
 
 log = Logger.get_logger(__name__)
 
-IS_WINDOWS = platform.platform().lower() == "windows"
+IS_WINDOWS = platform.system().lower() == "windows"
 
 
 def get_dynamic_import_module_name(
