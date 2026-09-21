@@ -281,11 +281,12 @@ def get_imageio_file_rules_colorspace_from_filepath(
             not extension
             or filepath.lower().endswith(f".{extension}")
         )
+        if not ext_match:
+            continue
         file_match = re.search(
             pattern, filepath
         )
-
-        if ext_match and file_match:
+        if file_match:
             colorspace_name = file_rule["colorspace"]
 
     return colorspace_name
