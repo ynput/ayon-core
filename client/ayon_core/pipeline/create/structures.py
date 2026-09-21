@@ -357,7 +357,7 @@ class AttributeValues:
         return value
 
     def set_value(self, value):
-        pop_keys = set(value.keys()) - set(self._data.keys())
+        pop_keys = set(self._data.keys()) - set(value.keys())
         changes = self._update(value)
         for key in pop_keys:
             _, key_changes = self._pop(key, None)
