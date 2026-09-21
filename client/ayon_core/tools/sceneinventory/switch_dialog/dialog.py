@@ -438,7 +438,8 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
     def _build_loaders_menu(self):
         repre_ids = self._get_current_output_repre_ids()
-        loaders = self._get_loaders(repre_ids)
+        project_name = self._project_name
+        loaders = self._get_loaders(repre_ids, project_name)
         # Get and destroy the action group
         self._accept_btn.clear_actions()
 
@@ -480,10 +481,10 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         loader_plugin = action.data()
         self._trigger_switch(loader_plugin)
 
-    def _get_loaders(self, repre_ids):
+    def _get_loaders(self, repre_ids, project_name):
         repre_contexts = None
         if repre_ids:
-            repre_contexts = get_repres_contexts(repre_ids)
+            repre_contexts = get_repres_contexts(repre_ids, project_name)
 
         if not repre_contexts:
             return list()
@@ -872,9 +873,16 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         return list(possible_product_names)
 
     def _projects_box_values(self):
-        project_entities = ayon_api.get_projects(fields={"name"})
-        project_names = sorted(project["name"] for project in project_entities)
-        return project_names
+        if self._project_entities_by_id is None:
+            self._project_entities_by_id = {
+                project["id"]: project
+                for project in ayon_api.get_projects(fields={"id", "name"})
+            }
+
+        return sorted(
+            project["name"]
+            for project in self._project_entities_by_id.values()
+        )
 
     def _representations_box_values(self):
         # NOTE hero versions are not used because it is expected that
