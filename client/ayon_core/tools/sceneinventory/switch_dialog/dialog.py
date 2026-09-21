@@ -1416,13 +1416,19 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         error = None
         try:
-            switch_container(container, repre_entity, loader)
+            switch_container(
+                container,
+                repre_entity,
+                loader,
+                project_name=self._project_name
+            )
         except (
             LoaderSwitchNotImplementedError,
             IncompatibleLoaderError,
             LoaderNotFoundError,
         ) as exc:
             error = str(exc)
+            log.warning("Couldn't switch asset: %s", exc)
         except Exception:
             error = (
                 "Switch asset failed. "
