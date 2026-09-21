@@ -583,12 +583,19 @@ class PublishAttributes:
         )
 
     def serialize_attributes(self):
+        attr_defs = {}
+        plugin_values = {}
+        for plugin_name, attrs_value in self._data.items():
+            if isinstance(attrs_value, AttributeValues):
+                attr_defs[plugin_name] = (
+                    attrs_value.get_serialized_attr_defs()
+                )
+            else:
+                plugin_values[plugin_name] = copy.deepcopy(attrs_value)
+
         return {
-            "attr_defs": {
-                plugin_name: attrs_value.get_serialized_attr_defs()
-                for plugin_name, attrs_value in self._data.items()
-                if isinstance(attrs_value, AttributeValues)
-            },
+            "attr_defs": attr_defs,
+            "plugin_values": plugin_values,
         }
 
     def deserialize_attributes(self, data):
@@ -606,6 +613,10 @@ class PublishAttributes:
             self._data[plugin_name] = PublishAttributeValues(
                 self, plugin_name, attr_defs, value, orig_value
             )
+            added_keys.add(plugin_name)
+
+        for plugin_name, values in data["plugin_values"].items():
+            self._data[plugin_name] = copy.deepcopy(values)
             added_keys.add(plugin_name)
 
         for key, value in current_data.items():
