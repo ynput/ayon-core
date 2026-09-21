@@ -553,7 +553,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
                     combobox_widget.setCurrentIndex(index)
             # Release the signal blocker to
             # re-enable signals for the combobox
-            del signal_blocker
+            combobox_widget.blockSignals(False)
 
     def _set_style_property(self, widget, name, value):
         cur_value = widget.property(name)
