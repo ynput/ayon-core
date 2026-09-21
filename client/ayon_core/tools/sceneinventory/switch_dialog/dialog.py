@@ -541,7 +541,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if values is not None:
             # Block signals for the combobox to prevent
             # triggering any connected slots
-            signal_blocker = QtCore.QSignalBlocker(combobox_widget)
+            combobox_widget.blockSignals(True)
             combobox_widget.populate(list(sorted(values)))
             if selected_value and selected_value in values:
                 index = None
