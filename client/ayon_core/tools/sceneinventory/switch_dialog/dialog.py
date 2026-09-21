@@ -111,6 +111,9 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         project_combobox.currentIndexChanged.connect(
             self._on_project_changed
         )
+        project_combobox.lineEdit().editingFinished.connect(
+            self._on_project_changed
+        )
         folders_field.value_changed.connect(
             self._combobox_value_changed
         )
