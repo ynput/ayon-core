@@ -873,16 +873,9 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         return list(possible_product_names)
 
     def _projects_box_values(self):
-        if self._project_entities_by_id is None:
-            self._project_entities_by_id = {
-                project["id"]: project
-                for project in ayon_api.get_projects(fields={"id", "name"})
-            }
-
-        return sorted(
-            project["name"]
-            for project in self._project_entities_by_id.values()
-        )
+            project_entities = ayon_api.get_projects(fields={"name"})
+            project_names = sorted(project["name"] for project in project_entities)
+            return project_names
 
     def _representations_box_values(self):
         # NOTE hero versions are not used because it is expected that
