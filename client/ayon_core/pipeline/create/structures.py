@@ -176,7 +176,7 @@ class InstanceFamilies:
         elif not isinstance(families, set):
             families = set()
 
-        self.origin_data: list[str] = list(families)
+        self.origin_data: list[str] = sorted(families)
         self.families: set[str] = families
         self._instance = instance
 
@@ -200,7 +200,7 @@ class InstanceFamilies:
         return self
 
     def mark_as_stored(self) -> None:
-        self.origin_data = list(self.families)
+        self.origin_data = sorted(self.families)
 
     def data_to_store(self) -> list[str]:
         return sorted(self.families)
