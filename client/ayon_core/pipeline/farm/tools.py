@@ -82,7 +82,9 @@ def from_published_scene(instance, replace_in_path=True):
     file_path = os.path.normpath(template_filled)
 
     if not os.path.exists(file_path):
-        raise
+        raise FileNotFoundError(
+            f"Published scene does not exist: {file_path}"
+        )
 
     if not replace_in_path:
         return file_path
