@@ -11,11 +11,11 @@ from qtpy.QtCore import (
     QSize,
     Qt,
     Signal,
+    QPoint,
 )
 from qtpy.QtGui import (
     QBrush,
     QColor,
-    QCursor,
     QIcon,
     QMouseEvent,
     QPainter,
@@ -89,7 +89,7 @@ class AYTreeView(StyleMixin, QTreeView):
         self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.viewport().setMouseTracking(True)
         self.viewport().installEventFilter(self)
-        self._hovered_row_key: tuple | None = None
+        self._mouse_pos: QPoint = QPoint(-1, -1)
         self._sync_viewport_palette()
 
         # Custom item delegate — paints items directly, avoids QSS.
@@ -151,15 +151,9 @@ class AYTreeView(StyleMixin, QTreeView):
     def eventFilter(self, obj, event):
         if obj is self.viewport():
             if event.type() == QEvent.Type.MouseMove:
-                idx = self.indexAt(event.pos())
-                key = (idx.row(), idx.parent()) if idx.isValid() else None
-                if key != self._hovered_row_key:
-                    self._hovered_row_key = key
-                    self.viewport().update()
+                self._mouse_pos = event.pos()
             elif event.type() == QEvent.Type.Leave:
-                if self._hovered_row_key is not None:
-                    self._hovered_row_key = None
-                    self.viewport().update()
+                self._mouse_pos = QPoint(-1, -1)
         return super().eventFilter(obj, event)
 
     def drawBranches(self, painter, rect, index):
@@ -186,14 +180,9 @@ class AYTreeView(StyleMixin, QTreeView):
             state |= QStyle.StateFlag.State_Enabled
 
         # Row-level hover: is the cursor on the same row as `index`?
-        hovered_index = self.indexAt(
-            self.viewport().mapFromGlobal(QCursor.pos())
-        )
-        if (
-            hovered_index.isValid()
-            and hovered_index.row() == index.row()
-            and hovered_index.parent() == index.parent()
-        ):
+        hovered_idx = self.indexAt(self._mouse_pos)
+        idx_rows = self._get_index_rows(index)
+        if idx_rows == self._get_index_rows(hovered_idx):
             state |= QStyle.StateFlag.State_MouseOver
 
         opt.state = state
@@ -206,6 +195,14 @@ class AYTreeView(StyleMixin, QTreeView):
                 "QTreeView",
             )
         ](opt, painter, self)
+
+    def _get_index_rows(self, index: QModelIndex) -> list[int]:
+        """Return a list of row numbers from the given index to the root."""
+        rows = []
+        while index.isValid():
+            rows.append(index.row())
+            index = index.parent()
+        return rows
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Emit double_clicked signal on double-click."""
