@@ -337,11 +337,9 @@ def _convert_usd_contribution_uri_modes_1_9_11(
 
 def _convert_cleanup_patterns_1_9_14(overrides):
     """Convert legacy 'paterns' setting to 'patterns'."""
-    cleanup_settings = overrides.get("publish", {}).get("CleanUp")
-    if not cleanup_settings or "paterns" not in cleanup_settings:
-        return
-
-    cleanup_settings["patterns"] = cleanup_settings.pop("paterns")
+    cleanup_settings = overrides.get("publish", {}).get("CleanUp", {})
+    if "paterns" in cleanup_settings:
+        cleanup_settings["patterns"] = cleanup_settings.pop("paterns")
 
 
 def _convert_publish_plugins(overrides, version: VersionInfo):
