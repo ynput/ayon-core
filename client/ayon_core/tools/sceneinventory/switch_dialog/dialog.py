@@ -150,7 +150,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         # first asset field, this also allows to see the placeholder value.
         accept_btn.setFocus()
 
-        self._project_entities_by_id = {}
+        self._project_names = None
         self._folder_entities_by_id = {}
         self._product_entities_by_id = {}
         self._version_entities_by_id = {}
