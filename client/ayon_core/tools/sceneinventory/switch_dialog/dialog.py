@@ -45,7 +45,7 @@ class ValidationState:
 class SwitchAssetDialog(QtWidgets.QDialog):
     """Widget to support asset switching"""
 
-    MIN_WIDTH = 550
+    MIN_WIDTH = 680
 
     switched = QtCore.Signal()
 
