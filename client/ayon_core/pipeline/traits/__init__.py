@@ -46,6 +46,7 @@ from .two_dimensional import (
 
 from .publishing import (
     TransferItem,
+    get_first_file_location,
     get_transfers_from_representations,
     get_template_data_from_representation,
     get_legacy_files_for_representation,
@@ -115,6 +116,7 @@ __all__ = [  # noqa: RUF022
 
     # publishing
     "TransferItem",
+    "get_first_file_location",
     "get_transfers_from_representations",
     "get_template_data_from_representation",
     "get_legacy_files_for_representation",

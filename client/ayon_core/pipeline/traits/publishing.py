@@ -41,6 +41,29 @@ if TYPE_CHECKING:
     )
 
 
+def get_first_file_location(representation: Representation) -> Path | None:
+    """Get the first file path from a representation, regardless of
+    whether it carries `FileLocation` or `FileLocations`.
+
+    Used by publish plugins that only need "some file to inspect" (mimetype
+    guessing, colorspace file-rule matching, pixel probing) and don't care
+    which of the two file traits is present.
+
+    Returns:
+        Optional[Path]: First file path, or None if neither trait is
+            present, or `FileLocations` is empty.
+
+    """
+    if representation.contains_trait(FileLocations):
+        file_paths = representation.get_trait(FileLocations).file_paths
+        if not file_paths:
+            return None
+        return Path(file_paths[0].file_path)
+    if representation.contains_trait(FileLocation):
+        return Path(representation.get_trait(FileLocation).file_path)
+    return None
+
+
 class TransferItem:
     """Represents a single transfer item.
 
@@ -571,7 +594,10 @@ def get_template_data_from_representation(
 
         template_data["colorspace"] = {
             "colorspace": colorspace_data.color_space,
-            "config": colorspace_data.config
+            "config": {
+                "path": colorspace_data.config_path,
+                "template": colorspace_data.config_template,
+            }
         }
 
     # add explicit list of traits properties to template data

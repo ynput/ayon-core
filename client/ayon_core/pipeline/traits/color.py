@@ -19,7 +19,11 @@ class ColorManaged(TraitBase):
     Attributes:
         color_space (str): An OCIO colorspace name available
             in the "current" OCIO context.
-        config (str): An OCIO config name defining color space.
+        config_path (Optional[str]): Absolute, resolved path to the
+            OCIO config used to interpret `color_space`.
+        config_template (Optional[str]): Anatomy template (with tokens)
+            pointing at the same OCIO config, for contexts where the
+            resolved absolute path isn't portable (e.g. remote publishing).
     """
 
     id: ClassVar[str] = "ayon.color.ColorManaged.v1"
@@ -27,4 +31,5 @@ class ColorManaged(TraitBase):
     color_space: str
     description: ClassVar[str] = "Color Managed trait."
     persistent: ClassVar[bool] = True
-    config: Optional[str] = None
+    config_path: Optional[str] = None
+    config_template: Optional[str] = None
