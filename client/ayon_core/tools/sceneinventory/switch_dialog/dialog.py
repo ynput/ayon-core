@@ -5,7 +5,6 @@ import ayon_api
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     switch_container,
