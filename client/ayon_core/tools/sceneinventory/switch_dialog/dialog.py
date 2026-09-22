@@ -550,8 +550,6 @@ class SwitchAssetDialog(QtWidgets.QDialog):
                         break
                 if index is not None:
                     combobox_widget.setCurrentIndex(index)
-            # Release the signal blocker to
-            # re-enable signals for the combobox
             combobox_widget.blockSignals(False)
 
     def _set_style_property(self, widget, name, value):
