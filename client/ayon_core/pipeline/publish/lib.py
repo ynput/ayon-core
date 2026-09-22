@@ -971,8 +971,9 @@ def replace_with_published_scene_path(
     log.info("Using published scene for render {}".format(file_path))
 
     if not os.path.exists(file_path):
-        log.error("published scene does not exist!")
-        raise
+        raise FileNotFoundError(
+            f"Published scene does not exist: {file_path}"
+        )
 
     if not replace_in_path:
         return file_path
