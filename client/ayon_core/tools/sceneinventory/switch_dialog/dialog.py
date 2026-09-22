@@ -5,6 +5,7 @@ import ayon_api
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     switch_container,
@@ -877,13 +878,30 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
     def _projects_box_values(self):
         if not self._project_entities_by_id:
-            self._project_entities_by_id = {
-                project["code"]: project
-                for project in ayon_api.get_projects(
-                    library=True,
-                    active=True,
-                    fields={"code", "name"}
+            current_project_name = get_current_project_name()
+
+            # Fetch active, non-library projects
+            projects = ayon_api.get_projects(
+                library=True,
+                active=True,
+                fields={"code", "name"},
+            )
+
+            # Ensure the current project is present, even if it's a library
+            # or inactive project that get_projects() filtered out.
+            if not any(
+                project["name"] == current_project_name
+                for project in projects
+            ):
+                current = ayon_api.get_project(
+                    project_name=current_project_name,
+                    fields={"code", "name"},
                 )
+                if current:
+                    projects.append(current)
+
+            self._project_entities_by_id = {
+                project["code"]: project for project in projects
             }
 
         return sorted(
