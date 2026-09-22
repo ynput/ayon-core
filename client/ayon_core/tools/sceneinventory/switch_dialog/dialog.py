@@ -879,7 +879,11 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if not self._project_entities_by_id:
             self._project_entities_by_id = {
                 project["code"]: project
-                for project in ayon_api.get_projects(fields={"code", "name"})
+                for project in ayon_api.get_projects(
+                    library=True,
+                    active=True,
+                    fields={"code", "name"}
+                )
             }
 
         return sorted(
