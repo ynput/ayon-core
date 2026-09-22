@@ -10,6 +10,7 @@ from ayon_core.ui.components import AYLineEdit
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.components.skeleton import AYSkeletonLoader
 from ayon_core.ui.components.slicer import TreeFilterProxyModel
 from ayon_core.ui.components.task_queue import get_task_queue
 from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
@@ -183,6 +184,23 @@ class BrowserFolderTreeView(AYTreeView):
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent, variant=AYTreeView.Variants.Low)
         self.setHeaderHidden(True)
+        # All rows have the same height, lets the view skip measuring
+        #   every row which matters with thousands of expanded folders.
+        self.setUniformRowHeights(True)
+        self._skeleton = AYSkeletonLoader(
+            self, variant=AYTreeView.Variants.Low
+        )
+
+    def set_loading(self, loading: bool) -> None:
+        """Show animated placeholder rows while the model is loading.
+
+        The placeholder is shown only if there is nothing to show yet,
+        a refresh of already visible rows happens in place.
+        """
+        model = self.model()
+        self._skeleton.set_loading(
+            loading and (model is None or model.rowCount() == 0)
+        )
 
 
 class BrowserSlicer(AYContainer):
@@ -308,6 +326,9 @@ class BrowserSlicer(AYContainer):
             self._on_folders_selection_changed
         )
         self._folders_model.modelReset.connect(self._on_folders_reset)
+        self._folders_model.loading_changed.connect(
+            self._folders_view.set_loading
+        )
         self._reviews_view.selection_changed.connect(
             self._on_reviews_selection_changed
         )
@@ -608,7 +629,10 @@ class BrowserSlicer(AYContainer):
         Once loading finishes and the proxy has re-synced against the
         now-populated model, re-run it for any search still active.
         """
-        if loading or self._reviews_view is None:
+        if self._reviews_view is None:
+            return
+        self._reviews_view.set_loading(loading)
+        if loading:
             return
 
         if self._categories.filter_text():
