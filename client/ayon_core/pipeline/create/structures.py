@@ -357,7 +357,7 @@ class AttributeValues:
         return value
 
     def set_value(self, value):
-        pop_keys = set(value.keys()) - set(self._data.keys())
+        pop_keys = set(self._data.keys()) - set(value.keys())
         changes = self._update(value)
         for key in pop_keys:
             _, key_changes = self._pop(key, None)
@@ -583,30 +583,43 @@ class PublishAttributes:
         )
 
     def serialize_attributes(self):
+        attr_defs = {}
+        plugin_values = {}
+        for plugin_name, attrs_value in self._data.items():
+            if isinstance(attrs_value, AttributeValues):
+                attr_defs[plugin_name] = (
+                    attrs_value.get_serialized_attr_defs()
+                )
+            else:
+                plugin_values[plugin_name] = copy.deepcopy(attrs_value)
+
         return {
-            "attr_defs": {
-                plugin_name: attrs_value.get_serialized_attr_defs()
-                for plugin_name, attrs_value in self._data.items()
-            },
+            "attr_defs": attr_defs,
+            "plugin_values": plugin_values,
         }
 
     def deserialize_attributes(self, data):
-        attr_defs = deserialize_attr_defs(data["attr_defs"])
-
         origin_data = self._origin_data
-        data = self._data
+        current_data = self._data
         self._data = {}
 
         added_keys = set()
-        for plugin_name, attr_defs_data in attr_defs.items():
+        for plugin_name, attr_defs_data in data["attr_defs"].items():
             attr_defs = deserialize_attr_defs(attr_defs_data)
-            value = data.get(plugin_name) or {}
+            value = current_data.get(plugin_name) or {}
+            if isinstance(value, AttributeValues):
+                value = value.data_to_store()
             orig_value = copy.deepcopy(origin_data.get(plugin_name) or {})
             self._data[plugin_name] = PublishAttributeValues(
                 self, plugin_name, attr_defs, value, orig_value
             )
+            added_keys.add(plugin_name)
 
-        for key, value in data.items():
+        for plugin_name, values in data["plugin_values"].items():
+            self._data[plugin_name] = copy.deepcopy(values)
+            added_keys.add(plugin_name)
+
+        for key, value in current_data.items():
             if key not in added_keys:
                 self._data[key] = value
 
