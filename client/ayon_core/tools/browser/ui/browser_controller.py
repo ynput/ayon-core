@@ -516,11 +516,7 @@ class BrowserWidgetController(QtCore.QObject):
         entity_ids = self._loader_controller.get_my_tasks_entity_ids(
             self._current_project
         )
-        folder_ids = set(entity_ids.get("folder_ids") or [])
-        scope = set(folder_ids)
-        for folder_id in folder_ids:
-            scope.update(self.get_folder_id_path(folder_id))
-        self._folder_id_scope = scope
+        self._folder_id_scope = set(entity_ids.get("folder_ids") or [])
         self._task_id_scope = set(entity_ids.get("task_ids") or [])
 
     def get_task_id_scope(self) -> set[str] | None:
