@@ -877,8 +877,8 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         return list(possible_product_names)
 
     def _projects_box_values(self):
-        if self._project_names is None:        
-            current_project_name = get_current_project_name()    
+        if self._project_names is None:
+            current_project_name = get_current_project_name()
             projects = ayon_api.get_projects(
                 library=True,
                 active=True,
