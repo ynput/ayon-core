@@ -488,7 +488,6 @@ class BrowserWidgetController(QtCore.QObject):
         self._recompute_my_tasks_scope()
         self._reset_pagination()
         self.my_tasks_filter_changed.emit(enabled)
-        self.tree_reset_requested.emit()
 
     @property
     def my_tasks_filter_enabled(self) -> bool:
