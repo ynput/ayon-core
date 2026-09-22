@@ -27,7 +27,7 @@ from ayon_core.ui.components import (
 
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
-from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .models import RecursiveSortFilterProxyModel
 from .lib import get_qt_icon
@@ -38,14 +38,9 @@ FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
 FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
-FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 5
-FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 6
-
-
-class CenteredIconDelegate(TreeViewItemDelegate):
-    def initStyleOption(self, option, index):
-        super().initStyleOption(option, index)
-        option.displayAlignment = QtCore.Qt.AlignHCenter
+FOLDER_PATH_FILTER_ROLE = QtCore.Qt.UserRole + 6
+FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 7
+FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 8
 
 
 class RefreshTask(QtCore.QObject, QtCore.QRunnable):
@@ -339,6 +334,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_item,
         folder_type_item_by_name,
         folder_type_icon_cache,
+        folder_label_path,
         status_icon_by_name,
     ):
         """
@@ -348,6 +344,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             folder_item (FolderItem): Folder item.
             folder_type_item_by_name: Mapping of folder type names to items.
             folder_type_icon_cache: Cache for folder type icons.
+            folder_label_path: Path of folder labels.
             status_icon_by_name: Mapping of status name to QIcon.
 
         """
@@ -361,6 +358,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
+        folder_path_filter = f"{folder_item.path} {folder_label_path}"
+        item.setData(folder_path_filter.casefold(), FOLDER_PATH_FILTER_ROLE)
         item.setData(icon, QtCore.Qt.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
         status_icon = status_icon_by_name.get(folder_item.status)
@@ -440,14 +439,14 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             ) = folder_item
 
         hierarchy_queue = collections.deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None))
+        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
 
         # Keep pointers to removed items until the refresh finishes
         #   - some children of the items could be moved and reused elsewhere
         removed_items = []
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
-            parent_item, parent_id = item
+            parent_item, parent_id, parent_path = item
             folder_items = folder_items_by_parent[parent_id]
 
             items_by_id = {}
@@ -470,12 +469,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                     item.setEditable(False)
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
-
+                folder_label_path = f"{parent_path}/{folder_item.label}"
                 self._fill_item_data(
                     item,
                     folder_item,
                     folder_type_item_by_name,
                     folder_type_icon_cache,
+                    folder_label_path,
                     status_icon_by_name,
                 )
                 if is_new:
@@ -484,7 +484,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 self._items_by_id[item_id] = item
                 self._parent_id_by_id[item_id] = parent_id
 
-                hierarchy_queue.append((item, item_id))
+                hierarchy_queue.append((item, item_id, folder_label_path))
 
             if new_items:
                 parent_item.appendRows(new_items)
@@ -504,6 +504,21 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
         self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         self._folder_ids_filter = None
+        self._name_filter_terms = []
+
+    def set_name_filter(self, name: str) -> None:
+        self._name_filter_terms = name.casefold().split()
+        self.invalidateFilter()
+
+    def _match_name_filter(self, source_index) -> bool:
+        if not self._name_filter_terms:
+            return True
+        folder_path_filter = source_index.data(FOLDER_PATH_FILTER_ROLE)
+        if not folder_path_filter:
+            return False
+        return all(
+            term in folder_path_filter for term in self._name_filter_terms
+        )
 
     def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
         if self._folder_ids_filter == folder_ids:
@@ -512,13 +527,17 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
         self.invalidateFilter()
 
     def filterAcceptsRow(self, row, parent_index):
+        source_index = self.sourceModel().index(row, 0, parent_index)
         if self._folder_ids_filter is not None:
             if not self._folder_ids_filter:
                 return False
-            source_index = self.sourceModel().index(row, 0, parent_index)
             folder_id = source_index.data(FOLDER_ID_ROLE)
             if folder_id not in self._folder_ids_filter:
                 return False
+
+        if not self._match_name_filter(source_index):
+            return False
+
         return super().filterAcceptsRow(row, parent_index)
 
 
@@ -654,7 +673,7 @@ class FoldersWidget(QtWidgets.QWidget):
             name (str): The string filter.
         """
 
-        self._folders_proxy_model.setFilterFixedString(name)
+        self._folders_proxy_model.set_name_filter(name)
         if name:
             self._folders_view.expandAll()
 
