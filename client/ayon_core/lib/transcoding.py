@@ -258,7 +258,6 @@ def convert_value_by_type_name(value_type, value, logger=None):
     # - are returned as list of lists
     if value_type in ("matrix", "matrixd"):
         output = []
-        current_index = -1
         parts = value.split(",")
         parts_len = len(parts)
         if parts_len == 1:
@@ -277,12 +276,11 @@ def convert_value_by_type_name(value_type, value, logger=None):
                 output.append(float(part))
             return output
 
+        # Values are in row-major order
         for idx, item in enumerate(parts):
-            list_index = idx % divisor
-            if list_index > current_index:
-                current_index = list_index
+            if idx % divisor == 0:
                 output.append([])
-            output[list_index].append(float(item))
+            output[-1].append(float(item))
         return output
 
     if value_type == "rational2i":

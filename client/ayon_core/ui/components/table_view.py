@@ -1309,6 +1309,10 @@ class TableItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         (via :meth:`AYTableView.set_row_height`) overrides the style
         default so saved Views can drive row size at runtime.
         """
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
+
         view = self.parent()
         override = getattr(view, "_row_height_override", None)
         if isinstance(override, int) and override > 0:

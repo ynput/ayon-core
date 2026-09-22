@@ -11,11 +11,11 @@ from qtpy.QtCore import (
     QSize,
     Qt,
     Signal,
+    QPoint,
 )
 from qtpy.QtGui import (
     QBrush,
     QColor,
-    QCursor,
     QIcon,
     QMouseEvent,
     QPainter,
@@ -89,7 +89,7 @@ class AYTreeView(StyleMixin, QTreeView):
         self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.viewport().setMouseTracking(True)
         self.viewport().installEventFilter(self)
-        self._hovered_row_key: tuple | None = None
+        self._mouse_pos: QPoint = QPoint(-1, -1)
         self._sync_viewport_palette()
 
         # Custom item delegate — paints items directly, avoids QSS.
@@ -151,15 +151,9 @@ class AYTreeView(StyleMixin, QTreeView):
     def eventFilter(self, obj, event):
         if obj is self.viewport():
             if event.type() == QEvent.Type.MouseMove:
-                idx = self.indexAt(event.pos())
-                key = (idx.row(), idx.parent()) if idx.isValid() else None
-                if key != self._hovered_row_key:
-                    self._hovered_row_key = key
-                    self.viewport().update()
+                self._mouse_pos = event.pos()
             elif event.type() == QEvent.Type.Leave:
-                if self._hovered_row_key is not None:
-                    self._hovered_row_key = None
-                    self.viewport().update()
+                self._mouse_pos = QPoint(-1, -1)
         return super().eventFilter(obj, event)
 
     def drawBranches(self, painter, rect, index):
@@ -186,14 +180,9 @@ class AYTreeView(StyleMixin, QTreeView):
             state |= QStyle.StateFlag.State_Enabled
 
         # Row-level hover: is the cursor on the same row as `index`?
-        hovered_index = self.indexAt(
-            self.viewport().mapFromGlobal(QCursor.pos())
-        )
-        if (
-            hovered_index.isValid()
-            and hovered_index.row() == index.row()
-            and hovered_index.parent() == index.parent()
-        ):
+        hovered_idx = self.indexAt(self._mouse_pos)
+        idx_rows = self._get_index_rows(index)
+        if idx_rows == self._get_index_rows(hovered_idx):
             state |= QStyle.StateFlag.State_MouseOver
 
         opt.state = state
@@ -206,6 +195,14 @@ class AYTreeView(StyleMixin, QTreeView):
                 "QTreeView",
             )
         ](opt, painter, self)
+
+    def _get_index_rows(self, index: QModelIndex) -> list[int]:
+        """Return a list of row numbers from the given index to the root."""
+        rows = []
+        while index.isValid():
+            rows.append(index.row())
+            index = index.parent()
+        return rows
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Emit double_clicked signal on double-click."""
@@ -319,6 +316,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
+
         h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
@@ -347,25 +348,141 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
 
         styles = self._tv_styles()
         base_style = styles["base"]
-        hover_style = styles["hover"]
-        selected_style = styles["selected"]
-        # Same rule as the table: a selected row that is hovered keeps
-        # its selected colour, brightened.
+        colors_style = {}
         if is_selected and is_hovered:
-            selected_style = styles["selected-hover"]
+            colors_style = styles["selected-hover"]
+        elif is_selected:
+            colors_style = styles["selected"]
+        elif is_hovered:
+            colors_style = styles["hover"]
 
+        # --- bg and fg colors ------------------------------------------
+        if state & QStyle.StateFlag.State_Enabled:
+            bg_color = QColor(colors_style.get(
+                "background-color",
+                base_style.get("background-color", "transparent")
+            ))
+            text_color = QColor(colors_style.get(
+                "color",
+                base_style.get("color", "#f4f5f5"),
+            ))
+        else:
+            # Use base colors for disabled state
+            bg_color = QColor(
+                base_style.get("background-color", "transparent")
+            )
+            text_color = QColor(base_style.get("color", "#f4f5f5"))
+            # - apply disabled opacity to text color
+            text_color.setAlpha(
+                int(
+                    text_color.alpha()
+                    * base_style.get("disabled-opacity", 0.5)
+                )
+            )
+
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
+
+        # --- icon + text layout ----------------------------------------
         item_padding = base_style.get("item-padding", [4, 8])
         icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
+        content_rect = QRect(opt.rect).adjusted(
+            item_padding[1],
+            item_padding[0],
+            -item_padding[1],
+            -item_padding[0],
+        )
 
-        # --- background ------------------------------------------------
-        if is_selected:
+        icon = opt.icon
+        icon_offset = 0
+        content_left = content_rect.left()
+        if not icon.isNull():
+            icon_size = opt.decorationSize
+            icon_rect = QRect(content_rect)
+            icon_rect.setSize(icon_size)
+            if opt.decorationAlignment & Qt.AlignmentFlag.AlignBottom:
+                icon_rect.moveTop(
+                    (content_rect.bottom() - icon_size.height()) + 1
+                )
+            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignVCenter:
+                icon_rect.moveTop(
+                    (
+                        content_rect.center().y() - (icon_size.height() // 2)
+                    ) + 1
+                )
+
+            icon_offset = icon_rect.width()
+            if opt.text:
+                icon_offset += icon_text_spacing
+
+            content_left = icon_rect.right() + icon_text_spacing
+            mode = (
+                QIcon.Mode.Normal
+                if state & QStyle.StateFlag.State_Enabled
+                else QIcon.Mode.Disabled
+            )
+            icon.paint(
+                painter,
+                icon_rect,
+                opt.decorationAlignment,
+                mode,
+            )
+
+        if opt.text:
+            metrics = opt.fontMetrics
+            bound = metrics.boundingRect(opt.text)
+
+            content_width = icon_offset + bound.width()
+            if content_width > content_rect.width():
+                # Text is too long to fit in the available space, so elide it.
+                metrics = opt.fontMetrics
+                elided_text = metrics.elidedText(
+                    opt.text,
+                    opt.textElideMode,
+                    content_rect.width() - icon_offset,
+                )
+                opt.text = elided_text
+
+        if opt.text:
+            text_rect = QRect(content_rect)
+            text_rect.setLeft(content_left)
+            painter.setPen(text_color)
+            painter.setFont(opt.font)
+            painter.drawText(
+                text_rect,
+                opt.displayAlignment,
+                opt.text,
+            )
+
+        painter.restore()
+
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> None:
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        styles = self._tv_styles()
+        base_style = styles["base"]
+        hover_style = styles["hover"]
+        selected_style = styles["selected"]
+
+        if opt.state & QStyle.StateFlag.State_Selected:
             bg_color = QColor(
                 selected_style.get(
                     "background-color",
                     base_style.get("background-color", "transparent"),
                 )
             )
-        elif is_hovered:
+        elif opt.state & QStyle.StateFlag.State_MouseOver:
             bg_color = QColor(
                 hover_style.get(
                     "background-color",
@@ -381,109 +498,24 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRect(opt.rect)
 
-        # --- text colour -----------------------------------------------
-        if is_selected:
-            text_color = QColor(
-                selected_style.get(
-                    "color",
-                    base_style.get("color", "#f4f5f5"),
-                )
-            )
-        else:
-            text_color = QColor(base_style.get("color", "#f4f5f5"))
+        icon = opt.icon
+        if icon.isNull():
+            painter.restore()
+            return
 
-        # disabled dimming
-        if not (state & QStyle.StateFlag.State_Enabled):
-            text_color.setAlpha(
-                int(
-                    text_color.alpha()
-                    * base_style.get("disabled-opacity", 0.5)
-                )
-            )
-
-        # --- icon + text layout ----------------------------------------
+        item_padding = base_style.get("item-padding", [4, 8])
         content_rect = QRect(opt.rect).adjusted(
             item_padding[1],
             item_padding[0],
             -item_padding[1],
             -item_padding[0],
         )
-
-        icon = opt.icon
-        icon_rect = QRect(0, 0, 0, 0)
-        text_rect = QRect(0, 0, 0, 0)
-        icon_offset = 0
-        if not icon.isNull():
-            icon_size = opt.decorationSize
-            icon_rect = QRect(opt.rect)
-            icon_rect.setSize(icon_size)
-            if opt.decorationAlignment & Qt.AlignmentFlag.AlignBottom:
-                icon_rect.moveTop(
-                    (opt.rect.bottom() - icon_size.height()) + 1
-                )
-            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignVCenter:
-                icon_rect.moveTop(
-                    (opt.rect.center().y() - (icon_size.height() // 2)) + 1
-                )
-
-            icon_offset = icon_rect.width()
-            if opt.text:
-                icon_offset += icon_text_spacing
-
-        if opt.text:
-            metrics = opt.fontMetrics
-            bound = metrics.boundingRect(opt.text)
-            text_rect = QRect(opt.rect)
-            text_rect.setWidth(bound.width())
-
-        content_width = icon_offset + text_rect.width()
-        if content_width > content_rect.width():
-            # Text is too long to fit in the available space, so elide it.
-            metrics = opt.fontMetrics
-            elided_text = metrics.elidedText(
-                opt.text,
-                opt.textElideMode,
-                content_rect.width() - icon_offset,
-            )
-            opt.text = elided_text
-
-        if opt.displayAlignment & Qt.AlignmentFlag.AlignRight:
-            content_left = content_rect.right() - content_width
-        elif opt.displayAlignment & Qt.AlignmentFlag.AlignHCenter:
-            content_left = content_rect.left() + (
-                content_rect.width() - content_width
-            ) // 2
-
-        else:
-            content_left = content_rect.left()
-
-        if not icon.isNull():
-            icon_rect.moveLeft(content_left)
-            mode = (
-                QIcon.Mode.Normal
-                if state & QStyle.StateFlag.State_Enabled
-                else QIcon.Mode.Disabled
-            )
-            icon.paint(
-                painter,
-                icon_rect,
-                opt.decorationAlignment,
-                mode,
-            )
-            content_left = icon_rect.right() + icon_text_spacing
-
-        if opt.text:
-            text_rect.setLeft(content_left)
-            text_rect.setRight(content_rect.right())
-            painter.setPen(text_color)
-            painter.setFont(opt.font)
-            painter.drawText(
-                text_rect,
-                opt.displayAlignment,
-                opt.text,
-            )
-
+        icon_rect = QRect(content_rect)
+        icon_rect.setSize(opt.decorationSize)
+        icon_rect.moveCenter(content_rect.center())
+        icon.paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter)
         painter.restore()
+
 
 # =============================================================================
 # __main__ - visual test harness
