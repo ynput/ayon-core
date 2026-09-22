@@ -4,27 +4,177 @@ from __future__ import annotations
 
 from typing import Any
 
+from qtpy import QtCore, QtWidgets
+
+from ayon_core.ui.components import AYLineEdit
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.components.slicer import AYSlicer
+from ayon_core.ui.components.slicer import TreeFilterProxyModel
 from ayon_core.ui.components.task_queue import get_task_queue
 from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_core.ui.components.tree_model import BulkTreeModel
 from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
-from qtpy import QtCore, QtWidgets
-
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils import ProjectsCombobox
+from ayon_core.tools.utils.folders_widget import CenteredIconDelegate
 
 from ._browser_slicer_filters import MyTasksToggleButton
 from .tasks_widget import BrowserTasksWidget
+from .folders_model import (
+    BrowserFoldersModel,
+    BrowserFoldersProxyModel,
+    FOLDER_ID_ROLE,
+    FOLDER_NAME_ROLE,
+)
 
 log = Logger.get_logger(__name__)
+
+CATEGORIES = [
+    {
+        "text": BrowserSlicerCategory.HIERARCHY.value,
+        "short_text": "HIE",
+        "icon": "table_rows",
+        "color": "#f4f5f5",
+    },
+    {
+        "text": BrowserSlicerCategory.REVIEWS.value,
+        "short_text": "REV",
+        "icon": "subscriptions",
+        "color": "#f4f5f5",
+    },
+]
+
+
+class SlicerCategories(AYContainer):
+    category_changed = QtCore.Signal(str)
+    my_tasks_requested = QtCore.Signal(bool)
+    go_to_current_clicked = QtCore.Signal()
+    filter_changed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        category: str,
+        controller: BrowserWidgetController,
+        loader_controller,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            parent=parent,
+        )
+        self._loader_controller = loader_controller
+
+        self._combo = AYComboBox(
+            items=CATEGORIES,
+            variant=AYComboBox.Variants.Low,
+            show_chevron=False,
+        )
+        self._filter_field = AYLineEdit(placeholder="Search")
+        self._filter_btn = AYButton(
+            variant=AYButton.Variants.Nav,
+            icon="search",
+            icon_on="close",
+            checkable=True,
+        )
+        self._my_tasks_btn = MyTasksToggleButton(self)
+
+        self._go_to_current_btn = AYButton(
+            variant=AYButton.Variants.Nav,
+            icon="my_location",
+            tooltip="Select the current context in the hierarchy",
+        )
+
+        self.add_widget(self._combo)
+        self.add_widget(self._filter_field, stretch=1)
+        self.add_widget(self._filter_btn)
+        self.add_widget(self._my_tasks_btn)
+        self.add_widget(self._go_to_current_btn)
+
+        self._filter_field.setVisible(False)
+
+        self._filter_field.installEventFilter(self)
+
+        # signals
+        self._filter_btn.toggled.connect(self._on_button_toggled)
+        self._filter_field.textChanged.connect(self.filter_changed)
+        self._combo.activated.connect(self._on_category_activated)
+        self._my_tasks_btn.toggled.connect(self.my_tasks_requested)
+        self._go_to_current_btn.clicked.connect(
+            self.go_to_current_clicked
+        )
+        controller.my_tasks_filter_changed.connect(
+            self._on_controller_my_tasks_filter_changed
+        )
+
+        # Initialise the toggle's visibility for the starting category
+        # now that the tasks widget it feeds into exists.
+        category_v = BrowserSlicerCategory(category)
+        self._my_tasks_btn.set_category(category_v)
+        self._update_current_context_button(category_v)
+
+    def eventFilter(self, obj, event):
+        """Close search field on Escape key press."""
+        if (
+            obj is self._filter_field
+            and event.type() == QtCore.QEvent.Type.KeyPress
+            and event.key() == QtCore.Qt.Key.Key_Escape
+        ):
+            # triggers _on_button_toggled
+            self._filter_btn.setChecked(False)
+            return True
+        return super().eventFilter(obj, event)
+
+    def filter_text(self) -> str:
+        return self._filter_field.text()
+
+    def current_category(self) -> str:
+        return self._combo.currentText()
+
+    def set_current_category(self, category: str) -> None:
+        """Select a category by its display text."""
+        if category == self._combo.currentText():
+            return
+        self._set_current_category(category)
+        self._combo.setCurrentText(category)
+
+    def _on_controller_my_tasks_filter_changed(self, enabled: bool) -> None:
+        self._my_tasks_btn.blockSignals(True)
+        self._my_tasks_btn.setChecked(enabled)
+        self._my_tasks_btn.blockSignals(False)
+
+    def _on_category_activated(self, index: int) -> None:
+        """Emit the selected category."""
+        self._set_current_category(self._combo.itemText(index))
+
+    def _set_current_category(self, category: str) -> None:
+        category_v = BrowserSlicerCategory(category)
+        self._my_tasks_btn.set_category(category_v)
+        self._update_current_context_button(category_v)
+        self.category_changed.emit(category)
+
+    def _on_button_toggled(self, checked):
+        self._combo.setVisible(not checked)
+        self._filter_field.setVisible(checked)
+        if checked:
+            self._filter_field.setFocus()
+        else:
+            # clear the filter when closing search
+            self._filter_field.clear()
+
+    def _update_current_context_button(self, category: BrowserSlicerCategory) -> None:
+        context = self._loader_controller.get_current_context() or {}
+        self._go_to_current_btn.setVisible(
+            category == BrowserSlicerCategory.HIERARCHY
+            and bool(context.get("project_name") and context.get("folder_id"))
+        )
 
 
 class BrowserFolderTreeView(AYTreeView):
@@ -42,20 +192,6 @@ class BrowserSlicer(AYContainer):
     #: switch and then the fetched folder rows.
     _MAX_SELECTION_ATTEMPTS = 30
 
-    CATEGORIES = [
-        {
-            "text": BrowserSlicerCategory.HIERARCHY.value,
-            "short_text": "HIE",
-            "icon": "table_rows",
-            "color": "#f4f5f5",
-        },
-        {
-            "text": BrowserSlicerCategory.REVIEWS.value,
-            "short_text": "REV",
-            "icon": "subscriptions",
-            "color": "#f4f5f5",
-        },
-    ]
     task_names_changed = QtCore.Signal(list)
 
     def __init__(
@@ -102,26 +238,53 @@ class BrowserSlicer(AYContainer):
         )
         self.add_widget(self._selector, stretch=0)
 
-        self._slicer = AYSlicer(
-            item_list=self.CATEGORIES,
-            initial_text=initial_category,
+        self._categories = SlicerCategories(
+            initial_category,
+            controller,
+            loader_controller,
         )
-        self._my_tasks_btn = MyTasksToggleButton(self)
-        self._slicer.add_trailing_widget(self._my_tasks_btn)
-        self._go_to_current_btn = AYButton(
-            variant=AYButton.Variants.Nav,
-            icon="my_location",
-            tooltip="Select the current context in the hierarchy",
-        )
-        self._go_to_current_btn.clicked.connect(
-            self.select_current_context
-        )
-        self._slicer.add_trailing_widget(self._go_to_current_btn)
-        self.add_widget(self._slicer, stretch=0)
-        self._update_current_context_button(initial_category)
+        self.add_widget(self._categories, stretch=0)
 
-        self._tree_view = BrowserFolderTreeView(self)
-        self.add_widget(self._tree_view, stretch=1)
+        self._folders_view = BrowserFolderTreeView(self)
+        self._folders_view.setSortingEnabled(True)
+
+        self._folders_model = BrowserFoldersModel(
+            controller, loader_controller
+        )
+        self._folders_proxy = BrowserFoldersProxyModel()
+        self._folders_proxy.setSourceModel(self._folders_model)
+        self._folders_view.setModel(self._folders_proxy)
+
+        header = self._folders_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+        header.resizeSection(1, 30)
+        self._folders_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=self._folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
+
+        self._reviews_view = BrowserFolderTreeView(self)
+        self._reviews_model = BulkTreeModel(
+            fetch_all=self._controller.fetch_reviews
+        )
+        self._reviews_proxy = TreeFilterProxyModel(self)
+        self._reviews_proxy.setSourceModel(self._reviews_model)
+        self._reviews_view.setModel(self._reviews_proxy)
+
+        self.add_widget(self._folders_view, stretch=1)
+        self.add_widget(self._reviews_view, stretch=1)
+
+        self._set_view(initial_category)
 
         self._tasks = BrowserTasksWidget(
             loader_controller,
@@ -132,13 +295,30 @@ class BrowserSlicer(AYContainer):
         self._progress = AsyncTaskQueueMonitor(get_task_queue(), parent=self)
         self.add_widget(self._progress, stretch=0)
 
-        self._slicer.category_changed.connect(self._on_category_changed)
-        self._tree_view.selection_changed.connect(self._on_selection_changed)
+        self._categories.category_changed.connect(self._on_category_changed)
+        self._categories.go_to_current_clicked.connect(
+            self.select_current_context
+        )
+        self._categories.my_tasks_requested.connect(
+            self._apply_my_tasks_filter
+        )
+        self._categories.filter_changed.connect(
+            self._on_text_filter_changed
+        )
+        self._folders_view.selection_changed.connect(
+            self._on_folders_selection_changed
+        )
+        self._folders_model.modelReset.connect(self._on_folders_reset)
+        self._reviews_view.selection_changed.connect(
+            self._on_reviews_selection_changed
+        )
+        self._reviews_model.loading_changed.connect(
+            self._on_reviews_loading_changed
+        )
         self._tasks.task_selection_changed.connect(
             self._on_task_selection_changed
         )
         self._tasks.refreshed.connect(self._on_tasks_refreshed)
-        self._my_tasks_btn.toggled.connect(self._apply_my_tasks_filter)
         self._controller.my_tasks_filter_changed.connect(
             self._on_controller_my_tasks_filter_changed
         )
@@ -146,12 +326,6 @@ class BrowserSlicer(AYContainer):
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_controller_reset_finished,
-        )
-
-        # Initialise the toggle's visibility for the starting category
-        # now that the tasks widget it feeds into exists.
-        self._my_tasks_btn.set_category(
-            BrowserSlicerCategory(initial_category)
         )
 
     def _on_controller_reset_finished(self) -> None:
@@ -168,21 +342,16 @@ class BrowserSlicer(AYContainer):
         )
         self._selector.refresh()
 
-    def set_model(self, model: BulkTreeModel) -> None:
-        """Attach a tree model to the view and slicer proxy.
-
-        Args:
-            model: The tree model to display.
-        """
-        self._slicer.set_model(model, view=self._tree_view)
+    def reset(self) -> None:
+        category = self.current_category()
+        if category == BrowserSlicerCategory.HIERARCHY.value:
+            self._folders_model.reset()
+        else:
+            self._reviews_model.reset()
 
     def _on_category_changed(self, category: str) -> None:
+        self._set_view(category)
         self._controller.set_category(category)
-        # Update the toggle's visibility for the new mode first (this
-        # clears "My Tasks" -- via its own toggled signal -- when
-        # switching away from Hierarchy) before the tasks widget
-        # re-fetches using the now-current scope.
-        self._my_tasks_btn.set_category(BrowserSlicerCategory(category))
         enabled = category == BrowserSlicerCategory.HIERARCHY.value
         self._tasks.setEnabled(enabled)
         if enabled:
@@ -193,12 +362,30 @@ class BrowserSlicer(AYContainer):
             )
         else:
             self._tasks.set_context(self._controller.current_project, [])
-        self._update_current_context_button(category)
 
     def _apply_my_tasks_filter(self, enabled: bool) -> None:
         """Apply the "My Tasks" toggle to the controller and task list."""
         self._controller.set_my_tasks_filter(enabled)
         self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
+
+    def _on_text_filter_changed(self, text: str):
+        """Update the proxy filter when the user types.
+
+        A non-empty search expands the whole tree so recursively
+        matched rows - whose ancestors may otherwise still be
+        collapsed - are actually visible, matching the Launcher
+        folders widget's behaviour on a non-empty filter.
+        """
+        self._folders_proxy.set_name_filter(text)
+        self._reviews_proxy.set_filter_text(text)
+
+        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
+            view = self._folders_view
+        else:
+            view = self._reviews_view
+
+        if text:
+            view.expandAll()
 
     def _on_controller_my_tasks_filter_changed(self, enabled: bool) -> None:
         """React to the filter changing from outside the toggle itself.
@@ -207,17 +394,16 @@ class BrowserSlicer(AYContainer):
         ``BrowserTable._apply_view_extras``); keeps the toggle's
         checked state and the task list's scope in sync with it.
         """
-        self._my_tasks_btn.blockSignals(True)
-        self._my_tasks_btn.setChecked(enabled)
-        self._my_tasks_btn.blockSignals(False)
+        self._folders_proxy.set_folder_ids_filter(
+            self._controller.get_folder_id_scope()
+        )
         self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
 
-    def _update_current_context_button(self, category: str) -> None:
-        context = self._loader_controller.get_current_context() or {}
-        self._go_to_current_btn.setVisible(
-            category == BrowserSlicerCategory.HIERARCHY.value
-            and bool(context.get("project_name") and context.get("folder_id"))
-        )
+    def _set_view(self, category: str) -> None:
+        folders_visible = category == BrowserSlicerCategory.HIERARCHY.value
+        review_visible = not folders_visible
+        self._folders_view.setVisible(folders_visible)
+        self._reviews_view.setVisible(review_visible)
 
     def select_current_context(self) -> None:
         """Select the host's current folder in the hierarchy tree."""
@@ -226,7 +412,7 @@ class BrowserSlicer(AYContainer):
         folder_id = context.get("folder_id")
         if not project_name or not folder_id:
             return
-        self._slicer.set_current_category(
+        self._categories.set_current_category(
             BrowserSlicerCategory.HIERARCHY.value
         )
         if project_name != self._controller.current_project:
@@ -279,7 +465,12 @@ class BrowserSlicer(AYContainer):
         self._folder_selection_attempt = 0
 
     def _get_view_index_by_id(self, folder_id: str) -> QtCore.QModelIndex:
-        model = self._tree_view.model()
+        category = self._categories.current_category()
+        if category == BrowserSlicerCategory.HIERARCHY.value:
+            view = self._folders_view
+        else:
+            view = self._reviews_view
+        model = view.model()
         source_model = (
             model.sourceModel()
             if isinstance(model, QtCore.QAbstractProxyModel)
@@ -298,6 +489,11 @@ class BrowserSlicer(AYContainer):
         chain: list[str],
         attempt: int,
     ) -> None:
+        category = self._categories.current_category()
+        if category == BrowserSlicerCategory.HIERARCHY.value:
+            view = self._folders_view
+        else:
+            view = self._reviews_view
         if not chain or attempt >= self._MAX_SELECTION_ATTEMPTS:
             self._clear_pending_selection()
             return
@@ -308,7 +504,7 @@ class BrowserSlicer(AYContainer):
                 break
             available_count += 1
             if folder_id != chain[-1]:
-                self._tree_view.expand(index)
+                view.expand(index)
 
         if available_count < len(chain):
             self._folder_selection_chain = chain
@@ -320,13 +516,13 @@ class BrowserSlicer(AYContainer):
         if not index.isValid():
             self._clear_pending_selection()
             return
-        selection_model = self._tree_view.selectionModel()
+        selection_model = view.selectionModel()
         selection_model.select(
             index,
             QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
         )
-        self._tree_view.setCurrentIndex(index)
-        self._tree_view.scrollTo(
+        view.setCurrentIndex(index)
+        view.scrollTo(
             index,
             QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
         )
@@ -335,27 +531,23 @@ class BrowserSlicer(AYContainer):
     def _retry_folder_selection(self) -> None:
         self._advance_context_selection(self._folder_selection_attempt)
 
-    def _on_selection_changed(
+    def _on_folders_selection_changed(
         self,
         selected: QItemSelection,
         deselected: QItemSelection,
     ) -> None:
         # Read the canonical full selection rather than the delta
         # arguments, which are unreliable under ExtendedSelection.
-        all_indexes = [
-            idx
-            for idx in self._tree_view.selectionModel().selectedIndexes()
-            if idx.column() == 0
-        ]
         ids: list[str] = []
         names: list[str] = []
-        for idx in all_indexes:
-            data = idx.data(QtCore.Qt.ItemDataRole.UserRole)
-            if data:
-                entity_id = data.get("id", "")
-                if entity_id:
-                    ids.append(entity_id)
-                    names.append(data.get("name", ""))
+        for idx in self._folders_view.selectionModel().selectedRows():
+            folder_id = idx.data(FOLDER_ID_ROLE)
+            folder_name = idx.data(FOLDER_NAME_ROLE)
+            if folder_id:
+                ids.append(folder_id)
+                if folder_name:
+                    names.append(folder_name)
+
         selection_key = tuple(ids)
         if selection_key == self._last_selection_ids:
             return
@@ -368,6 +560,54 @@ class BrowserSlicer(AYContainer):
             ids,
             task_id_scope=self._controller.get_task_id_scope(),
         )
+
+    def _on_folders_reset(self):
+        self._folders_proxy.sort(0)
+
+    def _on_reviews_selection_changed(
+        self,
+        selected: QItemSelection,
+        deselected: QItemSelection,
+    ) -> None:
+        # Read the canonical full selection rather than the delta
+        # arguments, which are unreliable under ExtendedSelection.
+        ids: list[str] = []
+        names: list[str] = []
+        for idx in self._reviews_view.selectionModel().selectedRows():
+            data = idx.data(QtCore.Qt.ItemDataRole.UserRole)
+            if data:
+                entity_id = data.get("id", "")
+                if entity_id:
+                    ids.append(entity_id)
+                    names.append(data.get("name", ""))
+
+        selection_key = tuple(ids)
+        if selection_key == self._last_selection_ids:
+            return
+        self._last_selection_ids = selection_key
+        log.debug("Selected: %s, Deselected: %s", selected, deselected)
+        log.debug("Current selection ids: %s", ids)
+        self._controller.on_tree_selection_changed(ids, names)
+        self._tasks.set_context(
+            self._controller.current_project,
+            ids,
+            task_id_scope=self._controller.get_task_id_scope(),
+        )
+
+    def _on_reviews_loading_changed(self, loading: bool) -> None:
+        """Re-expand the view once a still-loading model finishes.
+
+        A search typed while the model's data has not arrived yet
+        filters an (as far as the proxy can tell) empty tree, so the
+        expandAll() in _on_search_changed() has nothing to expand.
+        Once loading finishes and the proxy has re-synced against the
+        now-populated model, re-run it for any search still active.
+        """
+        if loading or self._reviews_view is None:
+            return
+
+        if self._categories.filter_text():
+            self._reviews_view.expandAll()
 
     def set_task_names(self, names: list[str]) -> None:
         """Update task-list selection from the active filter criterion."""
@@ -398,7 +638,7 @@ class BrowserSlicer(AYContainer):
 
     def current_category(self) -> str:
         """Return the currently selected category name."""
-        return self._slicer.current_category()
+        return self._categories.current_category()
 
     def current_project(self) -> str:
         """Return the currently selected project name."""

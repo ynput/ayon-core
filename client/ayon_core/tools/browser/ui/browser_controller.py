@@ -1044,7 +1044,7 @@ class BrowserWidgetController(QtCore.QObject):
                 conditions.extend(json.loads(value).get("conditions", []))
         return json.dumps({"conditions": conditions}) if conditions else ""
 
-    def fetch_tree_data(self) -> dict[str | None, list[TreeNode]]:
+    def fetch_reviews(self) -> dict[str | None, list[TreeNode]]:
         """Return the whole slicer tree in one shot for the active category.
 
         Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
@@ -1058,8 +1058,6 @@ class BrowserWidgetController(QtCore.QObject):
             children as :class:`TreeNode` instances, covering the
             whole tree for the active category.
         """
-        if self._current_category == BrowserSlicerCategory.HIERARCHY.value:
-            return self._fetch_all_folders()
         return {None: self._fetch_reviews(None)}
 
     def _version_query_kwargs(
