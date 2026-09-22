@@ -270,8 +270,6 @@ class BrowserFoldersModel(QStandardItemModel):
                 self._clear_items()
             return
 
-        import time
-        s = time.time()
         self.beginResetModel()
         folder_type_item_by_name = {
             folder_type.name: folder_type
@@ -357,4 +355,3 @@ class BrowserFoldersModel(QStandardItemModel):
             self._parent_id_by_id.pop(item_id)
 
         self.endResetModel()
-        print("Fill took:", time.time() - s)
