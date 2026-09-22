@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import typing
 from collections import deque, defaultdict
 
 from qtpy.QtCore import Qt, QSortFilterProxyModel, QModelIndex
-from qtpy.QtGui import QStandardItemModel, QStandardItem
+from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon
 
 from ayon_core.lib import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import (
+        StatusItem,
+        FolderItem,
+        FolderTypeItem,
+    )
 
 FOLDER_ID_ROLE = Qt.UserRole + 1
 FOLDER_NAME_ROLE = Qt.UserRole + 2
@@ -264,18 +271,21 @@ class BrowserFoldersModel(QStandardItemModel):
             return None
         return super().data(index, role)
 
-    def _fill_items(self, folder_items_by_id, folder_type_items, status_items):
+    def _fill_items(
+        self,
+        folder_items_by_id: dict[str, FolderItem],
+        folder_type_items: list[FolderTypeItem],
+        status_items: list[StatusItem],
+    ) -> None:
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
             return
 
-        self.beginResetModel()
         folder_type_item_by_name = {
             folder_type.name: folder_type
             for folder_type in folder_type_items
         }
-        folder_type_icon_cache = {}
 
         # Build a local status-icon lookup for this fill operation
         status_icon_by_name = {}
@@ -287,9 +297,14 @@ class BrowserFoldersModel(QStandardItemModel):
                 )
             status_icon_by_name[status.name] = icon
 
-        folder_ids = set(folder_items_by_id)
-        ids_to_remove = set(self._items_by_id) - folder_ids
+        self.beginResetModel()
+        ids_to_remove = {
+            item_id
+            for item_id in self._items_by_id
+            if item_id not in folder_items_by_id
+        }
 
+        folder_type_icon_cache = {}
         folder_items_by_parent = defaultdict(dict)
         for folder_item in folder_items_by_id.values():
             (
@@ -309,24 +324,20 @@ class BrowserFoldersModel(QStandardItemModel):
             parent_item, parent_id, parent_path = item
             folder_items = folder_items_by_parent[parent_id]
 
-            items_by_id = {}
-            folder_ids_to_add = set(folder_items)
             for row_idx in reversed(range(parent_item.rowCount())):
                 child_item = parent_item.child(row_idx)
                 child_id = child_item.data(FOLDER_ID_ROLE)
-                if child_id in ids_to_remove:
+                if child_id not in folder_items:
                     removed_items.append(parent_item.takeRow(row_idx))
-                else:
-                    items_by_id[child_id] = child_item
 
             new_items = []
-            for item_id in folder_ids_to_add:
-                folder_item = folder_items[item_id]
-                item = items_by_id.get(item_id)
+            for item_id, folder_item in folder_items.items():
+                item = self._items_by_id.get(item_id)
                 if item is None:
                     is_new = True
                     item = QStandardItem()
                     item.setEditable(False)
+                    item.setColumnCount(self.columnCount())
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
 
@@ -340,7 +351,6 @@ class BrowserFoldersModel(QStandardItemModel):
                     folder_label_path,
                 )
                 if is_new:
-                    item.setColumnCount(self.columnCount())
                     new_items.append(item)
                 self._items_by_id[item_id] = item
                 self._parent_id_by_id[item_id] = parent_id
