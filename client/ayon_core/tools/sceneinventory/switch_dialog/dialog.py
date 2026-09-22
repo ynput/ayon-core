@@ -877,37 +877,21 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         return list(possible_product_names)
 
     def _projects_box_values(self):
-        if not self._project_entities_by_id:
-            current_project_name = get_current_project_name()
-
-            # Fetch active, non-library projects
+        if self._project_names is None:        
+            current_project_name = get_current_project_name()    
             projects = ayon_api.get_projects(
                 library=True,
                 active=True,
                 fields={"code", "name"},
             )
+            project_names = [p["name"] for p in projects]
+            if current_project_name in project_names:
+                project_names.remove(current_project_name)
+            project_names.sort()
+            project_names.insert(0, current_project_name)
+            self._project_names = project_names
 
-            # Ensure the current project is present, even if it's a library
-            # or inactive project that get_projects() filtered out.
-            if not any(
-                project["name"] == current_project_name
-                for project in projects
-            ):
-                current = ayon_api.get_project(
-                    project_name=current_project_name,
-                    fields={"code", "name"},
-                )
-                if current:
-                    projects.append(current)
-
-            self._project_entities_by_id = {
-                project["code"]: project for project in projects
-            }
-
-        return sorted(
-            project["name"]
-            for project in self._project_entities_by_id.values()
-        )
+        return list(self._project_names)
 
     def _representations_box_values(self):
         # NOTE hero versions are not used because it is expected that
