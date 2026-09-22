@@ -13,10 +13,11 @@ from ayon_core.lib.icon_definitions import (
 )
 from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 from ayon_core.ui.components import AYContainer, AYLabel, AYGridLayout
+from ayon_core.ui.components.async_loader import AsyncLoader
 from ayon_core.ui.components.scroll_area import AYScrollBar
 
 ANIMATION_LEN = 7
@@ -119,10 +120,17 @@ class ActionsQtModel(QtGui.QStandardItemModel):
     """
 
     refreshed = QtCore.Signal()
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller):
         self._log = Logger.get_logger(self.__class__.__name__)
         super().__init__()
+
+        # Actions are loaded with 'AsyncLoader', see the UI data loading
+        #   standard in 'ayon_core.ui.components.async_loader'.
+        loader = AsyncLoader("actions", priority=2, parent=self)
+        loader.loading_changed.connect(self.loading_changed)
+        self._loader = loader
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -197,13 +205,31 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         root = self.invisibleRootItem()
         root.removeRows(0, root.rowCount())
 
+    def is_loading(self) -> bool:
+        """Actions shown do not match current selection yet."""
+        return self._loader.is_loading()
+
     def refresh(self):
-        items = self._controller.get_action_items(
+        context = (
             self._selected_project_name,
             self._selected_folder_id,
             self._selected_task_id,
             self._selected_workfile_id,
         )
+        self._loader.request(
+            lambda: self._fetch_data(*context),
+            self._fill,
+        )
+
+    def _fetch_data(self, project_name, folder_id, task_id, workfile_id):
+        """Called in a worker thread, must not touch the model."""
+        items = self._controller.get_action_items(
+            project_name, folder_id, task_id, workfile_id
+        )
+        prefetch_qt_icons([item.icon for item in items])
+        return items
+
+    def _fill(self, items):
         if not items:
             self._clear_items()
             self.refreshed.emit()
@@ -1069,6 +1095,9 @@ class ActionsWidget(AYContainer):
         )
 
     def _trigger_action(self, action_id, index=None):
+        # Shown actions were collected for previous selection
+        if self._model.is_loading():
+            return
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()

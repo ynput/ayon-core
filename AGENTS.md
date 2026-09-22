@@ -61,6 +61,15 @@ Use `./tools/manage.sh` for all common tasks:
 - Vendor code lives in `client/ayon_core/vendor/`.
 - Tests are at repo root `tests/`, mirroring the `client/ayon_core/` structure.
 
+## UI Data Loading (Qt tools)
+
+Qt models showing controller data must follow the loading standard documented in `client/ayon_core/ui/components/async_loader.py`:
+
+- Never call blocking controller getters on the UI thread in reaction to user interaction. Load with `AsyncLoader`: `fetch` in a worker thread (all I/O, incl. `prefetch_qt_icons`), `apply` on the UI thread (Qt objects only). Latest request wins.
+- Big trees: build `QStandardItem` rows detached in `fetch`, attach in one reset or apply a diff (see `FoldersQtModel` in `tools/utils/folders_widget.py`). No Python `data()`/`flags()` overrides on large models.
+- Connect `loading_changed` to `AYTreeView.set_loading` for the skeleton placeholder. Content of a previous selection must not stay actionable while loading.
+- Controller `emit_event` must deliver on the UI thread (`run_in_main_thread` from `tools/utils/lib.py`).
+
 ## CI/CD
 
 - Target branch: `develop`.

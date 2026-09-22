@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import collections
-from functools import partial
-import sys
-from typing import Callable, Any, Optional
-import traceback
+import typing
+from dataclasses import dataclass, field
+from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
@@ -24,6 +23,7 @@ from ayon_core.ui.components import (
     AYLineEdit,
     AYTreeView
 )
+from ayon_core.ui.components.async_loader import AsyncLoader
 
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
@@ -32,6 +32,12 @@ from ayon_core.ui.components.tree_view import CenteredIconDelegate
 from .models import RecursiveSortFilterProxyModel
 from .lib import get_qt_icon
 
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import (
+        FolderItem,
+        FolderTypeItem,
+        StatusItem,
+    )
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -43,85 +49,235 @@ FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 7
 FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 8
 
 
-class RefreshTask(QtCore.QObject, QtCore.QRunnable):
-    finished = QtCore.Signal(str, bool)
+# Plain ints for the hot loops. PySide6 enums are Python enums and every
+#   'Qt.DisplayRole' attribute access or arithmetic on them costs
+#   microseconds, which adds up to a lot over thousands of items.
+_ID_ROLE = int(FOLDER_ID_ROLE)
+_NAME_ROLE = int(FOLDER_NAME_ROLE)
+_PATH_ROLE = int(FOLDER_PATH_ROLE)
+_TYPE_ROLE = int(FOLDER_TYPE_ROLE)
+_FILTER_ROLE = int(FOLDER_PATH_FILTER_ROLE)
+_STATUS_ROLE = int(FOLDER_STATUS_ROLE)
+_STATUS_ICON_ROLE = int(FOLDER_STATUS_ICON_ROLE)
+_DISPLAY_ROLE = int(QtCore.Qt.DisplayRole)
+_DECORATION_ROLE = int(QtCore.Qt.DecorationRole)
+_TOOLTIP_ROLE = int(QtCore.Qt.ToolTipRole)
+_ITEM_FLAGS = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
-    def __init__(
-        self,
-        refresh_task_id: str,
-        default_output: Any,
-        func: Callable,
-        *args,
-        **kwargs,
-    ):
-        QtCore.QObject.__init__(self)
-        QtCore.QRunnable.__init__(self)
+# Refreshes changing more rows than this are applied as a full rebuild.
+#   Inserting rows one by one into a live model (with a sorting proxy
+#   and a view attached) scales badly, a rebuild does not.
+_MAX_INCREMENTAL_CHANGES = 500
 
-        self.id = refresh_task_id
-        self.started = False
-        self._callback = partial(func, *args, **kwargs)
-        self._exception = None
-        self._traceback = None
-        self._result = default_output
 
-    def is_failed(self) -> bool:
-        return self._exception is not None
+@dataclass
+class _FoldersSnapshot:
+    """Data the model currently shows. Never mutated once created.
 
-    def get_result(self):
-        return self._result
+    Worker threads compare against it to compute what changed, so a new
+    snapshot is always created instead of changing an existing one.
+    """
+    folder_items_by_id: dict[str, FolderItem] = field(default_factory=dict)
+    label_path_by_id: dict[str, str] = field(default_factory=dict)
+    folder_type_items: list[FolderTypeItem] = field(default_factory=list)
+    status_items: list[StatusItem] = field(default_factory=list)
 
-    def print_traceback(self):
-        if self._traceback:
-            print(self._traceback)
 
-    def run(self) -> None:
-        self.started = True
-        success = False
-        try:
-            self._result = self._callback()
+@dataclass
+class _BuiltTree:
+    """Detached item tree created in a worker thread."""
+    root_rows: list[list[QtGui.QStandardItem]]
+    items_by_id: dict[str, QtGui.QStandardItem]
+    status_items_by_id: dict[str, QtGui.QStandardItem]
 
-            success = True
-        except Exception as exc:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            err_traceback = "".join(traceback.format_exception(
-                exc_type, exc_value, exc_traceback
-            ))
-            self._traceback = err_traceback
-            self._exception = exc
 
-        finally:
-            self.finished.emit(self.id, success)
+@dataclass
+class _FoldersDiff:
+    """Changes between the snapshot the model shows and new data.
+
+    All id lists are ordered parents first.
+    """
+    added_ids: list[str]
+    moved_ids: list[str]
+    removed_ids: list[str]
+    changed_ids: list[str]
+
+    @property
+    def size(self) -> int:
+        return (
+            len(self.added_ids)
+            + len(self.moved_ids)
+            + len(self.removed_ids)
+            + len(self.changed_ids)
+        )
+
+
+@dataclass
+class _FetchResult:
+    project_name: str
+    snapshot: _FoldersSnapshot
+    # Snapshot the diff (if any) was computed against
+    base_snapshot: _FoldersSnapshot
+    diff: Optional[_FoldersDiff] = None
+    tree: Optional[_BuiltTree] = None
+
+
+def _set_item_data(
+    item: QtGui.QStandardItem,
+    folder_item: FolderItem,
+    label_path: str,
+) -> None:
+    item.setData(folder_item.entity_id, _ID_ROLE)
+    item.setData(folder_item.name, _NAME_ROLE)
+    item.setData(folder_item.path, _PATH_ROLE)
+    item.setData(folder_item.folder_type, _TYPE_ROLE)
+    item.setData(folder_item.status, _STATUS_ROLE)
+    item.setData(
+        f"{folder_item.path} {label_path}".casefold(), _FILTER_ROLE
+    )
+
+
+def _create_row(
+    folder_item: FolderItem,
+    label_path: str,
+) -> list[QtGui.QStandardItem]:
+    """Create detached items for one folder row, without icons."""
+    item = QtGui.QStandardItem(folder_item.label)
+    item.setFlags(_ITEM_FLAGS)
+    _set_item_data(item, folder_item, label_path)
+
+    # Status column, same user data as the folder column
+    status_item = QtGui.QStandardItem()
+    status_item.setFlags(_ITEM_FLAGS)
+    _set_item_data(status_item, folder_item, label_path)
+    status_item.setData(folder_item.status, _TOOLTIP_ROLE)
+    return [item, status_item]
+
+
+def _walk_hierarchy(
+    folder_items_by_id: dict[str, FolderItem],
+) -> tuple[list[str], dict[str, str]]:
+    """Walk hierarchy from the project root, parents first.
+
+    Folders whose parent is not available are skipped, same as their
+    children.
+
+    Returns:
+        tuple: Folder ids in breadth-first order and label path by
+            folder id.
+    """
+    children_by_parent = collections.defaultdict(list)
+    for folder_id, folder_item in folder_items_by_id.items():
+        children_by_parent[folder_item.parent_id].append(folder_id)
+
+    ordered_ids = []
+    label_path_by_id = {}
+    queue = [(None, "")]
+    for parent_id, parent_path in queue:
+        for folder_id in children_by_parent.get(parent_id, ()):
+            label_path = (
+                f"{parent_path}/{folder_items_by_id[folder_id].label}"
+            )
+            label_path_by_id[folder_id] = label_path
+            ordered_ids.append(folder_id)
+            queue.append((folder_id, label_path))
+    return ordered_ids, label_path_by_id
+
+
+def _build_tree(
+    folder_items_by_id: dict[str, FolderItem],
+    ordered_ids: list[str],
+    label_path_by_id: dict[str, str],
+) -> _BuiltTree:
+    """Build detached item tree. Safe to call from a worker thread."""
+    items_by_id = {}
+    status_items_by_id = {}
+    root_rows = []
+    for folder_id in ordered_ids:
+        folder_item = folder_items_by_id[folder_id]
+        row = _create_row(folder_item, label_path_by_id[folder_id])
+        items_by_id[folder_id] = row[0]
+        status_items_by_id[folder_id] = row[1]
+        # Parents are always created first. Appending to a detached
+        #   parent is cheap as there is no model to notify.
+        parent_id = folder_item.parent_id
+        if parent_id is None:
+            root_rows.append(row)
+        else:
+            items_by_id[parent_id].appendRow(row)
+    return _BuiltTree(root_rows, items_by_id, status_items_by_id)
+
+
+def _compute_diff(
+    base: _FoldersSnapshot,
+    new: _FoldersSnapshot,
+    ordered_ids: list[str],
+) -> _FoldersDiff:
+    old_items = base.folder_items_by_id
+    old_label_paths = base.label_path_by_id
+    new_items = new.folder_items_by_id
+    new_label_paths = new.label_path_by_id
+
+    added_ids = []
+    moved_ids = []
+    changed_ids = []
+    for folder_id in ordered_ids:
+        old_item = old_items.get(folder_id)
+        if old_item is None or folder_id not in old_label_paths:
+            added_ids.append(folder_id)
+            continue
+        new_item = new_items[folder_id]
+        if old_item.parent_id != new_item.parent_id:
+            moved_ids.append(folder_id)
+        if (
+            old_item != new_item
+            or old_label_paths[folder_id] != new_label_paths[folder_id]
+        ):
+            changed_ids.append(folder_id)
+
+    removed_ids = [
+        folder_id
+        for folder_id in old_label_paths
+        if folder_id not in new_label_paths
+    ]
+    return _FoldersDiff(added_ids, moved_ids, removed_ids, changed_ids)
 
 
 class FoldersQtModel(QtGui.QStandardItemModel):
     """Folders model which cares about refresh of folders.
 
+    Folders are loaded with 'AsyncLoader', see the UI data loading standard
+    in 'ayon_core.ui.components.async_loader'. Server query, hierarchy walk
+    and creation of the item tree happen in a worker thread. A refresh of
+    the same project applies only changes, which keeps expanded and
+    selected state in views.
+
+    The model contains both **Folders** and **Status** columns.
+    Visibility of the status column is controlled by the view.
+
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        The model contains both **Folders** and **Status** columns.
-        Visibility of the status column is controlled by the view.
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller):
         super().__init__()
-        refresh_threadpool = QtCore.QThreadPool()
-        refresh_threadpool.setMaxThreadCount(2)
 
         self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
         self.setHeaderData(1, QtCore.Qt.Horizontal, "")
 
-        self._controller = controller
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
+        loader = AsyncLoader("folders", priority=1, parent=self)
+        loader.loading_changed.connect(self.loading_changed)
 
-        self._refresh_threadpool = refresh_threadpool
-        self._refresh_tasks = {}
-        self._current_refresh_task = None
+        self._controller = controller
+        self._loader = loader
+        self._items_by_id: dict[str, QtGui.QStandardItem] = {}
+        self._status_items_by_id: dict[str, QtGui.QStandardItem] = {}
+        self._snapshot = _FoldersSnapshot()
         self._last_project_name = None
-        self._current_refresh_thread = None
 
         self._has_content = False
         self._is_refreshing = False
@@ -144,6 +300,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         """
 
         return self._has_content
+
+    def is_loading(self) -> bool:
+        """Folders are being loaded."""
+        return self._loader.is_loading()
 
     def refresh(self):
         """Refresh folders for last selected project.
@@ -176,8 +336,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             Union[str, None]: Folder id or None if folder is not available.
 
         """
-        for folder_id, item in self._items_by_id.items():
-            if item.data(FOLDER_PATH_ROLE) == folder_path:
+        folder_items_by_id = self._snapshot.folder_items_by_id
+        for folder_id in self._items_by_id:
+            if folder_items_by_id[folder_id].path == folder_path:
                 return folder_id
         return None
 
@@ -193,14 +354,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     def set_project_name(self, project_name):
         """Refresh folders items.
 
-        Refresh start thread because it can cause that controller can
-        start query from database if folders are not cached.
+        Data are loaded in a worker thread because the controller may
+        query the server if folders are not cached.
         """
 
         if not project_name:
+            self._loader.cancel()
             self._last_project_name = project_name
-            self._fill_items({}, {}, [])
-            self._current_refresh_thread = None
+            self._clear_items()
+            self._is_refreshing = False
+            self.refreshed.emit()
             return
 
         self._is_refreshing = True
@@ -209,27 +372,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._clear_items()
         self._last_project_name = project_name
 
-        refresh_task = self._refresh_tasks.get(project_name)
-        if refresh_task is not None:
-            self._current_refresh_task = refresh_task
-            return
-
-        refresh_task = RefreshTask(
-            project_name,
-            ({}, []),
-            self._thread_getter,
-            project_name,
+        base_snapshot = self._snapshot
+        self._loader.request(
+            lambda: self._fetch_data(project_name, base_snapshot),
+            self._on_data_fetched,
+            self._on_fetch_failed,
         )
-
-        self._current_refresh_task = refresh_task
-        self._refresh_tasks[refresh_task.id] = refresh_task
-        refresh_task.finished.connect(self._on_refresh_task)
-        self._refresh_threadpool.start(refresh_task)
-        # NOTE: The `msleep` was added to fix workfiles tool refresh in
-        #   3ds Max 2027. It looks like there must be one more line running
-        #   code after the start of the thread task. Otherwise, the thread
-        #   would not be started but will trigger 'finished' signal directly.
-        QtCore.QThread.msleep(5)
 
     @classmethod
     def _get_default_folder_icon(cls):
@@ -243,13 +391,25 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         return cls._default_folder_icon
 
     def _clear_items(self):
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
+        self._snapshot = _FoldersSnapshot()
         self._has_content = False
+        if not self._items_by_id:
+            return
+        self.beginResetModel()
+        self._items_by_id = {}
+        self._status_items_by_id = {}
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
+        self.endResetModel()
 
-    def _thread_getter(self, project_name):
+    def _get_fetch_items(self, project_name):
+        """Get data from controller. Called in a worker thread.
+
+        Returns:
+            tuple[dict[str, FolderItem], list[FolderTypeItem],
+                list[StatusItem]]: Folder items by id, folder type items
+                and status items.
+        """
         folder_items = self._controller.get_folder_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
@@ -266,235 +426,229 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             )
         return folder_items, folder_type_items, status_items
 
-    def _on_refresh_task(self, refresh_task_id: str, success: bool):
-        """Callback when refresh thread is finished.
-
-        Technically can be running multiple refresh threads at the same time,
-        to avoid using values from wrong thread, we check if thread id is
-        current refresh thread id.
-
-        Folders are stored by id.
-
-        Args:
-            refresh_task_id (str): Thread id.
-            success (bool): True if refresh was successful.
-
-        """
-        # Make sure to remove thread from '_refresh_threads' dict
-        refresh_task = self._refresh_tasks.pop(refresh_task_id)
-        refresh_task.print_traceback()
-        if (
-            self._current_refresh_task is None
-            or refresh_task_id != self._current_refresh_task.id
-        ):
-            return
-
-        folder_items, folder_type_items, status_items = {}, [], []
-        # TODO visualize that refresh failed
-        if not refresh_task.is_failed():
-            (
-                folder_items,
-                folder_type_items,
-                status_items
-            ) = refresh_task.get_result()
-        self._fill_items(folder_items, folder_type_items, status_items)
-        self._current_refresh_thread = None
-
-    def _get_folder_item_icon(
+    def _fetch_data(
         self,
-        folder_item,
-        folder_type_item_by_name,
-        folder_type_icon_cache
-    ):
-        icon = folder_type_icon_cache.get(folder_item.folder_type)
-        if icon is not None:
-            return icon
+        project_name: str,
+        base_snapshot: _FoldersSnapshot,
+    ) -> _FetchResult:
+        """Fetch folders and prepare everything possible off the UI thread.
 
-        folder_type_item = folder_type_item_by_name.get(
-            folder_item.folder_type
+        Runs in a worker thread. Must not touch the model.
+        """
+        (
+            folder_items_by_id, folder_type_items, status_items
+        ) = self._get_fetch_items(project_name)
+        folder_items_by_id = folder_items_by_id or {}
+        ordered_ids, label_path_by_id = _walk_hierarchy(folder_items_by_id)
+        snapshot = _FoldersSnapshot(
+            folder_items_by_id,
+            label_path_by_id,
+            list(folder_type_items or []),
+            list(status_items or []),
         )
-        icon = None
-        if folder_type_item is not None:
-            icon = get_qt_icon(MaterialSymbolsIcon(
-                folder_type_item.icon,
-                color=(
-                    folder_type_item.color
-                    or get_default_entity_icon_color()
-                ),
-            ))
-
-        if icon is None:
-            icon = self._get_default_folder_icon()
-        folder_type_icon_cache[folder_item.folder_type] = icon
-        return icon
-
-    def _fill_item_data(
-        self,
-        item,
-        folder_item,
-        folder_type_item_by_name,
-        folder_type_icon_cache,
-        folder_label_path,
-        status_icon_by_name,
-    ):
-        """
-
-        Args:
-            item (QtGui.QStandardItem): Item to fill data.
-            folder_item (FolderItem): Folder item.
-            folder_type_item_by_name: Mapping of folder type names to items.
-            folder_type_icon_cache: Cache for folder type icons.
-            folder_label_path: Path of folder labels.
-            status_icon_by_name: Mapping of status name to QIcon.
-
-        """
-        icon = self._get_folder_item_icon(
-            folder_item,
-            folder_type_item_by_name,
-            folder_type_icon_cache
+        result = _FetchResult(
+            project_name=project_name,
+            snapshot=snapshot,
+            base_snapshot=base_snapshot,
         )
-        item.setData(folder_item.entity_id, FOLDER_ID_ROLE)
-        item.setData(folder_item.name, FOLDER_NAME_ROLE)
-        item.setData(folder_item.path, FOLDER_PATH_ROLE)
-        item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
-        item.setData(folder_item.label, QtCore.Qt.DisplayRole)
-        folder_path_filter = f"{folder_item.path} {folder_label_path}"
-        item.setData(folder_path_filter.casefold(), FOLDER_PATH_FILTER_ROLE)
-        item.setData(icon, QtCore.Qt.DecorationRole)
-        item.setData(folder_item.status, FOLDER_STATUS_ROLE)
-        status_icon = status_icon_by_name.get(folder_item.status)
-        item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
 
-    def data(self, index, role=QtCore.Qt.DisplayRole):
-        if not index.isValid():
-            return None
+        # Icons of all items would change -> rebuild
+        icons_changed = (
+            base_snapshot.folder_type_items != snapshot.folder_type_items
+            or base_snapshot.status_items != snapshot.status_items
+        )
+        if base_snapshot.label_path_by_id and not icons_changed:
+            diff = _compute_diff(base_snapshot, snapshot, ordered_ids)
+            if diff.size <= _MAX_INCREMENTAL_CHANGES:
+                result.diff = diff
+                return result
 
-        if index.column() != 0:
-            return self._get_index_data(index, role)
+        result.tree = _build_tree(
+            folder_items_by_id, ordered_ids, label_path_by_id
+        )
+        return result
 
-        return super().data(index, role)
-
-    def flags(self, index):
-        if not index.isValid():
-            return QtCore.Qt.NoItemFlags
-        if index.column() != 0:
-            return self._get_index_flags(index)
-        return super().flags(index)
-
-    def _get_index_flags(self, index):
-        index = index.sibling(index.row(), 0)
-        return super().flags(index)
-
-    def _get_index_data(self, index, role):
-        """Get data for index with column 1 or higher.
-
-        Allow classes inheriting from this class to change the 'data' method
-            behavior. Without this they can't use 'super' call.
-
-        """
-        index = index.sibling(index.row(), 0)
-        if role == QtCore.Qt.DecorationRole:
-            role = FOLDER_STATUS_ICON_ROLE
-        elif role == QtCore.Qt.ToolTipRole:
-            role = FOLDER_STATUS_ROLE
-        elif role < QtCore.Qt.UserRole:
-            return None
-        return super().data(index, role)
-
-    def _fill_items(self, folder_items_by_id, folder_type_items, status_items):
-        if not folder_items_by_id:
-            if folder_items_by_id is not None:
-                self._clear_items()
-            self._is_refreshing = False
-            self.refreshed.emit()
+    def _on_data_fetched(self, result: _FetchResult) -> None:
+        if result.project_name != self._last_project_name:
             return
+        if result.base_snapshot is not self._snapshot:
+            # Model changed while fetching, fetch again
+            self.refresh()
+            return
+        if result.tree is not None:
+            self._apply_tree(result.tree, result.snapshot)
+        else:
+            self._apply_diff(result.diff, result.snapshot)
+        self._has_content = bool(self._items_by_id)
+        self._is_refreshing = False
+        self.refreshed.emit()
 
-        folder_type_item_by_name = {
-            folder_type.name: folder_type
-            for folder_type in folder_type_items
-        }
-        folder_type_icon_cache = {}
+    def _on_fetch_failed(self, exc: BaseException) -> None:
+        # Keep showing what is already there
+        self._is_refreshing = False
+        self.refreshed.emit()
 
-        # Build a local status-icon lookup for this fill operation
-        status_icon_by_name = {}
-        for status in status_items:
+    def _get_icons(
+        self,
+        snapshot: _FoldersSnapshot,
+    ) -> tuple[dict[str, QtGui.QIcon], dict[str, Optional[QtGui.QIcon]]]:
+        """Create icons for folder types and statuses.
+
+        Must be called on the UI thread.
+        """
+        default_color = get_default_entity_icon_color()
+        type_icons = {}
+        for folder_type in snapshot.folder_type_items:
+            if folder_type.icon:
+                type_icons[folder_type.name] = get_qt_icon(
+                    MaterialSymbolsIcon(
+                        folder_type.icon,
+                        color=folder_type.color or default_color,
+                    )
+                )
+
+        status_icons = {}
+        for status in snapshot.status_items:
             icon = None
             if status.icon:
                 icon = get_qt_icon(
                     MaterialSymbolsIcon(status.icon, color=status.color)
                 )
-            status_icon_by_name[status.name] = icon
+            status_icons[status.name] = icon
+        return type_icons, status_icons
 
-        self._has_content = True
+    def _set_row_icons(
+        self,
+        folder_item: FolderItem,
+        item: QtGui.QStandardItem,
+        status_item: QtGui.QStandardItem,
+        type_icons: dict[str, QtGui.QIcon],
+        status_icons: dict[str, Optional[QtGui.QIcon]],
+    ) -> None:
+        icon = type_icons.get(folder_item.folder_type)
+        if icon is None:
+            icon = self._get_default_folder_icon()
+        item.setData(icon, _DECORATION_ROLE)
+        status_icon = status_icons.get(folder_item.status)
+        item.setData(status_icon, _STATUS_ICON_ROLE)
+        status_item.setData(status_icon, _DECORATION_ROLE)
 
-        folder_ids = set(folder_items_by_id)
-        ids_to_remove = set(self._items_by_id) - folder_ids
+    def _apply_tree(
+        self,
+        tree: _BuiltTree,
+        snapshot: _FoldersSnapshot,
+    ) -> None:
+        type_icons, status_icons = self._get_icons(snapshot)
+        folder_items_by_id = snapshot.folder_items_by_id
+        status_items_by_id = tree.status_items_by_id
+        # Items are still detached, setting data does not emit anything
+        for folder_id, item in tree.items_by_id.items():
+            self._set_row_icons(
+                folder_items_by_id[folder_id],
+                item,
+                status_items_by_id[folder_id],
+                type_icons,
+                status_icons,
+            )
 
-        folder_items_by_parent = collections.defaultdict(dict)
-        for folder_item in folder_items_by_id.values():
-            (
-                folder_items_by_parent
-                [folder_item.parent_id]
-                [folder_item.entity_id]
-            ) = folder_item
+        self.beginResetModel()
+        root_item = self.invisibleRootItem()
+        root_item.removeRows(0, root_item.rowCount())
+        for row in tree.root_rows:
+            root_item.appendRow(row)
+        self._items_by_id = tree.items_by_id
+        self._status_items_by_id = tree.status_items_by_id
+        self._snapshot = snapshot
+        self.endResetModel()
 
-        hierarchy_queue = collections.deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+    def _apply_diff(
+        self,
+        diff: _FoldersDiff,
+        snapshot: _FoldersSnapshot,
+    ) -> None:
+        """Apply changes in place, keeping view state untouched."""
+        if not diff.size:
+            self._snapshot = snapshot
+            return
 
-        # Keep pointers to removed items until the refresh finishes
-        #   - some children of the items could be moved and reused elsewhere
-        removed_items = []
-        while hierarchy_queue:
-            item = hierarchy_queue.popleft()
-            parent_item, parent_id, parent_path = item
-            folder_items = folder_items_by_parent[parent_id]
+        folder_items_by_id = snapshot.folder_items_by_id
+        label_path_by_id = snapshot.label_path_by_id
+        old_parent_by_id = {
+            folder_id: folder_item.parent_id
+            for folder_id, folder_item in (
+                self._snapshot.folder_items_by_id.items()
+            )
+        }
+        root_item = self.invisibleRootItem()
 
-            items_by_id = {}
-            folder_ids_to_add = set(folder_items)
-            for row_idx in reversed(range(parent_item.rowCount())):
-                child_item = parent_item.child(row_idx)
-                child_id = child_item.data(FOLDER_ID_ROLE)
-                if child_id in ids_to_remove:
-                    removed_items.append(parent_item.takeRow(row_idx))
-                else:
-                    items_by_id[child_id] = child_item
+        # Detach moved and removed rows. Moved rows are taken first so
+        #   they are not destroyed with a removed ancestor. Taken rows
+        #   keep their children.
+        detached_rows: dict[str, list[QtGui.QStandardItem]] = {}
+        removed_ids = set(diff.removed_ids)
+        for folder_id in diff.moved_ids + diff.removed_ids:
+            if (
+                folder_id in removed_ids
+                and old_parent_by_id.get(folder_id) in removed_ids
+            ):
+                # Goes away with its parent
+                continue
+            item = self._items_by_id[folder_id]
+            parent_item = item.parent() or root_item
+            detached_rows[folder_id] = parent_item.takeRow(item.row())
 
-            new_items = []
-            for item_id in folder_ids_to_add:
-                folder_item = folder_items[item_id]
-                item = items_by_id.get(item_id)
-                if item is None:
-                    is_new = True
-                    item = QtGui.QStandardItem()
-                    item.setEditable(False)
-                else:
-                    is_new = self._parent_id_by_id[item_id] != parent_id
-                folder_label_path = f"{parent_path}/{folder_item.label}"
-                self._fill_item_data(
-                    item,
-                    folder_item,
-                    folder_type_item_by_name,
-                    folder_type_icon_cache,
-                    folder_label_path,
-                    status_icon_by_name,
+        for folder_id in diff.removed_ids:
+            self._items_by_id.pop(folder_id, None)
+            self._status_items_by_id.pop(folder_id, None)
+
+        type_icons, status_icons = self._get_icons(snapshot)
+        for folder_id in diff.changed_ids:
+            folder_item = folder_items_by_id[folder_id]
+            label_path = label_path_by_id[folder_id]
+            item = self._items_by_id[folder_id]
+            status_item = self._status_items_by_id[folder_id]
+            item.setData(folder_item.label, _DISPLAY_ROLE)
+            _set_item_data(item, folder_item, label_path)
+            _set_item_data(status_item, folder_item, label_path)
+            status_item.setData(folder_item.status, _TOOLTIP_ROLE)
+            self._set_row_icons(
+                folder_item, item, status_item, type_icons, status_icons
+            )
+
+        added_ids = set(diff.added_ids)
+        for folder_id in diff.added_ids:
+            folder_item = folder_items_by_id[folder_id]
+            row = _create_row(folder_item, label_path_by_id[folder_id])
+            self._set_row_icons(
+                folder_item, row[0], row[1], type_icons, status_icons
+            )
+            self._items_by_id[folder_id] = row[0]
+            self._status_items_by_id[folder_id] = row[1]
+            detached_rows[folder_id] = row
+
+        # Build new subtrees while detached, then attach them to the model
+        #   so the model emits as few signals as possible.
+        to_attach = []
+        for folder_id in diff.added_ids + diff.moved_ids:
+            if folder_id not in detached_rows:
+                continue
+            parent_id = folder_items_by_id[folder_id].parent_id
+            if parent_id in added_ids:
+                self._items_by_id[parent_id].appendRow(
+                    detached_rows[folder_id]
                 )
-                if is_new:
-                    item.setColumnCount(self.columnCount())
-                    new_items.append(item)
-                self._items_by_id[item_id] = item
-                self._parent_id_by_id[item_id] = parent_id
+            else:
+                to_attach.append(folder_id)
 
-                hierarchy_queue.append((item, item_id, folder_label_path))
+        for folder_id in to_attach:
+            parent_id = folder_items_by_id[folder_id].parent_id
+            parent_item = (
+                root_item if parent_id is None
+                else self._items_by_id[parent_id]
+            )
+            parent_item.appendRow(detached_rows[folder_id])
 
-            if new_items:
-                parent_item.appendRows(new_items)
-
-        for item_id in ids_to_remove:
-            self._items_by_id.pop(item_id)
-            self._parent_id_by_id.pop(item_id)
-
-        self._is_refreshing = False
-        self.refreshed.emit()
+        self._snapshot = snapshot
 
 
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
@@ -527,6 +681,14 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
         self.invalidateFilter()
 
     def filterAcceptsRow(self, row, parent_index):
+        # Fast path, this is called for every row the proxy maps
+        if (
+            self._folder_ids_filter is None
+            and not self._name_filter_terms
+            and not self.has_filter_pattern()
+        ):
+            return True
+
         source_index = self.sourceModel().index(row, 0, parent_index)
         if self._folder_ids_filter is not None:
             if not self._folder_ids_filter:
@@ -637,6 +799,7 @@ class FoldersWidget(QtWidgets.QWidget):
         selection_model.selectionChanged.connect(self._on_selection_change)
         folders_view.double_clicked.connect(self.double_clicked)
         folders_model.refreshed.connect(self._on_model_refresh)
+        folders_model.loading_changed.connect(folders_view.set_loading)
 
         self._controller = controller
         self._folders_view = folders_view
@@ -685,6 +848,15 @@ class FoldersWidget(QtWidgets.QWidget):
 
         """
         self._folders_proxy_model.set_folder_ids_filter(folder_ids)
+
+    def set_loading_delay(self, delay: int):
+        """Delay before loading placeholder shows in the folders view.
+
+        Args:
+            delay (int): Delay in milliseconds.
+
+        """
+        self._folders_view.set_loading_delay(delay)
 
     def set_header_visible(self, visible: bool):
         self._folders_view.setHeaderHidden(not visible)

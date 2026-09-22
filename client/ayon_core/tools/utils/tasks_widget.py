@@ -14,12 +14,13 @@ from ayon_core.style import (
     get_default_entity_icon_color,
 )
 from ayon_core.ui.components import AYTreeView
+from ayon_core.ui.components.async_loader import AsyncLoader
 
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
 from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
-from .lib import RefreshThread, get_qt_icon
+from .lib import get_qt_icon
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -34,6 +35,11 @@ TASK_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 7
 class TasksQtModel(QtGui.QStandardItemModel):
     """Tasks model which cares about refresh of tasks by folder id.
 
+    Tasks are loaded with 'AsyncLoader', see the UI data loading standard
+    in 'ayon_core.ui.components.async_loader'. Subclasses change what is
+    loaded by overriding '_fetch_data' (worker thread) and '_fill_data'
+    (UI thread).
+
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
 
@@ -41,6 +47,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
     _default_task_icon = None
     refreshed = QtCore.Signal()
     project_changed = QtCore.Signal()
+    loading_changed = QtCore.Signal(bool)
     column_labels = ["Tasks", ""]
 
     def __init__(self, controller):
@@ -50,7 +57,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
         for idx, label in enumerate(self.column_labels):
             self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
+        loader = AsyncLoader("tasks", priority=1, parent=self)
+        loader.loading_changed.connect(self.loading_changed)
+
         self._controller = controller
+        self._loader = loader
 
         self._items_by_name = {}
         self._has_content = False
@@ -63,9 +74,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         self._last_project_name = None
         self._last_folder_id = None
-
-        self._refresh_threads = {}
-        self._current_refresh_thread = None
 
         # Initial state
         self._add_invalid_selection_item()
@@ -181,37 +189,45 @@ class TasksQtModel(QtGui.QStandardItemModel):
             self._remove_invalid_item(self._get_empty_task_item())
             self._empty_tasks_item_used = False
 
+    def is_loading(self) -> bool:
+        """Tasks are being loaded."""
+        return self._loader.is_loading()
+
     def _refresh(self, project_name, folder_id):
         project_changed = self._last_project_name != project_name
-        self._is_refreshing = True
         self._last_project_name = project_name
         self._last_folder_id = folder_id
         if project_changed:
             self.project_changed.emit()
+        self._request_data(project_name, folder_id)
 
-        if not folder_id:
+    def _request_data(self, project_name, context):
+        """Load data for context, empty context shows invalid selection.
+
+        Args:
+            project_name (Optional[str]): Project name.
+            context (Any): Folder id, or anything a subclass uses.
+
+        """
+        self._is_refreshing = True
+        if not context:
+            self._loader.cancel()
             self._add_invalid_selection_item()
-            self._current_refresh_thread = None
             self._is_refreshing = False
             self.refreshed.emit()
             return
 
-        thread = self._refresh_threads.get(folder_id)
-        if thread is not None:
-            self._current_refresh_thread = thread
-            return
-        thread = RefreshThread(
-            folder_id,
-            self._thread_getter,
-            project_name,
-            folder_id
+        self._loader.request(
+            lambda: self._fetch_data(project_name, context),
+            self._on_data_fetched,
+            self._on_fetch_failed,
         )
-        self._current_refresh_thread = thread
-        self._refresh_threads[thread.id] = thread
-        thread.refresh_finished.connect(self._on_refresh_thread)
-        thread.start()
 
-    def _thread_getter(self, project_name, folder_id):
+    def _fetch_data(self, project_name, folder_id):
+        """Get data for the model. Called in a worker thread.
+
+        Must not touch the model.
+        """
         task_items = self._controller.get_task_items(
             project_name, folder_id, sender=TASKS_MODEL_SENDER_NAME
         )
@@ -263,8 +279,9 @@ class TasksQtModel(QtGui.QStandardItemModel):
         task_type_icon_cache[task_item.task_type] = icon
         return icon
 
-    def _fill_data_from_thread(self, thread):
-        task_items, task_type_items, status_items = thread.get_result()
+    def _fill_data(self, result):
+        """Fill items with data from '_fetch_data'. Called on UI thread."""
+        task_items, task_type_items, status_items = result
         # Task items are refreshed
         if task_items is None:
             return
@@ -363,32 +380,23 @@ class TasksQtModel(QtGui.QStandardItemModel):
         index = index.sibling(index.row(), 0)
         return super().flags(index)
 
-    def _on_refresh_thread(self, thread_id):
-        """Callback when refresh thread is finished.
-
-        Technically can be running multiple refresh threads at the same time,
-        to avoid using values from wrong thread, we check if thread id is
-        current refresh thread id.
+    def _on_data_fetched(self, result):
+        """Data for the latest requested context are loaded.
 
         Tasks are stored by name, so if a folder has same task name as
         previously selected folder it keeps the selection.
 
         Args:
-            thread_id (str): Thread id.
+            result (Any): Output of '_fetch_data'.
         """
-        # Make sure to remove thread from '_refresh_threads' dict
-        thread = self._refresh_threads.pop(thread_id)
-        if (
-            self._current_refresh_thread is None
-            or thread_id != self._current_refresh_thread.id
-        ):
-            return
-
-        self._fill_data_from_thread(thread)
+        self._fill_data(result)
 
         root_item = self.invisibleRootItem()
         self._has_content = root_item.rowCount() > 0
-        self._current_refresh_thread = None
+        self._is_refreshing = False
+        self.refreshed.emit()
+
+    def _on_fetch_failed(self, exc):
         self._is_refreshing = False
         self.refreshed.emit()
 

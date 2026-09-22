@@ -199,13 +199,20 @@ class RecursiveSortFilterProxyModel(QtCore.QSortFilterProxyModel):
             self.setRecursiveFilteringEnabled(True)
             recursive_enabled = True
         self._recursive_enabled = recursive_enabled
+        # Resolve once, 'hasattr' is slow in a per-row method
+        self._use_reg_exp = hasattr(self, "filterRegExp")
+
+    def _get_filter_regex(self):
+        if self._use_reg_exp:
+            return self.filterRegExp()
+        return self.filterRegularExpression()
+
+    def has_filter_pattern(self) -> bool:
+        """Is a filter pattern set on the proxy."""
+        return bool(self._get_filter_regex().pattern())
 
     def filterAcceptsRow(self, row, parent_index):
-        if hasattr(self, "filterRegExp"):
-            regex = self.filterRegExp()
-        else:
-            regex = self.filterRegularExpression()
-
+        regex = self._get_filter_regex()
         pattern = regex.pattern()
         if pattern:
             model = self.sourceModel()

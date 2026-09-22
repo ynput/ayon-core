@@ -35,6 +35,7 @@ from ..drawers import enum_to_str
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QTreeViewVariants
 from .scroll_area import AYScrollBar
+from .skeleton import AYSkeletonLoader
 from .style_mixin import StyleMixin
 from .header_view import AYHeaderView
 
@@ -120,6 +121,43 @@ class AYTreeView(StyleMixin, QTreeView):
 
         # No default frame — drawn manually in paintEvent.
         self.setFrameShape(QTreeView.Shape.NoFrame)
+
+        self._skeleton: AYSkeletonLoader | None = None
+        self._skeleton_delay: int = 80
+
+    def set_loading(self, loading: bool) -> None:
+        """Show animated placeholder rows while data are loading.
+
+        The placeholder shows only when the view has no rows to show,
+        a refresh of visible rows happens in place. Usually connected to
+        'AsyncLoader.loading_changed' of the model.
+
+        Args:
+            loading: Whether the model is loading data.
+        """
+        model = self.model()
+        show = loading and (model is None or model.rowCount() == 0)
+        if self._skeleton is None:
+            if not show:
+                return
+            self._skeleton = AYSkeletonLoader(
+                self,
+                variant=QTreeViewVariants(self._variant_str),
+                show_delay=self._skeleton_delay,
+            )
+        self._skeleton.set_loading(show)
+
+    def set_loading_delay(self, delay: int) -> None:
+        """Delay before the loading placeholder appears.
+
+        Loads finishing sooner never show the placeholder.
+
+        Args:
+            delay: Delay in milliseconds.
+        """
+        self._skeleton_delay = delay
+        if self._skeleton is not None:
+            self._skeleton.set_show_delay(delay)
 
     def _sync_viewport_palette(self) -> None:
         """Apply the variant background colour to the viewport palette."""

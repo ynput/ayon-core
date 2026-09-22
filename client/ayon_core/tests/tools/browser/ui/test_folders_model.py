@@ -11,8 +11,8 @@ if "qargparse" not in sys.modules:
 import pytest
 from qtpy import QtCore
 
+from ayon_core.ui.components import async_loader
 from ayon_core.tools.common_models.hierarchy import FolderItem
-from ayon_core.tools.browser.ui import folders_model
 from ayon_core.tools.browser.ui.folders_model import (
     FOLDER_ID_ROLE,
     FOLDER_PATH_FILTER_ROLE,
@@ -29,11 +29,18 @@ class _TaskQueue:
     def enqueue(self, task):
         self.tasks.append(task)
 
+    def run(self, task):
+        """Run task as the queue would, function then callback."""
+        self.tasks.remove(task)
+        result = task.function()
+        if not task.is_cancelled():
+            task.callback(result)
+
 
 @pytest.fixture(autouse=True)
 def task_queue(qapp, monkeypatch):
     queue = _TaskQueue()
-    monkeypatch.setattr(folders_model, "get_task_queue", lambda: queue)
+    monkeypatch.setattr(async_loader, "get_task_queue", lambda: queue)
     return queue
 
 
@@ -78,11 +85,10 @@ class _UiController:
     current_project = "demo"
 
 
-def _load(model):
+def _load(model, task_queue):
     """Run what 'reset' does, synchronously."""
     model.reset()
-    task = model._pending_task
-    model._on_data_fetched(model._generation, task.function())
+    task_queue.run(task_queue.tasks[-1])
 
 
 def _tree(model, parent=QtCore.QModelIndex()):
@@ -99,12 +105,12 @@ def _create_model(folder_items):
     return model, controller
 
 
-def test_initial_load_builds_hierarchy():
+def test_initial_load_builds_hierarchy(task_queue):
     model, _ = _create_model(_base_folders())
     loading = []
     model.loading_changed.connect(loading.append)
 
-    _load(model)
+    _load(model, task_queue)
 
     assert _tree(model) == {
         "Assets": {"Characters": {"Hero": {}}},
@@ -121,9 +127,9 @@ def test_initial_load_builds_hierarchy():
     assert status_index.data(QtCore.Qt.ToolTipRole) == "Not ready"
 
 
-def test_refresh_applies_changes_in_place():
+def test_refresh_applies_changes_in_place(task_queue):
     model, controller = _create_model(_base_folders())
-    _load(model)
+    _load(model, task_queue)
     resets = []
     model.modelReset.connect(lambda: resets.append(True))
     hero_item = model._items_by_id["hero"]
@@ -139,7 +145,7 @@ def test_refresh_applies_changes_in_place():
     folders.pop("shots")
     controller.folder_items = folders
 
-    _load(model)
+    _load(model, task_queue)
 
     assert not resets
     assert _tree(model) == {
@@ -157,47 +163,48 @@ def test_refresh_applies_changes_in_place():
     )
 
 
-def test_refresh_without_changes_does_nothing():
+def test_refresh_without_changes_does_nothing(task_queue):
     model, _ = _create_model(_base_folders())
-    _load(model)
+    _load(model, task_queue)
     signals = []
     model.modelReset.connect(lambda: signals.append("reset"))
     model.rowsInserted.connect(lambda *_: signals.append("inserted"))
     model.dataChanged.connect(lambda *_: signals.append("changed"))
 
-    _load(model)
+    _load(model, task_queue)
 
     assert signals == []
 
 
-def test_outdated_result_is_ignored():
+def test_outdated_result_is_ignored(task_queue):
     model, controller = _create_model(_base_folders())
     model.reset()
-    old_task = model._pending_task
+    old_task = task_queue.tasks[-1]
     old_result = old_task.function()
 
     controller.folder_items = {
         "shots": _folder("shots", None, "Shots", "/shots"),
     }
     model.reset()
-    new_task = model._pending_task
+    new_task = task_queue.tasks[-1]
     assert old_task.is_cancelled()
 
-    model._on_data_fetched(model._generation - 1, old_result)
+    # Result of an already running task arrives late
+    old_task.callback(old_result)
     assert model.rowCount() == 0
     assert model.is_loading()
 
-    model._on_data_fetched(model._generation, new_task.function())
+    task_queue.run(new_task)
     assert _tree(model) == {"Shots": {}}
     assert not model.is_loading()
 
 
-def test_proxy_sorts_and_filters():
+def test_proxy_sorts_and_filters(task_queue):
     model, _ = _create_model(_base_folders())
     proxy = BrowserFoldersProxyModel()
     proxy.setSourceModel(model)
     proxy.sort(0, QtCore.Qt.DescendingOrder)
-    _load(model)
+    _load(model, task_queue)
 
     assert [
         proxy.index(row, 0).data() for row in range(proxy.rowCount())

@@ -12,13 +12,14 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
 from ayon_core.tools.utils.delegates import (
     pretty_timestamp,
     file_size_to_string,
 )
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
+from ayon_core.ui.components.async_loader import AsyncLoader
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
@@ -31,10 +32,20 @@ FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
+    """Workfiles of selected task.
+
+    Workfiles are loaded with 'AsyncLoader', see the UI data loading
+    standard in 'ayon_core.ui.components.async_loader'.
+    """
     refreshed = QtCore.Signal()
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller: AbstractLauncherFrontEnd) -> None:
         super().__init__()
+
+        loader = AsyncLoader("workfiles", priority=2, parent=self)
+        loader.loading_changed.connect(self.loading_changed)
+        self._loader = loader
 
         self.setColumnCount(3)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Workfiles")
@@ -67,17 +78,60 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._host_items_by_name = {}
         self._items_by_host_name = collections.defaultdict(list)
 
-    def refresh(self) -> None:
-        self._group_host_names = set(
-            self._controller.get_grouped_host_names()
+    def is_loading(self) -> bool:
+        return self._loader.is_loading()
+
+    def refresh(self, clear: bool = False) -> None:
+        """Load workfiles for current selection.
+
+        Args:
+            clear (bool): Remove current items right away. Used when
+                selection changed so workfiles of previous selection
+                cannot be used.
+
+        """
+        project_name = self._selected_project_name
+        task_id = self._selected_task_id
+        if not project_name or not task_id:
+            self._loader.cancel()
+            self._fill(set(), [])
+            return
+
+        if clear:
+            self._clear()
+
+        self._loader.request(
+            lambda: self._fetch_data(project_name, task_id),
+            self._on_data_fetched,
         )
 
+    def _fetch_data(self, project_name: str, task_id: str):
+        """Called in a worker thread, must not touch the model."""
+        group_host_names = set(self._controller.get_grouped_host_names())
+        workfile_items = self._controller.get_workfile_items(
+            project_name, task_id
+        )
+        prefetch_qt_icons([
+            self._get_icon_def(icon_url)
+            for icon_url in {item.icon for item in workfile_items}
+        ])
+        return group_host_names, workfile_items
+
+    def _on_data_fetched(self, result) -> None:
+        group_host_names, workfile_items = result
+        self._fill(group_host_names, workfile_items)
+
+    def _clear(self) -> None:
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
+        self._host_items_by_name = {}
+        self._items_by_host_name = collections.defaultdict(list)
 
-        workfile_items = self._controller.get_workfile_items(
-            self._selected_project_name, self._selected_task_id
-        )
+    def _fill(self, group_host_names, workfile_items) -> None:
+        self._group_host_names = group_host_names
+        self._clear()
+        root_item = self.invisibleRootItem()
+
         items_by_host_name = collections.defaultdict(list)
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
@@ -208,19 +262,19 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
-        self.refresh()
+        self.refresh(clear=True)
 
     def _on_selection_folder_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
-        self.refresh()
+        self.refresh(clear=True)
 
     def _on_selection_task_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
-        self.refresh()
+        self.refresh(clear=True)
 
     def _get_transparent_icon(self) -> QtGui.QIcon:
         if self._transparent_icon is None:
@@ -229,6 +283,15 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             )
         return self._transparent_icon
 
+    @staticmethod
+    def _get_icon_def(icon_url: Optional[str]):
+        if icon_url is None:
+            return None
+        base_url = ayon_api.get_base_url()
+        if icon_url.startswith(base_url):
+            return AYONUrlIcon(icon_url[len(base_url) + 1:])
+        return UrlIcon(icon_url)
+
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
         if icon_url is None:
             return self._get_transparent_icon()
@@ -236,14 +299,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if icon is not None:
             return icon
 
-        base_url = ayon_api.get_base_url()
-        if icon_url.startswith(base_url):
-            url = icon_url[len(base_url) + 1:]
-            icon_def = AYONUrlIcon(url)
-        else:
-            icon_def = UrlIcon(icon_url)
-
-        icon = get_qt_icon(icon_def)
+        icon = get_qt_icon(self._get_icon_def(icon_url))
         if icon is None:
             icon = self._get_transparent_icon()
         self._cached_icons[icon_url] = icon
@@ -314,6 +370,7 @@ class WorkfilesPage(AYContainer):
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = WorkfileSortFilterProxy()
         workfiles_proxy.setSourceModel(workfiles_model)
+        workfiles_model.loading_changed.connect(workfiles_view.set_loading)
 
         workfiles_view.setModel(workfiles_proxy)
 

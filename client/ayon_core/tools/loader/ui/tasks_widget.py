@@ -1,5 +1,4 @@
 import collections
-import hashlib
 from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -21,7 +20,7 @@ from ayon_core.tools.utils.tasks_widget import (
     TASK_STATUS_ICON_ROLE,
     TasksProxyModel,
 )
-from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
+from ayon_core.tools.utils.lib import get_qt_icon
 
 
 # Role that can't clash with default 'tasks_widget' roles
@@ -85,35 +84,11 @@ class LoaderTasksQtModel(TasksQtModel):
         return self._no_tasks_item
 
     def _refresh(self, project_name, folder_ids):
-        self._is_refreshing = True
         self._last_project_name = project_name
         self._last_folder_ids = folder_ids
-        if not folder_ids:
-            self._add_invalid_selection_item()
-            self._current_refresh_thread = None
-            self._is_refreshing = False
-            self.refreshed.emit()
-            return
+        self._request_data(project_name, folder_ids)
 
-        thread_id = hashlib.sha256(
-            "|".join(sorted(folder_ids)).encode()
-        ).hexdigest()
-        thread = self._refresh_threads.get(thread_id)
-        if thread is not None:
-            self._current_refresh_thread = thread
-            return
-        thread = RefreshThread(
-            thread_id,
-            self._thread_getter,
-            project_name,
-            folder_ids
-        )
-        self._current_refresh_thread = thread
-        self._refresh_threads[thread.id] = thread
-        thread.refresh_finished.connect(self._on_refresh_thread)
-        thread.start()
-
-    def _thread_getter(self, project_name, folder_ids):
+    def _fetch_data(self, project_name, folder_ids):
         task_items = self._controller.get_task_items(
             project_name, folder_ids, sender=TASKS_MODEL_SENDER_NAME
         )
@@ -134,48 +109,18 @@ class LoaderTasksQtModel(TasksQtModel):
         )
         return task_items, task_type_items, folder_labels_by_id, status_items
 
-    def _on_refresh_thread(self, thread_id):
-        """Callback when refresh thread is finished.
-
-        Technically can be running multiple refresh threads at the same time,
-        to avoid using values from wrong thread, we check if thread id is
-        current refresh thread id.
-
-        Tasks are stored by name, so if a folder has same task name as
-        previously selected folder it keeps the selection.
-
-        Args:
-            thread_id (str): Thread id.
-        """
-
-        # Make sure to remove thread from '_refresh_threads' dict
-        thread = self._refresh_threads.pop(thread_id)
-        if (
-            self._current_refresh_thread is None
-            or thread_id != self._current_refresh_thread.id
-        ):
-            return
-
-        self._fill_data_from_thread(thread)
-
-        root_item = self.invisibleRootItem()
-        self._has_content = root_item.rowCount() > 0
-        self._current_refresh_thread = None
-        self._is_refreshing = False
-        self.refreshed.emit()
-
     def _clear_items(self):
         self._items_by_id = {}
         self._groups_by_name = {}
         super()._clear_items()
 
-    def _fill_data_from_thread(self, thread):
+    def _fill_data(self, result):
         (
             task_items,
             task_type_items,
             folder_labels_by_id,
             status_items,
-        ) = thread.get_result()
+        ) = result
         # Task items are refreshed
         if task_items is None:
             return

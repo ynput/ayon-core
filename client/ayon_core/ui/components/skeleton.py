@@ -17,7 +17,7 @@ from qtpy.QtCore import (
     QVariantAnimation,
 )
 from qtpy.QtGui import QColor, QLinearGradient, QPainter, QPaintEvent
-from qtpy.QtWidgets import QAbstractScrollArea, QWidget
+from qtpy.QtWidgets import QAbstractScrollArea, QTreeView, QWidget
 
 from ..style_types import get_ayon_style
 from ..variants import QTreeViewVariants
@@ -112,6 +112,14 @@ class AYSkeletonLoader(QWidget):
     def is_loading(self) -> bool:
         return self._loading
 
+    def set_show_delay(self, delay: int) -> None:
+        """Change delay before the skeleton appears.
+
+        Args:
+            delay: Delay in milliseconds.
+        """
+        self._show_timer.setInterval(delay)
+
     def set_loading(self, loading: bool) -> None:
         """Show or hide the skeleton.
 
@@ -164,6 +172,11 @@ class AYSkeletonLoader(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(gradient)
 
+        # Follow the view, flat lists (indentation 0) get flat rows
+        indent = self._indent
+        if isinstance(self._target, QTreeView):
+            indent = self._target.indentation()
+
         row_height = self._row_height
         icon_size = min(14, row_height - 8)
         bar_height = max(6, row_height // 3)
@@ -176,7 +189,7 @@ class AYSkeletonLoader(QWidget):
                 self._opacity * max(0.25, 1.0 - (row / fade_rows) * 0.75)
             )
             top = row * row_height
-            x = 6 + (level + 1) * self._indent
+            x = 6 + (level + 1) * indent
             icon_rect = QRectF(
                 x,
                 top + (row_height - icon_size) / 2,
