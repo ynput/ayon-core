@@ -45,7 +45,7 @@ class BrowserFoldersProxyModel(QSortFilterProxyModel):
             term in folder_path_filter for term in self._name_filter_terms
         )
 
-    def set_folder_ids_filter(self, folder_ids: list[str] | None):
+    def set_folder_ids_filter(self, folder_ids: set[str] | None):
         if self._folder_ids_filter == folder_ids:
             return
         self._folder_ids_filter = folder_ids

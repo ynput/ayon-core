@@ -404,6 +404,12 @@ class BrowserSlicer(AYContainer):
         review_visible = not folders_visible
         self._folders_view.setVisible(folders_visible)
         self._reviews_view.setVisible(review_visible)
+        filter_text = self._categories.filter_text()
+        if filter_text:
+            if folders_visible:
+                self._folders_view.expandAll()
+            else:
+                self._reviews_view.expandAll()
 
     def select_current_context(self) -> None:
         """Select the host's current folder in the hierarchy tree."""
