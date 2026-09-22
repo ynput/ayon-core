@@ -281,7 +281,6 @@ class BrowserFoldersModel(QStandardItemModel):
             if folder_items_by_id is not None:
                 self._clear_items()
             return
-
         folder_type_item_by_name = {
             folder_type.name: folder_type
             for folder_type in folder_type_items
@@ -297,6 +296,73 @@ class BrowserFoldersModel(QStandardItemModel):
                 )
             status_icon_by_name[status.name] = icon
 
+        if self._items_by_id:
+            self._fill_update(
+                folder_items_by_id,
+                folder_type_item_by_name,
+                status_icon_by_name,
+            )
+        else:
+            self._fill_from_scratch(
+                folder_items_by_id,
+                folder_type_item_by_name,
+                status_icon_by_name,
+            )
+
+    def _fill_from_scratch(
+        self,
+        folder_items_by_id: dict[str, FolderItem],
+        folder_type_item_by_name: dict[str, FolderTypeItem],
+        status_icon_by_name: dict[str, QIcon | None],
+    ) -> None:
+        self.beginResetModel()
+
+        folder_type_icon_cache = {}
+        folder_items_by_parent = defaultdict(list)
+        for folder_item in folder_items_by_id.values():
+            folder_items_by_parent[folder_item.parent_id].append(folder_item)
+
+        hierarchy_queue = deque()
+        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+
+        while hierarchy_queue:
+            item = hierarchy_queue.popleft()
+            parent_item, parent_id, parent_path = item
+            folder_items = folder_items_by_parent[parent_id]
+
+            new_items = []
+            for folder_item in folder_items:
+                item_id = folder_item.entity_id
+                item = QStandardItem()
+                item.setEditable(False)
+                item.setColumnCount(self.columnCount())
+
+                folder_label_path = f"{parent_path}/{folder_item.label}"
+                self._fill_item_data(
+                    item,
+                    folder_item,
+                    folder_type_item_by_name,
+                    folder_type_icon_cache,
+                    status_icon_by_name,
+                    folder_label_path,
+                )
+                new_items.append(item)
+                self._items_by_id[item_id] = item
+                self._parent_id_by_id[item_id] = parent_id
+
+                hierarchy_queue.append((item, item_id, folder_label_path))
+
+            if new_items:
+                parent_item.appendRows(new_items)
+
+        self.endResetModel()
+
+    def _fill_update(
+        self,
+        folder_items_by_id: dict[str, FolderItem],
+        folder_type_item_by_name: dict[str, FolderTypeItem],
+        status_icon_by_name: dict[str, QIcon | None],
+    ) -> None:
         self.beginResetModel()
         ids_to_remove = {
             item_id
