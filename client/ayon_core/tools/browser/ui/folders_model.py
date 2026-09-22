@@ -296,6 +296,9 @@ class BrowserFoldersModel(QStandardItemModel):
                 )
             status_icon_by_name[status.name] = icon
 
+        # Update items if we already have some, otherwise fill from scratch
+        # - Update is slower as it has to compare existing items with new
+        #   ones, but it preserves expanded and selected state in the view.
         if self._items_by_id:
             self._fill_update(
                 folder_items_by_id,
