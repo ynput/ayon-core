@@ -540,8 +540,6 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         # Fill combobox
         if values is not None:
-            # Block signals for the combobox to prevent
-            # triggering any connected slots
             combobox_widget.blockSignals(True)
             combobox_widget.populate(list(sorted(values)))
             if selected_value and selected_value in values:
