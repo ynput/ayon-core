@@ -136,9 +136,6 @@ class CreatorItem:
     create_allow_thumbnail: bool | None
     show_order: int
     ui_items: list[CreatorUIItem]
-    # NOTE if 'pre_create_attributes_defs' would be cached by UI
-    #   this dataclass could use slots...
-    pre_create_attributes_defs: list[AbstractAttrDef] | None = None
 
     @classmethod
     def from_creator(cls, creator: BaseCreator) -> CreatorItem:
@@ -157,7 +154,6 @@ class CreatorItem:
         create_allow_context_change = None
         create_allow_thumbnail = None
         show_order = creator.order
-        pre_create_attributes = []
         if creator_type is CreatorTypes.artist:
             description = creator.get_description()
             detail_description = creator.get_detail_description()
@@ -166,7 +162,6 @@ class CreatorItem:
             create_allow_context_change = creator.create_allow_context_change
             create_allow_thumbnail = creator.create_allow_thumbnail
             show_order = creator.show_order
-            pre_create_attributes = None
 
         ui_items = []
         product_type_items: list[ProductTypeItem] = (
@@ -201,15 +196,9 @@ class CreatorItem:
             create_allow_thumbnail,
             show_order,
             ui_items,
-            pre_create_attributes,
         )
 
     def to_data(self) -> Dict[str, Any]:
-        pre_create_attributes_defs = None
-        if self.pre_create_attributes_defs is not None:
-            pre_create_attributes_defs = serialize_attr_defs(
-                self.pre_create_attributes_defs
-            )
         icon = self.icon
         if isinstance(icon, IconBase):
             icon = icon.to_data()
@@ -229,7 +218,6 @@ class CreatorItem:
             "create_allow_context_change": self.create_allow_context_change,
             "create_allow_thumbnail": self.create_allow_thumbnail,
             "show_order": self.show_order,
-            "pre_create_attributes_defs": pre_create_attributes_defs,
             "ui_items": [item.to_data() for item in self.ui_items],
         }
 
@@ -238,12 +226,6 @@ class CreatorItem:
         icon = data["icon"]
         if isinstance(icon, dict) and icon.pop("__iconBase__", False):
             data["icon"] = get_icon_def_from_data(icon)
-
-        pre_create_attributes_defs = data["pre_create_attributes_defs"]
-        if pre_create_attributes_defs is not None:
-            data["pre_create_attributes_defs"] = deserialize_attr_defs(
-                pre_create_attributes_defs
-            )
 
         data["creator_type"] = CreatorTypes.from_str(data["creator_type"])
         data["ui_items"] = [

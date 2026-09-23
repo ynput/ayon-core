@@ -286,10 +286,6 @@ class CreateWidget(QtWidgets.QWidget):
         controller.register_event_callback(
             "controller.reset.finished", self._on_controler_reset
         )
-        controller.register_event_callback(
-            "create.context.pre.create.attrs.changed",
-            self._pre_create_attr_changed
-        )
 
         self._main_splitter_widget = main_splitter_widget
 
@@ -364,6 +360,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     def refresh(self) -> None:
+        self._pre_create_widget.reset_cache()
+
         current_folder_path = self._controller.get_current_folder_path()
         current_task_name = self._controller.get_current_task_name()
 
@@ -544,18 +542,6 @@ class CreateWidget(QtWidgets.QWidget):
         # Trigger refresh only if is visible
         self.refresh()
 
-    def _pre_create_attr_changed(self, event) -> None:
-        if (
-            self._selected_creator_identifier is None
-            or self._selected_creator_identifier not in event["identifiers"]
-        ):
-            return
-
-        self._set_creator_by_identifier(
-            self._selected_creator_identifier,
-            self._selected_product_type,
-        )
-
     def _on_folder_change(self) -> None:
         self._refresh_product_name()
         if self._context_change_is_enabled():
@@ -618,15 +604,6 @@ class CreateWidget(QtWidgets.QWidget):
             product_type (str): Product type of creator item.
 
         """
-        if (
-            creator_item is not None
-            and creator_item.pre_create_attributes_defs is None
-        ):
-            attr_defs = self._controller.get_pre_create_attribute_defs(
-                creator_item.identifier
-            )
-            creator_item.pre_create_attributes_defs = attr_defs
-
         self._creator_short_desc_widget.set_creator_item(
             creator_item, product_type
         )
