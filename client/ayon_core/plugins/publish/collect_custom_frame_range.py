@@ -123,6 +123,6 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
     ) -> Optional[str]:
         return (
             instance_data.get("publish_attributes", {})
-                         .get("CollectJobInfo", {})
+                         .get(cls.__name__, {})
                          .get("use_custom_frames")
         )
