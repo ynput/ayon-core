@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import typing
+import time
+from dataclasses import dataclass, field
 from collections import deque, defaultdict
+import typing
 
 from qtpy.QtCore import Qt, QSortFilterProxyModel, QModelIndex
 from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon
@@ -28,49 +30,42 @@ FOLDER_PATH_FILTER_ROLE = Qt.UserRole + 7
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 
 
-class BrowserFoldersProxyModel(QSortFilterProxyModel):
-    def __init__(self):
-        super().__init__()
+@dataclass
+class FillFolderItem:
+    item: QStandardItem
+    parent_id: str | None
+    name: str
+    path: str
+    label: str
+    folder_type: str
+    status: str
+    path_filter: str
 
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
-        self.setRecursiveFilteringEnabled(True)
-
-        self._folder_ids_filter = None
-        self._name_filter_terms = []
-
-    def set_name_filter(self, name: str) -> None:
-        self._name_filter_terms = name.casefold().split()
-        self.invalidateFilter()
-
-    def _match_name_filter(self, source_index) -> bool:
-        if not self._name_filter_terms:
-            return True
-        folder_path_filter = source_index.data(FOLDER_PATH_FILTER_ROLE)
-        if not folder_path_filter:
-            return False
-        return all(
-            term in folder_path_filter for term in self._name_filter_terms
+    @classmethod
+    def from_folder_item(
+        cls, item: QStandardItem, folder_item: FolderItem, label_path: str
+    ):
+        return cls(
+            item=item,
+            parent_id=folder_item.parent_id,
+            name=folder_item.name,
+            path=folder_item.path,
+            label=folder_item.label,
+            folder_type=folder_item.folder_type,
+            status=folder_item.status,
+            path_filter=f"{folder_item.path} {label_path}".casefold(),
         )
 
-    def set_folder_ids_filter(self, folder_ids: set[str] | None):
-        if self._folder_ids_filter == folder_ids:
-            return
-        self._folder_ids_filter = folder_ids
-        self.invalidateFilter()
 
-    def filterAcceptsRow(self, row, parent_index):
-        source_index = self.sourceModel().index(row, 0, parent_index)
-        if self._folder_ids_filter is not None:
-            if not self._folder_ids_filter:
-                return False
-            folder_id = source_index.data(FOLDER_ID_ROLE)
-            if folder_id not in self._folder_ids_filter:
-                return False
 
-        if not self._match_name_filter(source_index):
-            return False
-
-        return super().filterAcceptsRow(row, parent_index)
+@dataclass
+class _FillData:
+    project_name: str | None = None
+    folder_types_by_name: dict[str, FolderTypeItem] = field(
+        default_factory=dict
+    )
+    statuses_by_name: dict[str, StatusItem] = field(default_factory=dict)
+    items_by_id: dict[str, FillFolderItem] = field(default_factory=dict)
 
 
 class BrowserFoldersModel(QStandardItemModel):
@@ -83,8 +78,6 @@ class BrowserFoldersModel(QStandardItemModel):
     """
     _default_folder_icon = None
 
-    FILTER_ROLE = FOLDER_PATH_FILTER_ROLE
-
     def __init__(self, ui_controller, controller):
         super().__init__()
 
@@ -94,11 +87,10 @@ class BrowserFoldersModel(QStandardItemModel):
 
         self._ui_controller = ui_controller
         self._controller = controller
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
+        self._fill_data = _FillData()
 
         self._last_project_name = None
-        self._context_id: str = f"ltm_{id(self)}_v0"
+        self._context_id: str = f"folders_model_{id(self)}_v0"
 
     def reset(self):
         """Refresh folders for last selected project.
@@ -109,7 +101,9 @@ class BrowserFoldersModel(QStandardItemModel):
         project_name = self._ui_controller.current_project
         if not project_name:
             self._last_project_name = project_name
-            self._fill_items({}, {}, [])
+            self._fill_items(
+                project_name, {}, [], []
+            )
             return
 
         if self._last_project_name != project_name:
@@ -117,7 +111,7 @@ class BrowserFoldersModel(QStandardItemModel):
         self._last_project_name = project_name
         task = AsyncTask(
             name="fetch_all_folders",
-            function=self._fetch_folders_data,
+            function=lambda: self._fetch_folders_data(project_name),
             callback=self._on_data_fetched,
             # Lower priority than per-node fetches so an expand click
             # the user makes while the bulk fetch is still running is
@@ -135,19 +129,17 @@ class BrowserFoldersModel(QStandardItemModel):
             QModelIndex: Index of the folder. Can be invalid if folder
                 is not available.
         """
-        item = self._items_by_id.get(item_id)
-        if item is None:
+        fill_item = self._fill_data.items_by_id.get(item_id)
+        if fill_item is None:
             return QModelIndex()
-        return self.indexFromItem(item)
+        return self.indexFromItem(fill_item.item)
 
     def _clear_items(self):
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
+        self._fill_data = _FillData()
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-    def _fetch_folders_data(self):
-        project_name = self._ui_controller.current_project
+    def _fetch_folders_data(self, project_name: str):
         folder_items = self._controller.get_folder_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
@@ -157,7 +149,7 @@ class BrowserFoldersModel(QStandardItemModel):
         status_items = self._controller.get_project_status_items(
             project_name, sender=FOLDERS_MODEL_SENDER_NAME
         )
-        return folder_items, folder_type_items, status_items
+        return project_name, folder_items, folder_type_items, status_items
 
     def _on_data_fetched(self, result):
         """Callback when refresh thread is finished.
@@ -176,52 +168,37 @@ class BrowserFoldersModel(QStandardItemModel):
 
     def _get_folder_item_icon(
         self,
-        folder_item,
-        folder_type_item_by_name,
-        folder_type_icon_cache
+        folder_type: str,
+        folder_type_icons_by_name: dict[str, QIcon | None],
     ):
-        icon = folder_type_icon_cache.get(folder_item.folder_type)
-        if icon is not None:
-            return icon
-
-        folder_type_item = folder_type_item_by_name.get(
-            folder_item.folder_type
-        )
-        icon_name = color = None
-        if folder_type_item is not None:
-            icon_name = folder_type_item.icon
-            color = folder_type_item.color
-        icon = get_qt_icon(MaterialSymbolsIcon(
-            icon_name or "folder",
-            color=color or get_default_entity_icon_color(),
-        ))
-
-        folder_type_icon_cache[folder_item.folder_type] = icon
+        icon = folder_type_icons_by_name.get(folder_type)
+        if icon is None:
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                "folder", get_default_entity_icon_color(),
+            ))
+            folder_type_icons_by_name[folder_type] = icon
         return icon
 
     def _fill_item_data(
         self,
-        item,
-        folder_item,
-        folder_type_item_by_name,
-        folder_type_icon_cache,
-        status_icon_by_name,
-        folder_label_path,
-    ):
+        item: QStandardItem,
+        folder_item: FolderItem,
+        folder_type_icons_by_name: dict[str, QIcon | None],
+        status_icon_by_name: dict[str, QIcon | None],
+        folder_label_path: str,
+    ) -> None:
         """
 
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
-            folder_type_item_by_name: Mapping of folder type names to items.
-            folder_type_icon_cache: Cache for folder type icons.
+            folder_type_icons_by_name: Cache for folder type icons.
             status_icon_by_name: Mapping of status name to QIcon.
 
         """
         icon = self._get_folder_item_icon(
-            folder_item,
-            folder_type_item_by_name,
-            folder_type_icon_cache
+            folder_item.folder_type,
+            folder_type_icons_by_name,
         )
         item.setData(folder_item.entity_id, FOLDER_ID_ROLE)
         item.setData(folder_item.name, FOLDER_NAME_ROLE)
@@ -234,6 +211,61 @@ class BrowserFoldersModel(QStandardItemModel):
         item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
         folder_path_filter = f"{folder_item.path} {folder_label_path}"
         item.setData(folder_path_filter.casefold(), FOLDER_PATH_FILTER_ROLE)
+
+    def _update_item_data(
+        self,
+        statuses_changed: bool,
+        folder_types_changed: bool,
+        old_fill_item: FillFolderItem,
+        new_fill_item: FillFolderItem,
+        folder_type_icons_by_name: dict[str, QIcon | None],
+        status_icon_by_name: dict[str, QIcon | None],
+    ) -> None:
+        """
+
+        Args:
+            statuses_changed (bool): Whether the statuses have changed.
+            folder_types_changed (bool): Whether the product types have changed.
+            old_fill_item (FillFolderItem): Old fill folder item.
+            new_fill_item (FillFolderItem): New fill folder item.
+            folder_type_icons_by_name: Cache for folder type icons.
+            status_icon_by_name: Mapping of status name to QIcon.
+
+        """
+        item = old_fill_item.item
+        update_icon = folder_types_changed
+        if new_fill_item.folder_type != new_fill_item.folder_type:
+            update_icon = True
+            item.setData(new_fill_item.folder_type, FOLDER_TYPE_ROLE)
+
+        if update_icon:
+            icon = self._get_folder_item_icon(
+                new_fill_item.folder_type,
+                folder_type_icons_by_name,
+            )
+            item.setData(icon, Qt.DecorationRole)
+
+        update_status_icon = statuses_changed
+        if new_fill_item.status != old_fill_item.status:
+            update_status_icon = True
+            item.setData(new_fill_item.status, FOLDER_STATUS_ROLE)
+
+        if update_status_icon:
+            status_icon = status_icon_by_name.get(new_fill_item.status)
+            item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
+
+        for new_value, old_value, role in (
+            (new_fill_item.name, old_fill_item.name, FOLDER_NAME_ROLE),
+            (new_fill_item.path, old_fill_item.path, FOLDER_PATH_ROLE),
+            (new_fill_item.label, old_fill_item.label, Qt.DisplayRole),
+            (
+                new_fill_item.path_filter,
+                old_fill_item.path_filter,
+                FOLDER_PATH_FILTER_ROLE
+            ),
+        ):
+            if new_value != old_value:
+                item.setData(new_value, role)
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -273,6 +305,7 @@ class BrowserFoldersModel(QStandardItemModel):
 
     def _fill_items(
         self,
+        project_name: str,
         folder_items_by_id: dict[str, FolderItem],
         folder_type_items: list[FolderTypeItem],
         status_items: list[StatusItem],
@@ -281,12 +314,32 @@ class BrowserFoldersModel(QStandardItemModel):
             if folder_items_by_id is not None:
                 self._clear_items()
             return
-        folder_type_item_by_name = {
+
+        import time
+        s = time.perf_counter()
+        fill_data = _FillData(project_name)
+        fill_data.folder_types_by_name = {
             folder_type.name: folder_type
             for folder_type in folder_type_items
         }
 
+        folder_type_icons_by_name = {}
+        for folder_type_item in folder_type_items:
+            icon_name = color = None
+            if folder_type_item is not None:
+                icon_name = folder_type_item.icon
+                color = folder_type_item.color
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                icon_name or "folder",
+                color=color or get_default_entity_icon_color(),
+            ))
+            folder_type_icons_by_name[folder_type_item.name] = icon
+
         # Build a local status-icon lookup for this fill operation
+        fill_data.statuses_by_name = {
+            status.name: status
+            for status in status_items
+        }
         status_icon_by_name = {}
         for status in status_items:
             icon = None
@@ -299,26 +352,30 @@ class BrowserFoldersModel(QStandardItemModel):
         # Update items if we already have some, otherwise fill from scratch
         # - Update is slower as it has to compare existing items with new
         #   ones, but it preserves expanded and selected state in the view.
-        if self._items_by_id:
+        old_fill_data, self._fill_data = self._fill_data, fill_data
+        if old_fill_data.items_by_id:
             self._fill_update(
+                fill_data,
+                old_fill_data,
                 folder_items_by_id,
-                folder_type_item_by_name,
+                folder_type_icons_by_name,
                 status_icon_by_name,
             )
         else:
             self._fill_from_scratch(
+                fill_data,
                 folder_items_by_id,
-                folder_type_item_by_name,
+                folder_type_icons_by_name,
                 status_icon_by_name,
             )
 
     def _fill_from_scratch(
         self,
+        fill_data: _FillData,
         folder_items_by_id: dict[str, FolderItem],
-        folder_type_item_by_name: dict[str, FolderTypeItem],
+        folder_type_icons_by_name: dict[str, QIcon | None],
         status_icon_by_name: dict[str, QIcon | None],
     ) -> None:
-        folder_type_icon_cache = {}
         folder_items_by_parent = defaultdict(list)
         for folder_item in folder_items_by_id.values():
             folder_items_by_parent[folder_item.parent_id].append(folder_item)
@@ -342,14 +399,15 @@ class BrowserFoldersModel(QStandardItemModel):
                 self._fill_item_data(
                     item,
                     folder_item,
-                    folder_type_item_by_name,
-                    folder_type_icon_cache,
+                    folder_type_icons_by_name,
                     status_icon_by_name,
                     folder_label_path,
                 )
                 new_items.append(item)
-                self._items_by_id[item_id] = item
-                self._parent_id_by_id[item_id] = parent_id
+                fill_item = FillFolderItem.from_folder_item(
+                    item, folder_item, folder_label_path
+                )
+                fill_data.items_by_id[item_id] = fill_item
 
                 hierarchy_queue.append((item, item_id, folder_label_path))
 
@@ -358,17 +416,12 @@ class BrowserFoldersModel(QStandardItemModel):
 
     def _fill_update(
         self,
+        fill_data: _FillData,
+        old_fill_data: _FillData,
         folder_items_by_id: dict[str, FolderItem],
-        folder_type_item_by_name: dict[str, FolderTypeItem],
+        folder_type_icons_by_name: dict[str, QIcon | None],
         status_icon_by_name: dict[str, QIcon | None],
     ) -> None:
-        ids_to_remove = {
-            item_id
-            for item_id in self._items_by_id
-            if item_id not in folder_items_by_id
-        }
-
-        folder_type_icon_cache = {}
         folder_items_by_parent = defaultdict(dict)
         for folder_item in folder_items_by_id.values():
             (
@@ -377,53 +430,121 @@ class BrowserFoldersModel(QStandardItemModel):
                 [folder_item.entity_id]
             ) = folder_item
 
-        hierarchy_queue = deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
-
-        # Keep pointers to removed items until the refresh finishes
-        #   - some children of the items could be moved and reused elsewhere
+        # Take items that are not in new folders or have different parent
         removed_items = []
-        while hierarchy_queue:
-            item = hierarchy_queue.popleft()
-            parent_item, parent_id, parent_path = item
+        remove_queue = deque()
+        remove_queue.append((self.invisibleRootItem(), None))
+        while remove_queue:
+            parent_item, parent_id = remove_queue.popleft()
             folder_items = folder_items_by_parent[parent_id]
-
             for row_idx in reversed(range(parent_item.rowCount())):
                 child_item = parent_item.child(row_idx)
                 child_id = child_item.data(FOLDER_ID_ROLE)
                 if child_id not in folder_items:
                     removed_items.append(parent_item.takeRow(row_idx))
+                remove_queue.append((child_item, child_id))
 
+        # Check if statuses or folder types changed to propagate icon changes
+        statuses_changed = (
+            fill_data.statuses_by_name != old_fill_data.statuses_by_name
+        )
+        folder_types_changed = fill_data.folder_types_by_name != (
+            old_fill_data.folder_types_by_name
+        )
+        hierarchy_queue = deque()
+        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+
+        # Keep pointers to removed items until the refresh finishes
+        #   - some children of the items could be moved and reused elsewhere
+        while hierarchy_queue:
+            item = hierarchy_queue.popleft()
+            parent_item, parent_id, parent_path = item
+            folder_items = folder_items_by_parent[parent_id]
             new_items = []
             for item_id, folder_item in folder_items.items():
-                item = self._items_by_id.get(item_id)
-                if item is None:
-                    is_new = True
+                folder_label_path = f"{parent_path}/{folder_item.label}"
+                fill_item = old_fill_data.items_by_id.get(item_id)
+                if fill_item is None:
                     item = QStandardItem()
                     item.setEditable(False)
                     item.setColumnCount(self.columnCount())
-                else:
-                    is_new = self._parent_id_by_id[item_id] != parent_id
-
-                folder_label_path = f"{parent_path}/{folder_item.label}"
-                self._fill_item_data(
-                    item,
-                    folder_item,
-                    folder_type_item_by_name,
-                    folder_type_icon_cache,
-                    status_icon_by_name,
-                    folder_label_path,
-                )
-                if is_new:
+                    new_fill_item = FillFolderItem.from_folder_item(
+                        item, folder_item, folder_label_path
+                    )
+                    self._fill_item_data(
+                        item,
+                        folder_item,
+                        folder_type_icons_by_name,
+                        status_icon_by_name,
+                        folder_label_path,
+                    )
                     new_items.append(item)
-                self._items_by_id[item_id] = item
-                self._parent_id_by_id[item_id] = parent_id
+                else:
+                    item = fill_item.item
+                    new_fill_item = FillFolderItem.from_folder_item(
+                        item, folder_item, folder_label_path
+                    )
+                    if fill_item.parent_id != parent_id:
+                        new_items.append(item)
+                    self._update_item_data(
+                        statuses_changed,
+                        folder_types_changed,
+                        fill_item,
+                        new_fill_item,
+                        folder_type_icons_by_name,
+                        status_icon_by_name,
+                    )
+
+                fill_data.items_by_id[item_id] = new_fill_item
 
                 hierarchy_queue.append((item, item_id, folder_label_path))
 
             if new_items:
                 parent_item.appendRows(new_items)
 
-        for item_id in ids_to_remove:
-            self._items_by_id.pop(item_id)
-            self._parent_id_by_id.pop(item_id)
+
+class BrowserFoldersProxyModel(QSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+
+        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setRecursiveFilteringEnabled(True)
+
+        self._folder_ids_filter = None
+        self._name_filter_terms = []
+
+    def set_name_filter(self, name: str) -> None:
+        self._name_filter_terms = name.casefold().split()
+        self.invalidateFilter()
+
+    def _match_name_filter(self, source_index) -> bool:
+        if not self._name_filter_terms:
+            return True
+        folder_path_filter = source_index.data(FOLDER_PATH_FILTER_ROLE)
+        if not folder_path_filter:
+            return False
+        return all(
+            term in folder_path_filter for term in self._name_filter_terms
+        )
+
+    def set_folder_ids_filter(self, folder_ids: set[str] | None):
+        if self._folder_ids_filter == folder_ids:
+            return
+        self._folder_ids_filter = folder_ids
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, row, parent_index):
+        if self._folder_ids_filter is None and not self._name_filter_terms:
+            return True
+
+        source_index = self.sourceModel().index(row, 0, parent_index)
+        if self._folder_ids_filter is not None:
+            if not self._folder_ids_filter:
+                return False
+            folder_id = source_index.data(FOLDER_ID_ROLE)
+            if folder_id not in self._folder_ids_filter:
+                return False
+
+        if not self._match_name_filter(source_index):
+            return False
+        return True
