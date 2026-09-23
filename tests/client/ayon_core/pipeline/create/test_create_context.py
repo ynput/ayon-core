@@ -14,7 +14,6 @@ from ayon_core.pipeline.create import (
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
-from ayon_core.tools.publisher.models.create import CreatorItem
 
 FOLDER_PATHS = [f"/shots/sh{idx:03}" for idx in range(10)]
 # Only folders with even index have a task
