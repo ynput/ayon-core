@@ -37,7 +37,7 @@ def test_select_folder_chain_expands_selects_and_scrolls():
         "folder-id": folder_index,
     }
     slicer = SimpleNamespace(
-        _tree_view=tree_view,
+        _current_view=lambda: tree_view,
         _get_view_index_by_id=indexes.__getitem__,
         _pending_context=("demo", "folder-id"),
         _folder_selection_chain=["parent-id", "folder-id"],
@@ -107,11 +107,11 @@ def test_task_selection_aggregates_row_ids(qtbot):
     )
 
 
-def test_task_selection_updates_loader_controller():
-    loader_controller = Mock()
+def test_task_selection_updates_ui_controller():
+    ui_controller = Mock()
     task_names_changed = Mock()
     slicer = SimpleNamespace(
-        _loader_controller=loader_controller,
+        _ui_controller=ui_controller,
         task_names_changed=task_names_changed,
     )
 
@@ -121,11 +121,50 @@ def test_task_selection_updates_loader_controller():
         ["task-1", "task-2"],
     )
 
-    loader_controller.set_selected_tasks.assert_called_once_with({
-        "task-1",
-        "task-2",
-    })
+    ui_controller.set_selected_task_ids.assert_called_once_with(
+        ["task-1", "task-2"]
+    )
     task_names_changed.emit.assert_called_once_with(["Animation"])
+
+
+def _selection_slicer():
+    ui_controller = Mock()
+    ui_controller.current_project = "demo"
+    ui_controller.get_task_id_scope.return_value = None
+    slicer = SimpleNamespace(
+        _ui_controller=ui_controller,
+        _tasks=Mock(),
+        _last_selection_ids=None,
+    )
+    return slicer
+
+
+def test_nested_selection_change_still_updates_tasks():
+    # With "include folder children" on, selecting a child of an already
+    # selected folder leaves the version-table ids unchanged; the tasks
+    # list must still follow the explicit selection.
+    slicer = _selection_slicer()
+
+    BrowserSlicer._apply_tree_selection(slicer, ["a", "a/b"], ["a"])
+    BrowserSlicer._apply_tree_selection(slicer, ["a"], ["a"])
+
+    assert slicer._tasks.set_context.call_args_list[-1].args == (
+        "demo", ["a"]
+    )
+    assert slicer._tasks.set_context.call_count == 2
+    slicer._ui_controller.on_tree_selection_changed.assert_called_with(
+        ["a"]
+    )
+
+
+def test_unchanged_selection_is_ignored():
+    slicer = _selection_slicer()
+
+    BrowserSlicer._apply_tree_selection(slicer, ["a"], ["a"])
+    BrowserSlicer._apply_tree_selection(slicer, ["a"], ["a"])
+
+    slicer._tasks.set_context.assert_called_once()
+    slicer._ui_controller.on_tree_selection_changed.assert_called_once()
 
 
 def test_flat_table_fetches_next_page_near_scroll_bottom():

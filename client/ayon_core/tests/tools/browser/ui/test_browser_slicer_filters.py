@@ -12,10 +12,10 @@ import pytest
 if "qargparse" not in sys.modules:
     sys.modules["qargparse"] = types.ModuleType("qargparse")
 
+from qtpy import QtGui
+
 from ayon_core.tools.browser.control import BrowserController
-from ayon_core.tools.browser.ui._browser_slicer_filters import (
-    MyTasksToggleButton,
-)
+from ayon_core.tools.browser.ui._browser_slicer import SlicerCategories
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
@@ -24,8 +24,11 @@ from ayon_core.tools.browser.ui.tasks_widget import (
     TASK_DATA_ROLE,
     BrowserTasksWidget,
 )
+from ayon_core.tools.browser.ui.folders_model import (
+    FOLDER_ID_ROLE,
+    BrowserFoldersProxyModel,
+)
 from ayon_core.ui.components.table_filter import NO_VALUE
-from ayon_core.tools.common_models.hierarchy import FolderItem
 
 
 @pytest.fixture(autouse=True)
@@ -64,21 +67,13 @@ def test_set_my_tasks_filter_resolves_folder_and_task_scope(monkeypatch):
             "task_ids": {"task-1", "task-2"},
         },
     )
-    monkeypatch.setattr(
-        controller,
-        "get_folder_id_path",
-        lambda folder_id: ["episode", "sequence", folder_id],
-    )
-    reset_calls = Mock()
-    controller.tree_reset_requested.connect(reset_calls)
 
     controller.set_my_tasks_filter(True)
 
-    assert controller._folder_id_scope == {
-        "episode", "sequence", "shot010",
-    }
+    # Ancestors are not part of the scope - the folders proxy keeps
+    # them visible through recursive filtering.
+    assert controller.get_folder_id_scope() == {"shot010"}
     assert controller.get_task_id_scope() == {"task-1", "task-2"}
-    reset_calls.assert_called_once()
 
 
 def test_set_my_tasks_filter_noop_when_unchanged(monkeypatch):
@@ -116,58 +111,61 @@ def test_set_my_tasks_filter_clears_scope_when_disabled(monkeypatch):
     assert controller.get_task_id_scope() is None
 
 
-def test_fetch_all_folders_restricts_to_folder_id_scope(monkeypatch):
-    controller = BrowserWidgetController(BrowserController())
-    controller._current_project = "test_project"
-    controller._folder_id_scope = {"shot010"}
-
-    monkeypatch.setattr(
-        controller._loader_controller,
-        "get_folder_items",
-        lambda project_name: {
-            "shot010": FolderItem(
-                entity_id="shot010", parent_id=None, name="shot010",
-                path="/shot010", folder_type="Shot", label="shot010",
-                status="in progress",
-            ),
-            "shot020": FolderItem(
-                entity_id="shot020", parent_id=None, name="shot020",
-                path="/shot020", folder_type="Shot", label="shot020",
-                status="in progress",
-            ),
-        },
-    )
-
-    result = controller._fetch_all_folders()
-
-    assert [n.id for n in result[None]] == ["shot010"]
-    # Parent tracking still happens for folders outside the scope too,
-    # so ancestor lookups keep working for folders reached later.
-    assert controller._folder_parent_ids == {
-        "shot010": None,
-        "shot020": None,
-    }
+def _folders_proxy():
+    """Proxy over 'episode > sequence > shot010' and a sibling 'shot020'."""
+    model = QtGui.QStandardItemModel()
+    items = {}
+    for folder_id, parent_id in (
+        ("episode", None),
+        ("sequence", "episode"),
+        ("shot010", "sequence"),
+        ("shot020", "sequence"),
+    ):
+        item = QtGui.QStandardItem(folder_id)
+        item.setData(folder_id, FOLDER_ID_ROLE)
+        parent = items[parent_id] if parent_id else model.invisibleRootItem()
+        parent.appendRow(item)
+        items[folder_id] = item
+    proxy = BrowserFoldersProxyModel()
+    proxy.setSourceModel(model)
+    return proxy
 
 
-def test_fetch_all_folders_returns_everything_without_scope(monkeypatch):
-    controller = BrowserWidgetController(BrowserController())
-    controller._current_project = "test_project"
+def _visible_folder_ids(proxy, parent=None):
+    parent = parent or proxy.index(-1, -1)
+    ids = []
+    for row in range(proxy.rowCount(parent)):
+        index = proxy.index(row, 0, parent)
+        ids.append(index.data(FOLDER_ID_ROLE))
+        ids.extend(_visible_folder_ids(proxy, index))
+    return ids
 
-    monkeypatch.setattr(
-        controller._loader_controller,
-        "get_folder_items",
-        lambda project_name: {
-            "shot010": FolderItem(
-                entity_id="shot010", parent_id=None, name="shot010",
-                path="/shot010", folder_type="Shot", label="shot010",
-                status="in progress",
-            ),
-        },
-    )
 
-    result = controller._fetch_all_folders()
+def test_folders_proxy_scope_keeps_ancestors_of_scoped_folders(qtbot):
+    proxy = _folders_proxy()
 
-    assert [n.id for n in result[None]] == ["shot010"]
+    proxy.set_folder_ids_filter({"shot010"})
+
+    assert _visible_folder_ids(proxy) == ["episode", "sequence", "shot010"]
+
+
+def test_folders_proxy_without_scope_shows_everything(qtbot):
+    proxy = _folders_proxy()
+    proxy.set_folder_ids_filter({"shot010"})
+
+    proxy.set_folder_ids_filter(None)
+
+    assert _visible_folder_ids(proxy) == [
+        "episode", "sequence", "shot010", "shot020",
+    ]
+
+
+def test_folders_proxy_empty_scope_hides_everything(qtbot):
+    proxy = _folders_proxy()
+
+    proxy.set_folder_ids_filter(set())
+
+    assert _visible_folder_ids(proxy) == []
 
 
 # ---------------------------------------------------------------------
@@ -216,55 +214,72 @@ def test_set_task_id_scope_none_restores_no_task_row(qtbot):
 
 
 # ---------------------------------------------------------------------
-# MyTasksToggleButton
+# SlicerCategories "My Tasks" toggle
 # ---------------------------------------------------------------------
 
 
+def _slicer_categories(qtbot, category=BrowserSlicerCategory.HIERARCHY):
+    be_controller = Mock()
+    be_controller.get_current_context.return_value = {}
+    widget = SlicerCategories(category.value, Mock(), be_controller)
+    qtbot.addWidget(widget)
+    return widget
+
+
 def test_my_tasks_toggle_visible_only_in_hierarchy(qtbot):
-    btn = MyTasksToggleButton()
-    qtbot.addWidget(btn)
+    widget = _slicer_categories(qtbot)
+    btn = widget._my_tasks_btn
+    assert btn.isVisibleTo(widget)
 
-    btn.set_category(BrowserSlicerCategory.HIERARCHY)
-    assert btn.isVisible()
+    widget.set_current_category(BrowserSlicerCategory.REVIEWS.value)
+    assert not btn.isVisibleTo(widget)
 
-    btn.set_category(BrowserSlicerCategory.REVIEWS)
-    assert not btn.isVisible()
+    widget.set_current_category(BrowserSlicerCategory.HIERARCHY.value)
+    assert btn.isVisibleTo(widget)
 
 
 def test_my_tasks_toggle_has_artist_friendly_tooltip(qtbot):
-    btn = MyTasksToggleButton()
-    qtbot.addWidget(btn)
+    btn = _slicer_categories(qtbot)._my_tasks_btn
 
     assert "task" in btn.toolTip().lower()
     assert "you" in btn.toolTip().lower()
 
 
 def test_my_tasks_toggle_unchecks_when_leaving_hierarchy(qtbot):
-    btn = MyTasksToggleButton()
-    qtbot.addWidget(btn)
-    btn.set_category(BrowserSlicerCategory.HIERARCHY)
-    changed = Mock()
-    btn.toggled.connect(changed)
-    btn.setChecked(True)
-    changed.reset_mock()
+    widget = _slicer_categories(qtbot)
+    widget._my_tasks_btn.setChecked(True)
+    requested = Mock()
+    widget.my_tasks_requested.connect(requested)
 
-    btn.set_category(BrowserSlicerCategory.REVIEWS)
+    widget.set_current_category(BrowserSlicerCategory.REVIEWS.value)
 
-    assert not btn.isChecked()
-    changed.assert_called_once_with(False)
+    assert not widget._my_tasks_btn.isChecked()
+    requested.assert_called_once_with(False)
 
 
-def test_my_tasks_toggle_emits_native_toggled_signal(qtbot):
-    btn = MyTasksToggleButton()
-    qtbot.addWidget(btn)
-    btn.set_category(BrowserSlicerCategory.HIERARCHY)
-    changed = Mock()
-    btn.toggled.connect(changed)
+def test_my_tasks_toggle_emits_request(qtbot):
+    widget = _slicer_categories(qtbot)
+    requested = Mock()
+    widget.my_tasks_requested.connect(requested)
 
-    btn.setChecked(True)
+    widget._my_tasks_btn.setChecked(True)
 
-    changed.assert_called_once_with(True)
-    assert btn.isChecked()
+    requested.assert_called_once_with(True)
+
+
+def test_set_current_category_updates_combo_before_emitting(qtbot):
+    widget = _slicer_categories(qtbot)
+    seen = []
+    widget.category_changed.connect(
+        lambda category: seen.append(
+            (category, widget.current_category())
+        )
+    )
+
+    widget.set_current_category(BrowserSlicerCategory.REVIEWS.value)
+
+    reviews = BrowserSlicerCategory.REVIEWS.value
+    assert seen == [(reviews, reviews)]
 
 
 # ---------------------------------------------------------------------
