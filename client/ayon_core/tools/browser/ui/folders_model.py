@@ -26,10 +26,9 @@ if typing.TYPE_CHECKING:
         FolderTypeItem,
     )
 
-    from .browser_controller import (
-        BrowserController,
-        BrowserWidgetController,
-    )
+    from ayon_core.tools.browser.abstract import AbstractBrowserController
+
+    from .browser_controller import BrowserWidgetController
 
 FOLDER_ID_ROLE = Qt.ItemDataRole.UserRole + 1
 FOLDER_NAME_ROLE = Qt.ItemDataRole.UserRole + 2
@@ -110,7 +109,7 @@ class BrowserFoldersModel(QStandardItemModel):
     def __init__(
         self,
         ui_controller: BrowserWidgetController,
-        be_controller: BrowserController,
+        be_controller: AbstractBrowserController,
     ) -> None:
         super().__init__()
 

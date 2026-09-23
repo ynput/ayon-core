@@ -30,9 +30,9 @@ from .folders_model import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.browser.abstract import AbstractBrowserController
     from ayon_core.tools.browser.ui.browser_controller import (
         BrowserWidgetController,
-        BrowserController,
     )
 
 log = Logger.get_logger(__name__)
@@ -94,7 +94,7 @@ class SlicerCategories(AYContainer):
         self,
         category: str,
         ui_controller: BrowserWidgetController,
-        be_controller: BrowserController,
+        be_controller: AbstractBrowserController,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(
@@ -239,7 +239,7 @@ class BrowserSlicer(AYContainer):
     def __init__(
         self,
         ui_controller: BrowserWidgetController,
-        be_controller: BrowserController,
+        be_controller: AbstractBrowserController,
         *args: Any,
         initial_category: str = BrowserSlicerCategory.HIERARCHY.value,
         **kwargs: Any,
