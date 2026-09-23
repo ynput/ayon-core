@@ -16,8 +16,6 @@ from typing import (
 )
 
 from ayon_core.lib.attribute_definitions import (
-    serialize_attr_defs,
-    deserialize_attr_defs,
     AbstractAttrDef,
     EnumDef,
     UIDef,
