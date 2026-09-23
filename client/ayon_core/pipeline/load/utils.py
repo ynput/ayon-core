@@ -1152,58 +1152,72 @@ def filter_containers(containers, project_name):
             container["representation"]
             for container in l_containers
         }
-        repre_entities = ayon_api.get_representations(
-            l_project_name,
-            representation_ids=repre_ids,
-            fields={"id", "versionId"}
-        )
-        version_ids = set()
-        repre_entities_by_id = {}
-        for repre_entity in repre_entities:
-            repre_id = repre_entity["id"]
-            version_id = repre_entity["versionId"]
-            version_ids.add(version_id)
-            repre_entities_by_id[repre_id] = repre_entity
+        try:
+            repre_entities = ayon_api.get_representations(
+                l_project_name,
+                representation_ids=repre_ids,
+                fields={"id", "versionId"}
+            )
+            version_ids = set()
+            repre_entities_by_id = {}
+            for repre_entity in repre_entities:
+                repre_id = repre_entity["id"]
+                version_id = repre_entity["versionId"]
+                version_ids.add(version_id)
+                repre_entities_by_id[repre_id] = repre_entity
 
-        # Query version docs to get it's product ids
-        # - also query hero version to be able identify if representation
-        #   belongs to existing version
-        version_entities = ayon_api.get_versions(
-            l_project_name,
-            version_ids=version_ids,
-            hero=True,
-            fields={"id", "productId", "version"}
-        )
-        versions_by_id = {}
-        versions_by_product_id = collections.defaultdict(list)
-        hero_version_ids = set()
-        for version_entity in version_entities:
-            version_id = version_entity["id"]
-            # Store versions by their ids
-            versions_by_id[version_id] = version_entity
-            # There's no need to query products for hero versions
-            #   - they are considered as latest?
-            if version_entity["version"] < 0:
-                hero_version_ids.add(version_id)
-                continue
-            product_id = version_entity["productId"]
-            versions_by_product_id[product_id].append(version_entity)
-
-        last_versions = ayon_api.get_last_versions(
-            l_project_name,
-            versions_by_product_id.keys(),
-            fields={"id"}
-        )
-
-        # Figure out which versions are outdated
-        outdated_version_ids = set()
-        for product_id, last_version_entity in last_versions.items():
-            for version_entity in versions_by_product_id[product_id]:
+            # Query version docs to get it's product ids
+            # - also query hero version to be able identify if
+            #   representation belongs to existing version
+            version_entities = ayon_api.get_versions(
+                l_project_name,
+                version_ids=version_ids,
+                hero=True,
+                fields={"id", "productId", "version"}
+            )
+            versions_by_id = {}
+            versions_by_product_id = collections.defaultdict(list)
+            hero_version_ids = set()
+            for version_entity in version_entities:
                 version_id = version_entity["id"]
-                if version_id in hero_version_ids:
+                # Store versions by their ids
+                versions_by_id[version_id] = version_entity
+                # There's no need to query products for hero versions
+                #   - they are considered as latest?
+                if version_entity["version"] < 0:
+                    hero_version_ids.add(version_id)
                     continue
-                if version_id != last_version_entity["id"]:
-                    outdated_version_ids.add(version_id)
+                product_id = version_entity["productId"]
+                versions_by_product_id[product_id].append(version_entity)
+
+            last_versions = ayon_api.get_last_versions(
+                l_project_name,
+                versions_by_product_id.keys(),
+                fields={"id"}
+            )
+
+            # Figure out which versions are outdated
+            outdated_version_ids = set()
+            for product_id, last_version_entity in last_versions.items():
+                for version_entity in versions_by_product_id[product_id]:
+                    version_id = version_entity["id"]
+                    if version_id in hero_version_ids:
+                        continue
+                    if version_id != last_version_entity["id"]:
+                        outdated_version_ids.add(version_id)
+        except Exception:
+            # Project may no longer exist (renamed/removed) or may not be
+            #   accessible. Treat all its containers as 'not found' instead
+            #   of letting the failure propagate and break the whole
+            #   filtering (which is called e.g. on scene open).
+            log.warning(
+                "Failed to query entities for project"
+                f" '{l_project_name}'. Treating its containers as not"
+                " found.",
+                exc_info=True
+            )
+            not_found_containers.extend(l_containers)
+            continue
 
         # Based on all collected data figure out which containers are outdated
         #   - log out if there are missing representation or version entities
