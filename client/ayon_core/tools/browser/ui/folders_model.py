@@ -191,6 +191,9 @@ class BrowserFoldersModel(QStandardItemModel):
             result (FetchData): Result from refresh.
 
         """
+        if self._last_project_name != result.project_name:
+            return
+
         self._fill_items(
             result.project_name,
             result.folder_items_by_id,
