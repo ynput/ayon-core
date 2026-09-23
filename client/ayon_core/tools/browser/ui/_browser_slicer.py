@@ -150,9 +150,7 @@ class SlicerCategories(AYContainer):
 
         # Initialise the toggle's visibility for the starting category
         # now that the tasks widget it feeds into exists.
-        category_v = BrowserSlicerCategory(category)
-        self._my_tasks_btn.set_category(category_v)
-        self._update_buttons(category_v)
+        self._update_buttons(BrowserSlicerCategory(category))
 
     def eventFilter(self, obj, event):
         """Close search field on Escape key press."""
