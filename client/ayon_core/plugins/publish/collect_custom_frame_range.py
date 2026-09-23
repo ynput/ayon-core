@@ -95,7 +95,13 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
             )
 
             instance = instance_change["instance"]
-            if not custom_frame_change:
+            # recalculate only if context changes
+            changes = instance_change["changes"]
+            if (
+                "task" not in changes
+                and "folderPath" not in changes
+                and not custom_frame_change
+            ):
                 continue
 
             if not cls.instance_matches_plugin_families(instance):
@@ -117,6 +123,6 @@ class CollectCustomFrameRange(pyblish.api.InstancePlugin,
     ) -> Optional[str]:
         return (
             instance_data.get("publish_attributes", {})
-                         .get(cls.__name__, {})
+                         .get("CollectJobInfo", {})
                          .get("use_custom_frames")
         )
