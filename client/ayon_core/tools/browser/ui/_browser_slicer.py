@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from typing import Any
 
 from qtpy import QtCore, QtWidgets
@@ -17,9 +18,6 @@ from ayon_core.ui.components.tree_view import AYTreeView, QItemSelection
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.ui.browser_controller import (
-    BrowserWidgetController,
-)
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.utils.folders_widget import CenteredIconDelegate
@@ -30,6 +28,12 @@ from .folders_model import (
     BrowserFoldersProxyModel,
     FOLDER_ID_ROLE,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.browser.ui.browser_controller import (
+        BrowserWidgetController,
+        BrowserController,
+    )
 
 log = Logger.get_logger(__name__)
 
@@ -89,8 +93,8 @@ class SlicerCategories(AYContainer):
     def __init__(
         self,
         category: str,
-        controller: BrowserWidgetController,
-        loader_controller,
+        ui_controller: BrowserWidgetController,
+        be_controller: BrowserController,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(
@@ -98,7 +102,7 @@ class SlicerCategories(AYContainer):
             variant=AYContainer.Variants.Low,
             parent=parent,
         )
-        self._loader_controller = loader_controller
+        self._be_controller = be_controller
 
         self._combo = AYComboBox(
             items=CATEGORIES,
@@ -144,7 +148,7 @@ class SlicerCategories(AYContainer):
         self._go_to_current_btn.clicked.connect(
             self.go_to_current_clicked
         )
-        controller.my_tasks_filter_changed.connect(
+        ui_controller.my_tasks_filter_changed.connect(
             self._on_controller_my_tasks_filter_changed
         )
 
@@ -203,7 +207,7 @@ class SlicerCategories(AYContainer):
             self._filter_field.clear()
 
     def _update_buttons(self, category: BrowserSlicerCategory) -> None:
-        context = self._loader_controller.get_current_context() or {}
+        context = self._be_controller.get_current_context() or {}
         applicable = category == BrowserSlicerCategory.HIERARCHY
         self._go_to_current_btn.setVisible(
             applicable
@@ -234,8 +238,8 @@ class BrowserSlicer(AYContainer):
 
     def __init__(
         self,
-        controller: BrowserWidgetController,
-        loader_controller,
+        ui_controller: BrowserWidgetController,
+        be_controller: BrowserController,
         *args: Any,
         initial_category: str = BrowserSlicerCategory.HIERARCHY.value,
         **kwargs: Any,
@@ -249,8 +253,8 @@ class BrowserSlicer(AYContainer):
             **kwargs,
         )
         self.setMinimumWidth(250)
-        self._controller = controller
-        self._loader_controller = loader_controller
+        self._ui_controller = ui_controller
+        self._be_controller = be_controller
         self._task_names: list[str] = []
         self._last_selection_ids: tuple[str, ...] | None = None
         self._pending_context: tuple[str, str] | None = None
@@ -264,28 +268,28 @@ class BrowserSlicer(AYContainer):
         )
 
         self._selector = ProjectsCombobox(
-            loader_controller,
+            be_controller,
             self,
             handle_expected_selection=True,
             variant=AYComboBox.Variants.Low,
         )
         self._selector.set_select_item_visible(True)
         self._selector.set_standard_filter_enabled(
-            loader_controller.is_standard_projects_filter_enabled()
+            be_controller.is_standard_projects_filter_enabled()
         )
         self.add_widget(self._selector, stretch=0)
 
         self._categories = SlicerCategories(
             initial_category,
-            controller,
-            loader_controller,
+            ui_controller,
+            be_controller,
         )
         self.add_widget(self._categories, stretch=0)
 
         self._folders_view = BrowserFolderTreeView(self)
 
         self._folders_model = BrowserFoldersModel(
-            controller, loader_controller
+            ui_controller, be_controller
         )
         self._folders_proxy = BrowserFoldersProxyModel()
         self._folders_proxy.setSourceModel(self._folders_model)
@@ -311,7 +315,7 @@ class BrowserSlicer(AYContainer):
 
         self._reviews_view = BrowserFolderTreeView(self)
         self._reviews_model = BulkTreeModel(
-            fetch_all=self._controller.fetch_reviews
+            fetch_all=self._ui_controller.fetch_reviews
         )
         self._reviews_proxy = TreeFilterProxyModel(self)
         self._reviews_proxy.setSourceModel(self._reviews_model)
@@ -323,7 +327,7 @@ class BrowserSlicer(AYContainer):
         self._set_view(initial_category)
 
         self._tasks = BrowserTasksWidget(
-            loader_controller,
+            be_controller,
             self,
         )
         self.add_widget(self._tasks, stretch=0)
@@ -355,17 +359,17 @@ class BrowserSlicer(AYContainer):
             self._on_task_selection_changed
         )
         self._tasks.refreshed.connect(self._on_tasks_refreshed)
-        self._controller.my_tasks_filter_changed.connect(
+        self._ui_controller.my_tasks_filter_changed.connect(
             self._on_controller_my_tasks_filter_changed
         )
         self._selector.selection_changed.connect(self._on_project_change)
-        loader_controller.register_event_callback(
+        be_controller.register_event_callback(
             "controller.reset.finished",
             self._on_controller_reset_finished,
         )
 
     def _on_project_change(self, project_name: str) -> None:
-        self._controller.set_project(project_name)
+        self._ui_controller.set_project(project_name)
         self.reset()
 
     def _on_controller_reset_finished(self) -> None:
@@ -376,7 +380,7 @@ class BrowserSlicer(AYContainer):
         combobox is refreshed since its own auto-refresh (triggered by
         the shared projects model) is skipped for same-sender refreshes.
         """
-        context = self._loader_controller.get_current_context() or {}
+        context = self._be_controller.get_current_context() or {}
         self._selector.set_current_context_project(
             context.get("project_name") or ""
         )
@@ -391,23 +395,26 @@ class BrowserSlicer(AYContainer):
 
     def _on_category_changed(self, category: str) -> None:
         self._set_view(category)
-        self._controller.set_category(category)
+        self._ui_controller.set_category(category)
         enabled = category == BrowserSlicerCategory.HIERARCHY.value
         self._tasks.setEnabled(enabled)
         if enabled:
             self._tasks.set_context(
-                self._controller.current_project,
+                self._ui_controller.current_project,
                 list(self._last_selection_ids or []),
-                task_id_scope=self._controller.get_task_id_scope(),
+                task_id_scope=self._ui_controller.get_task_id_scope(),
             )
         else:
-            self._tasks.set_context(self._controller.current_project, [])
+            self._tasks.set_context(
+                self._ui_controller.current_project,
+                [],
+            )
         self.reset()
 
     def _apply_my_tasks_filter(self, enabled: bool) -> None:
         """Apply the "My Tasks" toggle to the controller and task list."""
-        self._controller.set_my_tasks_filter(enabled)
-        self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
+        self._ui_controller.set_my_tasks_filter(enabled)
+        self._tasks.set_task_id_scope(self._ui_controller.get_task_id_scope())
 
     def _on_text_filter_changed(self, text: str):
         """Update the proxy filter when the user types.
@@ -436,9 +443,11 @@ class BrowserSlicer(AYContainer):
         checked state and the task list's scope in sync with it.
         """
         self._folders_proxy.set_folder_ids_filter(
-            self._controller.get_folder_id_scope()
+            self._ui_controller.get_folder_id_scope()
         )
-        self._tasks.set_task_id_scope(self._controller.get_task_id_scope())
+        self._tasks.set_task_id_scope(
+            self._ui_controller.get_task_id_scope()
+        )
 
     def _set_view(self, category: str) -> None:
         folders_visible = category == BrowserSlicerCategory.HIERARCHY.value
@@ -454,7 +463,7 @@ class BrowserSlicer(AYContainer):
 
     def select_current_context(self) -> None:
         """Select the host's current folder in the hierarchy tree."""
-        context = self._loader_controller.get_current_context()
+        context = self._be_controller.get_current_context()
         project_name = context.get("project_name", "")
         folder_id = context.get("folder_id")
         if not project_name or not folder_id:
@@ -462,7 +471,7 @@ class BrowserSlicer(AYContainer):
         self._categories.set_current_category(
             BrowserSlicerCategory.HIERARCHY.value
         )
-        if project_name != self._controller.current_project:
+        if project_name != self._ui_controller.current_project:
             self._selector.set_selection(project_name)
         self._folder_selection_timer.stop()
         self._pending_context = (project_name, folder_id)
@@ -491,14 +500,14 @@ class BrowserSlicer(AYContainer):
             return
 
         project_name, folder_id = self._pending_context
-        if self._controller.current_project != project_name:
+        if self._ui_controller.current_project != project_name:
             self._folder_selection_attempt = attempt + 1
             self._folder_selection_timer.start()
             return
 
         if not self._folder_selection_chain:
             self._folder_selection_chain = (
-                self._controller.get_folder_id_path(folder_id)
+                self._ui_controller.get_folder_id_path(folder_id)
             )
             if not self._folder_selection_chain:
                 self._clear_pending_selection()
@@ -594,7 +603,7 @@ class BrowserSlicer(AYContainer):
                 selected_rows.append((folder_id, index))
 
         ids = list(explicit_ids)
-        if self._controller.include_folder_children:
+        if self._ui_controller.include_folder_children:
             for folder_id, index in selected_rows:
                 parent = index.parent()
                 while parent.isValid():
@@ -610,11 +619,11 @@ class BrowserSlicer(AYContainer):
         self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
         log.debug("Current selection ids: %s", explicit_ids)
-        self._controller.on_tree_selection_changed(ids)
+        self._ui_controller.on_tree_selection_changed(ids)
         self._tasks.set_context(
-            self._controller.current_project,
+            self._ui_controller.current_project,
             explicit_ids,
-            task_id_scope=self._controller.get_task_id_scope(),
+            task_id_scope=self._ui_controller.get_task_id_scope(),
         )
 
     def _on_folders_reset(self):
@@ -641,11 +650,11 @@ class BrowserSlicer(AYContainer):
         self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
         log.debug("Current selection ids: %s", ids)
-        self._controller.on_tree_selection_changed(ids)
+        self._ui_controller.on_tree_selection_changed(ids)
         self._tasks.set_context(
-            self._controller.current_project,
+            self._ui_controller.current_project,
             ids,
-            task_id_scope=self._controller.get_task_id_scope(),
+            task_id_scope=self._ui_controller.get_task_id_scope(),
         )
 
     def _on_reviews_loading_changed(self, loading: bool) -> None:
@@ -677,7 +686,7 @@ class BrowserSlicer(AYContainer):
         back in step, since those describe the current context.
         """
         self._tasks.set_selected_task_names(self._task_names)
-        self._controller.set_selected_task_ids(
+        self._ui_controller.set_selected_task_ids(
             self._tasks.selected_task_ids()
         )
 
@@ -687,7 +696,7 @@ class BrowserSlicer(AYContainer):
         task_ids: list[str],
     ) -> None:
         """Update loader selection IDs and the name-based table filter."""
-        self._controller.set_selected_task_ids(task_ids)
+        self._ui_controller.set_selected_task_ids(task_ids)
         self.task_names_changed.emit(names)
 
     def current_category(self) -> str:

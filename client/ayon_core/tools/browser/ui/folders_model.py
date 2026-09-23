@@ -26,6 +26,11 @@ if typing.TYPE_CHECKING:
         FolderTypeItem,
     )
 
+    from .browser_controller import (
+        BrowserController,
+        BrowserWidgetController,
+    )
+
 FOLDER_ID_ROLE = Qt.ItemDataRole.UserRole + 1
 FOLDER_NAME_ROLE = Qt.ItemDataRole.UserRole + 2
 FOLDER_PATH_ROLE = Qt.ItemDataRole.UserRole + 3
@@ -95,15 +100,18 @@ class BrowserFoldersModel(QStandardItemModel):
     """Folders model which cares about refresh of folders.
 
     Args:
-        controller: The control object.
-        The model contains both **Folders** and **Status** columns.
-        Visibility of the status column is controlled by the view.
+        ui_controller (BrowserWidgetController): The Browser UI controller.
+        controller (BrowserController): The Browser controller.
     """
     _default_folder_icon = None
 
     reset_finished = Signal()
 
-    def __init__(self, ui_controller, controller):
+    def __init__(
+        self,
+        ui_controller: BrowserWidgetController,
+        be_controller: BrowserController,
+    ) -> None:
         super().__init__()
 
         self.setColumnCount(2)
@@ -111,7 +119,7 @@ class BrowserFoldersModel(QStandardItemModel):
         self.setHeaderData(1, Qt.Orientation.Horizontal, "")
 
         self._ui_controller = ui_controller
-        self._controller = controller
+        self._be_controller = be_controller
         self._fill_data = _FillData()
 
         self._last_project_name = None
@@ -164,13 +172,13 @@ class BrowserFoldersModel(QStandardItemModel):
     def _fetch_folders_data(
         self, project_name: str
     ) -> FetchData:
-        folder_items = self._controller.get_folder_items(
+        folder_items = self._be_controller.get_folder_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
-        folder_type_items = self._controller.get_folder_type_items(
+        folder_type_items = self._be_controller.get_folder_type_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
-        status_items = self._controller.get_project_status_items(
+        status_items = self._be_controller.get_project_status_items(
             project_name, sender=FOLDERS_MODEL_SENDER_NAME
         )
         return FetchData(
