@@ -140,7 +140,7 @@ class BrowserWidget(AYContainer):
                 break
         self._slicer.set_task_names(names)
 
-    def _on_folder_selected(self, ids: list[str], names: list[str]) -> None:
+    def _on_folder_selected(self, ids: list[str]) -> None:
         """Refresh the version table when folders are selected or cleared.
 
         In tree mode, selecting one or more folders makes those folders

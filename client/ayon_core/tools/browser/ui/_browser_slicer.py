@@ -582,14 +582,10 @@ class BrowserSlicer(AYContainer):
         # Read the canonical full selection rather than the delta
         # arguments, which are unreliable under ExtendedSelection.
         ids: list[str] = []
-        names: list[str] = []
         for idx in self._folders_view.selectionModel().selectedRows():
             folder_id = idx.data(FOLDER_ID_ROLE)
-            folder_name = idx.data(FOLDER_NAME_ROLE)
             if folder_id:
                 ids.append(folder_id)
-                if folder_name:
-                    names.append(folder_name)
 
         selection_key = tuple(ids)
         if selection_key == self._last_selection_ids:
@@ -597,7 +593,7 @@ class BrowserSlicer(AYContainer):
         self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
         log.debug("Current selection ids: %s", ids)
-        self._controller.on_tree_selection_changed(ids, names)
+        self._controller.on_tree_selection_changed(ids)
         self._tasks.set_context(
             self._controller.current_project,
             ids,
@@ -615,14 +611,12 @@ class BrowserSlicer(AYContainer):
         # Read the canonical full selection rather than the delta
         # arguments, which are unreliable under ExtendedSelection.
         ids: list[str] = []
-        names: list[str] = []
         for idx in self._reviews_view.selectionModel().selectedRows():
             data = idx.data(QtCore.Qt.ItemDataRole.UserRole)
             if data:
                 entity_id = data.get("id", "")
                 if entity_id:
                     ids.append(entity_id)
-                    names.append(data.get("name", ""))
 
         selection_key = tuple(ids)
         if selection_key == self._last_selection_ids:
@@ -630,7 +624,7 @@ class BrowserSlicer(AYContainer):
         self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
         log.debug("Current selection ids: %s", ids)
-        self._controller.on_tree_selection_changed(ids, names)
+        self._controller.on_tree_selection_changed(ids)
         self._tasks.set_context(
             self._controller.current_project,
             ids,

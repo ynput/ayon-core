@@ -532,14 +532,13 @@ class BrowserWidgetController(QtCore.QObject):
         return self._task_id_scope
 
     def on_tree_selection_changed(
-        self, ids: list[str], names: list[str]
+        self, ids: list[str]
     ) -> None:
         """Handle a selection change in the tree view.
 
         Args:
             ids: IDs of the selected entities, or empty list when
                 the selection is cleared.
-            names: Names of the selected entities (parallel to *ids*).
         """
         previous_folder_ids = self._selected_folder_ids
         previous_review_version_ids = self._review_session_version_ids
@@ -572,7 +571,7 @@ class BrowserWidgetController(QtCore.QObject):
             return
 
         self._reset_pagination()
-        self.selection_changed.emit(ids, names)
+        self.selection_changed.emit(ids)
 
     def set_selected_task_ids(self, task_ids: list[str]) -> None:
         self._selected_task_ids = task_ids
