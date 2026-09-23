@@ -370,6 +370,9 @@ class BrowserSlicer(AYContainer):
 
     def _on_project_change(self, project_name: str) -> None:
         self._ui_controller.set_project(project_name)
+        # The "My Tasks" scope is re-resolved for the new project by the
+        # controller, but without a filter-changed signal - re-apply it.
+        self._sync_my_tasks_scope()
         self.reset()
 
     def _on_controller_reset_finished(self) -> None:
@@ -442,6 +445,10 @@ class BrowserSlicer(AYContainer):
         ``BrowserTable._apply_view_extras``); keeps the toggle's
         checked state and the task list's scope in sync with it.
         """
+        self._sync_my_tasks_scope()
+
+    def _sync_my_tasks_scope(self) -> None:
+        """Apply the controller's "My Tasks" scope to folders and tasks."""
         self._folders_proxy.set_folder_ids_filter(
             self._ui_controller.get_folder_id_scope()
         )
