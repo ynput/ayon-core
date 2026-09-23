@@ -581,22 +581,35 @@ class BrowserSlicer(AYContainer):
     ) -> None:
         # Read the canonical full selection rather than the delta
         # arguments, which are unreliable under ExtendedSelection.
-        ids: list[str] = []
-        for idx in self._folders_view.selectionModel().selectedRows():
-            folder_id = idx.data(FOLDER_ID_ROLE)
+        explicit_ids: list[str] = []
+        selected_rows = []
+        for index in self._folders_view.selectionModel().selectedRows():
+            folder_id = index.data(FOLDER_ID_ROLE)
             if folder_id:
-                ids.append(folder_id)
+                explicit_ids.append(folder_id)
+                selected_rows.append((folder_id, index))
+
+        ids = list(explicit_ids)
+        if self._controller.include_folder_children:
+            for folder_id, index in selected_rows:
+                parent = index.parent()
+                while parent.isValid():
+                    parent_id = parent.data(FOLDER_ID_ROLE)
+                    if parent_id in ids:
+                        ids.remove(folder_id)
+                        break
+                    parent = parent.parent()
 
         selection_key = tuple(ids)
         if selection_key == self._last_selection_ids:
             return
         self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        log.debug("Current selection ids: %s", ids)
+        log.debug("Current selection ids: %s", explicit_ids)
         self._controller.on_tree_selection_changed(ids)
         self._tasks.set_context(
             self._controller.current_project,
-            ids,
+            explicit_ids,
             task_id_scope=self._controller.get_task_id_scope(),
         )
 

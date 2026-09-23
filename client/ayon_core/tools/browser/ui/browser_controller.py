@@ -191,7 +191,6 @@ class BrowserWidgetController(QtCore.QObject):
             BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
         )
         self._selected_folder_ids: list[str] = []
-        self._folder_parent_ids: dict[str, str | None] = {}
         self._selected_task_ids: list[str] = []
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
@@ -418,7 +417,6 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
         self._selected_folder_ids = []
         self._selected_task_ids = []
-        self._folder_parent_ids = {}
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
@@ -543,13 +541,6 @@ class BrowserWidgetController(QtCore.QObject):
         previous_folder_ids = self._selected_folder_ids
         previous_review_version_ids = self._review_session_version_ids
         self._selected_folder_ids = list(ids)
-        if (
-            self._include_folder_children
-            and self._current_category == BrowserSlicerCategory.HIERARCHY.value
-        ):
-            self._selected_folder_ids = (
-                self._get_top_level_selected_folder_ids(ids)
-            )
         self._review_session_version_ids = None  # always clear first
 
         if (
@@ -1636,24 +1627,6 @@ class BrowserWidgetController(QtCore.QObject):
         self._graphql_has_more = False
         self._folder_cursors = {}
         self._folder_has_more = {}
-
-    def _get_top_level_selected_folder_ids(
-        self, folder_ids: list[str]
-    ) -> list[str]:
-        """Remove selected folders covered by another selected ancestor."""
-        selected = set(folder_ids)
-        result = []
-        for folder_id in folder_ids:
-            parent_id = self._folder_parent_ids.get(folder_id)
-            covered = False
-            while parent_id is not None:
-                if parent_id in selected:
-                    covered = True
-                    break
-                parent_id = self._folder_parent_ids.get(parent_id)
-            if not covered:
-                result.append(folder_id)
-        return result
 
     def _fetch_root_folders(
         self, selected_folder_ids: list[str] | None = None
