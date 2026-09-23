@@ -183,6 +183,7 @@ class BrowserFolderTreeView(AYTreeView):
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent, variant=AYTreeView.Variants.Low)
         self.setHeaderHidden(True)
+        self.setUniformRowHeights(True)
 
 
 class BrowserSlicer(AYContainer):
