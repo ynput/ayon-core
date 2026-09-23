@@ -172,8 +172,10 @@ class SlicerCategories(AYContainer):
         """Select a category by its display text."""
         if category == self._combo.currentText():
             return
-        self._set_current_category(category)
+        self._combo.blockSignals(True)
         self._combo.setCurrentText(category)
+        self._combo.blockSignals(False)
+        self._set_current_category(category)
 
     def _on_controller_my_tasks_filter_changed(self, enabled: bool) -> None:
         self._my_tasks_btn.blockSignals(True)
