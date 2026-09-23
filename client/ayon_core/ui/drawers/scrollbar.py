@@ -34,20 +34,10 @@ class ScrollBarDrawer:
     def register_drawers(self):
         return {
             enum_to_str(
-                QStyle.ControlElement,
-                QStyle.ControlElement.CE_ScrollBarSlider,
+                QStyle.ComplexControl,
+                QStyle.ComplexControl.CC_ScrollBar,
                 "QScrollBar",
-            ): self.draw_scrollbar_slider,
-            enum_to_str(
-                QStyle.ControlElement,
-                QStyle.ControlElement.CE_ScrollBarAddPage,
-                "QScrollBar",
-            ): self.draw_scrollbar_page,
-            enum_to_str(
-                QStyle.ControlElement,
-                QStyle.ControlElement.CE_ScrollBarSubPage,
-                "QScrollBar",
-            ): self.draw_scrollbar_page,
+            ): self.draw_scrollbar,
         }
 
     def register_sizers(self):
@@ -83,14 +73,11 @@ class ScrollBarDrawer:
         """Sub-control rects for a scrollbar without arrow buttons.
 
         Mirrors QCommonStyle's layout but with the groove spanning the
-        whole widget. Painting (QCommonStyle.drawComplexControl) and all
-        mouse interaction in QScrollBar (hit testing, dragging, page
-        stepping) query these rects, so what is drawn is exactly what
-        responds to the mouse.
+        whole widget. Painting and all mouse interaction (hit testing,
+        dragging, page stepping) query these rects, so what is drawn is
+        exactly what responds to the mouse.
         """
-        if not isinstance(opt, QStyleOptionSlider):
-            raise ValueError(f"Unexpected option type: {type(opt)}")
-
+        opt = self._slider_option(opt, w)
         SC = QStyle.SubControl
         # No arrow buttons: report them as empty so they never get painted
         # nor hit by 'hitTestComplexControl'.
@@ -158,26 +145,66 @@ class ScrollBarDrawer:
             return int(self._style["min-length"])
         return 0
 
-    def draw_scrollbar_slider(
+    @staticmethod
+    def _slider_option(
+        opt: QStyleOption, w: QWidget | None
+    ) -> QStyleOptionSlider:
+        """Return ``opt`` as a QStyleOptionSlider.
+
+        PySide2 does not downcast style options that Qt passes from C++ into
+        Python overrides (e.g. from 'hitTestComplexControl'), so they arrive
+        as QStyleOptionComplex without the slider fields. Rebuild those from
+        the scrollbar widget in that case.
+        """
+        if isinstance(opt, QStyleOptionSlider):
+            return opt
+        if not isinstance(w, QtWidgets.QScrollBar):
+            raise ValueError(f"Unexpected option type: {type(opt)}")
+        slider_opt = QStyleOptionSlider()
+        slider_opt.initFrom(w)
+        slider_opt.rect = opt.rect
+        slider_opt.state = opt.state
+        slider_opt.direction = opt.direction
+        if isinstance(opt, QStyleOptionComplex):
+            slider_opt.subControls = opt.subControls
+            slider_opt.activeSubControls = opt.activeSubControls
+        slider_opt.orientation = w.orientation()
+        slider_opt.minimum = w.minimum()
+        slider_opt.maximum = w.maximum()
+        slider_opt.sliderPosition = w.sliderPosition()
+        slider_opt.sliderValue = w.value()
+        slider_opt.singleStep = w.singleStep()
+        slider_opt.pageStep = w.pageStep()
+        slider_opt.upsideDown = w.invertedAppearance()
+        return slider_opt
+
+    def draw_scrollbar(
         self,
         option: QStyleOptionComplex,
         painter: QPainter,
         widget: QWidget | None = None,
     ) -> None:
-        """Draw the scrollbar slider/thumb."""
+        """Draw the scrollbar background and slider."""
+        option = self._slider_option(option, widget)
         style = self.model.get_style("QScrollBar")
         style.set_context(widget)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
 
-        # Draw slider background
-        rect = option.rect
-
-        painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(style["background-color"])))
-        painter.drawRect(rect)
+        painter.drawRect(option.rect)
 
-        radius = style.get("border-radius")
+        if not option.subControls & QStyle.SubControl.SC_ScrollBarSlider:
+            painter.restore()
+            return
+
+        rect = self.get_size(
+            QStyle.ComplexControl.CC_ScrollBar,
+            option,
+            QStyle.SubControl.SC_ScrollBarSlider,
+            widget,
+        )
         size = style["slider-width"]
         center = rect.center()
         if option.orientation == Qt.Orientation.Vertical:
@@ -187,7 +214,7 @@ class ScrollBarDrawer:
         rect.moveCenter(center)
 
         radius = min(
-            radius, rect.width() / 2, rect.height() / 2
+            style.get("border-radius"), rect.width() / 2, rect.height() / 2
         )
         if option.state & QStyle.StateFlag.State_Sunken:
             slider_color = QColor(style.get("slider-active-color"))
@@ -197,24 +224,5 @@ class ScrollBarDrawer:
             slider_color = QColor(style.get("slider-color"))
         painter.setBrush(QBrush(slider_color))
         painter.drawRoundedRect(rect, radius, radius)
-
-        painter.restore()
-
-    def draw_scrollbar_page(
-        self,
-        option: QStyleOptionComplex,
-        painter: QPainter,
-        widget: QWidget | None = None,
-    ) -> None:
-        """Draw scrollbar page buttons."""
-        style = self.model.get_style("QScrollBar")
-        style.set_context(widget)
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Draw slider background
-        painter.setBrush(QBrush(QColor(style.get("background-color"))))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRect(option.rect)
 
         painter.restore()

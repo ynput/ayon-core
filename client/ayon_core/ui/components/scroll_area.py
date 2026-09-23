@@ -39,14 +39,17 @@ class AYScrollBar(StyleMixin, QScrollBar):
     _repeat_time = 50
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.setStyle(get_ayon_style())
+        # Set before 'super().__init__' so overrides like 'sliderChange' are
+        # safe to call while the base classes initialize.
         self._pressed_subcontrol = QStyle.SubControl.SC_None
         self._active_subcontrols = QStyle.SubControl.SC_None
         # Offset of the press position from the slider start while dragging
         self._click_offset = 0
-        # Last mouse position while a page area is pressed
-        self._page_press_pos: QPoint | None = None
+        # Page step action and last mouse position while a page is pressed
+        self._page_action: QScrollBar.SliderAction | None = None
+        self._page_pos: QPoint | None = None
+        super().__init__(*args, **kwargs)
+        self.setStyle(get_ayon_style())
 
     def initStyleOption(self, option: QStyleOptionSlider) -> None:
         super().initStyleOption(option)
@@ -96,101 +99,61 @@ class AYScrollBar(StyleMixin, QScrollBar):
 
     def mousePressEvent(self, event) -> None:
         SC = QStyle.SubControl
-        button = event.button()
-        shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
-        # Middle click and shift + left click jump the slider to the cursor
-        jump = button == Qt.MouseButton.MiddleButton or (
-            button == Qt.MouseButton.LeftButton and shift
-        )
         if (
-            (button != Qt.MouseButton.LeftButton and not jump)
-            or self._pressed_subcontrol != SC.SC_None
+            event.button() != Qt.MouseButton.LeftButton
             or self.maximum() == self.minimum()
         ):
             event.ignore()
             return
 
-        event.accept()
         pos = event.pos()
         sc = self._hit_test(pos)
-        if sc == SC.SC_None:
-            return
-
-        if jump:
-            # Center the slider under the cursor, then drag from there
-            _start, length = self._slider_span()
-            self._click_offset = length // 2
-            self.setSliderDown(True)
-            self.setSliderPosition(self._pixel_to_value(pos))
-            sc = SC.SC_ScrollBarSlider
-        elif sc == SC.SC_ScrollBarSlider:
+        if sc == SC.SC_ScrollBarSlider:
             start, _length = self._slider_span()
             self._click_offset = self._pos_along(pos) - start
             self.setSliderDown(True)
-        else:
-            action = (
+        elif sc in (SC.SC_ScrollBarSubPage, SC.SC_ScrollBarAddPage):
+            self._page_action = (
                 QScrollBar.SliderAction.SliderPageStepSub
                 if sc == SC.SC_ScrollBarSubPage
                 else QScrollBar.SliderAction.SliderPageStepAdd
             )
-            self._page_press_pos = pos
-            self.triggerAction(action)
-            self.setRepeatAction(
-                action, self._repeat_threshold, self._repeat_time
-            )
+            self._page_pos = pos
+            self.triggerAction(self._page_action)
+        else:
+            return
 
         self._pressed_subcontrol = sc
         self._active_subcontrols = sc
+        self._update_page_repeat()
         self.update()
 
     def mouseMoveEvent(self, event) -> None:
-        SC = QStyle.SubControl
         pos = event.pos()
-        if self._pressed_subcontrol == SC.SC_ScrollBarSlider:
+        if self.isSliderDown():
             self.setSliderPosition(self._pixel_to_value(pos))
-            return
-
-        if self._page_press_pos is not None:
-            self._page_press_pos = pos
-            # Pause repeating while outside the pressed page area and resume
-            # when coming back, like QScrollBar does.
-            inside = self._hit_test(pos) == self._pressed_subcontrol
-            if not inside:
-                self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
-            elif self.repeatAction() == QScrollBar.SliderAction.SliderNoAction:
-                self.setRepeatAction(
-                    self._page_action(),
-                    self._repeat_threshold,
-                    self._repeat_time,
-                )
-            return
-
-        self._update_active_subcontrols(pos)
+        elif self._page_action is not None:
+            self._page_pos = pos
+            self._update_page_repeat()
+        else:
+            self._update_active_subcontrols(pos)
 
     def mouseReleaseEvent(self, event) -> None:
-        SC = QStyle.SubControl
-        if self._pressed_subcontrol == SC.SC_None:
+        if self._pressed_subcontrol == QStyle.SubControl.SC_None:
             event.ignore()
             return
-
-        event.accept()
-        self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
-        if self.isSliderDown():
-            self.setSliderDown(False)
-        self._pressed_subcontrol = SC.SC_None
-        self._page_press_pos = None
+        self._reset_pressed()
         self._update_active_subcontrols(event.pos())
-        self.update()
+
+    def hideEvent(self, event) -> None:
+        # No release event arrives when hidden mid-press (e.g. an 'as needed'
+        # scrollbar disappearing while page stepping).
+        super().hideEvent(event)
+        self._reset_pressed()
 
     def sliderChange(self, change) -> None:
         super().sliderChange(change)
-        # Stop page stepping once the slider has reached the cursor.
-        if (
-            self._page_press_pos is not None
-            and self._hit_test(self._page_press_pos)
-            != self._pressed_subcontrol
-        ):
-            self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+        self._update_page_repeat()
 
     def leaveEvent(self, event) -> None:
         super().leaveEvent(event)
@@ -211,10 +174,33 @@ class AYScrollBar(StyleMixin, QScrollBar):
             self,
         )
 
-    def _page_action(self) -> QScrollBar.SliderAction:
-        if self._pressed_subcontrol == QStyle.SubControl.SC_ScrollBarSubPage:
-            return QScrollBar.SliderAction.SliderPageStepSub
-        return QScrollBar.SliderAction.SliderPageStepAdd
+    def _update_page_repeat(self) -> None:
+        """Repeat page steps only while the cursor is over the pressed page.
+
+        This stops once the slider reaches the cursor, and pauses/resumes
+        when the cursor leaves/re-enters the page area, like QScrollBar.
+        """
+        if self._page_action is None:
+            return
+        if self._hit_test(self._page_pos) == self._pressed_subcontrol:
+            if self.repeatAction() == QScrollBar.SliderAction.SliderNoAction:
+                self.setRepeatAction(
+                    self._page_action,
+                    self._repeat_threshold,
+                    self._repeat_time,
+                )
+        else:
+            self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+
+    def _reset_pressed(self) -> None:
+        self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+        self._page_action = None
+        self._page_pos = None
+        if self.isSliderDown():
+            self.setSliderDown(False)
+        if self._pressed_subcontrol != QStyle.SubControl.SC_None:
+            self._pressed_subcontrol = QStyle.SubControl.SC_None
+            self.update()
 
     def _pos_along(self, pos: QPoint) -> int:
         """Logical position of ``pos`` along the scrollbar's orientation."""
