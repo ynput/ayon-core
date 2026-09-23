@@ -131,7 +131,15 @@ class CollectCustomFrameRange(
             custom_frame_change = cls._get_publish_use_custom_frames_value(
                 instance_change["changes"]
             )
-            if not custom_frame_change:
+
+            instance = instance_change["instance"]
+            # recalculate only if context changes
+            changes = instance_change["changes"]
+            if (
+                "task" not in changes
+                and "folderPath" not in changes
+                and not custom_frame_change
+            ):
                 continue
 
             instance = instance_change["instance"]

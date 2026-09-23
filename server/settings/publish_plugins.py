@@ -1465,7 +1465,7 @@ class CollectRenderedFilesModel(BaseSettingsModel):
 
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(  # codespell:ignore paterns
+    patterns: list[str] = SettingsField(
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -2189,7 +2189,7 @@ DEFAULT_PUBLISH_VALUES = {
         "remove_files": False
     },
     "CleanUp": {
-        "paterns": [],  # codespell:ignore paterns
+        "patterns": [],
         "remove_temp_renders": False
     },
     "CleanUpFarm": {
