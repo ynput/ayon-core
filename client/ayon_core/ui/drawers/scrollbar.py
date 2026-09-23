@@ -26,14 +26,6 @@ class ScrollBarDrawer:
         self.style_inst = style_inst
         self.model = style_inst.model
         self._style = self.model.get_style("QScrollBar")
-        self._cache = {}
-
-    @property
-    def _super(self):
-        """Return proxy for calling QCommonStyle methods on style_inst."""
-        from ..style import AYONStyle as _AYONStyle
-
-        return super(_AYONStyle, self.style_inst)
 
     @property
     def base_class(self):
@@ -88,58 +80,66 @@ class ScrollBarDrawer:
         sc: QStyle.SubControl,
         w: QWidget | None = None,
     ) -> QRect | None:
-        if not w:
-            raise ValueError(
-                "Widget required to calculate scrollbar sub-control rects"
-            )
+        """Sub-control rects for a scrollbar without arrow buttons.
 
-        if not isinstance(opt, (QStyleOptionSlider, QStyleOptionComplex)):
+        Mirrors QCommonStyle's layout but with the groove spanning the
+        whole widget. Painting (QCommonStyle.drawComplexControl) and all
+        mouse interaction in QScrollBar (hit testing, dragging, page
+        stepping) query these rects, so what is drawn is exactly what
+        responds to the mouse.
+        """
+        if not isinstance(opt, QStyleOptionSlider):
             raise ValueError(f"Unexpected option type: {type(opt)}")
 
-        sup = self._super
-        try:
-            als = self._cache["add_line_size"]
-        except KeyError:
-            als = self._cache["add_line_size"] = sup.subControlRect(
-                cc, opt, QStyle.SubControl.SC_ScrollBarAddLine, w
-            ).size()
-        try:
-            sls = self._cache["sub_line_size"]
-        except KeyError:
-            sls = self._cache["sub_line_size"] = sup.subControlRect(
-                cc, opt, QStyle.SubControl.SC_ScrollBarSubLine, w
-            ).size()
-
-        orientation = w.orientation()
-
-        if sc in (
-            QStyle.SubControl.SC_ScrollBarSlider,
-            QStyle.SubControl.SC_ScrollBarGroove,
+        SC = QStyle.SubControl
+        # No arrow buttons: report them as empty so they never get painted
+        # nor hit by 'hitTestComplexControl'.
+        if sc not in (
+            SC.SC_ScrollBarGroove,
+            SC.SC_ScrollBarSlider,
+            SC.SC_ScrollBarSubPage,
+            SC.SC_ScrollBarAddPage,
         ):
-            rect = sup.subControlRect(cc, opt, sc, w)
-            if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, -sls.height(), 0, als.height())
-            else:
-                rect.adjust(-sls.width(), 0, als.width(), 0)
-            return rect
+            return QRect()
 
-        elif sc == QStyle.SubControl.SC_ScrollBarAddPage:
-            rect = sup.subControlRect(cc, opt, sc, w)
-            if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, 0, 0, als.height())
-            else:
-                rect.adjust(0, 0, als.width(), 0)
-            return rect
+        rect = opt.rect
+        horizontal = opt.orientation == Qt.Orientation.Horizontal
+        max_len = rect.width() if horizontal else rect.height()
 
-        elif sc == QStyle.SubControl.SC_ScrollBarSubPage:
-            rect = sup.subControlRect(cc, opt, sc, w)
-            if orientation == Qt.Orientation.Vertical:
-                rect.adjust(0, -sls.height(), 0, 0)
-            else:
-                rect.adjust(-sls.width(), 0, 0, 0)
-            return rect
+        slider_len = max_len
+        if opt.maximum != opt.minimum:
+            value_range = opt.maximum - opt.minimum
+            slider_len = int(
+                opt.pageStep * max_len / (value_range + opt.pageStep)
+            )
+            slider_min = self.style_inst.pixelMetric(
+                QStyle.PixelMetric.PM_ScrollBarSliderMin, opt, w
+            )
+            slider_len = min(max(slider_len, slider_min), max_len)
 
-        raise ValueError("Unexpected sub-control")
+        slider_start = QStyle.sliderPositionFromValue(
+            opt.minimum,
+            opt.maximum,
+            opt.sliderPosition,
+            max_len - slider_len,
+            opt.upsideDown,
+        )
+
+        if sc == SC.SC_ScrollBarGroove:
+            start, length = 0, max_len
+        elif sc == SC.SC_ScrollBarSlider:
+            start, length = slider_start, slider_len
+        elif sc == SC.SC_ScrollBarSubPage:
+            start, length = 0, slider_start
+        else:  # SC_ScrollBarAddPage
+            start = slider_start + slider_len
+            length = max_len - start
+
+        if horizontal:
+            ret = QRect(start, 0, length, rect.height())
+        else:
+            ret = QRect(0, start, rect.width(), length)
+        return QStyle.visualRect(opt.direction, rect, ret)
 
     def get_metric(
         self,

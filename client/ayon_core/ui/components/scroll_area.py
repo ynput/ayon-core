@@ -21,16 +21,32 @@ class AYScrollBar(StyleMixin, QScrollBar):
 
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.
 
+    Mouse interaction is handled here too, instead of by QScrollBar. When
+    any ancestor (or the app) has a stylesheet, Qt wraps ``self.style()``
+    in a ``QStyleSheetStyle`` which, as soon as a rule like
+    ``QWidget { background: ... }`` matches, computes its own scrollbar
+    geometry (including arrow buttons). QScrollBar's C++ mouse handling
+    would then hit-test against that geometry rather than what we paint.
+    Using the raw AYONStyle for both keeps them in sync.
+
     Args:
         *args: Positional arguments passed to QScrollBar.
         **kwargs: Keyword arguments passed to QScrollBar.
     """
+
+    # Delays (ms) before and between repeated page steps while pressed.
+    _repeat_threshold = 500
+    _repeat_time = 50
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.setStyle(get_ayon_style())
         self._pressed_subcontrol = QStyle.SubControl.SC_None
         self._active_subcontrols = QStyle.SubControl.SC_None
+        # Offset of the press position from the slider start while dragging
+        self._click_offset = 0
+        # Last mouse position while a page area is pressed
+        self._page_press_pos: QPoint | None = None
 
     def initStyleOption(self, option: QStyleOptionSlider) -> None:
         super().initStyleOption(option)
@@ -58,20 +74,102 @@ class AYScrollBar(StyleMixin, QScrollBar):
         )
 
     def mousePressEvent(self, event) -> None:
-        super().mousePressEvent(event)
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._pressed_subcontrol = self._active_subcontrols
-            self.update()
+        SC = QStyle.SubControl
+        button = event.button()
+        shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+        # Middle click and shift + left click jump the slider to the cursor
+        jump = button == Qt.MouseButton.MiddleButton or (
+            button == Qt.MouseButton.LeftButton and shift
+        )
+        if (
+            (button != Qt.MouseButton.LeftButton and not jump)
+            or self._pressed_subcontrol != SC.SC_None
+            or self.maximum() == self.minimum()
+        ):
+            event.ignore()
+            return
 
-    def mouseReleaseEvent(self, event) -> None:
-        super().mouseReleaseEvent(event)
-        if self._pressed_subcontrol != QStyle.SubControl.SC_None:
-            self._pressed_subcontrol = QStyle.SubControl.SC_None
-            self.update()
+        event.accept()
+        pos = event.pos()
+        sc = self._hit_test(pos)
+        if sc == SC.SC_None:
+            return
+
+        if jump:
+            # Center the slider under the cursor, then drag from there
+            _start, length = self._slider_span()
+            self._click_offset = length // 2
+            self.setSliderDown(True)
+            self.setSliderPosition(self._pixel_to_value(pos))
+            sc = SC.SC_ScrollBarSlider
+        elif sc == SC.SC_ScrollBarSlider:
+            start, _length = self._slider_span()
+            self._click_offset = self._pos_along(pos) - start
+            self.setSliderDown(True)
+        else:
+            action = (
+                QScrollBar.SliderAction.SliderPageStepSub
+                if sc == SC.SC_ScrollBarSubPage
+                else QScrollBar.SliderAction.SliderPageStepAdd
+            )
+            self._page_press_pos = pos
+            self.triggerAction(action)
+            self.setRepeatAction(
+                action, self._repeat_threshold, self._repeat_time
+            )
+
+        self._pressed_subcontrol = sc
+        self._active_subcontrols = sc
+        self.update()
 
     def mouseMoveEvent(self, event) -> None:
-        super().mouseMoveEvent(event)
+        SC = QStyle.SubControl
+        pos = event.pos()
+        if self._pressed_subcontrol == SC.SC_ScrollBarSlider:
+            self.setSliderPosition(self._pixel_to_value(pos))
+            return
+
+        if self._page_press_pos is not None:
+            self._page_press_pos = pos
+            # Pause repeating while outside the pressed page area and resume
+            # when coming back, like QScrollBar does.
+            inside = self._hit_test(pos) == self._pressed_subcontrol
+            if not inside:
+                self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+            elif self.repeatAction() == QScrollBar.SliderAction.SliderNoAction:
+                self.setRepeatAction(
+                    self._page_action(),
+                    self._repeat_threshold,
+                    self._repeat_time,
+                )
+            return
+
+        self._update_active_subcontrols(pos)
+
+    def mouseReleaseEvent(self, event) -> None:
+        SC = QStyle.SubControl
+        if self._pressed_subcontrol == SC.SC_None:
+            event.ignore()
+            return
+
+        event.accept()
+        self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+        if self.isSliderDown():
+            self.setSliderDown(False)
+        self._pressed_subcontrol = SC.SC_None
+        self._page_press_pos = None
         self._update_active_subcontrols(event.pos())
+        self.update()
+
+    def sliderChange(self, change) -> None:
+        super().sliderChange(change)
+        # Stop page stepping once the slider has reached the cursor.
+        if (
+            self._page_press_pos is not None
+            and self._hit_test(self._page_press_pos)
+            != self._pressed_subcontrol
+        ):
+            self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
 
     def leaveEvent(self, event) -> None:
         super().leaveEvent(event)
@@ -79,13 +177,66 @@ class AYScrollBar(StyleMixin, QScrollBar):
             self._active_subcontrols = QStyle.SubControl.SC_None
             self.update()
 
-    def _update_active_subcontrols(self, pos: QPoint) -> None:
-        style = self.style()
+    def _style_option(self) -> QStyleOptionSlider:
         option = QStyleOptionSlider()
         self.initStyleOption(option)
-        active_sub_controls = style.hitTestComplexControl(
-            QStyle.ComplexControl.CC_ScrollBar, option, pos, self
+        return option
+
+    def _hit_test(self, pos: QPoint) -> QStyle.SubControl:
+        return get_ayon_style().hitTestComplexControl(
+            QStyle.ComplexControl.CC_ScrollBar,
+            self._style_option(),
+            pos,
+            self,
         )
+
+    def _page_action(self) -> QScrollBar.SliderAction:
+        if self._pressed_subcontrol == QStyle.SubControl.SC_ScrollBarSubPage:
+            return QScrollBar.SliderAction.SliderPageStepSub
+        return QScrollBar.SliderAction.SliderPageStepAdd
+
+    def _pos_along(self, pos: QPoint) -> int:
+        """Logical position of ``pos`` along the scrollbar's orientation."""
+        if self.orientation() == Qt.Orientation.Horizontal:
+            return QStyle.visualPos(
+                self.layoutDirection(), self.rect(), pos
+            ).x()
+        return pos.y()
+
+    def _slider_span(self) -> tuple[int, int]:
+        """Logical (start, length) of the slider along the orientation."""
+        option = self._style_option()
+        rect = QStyle.visualRect(
+            option.direction,
+            option.rect,
+            get_ayon_style().subControlRect(
+                QStyle.ComplexControl.CC_ScrollBar,
+                option,
+                QStyle.SubControl.SC_ScrollBarSlider,
+                self,
+            ),
+        )
+        if self.orientation() == Qt.Orientation.Horizontal:
+            return rect.x(), rect.width()
+        return rect.y(), rect.height()
+
+    def _pixel_to_value(self, pos: QPoint) -> int:
+        """Slider value for dragging the slider to ``pos``."""
+        _start, length = self._slider_span()
+        if self.orientation() == Qt.Orientation.Horizontal:
+            groove_length = self.width()
+        else:
+            groove_length = self.height()
+        return QStyle.sliderValueFromPosition(
+            self.minimum(),
+            self.maximum(),
+            self._pos_along(pos) - self._click_offset,
+            groove_length - length,
+            self._style_option().upsideDown,
+        )
+
+    def _update_active_subcontrols(self, pos: QPoint) -> None:
+        active_sub_controls = self._hit_test(pos)
         if active_sub_controls != self._active_subcontrols:
             self._active_subcontrols = active_sub_controls
             self.update()
