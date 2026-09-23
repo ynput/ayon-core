@@ -30,8 +30,26 @@ FOLDER_PATH_FILTER_ROLE = Qt.UserRole + 7
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 
 
-@dataclass
+@dataclass(frozen=True)
+class FetchData:
+    project_name: str
+    folder_items_by_id: dict[str, FolderItem]
+    folder_type_items: list[FolderTypeItem]
+    status_items: list[StatusItem]
+
+
+@dataclass(frozen=True)
 class FillFolderItem:
+    __slots__ = (
+        "item",
+        "parent_id",
+        "name",
+        "path",
+        "label",
+        "folder_type",
+        "status",
+        "path_filter",
+    )
     item: QStandardItem
     parent_id: str | None
     name: str
@@ -113,16 +131,13 @@ class BrowserFoldersModel(QStandardItemModel):
             name="fetch_all_folders",
             function=lambda: self._fetch_folders_data(project_name),
             callback=self._on_data_fetched,
-            # Lower priority than per-node fetches so an expand click
-            # the user makes while the bulk fetch is still running is
-            # never held up behind it.
             priority=5,
             context_id=self._context_id,
             cancellable=True,
         )
         get_task_queue().enqueue(task)
 
-    def get_index_by_id(self, item_id):
+    def get_index_by_id(self, item_id: str) -> QModelIndex:
         """Get index by folder id.
 
         Returns:
@@ -134,12 +149,14 @@ class BrowserFoldersModel(QStandardItemModel):
             return QModelIndex()
         return self.indexFromItem(fill_item.item)
 
-    def _clear_items(self):
+    def _clear_items(self) -> None:
         self._fill_data = _FillData()
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-    def _fetch_folders_data(self, project_name: str):
+    def _fetch_folders_data(
+        self, project_name: str
+    ) -> FetchData:
         folder_items = self._controller.get_folder_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
@@ -149,9 +166,14 @@ class BrowserFoldersModel(QStandardItemModel):
         status_items = self._controller.get_project_status_items(
             project_name, sender=FOLDERS_MODEL_SENDER_NAME
         )
-        return project_name, folder_items, folder_type_items, status_items
+        return FetchData(
+            project_name=project_name,
+            folder_items_by_id=folder_items,
+            folder_type_items=folder_type_items,
+            status_items=status_items,
+        )
 
-    def _on_data_fetched(self, result):
+    def _on_data_fetched(self, result: FetchData) -> None:
         """Callback when refresh thread is finished.
 
         Technically can be running multiple refresh threads at the same time,
@@ -161,16 +183,21 @@ class BrowserFoldersModel(QStandardItemModel):
         Folders are stored by id.
 
         Args:
-            result (tuple): Result from refresh.
+            result (FetchData): Result from refresh.
 
         """
-        self._fill_items(*result)
+        self._fill_items(
+            result.project_name,
+            result.folder_items_by_id,
+            result.folder_type_items,
+            result.status_items,
+        )
 
     def _get_folder_item_icon(
         self,
         folder_type: str,
         folder_type_icons_by_name: dict[str, QIcon | None],
-    ):
+    ) -> QIcon:
         icon = folder_type_icons_by_name.get(folder_type)
         if icon is None:
             icon = get_qt_icon(MaterialSymbolsIcon(
@@ -315,8 +342,6 @@ class BrowserFoldersModel(QStandardItemModel):
                 self._clear_items()
             return
 
-        import time
-        s = time.perf_counter()
         fill_data = _FillData(project_name)
         fill_data.folder_types_by_name = {
             folder_type.name: folder_type

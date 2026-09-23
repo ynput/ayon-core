@@ -169,7 +169,9 @@ class SlicerCategories(AYContainer):
             # clear the filter when closing search
             self._filter_field.clear()
 
-    def _update_current_context_button(self, category: BrowserSlicerCategory) -> None:
+    def _update_current_context_button(
+        self, category: BrowserSlicerCategory
+    ) -> None:
         context = self._loader_controller.get_current_context() or {}
         self._go_to_current_btn.setVisible(
             category == BrowserSlicerCategory.HIERARCHY

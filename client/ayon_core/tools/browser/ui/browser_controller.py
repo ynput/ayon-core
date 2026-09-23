@@ -517,10 +517,10 @@ class BrowserWidgetController(QtCore.QObject):
         self._task_id_scope = set(entity_ids.get("task_ids") or [])
 
     def get_folder_id_scope(self) -> set[str] | None:
-        """Return task ids implied by the active "My Tasks" filter.
+        """Return folder ids implied by the active "My Tasks" filter.
 
         Returns:
-            The set of task ids to restrict the task list to, or
+            The set of folder ids to restrict the folder list to, or
             ``None`` when no id-scoping filter is active.
         """
         return self._folder_id_scope
