@@ -559,7 +559,8 @@ class BrowserFoldersProxyModel(QSortFilterProxyModel):
     def __init__(self):
         super().__init__()
 
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setRecursiveFilteringEnabled(True)
 
         self._folder_ids_filter = None
