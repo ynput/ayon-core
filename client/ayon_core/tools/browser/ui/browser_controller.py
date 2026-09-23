@@ -162,7 +162,7 @@ class BrowserWidgetController(QtCore.QObject):
     project_changed = QtCore.Signal(str)  # type: ignore
     project_info_changed = QtCore.Signal()  # type: ignore
     category_changed = QtCore.Signal(str)  # type: ignore
-    selection_changed = QtCore.Signal(list, list)  # type: ignore
+    selection_changed = QtCore.Signal(list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
 
