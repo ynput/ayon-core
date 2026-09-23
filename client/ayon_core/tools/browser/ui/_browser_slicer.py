@@ -430,13 +430,8 @@ class BrowserSlicer(AYContainer):
         self._folders_proxy.set_name_filter(text)
         self._reviews_proxy.set_filter_text(text)
 
-        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
-            view = self._folders_view
-        else:
-            view = self._reviews_view
-
         if text:
-            view.expandAll()
+            self._current_view().expandAll()
 
     def _on_controller_my_tasks_filter_changed(self, enabled: bool) -> None:
         """React to the filter changing from outside the toggle itself.
@@ -527,13 +522,14 @@ class BrowserSlicer(AYContainer):
         self._folder_selection_chain = []
         self._folder_selection_attempt = 0
 
+    def _current_view(self) -> BrowserFolderTreeView:
+        """Return the tree view shown for the current category."""
+        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
+            return self._folders_view
+        return self._reviews_view
+
     def _get_view_index_by_id(self, folder_id: str) -> QtCore.QModelIndex:
-        category = self._categories.current_category()
-        if category == BrowserSlicerCategory.HIERARCHY.value:
-            view = self._folders_view
-        else:
-            view = self._reviews_view
-        model = view.model()
+        model = self._current_view().model()
         source_model = (
             model.sourceModel()
             if isinstance(model, QtCore.QAbstractProxyModel)
@@ -552,11 +548,7 @@ class BrowserSlicer(AYContainer):
         chain: list[str],
         attempt: int,
     ) -> None:
-        category = self._categories.current_category()
-        if category == BrowserSlicerCategory.HIERARCHY.value:
-            view = self._folders_view
-        else:
-            view = self._reviews_view
+        view = self._current_view()
         if not chain or attempt >= self._MAX_SELECTION_ATTEMPTS:
             self._clear_pending_selection()
             return
