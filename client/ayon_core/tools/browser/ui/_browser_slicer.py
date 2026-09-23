@@ -85,6 +85,20 @@ class TreeFilterProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class SlicerCategories(AYContainer):
+    """Slicer toolbar: category combo box, search and filter buttons.
+
+    Only presents the controls and reports user interaction through its
+    signals; the owning :class:`BrowserSlicer` applies them.
+
+    Args:
+        category: Initially selected category name.
+        ui_controller: The Browser UI controller, used to keep the
+            "My Tasks" toggle in sync with the active filter.
+        be_controller: The Browser backend controller, used for the
+            current context.
+        parent: Optional parent widget.
+    """
+
     category_changed = QtCore.Signal(str)
     my_tasks_requested = QtCore.Signal(bool)
     go_to_current_clicked = QtCore.Signal()
