@@ -253,7 +253,10 @@ class ContainersModel:
             except (ValueError, TypeError, AttributeError):
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
-            repre_info = self._repre_info_by_id.get(repre_id)
+            # NOTE cache key must include project name - the same
+            #   representation id must not be resolved against, or reused
+            #   from, a different project's data.
+            repre_info = self._repre_info_by_id.get((project_name, repre_id))
             if repre_info is None:
                 missing_repre_ids.add(repre_id)
             else:
@@ -302,22 +305,32 @@ class ContainersModel:
                 kwargs["representation_name"] = repre["name"]
 
             repre_info = RepresentationInfo(**kwargs)
-            self._repre_info_by_id[repre_id] = repre_info
+            self._repre_info_by_id[(project_name, repre_id)] = repre_info
             output[repre_id] = repre_info
         return output
 
     def get_version_items(self, project_name, product_ids):
         if not product_ids:
             return {}
+        # NOTE cache key must include project name - the same product id
+        #   must not be resolved against, or reused from, a different
+        #   project's data.
         missing_ids = {
             product_id
             for product_id in product_ids
-            if product_id not in self._version_items_by_product_id
+            if (project_name, product_id)
+            not in self._version_items_by_product_id
         }
         if missing_ids:
+            # NOTE status items must be looked up for the project the
+            #   versions actually belong to, not the current context
+            #   project - otherwise the wrong status catalog (names,
+            #   colors) gets applied to a foreign project's versions.
             status_items_by_name = {
                 status_item.name: status_item
-                for status_item in self._controller.get_project_status_items()
+                for status_item in self._controller.get_project_status_items(
+                    project_name
+                )
             }
 
             def version_sorted(entity):
@@ -343,6 +356,14 @@ class ContainersModel:
             for product_id, version_entities in (
                 version_entities_by_product_id.items()
             ):
+                cache_key = (project_name, product_id)
+                if not version_entities:
+                    # Product does not actually exist (or has no versions)
+                    #   in this project - e.g. a stale/mismatched
+                    #   project name on a container.
+                    self._version_items_by_product_id[cache_key] = {}
+                    continue
+
                 last_version = abs(version_entities[-1]["version"])
                 last_approved_id = None
                 for version_entity in version_entities:
@@ -362,12 +383,14 @@ class ContainersModel:
                     )
                     for entity in version_entities
                 }
-                self._version_items_by_product_id[product_id] = (
+                self._version_items_by_product_id[cache_key] = (
                     version_items_by_id
                 )
 
         return {
-            product_id: dict(self._version_items_by_product_id[product_id])
+            product_id: dict(
+                self._version_items_by_product_id[(project_name, product_id)]
+            )
             for product_id in product_ids
         }
 
