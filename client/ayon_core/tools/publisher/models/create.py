@@ -121,6 +121,22 @@ class CreatorItem:
 
     Object can be serialized and recreated.
     """
+    __slots__ = (
+        "identifier",
+        "creator_type",
+        "product_base_type",
+        "label",
+        "group_label",
+        "icon",
+        "description",
+        "detailed_description",
+        "default_variant",
+        "default_variants",
+        "create_allow_context_change",
+        "create_allow_thumbnail",
+        "show_order",
+        "ui_items",
+    )
 
     identifier: str
     creator_type: CreatorType
