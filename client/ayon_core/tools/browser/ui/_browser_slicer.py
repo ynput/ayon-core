@@ -10,7 +10,6 @@ from ayon_core.ui.components import AYLineEdit
 from ayon_core.ui.components.buttons import AYButton
 from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.components.slicer import TreeFilterProxyModel
 from ayon_core.ui.components.task_queue import get_task_queue
 from ayon_core.ui.components.task_queue_monitor import AsyncTaskQueueMonitor
 from ayon_core.ui.components.tree_model import BulkTreeModel
@@ -50,6 +49,37 @@ CATEGORIES = [
         "color": "#f4f5f5",
     },
 ]
+
+
+class TreeFilterProxyModel(QtCore.QSortFilterProxyModel):
+    """Proxy that filters tree items, recursively including 'fuzzy' search """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFilterCaseSensitivity(
+            QtCore.Qt.CaseSensitivity.CaseInsensitive
+        )
+        self.setFilterRole(QtCore.Qt.ItemDataRole.DisplayRole)
+        self.setRecursiveFilteringEnabled(True)  # Qt 5.10+
+        self._filter_terms: list[str] = []
+
+    def set_filter_text(self, text: str) -> None:
+        """Update the active search terms and re-apply the filter."""
+        self._filter_terms = text.casefold().split()
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent) -> bool:
+        if not self._filter_terms:
+            return True
+        source_model = self.sourceModel()
+        if source_model is None:
+            return True
+        index = source_model.index(source_row, 0, source_parent)
+        text = index.data(self.filterRole())
+        if not text:
+            return False
+        text = str(text).casefold()
+        return all(term in text for term in self._filter_terms)
 
 
 class SlicerCategories(AYContainer):
