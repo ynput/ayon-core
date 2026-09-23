@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from collections import deque, defaultdict
 import typing
+from typing import Any
 
-from qtpy.QtCore import Qt, QSortFilterProxyModel, QModelIndex
+from qtpy.QtCore import (
+    Qt,
+    QSortFilterProxyModel,
+    QModelIndex,
+    QPersistentModelIndex,
+)
 from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon
 
 from ayon_core.lib import MaterialSymbolsIcon
@@ -20,13 +25,13 @@ if typing.TYPE_CHECKING:
         FolderTypeItem,
     )
 
-FOLDER_ID_ROLE = Qt.UserRole + 1
-FOLDER_NAME_ROLE = Qt.UserRole + 2
-FOLDER_PATH_ROLE = Qt.UserRole + 3
-FOLDER_TYPE_ROLE = Qt.UserRole + 4
-FOLDER_STATUS_ROLE = Qt.UserRole + 5
-FOLDER_STATUS_ICON_ROLE = Qt.UserRole + 6
-FOLDER_PATH_FILTER_ROLE = Qt.UserRole + 7
+FOLDER_ID_ROLE = Qt.ItemDataRole.UserRole + 1
+FOLDER_NAME_ROLE = Qt.ItemDataRole.UserRole + 2
+FOLDER_PATH_ROLE = Qt.ItemDataRole.UserRole + 3
+FOLDER_TYPE_ROLE = Qt.ItemDataRole.UserRole + 4
+FOLDER_STATUS_ROLE = Qt.ItemDataRole.UserRole + 5
+FOLDER_STATUS_ICON_ROLE = Qt.ItemDataRole.UserRole + 6
+FOLDER_PATH_FILTER_ROLE = Qt.ItemDataRole.UserRole + 7
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 
 
@@ -62,7 +67,7 @@ class FillFolderItem:
     @classmethod
     def from_folder_item(
         cls, item: QStandardItem, folder_item: FolderItem, label_path: str
-    ):
+    ) -> FillFolderItem:
         return cls(
             item=item,
             parent_id=folder_item.parent_id,
@@ -100,8 +105,8 @@ class BrowserFoldersModel(QStandardItemModel):
         super().__init__()
 
         self.setColumnCount(2)
-        self.setHeaderData(0, Qt.Horizontal, "Folders")
-        self.setHeaderData(1, Qt.Horizontal, "")
+        self.setHeaderData(0, Qt.Orientation.Horizontal, "Folders")
+        self.setHeaderData(1, Qt.Orientation.Horizontal, "")
 
         self._ui_controller = ui_controller
         self._controller = controller
@@ -231,8 +236,8 @@ class BrowserFoldersModel(QStandardItemModel):
         item.setData(folder_item.name, FOLDER_NAME_ROLE)
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
-        item.setData(folder_item.label, Qt.DisplayRole)
-        item.setData(icon, Qt.DecorationRole)
+        item.setData(folder_item.label, Qt.ItemDataRole.DisplayRole)
+        item.setData(icon, Qt.ItemDataRole.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
         status_icon = status_icon_by_name.get(folder_item.status)
         item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
@@ -270,7 +275,7 @@ class BrowserFoldersModel(QStandardItemModel):
                 new_fill_item.folder_type,
                 folder_type_icons_by_name,
             )
-            item.setData(icon, Qt.DecorationRole)
+            item.setData(icon, Qt.ItemDataRole.DecorationRole)
 
         update_status_icon = statuses_changed
         if new_fill_item.status != old_fill_item.status:
@@ -284,7 +289,11 @@ class BrowserFoldersModel(QStandardItemModel):
         for new_value, old_value, role in (
             (new_fill_item.name, old_fill_item.name, FOLDER_NAME_ROLE),
             (new_fill_item.path, old_fill_item.path, FOLDER_PATH_ROLE),
-            (new_fill_item.label, old_fill_item.label, Qt.DisplayRole),
+            (
+                new_fill_item.label,
+                old_fill_item.label,
+                Qt.ItemDataRole.DisplayRole
+            ),
             (
                 new_fill_item.path_filter,
                 old_fill_item.path_filter,
@@ -294,7 +303,11 @@ class BrowserFoldersModel(QStandardItemModel):
             if new_value != old_value:
                 item.setData(new_value, role)
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+        role:int = Qt.ItemDataRole.DisplayRole,
+    ) -> Any:
         if not index.isValid():
             return None
 
@@ -305,7 +318,7 @@ class BrowserFoldersModel(QStandardItemModel):
 
     def flags(self, index):
         if not index.isValid():
-            return Qt.NoItemFlags
+            return Qt.ItemFlag.NoItemFlags
         if index.column() != 0:
             return self._get_index_flags(index)
         return super().flags(index)
@@ -322,11 +335,11 @@ class BrowserFoldersModel(QStandardItemModel):
 
         """
         index = index.sibling(index.row(), 0)
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             role = FOLDER_STATUS_ICON_ROLE
-        elif role == Qt.ToolTipRole:
+        elif role == Qt.ItemDataRole.ToolTipRole:
             role = FOLDER_STATUS_ROLE
-        elif role < Qt.UserRole:
+        elif role < Qt.ItemDataRole.UserRole:
             return None
         return super().data(index, role)
 
