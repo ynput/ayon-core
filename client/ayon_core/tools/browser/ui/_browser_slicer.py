@@ -620,12 +620,17 @@ class BrowserSlicer(AYContainer):
                         break
                     parent = parent.parent()
 
-        selection_key = tuple(ids)
+        # Key on the explicit selection: the tasks list shows tasks of
+        # every selected row, even ones collapsed into a selected
+        # ancestor above. The controller ignores unchanged 'ids' itself.
+        selection_key = tuple(explicit_ids)
         if selection_key == self._last_selection_ids:
             return
         self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        log.debug("Current selection ids: %s", explicit_ids)
+        log.debug(
+            "Current selection ids: %s (top-level: %s)", explicit_ids, ids
+        )
         self._ui_controller.on_tree_selection_changed(ids)
         self._tasks.set_context(
             self._ui_controller.current_project,
