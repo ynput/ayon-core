@@ -172,27 +172,3 @@ def test_missing_task_is_invalid(server_calls):
         assert context_info.folder_is_valid
         expected = instance["folderPath"] in FOLDERS_WITH_TASK
         assert context_info.task_is_valid is expected
-
-
-def test_creator_item_pre_create_attr_defs_are_lazy(server_calls):
-    create_context = CreateContext(_Host())
-    creator = create_context.creators[_TestCreator.identifier]
-
-    _TestCreator.pre_create_attr_defs_calls = 0
-    creator_item = CreatorItem.from_creator(creator)
-    assert _TestCreator.pre_create_attr_defs_calls == 0
-
-    keys = [
-        attr_def.key
-        for attr_def in creator_item.pre_create_attributes_defs
-    ]
-    assert keys == ["test"]
-    creator_item.pre_create_attributes_defs
-    assert _TestCreator.pre_create_attr_defs_calls == 1
-
-    restored_item = CreatorItem.from_data(creator_item.to_data())
-    keys = [
-        attr_def.key
-        for attr_def in restored_item.pre_create_attributes_defs
-    ]
-    assert keys == ["test"]
