@@ -635,6 +635,10 @@ class BrowserSlicer(AYContainer):
 
     def _on_folders_reset(self):
         self._folders_proxy.sort(0, QtCore.Qt.SortOrder.AscendingOrder)
+        # A search typed while the folders were still loading had
+        # nothing to expand yet - expand the now-filled tree.
+        if self._categories.filter_text():
+            self._folders_view.expandAll()
 
     def _on_reviews_selection_changed(
         self,
