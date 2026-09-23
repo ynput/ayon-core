@@ -29,7 +29,6 @@ from .folders_model import (
     BrowserFoldersModel,
     BrowserFoldersProxyModel,
     FOLDER_ID_ROLE,
-    FOLDER_NAME_ROLE,
 )
 
 log = Logger.get_logger(__name__)
