@@ -618,6 +618,15 @@ class CreateWidget(QtWidgets.QWidget):
             product_type (str): Product type of creator item.
 
         """
+        if (
+            creator_item is not None
+            and creator_item.pre_create_attributes_defs is None
+        ):
+            attr_defs = self._controller.get_pre_create_attribute_defs(
+                creator_item.identifier
+            )
+            creator_item.pre_create_attributes_defs = attr_defs
+
         self._creator_short_desc_widget.set_creator_item(
             creator_item, product_type
         )

@@ -674,6 +674,19 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_pre_create_attribute_defs(
+        self, identifier: str
+    ) -> list[AbstractAttrDef]:
+        """Get pre create attributes for creator item.
+
+        Returns:
+            list[AbstractAttrDef]: Pre create attribute definitions for
+                the creator item.
+
+        """
+        pass
+
+    @abstractmethod
     def get_convertor_items(self) -> dict[str, ConvertorItem]:
         """Convertor items by identifier.
 

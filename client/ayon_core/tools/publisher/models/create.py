@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import copy
+from dataclasses import dataclass
 import logging
 import re
-import copy
 from typing import (
     Union,
     List,
@@ -12,7 +13,6 @@ from typing import (
     Optional,
     Iterable,
     Pattern,
-    Callable,
 )
 
 from ayon_core.lib.attribute_definitions import (
@@ -115,86 +115,33 @@ class CreatorUIItem:
         )
 
 
+@dataclass
 class CreatorItem:
     """Wrapper around Creator plugin.
 
     Object can be serialized and recreated.
     """
 
-    def __init__(
-        self,
-        identifier: str,
-        creator_type: CreatorType,
-        product_base_type: str,
-        label: str,
-        group_label: str,
-        icon: IconBase | dict[str, Any] | str | None,
-        description: Union[str, None],
-        detailed_description: Union[str, None],
-        default_variant: Union[str, None],
-        default_variants: Union[List[str], None],
-        create_allow_context_change: Union[bool, None],
-        create_allow_thumbnail: Union[bool, None],
-        show_order: int,
-        pre_create_attributes_defs: Optional[List[AbstractAttrDef]],
-        ui_items: list[CreatorUIItem],
-        pre_create_attributes_defs_getter: Optional[
-            Callable[[], List[AbstractAttrDef]]
-        ] = None,
-    ):
-        self.identifier: str = identifier
-        self.creator_type: CreatorType = creator_type
-        self.product_base_type: str = product_base_type
-        self.label: str = label
-        self.group_label: str = group_label
-        self.icon: IconBase | dict[str, Any] | str | None = icon
-        self.description: Union[str, None] = description
-        self.detailed_description: Union[bool, None] = detailed_description
-        self.default_variant: Union[bool, None] = default_variant
-        self.default_variants: Union[List[str], None] = default_variants
-        self.create_allow_context_change: Union[bool, None] = (
-            create_allow_context_change
-        )
-        self.create_allow_thumbnail: Union[bool, None] = create_allow_thumbnail
-        self.show_order: int = show_order
-        self._pre_create_attributes_defs: Optional[
-            List[AbstractAttrDef]
-        ] = pre_create_attributes_defs
-        # Pre-create attributes are needed only when creator is selected
-        #   in UI, getter allows to collect them lazily on first access
-        self._pre_create_attributes_defs_getter: Optional[
-            Callable[[], List[AbstractAttrDef]]
-        ] = pre_create_attributes_defs_getter
-        self.ui_items: list[CreatorUIItem] = ui_items
-
-    @property
-    def pre_create_attributes_defs(self) -> Optional[List[AbstractAttrDef]]:
-        getter = self._pre_create_attributes_defs_getter
-        if getter is not None:
-            self._pre_create_attributes_defs_getter = None
-            try:
-                self._pre_create_attributes_defs = getter()
-            except Exception:
-                logging.getLogger(self.__class__.__name__).error(
-                    "Failed to get pre-create attribute definitions"
-                    f" of creator '{self.identifier}'.",
-                    exc_info=True
-                )
-                self._pre_create_attributes_defs = []
-        return self._pre_create_attributes_defs
-
-    @pre_create_attributes_defs.setter
-    def pre_create_attributes_defs(
-        self, attr_defs: Optional[List[AbstractAttrDef]]
-    ) -> None:
-        self._pre_create_attributes_defs_getter = None
-        self._pre_create_attributes_defs = attr_defs
-
-    def get_group_label(self) -> str:
-        return self.group_label
+    identifier: str
+    creator_type: CreatorType
+    product_base_type: str
+    label: str
+    group_label: str
+    icon: IconBase | dict[str, Any] | str | None
+    description: str | None
+    detailed_description: str | None
+    default_variant: str | None
+    default_variants: list[str] | None
+    create_allow_context_change: bool | None
+    create_allow_thumbnail: bool | None
+    show_order: int
+    ui_items: list[CreatorUIItem]
+    # NOTE if 'pre_create_attributes_defs' would be cached by UI
+    #   this dataclass could use slots...
+    pre_create_attributes_defs: list[AbstractAttrDef] | None = None
 
     @classmethod
-    def from_creator(cls, creator: BaseCreator) -> "CreatorItem":
+    def from_creator(cls, creator: BaseCreator) -> CreatorItem:
         creator_type: CreatorType = CreatorTypes.base
         if isinstance(creator, AutoCreator):
             creator_type = CreatorTypes.auto
@@ -207,19 +154,19 @@ class CreatorItem:
         detail_description = None
         default_variant = None
         default_variants = None
-        pre_create_attr_defs_getter = None
         create_allow_context_change = None
         create_allow_thumbnail = None
         show_order = creator.order
+        pre_create_attributes = []
         if creator_type is CreatorTypes.artist:
             description = creator.get_description()
             detail_description = creator.get_detail_description()
             default_variant = creator.get_default_variant()
             default_variants = creator.get_default_variants()
-            pre_create_attr_defs_getter = creator.get_pre_create_attr_defs
             create_allow_context_change = creator.create_allow_context_change
             create_allow_thumbnail = creator.create_allow_thumbnail
             show_order = creator.show_order
+            pre_create_attributes = None
 
         ui_items = []
         product_type_items: list[ProductTypeItem] = (
@@ -244,7 +191,7 @@ class CreatorItem:
             creator_type,
             creator.product_base_type,
             creator.label or identifier,
-            creator.get_group_label(),
+            creator.group_label,
             creator.get_icon(),
             description,
             detail_description,
@@ -253,9 +200,8 @@ class CreatorItem:
             create_allow_context_change,
             create_allow_thumbnail,
             show_order,
-            None,
             ui_items,
-            pre_create_attributes_defs_getter=pre_create_attr_defs_getter,
+            pre_create_attributes,
         )
 
     def to_data(self) -> Dict[str, Any]:
@@ -644,6 +590,14 @@ class CreateModel:
         if self._creator_items is None:
             self._refresh_creator_items()
         return self._creator_items
+
+    def get_pre_create_attribute_defs(
+        self, identifier: str
+    ) -> list[AbstractAttrDef]:
+        creator = self._create_context.creators.get(identifier)
+        if creator is None:
+            return []
+        return creator.get_pre_create_attr_defs() or []
 
     def get_creator_item_by_id(
         self, identifier: str
