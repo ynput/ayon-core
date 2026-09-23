@@ -612,23 +612,8 @@ class BrowserSlicer(AYContainer):
                         break
                     parent = parent.parent()
 
-        # Key on the explicit selection: the tasks list shows tasks of
-        # every selected row, even ones collapsed into a selected
-        # ancestor above. The controller ignores unchanged 'ids' itself.
-        selection_key = tuple(explicit_ids)
-        if selection_key == self._last_selection_ids:
-            return
-        self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        log.debug(
-            "Current selection ids: %s (top-level: %s)", explicit_ids, ids
-        )
-        self._ui_controller.on_tree_selection_changed(ids)
-        self._tasks.set_context(
-            self._ui_controller.current_project,
-            explicit_ids,
-            task_id_scope=self._ui_controller.get_task_id_scope(),
-        )
+        self._apply_tree_selection(explicit_ids, ids)
 
     def _on_folders_reset(self):
         self._folders_proxy.sort(0, QtCore.Qt.SortOrder.AscendingOrder)
@@ -652,16 +637,35 @@ class BrowserSlicer(AYContainer):
                 if entity_id:
                     ids.append(entity_id)
 
-        selection_key = tuple(ids)
+        log.debug("Selected: %s, Deselected: %s", selected, deselected)
+        self._apply_tree_selection(ids, ids)
+
+    def _apply_tree_selection(
+        self, selected_ids: list[str], entity_ids: list[str]
+    ) -> None:
+        """Push a tree selection to the controller and the tasks list.
+
+        Args:
+            selected_ids: IDs of all selected rows. Used for the tasks
+                list and to skip unchanged selections - keying on these
+                (not 'entity_ids') keeps the tasks list in sync even when
+                only rows nested under a selected ancestor change.
+            entity_ids: IDs the version table is filtered by. The
+                controller ignores unchanged ids itself.
+        """
+        selection_key = tuple(selected_ids)
         if selection_key == self._last_selection_ids:
             return
         self._last_selection_ids = selection_key
-        log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        log.debug("Current selection ids: %s", ids)
-        self._ui_controller.on_tree_selection_changed(ids)
+        log.debug(
+            "Current selection ids: %s (entities: %s)",
+            selected_ids,
+            entity_ids,
+        )
+        self._ui_controller.on_tree_selection_changed(entity_ids)
         self._tasks.set_context(
             self._ui_controller.current_project,
-            ids,
+            selected_ids,
             task_id_scope=self._ui_controller.get_task_id_scope(),
         )
 
