@@ -65,10 +65,10 @@ Use `./tools/manage.sh` for all common tasks:
 
 Qt models showing controller data must follow the loading standard documented in `client/ayon_core/ui/components/async_loader.py`:
 
-- Never call blocking controller getters on the UI thread in reaction to user interaction. Load with `AsyncLoader`: `fetch` in a worker thread (all I/O, incl. `prefetch_qt_icons`), `apply` on the UI thread (Qt objects only). Latest request wins.
+- Strict frontend/backend separation, the backend (controller) may run in another process and stays Qt-less. The frontend requests data only through the controller's frontend interface, never queries server or filesystem itself.
+- Never call blocking controller getters on the UI thread in reaction to user interaction. Load with `AsyncLoader`: `fetch` in a worker thread calls the typed controller getters (and may `prefetch_qt_icons`), `apply` on the UI thread (Qt objects only). Latest request wins.
 - Big trees: build `QStandardItem` rows detached in `fetch`, attach in one reset or apply a diff (see `FoldersQtModel` in `tools/utils/folders_widget.py`). No Python `data()`/`flags()` overrides on large models.
 - Connect `loading_changed` to `AYTreeView.set_loading` for the skeleton placeholder. Content of a previous selection must not stay actionable while loading.
-- Controller `emit_event` must deliver on the UI thread (`run_in_main_thread` from `tools/utils/lib.py`).
 
 ## CI/CD
 

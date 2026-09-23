@@ -5,16 +5,21 @@ UI data loading standard
 
 Every Qt model which shows data coming from a controller follows these
 rules. They keep the UI responsive no matter how slow the server, the
-disk or the amount of data is.
+disk or the amount of data is, without breaking the strict separation of
+frontend (UI) and backend (controller) - the backend may run in another
+process.
 
 1. **Never call blocking controller getters on the UI thread in reaction
    to user interaction.** Selection changes, clicks and page switches only
    ask for data using :class:`AsyncLoader`.
 2. **Split every refresh into 'fetch' and 'apply'.** ``fetch`` runs in a
-   worker thread of the shared :func:`get_task_queue` and does all I/O:
-   server requests, filesystem access, downloads of icon content
-   (see ``ayon_core.tools.utils.prefetch_qt_icons``) and any heavy pure
-   Python preparation. ``apply`` runs on the UI thread and only touches Qt
+   worker thread of the shared :func:`get_task_queue` and requests data
+   only through the controller's frontend interface (the typed
+   ``get_*`` methods, passing the model's ``sender``). The frontend never
+   queries the server or the filesystem for data itself. It may prepare
+   UI resources, e.g. download icon content with
+   ``ayon_core.tools.utils.prefetch_qt_icons``, and do heavy pure Python
+   preparation. ``apply`` runs on the UI thread and only touches Qt
    objects. ``fetch`` must not touch the model or widgets.
 3. **Latest request wins.** A new request cancels the previous one and
    results of outdated requests are never applied, so fast clicking
@@ -29,10 +34,10 @@ disk or the amount of data is.
    there is nothing to show yet (``AYTreeView.set_loading``), driven by
    :attr:`AsyncLoader.loading_changed`. Content for a previous selection
    must not stay clickable while it does not match the current selection.
-6. **Events emitted from worker threads are delivered on the UI thread.**
-   Controllers used by async models must make ``emit_event`` thread safe,
-   e.g. by passing the emit to ``ayon_core.tools.utils.run_in_main_thread``
-   when called outside of the UI thread.
+6. **The backend stays Qt-less.** Threads, queues and delivery of results
+   to the UI thread are frontend concerns implemented here. Backend
+   getters called by 'fetch' may emit events from the fetching thread,
+   UI callbacks ignore events of their own ``sender``.
 
 Example:
     ```python

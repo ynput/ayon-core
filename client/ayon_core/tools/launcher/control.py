@@ -7,7 +7,6 @@ from typing import Optional
 from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
-from ayon_core.tools.utils.lib import run_in_main_thread
 from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
@@ -80,18 +79,11 @@ class BaseLauncherController(
     # ---------------------------------
     # Events system
     def emit_event(self, topic, data=None, source=None):
-        """Use implemented event system to trigger event.
-
-        Models are also used from worker threads, callbacks of the event
-        system are UI callbacks so the event is always processed in the
-        UI thread.
-        """
+        """Use implemented event system to trigger event."""
 
         if data is None:
             data = {}
-        run_in_main_thread(
-            lambda: self.event_system.emit(topic, data, source)
-        )
+        self.event_system.emit(topic, data, source)
 
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)

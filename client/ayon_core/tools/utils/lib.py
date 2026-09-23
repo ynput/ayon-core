@@ -758,58 +758,6 @@ def get_qt_icon(
     return _IconsCache.get_icon(icon_def, default=default)
 
 
-class _MainThreadInvoker(QtCore.QObject):
-    """Object living in the UI thread which runs posted callbacks."""
-    _posted = QtCore.Signal(object)
-
-    def __init__(self):
-        super().__init__()
-        self._posted.connect(self._run, QtCore.Qt.QueuedConnection)
-
-    def post(self, callback) -> None:
-        self._posted.emit(callback)
-
-    def _run(self, callback) -> None:
-        try:
-            callback()
-        except Exception:
-            log.warning("Failed to run callback", exc_info=True)
-
-
-_main_thread_invoker = None
-
-
-def is_main_thread() -> bool:
-    """Is current thread the Qt application (UI) thread."""
-    app = QtCore.QCoreApplication.instance()
-    if app is None:
-        return True
-    return QtCore.QThread.currentThread() is app.thread()
-
-
-def run_in_main_thread(callback) -> None:
-    """Run callback in the UI thread.
-
-    Called directly when already in the UI thread, otherwise posted to the
-    UI thread event loop and called asynchronously.
-
-    Args:
-        callback (Callable[[], None]): Function to call.
-
-    """
-    global _main_thread_invoker
-
-    if is_main_thread():
-        callback()
-        return
-
-    if _main_thread_invoker is None:
-        invoker = _MainThreadInvoker()
-        invoker.moveToThread(QtCore.QCoreApplication.instance().thread())
-        _main_thread_invoker = invoker
-    _main_thread_invoker.post(callback)
-
-
 def prefetch_qt_icons(icon_defs) -> None:
     """Download content of icons so 'get_qt_icon' does not wait for network.
 

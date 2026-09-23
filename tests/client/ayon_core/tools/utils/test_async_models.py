@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import threading
 import types
 
 if "qargparse" not in sys.modules:
@@ -16,7 +15,6 @@ from ayon_core.ui.components import async_loader
 from ayon_core.tools.common_models.hierarchy import FolderItem, TaskItem
 from ayon_core.tools.utils.folders_widget import FoldersQtModel
 from ayon_core.tools.utils.tasks_widget import ITEM_NAME_ROLE, TasksQtModel
-from ayon_core.tools.utils.lib import run_in_main_thread
 
 
 class _TaskQueue:
@@ -128,26 +126,6 @@ def test_folders_model_emits_refreshed_after_load(task_queue):
     assert refreshed == [False]
     assert model.has_content
     assert model.get_item_id_by_path("/f1") == "f1"
-
-
-def test_run_in_main_thread_from_worker(qtbot):
-    called_in = []
-    worker = threading.Thread(
-        target=lambda: run_in_main_thread(
-            lambda: called_in.append(threading.current_thread())
-        )
-    )
-    worker.start()
-    worker.join()
-
-    qtbot.waitUntil(lambda: bool(called_in), timeout=5000)
-    assert called_in == [threading.main_thread()]
-
-
-def test_run_in_main_thread_is_direct_in_main_thread(qapp):
-    called = []
-    run_in_main_thread(lambda: called.append(True))
-    assert called == [True]
 
 
 def test_status_column_has_real_items(task_queue):
