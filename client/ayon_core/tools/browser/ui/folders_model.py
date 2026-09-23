@@ -81,7 +81,6 @@ class FillFolderItem:
         )
 
 
-
 @dataclass
 class _FillData:
     project_name: str | None = None
@@ -272,7 +271,7 @@ class BrowserFoldersModel(QStandardItemModel):
         """
         item = old_fill_item.item
         update_icon = folder_types_changed
-        if new_fill_item.folder_type != new_fill_item.folder_type:
+        if new_fill_item.folder_type != old_fill_item.folder_type:
             update_icon = True
             item.setData(new_fill_item.folder_type, FOLDER_TYPE_ROLE)
 
