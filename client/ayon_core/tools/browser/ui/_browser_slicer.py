@@ -24,7 +24,6 @@ from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.utils.folders_widget import CenteredIconDelegate
 
-from ._browser_slicer_filters import MyTasksToggleButton
 from .tasks_widget import BrowserTasksWidget
 from .folders_model import (
     BrowserFoldersModel,
@@ -114,7 +113,13 @@ class SlicerCategories(AYContainer):
             icon_on="close",
             checkable=True,
         )
-        self._my_tasks_btn = MyTasksToggleButton(self)
+        self._my_tasks_btn = AYButton(
+            variant=AYButton.Variants.Nav,
+            icon="assignment_ind",
+            checkable=True,
+            tooltip="Only show folders that have a task assigned to you.",
+            parent=self,
+        )
 
         self._go_to_current_btn = AYButton(
             variant=AYButton.Variants.Nav,
@@ -148,7 +153,7 @@ class SlicerCategories(AYContainer):
         # now that the tasks widget it feeds into exists.
         category_v = BrowserSlicerCategory(category)
         self._my_tasks_btn.set_category(category_v)
-        self._update_current_context_button(category_v)
+        self._update_buttons(category_v)
 
     def eventFilter(self, obj, event):
         """Close search field on Escape key press."""
@@ -188,8 +193,7 @@ class SlicerCategories(AYContainer):
 
     def _set_current_category(self, category: str) -> None:
         category_v = BrowserSlicerCategory(category)
-        self._my_tasks_btn.set_category(category_v)
-        self._update_current_context_button(category_v)
+        self._update_buttons(category_v)
         self.category_changed.emit(category)
 
     def _on_button_toggled(self, checked):
@@ -201,14 +205,16 @@ class SlicerCategories(AYContainer):
             # clear the filter when closing search
             self._filter_field.clear()
 
-    def _update_current_context_button(
-        self, category: BrowserSlicerCategory
-    ) -> None:
+    def _update_buttons(self, category: BrowserSlicerCategory) -> None:
         context = self._loader_controller.get_current_context() or {}
+        applicable = category == BrowserSlicerCategory.HIERARCHY
         self._go_to_current_btn.setVisible(
-            category == BrowserSlicerCategory.HIERARCHY
+            applicable
             and bool(context.get("project_name") and context.get("folder_id"))
         )
+        if not applicable and self._my_tasks_btn.isChecked():
+            self._my_tasks_btn.setChecked(False)
+        self._my_tasks_btn.setVisible(applicable)
 
 
 class BrowserFolderTreeView(AYTreeView):
