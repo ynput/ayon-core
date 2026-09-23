@@ -318,8 +318,6 @@ class BrowserFoldersModel(QStandardItemModel):
         folder_type_item_by_name: dict[str, FolderTypeItem],
         status_icon_by_name: dict[str, QIcon | None],
     ) -> None:
-        self.beginResetModel()
-
         folder_type_icon_cache = {}
         folder_items_by_parent = defaultdict(list)
         for folder_item in folder_items_by_id.values():
@@ -358,15 +356,12 @@ class BrowserFoldersModel(QStandardItemModel):
             if new_items:
                 parent_item.appendRows(new_items)
 
-        self.endResetModel()
-
     def _fill_update(
         self,
         folder_items_by_id: dict[str, FolderItem],
         folder_type_item_by_name: dict[str, FolderTypeItem],
         status_icon_by_name: dict[str, QIcon | None],
     ) -> None:
-        self.beginResetModel()
         ids_to_remove = {
             item_id
             for item_id in self._items_by_id
@@ -432,5 +427,3 @@ class BrowserFoldersModel(QStandardItemModel):
         for item_id in ids_to_remove:
             self._items_by_id.pop(item_id)
             self._parent_id_by_id.pop(item_id)
-
-        self.endResetModel()
