@@ -548,7 +548,6 @@ class BulkTreeModel(QAbstractItemModel):
         # _all_nodes keeps every node reachable so Python's GC does not
         # collect objects that are held only via QModelIndex.internalPointer().
         self._all_nodes: set[_InternalNode] = {self._root}
-        self._fetch_all_async()
 
     def _index_for_node(self, node: _InternalNode) -> QModelIndex:
         """Return the QModelIndex that identifies node (column 0)."""
