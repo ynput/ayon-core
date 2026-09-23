@@ -354,11 +354,15 @@ class BrowserSlicer(AYContainer):
         self._controller.my_tasks_filter_changed.connect(
             self._on_controller_my_tasks_filter_changed
         )
-        self._selector.selection_changed.connect(self._controller.set_project)
+        self._selector.selection_changed.connect(self._on_project_change)
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_controller_reset_finished,
         )
+
+    def _on_project_change(self, project_name: str) -> None:
+        self._controller.set_project(project_name)
+        self.reset()
 
     def _on_controller_reset_finished(self) -> None:
         """Keep the project selector in sync with the host's context.
@@ -394,6 +398,7 @@ class BrowserSlicer(AYContainer):
             )
         else:
             self._tasks.set_context(self._controller.current_project, [])
+        self.reset()
 
     def _apply_my_tasks_filter(self, enabled: bool) -> None:
         """Apply the "My Tasks" toggle to the controller and task list."""

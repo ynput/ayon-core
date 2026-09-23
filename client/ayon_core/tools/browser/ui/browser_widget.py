@@ -70,7 +70,6 @@ class BrowserWidget(AYContainer):
         self._inspector.set_view(self._table.active_view)
         self._build()
 
-        self._controller.tree_reset_requested.connect(self._on_tree_reset)
         self._controller.project_changed.connect(self._on_project_changed)
         self._controller.selection_changed.connect(self._on_folder_selected)
         self._controller.category_changed.connect(
@@ -106,10 +105,6 @@ class BrowserWidget(AYContainer):
         table.
         """
         self._table.refresh_column_provider_data()
-
-    def _on_tree_reset(self) -> None:
-        """Reset the tree model while preserving the proxy and view."""
-        self._slicer.reset()
 
     def _on_project_changed(self, project_name: str) -> None:
         """Clear selection state and refresh table on project change.

@@ -162,7 +162,6 @@ class BrowserWidgetController(QtCore.QObject):
     project_changed = QtCore.Signal(str)  # type: ignore
     project_info_changed = QtCore.Signal()  # type: ignore
     category_changed = QtCore.Signal(str)  # type: ignore
-    tree_reset_requested = QtCore.Signal()  # type: ignore
     selection_changed = QtCore.Signal(list, list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
@@ -430,7 +429,6 @@ class BrowserWidgetController(QtCore.QObject):
             self._ensure_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
-        self.tree_reset_requested.emit()
 
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
@@ -466,7 +464,6 @@ class BrowserWidgetController(QtCore.QObject):
             self._tree_mode = self._group_by_key != GROUP_BY_NONE_KEY
         self._reset_pagination()
         self.category_changed.emit(category)
-        self.tree_reset_requested.emit()
 
     def set_my_tasks_filter(self, enabled: bool) -> None:
         """Toggle the "My Tasks" slicer filter.
