@@ -200,7 +200,7 @@ class CreatorItem:
             creator_type,
             creator.product_base_type,
             creator.label or identifier,
-            creator.group_label,
+            creator.get_group_label(),
             creator.get_icon(),
             description,
             detail_description,
