@@ -18,6 +18,7 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.common_models import TaskItem, ProjectItem
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import FolderTypeItem, StatusItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -231,6 +232,47 @@ class AbstractBrowserController(ABC):
         Returns:
             dict[str, Any] | None: Project entity, or None when the
                 project was not found.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_folder_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain
+        'sender' value in data.
+
+        Args:
+            project_name (str): Project name.
+            sender (str | None): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        """Status items for a project.
+
+        Triggers event topics "projects.statuses.refresh.started" and
+        "projects.statuses.refresh.finished" with 'sender' and
+        'project_name' in data.
+
+        Args:
+            project_name (str): Project name.
+            sender (str | None): Who requested status items.
+
+        Returns:
+            list[StatusItem]: Project status information.
 
         """
         pass
