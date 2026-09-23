@@ -278,7 +278,6 @@ class BrowserSlicer(AYContainer):
         self.add_widget(self._categories, stretch=0)
 
         self._folders_view = BrowserFolderTreeView(self)
-        self._folders_view.setSortingEnabled(True)
 
         self._folders_model = BrowserFoldersModel(
             controller, loader_controller
@@ -340,7 +339,7 @@ class BrowserSlicer(AYContainer):
         self._folders_view.selection_changed.connect(
             self._on_folders_selection_changed
         )
-        self._folders_model.modelReset.connect(self._on_folders_reset)
+        self._folders_model.reset_finished.connect(self._on_folders_reset)
         self._reviews_view.selection_changed.connect(
             self._on_reviews_selection_changed
         )
@@ -614,7 +613,7 @@ class BrowserSlicer(AYContainer):
         )
 
     def _on_folders_reset(self):
-        self._folders_proxy.sort(0)
+        self._folders_proxy.sort(0, QtCore.Qt.SortOrder.AscendingOrder)
 
     def _on_reviews_selection_changed(
         self,

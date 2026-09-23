@@ -6,6 +6,7 @@ import typing
 from typing import Any
 
 from qtpy.QtCore import (
+    Signal,
     Qt,
     QSortFilterProxyModel,
     QModelIndex,
@@ -100,6 +101,8 @@ class BrowserFoldersModel(QStandardItemModel):
         Visibility of the status column is controlled by the view.
     """
     _default_folder_icon = None
+
+    reset_finished = Signal()
 
     def __init__(self, ui_controller, controller):
         super().__init__()
@@ -409,6 +412,7 @@ class BrowserFoldersModel(QStandardItemModel):
                 folder_type_icons_by_name,
                 status_icon_by_name,
             )
+        self.reset_finished.emit()
 
     def _fill_from_scratch(
         self,
