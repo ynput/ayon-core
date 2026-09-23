@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qtpy.QtCore import Qt, QPoint
+from qtpy.QtCore import Qt, QPoint, QSize
 from qtpy.QtGui import QPainter, QPaintEvent
 from qtpy.QtWidgets import (
     QFrame,
@@ -56,6 +56,27 @@ class AYScrollBar(StyleMixin, QScrollBar):
             | SC.SC_ScrollBarAddPage
             | SC.SC_ScrollBarSubPage
             | SC.SC_ScrollBarSlider
+        )
+
+    def sizeHint(self) -> QSize:
+        # Same as QScrollBar.sizeHint but with the raw AYONStyle, so a host
+        # stylesheet (e.g. 'QScrollBar:vertical { width: 15px; }') cannot
+        # change the space reserved for the scrollbar.
+        self.ensurePolished()
+        style = get_ayon_style()
+        option = self._style_option()
+        extent = style.pixelMetric(
+            QStyle.PixelMetric.PM_ScrollBarExtent, option, self
+        )
+        slider_min = style.pixelMetric(
+            QStyle.PixelMetric.PM_ScrollBarSliderMin, option, self
+        )
+        if self.orientation() == Qt.Orientation.Horizontal:
+            size = QSize(extent * 2 + slider_min, extent)
+        else:
+            size = QSize(extent, extent * 2 + slider_min)
+        return style.sizeFromContents(
+            QStyle.ContentsType.CT_ScrollBar, option, size, self
         )
 
     def paintEvent(self, arg__1: QPaintEvent) -> None:
