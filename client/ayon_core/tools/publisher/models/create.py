@@ -12,6 +12,7 @@ from typing import (
     Optional,
     Iterable,
     Pattern,
+    Callable,
 )
 
 from ayon_core.lib.attribute_definitions import (
@@ -135,8 +136,11 @@ class CreatorItem:
         create_allow_context_change: Union[bool, None],
         create_allow_thumbnail: Union[bool, None],
         show_order: int,
-        pre_create_attributes_defs: List[AbstractAttrDef],
+        pre_create_attributes_defs: Optional[List[AbstractAttrDef]],
         ui_items: list[CreatorUIItem],
+        pre_create_attributes_defs_getter: Optional[
+            Callable[[], List[AbstractAttrDef]]
+        ] = None,
     ):
         self.identifier: str = identifier
         self.creator_type: CreatorType = creator_type
@@ -153,10 +157,38 @@ class CreatorItem:
         )
         self.create_allow_thumbnail: Union[bool, None] = create_allow_thumbnail
         self.show_order: int = show_order
-        self.pre_create_attributes_defs: List[AbstractAttrDef] = (
-            pre_create_attributes_defs
-        )
+        self._pre_create_attributes_defs: Optional[
+            List[AbstractAttrDef]
+        ] = pre_create_attributes_defs
+        # Pre-create attributes are needed only when creator is selected
+        #   in UI, getter allows to collect them lazily on first access
+        self._pre_create_attributes_defs_getter: Optional[
+            Callable[[], List[AbstractAttrDef]]
+        ] = pre_create_attributes_defs_getter
         self.ui_items: list[CreatorUIItem] = ui_items
+
+    @property
+    def pre_create_attributes_defs(self) -> Optional[List[AbstractAttrDef]]:
+        getter = self._pre_create_attributes_defs_getter
+        if getter is not None:
+            self._pre_create_attributes_defs_getter = None
+            try:
+                self._pre_create_attributes_defs = getter()
+            except Exception:
+                logging.getLogger(self.__class__.__name__).error(
+                    "Failed to get pre-create attribute definitions"
+                    f" of creator '{self.identifier}'.",
+                    exc_info=True
+                )
+                self._pre_create_attributes_defs = []
+        return self._pre_create_attributes_defs
+
+    @pre_create_attributes_defs.setter
+    def pre_create_attributes_defs(
+        self, attr_defs: Optional[List[AbstractAttrDef]]
+    ) -> None:
+        self._pre_create_attributes_defs_getter = None
+        self._pre_create_attributes_defs = attr_defs
 
     def get_group_label(self) -> str:
         return self.group_label
@@ -175,7 +207,7 @@ class CreatorItem:
         detail_description = None
         default_variant = None
         default_variants = None
-        pre_create_attr_defs = None
+        pre_create_attr_defs_getter = None
         create_allow_context_change = None
         create_allow_thumbnail = None
         show_order = creator.order
@@ -184,7 +216,7 @@ class CreatorItem:
             detail_description = creator.get_detail_description()
             default_variant = creator.get_default_variant()
             default_variants = creator.get_default_variants()
-            pre_create_attr_defs = creator.get_pre_create_attr_defs()
+            pre_create_attr_defs_getter = creator.get_pre_create_attr_defs
             create_allow_context_change = creator.create_allow_context_change
             create_allow_thumbnail = creator.create_allow_thumbnail
             show_order = creator.show_order
@@ -221,8 +253,9 @@ class CreatorItem:
             create_allow_context_change,
             create_allow_thumbnail,
             show_order,
-            pre_create_attr_defs,
+            None,
             ui_items,
+            pre_create_attributes_defs_getter=pre_create_attr_defs_getter,
         )
 
     def to_data(self) -> Dict[str, Any]:

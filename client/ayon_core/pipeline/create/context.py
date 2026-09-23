@@ -716,10 +716,11 @@ class CreateContext:
                 if AYONPyblishPluginMixin in inspect.getmro(plugin):
                     plugins_with_defs.append(plugin)
 
+            plugins_by_targets_set = set(plugins_by_targets)
             plugins_mismatch_targets = [
                 plugin
                 for plugin in publish_plugins
-                if plugin not in plugins_by_targets
+                if plugin not in plugins_by_targets_set
             ]
 
         # Register create context callbacks
@@ -1924,7 +1925,11 @@ class CreateContext:
         if not folder_path_by_id:
             return output
 
-        task_entities_by_parent_id = collections.defaultdict(list)
+        # Prefill with empty lists to also cache folders without tasks
+        task_entities_by_parent_id = {
+            folder_id: []
+            for folder_id in folder_path_by_id
+        }
         for task_entity in ayon_api.get_tasks(
             self.project_name,
             folder_ids=folder_path_by_id.keys()
@@ -2198,9 +2203,13 @@ class CreateContext:
             context_info = info_by_instance_id[instance.id]
             context_info.folder_is_valid = True
 
+            # Output of 'get_task_entities' contains requested task names
+            #   with 'None' value if task was not found
             if (
                 not task_name
-                or task_name in task_entities_by_folder_path[folder_path]
+                or task_entities_by_folder_path.get(
+                    folder_path, {}
+                ).get(task_name) is not None
             ):
                 context_info.task_is_valid = True
         return info_by_instance_id
@@ -2607,15 +2616,25 @@ class CreateContext:
         if not instances_to_validate:
             return
 
+        # Cache folder and task entities for all instances at once, so
+        #   plugins asking for them per instance don't query them one by one
+        self.get_instances_context_info(instances_to_validate)
+
+        # Signature check is slow, run it only once per plugin
+        new_style_convert_by_plugin = {
+            plugin: is_func_signature_supported(
+                plugin.convert_attribute_values, self, None
+            )
+            for plugin in self.plugins_with_defs
+        }
+
         # Set publish attributes before bulk callbacks are triggered
         for instance in instances_to_validate:
             publish_attributes = instance.publish_attributes
             # Prepare publish plugin attributes and set it on instance
             for plugin in self.plugins_with_defs:
                 try:
-                    if is_func_signature_supported(
-                            plugin.convert_attribute_values, self, instance
-                    ):
+                    if new_style_convert_by_plugin[plugin]:
                         plugin.convert_attribute_values(self, instance)
 
                     elif plugin.__instanceEnabled__:
@@ -2650,9 +2669,6 @@ class CreateContext:
                 instance.set_publish_plugin_attr_defs(
                     plugin.__name__, attr_defs
                 )
-
-        # Cache folder and task entities for all instances at once
-        self.get_instances_context_info(instances_to_validate)
 
         self._emit_event(
             INSTANCE_ADDED_TOPIC,
