@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from ayon_core.ui.components.container import AYContainer
-from ayon_core.ui.components.tree_model import LazyTreeModel
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
@@ -50,10 +49,6 @@ class BrowserWidget(AYContainer):
             browser_controller,
             self,
         )
-        self._model = LazyTreeModel(
-            fetch_children=self._controller.fetch_children
-        )
-        self._slicer.set_model(self._model)
         self._table = BrowserTable(self._controller, self)
         self._table.table.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.CustomContextMenu
@@ -75,7 +70,6 @@ class BrowserWidget(AYContainer):
         self._inspector.set_view(self._table.active_view)
         self._build()
 
-        self._controller.tree_reset_requested.connect(self._on_tree_reset)
         self._controller.project_changed.connect(self._on_project_changed)
         self._controller.selection_changed.connect(self._on_folder_selected)
         self._controller.category_changed.connect(
@@ -112,10 +106,6 @@ class BrowserWidget(AYContainer):
         """
         self._table.refresh_column_provider_data()
 
-    def _on_tree_reset(self) -> None:
-        """Reset the tree model while preserving the proxy and view."""
-        self._model.reset()
-
     def _on_project_changed(self, project_name: str) -> None:
         """Clear selection state and refresh table on project change.
 
@@ -150,7 +140,7 @@ class BrowserWidget(AYContainer):
                 break
         self._slicer.set_task_names(names)
 
-    def _on_folder_selected(self, ids: list[str], names: list[str]) -> None:
+    def _on_folder_selected(self, ids: list[str]) -> None:
         """Refresh the version table when folders are selected or cleared.
 
         In tree mode, selecting one or more folders makes those folders

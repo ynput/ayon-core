@@ -27,7 +27,6 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.browser.abstract import ActionItem
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
@@ -163,8 +162,7 @@ class BrowserWidgetController(QtCore.QObject):
     project_changed = QtCore.Signal(str)  # type: ignore
     project_info_changed = QtCore.Signal()  # type: ignore
     category_changed = QtCore.Signal(str)  # type: ignore
-    tree_reset_requested = QtCore.Signal()  # type: ignore
-    selection_changed = QtCore.Signal(list, list)  # type: ignore
+    selection_changed = QtCore.Signal(list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
 
@@ -193,7 +191,6 @@ class BrowserWidgetController(QtCore.QObject):
             BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
         )
         self._selected_folder_ids: list[str] = []
-        self._folder_parent_ids: dict[str, str | None] = {}
         self._selected_task_ids: list[str] = []
         self._review_session_version_ids: list[str] | None = None
         self._version_attributes: dict[str, Any] = {}
@@ -420,7 +417,6 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
         self._selected_folder_ids = []
         self._selected_task_ids = []
-        self._folder_parent_ids = {}
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
@@ -431,7 +427,6 @@ class BrowserWidgetController(QtCore.QObject):
             self._ensure_review_session_list()
         self.project_changed.emit(project_name)
         self.project_info_changed.emit()
-        self.tree_reset_requested.emit()
 
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
@@ -467,7 +462,6 @@ class BrowserWidgetController(QtCore.QObject):
             self._tree_mode = self._group_by_key != GROUP_BY_NONE_KEY
         self._reset_pagination()
         self.category_changed.emit(category)
-        self.tree_reset_requested.emit()
 
     def set_my_tasks_filter(self, enabled: bool) -> None:
         """Toggle the "My Tasks" slicer filter.
@@ -486,7 +480,6 @@ class BrowserWidgetController(QtCore.QObject):
         self._recompute_my_tasks_scope()
         self._reset_pagination()
         self.my_tasks_filter_changed.emit(enabled)
-        self.tree_reset_requested.emit()
 
     @property
     def my_tasks_filter_enabled(self) -> bool:
@@ -515,12 +508,17 @@ class BrowserWidgetController(QtCore.QObject):
         entity_ids = self._loader_controller.get_my_tasks_entity_ids(
             self._current_project
         )
-        folder_ids = set(entity_ids.get("folder_ids") or [])
-        scope = set(folder_ids)
-        for folder_id in folder_ids:
-            scope.update(self.get_folder_id_path(folder_id))
-        self._folder_id_scope = scope
+        self._folder_id_scope = set(entity_ids.get("folder_ids") or [])
         self._task_id_scope = set(entity_ids.get("task_ids") or [])
+
+    def get_folder_id_scope(self) -> set[str] | None:
+        """Return folder ids implied by the active "My Tasks" filter.
+
+        Returns:
+            The set of folder ids to restrict the folder list to, or
+            ``None`` when no id-scoping filter is active.
+        """
+        return self._folder_id_scope
 
     def get_task_id_scope(self) -> set[str] | None:
         """Return task ids implied by the active "My Tasks" filter.
@@ -532,25 +530,17 @@ class BrowserWidgetController(QtCore.QObject):
         return self._task_id_scope
 
     def on_tree_selection_changed(
-        self, ids: list[str], names: list[str]
+        self, ids: list[str]
     ) -> None:
         """Handle a selection change in the tree view.
 
         Args:
             ids: IDs of the selected entities, or empty list when
                 the selection is cleared.
-            names: Names of the selected entities (parallel to *ids*).
         """
         previous_folder_ids = self._selected_folder_ids
         previous_review_version_ids = self._review_session_version_ids
         self._selected_folder_ids = list(ids)
-        if (
-            self._include_folder_children
-            and self._current_category == BrowserSlicerCategory.HIERARCHY.value
-        ):
-            self._selected_folder_ids = (
-                self._get_top_level_selected_folder_ids(ids)
-            )
         self._review_session_version_ids = None  # always clear first
 
         if (
@@ -572,7 +562,7 @@ class BrowserWidgetController(QtCore.QObject):
             return
 
         self._reset_pagination()
-        self.selection_changed.emit(ids, names)
+        self.selection_changed.emit(ids)
 
     def set_selected_task_ids(self, task_ids: list[str]) -> None:
         self._selected_task_ids = task_ids
@@ -1038,21 +1028,20 @@ class BrowserWidgetController(QtCore.QObject):
                 conditions.extend(json.loads(value).get("conditions", []))
         return json.dumps({"conditions": conditions}) if conditions else ""
 
-    def fetch_children(self, parent_id: str | None) -> list[TreeNode]:
-        """Return tree nodes for the given parent.
+    def fetch_reviews(self) -> dict[str | None, list[TreeNode]]:
+        """Return the whole slicer tree in one shot for the active category.
 
-        Dispatches to :meth:`_fetch_folders` or
-        :meth:`_fetch_reviews` depending on the current category.
-
-        Args:
-            parent_id: Parent entity ID, or ``None`` for root.
+        Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
+        a background thread via the shared task queue. Dispatches to
+        :meth:`_fetch_reviews` (a single bulk hierarchy query) for
+        the flat review-session list for Reviews.
 
         Returns:
-            List of :class:`TreeNode` instances.
+            Mapping of parent entity ID (``None`` for root) to its
+            children as :class:`TreeNode` instances, covering the
+            whole tree for the active category.
         """
-        if self._current_category == BrowserSlicerCategory.HIERARCHY.value:
-            return self._fetch_folders(parent_id)
-        return self._fetch_reviews(parent_id)
+        return {None: self._fetch_reviews(None)}
 
     def _version_query_kwargs(
         self,
@@ -1638,24 +1627,6 @@ class BrowserWidgetController(QtCore.QObject):
         self._graphql_has_more = False
         self._folder_cursors = {}
         self._folder_has_more = {}
-
-    def _get_top_level_selected_folder_ids(
-        self, folder_ids: list[str]
-    ) -> list[str]:
-        """Remove selected folders covered by another selected ancestor."""
-        selected = set(folder_ids)
-        result = []
-        for folder_id in folder_ids:
-            parent_id = self._folder_parent_ids.get(folder_id)
-            covered = False
-            while parent_id is not None:
-                if parent_id in selected:
-                    covered = True
-                    break
-                parent_id = self._folder_parent_ids.get(parent_id)
-            if not covered:
-                result.append(folder_id)
-        return result
 
     def _fetch_root_folders(
         self, selected_folder_ids: list[str] | None = None
@@ -2530,61 +2501,6 @@ class BrowserWidgetController(QtCore.QObject):
             )
             for r in self._review_sessions_cache
             if r.get("entityListType") == "review-session"
-        ]
-
-    def _fetch_folders(self, parent_id: str | None) -> list[TreeNode]:
-        """Fetch folder hierarchy level by parent folder id.
-
-        Args:
-            parent_id: Parent folder ID, or ``None`` for root.
-
-        Returns:
-            List of :class:`TreeNode` instances.
-        """
-        project = self._current_project
-        if not project:
-            return []
-
-        self.log.debug("Fetching product children for %s", parent_id)
-        parent_ids = [parent_id] if parent_id is not None else [None]
-        folders = list(ayon_api.get_folders(
-            project,
-            parent_ids=parent_ids,  # type: ignore[arg-type]
-            fields={
-                "id",
-                "name",
-                "label",
-                "folderType",
-                "hasChildren",
-                "hasTasks",
-                "parentId",
-            },
-        ))
-        for folder in folders:
-            self._folder_parent_ids[folder["id"]] = folder.get("parentId")
-        if self._folder_id_scope is not None:
-            folders = [
-                f for f in folders if f["id"] in self._folder_id_scope
-            ]
-        folders.sort(key=_folder_sort_key)
-        default_entity_icon_color = get_default_entity_icon_color()
-        return [
-            TreeNode(
-                id=f["id"],
-                label=f.get("label") or f["name"],
-                has_children=f.get("hasChildren", False),
-                icon=self._pinfo(
-                    "folderTypes", f.get("folderType", ""), "icon", "folder"
-                ),
-                icon_color=self._pinfo(
-                    "folderTypes",
-                    f.get("folderType", ""),
-                    "color",
-                    default_entity_icon_color,
-                ),
-                data=f,
-            )
-            for f in folders
         ]
 
     def _ensure_review_session_list(self) -> None:
