@@ -136,23 +136,38 @@ class IntegrateHeroVersion(
                 instance.data["productName"]
             )
         )
-        published_repres = instance.data.get("published_representations")
-        if not published_repres:
+        use_traits = has_trait_representations(instance)
+        if use_traits:
+            # Skip instances that 'IntegrateTraits' did not integrate.
+            # NOTE: 'published_representations' is set only by legacy
+            #   'IntegrateAsset' so it can't be used to check that.
+            if instance.data.get("integrate", True) is False:
+                self.log.debug(
+                    "*** Instance is marked to skip integrating."
+                )
+                return
+
+            if instance.data.get("farm"):
+                self.log.debug(
+                    "*** Instance is marked to be processed on farm."
+                )
+                return
+
+            # Don't allow both representations with traits and standard
+            #   representations
+            if instance.data.get("representations"):
+                raise PublishError(
+                    f"Instance '{instance.name}' has representations with "
+                    "traits but also has standard representations. This is "
+                    "not allowed. Please use either representations with "
+                    "traits or standard representations, not both."
+                )
+
+        elif not instance.data.get("published_representations"):
             self.log.debug(
                 "*** There are no published representations on the instance."
             )
             return
-
-        use_traits = has_trait_representations(instance)
-        # Don't allow both representations with traits and standard
-        #   representations
-        if use_traits and instance.data.get("representations"):
-            raise PublishError(
-                f"Instance '{instance.name}' has representations with traits "
-                "but also has standard representations. This is not allowed. "
-                "Please use either representations with traits or "
-                "standard representations, not both."
-            )
 
         anatomy = instance.context.data["anatomy"]
         project_name = anatomy.project_name
