@@ -49,7 +49,12 @@ class DiscoverResult:
         """Add dynamically loaded python module to keep it in memory."""
         self._modules.add(module)
 
-    def get_report(self, only_errors=True, exc_info=True, full_report=False):
+    def get_report(
+        self,
+        only_errors: bool = True,
+        exc_info: bool = True,
+        full_report: bool = False,
+    ) -> str:
         lines = []
         if not only_errors:
             # Successfully discovered plugins
@@ -97,7 +102,9 @@ class DiscoverResult:
 
         return "\n".join(lines)
 
-    def log_report(self, only_errors=True, exc_info=True):
+    def log_report(
+        self, only_errors: bool=True, exc_info: bool=True
+    ) -> None:
         report = self.get_report(only_errors, exc_info)
         if report:
             log.info(report)
@@ -173,7 +180,7 @@ def discover_plugins(
     return result
 
 
-class PluginDiscoverContext(object):
+class PluginDiscoverContext:
     """Store and discover registered types nad registered paths to types.
 
     Keeps in memory all registered types and their paths. Paths are dynamically
