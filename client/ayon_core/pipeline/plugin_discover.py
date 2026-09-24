@@ -7,6 +7,7 @@ from pathlib import Path
 import platform
 import traceback
 import typing
+from typing import Iterable
 
 from ayon_core.lib import Logger
 from ayon_core.lib.python_module_tools import (
@@ -318,14 +319,13 @@ class PluginDiscoverContext:
         return result.plugins
 
     def discover_with_report(
-        self,
-        superclasses: tuple[type, ...] | list[type] | set[type],
+        self, superclasses: Iterable[type]
     ) -> dict[type, DiscoverResult]:
         """Find and return subclasses of superclasses.
 
         Args:
-            superclasses (tuple[type, ...] | list[type] | set[type]|): Classes
-                which determines discovered subclasses.
+            superclasses (Iterable[type]): Classes which determines discovered
+                subclasses.
 
         Returns:
             dict[type, DiscoverResult]: Object holding successfully
@@ -448,12 +448,12 @@ def discover(
 
 
 def discover_with_report(
-    superclasses: tuple[type, ...] | list[type] | set[type]
+    superclasses: Iterable[type],
 ) -> dict[type, DiscoverResult]:
     """Find and return subclasses of superclasses.
 
     Args:
-        superclasses (tuple[type, ...] | list[type] | set[type]): Class which
+        superclasses (Iterable[type]): Class which
             determines discovered subclasses.
 
     Returns:
