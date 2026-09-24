@@ -11,8 +11,6 @@ from logging.handlers import (
 )
 import os
 import platform
-import requests
-import requests.adapters
 import socket
 import sys
 import time
@@ -21,7 +19,6 @@ from collections.abc import Callable
 from typing import Any
 import warnings
 
-import urllib3.util
 
 from . import Terminal
 from .local_settings import get_launcher_local_dir
@@ -285,6 +282,13 @@ class VectorHTTPSender:
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0
         self._thread = None
+
+        # Import only when Vector is used, to not slow down import of
+        #   'ayon_core.lib' in every process.
+        import requests
+        import requests.adapters
+        import urllib3.util
+
         # Reuse a single session so repeated POSTs reuse pooled
         # connections instead of opening a new one per request.
         self._session = requests.Session()
