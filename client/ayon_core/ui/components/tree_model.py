@@ -445,6 +445,16 @@ class LazyTreeModel(QAbstractItemModel):
             return None
         return node.tree_node.id
 
+    def get_index_by_id(self, node_id: str) -> QModelIndex:
+        """Return the loaded index for a node ID, if present."""
+        stack = list(self._root.children)
+        while stack:
+            node = stack.pop()
+            if node.tree_node and node.tree_node.id == node_id:
+                return self._index_for_node(node)
+            stack.extend(node.children)
+        return QModelIndex()
+
     @property
     def is_loading(self) -> bool:
         """Return True while at least one fetch task is in-flight."""
