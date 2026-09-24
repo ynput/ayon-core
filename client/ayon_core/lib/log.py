@@ -113,12 +113,14 @@ class _RateLimitedLogger:
         self._interval = interval
         self._last_emit = 0.0
 
-    def warning(self, msg, **kwargs):
+    def warning(self, msg, *args):
         now = time.monotonic()
         if now - self._last_emit < self._interval:
             return
         self._last_emit = now
-        self._logger.warning(msg, **kwargs)
+        # Only positional arguments - the wrapped logger is a plain
+        #   stdlib logger which raises 'TypeError' on unknown kwargs.
+        self._logger.warning(msg, *args)
 
 
 _vector_warn_logger = _RateLimitedLogger(
@@ -197,8 +199,9 @@ class VectorHTTPHandler(logging.Handler):
                 self._circuit_open_until = now + self._cooldown
                 self._consecutive_failures = 0
                 _vector_warn_logger.warning(
-                    "Vector endpoint unreachable, pausing log delivery.",
-                    cooldown=self._cooldown,
+                    "Vector endpoint unreachable, pausing log delivery"
+                    " for %s seconds.",
+                    self._cooldown,
                 )
             self.handleError(record)
         else:
