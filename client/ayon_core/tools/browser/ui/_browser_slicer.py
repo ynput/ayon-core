@@ -30,9 +30,9 @@ from .folders_model import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.browser.abstract import AbstractBrowserController
     from ayon_core.tools.browser.ui.browser_controller import (
         BrowserWidgetController,
-        BrowserController,
     )
 
 log = Logger.get_logger(__name__)
@@ -85,6 +85,20 @@ class TreeFilterProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class SlicerCategories(AYContainer):
+    """Slicer toolbar: category combo box, search and filter buttons.
+
+    Only presents the controls and reports user interaction through its
+    signals; the owning :class:`BrowserSlicer` applies them.
+
+    Args:
+        category: Initially selected category name.
+        ui_controller: The Browser UI controller, used to keep the
+            "My Tasks" toggle in sync with the active filter.
+        be_controller: The Browser backend controller, used for the
+            current context.
+        parent: Optional parent widget.
+    """
+
     category_changed = QtCore.Signal(str)
     my_tasks_requested = QtCore.Signal(bool)
     go_to_current_clicked = QtCore.Signal()
@@ -94,7 +108,7 @@ class SlicerCategories(AYContainer):
         self,
         category: str,
         ui_controller: BrowserWidgetController,
-        be_controller: BrowserController,
+        be_controller: AbstractBrowserController,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(
@@ -239,7 +253,7 @@ class BrowserSlicer(AYContainer):
     def __init__(
         self,
         ui_controller: BrowserWidgetController,
-        be_controller: BrowserController,
+        be_controller: AbstractBrowserController,
         *args: Any,
         initial_category: str = BrowserSlicerCategory.HIERARCHY.value,
         **kwargs: Any,
@@ -370,6 +384,9 @@ class BrowserSlicer(AYContainer):
 
     def _on_project_change(self, project_name: str) -> None:
         self._ui_controller.set_project(project_name)
+        # The "My Tasks" scope is re-resolved for the new project by the
+        # controller, but without a filter-changed signal - re-apply it.
+        self._sync_my_tasks_scope()
         self.reset()
 
     def _on_controller_reset_finished(self) -> None:
@@ -427,13 +444,8 @@ class BrowserSlicer(AYContainer):
         self._folders_proxy.set_name_filter(text)
         self._reviews_proxy.set_filter_text(text)
 
-        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
-            view = self._folders_view
-        else:
-            view = self._reviews_view
-
         if text:
-            view.expandAll()
+            self._current_view().expandAll()
 
     def _on_controller_my_tasks_filter_changed(self, enabled: bool) -> None:
         """React to the filter changing from outside the toggle itself.
@@ -442,6 +454,10 @@ class BrowserSlicer(AYContainer):
         ``BrowserTable._apply_view_extras``); keeps the toggle's
         checked state and the task list's scope in sync with it.
         """
+        self._sync_my_tasks_scope()
+
+    def _sync_my_tasks_scope(self) -> None:
+        """Apply the controller's "My Tasks" scope to folders and tasks."""
         self._folders_proxy.set_folder_ids_filter(
             self._ui_controller.get_folder_id_scope()
         )
@@ -520,13 +536,14 @@ class BrowserSlicer(AYContainer):
         self._folder_selection_chain = []
         self._folder_selection_attempt = 0
 
+    def _current_view(self) -> BrowserFolderTreeView:
+        """Return the tree view shown for the current category."""
+        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
+            return self._folders_view
+        return self._reviews_view
+
     def _get_view_index_by_id(self, folder_id: str) -> QtCore.QModelIndex:
-        category = self._categories.current_category()
-        if category == BrowserSlicerCategory.HIERARCHY.value:
-            view = self._folders_view
-        else:
-            view = self._reviews_view
-        model = view.model()
+        model = self._current_view().model()
         source_model = (
             model.sourceModel()
             if isinstance(model, QtCore.QAbstractProxyModel)
@@ -545,11 +562,7 @@ class BrowserSlicer(AYContainer):
         chain: list[str],
         attempt: int,
     ) -> None:
-        category = self._categories.current_category()
-        if category == BrowserSlicerCategory.HIERARCHY.value:
-            view = self._folders_view
-        else:
-            view = self._reviews_view
+        view = self._current_view()
         if not chain or attempt >= self._MAX_SELECTION_ATTEMPTS:
             self._clear_pending_selection()
             return
@@ -613,21 +626,15 @@ class BrowserSlicer(AYContainer):
                         break
                     parent = parent.parent()
 
-        selection_key = tuple(ids)
-        if selection_key == self._last_selection_ids:
-            return
-        self._last_selection_ids = selection_key
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        log.debug("Current selection ids: %s", explicit_ids)
-        self._ui_controller.on_tree_selection_changed(ids)
-        self._tasks.set_context(
-            self._ui_controller.current_project,
-            explicit_ids,
-            task_id_scope=self._ui_controller.get_task_id_scope(),
-        )
+        self._apply_tree_selection(explicit_ids, ids)
 
     def _on_folders_reset(self):
         self._folders_proxy.sort(0, QtCore.Qt.SortOrder.AscendingOrder)
+        # A search typed while the folders were still loading had
+        # nothing to expand yet - expand the now-filled tree.
+        if self._categories.filter_text():
+            self._folders_view.expandAll()
 
     def _on_reviews_selection_changed(
         self,
@@ -644,16 +651,35 @@ class BrowserSlicer(AYContainer):
                 if entity_id:
                     ids.append(entity_id)
 
-        selection_key = tuple(ids)
+        log.debug("Selected: %s, Deselected: %s", selected, deselected)
+        self._apply_tree_selection(ids, ids)
+
+    def _apply_tree_selection(
+        self, selected_ids: list[str], entity_ids: list[str]
+    ) -> None:
+        """Push a tree selection to the controller and the tasks list.
+
+        Args:
+            selected_ids: IDs of all selected rows. Used for the tasks
+                list and to skip unchanged selections - keying on these
+                (not 'entity_ids') keeps the tasks list in sync even when
+                only rows nested under a selected ancestor change.
+            entity_ids: IDs the version table is filtered by. The
+                controller ignores unchanged ids itself.
+        """
+        selection_key = tuple(selected_ids)
         if selection_key == self._last_selection_ids:
             return
         self._last_selection_ids = selection_key
-        log.debug("Selected: %s, Deselected: %s", selected, deselected)
-        log.debug("Current selection ids: %s", ids)
-        self._ui_controller.on_tree_selection_changed(ids)
+        log.debug(
+            "Current selection ids: %s (entities: %s)",
+            selected_ids,
+            entity_ids,
+        )
+        self._ui_controller.on_tree_selection_changed(entity_ids)
         self._tasks.set_context(
             self._ui_controller.current_project,
-            ids,
+            selected_ids,
             task_id_scope=self._ui_controller.get_task_id_scope(),
         )
 

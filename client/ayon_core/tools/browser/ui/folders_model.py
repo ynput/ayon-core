@@ -26,10 +26,9 @@ if typing.TYPE_CHECKING:
         FolderTypeItem,
     )
 
-    from .browser_controller import (
-        BrowserController,
-        BrowserWidgetController,
-    )
+    from ayon_core.tools.browser.abstract import AbstractBrowserController
+
+    from .browser_controller import BrowserWidgetController
 
 FOLDER_ID_ROLE = Qt.ItemDataRole.UserRole + 1
 FOLDER_NAME_ROLE = Qt.ItemDataRole.UserRole + 2
@@ -99,18 +98,20 @@ class _FillData:
 class BrowserFoldersModel(QStandardItemModel):
     """Folders model which cares about refresh of folders.
 
+    The model contains both **Folders** and **Status** columns.
+    Visibility of the status column is controlled by the view.
+
     Args:
         ui_controller (BrowserWidgetController): The Browser UI controller.
-        controller (BrowserController): The Browser controller.
+        be_controller (AbstractBrowserController): The Browser backend
+            controller.
     """
-    _default_folder_icon = None
-
     reset_finished = Signal()
 
     def __init__(
         self,
         ui_controller: BrowserWidgetController,
-        be_controller: BrowserController,
+        be_controller: AbstractBrowserController,
     ) -> None:
         super().__init__()
 
@@ -189,13 +190,10 @@ class BrowserFoldersModel(QStandardItemModel):
         )
 
     def _on_data_fetched(self, result: FetchData) -> None:
-        """Callback when refresh thread is finished.
+        """Callback when the fetch task is finished.
 
-        Technically can be running multiple refresh threads at the same time,
-        to avoid using values from wrong thread, we check if thread id is
-        current refresh thread id.
-
-        Folders are stored by id.
+        Several fetches can be in flight at the same time; a result for
+        a project other than the last requested one is ignored.
 
         Args:
             result (FetchData): Result from refresh.
@@ -270,7 +268,7 @@ class BrowserFoldersModel(QStandardItemModel):
 
         Args:
             statuses_changed (bool): Whether the statuses have changed.
-            folder_types_changed (bool): Whether the product types have changed.
+            folder_types_changed (bool): Whether the folder types have changed.
             old_fill_item (FillFolderItem): Old fill folder item.
             new_fill_item (FillFolderItem): New fill folder item.
             folder_type_icons_by_name: Cache for folder type icons.
@@ -319,7 +317,7 @@ class BrowserFoldersModel(QStandardItemModel):
     def data(
         self,
         index: QModelIndex | QPersistentModelIndex,
-        role:int = Qt.ItemDataRole.DisplayRole,
+        role: int = Qt.ItemDataRole.DisplayRole,
     ) -> Any:
         if not index.isValid():
             return None
@@ -559,7 +557,8 @@ class BrowserFoldersProxyModel(QSortFilterProxyModel):
     def __init__(self):
         super().__init__()
 
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setRecursiveFilteringEnabled(True)
 
         self._folder_ids_filter = None
