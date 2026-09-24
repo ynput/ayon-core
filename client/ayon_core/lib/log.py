@@ -7,7 +7,6 @@ import logging
 import queue
 from logging.handlers import (
     QueueHandler,
-    QueueListener,
     TimedRotatingFileHandler,
 )
 import os
@@ -183,6 +182,10 @@ def _remove_old_log_files(log_dir: str, retention_days: int) -> None:
 # Max records buffered for Vector delivery. Beyond this, new records are
 # dropped rather than growing memory unbounded during an outage.
 VECTOR_QUEUE_MAX_SIZE = 10_000
+# Max records sent to Vector in one request.
+VECTOR_BATCH_SIZE = 500
+# Max seconds a record waits for more records to be batched with it.
+VECTOR_FLUSH_INTERVAL = 1.0
 # Consecutive send failures after which the circuit opens (stop trying
 # HTTP calls for a while, just drop records fast).
 VECTOR_FAILURE_THRESHOLD = 5
@@ -191,6 +194,9 @@ VECTOR_CIRCUIT_COOLDOWN = 30.0
 # Minimum time between "records are being dropped" warnings, to avoid
 # flooding the console/log file during a prolonged outage.
 VECTOR_WARN_INTERVAL = 30.0
+# Logger for problems of Vector delivery. Its records are not sent to
+# Vector, see '_DroppingQueueHandler'.
+_VECTOR_LOGGER_NAME = "ayon.vector_log"
 
 
 class _RateLimitedLogger:
@@ -212,21 +218,29 @@ class _RateLimitedLogger:
 
 
 _vector_warn_logger = _RateLimitedLogger(
-    logging.getLogger("ayon.vector_log"), VECTOR_WARN_INTERVAL
+    logging.getLogger(_VECTOR_LOGGER_NAME), VECTOR_WARN_INTERVAL
 )
 
 
 class _DroppingQueueHandler(QueueHandler):
-    """QueueHandler that drops records when the queue is full.
+    """QueueHandler rendering records for Vector, dropping on overflow.
 
-    The formatter must be set on this handler, not on the listener's
-    handlers. The stdlib 'prepare' then renders the record in the
-    logging thread and enqueues an immutable copy with the final
-    message. Rendering in the listener thread instead would race with
-    other handlers mutating the shared record (e.g. pyblish's
-    'MessageHandler' replaces 'record.msg') and with later changes of
-    mutable log arguments.
+    Records are rendered with the handler's formatter in the logging
+    thread and the resulting JSON string is queued. Rendering in the
+    sender thread instead would race with other handlers mutating the
+    shared record (e.g. pyblish's 'MessageHandler' replaces 'record.msg')
+    and with later changes of mutable log arguments.
+
+    Records about Vector delivery itself are not queued, they would only
+    add load to an endpoint that is already failing.
     """
+
+    def __init__(self, log_queue):
+        super().__init__(log_queue)
+        self.addFilter(lambda record: record.name != _VECTOR_LOGGER_NAME)
+
+    def prepare(self, record):
+        return self.format(record)
 
     def enqueue(self, record):
         # handle full queue gracefully by dropping
@@ -239,23 +253,40 @@ class _DroppingQueueHandler(QueueHandler):
             )
 
 
-class VectorHTTPHandler(logging.Handler):
-    """Forward formatted log records to a Vector HTTP source."""
+class VectorHTTPSender:
+    """Send rendered log records from a queue to a Vector HTTP source.
+
+    A daemon thread collects up to 'batch_size' records, or what arrived
+    within 'flush_interval' seconds, and sends them as one JSON array per
+    request. Vector's 'json' decoding creates one event per array item.
+
+    A circuit breaker stops sending for 'cooldown' seconds after
+    'failure_threshold' consecutive failed requests. Records are dropped
+    meanwhile so a dead endpoint cannot slow down the process.
+    """
+
+    _stop_sentinel = object()
 
     def __init__(
         self,
         url,
+        log_queue,
+        batch_size=VECTOR_BATCH_SIZE,
+        flush_interval=VECTOR_FLUSH_INTERVAL,
         failure_threshold=VECTOR_FAILURE_THRESHOLD,
         cooldown=VECTOR_CIRCUIT_COOLDOWN,
     ):
-        super().__init__()
         self._url = url
+        self._queue = log_queue
+        self._batch_size = batch_size
+        self._flush_interval = flush_interval
         self._failure_threshold = failure_threshold
         self._cooldown = cooldown
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0
+        self._thread = None
         # Reuse a single session so repeated POSTs reuse pooled
-        # connections instead of opening a new one per log record.
+        # connections instead of opening a new one per request.
         self._session = requests.Session()
         retry = urllib3.util.Retry(
             total=2,
@@ -264,24 +295,65 @@ class VectorHTTPHandler(logging.Handler):
             allowed_methods=("POST",),
         )
         adapter = requests.adapters.HTTPAdapter(
-            pool_connections=1, pool_maxsize=10, max_retries=retry
+            pool_connections=1, pool_maxsize=1, max_retries=retry
         )
         self._session.mount("http://", adapter)
         self._session.mount("https://", adapter)
 
-    def emit(self, record):
+    def start(self):
+        self._thread = threading.Thread(
+            target=self._run, name="AYONVectorSender", daemon=True
+        )
+        self._thread.start()
+
+    def stop(self, timeout=5.0):
+        """Send records remaining in the queue and stop the thread."""
+        if self._thread is None:
+            return
+        try:
+            self._queue.put(self._stop_sentinel, timeout=timeout)
+        except queue.Full:
+            pass
+        self._thread.join(timeout)
+        self._thread = None
+        self._session.close()
+
+    def _run(self):
+        stop = False
+        while not stop:
+            item = self._queue.get()
+            if item is self._stop_sentinel:
+                break
+            batch = [item]
+            deadline = time.monotonic() + self._flush_interval
+            while len(batch) < self._batch_size:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    item = self._queue.get(timeout=remaining)
+                except queue.Empty:
+                    break
+                if item is self._stop_sentinel:
+                    stop = True
+                    break
+                batch.append(item)
+            self._send(batch)
+
+    def _send(self, batch):
         now = time.monotonic()
         if now < self._circuit_open_until:
             # Circuit is open - skip the HTTP attempt entirely so a dead
             # Vector endpoint cannot slow down the sender thread.
             return
         try:
-            self._session.post(
+            response = self._session.post(
                 self._url,
-                data=self.format(record),
+                data="[{}]".format(",".join(batch)).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
-                timeout=(0.3, 1.0),
+                timeout=(0.3, 2.0),
             )
+            response.raise_for_status()
         except Exception:
             self._consecutive_failures += 1
             if self._consecutive_failures >= self._failure_threshold:
@@ -292,17 +364,13 @@ class VectorHTTPHandler(logging.Handler):
                     " for %s seconds.",
                     self._cooldown,
                 )
-            self.handleError(record)
+            else:
+                # Rate-limit warnings in case of Vector outage.
+                _vector_warn_logger.warning(
+                    "Failed to send %s log records to Vector.", len(batch)
+                )
         else:
             self._consecutive_failures = 0
-
-    def handleError(self, record):
-        # Rate-limit warnings in case of Vector outage.
-        _vector_warn_logger.warning("Failed to send log record to Vector.")
-
-    def close(self):
-        self._session.close()
-        super().close()
 
 
 class _StderrHandler(logging.StreamHandler):
@@ -707,21 +775,17 @@ class Logger:
         if VECTOR_LOG_URL:
             # Send logs to Vector asynchronously so HTTP calls
             # don't block the app.
-            # Records arrive already rendered to JSON by 'queue_handler'.
-            vector_handler = VectorHTTPHandler(VECTOR_LOG_URL)
             # Queue is bounded so a Vector outage drops records instead of
             # growing memory without bound.
             log_queue: queue.Queue = queue.Queue(VECTOR_QUEUE_MAX_SIZE)
             queue_handler = _DroppingQueueHandler(log_queue)
             queue_handler.setFormatter(json_formatter)
-            queue_listener = QueueListener(
-                log_queue, vector_handler, respect_handler_level=True
-            )
-            queue_listener.start()
-            # The listener thread is a daemon thread, it would be killed on
+            vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
+            vector_sender.start()
+            # The sender thread is a daemon thread, it would be killed on
             # interpreter exit with records still in the queue. Stopping it
             # at exit delivers the queued records first.
-            atexit.register(queue_listener.stop)
+            atexit.register(vector_sender.stop)
 
         root_logger = logging.getLogger()
         root_logger.addHandler(handler)
