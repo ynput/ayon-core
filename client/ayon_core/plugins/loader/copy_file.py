@@ -17,6 +17,16 @@ class CopyFileActionPlugin(LoaderActionPlugin):
     """Copy published file path to clipboard"""
     identifier = "core.copy-action"
 
+    def apply_settings(self, settings):
+        loader_settings = settings.get(
+            self.host_name, {}
+        ).get("load", {})
+
+        self.enabled = loader_settings.get(
+            "enable_copy_file_action",
+            True,
+        )
+
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
