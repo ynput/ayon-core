@@ -6,6 +6,7 @@ Centralises all business logic and data fetching for the reviews UI.
 from __future__ import annotations
 
 import json
+import math
 import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -125,6 +126,30 @@ def _normalize_entity_id(value: Any) -> str:
         return uuid.UUID(text).hex
     except (ValueError, AttributeError):
         return text
+
+
+def _parse_number(value: Any) -> int | float | None:
+    """Parse a filter or group value of a numeric attribute.
+
+    Values reach the controller as text, while the server stores numeric
+    attributes as JSON numbers. Integral values are returned as ``int``,
+    so ``"1920"`` and ``"1920.0"`` both become ``1920``.
+
+    Args:
+        value: Value to parse.
+
+    Returns:
+        The parsed number, or ``None`` when *value* is not a number.
+    """
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    if number.is_integer():
+        return int(number)
+    return number
 
 
 def _timestamp_to_date(timestamp: str) -> str:
@@ -681,6 +706,14 @@ class BrowserWidgetController(QtCore.QObject):
                         "value": values,
                         "operator": "includesany",
                     }
+                elif (
+                    attribute_type in {"integer", "float"}
+                    and values
+                    and not use_substring
+                ):
+                    condition = self._numeric_values_condition(
+                        attribute_key, values
+                    )
                 elif values:
                     condition = {
                         "key": attribute_key,
@@ -975,6 +1008,36 @@ class BrowserWidgetController(QtCore.QObject):
                 {"key": key, "value": "", "operator": "eq"},
             ],
         }
+
+    @staticmethod
+    def _numeric_values_condition(
+        key: str,
+        values: list[str],
+    ) -> dict[str, Any] | None:
+        """Build a condition matching a numeric attribute to any value.
+
+        The server compares ``in`` values of a JSON field as quoted text,
+        so a number never matches, and its float list cast is invalid.
+        JSON equality compares numbers by value, so each value gets its
+        own ``eq`` condition, joined with OR.
+
+        Args:
+            key: Server filter key of the attribute.
+            values: Picked values as text.
+
+        Returns:
+            The condition, or ``None`` when no value is a number.
+        """
+        conditions = [
+            {"key": key, "value": number, "operator": "eq"}
+            for number in (_parse_number(value) for value in values)
+            if number is not None
+        ]
+        if not conditions:
+            return None
+        if len(conditions) == 1:
+            return conditions[0]
+        return {"operator": "or", "conditions": conditions}
 
     @classmethod
     def _or_empty_value_condition(
