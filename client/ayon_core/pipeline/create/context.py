@@ -819,7 +819,9 @@ class CreateContext:
         self.creators = creators
         self.disabled_creators = disabled_creators
 
-    def _reset_convertor_plugins(self, discover_report: DiscoverResult) -> None:
+    def _reset_convertor_plugins(
+        self, discover_report: DiscoverResult
+    ) -> None:
         convertors_plugins = {}
         self.convertor_discover_result = discover_report
         for convertor_class in discover_report.plugins:

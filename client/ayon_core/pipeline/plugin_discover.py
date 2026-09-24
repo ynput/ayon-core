@@ -147,7 +147,7 @@ class DiscoverResult:
         return "\n".join(lines)
 
     def log_report(
-        self, only_errors: bool=True, exc_info: bool=True
+        self, only_errors: bool = True, exc_info: bool = True,
     ) -> None:
         report = self.get_report(only_errors, exc_info)
         if report:
