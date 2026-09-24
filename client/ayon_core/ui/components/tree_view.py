@@ -465,35 +465,37 @@ class CenteredIconDelegate(TreeViewItemDelegate):
         option: QStyleOptionViewItem,
         index: QModelIndex | QPersistentModelIndex,
     ) -> None:
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
+
+        state = opt.state
+        is_selected = bool(state & QStyle.StateFlag.State_Selected)
+        is_hovered = bool(state & QStyle.StateFlag.State_MouseOver)
+
         styles = self._tv_styles()
         base_style = styles["base"]
-        hover_style = styles["hover"]
-        selected_style = styles["selected"]
+        colors_style = {}
+        if is_selected and is_hovered:
+            colors_style = styles["selected-hover"]
+        elif is_selected:
+            colors_style = styles["selected"]
+        elif is_hovered:
+            colors_style = styles["hover"]
 
-        if opt.state & QStyle.StateFlag.State_Selected:
-            bg_color = QColor(
-                selected_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
-        elif opt.state & QStyle.StateFlag.State_MouseOver:
-            bg_color = QColor(
-                hover_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
+        # --- bg and fg colors ------------------------------------------
+        if state & QStyle.StateFlag.State_Enabled:
+            bg_color = QColor(colors_style.get(
+                "background-color",
+                base_style.get("background-color", "transparent")
+            ))
         else:
+            # Use base colors for disabled state
             bg_color = QColor(
                 base_style.get("background-color", "transparent")
             )
 
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setBrush(QBrush(bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRect(opt.rect)
