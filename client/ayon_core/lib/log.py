@@ -19,7 +19,7 @@ from . import Terminal
 from .env_tools import env_value_to_bool
 
 # force the logger to use the same format for all log levels.
-USE_STD_FMT = bool(os.environ.get("AYON_USE_STD_LOG_FORMAT", 0))
+USE_STD_FMT = env_value_to_bool("AYON_USE_STD_LOG_FORMAT", default=False)
 
 
 class LogStreamHandler(logging.StreamHandler):
