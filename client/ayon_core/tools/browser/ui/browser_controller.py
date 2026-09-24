@@ -2426,6 +2426,9 @@ class BrowserWidgetController(QtCore.QObject):
     def _parse_group_id(group_id: str) -> tuple[str, str]:
         """Parse a group header id into (group_type, group_value).
 
+        Attribute group keys hold a colon themselves (``"attr:<name>"``),
+        so their ids are ``"grp:attr:<name>:<value>"``.
+
         Args:
             group_id: String in the form ``"grp:<type>:<value>"``.
 
@@ -2433,6 +2436,9 @@ class BrowserWidgetController(QtCore.QObject):
             Tuple of ``(group_type, group_value)``.
         """
         _, group_type, group_value = group_id.split(":", 2)
+        if group_type == "attr":
+            attribute_name, group_value = group_value.split(":", 1)
+            group_type = f"attr:{attribute_name}"
         return group_type, group_value
 
     def _build_version_filter(
@@ -2511,14 +2517,13 @@ class BrowserWidgetController(QtCore.QObject):
             attr_type = self._version_attributes.get(attribute_name, {}).get(
                 "type"
             )
-            if attr_type == "integer":
-                typed_value: Any = int(group_value)
-            elif attr_type == "float":
-                typed_value = float(group_value)
+            typed_value: Any = group_value
+            if attr_type in {"integer", "float"}:
+                number = _parse_number(group_value)
+                if number is not None:
+                    typed_value = number
             elif attr_type == "boolean":
                 typed_value = group_value.lower() in {"1", "true", "yes"}
-            else:
-                typed_value = group_value
 
             version_filter = json.dumps(
                 {
