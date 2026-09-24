@@ -156,7 +156,7 @@ def discover_plugins_with_defs(
         dict[type, DiscoverResult]: Discover result by superclass.
 
     """
-    normalized_paths: dict[Path, str] = {}
+    normalized_paths: dict[str, Path] = {}
     paths_by_superclass: dict[type, set[str]] = {}
     results: dict[type, DiscoverResult] = {}
     for superclass_def in superclass_defs:
@@ -176,7 +176,7 @@ def discover_plugins_with_defs(
             unique_path = path.as_posix()
             if IS_WINDOWS:
                 unique_path = unique_path.lower()
-            normalized_paths[path] = unique_path
+            normalized_paths[unique_path] = path
             superclass_paths.add(unique_path)
 
         result = DiscoverResult(superclass_def.superclass)
@@ -185,7 +185,7 @@ def discover_plugins_with_defs(
         paths_by_superclass[superclass_def.superclass] = superclass_paths
         results[superclass_def.superclass] = result
 
-    for path, unique_path in normalized_paths.items():
+    for unique_path, path in normalized_paths.items():
         import_result: ModulesResult = modules_from_path(path)
         for item in import_result.crashed:
             for superclass, superclass_paths in paths_by_superclass.items():
