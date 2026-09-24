@@ -1945,22 +1945,12 @@ class PlaceholderLoadMixin(object):
         version_entities = []
         version_mode = placeholder.data.get("version")
         if version_mode == "hero":
-            hero_version_entities = list(ayon_api.get_hero_versions(
-                project_name,
-                product_ids=product_ids,
-                fields={"id", "productId"},
-            ))
-            version_entities.extend(hero_version_entities)
-            product_ids_without_hero = product_ids - {
-                version["productId"] for version in hero_version_entities
-            }
             version_entities.extend(
-                version_entity
-                for version_entity in get_last_versions(
-                    project_name, product_ids_without_hero, fields={"id"}
-                ).values()
-                if version_entity is not None
-            )
+                ayon_api.get_hero_versions(
+                    project_name,
+                    product_ids=product_ids,
+                    fields={"id"},
+            ))
 
         else:
             version_entities.extend(
