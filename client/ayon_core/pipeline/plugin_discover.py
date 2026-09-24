@@ -26,6 +26,17 @@ IS_WINDOWS = platform.system().lower() == "windows"
 
 @dataclass
 class DiscoveryDefinition:
+    """Superclass discovery definition.
+
+    Attributes:
+        superclass (type): Superclass to discover subclasses in paths.
+        paths (list[str]): List of paths to look for plug-ins that do inherit
+            from the superclass.
+        classes (list[type]): List of classes that are not discovered from
+            paths but are explicitly defined. Should inherit from
+                the superclass.
+
+    """
     superclass: type
     paths: list[str] = field(default_factory=list)
     classes: list[type] = field(default_factory=list)
