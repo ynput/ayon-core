@@ -282,9 +282,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._current_refresh_task = refresh_task
             return
 
+        # Returned when the fetch fails - the model is cleared.
+        empty_result = FetchData(
+            project_name=project_name,
+            folder_items_by_id={},
+            folder_type_items=[],
+            status_items=[],
+        )
         refresh_task = RefreshTask(
             project_name,
-            _FillData(),
+            empty_result,
             self._thread_getter,
             project_name,
         )
@@ -364,10 +371,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             return
 
         # TODO visualize that refresh failed
-        # if not success:
-        #     pass
-
-        result = refresh_task.get_result()
+        # A failed refresh keeps the task's default, empty result.
+        result: FetchData = refresh_task.get_result()
 
         self._fill_items(
             result.project_name,
