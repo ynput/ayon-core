@@ -284,7 +284,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         refresh_task = RefreshTask(
             project_name,
-            ({}, []),
+            _FillData(),
             self._thread_getter,
             project_name,
         )
@@ -533,6 +533,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             if folder_items_by_id is not None:
                 self._clear_items()
             self._is_refreshing = False
+            self.refreshed.emit()
             return
 
         self._has_content = True
