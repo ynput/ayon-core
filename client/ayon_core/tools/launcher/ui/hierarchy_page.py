@@ -13,6 +13,7 @@ from ayon_core.ui.components import (
 )
 
 from .workfiles_page import WorkfilesPage
+from .recent_actions_widget import RecentActionsButton
 
 
 class LauncherFoldersWidget(FoldersWidget):
@@ -66,10 +67,13 @@ class HierarchyPage(QtWidgets.QWidget):
             parent=header_widget,
         )
 
+        recent_actions_btn = RecentActionsButton(controller, header_widget)
+
         header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(btn_back, 0)
         header_layout.addWidget(projects_combobox, 1)
         header_layout.addWidget(refresh_btn, 0)
+        header_layout.addWidget(recent_actions_btn, 0)
 
         # Body - Folders + Tasks selection
         content_body = QtWidgets.QSplitter(self)
@@ -134,8 +138,24 @@ class HierarchyPage(QtWidgets.QWidget):
 
         self._project_name = None
 
+        # State for deferred "Locate" navigation
+        self._pending_locate_folder_id = None
+        self._pending_locate_task_name = None
+        self._pending_locate_workfile_id = None
+
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
+
+        controller.register_event_callback(
+            "selection.project.changed",
+            self._on_selection_project_changed,
+        )
+        controller.register_event_callback(
+            "locate.context.requested",
+            self._on_locate_context_requested,
+        )
+        folders_widget.refreshed.connect(self._on_folders_refreshed)
+        tasks_widget.refreshed.connect(self._on_tasks_refreshed)
 
     def set_page_visible(self, visible, project_name=None):
         if self._is_visible == visible:
@@ -154,6 +174,27 @@ class HierarchyPage(QtWidgets.QWidget):
         self._on_my_tasks_checkbox_state_changed(
             self._filters_widget.is_my_tasks_checked()
         )
+
+    def _on_selection_project_changed(self, event):
+        """Keep the header in sync with the selected project.
+
+        The window hands the project name to this page only when switching
+        over from the projects page. A project change happening while this
+        page is already visible - e.g. locating a recent action that ran in
+        another project - has to update the header on its own, otherwise the
+        combobox keeps showing the previous project while the folders and
+        tasks views already show the new one.
+        """
+        if not self._is_visible:
+            return
+
+        project_name = event["project_name"]
+        if project_name == self._project_name:
+            return
+
+        self._project_name = project_name
+        if project_name:
+            self._projects_combobox.set_selection(project_name)
 
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
@@ -182,3 +223,51 @@ class HierarchyPage(QtWidgets.QWidget):
 
     def _on_tasks_focus(self):
         self._workfiles_page.deselect()
+
+    # ------------------------------------------------------------------
+    # Locate ("Recent Actions → navigate to context") handling
+
+    def _on_locate_context_requested(self, event):
+        """Visibly navigate the launcher to the stored recent-action context.
+
+        Stores the target selection and tries to apply it immediately.
+        When the underlying data is still loading (async refresh), the
+        pending state is consumed from the ``refreshed`` signal handlers.
+        """
+        self._pending_locate_folder_id = event["folder_id"]
+        self._pending_locate_task_name = event["task_name"]
+        self._pending_locate_workfile_id = event["workfile_id"]
+        self._apply_pending_locate_folder()
+
+    def _apply_pending_locate_folder(self):
+        folder_id = self._pending_locate_folder_id
+        if folder_id is None:
+            return
+        if self._folders_widget.set_selected_folder(folder_id):
+            self._pending_locate_folder_id = None
+            self._apply_pending_locate_task()
+
+    def _apply_pending_locate_task(self):
+        task_name = self._pending_locate_task_name
+        if task_name is None:
+            # No task to select; proceed straight to workfile.
+            self._apply_pending_locate_workfile()
+            return
+        if self._tasks_widget.set_selected_task(task_name):
+            self._pending_locate_task_name = None
+            self._apply_pending_locate_workfile()
+
+    def _apply_pending_locate_workfile(self):
+        workfile_id = self._pending_locate_workfile_id
+        self._workfiles_page.select_workfile(workfile_id)
+        self._pending_locate_workfile_id = None
+
+    def _on_folders_refreshed(self):
+        """Retry pending folder selection after async folder-model refresh."""
+        if self._pending_locate_folder_id is not None:
+            self._apply_pending_locate_folder()
+
+    def _on_tasks_refreshed(self):
+        """Retry pending task selection after an async task-model refresh."""
+        if self._pending_locate_task_name is not None:
+            self._apply_pending_locate_task()
