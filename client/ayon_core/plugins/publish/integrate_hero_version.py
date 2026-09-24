@@ -30,11 +30,13 @@ from ayon_core.lib.file_transaction import (
 )
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
+    get_trait_representations,
     has_trait_representations,
     OptionalPyblishPluginMixin,
     PublishError,
 )
 from ayon_core.pipeline.traits import (
+    Persistent,
     Representation,
     get_transfers_from_representations,
     get_legacy_files_for_representation,
@@ -150,6 +152,17 @@ class IntegrateHeroVersion(
             if instance.data.get("farm"):
                 self.log.debug(
                     "*** Instance is marked to be processed on farm."
+                )
+                return
+
+            # 'IntegrateTraits' only integrates persistent representations
+            if not any(
+                representation.contains_trait(Persistent)
+                for representation in get_trait_representations(instance)
+            ):
+                self.log.debug(
+                    "*** Instance has no persistent representations with "
+                    "traits."
                 )
                 return
 
