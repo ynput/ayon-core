@@ -52,6 +52,34 @@ def unbind_contextvars(*keys):
         structlog.contextvars.unbind_contextvars(*keys)
 
 
+def get_log_level_from_env() -> int:
+    """Resolve the AYON log level from environment variables.
+
+    'AYON_LOG_LEVEL' has precedence and accepts a numeric ('10') or
+    a named ('DEBUG') level. When it is not set, or is invalid,
+    'AYON_DEBUG' greater than 0 enables DEBUG. Defaults to INFO.
+
+    Returns:
+        int: Log level.
+
+    """
+    log_level = os.getenv("AYON_LOG_LEVEL", "").strip()
+    if log_level:
+        if log_level.isdigit():
+            level = int(log_level)
+        else:
+            level = logging.getLevelName(log_level.upper())
+        if isinstance(level, int) and level > 0:
+            return level
+
+    try:
+        if int(os.getenv("AYON_DEBUG", "0")) > 0:
+            return logging.DEBUG
+    except ValueError:
+        pass
+    return logging.INFO
+
+
 VECTOR_LOG_URL = os.getenv("AYON_VECTOR_LOG_URL", None)
 LOG_FILE_ENABLED = os.getenv("AYON_LOG_FILE") == "1"
 try:
@@ -373,26 +401,7 @@ class Logger:
         cls.initialized = False
         cls.configure_logger()
 
-        info_level = logging.INFO
-
-        # Define what is logging level
-        try:
-            log_level = int(os.getenv("AYON_LOG_LEVEL", info_level))
-        except (TypeError, ValueError):
-            log_level = None
-
-        try:
-            op_debug = int(os.getenv("AYON_DEBUG", "0"))
-        except (TypeError, ValueError):
-            op_debug = 0
-
-        if not log_level:
-            # Check AYON_DEBUG for debug level
-            if op_debug > 0:
-                log_level = 10
-            else:
-                log_level = 20
-        cls.log_level = log_level
+        cls.log_level = get_log_level_from_env()
         root_logger = logging.getLogger("AYON")
         # root_logger.propagate = False
         root_logger.setLevel(cls.log_level)
@@ -402,7 +411,7 @@ class Logger:
             root_logger.addHandler(cls._get_console_handler())
         cls._root_logger = root_logger
 
-        if op_debug > 0 or log_level < info_level:
+        if cls.log_level < logging.INFO:
             # force silence for some very noisy loggers
             logging.getLogger("urllib3").setLevel(logging.WARNING)
             logging.getLogger("requests").setLevel(logging.WARNING)
@@ -595,19 +604,4 @@ class Logger:
             root_logger.addHandler(file_handler)
         if VECTOR_LOG_URL:
             root_logger.addHandler(queue_handler)
-        # set default logging level to INFO, but
-        # allow override via AYON_LOG_LEVEL or AYON_DEBUG
-        root_logger.setLevel(logging.INFO)
-        if os.getenv("AYON_LOG_LEVEL") is not None:
-            try:
-                log_level = int(os.getenv("AYON_LOG_LEVEL", logging.INFO))
-                root_logger.setLevel(log_level)
-            except (TypeError, ValueError):
-                pass
-        if os.getenv("AYON_DEBUG") is not None:
-            try:
-                op_debug = int(os.getenv("AYON_DEBUG", "0"))
-                if op_debug > 0:
-                    root_logger.setLevel(logging.DEBUG)
-            except (TypeError, ValueError):
-                pass
+        root_logger.setLevel(get_log_level_from_env())
