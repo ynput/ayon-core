@@ -265,7 +265,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         if not project_name:
             self._last_project_name = project_name
-            self._fill_items({}, [])
+            self._fill_items(
+                project_name, {}, [], []
+            )
             self._current_refresh_task = None
             return
 
@@ -338,18 +340,34 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             status_items=status_items,
         )
 
-    def _on_refresh_task(self, result: FetchData) -> None:
-        """Callback when the fetch task is finished.
+    def _on_refresh_task(self, refresh_task_id: str, success: bool):
+        """Callback when refresh thread is finished.
 
-        Several fetches can be in flight at the same time; a result for
-        a project other than the last requested one is ignored.
+        Technically can be running multiple refresh threads at the same time,
+        to avoid using values from wrong thread, we check if thread id is
+        current refresh thread id.
+
+        Folders are stored by id.
 
         Args:
-            result (FetchData): Result from refresh.
+            refresh_task_id (str): Thread id.
+            success (bool): True if refresh was successful.
 
         """
-        if self._last_project_name != result.project_name:
+        # Make sure to remove thread from '_refresh_threads' dict
+        refresh_task = self._refresh_tasks.pop(refresh_task_id)
+        refresh_task.print_traceback()
+        if (
+            self._current_refresh_task is None
+            or refresh_task_id != self._current_refresh_task.id
+        ):
             return
+
+        # TODO visualize that refresh failed
+        # if not success:
+        #     pass
+
+        result = refresh_task.get_result()
 
         self._fill_items(
             result.project_name,
@@ -357,6 +375,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             result.folder_type_items,
             result.status_items,
         )
+        self._current_refresh_task = None
 
     def _get_folder_item_icon(
         self,
