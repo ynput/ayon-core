@@ -144,76 +144,6 @@ class DiscoverResult:
             log.info(report)
 
 
-def discover_plugins(
-    base_class: type,
-    paths: Optional[list[str]] = None,
-    classes: Optional[list[type]] = None,
-    ignored_classes: Optional[list[type]] = None,
-    allow_duplicates: bool = True,
-):
-    """Find and return subclasses of `superclass`
-
-    Args:
-        base_class (type): Class which determines discovered subclasses.
-        paths (Optional[list[str]]): List of paths to look for plug-ins.
-        classes (Optional[list[str]]): List of classes to filter.
-        ignored_classes (list[type]): List of classes that won't be added to
-            the output plugins.
-        allow_duplicates (bool): Validate class name duplications.
-
-    Returns:
-        DiscoverResult: Object holding successfully
-            discovered plugins, ignored plugins, plugins with missing
-            abstract implementation and duplicated plugin.
-
-    """
-    ignored_classes = ignored_classes or []
-    paths = paths or []
-    classes = classes or []
-
-    result = DiscoverResult(base_class)
-
-    all_plugins = list(classes)
-
-    for path in paths:
-        import_result: ModulesResult = modules_from_path(path)
-        for item in import_result.crashed:
-            result.crashed_file_paths[item.filepath] = item.exc_info
-
-        for item in import_result.modules:
-            result.add_module(item.module)
-            for cls in classes_from_module(base_class, item.module):
-                if cls is base_class:
-                    continue
-                # Class has defined 'skip_discovery = True'
-                skip_discovery = cls.__dict__.get("skip_discovery")
-                if skip_discovery is True:
-                    continue
-                all_plugins.append(cls)
-
-    if base_class not in ignored_classes:
-        ignored_classes.append(base_class)
-
-    plugin_names = set()
-    for cls in all_plugins:
-        if cls in ignored_classes:
-            result.ignored_plugins.add(cls)
-            continue
-
-        if inspect.isabstract(cls):
-            result.abstract_plugins.append(cls)
-            continue
-
-        if not allow_duplicates:
-            class_name = cls.__name__
-            if class_name in plugin_names:
-                result.duplicated_plugins.append(cls)
-                continue
-            plugin_names.add(class_name)
-        result.plugins.append(cls)
-    return result
-
-
 def discover_plugins_with_report(
     superclass_defs: list[SuperClassDef],
 ) -> dict[type, DiscoverResult]:
@@ -284,6 +214,42 @@ def discover_plugins_with_report(
                         continue
                     sc_result.plugins.append(cls)
     return results
+
+
+def discover_plugins(
+    base_class: type,
+    paths: list[str] | None = None,
+    classes: list[type] | None = None,
+    ignored_classes: list[type] | None = None,
+    allow_duplicates: bool = True,
+) -> DiscoverResult:
+    """Find and return subclasses of `superclass`
+
+    Args:
+        base_class (type): Class which determines discovered subclasses.
+        paths (list[str] | None): List of paths to look for plug-ins.
+        classes (list[str] | None): List of classes to filter.
+        ignored_classes (list[type]): List of classes that won't be added to
+            the output plugins.
+        allow_duplicates (bool): Validate class name duplications.
+
+    Returns:
+        DiscoverResult: Object holding successfully
+            discovered plugins, ignored plugins, plugins with missing
+            abstract implementation and duplicated plugin.
+
+    """
+    result = discover_plugins_with_report([
+        SuperClassDef(
+            base_class,
+            paths=paths or [],
+            classes=classes or [],
+        ),
+    ])[base_class]
+    result.ignore_plugins(ignored_classes or [])
+    if not allow_duplicates:
+        result.remove_duplicates()
+    return result
 
 
 class PluginDiscoverContext:
