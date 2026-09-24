@@ -718,9 +718,9 @@ class Logger:
                 log_queue, vector_handler, respect_handler_level=True
             )
             queue_listener.start()
-            # The listener thread is non-daemon by default and otherwise
-            # would keep the process alive/delay shutdown since
-            # 'queue_listener.stop()' is never called explicitly elsewhere.
+            # The listener thread is a daemon thread, it would be killed on
+            # interpreter exit with records still in the queue. Stopping it
+            # at exit delivers the queued records first.
             atexit.register(queue_listener.stop)
 
         root_logger = logging.getLogger()
