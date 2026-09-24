@@ -47,8 +47,7 @@ from .structures import (
 from .creator_plugins import (
     Creator,
     AutoCreator,
-    discover_creator_plugins,
-    discover_convertor_plugins,
+    discover_create_plugins,
 )
 if typing.TYPE_CHECKING:
     from types import TracebackType
@@ -688,8 +687,9 @@ class CreateContext:
         """
 
         self._reset_publish_plugins(discover_publish_plugins)
-        self._reset_creator_plugins()
-        self._reset_convertor_plugins()
+        create_result, convertor_result = discover_create_plugins()
+        self._reset_creator_plugins(create_result)
+        self._reset_convertor_plugins(convertor_result)
 
     def _reset_publish_plugins(self, discover_publish_plugins: bool) -> None:
         from ayon_core.pipeline import AYONPyblishPluginMixin
@@ -745,7 +745,7 @@ class CreateContext:
         self.publish_plugins = plugins_by_targets
         self.plugins_with_defs = plugins_with_defs
 
-    def _reset_creator_plugins(self) -> None:
+    def _reset_creator_plugins(self, discover_report: DiscoverResult) -> None:
         # Prepare settings
         project_settings = self.get_current_project_settings()
 
@@ -754,15 +754,14 @@ class CreateContext:
         disabled_creators = {}
         autocreators = {}
         manual_creators = {}
-        report = discover_creator_plugins(return_report=True)
-        self.creator_discover_result = report
-        for creator_class in report.abstract_plugins:
+        self.creator_discover_result = discover_report
+        for creator_class in discover_report.abstract_plugins:
             self.log.debug(
                 "Skipping abstract Creator '%s'",
                 str(creator_class)
             )
 
-        for creator_class in report.plugins:
+        for creator_class in discover_report.plugins:
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
                 self.log.warning(
@@ -820,17 +819,10 @@ class CreateContext:
         self.creators = creators
         self.disabled_creators = disabled_creators
 
-    def _reset_convertor_plugins(self) -> None:
+    def _reset_convertor_plugins(self, discover_report: DiscoverResult) -> None:
         convertors_plugins = {}
-        report = discover_convertor_plugins(return_report=True)
-        self.convertor_discover_result = report
-        for convertor_class in report.plugins:
-            if inspect.isabstract(convertor_class):
-                self.log.info(
-                    f"Skipping abstract Creator {convertor_class}"
-                )
-                continue
-
+        self.convertor_discover_result = discover_report
+        for convertor_class in discover_report.plugins:
             convertor_identifier = convertor_class.identifier
             if convertor_identifier in convertors_plugins:
                 self.log.warning((
