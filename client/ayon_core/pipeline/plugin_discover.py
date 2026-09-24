@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-import os
+from collections import defaultdict
+from dataclasses import dataclass, field
 import inspect
+import os
+from pathlib import Path
+import platform
 import traceback
 import typing
 from typing import Optional
@@ -13,9 +17,19 @@ from ayon_core.lib.python_module_tools import (
 )
 
 if typing.TYPE_CHECKING:
+    from types import ModuleType
     from ayon_core.lib.python_module_tools import ModulesResult
 
 log = Logger.get_logger(__name__)
+
+IS_WINDOWS = platform.system().lower() == "windows"
+
+
+@dataclass
+class SuperClassDef:
+    superclass: type
+    paths: list[str] = field(default_factory=list)
+    classes: list[type] = field(default_factory=list)
 
 
 class DiscoverResult:
@@ -45,9 +59,29 @@ class DiscoverResult:
     def __setitem__(self, item, value):
         self.plugins[item] = value
 
-    def add_module(self, module):
+    def add_module(self, module: ModuleType) -> None:
         """Add dynamically loaded python module to keep it in memory."""
         self._modules.add(module)
+
+    def ignore_plugins(self, plugins: list[type]) -> None:
+        """Add plugins to be ignored from the result."""
+        for plugin in plugins:
+            if plugin in self.ignored_plugins:
+                continue
+            if plugin in self.plugins:
+                self.plugins.remove(plugin)
+            self.ignored_plugins.add(plugin)
+
+    def remove_duplicated(self) -> None:
+        """Remove duplicated plugins from the result."""
+        plugin_names: set[str] = set()
+        for plugin in tuple(self.plugins):
+            class_name = plugin.__name__
+            if class_name in plugin_names:
+                self.plugins.remove(plugin)
+                self.duplicated_plugins.append(plugin)
+                continue
+            plugin_names.add(class_name)
 
     def get_report(
         self,
@@ -180,6 +214,78 @@ def discover_plugins(
     return result
 
 
+def discover_plugins_with_report(
+    superclass_defs: list[SuperClassDef],
+) -> dict[type, DiscoverResult]:
+    """Find and return subclasses.
+
+    Args:
+        superclass_defs (list[SuperClassDef]): List of superclasses with
+            their paths and classes to discover.
+
+    Returns:
+        dict[type, DiscoverResult]: Discover result by superclass.
+
+    """
+    normalized_paths: dict[Path, str] = {}
+    paths_by_superclass: dict[type, set[str]] = {}
+    results: dict[type, DiscoverResult] = {}
+    for superclass_def in superclass_defs:
+        superclass_paths = set()
+        for path in superclass_def.paths:
+            path = Path(path)
+            if not path.is_absolute():
+                log.warning(
+                    "Relative paths are not allowed for"
+                    f" security reasons '{path}'."
+                )
+                continue
+
+            if not path.exists():
+                continue
+
+            unique_path = path.as_posix()
+            if IS_WINDOWS:
+                unique_path = unique_path.lower()
+            normalized_paths[path] = unique_path
+            superclass_paths.add(unique_path)
+
+        result = DiscoverResult(superclass_def.superclass)
+        result.plugins.extend(superclass_def.classes)
+
+        paths_by_superclass[superclass_def.superclass] = superclass_paths
+        results[superclass_def.superclass] = result
+
+    for path, unique_path in normalized_paths.items():
+        import_result: ModulesResult = modules_from_path(path)
+        for item in import_result.crashed:
+            for superclass, superclass_paths in paths_by_superclass.items():
+                if unique_path in superclass_paths:
+                    results[superclass].crashed_file_paths[item.filepath] = (
+                        item.exc_info
+                    )
+
+        for item in import_result.modules:
+            for superclass, superclass_paths in paths_by_superclass.items():
+                if unique_path not in superclass_paths:
+                    continue
+
+                sc_result = results[superclass]
+                sc_result.add_module(item.module)
+                for cls in classes_from_module(superclass, item.module):
+                    if cls is superclass:
+                        continue
+                    # Class has defined 'skip_discovery = True'
+                    skip_discovery = cls.__dict__.get("skip_discovery")
+                    if skip_discovery is True:
+                        continue
+                    if inspect.isabstract(cls):
+                        sc_result.abstract_plugins.append(cls)
+                        continue
+                    sc_result.plugins.append(cls)
+    return results
+
+
 class PluginDiscoverContext:
     """Store and discover registered types nad registered paths to types.
 
@@ -247,14 +353,49 @@ class PluginDiscoverContext:
             return result
         return result.plugins
 
+    def discover_with_report(
+        self,
+        superclasses: tuple[type, ...] | list[type] | set[type],
+    ) -> dict[type, DiscoverResult]:
+        """Find and return subclasses of superclasses.
+
+        Args:
+            superclasses (tuple[type, ...] | list[type] | set[type]|): Classes
+                which determines discovered subclasses.
+
+        Returns:
+            dict[type, DiscoverResult]: Object holding successfully
+                discovered plugins, ignored plugins, plugins with missing
+                abstract implementation and duplicated plugin.
+
+        """
+        defs = [
+            SuperClassDef(
+                superclass=superclass,
+                paths=self._registered_plugin_paths.get(superclass) or [],
+                classes=self._registered_plugins.get(superclass) or [],
+            )
+            for superclass in superclasses
+        ]
+        result = discover_plugins_with_report(defs)
+
+        # Store in memory last result to keep in memory loaded modules
+        for superclass, sc_result in result.items():
+            self._last_discovered_results[superclass] = sc_result
+            self._last_discovered_plugins[superclass] = list(
+                sc_result.plugins
+            )
+            sc_result.log_report()
+        return result
+
     def register_plugin(self, superclass, cls):
         """Register a directory containing plug-ins of type `superclass`
 
         Arguments:
             superclass (type): Superclass of plug-in
             cls (object): Subclass of `superclass`
-        """
 
+        """
         if superclass not in self._registered_plugins:
             self._registered_plugins[superclass] = list()
 
@@ -269,8 +410,8 @@ class PluginDiscoverContext:
                 discovery
             path (str): Absolute path to directory in which to discover
                 plug-ins
-        """
 
+        """
         if superclass not in self._registered_plugin_paths:
             self._registered_plugin_paths[superclass] = list()
 
@@ -340,6 +481,23 @@ def discover(
         ignore_classes,
         return_report
     )
+
+
+def discover_with_report(
+    superclasses: tuple[type, ...] | list[type] | set[type]
+) -> dict[type, DiscoverResult]:
+    """Find and return subclasses of superclasses.
+
+    Args:
+        superclasses (tuple[type, ...] | list[type] | set[type]): Class which
+            determines discovered subclasses.
+
+    Returns:
+        dict[type, DiscoverResult]: Report by super class.
+
+    """
+    context = _GlobalDiscover.get_context()
+    return context.discover_with_report(superclasses)
 
 
 def get_last_discovered_plugins(superclass):
