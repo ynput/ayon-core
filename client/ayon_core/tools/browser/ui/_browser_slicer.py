@@ -123,6 +123,7 @@ class SlicerCategories(AYContainer):
             variant=AYComboBox.Variants.Low,
             show_chevron=False,
         )
+        self._combo.setCurrentText(category)
         self._filter_field = AYLineEdit(placeholder="Search")
         self._filter_btn = AYButton(
             variant=AYButton.Variants.Nav,
