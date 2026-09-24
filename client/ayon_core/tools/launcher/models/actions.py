@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 import os
+import threading
 from typing import Any
 import uuid
 from urllib.parse import urlencode, urlparse
@@ -104,6 +105,9 @@ class ActionsModel:
 
         self._log = None
 
+        # Action items are also collected from worker threads, discovery
+        #   of actions must happen only once at a time.
+        self._lock = threading.RLock()
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
@@ -127,13 +131,13 @@ class ActionsModel:
         return self._log
 
     def refresh(self):
-        self._discovered_actions = None
-        self._actions = None
-        self._action_items = {}
-        self._webaction_items.reset()
-
         self._controller.emit_event("actions.refresh.started")
-        self._get_action_objects()
+        with self._lock:
+            self._discovered_actions = None
+            self._actions = None
+            self._action_items = {}
+            self._webaction_items.reset()
+            self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
     def get_action_items(
@@ -578,6 +582,10 @@ class ActionsModel:
         return response
 
     def _get_discovered_action_classes(self):
+        with self._lock:
+            return self._discover_action_classes()
+
+    def _discover_action_classes(self):
         if self._discovered_actions is None:
             # NOTE We don't need to register the paths, but that would
             #   require to change discovery logic and deprecate all functions
@@ -593,16 +601,17 @@ class ActionsModel:
         return self._discovered_actions
 
     def _get_action_objects(self):
-        if self._actions is None:
-            actions = {}
-            for cls in self._get_discovered_action_classes():
-                obj = cls()
-                identifier = getattr(obj, "identifier", None)
-                if identifier is None:
-                    identifier = cls.__name__
-                actions[identifier] = obj
-            self._actions = actions
-        return self._actions
+        with self._lock:
+            if self._actions is None:
+                actions = {}
+                for cls in self._get_discovered_action_classes():
+                    obj = cls()
+                    identifier = getattr(obj, "identifier", None)
+                    if identifier is None:
+                        identifier = cls.__name__
+                    actions[identifier] = obj
+                self._actions = actions
+            return self._actions
 
     def _get_action_items(self, project_name):
         action_items = self._action_items.get(project_name)

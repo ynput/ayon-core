@@ -12,7 +12,7 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
 from ayon_core.tools.utils.delegates import (
     pretty_timestamp,
     file_size_to_string,
@@ -111,7 +111,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         task_queue.clear_context_tasks(self._context_id)
         task_queue.enqueue(AsyncTask(
             name="fetch_launcher_workfiles",
-            function=lambda: self._controller.get_workfile_items(
+            function=lambda: self._fetch_workfile_items(
                 project_name, task_id
             ),
             callback=lambda result: self._on_workfiles_fetched(
@@ -121,6 +121,20 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             context_id=self._context_id,
             cancellable=True,
         ))
+
+    def _fetch_workfile_items(
+        self, project_name: str, task_id: str
+    ) -> list:
+        """Called in a worker thread, must not touch the model."""
+        workfile_items = self._controller.get_workfile_items(
+            project_name, task_id
+        )
+        # Download url icons here so filling the model does not wait
+        prefetch_qt_icons([
+            self._get_icon_def(icon_url)
+            for icon_url in {item.icon for item in workfile_items}
+        ])
+        return workfile_items
 
     def _set_loading(self, loading: bool) -> None:
         if self._is_loading == loading:
@@ -303,6 +317,15 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             )
         return self._transparent_icon
 
+    @staticmethod
+    def _get_icon_def(icon_url: Optional[str]):
+        if icon_url is None:
+            return None
+        base_url = ayon_api.get_base_url()
+        if icon_url.startswith(base_url):
+            return AYONUrlIcon(icon_url[len(base_url) + 1:])
+        return UrlIcon(icon_url)
+
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
         if icon_url is None:
             return self._get_transparent_icon()
@@ -310,14 +333,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if icon is not None:
             return icon
 
-        base_url = ayon_api.get_base_url()
-        if icon_url.startswith(base_url):
-            url = icon_url[len(base_url) + 1:]
-            icon_def = AYONUrlIcon(url)
-        else:
-            icon_def = UrlIcon(icon_url)
-
-        icon = get_qt_icon(icon_def)
+        icon = get_qt_icon(self._get_icon_def(icon_url))
         if icon is None:
             icon = self._get_transparent_icon()
         self._cached_icons[icon_url] = icon

@@ -481,6 +481,71 @@ class _IconsCache:
     _cache = {}
     _default = None
     _qtawesome_cache = {}
+    # Downloaded content of url icons by '(icon type, url)'
+    _content_cache: dict[tuple[str, str], bytes | None] = {}
+
+    @classmethod
+    def _get_url_icon_info(
+        cls, icon_def: IconBase | dict
+    ) -> tuple[str, str] | None:
+        if isinstance(icon_def, UrlIcon):
+            return "url", icon_def.url
+        if isinstance(icon_def, AYONUrlIcon):
+            return "ayon_url", icon_def.url
+        if isinstance(icon_def, dict):
+            icon_type = icon_def.get("type")
+            if icon_type in {"url", "ayon_url"}:
+                return icon_type, icon_def["url"]
+        return None
+
+    @classmethod
+    def _get_url_content(cls, icon_type: str, url: str) -> bytes | None:
+        """Download content of url icon, cached.
+
+        Does not create any Qt object, safe to call from worker threads.
+        """
+        key = (icon_type, url)
+        if key in cls._content_cache:
+            return cls._content_cache[key]
+
+        content = None
+        try:
+            if icon_type == "url":
+                content = urllib.request.urlopen(url).read()
+            else:
+                full_url = f"{ayon_api.get_base_url()}/{url.lstrip('/')}"
+                stream = io.BytesIO()
+                ayon_api.download_file_to_stream(full_url, stream)
+                content = stream.getvalue()
+        except Exception:
+            log.warning(
+                "Failed to download image '%s'", url, exc_info=True
+            )
+        cls._content_cache[key] = content
+        return content
+
+    @classmethod
+    def _icon_from_url(cls, icon_type: str, url: str) -> QtGui.QIcon | None:
+        content = cls._get_url_content(icon_type, url)
+        if not content:
+            return None
+        pix = QtGui.QPixmap()
+        pix.loadFromData(content)
+        return QtGui.QIcon(pix)
+
+    @classmethod
+    def prefetch(cls, icon_defs) -> None:
+        """Download content of icons which need it.
+
+        Meant to be called from a worker thread so that 'get_icon' on the
+        UI thread does not wait for network.
+        """
+        for icon_def in icon_defs:
+            if icon_def is None:
+                continue
+            info = cls._get_url_icon_info(icon_def)
+            if info is not None:
+                cls._get_url_content(*info)
 
     @classmethod
     def _get_cache_key(cls, icon_def):
@@ -568,31 +633,8 @@ class _IconsCache:
                     fill=icon_def.fill,
                 )
 
-        elif isinstance(icon_def, UrlIcon):
-            url = icon_def.url
-            try:
-                content = urllib.request.urlopen(url).read()
-                pix = QtGui.QPixmap()
-                pix.loadFromData(content)
-                icon = QtGui.QIcon(pix)
-            except Exception:
-                log.warning(
-                    "Failed to download image '%s'", url, exc_info=True
-                )
-
-        elif isinstance(icon_def, AYONUrlIcon):
-            url = icon_def.url.lstrip("/")
-            url = f"{ayon_api.get_base_url()}/{url}"
-            try:
-                stream = io.BytesIO()
-                ayon_api.download_file_to_stream(url, stream)
-                pix = QtGui.QPixmap()
-                pix.loadFromData(stream.getvalue())
-                icon = QtGui.QIcon(pix)
-            except Exception:
-                log.warning(
-                    "Failed to download image '%s'", url, exc_info=True
-                )
+        elif isinstance(icon_def, (UrlIcon, AYONUrlIcon)):
+            icon = cls._icon_from_url(*cls._get_url_icon_info(icon_def))
 
         elif isinstance(icon_def, TransparentIcon):
             pix = QtGui.QPixmap(icon_def.size, icon_def.size)
@@ -643,33 +685,8 @@ class _IconsCache:
                     fill=bool(icon_def.get("fill")),
                 )
 
-        elif icon_type == "url":
-            url = icon_def["url"]
-            try:
-                content = urllib.request.urlopen(url).read()
-                pix = QtGui.QPixmap()
-                pix.loadFromData(content)
-                icon = QtGui.QIcon(pix)
-            except Exception:
-                log.warning(
-                    "Failed to download image '%s'", url, exc_info=True
-                )
-                icon = None
-
-        elif icon_type == "ayon_url":
-            url = icon_def["url"].lstrip("/")
-            url = f"{ayon_api.get_base_url()}/{url}"
-            try:
-                stream = io.BytesIO()
-                ayon_api.download_file_to_stream(url, stream)
-                pix = QtGui.QPixmap()
-                pix.loadFromData(stream.getvalue())
-                icon = QtGui.QIcon(pix)
-            except Exception:
-                log.warning(
-                    "Failed to download image '%s'", url, exc_info=True
-                )
-                icon = None
+        elif icon_type in {"url", "ayon_url"}:
+            icon = cls._icon_from_url(icon_type, icon_def["url"])
 
         elif icon_type == "transparent":
             size = icon_def.get("size")
@@ -739,6 +756,20 @@ def get_qt_icon(
 
     """
     return _IconsCache.get_icon(icon_def, default=default)
+
+
+def prefetch_qt_icons(icon_defs) -> None:
+    """Download content of icons so 'get_qt_icon' does not wait for network.
+
+    Safe to call from worker threads, does not create any Qt objects. Use it
+    in the 'fetch' step of 'AsyncLoader' for icons shown by 'apply'.
+
+    Args:
+        icon_defs (Iterable[IconBase | dict[str, Any] | None]): Icon
+            definitions.
+
+    """
+    _IconsCache.prefetch(icon_defs)
 
 
 def get_qta_icon_by_name_and_color(icon_name, icon_color):

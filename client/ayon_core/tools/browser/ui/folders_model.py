@@ -19,6 +19,7 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.time_sliced_job import TimeSlicedJob
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models import (
         StatusItem,
@@ -127,6 +128,7 @@ class BrowserFoldersModel(QStandardItemModel):
 
         self._last_project_name = None
         self._is_loading = False
+        self._build_job: TimeSlicedJob | None = None
         self._context_id: str = f"folders_model_{id(self)}_v0"
 
     def is_loading(self) -> bool:
@@ -149,7 +151,6 @@ class BrowserFoldersModel(QStandardItemModel):
             self._fill_items(
                 project_name, {}, [], []
             )
-            self._set_loading(False)
             return
 
         self._set_loading(True)
@@ -162,7 +163,9 @@ class BrowserFoldersModel(QStandardItemModel):
             callback=lambda result: self._on_data_fetched(
                 project_name, result
             ),
-            priority=5,
+            # Folders are the entry point of the browser, fetch them before
+            #   other queued tasks (e.g. thumbnails of the previous project)
+            priority=0,
             context_id=self._context_id,
             cancellable=True,
         )
@@ -181,6 +184,7 @@ class BrowserFoldersModel(QStandardItemModel):
         return self.indexFromItem(fill_item.item)
 
     def _clear_items(self) -> None:
+        self._cancel_build()
         self._fill_data = _FillData()
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
@@ -231,14 +235,15 @@ class BrowserFoldersModel(QStandardItemModel):
         #   overlay or item without flags.
         if result is None:
             self._clear_items()
-        else:
-            self._fill_items(
-                result.project_name,
-                result.folder_items_by_id,
-                result.folder_type_items,
-                result.status_items,
-            )
-        self._set_loading(False)
+            self._set_loading(False)
+            return
+
+        self._fill_items(
+            result.project_name,
+            result.folder_items_by_id,
+            result.folder_type_items,
+            result.status_items,
+        )
 
     def _get_folder_item_icon(
         self,
@@ -392,9 +397,17 @@ class BrowserFoldersModel(QStandardItemModel):
         folder_type_items: list[FolderTypeItem],
         status_items: list[StatusItem],
     ) -> None:
+        """Fill model with folder items and end loading state.
+
+        Creating items for a big project takes a while, when the model is
+        empty the items are created in time slices so the UI stays
+        responsive and are added to the model at once when done.
+        """
+        self._cancel_build()
         if project_name is None or not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
+            self._set_loading(False)
             return
 
         fill_data = _FillData(project_name)
@@ -432,37 +445,75 @@ class BrowserFoldersModel(QStandardItemModel):
         # Update items if we already have some, otherwise fill from scratch
         # - Update is slower as it has to compare existing items with new
         #   ones, but it preserves expanded and selected state in the view.
-        old_fill_data, self._fill_data = self._fill_data, fill_data
-        if old_fill_data.items_by_id:
-            self._fill_update(
-                fill_data,
-                old_fill_data,
-                folder_items_by_id,
-                folder_type_icons_by_name,
-                status_icon_by_name,
+        if not self._fill_data.items_by_id:
+            top_items = []
+            build_job = TimeSlicedJob(
+                self._build_from_scratch(
+                    top_items,
+                    fill_data,
+                    folder_items_by_id,
+                    folder_type_icons_by_name,
+                    status_icon_by_name,
+                ),
+                parent=self,
             )
-        else:
-            self._fill_from_scratch(
-                fill_data,
-                folder_items_by_id,
-                folder_type_icons_by_name,
-                status_icon_by_name,
+            build_job.finished.connect(
+                lambda: self._on_build_finished(fill_data, top_items)
             )
-        self.reset_finished.emit()
+            self._build_job = build_job
+            build_job.start()
+            return
 
-    def _fill_from_scratch(
+        old_fill_data, self._fill_data = self._fill_data, fill_data
+        self._fill_update(
+            fill_data,
+            old_fill_data,
+            folder_items_by_id,
+            folder_type_icons_by_name,
+            status_icon_by_name,
+        )
+        self.reset_finished.emit()
+        self._set_loading(False)
+
+    def _cancel_build(self) -> None:
+        build_job, self._build_job = self._build_job, None
+        if build_job is not None:
+            build_job.cancel()
+            build_job.deleteLater()
+
+    def _on_build_finished(
+        self, fill_data: _FillData, top_items: list[QStandardItem]
+    ) -> None:
+        self._build_job.deleteLater()
+        self._build_job = None
+        self._fill_data = fill_data
+        # Children are already parented, only top level rows are inserted
+        #   so proxy model and view process one insert
+        if top_items:
+            self.invisibleRootItem().appendRows(top_items)
+        self.reset_finished.emit()
+        self._set_loading(False)
+
+    def _build_from_scratch(
         self,
+        top_items: list[QStandardItem],
         fill_data: _FillData,
         folder_items_by_id: dict[str, FolderItem],
         folder_type_icons_by_name: dict[str, QIcon | None],
         status_icon_by_name: dict[str, QIcon | None],
-    ) -> None:
+    ) -> typing.Generator[None, None, None]:
+        """Create items detached from the model.
+
+        Generator for 'TimeSlicedJob', yields after each created item.
+        Top level items are added to 'top_items'.
+        """
         folder_items_by_parent = defaultdict(list)
         for folder_item in folder_items_by_id.values():
             folder_items_by_parent[folder_item.parent_id].append(folder_item)
+        yield
 
         hierarchy_queue = deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+        hierarchy_queue.append((None, None, ""))
 
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
@@ -491,8 +542,13 @@ class BrowserFoldersModel(QStandardItemModel):
                 fill_data.items_by_id[item_id] = fill_item
 
                 hierarchy_queue.append((item, item_id, folder_label_path))
+                yield
 
-            if new_items:
+            if not new_items:
+                continue
+            if parent_item is None:
+                top_items.extend(new_items)
+            else:
                 parent_item.appendRows(new_items)
 
     def _fill_update(
