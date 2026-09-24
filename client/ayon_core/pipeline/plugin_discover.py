@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 import inspect
 import os
@@ -8,7 +7,6 @@ from pathlib import Path
 import platform
 import traceback
 import typing
-from typing import Optional
 
 from ayon_core.lib import Logger
 from ayon_core.lib.python_module_tools import (
