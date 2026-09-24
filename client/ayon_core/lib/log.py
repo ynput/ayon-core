@@ -36,6 +36,51 @@ except ImportError:
     structlog: Any = None  # type: ignore[no-redef]
 
 
+# Record attribute holding the structlog event dict,
+#   see '_render_for_stdlib' and '_EventDictProcessorFormatter'.
+_EVENT_DICT_ATTR = "_ayon_event_dict"
+
+
+def _render_for_stdlib(logger, method_name, event_dict):
+    """Last structlog processor handing the event over to stdlib logging.
+
+    Unlike 'ProcessorFormatter.wrap_for_formatter', which stores the event
+    dict in 'record.msg', the record keeps a plain string message. Handlers
+    not using AYON formatters (DCC script editors, pyblish, the publisher
+    report) show the message instead of a dict repr. The event dict is
+    attached to the record for '_EventDictProcessorFormatter'.
+    """
+    kwargs: dict[str, Any] = {
+        "extra": {
+            "_logger": logger,
+            "_name": method_name,
+            _EVENT_DICT_ATTR: event_dict,
+        }
+    }
+    exc_info = event_dict.get("exc_info")
+    if exc_info:
+        # Let foreign handlers show the traceback too
+        kwargs["exc_info"] = exc_info
+    return (str(event_dict.get("event", "")),), kwargs
+
+
+if structlog is not None:
+    class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
+        """ProcessorFormatter reading the event dict from the record.
+
+        Counterpart of '_render_for_stdlib'. Other handlers may modify
+        'record.msg' (pyblish does), the event dict is not affected.
+        """
+
+        def format(self, record):
+            event_dict = getattr(record, _EVENT_DICT_ATTR, None)
+            if event_dict is not None:
+                record = logging.makeLogRecord(record.__dict__)
+                record.msg = event_dict
+                record.args = ()
+            return super().format(record)
+
+
 def bind_contextvars(**kwargs):
     if structlog is None:
         return {}
@@ -546,15 +591,15 @@ class Logger:
                 #   stdlib loggers are already formatted by
                 #   'ProcessorFormatter' via 'record.getMessage()'.
                 structlog.stdlib.PositionalArgumentsFormatter(),
-                # Prepares details if sent to standard logging
-                structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+                # Hand over to standard logging, rendered by formatters
+                _render_for_stdlib,
             ],
             logger_factory=structlog.stdlib.LoggerFactory(),
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
 
-        console_formatter = structlog.stdlib.ProcessorFormatter(
+        console_formatter = _EventDictProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
@@ -564,7 +609,7 @@ class Logger:
                 ),
             ],
         )
-        json_formatter = structlog.stdlib.ProcessorFormatter(
+        json_formatter = _EventDictProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
