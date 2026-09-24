@@ -171,6 +171,23 @@ def test_console_formatter_ignores_mutated_record_msg(
     assert "key" in output
 
 
+def test_foreign_processor_formatter_formats_ayon_records(
+    log_module, foreign_handler
+):
+    """Other tools in the process may use plain 'ProcessorFormatter'."""
+    structlog = pytest.importorskip("structlog")
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.foreign_structlog")
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer()
+    )
+
+    log.info("Loaded %s", "asset")
+
+    payload = json.loads(formatter.format(foreign_handler.records[0]))
+    assert payload["event"] == "Loaded asset"
+
+
 def test_console_handler_uses_current_stderr(log_module, monkeypatch):
     pytest.importorskip("structlog")
     module = log_module()

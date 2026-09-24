@@ -32,8 +32,10 @@ except ImportError:
     structlog: Any = None  # type: ignore[no-redef]
 
 
-# Record attribute holding the structlog event dict,
-#   see '_render_for_stdlib' and '_EventDictProcessorFormatter'.
+# Record attribute holding the structlog logger, method name and event
+#   dict, see '_render_for_stdlib' and '_EventDictProcessorFormatter'.
+# - must not be '_logger' and '_name' used by 'wrap_for_formatter', plain
+#   'ProcessorFormatter' would expect the event dict in 'record.msg'
 _EVENT_DICT_ATTR = "_ayon_event_dict"
 
 
@@ -48,9 +50,7 @@ def _render_for_stdlib(logger, method_name, event_dict):
     """
     kwargs: dict[str, Any] = {
         "extra": {
-            "_logger": logger,
-            "_name": method_name,
-            _EVENT_DICT_ATTR: event_dict,
+            _EVENT_DICT_ATTR: (logger, method_name, event_dict),
         }
     }
     exc_info = event_dict.get("exc_info")
@@ -66,12 +66,18 @@ if structlog is not None:
 
         Counterpart of '_render_for_stdlib'. Other handlers may modify
         'record.msg' (pyblish does), the event dict is not affected.
+        Records from 'wrap_for_formatter' and foreign stdlib records are
+        processed as by 'ProcessorFormatter'.
         """
 
         def format(self, record):
-            event_dict = getattr(record, _EVENT_DICT_ATTR, None)
-            if event_dict is not None:
+            structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
+            if structlog_data is not None:
+                logger, method_name, event_dict = structlog_data
+                # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
                 record = logging.makeLogRecord(record.__dict__)
+                record._logger = logger
+                record._name = method_name
                 record.msg = event_dict
                 record.args = ()
             return super().format(record)
