@@ -170,6 +170,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
+    # Used by 'AYTreeView' to show loading placeholder
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller):
         super().__init__()
@@ -200,6 +202,20 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             bool: True if model is refreshing.
         """
         return self._is_refreshing
+
+    def is_loading(self) -> bool:
+        """Model is loading data.
+
+        Returns:
+            bool: True if model is loading data.
+        """
+        return self._is_refreshing
+
+    def _set_refreshing(self, refreshing: bool) -> None:
+        if self._is_refreshing == refreshing:
+            return
+        self._is_refreshing = refreshing
+        self.loading_changed.emit(refreshing)
 
     @property
     def has_content(self):
@@ -271,7 +287,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._current_refresh_task = None
             return
 
-        self._is_refreshing = True
+        self._set_refreshing(True)
 
         if self._last_project_name != project_name:
             self._clear_items()
@@ -537,7 +553,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
-            self._is_refreshing = False
+            self._set_refreshing(False)
             self.refreshed.emit()
             return
 
@@ -594,7 +610,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 status_icon_by_name,
             )
 
-        self._is_refreshing = False
+        self._set_refreshing(False)
         self.refreshed.emit()
 
     def _fill_from_scratch(
@@ -1044,6 +1060,15 @@ class FoldersWidget(QtWidgets.QWidget):
         if folder_id is None:
             return False
         return self.set_selected_folder(folder_id)
+
+    def set_loading_delay(self, delay: int) -> None:
+        """Delay before loading placeholder shows in folders view.
+
+        Args:
+            delay (int): Delay in milliseconds.
+
+        """
+        self._folders_view.set_loading_delay(delay)
 
     def set_deselectable(self, enabled):
         """Set deselectable mode.

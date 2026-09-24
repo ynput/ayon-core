@@ -107,6 +107,8 @@ class BrowserFoldersModel(QStandardItemModel):
             controller.
     """
     reset_finished = Signal()
+    # Used by 'AYTreeView' to show loading placeholder
+    loading_changed = Signal(bool)
 
     def __init__(
         self,
@@ -124,7 +126,16 @@ class BrowserFoldersModel(QStandardItemModel):
         self._fill_data = _FillData()
 
         self._last_project_name = None
+        self._is_loading = False
         self._context_id: str = f"folders_model_{id(self)}_v0"
+
+    def is_loading(self) -> bool:
+        """Model is loading folders.
+
+        Returns:
+            bool: True if folders are being fetched.
+        """
+        return self._is_loading
 
     def reset(self) -> None:
         """Refresh folders for last selected project.
@@ -138,15 +149,19 @@ class BrowserFoldersModel(QStandardItemModel):
             self._fill_items(
                 project_name, {}, [], []
             )
+            self._set_loading(False)
             return
 
+        self._set_loading(True)
         if self._last_project_name != project_name:
             self._clear_items()
         self._last_project_name = project_name
         task = AsyncTask(
             name="fetch_all_folders",
             function=lambda: self._fetch_folders_data(project_name),
-            callback=self._on_data_fetched,
+            callback=lambda result: self._on_data_fetched(
+                project_name, result
+            ),
             priority=5,
             context_id=self._context_id,
             cancellable=True,
@@ -189,32 +204,41 @@ class BrowserFoldersModel(QStandardItemModel):
             status_items=status_items,
         )
 
-    def _on_data_fetched(self, result: FetchData | None) -> None:
+    def _set_loading(self, loading: bool) -> None:
+        if self._is_loading == loading:
+            return
+        self._is_loading = loading
+        self.loading_changed.emit(loading)
+
+    def _on_data_fetched(
+        self, project_name: str, result: FetchData | None
+    ) -> None:
         """Callback when the fetch task is finished.
 
         Several fetches can be in flight at the same time; a result for
         a project other than the last requested one is ignored.
 
         Args:
+            project_name (str): Project for which the fetch was requested.
             result (FetchData | None): Result from refresh.
 
         """
+        if self._last_project_name != project_name:
+            return
+
         # Fetching failed
         # TODO handle by showing the information to user. Probably by showing
         #   overlay or item without flags.
         if result is None:
             self._clear_items()
-            return
-
-        if self._last_project_name != result.project_name:
-            return
-
-        self._fill_items(
-            result.project_name,
-            result.folder_items_by_id,
-            result.folder_type_items,
-            result.status_items,
-        )
+        else:
+            self._fill_items(
+                result.project_name,
+                result.folder_items_by_id,
+                result.folder_type_items,
+                result.status_items,
+            )
+        self._set_loading(False)
 
     def _get_folder_item_icon(
         self,
