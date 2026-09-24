@@ -373,7 +373,7 @@ class Logger:
         cls.initialized = False
         cls.configure_logger()
 
-        info_level = logging.getLevelNamesMapping()['INFO']
+        info_level = logging.INFO
 
         # Define what is logging level
         try:
