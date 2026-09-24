@@ -142,7 +142,7 @@ class DiscoverResult:
             log.info(report)
 
 
-def discover_plugins_with_report(
+def discover_plugins_with_defs(
     superclass_defs: list[SuperClassDef],
 ) -> dict[type, DiscoverResult]:
     """Find and return subclasses.
@@ -237,7 +237,7 @@ def discover_plugins(
             abstract implementation and duplicated plugin.
 
     """
-    result = discover_plugins_with_report([
+    result = discover_plugins_with_defs([
         SuperClassDef(
             base_class,
             paths=paths or [],
@@ -341,7 +341,7 @@ class PluginDiscoverContext:
             )
             for superclass in superclasses
         ]
-        result = discover_plugins_with_report(defs)
+        result = discover_plugins_with_defs(defs)
 
         # Store in memory last result to keep in memory loaded modules
         for superclass, sc_result in result.items():
