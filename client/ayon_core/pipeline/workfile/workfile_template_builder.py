@@ -1811,6 +1811,23 @@ class PlaceholderLoadMixin(object):
                 placeholder="ma, abc, ..."
             ),
             attribute_definitions.EnumDef(
+                "version",
+                label="Version",
+                default=options.get("version", "latest"),
+                items=[
+                    {"label": "Latest", "value": "latest"},
+                    {"label": "Hero", "value": "hero"},
+                ],
+                tooltip=(
+                    "Version"
+                    "\nDefines which version of the matching product will"
+                    " be loaded."
+                    "\nLatest: Loads the latest (last) standard version."
+                    "\nHero: Loads the hero version. Products without a hero"
+                    " version are skipped."
+                )
+            ),
+            attribute_definitions.EnumDef(
                 "loader",
                 label="Loader",
                 default=options.get("loader"),
@@ -1901,6 +1918,42 @@ class PlaceholderLoadMixin(object):
                     loader_args, err.__class__.__name__, err))
 
         return {}
+
+    def _get_version_entities(self, project_name, product_ids, placeholder):
+        """Prepared query of versions based on load options.
+
+        This function is directly connected to options defined in
+        'get_load_plugin_options'.
+
+        Args:
+            project_name (str): Name of the project.
+            product_ids (List[str]): List of product IDs to filter versions.
+            placeholder (PlaceholderItem): Item which should be populated.
+
+        Returns:
+            List[Dict[str, Any]]: Version documents matching filters
+                from placeholder data.
+        """
+        product_ids = set(product_ids)
+        version_entities = []
+        version_mode = placeholder.data.get("version")
+        if version_mode == "hero":
+            version_entities.extend(
+                ayon_api.get_hero_versions(
+                    project_name,
+                    product_ids=product_ids,
+                    fields={"id"},
+            ))
+        version_entities.extend(
+            version_entity
+            for version_entity in get_last_versions(
+                project_name, product_ids, fields={"id"}
+            ).values()
+            # Version may be none if a product has no versions
+            if version_entity is not None
+        )
+
+        return version_entities
 
     def _get_representations(self, placeholder):
         """Prepared query of representations based on load options.
@@ -2005,12 +2058,13 @@ class PlaceholderLoadMixin(object):
 
         version_ids = set(
             version["id"]
-            for version in get_last_versions(
-                project_name, filtered_product_ids, fields={"id"}
-            ).values()
-            # Version may be none if a product has no versions
-            if version is not None
+            for version in self._get_version_entities(
+                project_name,
+                filtered_product_ids,
+                placeholder
+            )
         )
+
         return list(get_representations(
             project_name,
             representation_names=representation_names,
@@ -2029,8 +2083,71 @@ class PlaceholderLoadMixin(object):
 
         pass
 
-    def _reduce_last_version_repre_entities(self, repre_contexts):
-        """Reduce representations to last version."""
+    def _reduce_last_version_repre_entities(
+        self, repre_contexts, version_mode="latest"
+    ):
+        """Reduce representations to last version.
+
+        Args:
+            repre_contexts (Iterable[Dict[str, Any]]): Representation
+                contexts to reduce.
+            version_mode (str): Version mode, 'latest' or 'hero'. In hero
+                mode the hero version is preferred per representation name,
+                falling back to the latest version when a product has no
+                hero version or the hero lacks the representation.
+
+        Returns:
+            List[Dict[str, Any]]: Reduced representation contexts.
+        """
+
+        if version_mode == "hero":
+            return self._reduce_hero_repre_entities(repre_contexts)
+        return self._reduce_latest_repre_entities(repre_contexts)
+
+    def _reduce_hero_repre_entities(self, repre_contexts):
+        """Prefer hero version per representation with latest fallback.
+
+        The hero version is used for a representation name only when it
+        actually contains that representation. Otherwise the latest standard
+        version is used for that representation name.
+        """
+
+        # product id -> representation name -> version -> contexts
+        contexts_by_product_id = {}
+        for repre_context in repre_contexts:
+            product_id = repre_context["product"]["id"]
+            repre_name = repre_context["representation"]["name"]
+            version = repre_context["version"]["version"]
+            version_mapping = (
+                contexts_by_product_id
+                .setdefault(product_id, {})
+                .setdefault(repre_name, {})
+            )
+            version_mapping.setdefault(version, []).append(repre_context)
+
+        output = []
+        for contexts_by_name in contexts_by_product_id.values():
+            for version_mapping in contexts_by_name.values():
+                # Hero versions have negative version numbers
+                hero_versions = [
+                    version for version in version_mapping if version < 0
+                ]
+                standard_versions = [
+                    version for version in version_mapping if version >= 0
+                ]
+
+                if hero_versions:
+                    selected_version = min(hero_versions)
+                elif standard_versions:
+                    selected_version = max(standard_versions)
+                else:
+                    continue
+
+                output.extend(version_mapping[selected_version])
+        return output
+
+    def _reduce_latest_repre_entities(self, repre_contexts):
+        """Reduce representations to latest version."""
 
         version_mapping_by_product_id = {}
         for repre_context in repre_contexts:
