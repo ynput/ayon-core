@@ -262,6 +262,30 @@ class VectorHTTPHandler(logging.Handler):
         super().close()
 
 
+class _StderrHandler(logging.StreamHandler):
+    """StreamHandler writing to the current 'sys.stderr'.
+
+    Hosts and AYON tools replace 'sys.stderr' after logging is configured.
+    'logging.StreamHandler' would keep writing to the stream it received
+    on creation. Same approach as stdlib 'logging._StderrHandler'.
+
+    Logs go to stderr so stdout of AYON CLI commands stays usable for
+    their output, same as the previous 'LogStreamHandler' default.
+    """
+
+    def __init__(self, level=logging.NOTSET):
+        logging.Handler.__init__(self, level)
+
+    @property
+    def stream(self):
+        return sys.stderr
+
+    def emit(self, record):
+        # 'sys.stderr' is None in GUI processes without console
+        if sys.stderr is not None:
+            super().emit(record)
+
+
 class LogStreamHandler(logging.StreamHandler):
     """StreamHandler class.
 
@@ -622,7 +646,7 @@ class Logger:
             ],
         )
 
-        handler = logging.StreamHandler(sys.stdout)
+        handler = _StderrHandler()
         handler.setFormatter(console_formatter)
 
         if LOG_FILE_ENABLED:
