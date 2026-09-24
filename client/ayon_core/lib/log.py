@@ -128,16 +128,17 @@ _vector_warn_logger = _RateLimitedLogger(
 )
 
 
-class _RawQueueHandler(QueueHandler):
-    """QueueHandler that does not pre-format/stringify the record.
+class _DroppingQueueHandler(QueueHandler):
+    """QueueHandler that drops records when the queue is full.
 
-    The stdlib's default 'prepare' stringifies 'record.msg', which
-    destroys the structlog event dict before it reaches the listener's
-    handlers.
+    The formatter must be set on this handler, not on the listener's
+    handlers. The stdlib 'prepare' then renders the record in the
+    logging thread and enqueues an immutable copy with the final
+    message. Rendering in the listener thread instead would race with
+    other handlers mutating the shared record (e.g. pyblish's
+    'MessageHandler' replaces 'record.msg') and with later changes of
+    mutable log arguments.
     """
-
-    def prepare(self, record):
-        return record
 
     def enqueue(self, record):
         # handle full queue gracefully by dropping
@@ -589,12 +590,13 @@ class Logger:
         if VECTOR_LOG_URL:
             # Send logs to Vector asynchronously so HTTP calls
             # don't block the app.
+            # Records arrive already rendered to JSON by 'queue_handler'.
             vector_handler = VectorHTTPHandler(VECTOR_LOG_URL)
-            vector_handler.setFormatter(json_formatter)
             # Queue is bounded so a Vector outage drops records instead of
             # growing memory without bound.
             log_queue: queue.Queue = queue.Queue(VECTOR_QUEUE_MAX_SIZE)
-            queue_handler = _RawQueueHandler(log_queue)
+            queue_handler = _DroppingQueueHandler(log_queue)
+            queue_handler.setFormatter(json_formatter)
             queue_listener = QueueListener(
                 log_queue, vector_handler, respect_handler_level=True
             )
