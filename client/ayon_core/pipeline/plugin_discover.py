@@ -72,7 +72,7 @@ class DiscoverResult:
                 self.plugins.remove(plugin)
             self.ignored_plugins.add(plugin)
 
-    def remove_duplicated(self) -> None:
+    def remove_duplicates(self) -> None:
         """Remove duplicated plugins from the result."""
         plugin_names: set[str] = set()
         for plugin in tuple(self.plugins):
