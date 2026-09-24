@@ -129,6 +129,9 @@ class BrowserFoldersModel(QStandardItemModel):
         self._last_project_name = None
         self._is_loading = False
         self._build_job: TimeSlicedJob | None = None
+        # Project with a fetch in flight, a reset for it does not start
+        #   another fetch
+        self._fetching_project_name: str | None = None
         self._context_id: str = f"folders_model_{id(self)}_v0"
 
     def is_loading(self) -> bool:
@@ -139,14 +142,21 @@ class BrowserFoldersModel(QStandardItemModel):
         """
         return self._is_loading
 
-    def reset(self) -> None:
+    def reset(self, project_name: str | None = None) -> None:
         """Refresh folders for last selected project.
 
         Force to update folders model from controller. This may or may not
         trigger query from server, that's based on controller's cache.
+
+        Args:
+            project_name (str | None): Project to load, current project
+                of the UI controller is used when not passed. Allows to
+                start loading before the project switch finishes.
         """
-        project_name = self._ui_controller.current_project
+        if project_name is None:
+            project_name = self._ui_controller.current_project
         if not project_name:
+            self._fetching_project_name = None
             self._last_project_name = project_name
             self._fill_items(
                 project_name, {}, [], []
@@ -157,6 +167,9 @@ class BrowserFoldersModel(QStandardItemModel):
         if self._last_project_name != project_name:
             self._clear_items()
         self._last_project_name = project_name
+        if self._fetching_project_name == project_name:
+            return
+        self._fetching_project_name = project_name
         task = AsyncTask(
             name="fetch_all_folders",
             function=lambda: self._fetch_folders_data(project_name),
@@ -227,6 +240,8 @@ class BrowserFoldersModel(QStandardItemModel):
             result (FetchData | None): Result from refresh.
 
         """
+        if self._fetching_project_name == project_name:
+            self._fetching_project_name = None
         if self._last_project_name != project_name:
             return
 

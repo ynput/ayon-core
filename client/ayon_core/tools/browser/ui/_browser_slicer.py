@@ -384,6 +384,10 @@ class BrowserSlicer(AYContainer):
         )
 
     def _on_project_change(self, project_name: str) -> None:
+        # Start loading folders before the project switch, it blocks the
+        #   UI thread for a while and the folders can load meanwhile.
+        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
+            self._folders_model.reset(project_name)
         self._ui_controller.set_project(project_name)
         # The "My Tasks" scope is re-resolved for the new project by the
         # controller, but without a filter-changed signal - re-apply it.
