@@ -134,7 +134,7 @@ class IntegrateHeroVersion(
             return
 
         self.log.debug(
-            "--- Integration of Hero version for product `{}` begins.".format(
+            "Integrating Hero version for product `{}`.".format(
                 instance.data["productName"]
             )
         )
@@ -491,8 +491,7 @@ class IntegrateHeroVersion(
             op_session.commit()
 
         self.log.debug((
-            "--- hero version integration for product `{}`"
-            " seems to be successful."
+            "Hero version integration for product `{}` finished."
         ).format(
             instance.data["productName"]
         ))
@@ -642,8 +641,8 @@ class IntegrateHeroVersion(
             op_session.commit()
 
         self.log.debug(
-            "--- hero version integration for product"
-            f" `{instance.data['productName']}` seems to be successful."
+            "Hero version integration with representations traits for product"
+            f" `{instance.data['productName']}` finished."
         )
 
     def _is_ignored_representation(self, repre_name: str) -> bool:
