@@ -135,7 +135,50 @@ try:
     )
 except ValueError:
     LOG_FILE_RETENTION_DAYS = 1
-LOG_FILE_NAME = "ayon.ndjson"
+# Each process writes its own file, see '_get_log_file_path'
+LOG_FILE_PREFIX = "ayon_"
+LOG_FILE_EXT = ".ndjson"
+
+
+def _get_log_file_path(log_dir: str) -> str:
+    """Log file path unique for the current process.
+
+    Multiple AYON processes (tray, hosts, publish jobs) log at the same
+    time. They must not share one file: writes would interleave and
+    rotation of a shared file fails on Windows when another process has
+    the file open.
+    """
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    return os.path.join(
+        log_dir,
+        f"{LOG_FILE_PREFIX}{timestamp}_{os.getpid()}{LOG_FILE_EXT}"
+    )
+
+
+def _remove_old_log_files(log_dir: str, retention_days: int) -> None:
+    """Remove AYON log files not modified within retention period.
+
+    Includes files of other processes, and rotated files of this one.
+    """
+    threshold = time.time() - (retention_days * 24 * 60 * 60)
+    try:
+        filenames = os.listdir(log_dir)
+    except OSError:
+        return
+    for filename in filenames:
+        if (
+            not filename.startswith(LOG_FILE_PREFIX)
+            or LOG_FILE_EXT not in filename
+        ):
+            continue
+        path = os.path.join(log_dir, filename)
+        try:
+            if os.path.getmtime(path) < threshold:
+                os.remove(path)
+        except OSError:
+            # Removed meanwhile or still open by other process on Windows
+            pass
+
 
 # Max records buffered for Vector delivery. Beyond this, new records are
 # dropped rather than growing memory unbounded during an outage.
@@ -652,8 +695,9 @@ class Logger:
         if LOG_FILE_ENABLED:
             log_dir = get_launcher_local_dir("logs")
             os.makedirs(log_dir, exist_ok=True)
+            _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
             file_handler = TimedRotatingFileHandler(
-                os.path.join(log_dir, LOG_FILE_NAME),
+                _get_log_file_path(log_dir),
                 when="midnight",
                 backupCount=LOG_FILE_RETENTION_DAYS,
                 encoding="utf-8",
