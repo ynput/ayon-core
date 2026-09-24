@@ -24,7 +24,7 @@ IS_WINDOWS = platform.system().lower() == "windows"
 
 
 @dataclass
-class SuperClassDef:
+class DiscoveryDefinition:
     superclass: type
     paths: list[str] = field(default_factory=list)
     classes: list[type] = field(default_factory=list)
@@ -143,12 +143,12 @@ class DiscoverResult:
 
 
 def discover_plugins_with_defs(
-    superclass_defs: list[SuperClassDef],
+    superclass_defs: list[DiscoveryDefinition],
 ) -> dict[type, DiscoverResult]:
     """Find and return subclasses.
 
     Args:
-        superclass_defs (list[SuperClassDef]): List of superclasses with
+        superclass_defs (list[DiscoveryDefinition]): List of superclasses with
             their paths and classes to discover.
 
     Returns:
@@ -238,7 +238,7 @@ def discover_plugins(
 
     """
     result = discover_plugins_with_defs([
-        SuperClassDef(
+        DiscoveryDefinition(
             base_class,
             paths=paths or [],
             classes=classes or [],
@@ -334,7 +334,7 @@ class PluginDiscoverContext:
 
         """
         defs = [
-            SuperClassDef(
+            DiscoveryDefinition(
                 superclass=superclass,
                 paths=self._registered_plugin_paths.get(superclass) or [],
                 classes=self._registered_plugins.get(superclass) or [],
