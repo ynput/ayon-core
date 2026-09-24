@@ -34,7 +34,10 @@ from .abstract import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import FolderItem
     from ayon_core.tools.common_models.settings import TaskSortMode
+
+    from .abstract import SubtaskProduct
 
 
 class PublisherController(
@@ -260,6 +263,13 @@ class PublisherController(
 
     def get_task_entity(self, project_name, task_id):
         return self._hierarchy_model.get_task_entity(project_name, task_id)
+
+    def get_folder_item(
+        self, project_name: str, folder_id: str
+    ) -> FolderItem | None:
+        return self._hierarchy_model.get_folder_item(
+            project_name, folder_id
+        )
 
     def get_folder_item_by_path(self, project_name, folder_path):
         return self._hierarchy_model.get_folder_item_by_path(
@@ -676,3 +686,8 @@ class PublisherController(
         return CommentDef(
             minimum_chars_required=comment_minimum_required_chars
         )
+
+    def get_subtask_products(
+        self, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        return self._create_model.get_subtask_products(folder_id, task_name)
