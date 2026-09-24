@@ -189,16 +189,23 @@ class BrowserFoldersModel(QStandardItemModel):
             status_items=status_items,
         )
 
-    def _on_data_fetched(self, result: FetchData) -> None:
+    def _on_data_fetched(self, result: FetchData | None) -> None:
         """Callback when the fetch task is finished.
 
         Several fetches can be in flight at the same time; a result for
         a project other than the last requested one is ignored.
 
         Args:
-            result (FetchData): Result from refresh.
+            result (FetchData | None): Result from refresh.
 
         """
+        # Fetching failed
+        # TODO handle by showing the information to user. Probably by showing
+        #   overlay or item without flags.
+        if result is None:
+            self._clear_items()
+            return
+
         if self._last_project_name != result.project_name:
             return
 
