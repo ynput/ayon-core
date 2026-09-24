@@ -1,8 +1,4 @@
-"""Integrate hero version of published product.
-
-Supports both the legacy representations (`instance.data["representations"]`)
-and representations with traits.
-"""
+"""Integrate hero version of published product."""
 from __future__ import annotations
 
 import os
