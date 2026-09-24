@@ -12,6 +12,7 @@ from functools import wraps
 from typing import Optional, Union, Any, overload
 
 import ayon_api
+from ayon_api.exceptions import GraphQlQueryFailed
 
 from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.lib import (
@@ -1152,11 +1153,27 @@ def filter_containers(containers, project_name):
             container["representation"]
             for container in l_containers
         }
-        repre_entities = ayon_api.get_representations(
-            l_project_name,
-            representation_ids=repre_ids,
-            fields={"id", "versionId"}
-        )
+        # NOTE The query fails if the project does not exist (e.g. it was
+        #   renamed or removed) or is not accessible for the user. In that
+        #   case all its containers are 'not found' - a failure must not
+        #   break the whole filtering (which is called e.g. on scene open).
+        # - the query result is consumed with 'list' because the error is
+        #   raised during iteration
+        try:
+            repre_entities = list(ayon_api.get_representations(
+                l_project_name,
+                representation_ids=repre_ids,
+                fields={"id", "versionId"}
+            ))
+        except GraphQlQueryFailed as exc:
+            log.warning(
+                "Failed to query representations of project"
+                f" '{l_project_name}'. Treating its containers as not"
+                f" found. {exc}"
+            )
+            not_found_containers.extend(l_containers)
+            continue
+
         version_ids = set()
         repre_entities_by_id = {}
         for repre_entity in repre_entities:
