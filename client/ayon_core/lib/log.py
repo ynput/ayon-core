@@ -537,6 +537,11 @@ class Logger:
 
         structlog.configure(
             processors=shared_processors + [
+                # Support '%s' style arguments, e.g.
+                #   'log.info("Loaded %s", name)'. Records from plain
+                #   stdlib loggers are already formatted by
+                #   'ProcessorFormatter' via 'record.getMessage()'.
+                structlog.stdlib.PositionalArgumentsFormatter(),
                 # Prepares details if sent to standard logging
                 structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
             ],
@@ -546,9 +551,7 @@ class Logger:
         )
 
         console_formatter = structlog.stdlib.ProcessorFormatter(
-            foreign_pre_chain=shared_processors + [
-                structlog.stdlib.PositionalArgumentsFormatter(),
-            ],
+            foreign_pre_chain=shared_processors,
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 _drop_log_context,
