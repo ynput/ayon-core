@@ -159,6 +159,7 @@ def discover_plugins_with_defs(
     normalized_paths: dict[str, Path] = {}
     paths_by_superclass: dict[type, set[str]] = {}
     results: dict[type, DiscoverResult] = {}
+    classes_by_superclass: dict[type, list[type]] = {}
     for superclass_def in superclass_defs:
         superclass_paths = set()
         for path in superclass_def.paths:
@@ -179,11 +180,10 @@ def discover_plugins_with_defs(
             normalized_paths[unique_path] = path
             superclass_paths.add(unique_path)
 
-        result = DiscoverResult(superclass_def.superclass)
-        result.plugins.extend(superclass_def.classes)
-
-        paths_by_superclass[superclass_def.superclass] = superclass_paths
-        results[superclass_def.superclass] = result
+        superclass = superclass_def.superclass
+        classes_by_superclass[superclass] = list(superclass_def.classes)
+        paths_by_superclass[superclass] = superclass_paths
+        results[superclass] = DiscoverResult(superclass)
 
     for unique_path, path in normalized_paths.items():
         import_result: ModulesResult = modules_from_path(path)
@@ -199,19 +199,24 @@ def discover_plugins_with_defs(
                 if unique_path not in superclass_paths:
                     continue
 
-                sc_result = results[superclass]
-                sc_result.add_module(item.module)
-                for cls in classes_from_module(superclass, item.module):
-                    if cls is superclass:
-                        continue
-                    # Class has defined 'skip_discovery = True'
-                    skip_discovery = cls.__dict__.get("skip_discovery")
-                    if skip_discovery is True:
-                        continue
-                    if inspect.isabstract(cls):
-                        sc_result.abstract_plugins.append(cls)
-                        continue
-                    sc_result.plugins.append(cls)
+                results[superclass].add_module(item.module)
+                classes_by_superclass[superclass].extend(
+                    classes_from_module(superclass, item.module)
+                )
+
+    for superclass, classes in classes_by_superclass.items():
+        sc_result = results[superclass]
+        for cls in classes:
+            if cls is superclass:
+                continue
+            # Class has defined 'skip_discovery = True'
+            skip_discovery = cls.__dict__.get("skip_discovery")
+            if skip_discovery is True:
+                continue
+            if inspect.isabstract(cls):
+                sc_result.abstract_plugins.append(cls)
+                continue
+            sc_result.plugins.append(cls)
     return results
 
 
