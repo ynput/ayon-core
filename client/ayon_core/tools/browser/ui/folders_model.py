@@ -126,7 +126,7 @@ class BrowserFoldersModel(QStandardItemModel):
         self._last_project_name = None
         self._context_id: str = f"folders_model_{id(self)}_v0"
 
-    def reset(self):
+    def reset(self) -> None:
         """Refresh folders for last selected project.
 
         Force to update folders model from controller. This may or may not
@@ -356,12 +356,12 @@ class BrowserFoldersModel(QStandardItemModel):
 
     def _fill_items(
         self,
-        project_name: str,
+        project_name: str | None,
         folder_items_by_id: dict[str, FolderItem],
         folder_type_items: list[FolderTypeItem],
         status_items: list[StatusItem],
     ) -> None:
-        if not folder_items_by_id:
+        if project_name is None or not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
             return
