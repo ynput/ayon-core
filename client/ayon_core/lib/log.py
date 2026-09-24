@@ -452,11 +452,15 @@ class Logger:
 
         cls.log_level = get_log_level_from_env()
         root_logger = logging.getLogger("AYON")
-        # root_logger.propagate = False
         root_logger.setLevel(cls.log_level)
         # Skip own handler when structlog already owns the output pipeline
         # to avoid double-formatting/handling the same records.
+        # - with structlog the records must propagate to the root logger
+        #   where the structlog handlers are.
         if structlog is None or not structlog.is_configured():
+            # Records are already printed by the own handler, don't pass
+            #   them to root logger handlers too (e.g. DCC script editor).
+            root_logger.propagate = False
             root_logger.addHandler(cls._get_console_handler())
         cls._root_logger = root_logger
 
