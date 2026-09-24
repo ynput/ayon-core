@@ -126,7 +126,7 @@ class DiscoverResult:
                 f"*** Failed to load {len(self.crashed_file_paths)} files"
             )
             for path, exc_info_args in self.crashed_file_paths.items():
-                lines.append(f"- {cls.__name__}")
+                lines.append(f"- {path}")
                 if exc_info:
                     lines.append(10 * "*")
                     lines.extend(traceback.format_exception(*exc_info_args))
