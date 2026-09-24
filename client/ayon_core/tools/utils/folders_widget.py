@@ -706,7 +706,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 parent_item.appendRows(new_items)
 
 
-
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self):
         super().__init__()
