@@ -253,9 +253,7 @@ class ContainersModel:
             except (ValueError, TypeError, AttributeError):
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
-            # NOTE cache key must include project name - the same
-            #   representation id must not be resolved against, or reused
-            #   from, a different project's data.
+            # Cache key contains project name and representation id
             repre_info = self._repre_info_by_id.get((project_name, repre_id))
             if repre_info is None:
                 missing_repre_ids.add(repre_id)
@@ -312,9 +310,6 @@ class ContainersModel:
     def get_version_items(self, project_name, product_ids):
         if not product_ids:
             return {}
-        # NOTE cache key must include project name - the same product id
-        #   must not be resolved against, or reused from, a different
-        #   project's data.
         missing_ids = {
             product_id
             for product_id in product_ids
@@ -322,10 +317,6 @@ class ContainersModel:
             not in self._version_items_by_product_id
         }
         if missing_ids:
-            # NOTE status items must be looked up for the project the
-            #   versions actually belong to, not the current context
-            #   project - otherwise the wrong status catalog (names,
-            #   colors) gets applied to a foreign project's versions.
             status_items_by_name = {
                 status_item.name: status_item
                 for status_item in self._controller.get_project_status_items(
