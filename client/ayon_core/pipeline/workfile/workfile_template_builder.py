@@ -1823,8 +1823,9 @@ class PlaceholderLoadMixin(object):
                     "\nDefines which version of the matching product will"
                     " be loaded."
                     "\nLatest: Loads the latest (last) standard version."
-                    "\nHero: Loads the hero version. Products without"
-                    " a hero version are skipped."
+                    "\nHero: Loads the hero version, falling back to "
+                    " the latest standard version when no matching hero "
+                    " is available."
                 )
             ),
             attribute_definitions.EnumDef(
