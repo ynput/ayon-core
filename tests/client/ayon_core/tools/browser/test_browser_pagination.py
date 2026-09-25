@@ -248,7 +248,8 @@ def test_get_sort_by() -> None:
     get_sort_by = browser_queries.get_sort_by
 
     assert get_sort_by(None, options) is None
-    assert get_sort_by("product/version", options) == "path"
+    assert get_sort_by("product/version", options) == "productName"
+    assert get_sort_by("product/version", frozenset({"path"})) == "path"
     assert get_sort_by("createdAt", options) == "createdAt"
     assert get_sort_by("folderName", options) == "folderName"
     assert get_sort_by("productName", options) == "productName"

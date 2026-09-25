@@ -323,11 +323,10 @@ query GetProducts(
 """
 
 #: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
-#: the AYON versions resolver.  The combined Product/Version column maps to
-#: the version path, matching the frontend's ``name -> path`` sort mapping.
-#: Columns that cannot be sorted server-side are intentionally absent.
+#: the AYON versions resolver. The combined Product/Version column is
+#: handled by :func:`get_sort_by`. Columns that cannot be sorted
+#: server-side are intentionally absent.
 COLUMN_TO_SORT_BY: dict[str, str] = {
-    "product/version": "path",
     "version": "version",
     "status": "status",
     "createdAt": "createdAt",
@@ -358,6 +357,9 @@ OPTIONAL_COLUMN_TO_SORT_BY: dict[str, str] = {
     "taskType": "taskType",
 }
 
+#: Key of the combined Product/Version column.
+_PRODUCT_VERSION_COLUMN_KEY = "product/version"
+
 #: Prefix of version attribute column keys (``attr:version:<name>``).
 _VERSION_ATTRIBUTE_COLUMN_PREFIX = "attr:version:"
 
@@ -384,6 +386,15 @@ def get_sort_by(
     """
     if not sort_key:
         return None
+    if sort_key == _PRODUCT_VERSION_COLUMN_KEY:
+        # Sort by the product name rather than the path, which sorts by
+        # the folder path first. Older servers can't sort by product
+        # name, so fall back to the path there.
+        if server_sort_options is None:
+            server_sort_options = get_server_versions_sort_options()
+        if "productName" in server_sort_options:
+            return "productName"
+        return "path"
     sort_by = COLUMN_TO_SORT_BY.get(sort_key)
     if sort_by is not None:
         return sort_by
