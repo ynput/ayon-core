@@ -875,7 +875,17 @@ class GroupByMenu(AYFilter):
             v.selected = False
         self._filters["none"].selected = True
         self._sync_tags()
+        self._sync_buttons()
         self.group_by_changed.emit("none")
+
+    def _sync_buttons(self) -> None:
+        """Update the dropdown buttons' checked state from the filters."""
+        for button in self._menu_grp.buttons():
+            filter_item = self._filters.get(button.property("group_by_key"))
+            with QSignalBlocker(button):
+                button.setChecked(
+                    filter_item is not None and filter_item.selected
+                )
 
     def set_options(
         self,
