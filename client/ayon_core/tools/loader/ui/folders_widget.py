@@ -205,9 +205,9 @@ class LoaderFoldersModel(FoldersQtModel):
                 changes[folder_id].append(folder_color)
 
         for folder_id, color_value in changes.items():
-            item = self._items_by_id.get(folder_id)
-            if item is not None:
-                item.setData(color_value, UNDERLINE_COLORS_ROLE)
+            fill_item = self._fill_data.items_by_id.get(folder_id)
+            if fill_item is not None:
+                fill_item.item.setData(color_value, UNDERLINE_COLORS_ROLE)
 
         self._colored_items = all_folder_ids
 

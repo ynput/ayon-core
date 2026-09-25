@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ayon_core.ui.components.buttons import AYButton, AYButtonMenu
 from ayon_core.ui.components.container import AYContainer
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QStyle, QStyleOptionButton, QWidget
 from widget_test import WidgetTest
@@ -415,3 +415,40 @@ def test_aybuttonmenu_menu_closed_signal_emitted(qtbot) -> None:
     assert closed_count == 1, (
         "menu_closed must be emitted exactly once for one open/close cycle"
     )
+
+
+def test_aybuttonmenu_popup_close_on_button_press_does_not_reopen(
+    qtbot, monkeypatch
+) -> None:
+    """A close-on-press cycle must not reopen the menu on click release."""
+    btn, _ = _make_menu_button(qtbot)
+    btn.show()
+    qtbot.waitExposed(btn)
+
+    with qtbot.waitSignal(btn.menu_opened, timeout=500):
+        btn.click()
+
+    inside_global = btn.mapToGlobal(btn.rect().center())
+    monkeypatch.setattr(
+        QtWidgets.QApplication,
+        "mouseButtons",
+        staticmethod(lambda: Qt.MouseButton.LeftButton),
+    )
+    monkeypatch.setattr(
+        QtGui.QCursor,
+        "pos",
+        staticmethod(lambda: inside_global),
+    )
+
+    with qtbot.waitSignal(btn.menu_closed, timeout=500):
+        btn._on_popup_closed()
+
+    btn.click()
+
+    assert btn._menu_open is False, (
+        "Menu must remain closed after the click that closed the popup"
+    )
+    assert btn._dropdown.isVisible() is False, (
+        "Dropdown must not reopen in the same close/release click cycle"
+    )
+

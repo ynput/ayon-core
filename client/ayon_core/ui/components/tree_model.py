@@ -1,4 +1,4 @@
-"""Lazy-loading tree model for AYON UI Qt components."""
+"""Tree models for AYON UI Qt components."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class TreeNode:
-    """Represents a single node in a lazy-loaded tree.
+    """Represents a single node in a tree model.
 
     Attributes:
         id: Unique identifier for this node.
@@ -32,6 +32,10 @@ class TreeNode:
         has_children: Whether this node can have children.
         icon: Optional icon name or path.
         data: Arbitrary extra data associated with this node.
+        filter_text: Casefolded text to match search queries against
+            (e.g. a folder's path plus its label-based path). Falls
+            back to ``label`` when empty; see ``FILTER_ROLE`` on
+            :class:`LazyTreeModel`/:class:`BulkTreeModel`.
     """
 
     id: str
@@ -41,10 +45,11 @@ class TreeNode:
     icon_color: str = "#f4f5f5"
     icon_fill: bool = False
     data: dict = field(default_factory=dict)
+    filter_text: str = ""
 
 
 class _InternalNode:
-    """Internal tree node used by LazyTreeModel.
+    """Internal tree node shared by LazyTreeModel and BulkTreeModel.
 
     Attributes:
         tree_node: The public TreeNode data, or None for the root.
@@ -105,6 +110,10 @@ class LazyTreeModel(QAbstractItemModel):
 
         model = LazyTreeModel(fetch_children=fetch)
     """
+
+    #: Role exposing TreeNode.filter_text (falls back to the label) for
+    #: search proxies to match against, independent of DisplayRole.
+    FILTER_ROLE = Qt.ItemDataRole.UserRole + 1
 
     loading_changed = Signal(bool)  # True while any fetch is in-flight
     fetch_error = Signal(str)  # error message when a fetch fails
@@ -376,6 +385,9 @@ class LazyTreeModel(QAbstractItemModel):
         elif role == Qt.ItemDataRole.UserRole:
             if node.tree_node and node.tree_node.data:
                 return node.tree_node.data
+        elif role == self.FILTER_ROLE:
+            if node.tree_node:
+                return node.tree_node.filter_text or node.tree_node.label
         return None
 
     def hasChildren(
@@ -445,6 +457,16 @@ class LazyTreeModel(QAbstractItemModel):
             return None
         return node.tree_node.id
 
+    def get_index_by_id(self, node_id: str) -> QModelIndex:
+        """Return the loaded index for a node ID, if present."""
+        stack = list(self._root.children)
+        while stack:
+            node = stack.pop()
+            if node.tree_node and node.tree_node.id == node_id:
+                return self._index_for_node(node)
+            stack.extend(node.children)
+        return QModelIndex()
+
     @property
     def is_loading(self) -> bool:
         """Return True while at least one fetch task is in-flight."""
@@ -470,3 +492,256 @@ class LazyTreeModel(QAbstractItemModel):
         # connected to loading_changed observes a consistent model state.
         self._update_loading_state()
         self._fetch_children_async(self._root)
+
+
+class BulkTreeModel(QAbstractItemModel):
+    """Qt tree model populated in one shot from a single background fetch.
+
+    Unlike :class:`LazyTreeModel`, nothing is fetched per node on
+    expand: the whole hierarchy is fetched in a single ``fetch_all``
+    call - run once on a background thread via the shared
+    :class:`AsyncTaskQueue` - and the entire tree is built from that
+    one response. Use this instead of :class:`LazyTreeModel` when a
+    fast bulk endpoint can return the whole hierarchy at once, so a
+    tree doesn't need to pay for one round trip per expanded level.
+
+    Args:
+        fetch_all: Callable, taking no arguments, that returns the
+            whole hierarchy as a ``{parent_id: children}`` mapping
+            (``None`` for the root's own children).
+        no_async: When ``True``, the fetch runs synchronously on the
+            calling thread instead of via the :class:`AsyncTaskQueue`.
+            Useful in tests to avoid worker-thread/paint-event races.
+        parent: Optional parent QObject.
+
+    Example::
+
+        def fetch_all():
+            return {
+                None: [TreeNode("root", "Root", has_children=True)],
+                "root": [TreeNode("child", "Child")],
+            }
+
+        model = BulkTreeModel(fetch_all=fetch_all)
+    """
+
+    #: Role exposing TreeNode.filter_text (falls back to the label) for
+    #: search proxies to match against, independent of DisplayRole.
+    FILTER_ROLE = Qt.ItemDataRole.UserRole + 1
+
+    loading_changed = Signal(bool)  # True while the fetch is in-flight
+    fetch_error = Signal(str)  # error message when the fetch fails
+
+    def __init__(
+        self,
+        fetch_all: Callable[[], dict[str | None, list[TreeNode]]],
+        no_async: bool = False,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._fetch_all = fetch_all
+        self._no_async: bool = no_async
+        self._reset_counter: int = 0
+        self._context_id: str = f"btm_{id(self)}_v0"
+        self._is_loading: bool = False
+        self._root = _InternalNode(tree_node=None, parent=None)
+        # _all_nodes keeps every node reachable so Python's GC does not
+        # collect objects that are held only via QModelIndex.internalPointer().
+        self._all_nodes: set[_InternalNode] = {self._root}
+
+    def _index_for_node(self, node: _InternalNode) -> QModelIndex:
+        """Return the QModelIndex that identifies node (column 0)."""
+        if node.is_root:
+            return QModelIndex()
+        parent = node.parent
+        row = parent.children.index(node)  # type: ignore[union-attr]
+        return self.createIndex(row, 0, node)
+
+    def _fetch_all_async(self) -> None:
+        """Kick off the single bulk fetch on the shared task queue."""
+        ctx = self._context_id
+        self._is_loading = True
+        self.loading_changed.emit(True)
+
+        if self._no_async:
+            try:
+                result = self._fetch_all()
+            except Exception:
+                log.exception("fetch_all raised")
+                result = None
+            self._on_data_ready(ctx, result)
+            return
+
+        task = AsyncTask(
+            name="fetch_all_tree",
+            function=self._fetch_all,
+            callback=lambda result: self._on_data_ready(ctx, result),
+            priority=1,
+            context_id=ctx,
+            cancellable=True,
+        )
+        get_task_queue().enqueue(task)
+
+    def _on_data_ready(
+        self,
+        context_id: str,
+        result: dict[str | None, list[TreeNode]] | None,
+    ) -> None:
+        """Handle the bulk fetch result on the main thread.
+
+        Called via Qt.QueuedConnection from AsyncTaskQueue so it always
+        executes on the Qt main thread, making it safe to call Qt model
+        mutation methods.
+
+        Args:
+            context_id: The context_id active when the task was
+                enqueued. Used to discard results from a pre-reset fetch.
+            result: ``{parent_id: children}`` mapping for the whole
+                hierarchy, or ``None`` on error.
+        """
+        if context_id != self._context_id:
+            return
+        self._is_loading = False
+
+        if result is None:
+            self.fetch_error.emit("Failed to fetch tree data")
+            self.loading_changed.emit(False)
+            return
+
+        self.beginResetModel()
+        new_root = _InternalNode(tree_node=None, parent=None)
+        all_nodes: set[_InternalNode] = {new_root}
+        # Iterative (rather than recursive) so hierarchy depth can
+        # never hit Python's recursion limit.
+        stack = [new_root]
+        while stack:
+            node = stack.pop()
+            parent_id = None if node.is_root else node.tree_node.id  # type: ignore[union-attr]
+            children = result.get(parent_id) or []
+            new_nodes = [
+                _InternalNode(tree_node=tn, parent=node) for tn in children
+            ]
+            node.children = new_nodes
+            all_nodes.update(new_nodes)
+            stack.extend(new_nodes)
+        self._root = new_root
+        self._all_nodes = all_nodes
+        self.endResetModel()
+
+        self.loading_changed.emit(False)
+
+    def _node_from_index(
+        self, index: QModelIndex | QPersistentModelIndex
+    ) -> _InternalNode:
+        """Return the internal node for a model index."""
+        if not index.isValid():
+            return self._root
+        return index.internalPointer()  # type: ignore[return-value]
+
+    def index(
+        self,
+        row: int,
+        column: int,
+        parent: QModelIndex | QPersistentModelIndex = QModelIndex(),
+    ) -> QModelIndex:
+        parent_node = self._node_from_index(parent)
+        if row < 0 or row >= len(parent_node.children):
+            return QModelIndex()
+        child_node = parent_node.children[row]
+        return self.createIndex(row, column, child_node)
+
+    def parent(self, index: QModelIndex) -> QModelIndex:  # type: ignore[override]
+        if not index.isValid():
+            return QModelIndex()
+
+        node: _InternalNode = index.internalPointer()  # type: ignore[assignment]
+        parent_node = node.parent
+        if parent_node is None or parent_node.is_root:
+            return QModelIndex()
+
+        # grandparent is always non-None for a non-root parent_node
+        grandparent = parent_node.parent
+        row = grandparent.children.index(parent_node)  # type: ignore[union-attr]
+        return self.createIndex(row, 0, parent_node)
+
+    def rowCount(
+        self, parent: QModelIndex | QPersistentModelIndex = QModelIndex()
+    ) -> int:
+        node = self._node_from_index(parent)
+        return len(node.children)
+
+    def columnCount(
+        self, parent: QModelIndex | QPersistentModelIndex = QModelIndex()
+    ) -> int:
+        return 1
+
+    def data(
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ) -> object:
+        if not index.isValid():
+            return None
+        node: _InternalNode = index.internalPointer()  # type: ignore[assignment]
+        if role == Qt.ItemDataRole.DisplayRole:
+            return node.tree_node.label if node.tree_node else None
+        elif role == Qt.ItemDataRole.DecorationRole:
+            if node.tree_node and node.tree_node.icon:
+                return get_icon(
+                    node.tree_node.icon,
+                    node.tree_node.icon_color,
+                    fill=node.tree_node.icon_fill,
+                )
+        elif role == Qt.ItemDataRole.UserRole:
+            if node.tree_node and node.tree_node.data:
+                return node.tree_node.data
+        elif role == self.FILTER_ROLE:
+            if node.tree_node:
+                return node.tree_node.filter_text or node.tree_node.label
+        return None
+
+    def hasChildren(
+        self, parent: QModelIndex | QPersistentModelIndex = QModelIndex()
+    ) -> bool:
+        return bool(self._node_from_index(parent).children)
+
+    def get_node_id(self, index: QModelIndex) -> str | None:
+        """Return the TreeNode.id for the given model index."""
+        if not index.isValid():
+            return None
+        node: _InternalNode = index.internalPointer()  # type: ignore[assignment]
+        if node.tree_node is None:
+            return None
+        return node.tree_node.id
+
+    def get_index_by_id(self, node_id: str) -> QModelIndex:
+        """Return the index for a node ID, if present in the tree."""
+        stack = list(self._root.children)
+        while stack:
+            node = stack.pop()
+            if node.tree_node and node.tree_node.id == node_id:
+                return self._index_for_node(node)
+            stack.extend(node.children)
+        return QModelIndex()
+
+    @property
+    def is_loading(self) -> bool:
+        """Return True while the bulk fetch is in-flight."""
+        return self._is_loading
+
+    def reset(self) -> None:
+        """Clear the model and re-run the bulk fetch.
+
+        Also the recommended recovery path after a failed fetch (i.e.
+        when :attr:`fetch_error` was emitted).
+        """
+        old_ctx = self._context_id
+        if not self._no_async:
+            get_task_queue().clear_context_tasks(old_ctx)
+        self._reset_counter += 1
+        self._context_id = f"btm_{id(self)}_v{self._reset_counter}"
+        self.beginResetModel()
+        self._root = _InternalNode(tree_node=None, parent=None)
+        self._all_nodes = {self._root}
+        self.endResetModel()
+        self._fetch_all_async()
