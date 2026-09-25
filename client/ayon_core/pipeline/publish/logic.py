@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import auto, Enum
@@ -65,10 +66,14 @@ class MessageHandler(logging.Handler):
         self._records = []
 
     def emit(self, record):
+        # Store a copy, the same record is also processed by other
+        #   handlers which should not be affected by the change of 'msg'.
+        record = copy.copy(record)
         try:
             record.msg = record.getMessage()
         except Exception:
             record.msg = str(record.msg)
+        record.args = ()
         self._records.append(record)
 
     def get_records(self):
@@ -1017,28 +1022,34 @@ class PublishLogic:
 
     @contextmanager
     def _log_manager(self, plugin: PluginType):
+        # Capture records of all loggers, not only of the plugin logger,
+        #   so logs of library functions called by the plugin (e.g.
+        #   subprocess output) are part of the publish report.
         root = logging.getLogger()
         ayon_root = Logger.get_root_logger()
-        plugin_log_has_handler = False
-        orig_propagate = plugin.log.propagate
-        if not self._log_to_console:
-            plugin.log.propagate = False
+        plugin_logger = plugin.log
+        orig_propagate = plugin_logger.propagate
 
-        if not plugin.log.propagate:
-            plugin_log_has_handler = True
-            plugin.log.addHandler(self._log_handler)
-        root.addHandler(self._log_handler)
-        ayon_root.addHandler(self._log_handler)
+        if not self._log_to_console:
+            plugin_logger.propagate = False
+
+        # Add the handler only to loggers whose records don't reach
+        #   the root logger, otherwise records would be captured twice.
+        loggers = [root]
+        if not plugin_logger.propagate:
+            loggers.append(plugin_logger)
+        if not ayon_root.propagate:
+            loggers.append(ayon_root)
+        for logger in loggers:
+            logger.addHandler(self._log_handler)
 
         try:
             yield self._log_handler
 
         finally:
-            if plugin_log_has_handler:
-                plugin.log.removeHandler(self._log_handler)
-            plugin.log.propagate = orig_propagate
-            root.removeHandler(self._log_handler)
-            ayon_root.removeHandler(self._log_handler)
+            for logger in loggers:
+                logger.removeHandler(self._log_handler)
+            plugin_logger.propagate = orig_propagate
             self._log_handler.clear_records()
 
     def _process_plugin(
