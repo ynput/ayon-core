@@ -31,9 +31,13 @@ from .icon_definitions import (
 if typing.TYPE_CHECKING:
     from typing import Self, Tuple, Union, TypedDict, Pattern
 
-    class EnumItemDict(TypedDict):
+    class _EnumItemDictRequired(TypedDict):
         label: str
         value: Any
+
+    class EnumItemDict(_EnumItemDictRequired, total=False):
+        icon: Optional[IconBase]
+        tooltip: Optional[str]
 
     EnumItemsInputType = Union[
         Dict[Any, str],
@@ -627,6 +631,9 @@ class EnumDef(AbstractAttrDef):
         placeholder (Optional[str]): Placeholder for UI purposes, only for
             multiselection enumeration.
 
+    Items defined as dictionaries can optionally define an 'icon'
+    (`IconBase` or its serialized data) and a 'tooltip' to show in UI.
+
     """
     type = "enum"
 
@@ -699,7 +706,14 @@ class EnumDef(AbstractAttrDef):
 
     def serialize(self):
         data = super().serialize()
-        data["items"] = copy.deepcopy(self.items)
+        items = []
+        for item in self.items:
+            item = copy.deepcopy(item)
+            icon = item.get("icon")
+            if isinstance(icon, IconBase):
+                item["icon"] = icon.to_data()
+            items.append(item)
+        data["items"] = items
         return data
 
     @staticmethod
@@ -709,7 +723,8 @@ class EnumDef(AbstractAttrDef):
         """Convert items to unified structure.
 
         Output is a list where each item is dictionary with 'value'
-        and 'label'.
+        and 'label'. Optional 'icon' is converted to `IconBase` if it was
+        passed as serialized icon data.
 
         ```python
         # Example output
@@ -739,8 +754,13 @@ class EnumDef(AbstractAttrDef):
                     if "value" not in item:
                         raise KeyError("Item does not contain 'value' key.")
 
+                    item = dict(item)
                     if "label" not in item:
                         item["label"] = str(item["value"])
+
+                    icon = item.get("icon")
+                    if isinstance(icon, dict):
+                        item["icon"] = get_icon_def_from_data(icon)
                 elif isinstance(item, (list, tuple)):
                     if len(item) == 2:
                         value, label = item
