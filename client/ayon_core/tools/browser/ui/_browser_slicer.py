@@ -378,6 +378,7 @@ class BrowserSlicer(AYContainer):
             self._on_controller_my_tasks_filter_changed
         )
         self._selector.selection_changed.connect(self._on_project_change)
+        self._selector.refreshed.connect(self._on_selector_refreshed)
         be_controller.register_event_callback(
             "controller.reset.finished",
             self._on_controller_reset_finished,
@@ -488,8 +489,6 @@ class BrowserSlicer(AYContainer):
         self._categories.set_current_category(
             BrowserSlicerCategory.HIERARCHY.value
         )
-        if project_name != self._ui_controller.current_project:
-            self._selector.set_selection(project_name)
         self._folder_selection_timer.stop()
         self._pending_context = (project_name, folder_id)
         self._folder_selection_chain = []
@@ -500,9 +499,11 @@ class BrowserSlicer(AYContainer):
         """Move the pending context selection forward by one attempt.
 
         Two things have to land before the folder can be selected, and
-        neither is synchronous at startup. The project switch requested
-        above is a no-op while the projects combo box is still populating,
-        and the hierarchy must not be queried until it has landed -
+        neither is synchronous at startup. The project switch is a no-op
+        while the projects combo box is still populating, so it is
+        requested again on every attempt (and when the combo box finishes
+        refreshing), and the hierarchy must not be queried until it has
+        landed -
         ``get_folder_id_path`` would otherwise run against an empty
         project name. Only then does the tree's fetch land,
         which is what :meth:`_select_folder_chain` waits on.
@@ -518,6 +519,8 @@ class BrowserSlicer(AYContainer):
 
         project_name, folder_id = self._pending_context
         if self._ui_controller.current_project != project_name:
+            self._request_project(project_name)
+        if self._ui_controller.current_project != project_name:
             self._folder_selection_attempt = attempt + 1
             self._folder_selection_timer.start()
             return
@@ -530,6 +533,31 @@ class BrowserSlicer(AYContainer):
                 self._clear_pending_selection()
                 return
         self._select_folder_chain(self._folder_selection_chain, attempt)
+
+    def _request_project(self, project_name: str) -> None:
+        """Switch the project selector and controller to a project.
+
+        The combo box may already show the project (e.g. it was sorted to
+        the top as the current context project) without its selection
+        ever having reached the controller - in that case the change is
+        applied directly, as ``set_selection`` would not emit anything.
+
+        Args:
+            project_name: Name of the project to activate.
+        """
+        if self._selector.get_selected_project_name() == project_name:
+            self._on_project_change(project_name)
+        else:
+            self._selector.set_selection(project_name)
+
+    def _on_selector_refreshed(self) -> None:
+        """Resume a pending context selection once projects are listed."""
+        if self._pending_context is None:
+            return
+        if self._pending_context[0] == self._ui_controller.current_project:
+            return
+        self._folder_selection_timer.stop()
+        self._advance_context_selection(self._folder_selection_attempt)
 
     def _clear_pending_selection(self) -> None:
         """Forget an in-flight context selection."""
