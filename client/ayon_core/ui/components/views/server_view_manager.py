@@ -135,7 +135,15 @@ class ServerViewManager(ViewManager):
             self.error.emit(f"Failed to fetch working view: {exc}")
             return None
 
-        return View.from_payload(resp.data)
+        # No working view yet (404) - the error body is not a view, parsing
+        #   it would give a view without id and view type which then fails
+        #   to save.
+        if resp.status_code != 200 or not resp.data:
+            return None
+        view = View.from_payload(resp.data)
+        if not view.view_type:
+            view.view_type = view_type
+        return view
 
     def get_default_project_view(self, view_type: str) -> View | None:
         """Return project default view using the dedicated ``/base`` endpoint."""
