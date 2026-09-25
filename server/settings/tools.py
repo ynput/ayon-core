@@ -403,7 +403,7 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
 
 
 class DiscoverValidationModel(BaseSettingsModel):
-    """Strictly validate publish plugins discovery.
+    """Strictly validate publish plugins discovery
 
     Artist won't be able to publish if path to publish plugin fails to be
         imported.
