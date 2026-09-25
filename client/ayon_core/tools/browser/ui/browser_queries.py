@@ -6,6 +6,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ayon_core.tools.browser.server_capabilities import (
+    get_server_products_sort_options,
     get_server_versions_sort_options,
     server_supports_representation_filter,
 )
@@ -394,6 +395,47 @@ def get_sort_by(
         return None
     if server_sort_options is None:
         server_sort_options = get_server_versions_sort_options()
+    if sort_by in server_sort_options:
+        return sort_by
+    return None
+
+
+#: Version ``sortBy`` values that the products resolver names
+#: differently.
+VERSION_TO_PRODUCT_SORT_BY: dict[str, str] = {
+    "productName": "name",
+}
+
+
+def get_product_sort_by(
+    version_sort_by: str | None,
+    server_sort_options: frozenset[str] | None = None,
+) -> str | None:
+    """Return the products ``sortBy`` value for a versions ``sortBy``.
+
+    Product rows (e.g. the Group By Product headers) are sorted by the
+    same column as the versions, like the frontend's Products page does.
+    Only values the server lists are returned - it rejects unknown ones
+    and some version sorts (e.g. ``author``) have no product equivalent.
+
+    Args:
+        version_sort_by: ``sortBy`` value used for the versions.
+        server_sort_options: ``sortBy`` values the products resolver
+            lists. Queried from the server when not passed.
+
+    Returns:
+        The products ``sortBy`` value, or ``None`` when products cannot
+        be sorted by it.
+    """
+    if not version_sort_by:
+        return None
+    sort_by = VERSION_TO_PRODUCT_SORT_BY.get(
+        version_sort_by, version_sort_by
+    )
+    if sort_by.startswith("attrib."):
+        return sort_by
+    if server_sort_options is None:
+        server_sort_options = get_server_products_sort_options()
     if sort_by in server_sort_options:
         return sort_by
     return None

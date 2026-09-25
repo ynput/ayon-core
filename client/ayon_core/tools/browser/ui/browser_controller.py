@@ -56,6 +56,7 @@ from ayon_core.tools.browser.ui.browser_group_by import (
 from ayon_core.tools.browser.ui.browser_queries import (
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
+    get_product_sort_by,
     get_sort_by,
     get_version_group_counts_query,
     server_supports_representation_filter,
@@ -1338,7 +1339,7 @@ class BrowserWidgetController(QtCore.QObject):
                 # Group headers are computed in one shot; only page 0 is valid.
                 if page_number > 0:
                     return []
-                return self._fetch_group_headers()
+                return self._fetch_group_headers(sort_by, descending)
 
             # Expanding a group header: fetch filtered versions.
             if parent_id.startswith("grp:"):
@@ -1960,8 +1961,17 @@ class BrowserWidgetController(QtCore.QObject):
             row["updatedAt__tooltip"] = _timestamp_to_date(row["updatedAt"])
         return row
 
-    def _fetch_group_headers(self) -> list[dict[str, Any]]:
+    def _fetch_group_headers(
+        self,
+        sort_by: str | None = None,
+        descending: bool = False,
+    ) -> list[dict[str, Any]]:
         """Dispatch to the appropriate group-header fetcher.
+
+        Args:
+            sort_by: Versions ``sortBy`` value of the table's sort, used
+                for group headers that are entities (products).
+            descending: Whether the table is sorted descending.
 
         Returns:
             List of expandable group-header rows.
@@ -1989,7 +1999,9 @@ class BrowserWidgetController(QtCore.QObject):
                 appearance_category="productBaseTypes",
             )
         elif self.group_by_key == GROUP_BY_PRODUCT_KEY:
-            rows = self._fetch_product_group_headers(group_counts)
+            rows = self._fetch_product_group_headers(
+                group_counts, sort_by, descending
+            )
         elif self.group_by_key == GROUP_BY_TAGS_KEY:
             rows = self._fetch_simple_group_headers(
                 "tags", GROUP_BY_TAGS_KEY, "label", group_counts
@@ -2382,6 +2394,8 @@ class BrowserWidgetController(QtCore.QObject):
     def _fetch_product_group_headers(
         self,
         group_counts: dict[str, int] | None,
+        sort_by: str | None = None,
+        descending: bool = False,
     ) -> list[dict[str, Any]]:
         """Return one expandable row per product in the current scope.
 
@@ -2390,6 +2404,15 @@ class BrowserWidgetController(QtCore.QObject):
         builds group-header rows using product ID as the group value and
         product name as the display label.
 
+        The products are sorted by the table's sort column, like the
+        frontend's Products page. Columns products cannot be sorted by
+        fall back to the product path, ascending.
+
+        Args:
+            group_counts: Version count per product ID, or ``None``.
+            sort_by: Versions ``sortBy`` value of the table's sort.
+            descending: Whether the table is sorted descending.
+
         Returns:
             List of expandable group-header rows keyed by product ID.
         """
@@ -2397,6 +2420,10 @@ class BrowserWidgetController(QtCore.QObject):
         query_filters = self._get_query_filters()
         all_edges: list[dict[str, Any]] = []
         cursor: str | None = None
+        product_sort_by = get_product_sort_by(sort_by)
+        if product_sort_by is None:
+            product_sort_by = "path"
+            descending = False
 
         for _page in range(_MAX_GROUP_PAGES):
             edges, page_info = self._get_products_page(
@@ -2404,7 +2431,8 @@ class BrowserWidgetController(QtCore.QObject):
                 folder_id=None,
                 page_size=1000,
                 cursor=cursor,
-                sort_by="path",
+                sort_by=product_sort_by,
+                descending=descending,
                 folder_ids=folder_ids,
                 product_filter=query_filters["product_filter"],
                 version_filter=(
@@ -2423,9 +2451,10 @@ class BrowserWidgetController(QtCore.QObject):
             )
             all_edges.extend(edges)
 
-            if not page_info.get("hasNextPage"):
+            # See _page_cursor: descending pages continue from endCursor.
+            has_more, cursor = self._page_cursor(page_info, descending)
+            if not has_more:
                 break
-            cursor = page_info.get("endCursor")
             if not cursor:
                 break
         else:

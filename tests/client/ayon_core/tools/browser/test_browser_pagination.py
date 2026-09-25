@@ -259,3 +259,115 @@ def test_get_sort_by() -> None:
     )
     assert get_sort_by("attr:folder:resolution", options) is None
     assert get_sort_by("thumb", options) is None
+
+
+@pytest.mark.unit
+def test_get_product_sort_by() -> None:
+    options = frozenset({"name", "path", "createdAt", "folderName"})
+    get_product_sort_by = browser_queries.get_product_sort_by
+
+    assert get_product_sort_by(None, options) is None
+    assert get_product_sort_by("path", options) == "path"
+    assert get_product_sort_by("productName", options) == "name"
+    assert get_product_sort_by("createdAt", options) == "createdAt"
+    assert get_product_sort_by("attrib.fps", options) == "attrib.fps"
+    # Versions only, the products resolver does not list them.
+    assert get_product_sort_by("author", options) is None
+    assert get_product_sort_by("taskName", options) is None
+
+
+class ProductGroupsStub:
+    """Just enough of the controller to fetch the product group rows."""
+
+    _page_cursor = staticmethod(BrowserWidgetController._page_cursor)
+    _extract_product_group_data = staticmethod(
+        BrowserWidgetController._extract_product_group_data
+    )
+    _fetch_product_group_headers = (
+        BrowserWidgetController._fetch_product_group_headers
+    )
+
+    def __init__(self) -> None:
+        self.log = logging.getLogger(__name__)
+        self._current_project = "project"
+        self._selected_folder_ids = ["folder_a"]
+        self._hide_empty_groups = False
+        self._include_folder_children = False
+        self._group_by_options = {"product": None}
+        self.calls: list[dict[str, Any]] = []
+
+    def _get_query_filters(self) -> dict[str, Any]:
+        return {
+            "product_filter": "",
+            "version_filter": "",
+            "task_filter": "",
+            "folder_filter": "",
+            "search": None,
+        }
+
+    def _get_products_page(self, *args: Any, **kwargs: Any):
+        self.calls.append(kwargs)
+        page_number = len(self.calls)
+        edges = [{"node": {
+            "id": f"product_{page_number}",
+            "name": f"product_{page_number}",
+            "productType": "model",
+        }}]
+        has_more = page_number < 2
+        descending = kwargs["descending"]
+        return edges, {
+            "startCursor": f"start_{page_number}",
+            "endCursor": f"end_{page_number}",
+            "hasNextPage": has_more and not descending,
+            "hasPreviousPage": has_more and descending,
+        }
+
+    def _product_appearance(self, *args: Any) -> tuple[str, str]:
+        return "view_in_ar", "#fff"
+
+    def _build_group_header_row(self, option: Any, **kwargs: Any):
+        return {"id": kwargs["value"]}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("descending", [False, True])
+def test_product_group_headers_follow_table_sort(
+    monkeypatch, descending: bool
+) -> None:
+    """Grouped by product, the product rows are sorted like the table."""
+    monkeypatch.setattr(
+        browser_queries,
+        "get_server_products_sort_options",
+        lambda: frozenset({"createdAt", "path"}),
+    )
+    controller = ProductGroupsStub()
+
+    rows = controller._fetch_product_group_headers(
+        None, "createdAt", descending
+    )
+
+    assert [row["id"] for row in rows] == ["product_1", "product_2"]
+    assert [
+        (call["sort_by"], call["descending"], call["cursor"])
+        for call in controller.calls
+    ] == [
+        ("createdAt", descending, None),
+        ("createdAt", descending, "end_1"),
+    ]
+
+
+@pytest.mark.unit
+def test_product_group_headers_fall_back_to_path(monkeypatch) -> None:
+    """A column products can't be sorted by keeps the path order."""
+    monkeypatch.setattr(
+        browser_queries,
+        "get_server_products_sort_options",
+        lambda: frozenset({"createdAt", "path"}),
+    )
+    controller = ProductGroupsStub()
+
+    controller._fetch_product_group_headers(None, "author", True)
+
+    assert (
+        controller.calls[0]["sort_by"], controller.calls[0]["descending"]
+    ) == ("path", False)

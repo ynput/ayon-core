@@ -20,8 +20,8 @@ _SORT_BY_DESCRIPTION_PREFIX = "Sort by one of "
 
 
 @functools.cache
-def _get_versions_field_args() -> dict[str, str]:
-    """Return arguments of the ``ProjectNode.versions`` GraphQL field.
+def _get_project_fields_args() -> dict[str, dict[str, str]]:
+    """Return arguments of the ``ProjectNode`` GraphQL fields.
 
     The server's GraphQL schema is introspected rather than its version
     compared, so a development build that has an argument before the
@@ -31,8 +31,8 @@ def _get_versions_field_args() -> dict[str, str]:
     raises is not cached, so a failed request is retried on the next call.
 
     Returns:
-        Argument descriptions by argument name. Empty when the server
-        refuses the introspection query.
+        Argument descriptions by argument name, by field name. Empty when
+        the server refuses the introspection query.
 
     Raises:
         RuntimeError: If there is no server connection.
@@ -56,14 +56,28 @@ query ProjectNodeArguments {
     if response.errors:
         return {}
     project_type = response.data["data"].get("__type") or {}
-    for field in project_type.get("fields") or []:
-        if field.get("name") == "versions":
-            return {
-                arg["name"]: arg.get("description") or ""
-                for arg in field.get("args") or []
-                if arg.get("name")
-            }
-    return {}
+    return {
+        field["name"]: {
+            arg["name"]: arg.get("description") or ""
+            for arg in field.get("args") or []
+            if arg.get("name")
+        }
+        for field in project_type.get("fields") or []
+        if field.get("name")
+    }
+
+
+def _get_versions_field_args() -> dict[str, str]:
+    """Return arguments of the ``ProjectNode.versions`` GraphQL field.
+
+    Returns:
+        Argument descriptions by argument name. Empty when the server
+        refuses the introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    return _get_project_fields_args().get("versions", {})
 
 
 def server_supports_representation_filter() -> bool:
@@ -115,4 +129,21 @@ def get_server_versions_sort_options() -> frozenset[str]:
     """
     return parse_sort_by_options(
         _get_versions_field_args().get("sortBy", "")
+    )
+
+
+def get_server_products_sort_options() -> frozenset[str]:
+    """Return the ``sortBy`` values the products resolver lists.
+
+    Same as :func:`get_server_versions_sort_options`, for products.
+
+    Returns:
+        The listed ``sortBy`` values. Empty when the server refuses the
+        introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    return parse_sort_by_options(
+        _get_project_fields_args().get("products", {}).get("sortBy", "")
     )
