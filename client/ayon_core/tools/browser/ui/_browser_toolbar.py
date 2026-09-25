@@ -859,10 +859,14 @@ class GroupByMenu(AYFilter):
         grp_key = button.property("group_by_key")
         if not isinstance(grp_key, str):
             return
+        # Clicking the active group deselects it.
+        if grp_key != "none" and grp_key in self.get_selected_keys():
+            grp_key = "none"
         log.debug("Group By: %s", grp_key)
         for k, v in self._filters.items():
             v.selected = k == grp_key
         self._sync_tags()
+        self._sync_buttons()
         self.group_by_changed.emit(grp_key)
 
     def _handle_tag_removed(self, key: str) -> None:
