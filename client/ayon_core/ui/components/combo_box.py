@@ -73,6 +73,7 @@ from ..data_models import MenuSize
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QComboBoxVariants
 from .style_mixin import StyleMixin
+from .scroll_area import AYScrollBar
 
 
 class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
@@ -96,6 +97,9 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
         """Calculate size hint including padding."""
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
 
         # Calculate text dimensions
         font_metrics = option.fontMetrics
@@ -386,7 +390,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         inverted: bool = False,
         icon_size: int = 20,
         variant: Variants = Variants.Default,
-        show_chevron: bool = False,
+        show_chevron: bool = True,
         **kwargs,
     ) -> None:
         self._uses_incompatible_model = False
@@ -413,6 +417,23 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         # setup model
         model = AYComboBoxModel(self)
         self.setModel(model)
+
+        view = self.view()
+
+        view.setVerticalScrollBar(AYScrollBar(Qt.Orientation.Vertical))
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        view.setHorizontalScrollBar(AYScrollBar(Qt.Orientation.Horizontal))
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Paint popup rows with the AYON styled delegate, so every combo-box
+        # gets the same row height, padding and menu colors instead of Qt's
+        # cramped default rows.
+        self.setItemDelegate(
+            ComboBoxItemDelegate(
+                parent=view,
+                style_model=get_ayon_style().model,
+            )
+        )
 
         self.update_items(items)
 

@@ -36,6 +36,7 @@ class AYSlicer(AYContainer):
         self._combo = AYComboBox(
             items=item_list,
             variant=AYComboBox.Variants.Low,
+            show_chevron=False,
         )
         if initial_text:
             self._combo.setCurrentText(initial_text)

@@ -837,72 +837,6 @@ HintedLineEditButton {
     background: {color:delete-btn-bg-disabled};
 }
 
-/* Launcher specific stylesheets */
-ActionsView {
-    /* font size can't be set on items */
-    font-size: 8pt;
-    border: 0px;
-    padding: 0px;
-    margin: 0px;
-}
-
-ActionsView::item {
-    padding-top: 8px;
-    padding-bottom: 4px;
-    border: 0px;
-    border-radius: 5px;
-}
-
-ActionsView::item:hover {
-    color: {color:font-hover};
-    background: #424A57;
-}
-
-ActionsView::icon {}
-
-ActionMenuPopup #GroupLabel {
-    padding: 5px;
-    color: #ffffff;
-}
-
-ActionMenuPopup #ShadowFrame {
-    border-radius: 5px;
-    background: rgba(12, 13, 24, 0.5);
-}
-
-ActionMenuPopup #Wrapper {
-    border-radius: 5px;
-    background: #353B46;
-}
-
-ActionMenuPopup ActionsView {
-    background: transparent;
-    border: none;
-    margin: 4px;
-}
-
-#IconView[mode="icon"] {
-    /* font size can't be set on items */
-    font-size: 9pt;
-    border: 0px;
-    padding: 0px;
-    margin: 0px;
-}
-
-#IconView[mode="icon"]::item  {
-    margin-top: 6px;
-    border: 0px;
-}
-
-#IconView[mode="icon"]::item:hover {
-    background: rgba(0, 0, 0, 0);
-    color: {color:font-hover};
-}
-
-#IconView[mode="icon"]::icon {
-    top: 3px;
-}
-
 /* Standalone publisher */
 
 #ComponentItem {
@@ -914,7 +848,7 @@ ActionMenuPopup ActionsView {
     border-radius: 0.1em;
 }
 
-/* Launcher specific stylesheets */
+/* Loader specific stylesheets */
 FiltersBar {
     background: {color:bg-inputs};
     border: 1px solid {color:border};

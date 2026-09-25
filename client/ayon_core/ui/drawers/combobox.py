@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from qtpy import QtCore, QtWidgets
 from qtpy.QtCore import QRect, Qt
-from qtpy.QtGui import QBrush, QColor, QIcon, QPainter, QPalette
+from qtpy.QtGui import QBrush, QColor, QIcon, QPainter, QPalette, QTransform
 from qtpy.QtWidgets import (
     QComboBox,
     QStyle,
@@ -141,25 +141,20 @@ class ComboBoxDrawer:
                 if arrow_icon and not arrow_rect.isEmpty():
                     arrow_size = min(arrow_rect.width(), arrow_rect.height())
                     pixmap = arrow_icon.pixmap(arrow_size, arrow_size)
+                    popup_open = bool(opt.state & QStyle.StateFlag.State_On)
+                    if popup_open:
+                        pixmap = pixmap.transformed(QTransform().rotate(180))
+
                     px = (
-                        arrow_rect.x() + (arrow_rect.width() - arrow_size) // 2
+                        arrow_rect.x()
+                        + (arrow_rect.width() - arrow_size) // 2
                     )
                     py = (
                         arrow_rect.y()
                         + (arrow_rect.height() - arrow_size) // 2
                     )
-                    popup_open = bool(opt.state & QStyle.StateFlag.State_On)
-                    if popup_open:
-                        cx = px + arrow_size / 2
-                        cy = py + arrow_size / 2
-                        p.save()
-                        p.translate(cx, cy)
-                        p.rotate(180)
-                        p.translate(-cx, -cy)
-                        p.drawPixmap(px, py, pixmap)
-                        p.restore()
-                    else:
-                        p.drawPixmap(px, py, pixmap)
+
+                    p.drawPixmap(px, py, pixmap)
 
             # set pen for text drawing
             p.setPen(fg_color)
