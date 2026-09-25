@@ -61,7 +61,7 @@ class HierarchyPage(QtWidgets.QWidget):
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
         refresh_btn = AYButton(
-            icon="refresh",
+            icon="sync",
             variant=AYButton.Variants.Surface,
             parent=header_widget,
         )
