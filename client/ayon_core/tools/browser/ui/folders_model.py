@@ -165,6 +165,36 @@ class BrowserFoldersModel(QStandardItemModel):
             return QModelIndex()
         return self.indexFromItem(fill_item.item)
 
+    def get_folder_id_path(
+        self, project_name: str, folder_id: str
+    ) -> list[str] | None:
+        """Return folder IDs from the project root to the target folder.
+
+        Resolved from the already filled items, so it never queries the
+        hierarchy itself - doing so while this model's own fetch is in
+        flight would make one of the two requests receive no folders.
+
+        Args:
+            project_name: Project the folder belongs to.
+            folder_id: ID of the target folder.
+
+        Returns:
+            list[str] | None: Folder IDs ordered from the root, empty if
+                the folder is not in the project, or ``None`` if the
+                model is not filled for the project yet.
+        """
+        if self._fill_data.project_name != project_name:
+            return None
+        items_by_id = self._fill_data.items_by_id
+        path = []
+        fill_item = items_by_id.get(folder_id)
+        while fill_item is not None:
+            path.append(folder_id)
+            folder_id = fill_item.parent_id
+            fill_item = items_by_id.get(folder_id)
+        path.reverse()
+        return path
+
     def _clear_items(self) -> None:
         self._fill_data = _FillData()
         root_item = self.invisibleRootItem()

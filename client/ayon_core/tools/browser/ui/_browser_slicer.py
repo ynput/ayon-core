@@ -502,11 +502,11 @@ class BrowserSlicer(AYContainer):
         neither is synchronous at startup. The project switch is a no-op
         while the projects combo box is still populating, so it is
         requested again on every attempt (and when the combo box finishes
-        refreshing), and the hierarchy must not be queried until it has
-        landed -
-        ``get_folder_id_path`` would otherwise run against an empty
-        project name. Only then does the tree's fetch land,
-        which is what :meth:`_select_folder_chain` waits on.
+        refreshing). Then the folders model has to be filled for the
+        project; the folder path is resolved from its items rather than
+        by querying the hierarchy, which would race the model's own
+        fetch. :meth:`_on_folders_reset` resumes the selection once the
+        model is filled.
 
         Args:
             attempt: Number of attempts already spent.
@@ -526,12 +526,17 @@ class BrowserSlicer(AYContainer):
             return
 
         if not self._folder_selection_chain:
-            self._folder_selection_chain = (
-                self._ui_controller.get_folder_id_path(folder_id)
+            chain = self._folders_model.get_folder_id_path(
+                project_name, folder_id
             )
-            if not self._folder_selection_chain:
+            if chain is None:
+                # Folders are still being fetched - wait for the reset.
+                self._folder_selection_attempt = attempt
+                return
+            if not chain:
                 self._clear_pending_selection()
                 return
+            self._folder_selection_chain = chain
         self._select_folder_chain(self._folder_selection_chain, attempt)
 
     def _request_project(self, project_name: str) -> None:
@@ -664,6 +669,11 @@ class BrowserSlicer(AYContainer):
         # nothing to expand yet - expand the now-filled tree.
         if self._categories.filter_text():
             self._folders_view.expandAll()
+        if (
+            self._pending_context is not None
+            and not self._folder_selection_chain
+        ):
+            self._advance_context_selection(self._folder_selection_attempt)
 
     def _on_reviews_selection_changed(
         self,

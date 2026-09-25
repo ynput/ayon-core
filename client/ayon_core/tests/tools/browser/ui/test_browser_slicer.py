@@ -69,6 +69,65 @@ def test_select_folder_chain_expands_selects_and_scrolls():
     assert slicer._pending_context is None
 
 
+def _context_slicer(folder_paths):
+    """Slicer stub pending a selection of the 'demo' project's 'shot'."""
+    ui_controller = SimpleNamespace(current_project="demo")
+    slicer = SimpleNamespace(
+        _ui_controller=ui_controller,
+        _folders_model=SimpleNamespace(
+            get_folder_id_path=lambda project, folder_id: folder_paths[0]
+        ),
+        _pending_context=("demo", "shot"),
+        _folder_selection_chain=[],
+        _folder_selection_attempt=0,
+        _folder_selection_timer=Mock(),
+        _select_folder_chain=Mock(),
+        _request_project=Mock(),
+        _MAX_SELECTION_ATTEMPTS=BrowserSlicer._MAX_SELECTION_ATTEMPTS,
+    )
+    slicer._clear_pending_selection = (
+        lambda: BrowserSlicer._clear_pending_selection(slicer)
+    )
+    slicer._advance_context_selection = (
+        lambda attempt: BrowserSlicer._advance_context_selection(
+            slicer, attempt
+        )
+    )
+    return slicer
+
+
+def test_context_selection_waits_for_folders_model():
+    """The folder path is resolved from the filled folders model.
+
+    Querying the hierarchy directly while the folders model's own fetch
+    is in flight left the tree empty on open.
+    """
+    folder_paths = [None]
+    slicer = _context_slicer(folder_paths)
+
+    BrowserSlicer._advance_context_selection(slicer, 0)
+
+    slicer._select_folder_chain.assert_not_called()
+    slicer._folder_selection_timer.start.assert_not_called()
+    assert slicer._pending_context == ("demo", "shot")
+
+    folder_paths[0] = ["seq", "shot"]
+    slicer._categories = SimpleNamespace(filter_text=lambda: "")
+    slicer._folders_proxy = Mock()
+    BrowserSlicer._on_folders_reset(slicer)
+
+    slicer._select_folder_chain.assert_called_once_with(["seq", "shot"], 0)
+
+
+def test_context_selection_cleared_for_unknown_folder():
+    slicer = _context_slicer([[]])
+
+    BrowserSlicer._advance_context_selection(slicer, 0)
+
+    slicer._select_folder_chain.assert_not_called()
+    assert slicer._pending_context is None
+
+
 def test_task_selection_aggregates_row_ids(qtbot):
     widget = BrowserTasksWidget(Mock())
     qtbot.addWidget(widget)

@@ -216,3 +216,16 @@ def test_fill_emits_reset_finished(qtbot):
     _fill(model, _folder_items(_HIERARCHY))
 
     finished.assert_called_once_with()
+
+
+def test_get_folder_id_path_from_filled_items(qtbot):
+    model = _model(qtbot)
+    assert model.get_folder_id_path(PROJECT_NAME, "hero") is None
+
+    _fill(model, _folder_items(_HIERARCHY))
+
+    assert model.get_folder_id_path(PROJECT_NAME, "hero") == [
+        "assets", "char", "hero"
+    ]
+    assert model.get_folder_id_path(PROJECT_NAME, "missing") == []
+    assert model.get_folder_id_path("other", "hero") is None
