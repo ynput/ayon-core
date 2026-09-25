@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import contextlib
 from dataclasses import dataclass
+import threading
 import time
 from typing import Any, Generator
 
@@ -257,7 +258,8 @@ class HierarchyModel:
         self._entity_ids_by_assignee = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
-        self._folders_refreshing = set()
+        # Project name -> ident of thread refreshing its folders
+        self._folders_refreshing: dict[str, int] = {}
         self._tasks_refreshing = set()
         self._controller = controller
 
@@ -610,7 +612,7 @@ class HierarchyModel:
     def _folder_refresh_event_manager(
         self, project_name: str, sender: str | None
     ) -> Generator[None, None, None]:
-        self._folders_refreshing.add(project_name)
+        self._folders_refreshing[project_name] = threading.get_ident()
         self._controller.emit_event(
             "folders.refresh.started",
             {"project_name": project_name, "sender": sender},
@@ -625,7 +627,7 @@ class HierarchyModel:
                 {"project_name": project_name, "sender": sender},
                 HIERARCHY_MODEL_SENDER
             )
-            self._folders_refreshing.remove(project_name)
+            self._folders_refreshing.pop(project_name, None)
 
     @contextlib.contextmanager
     def _task_refresh_event_manager(
@@ -659,7 +661,15 @@ class HierarchyModel:
     def _refresh_folders_cache(
         self, project_name: str, sender: str | None = None
     ) -> None:
-        if project_name in self._folders_refreshing:
+        refreshing_thread = self._folders_refreshing.get(project_name)
+        if refreshing_thread is not None:
+            # Re-entered from a refresh event callback in the same thread
+            if refreshing_thread == threading.get_ident():
+                return
+            # Other thread is already querying, wait for its result
+            #   instead of returning not yet filled cache.
+            while project_name in self._folders_refreshing:
+                time.sleep(0.01)
             return
 
         with self._folder_refresh_event_manager(project_name, sender):

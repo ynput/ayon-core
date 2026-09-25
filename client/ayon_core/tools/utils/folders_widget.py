@@ -29,6 +29,7 @@ from ayon_core.ui.components import (
 
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
+from ayon_core.ui.components.time_sliced_job import TimeSlicedJob
 from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .models import RecursiveSortFilterProxyModel
@@ -170,6 +171,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
+    # Used by 'AYTreeView' to show loading placeholder
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller):
         super().__init__()
@@ -191,6 +194,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         self._has_content = False
         self._is_refreshing = False
+        self._build_job: TimeSlicedJob | None = None
 
     @property
     def is_refreshing(self):
@@ -200,6 +204,20 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             bool: True if model is refreshing.
         """
         return self._is_refreshing
+
+    def is_loading(self) -> bool:
+        """Model is loading data.
+
+        Returns:
+            bool: True if model is loading data.
+        """
+        return self._is_refreshing
+
+    def _set_refreshing(self, refreshing: bool) -> None:
+        if self._is_refreshing == refreshing:
+            return
+        self._is_refreshing = refreshing
+        self.loading_changed.emit(refreshing)
 
     @property
     def has_content(self):
@@ -271,7 +289,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._current_refresh_task = None
             return
 
-        self._is_refreshing = True
+        self._set_refreshing(True)
 
         if self._last_project_name != project_name:
             self._clear_items()
@@ -318,6 +336,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         return cls._default_folder_icon
 
     def _clear_items(self) -> None:
+        self._cancel_build()
         self._fill_data = _FillData()
         self._has_content = False
         root_item = self.invisibleRootItem()
@@ -534,10 +553,17 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_type_items: list[FolderTypeItem],
         status_items: list[StatusItem],
     ) -> None:
+        """Fill model with folder items and end refreshing state.
+
+        Creating items for a big project takes a while, when the model is
+        empty the items are created in time slices so the UI stays
+        responsive and are added to the model at once when done.
+        """
+        self._cancel_build()
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
-            self._is_refreshing = False
+            self._set_refreshing(False)
             self.refreshed.emit()
             return
 
@@ -577,39 +603,76 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         # Update items if we already have some, otherwise fill from scratch
         # - Update is slower as it has to compare existing items with new
         #   ones, but it preserves expanded and selected state in the view.
-        old_fill_data, self._fill_data = self._fill_data, fill_data
-        if old_fill_data.items_by_id:
-            self._fill_update(
-                fill_data,
-                old_fill_data,
-                folder_items_by_id,
-                folder_type_icons_by_name,
-                status_icon_by_name,
+        if not self._fill_data.items_by_id:
+            top_items = []
+            build_job = TimeSlicedJob(
+                self._build_from_scratch(
+                    top_items,
+                    fill_data,
+                    folder_items_by_id,
+                    folder_type_icons_by_name,
+                    status_icon_by_name,
+                ),
+                parent=self,
             )
-        else:
-            self._fill_from_scratch(
-                fill_data,
-                folder_items_by_id,
-                folder_type_icons_by_name,
-                status_icon_by_name,
+            build_job.finished.connect(
+                lambda: self._on_build_finished(fill_data, top_items)
             )
+            self._build_job = build_job
+            build_job.start()
+            return
 
-        self._is_refreshing = False
+        old_fill_data, self._fill_data = self._fill_data, fill_data
+        self._fill_update(
+            fill_data,
+            old_fill_data,
+            folder_items_by_id,
+            folder_type_icons_by_name,
+            status_icon_by_name,
+        )
+
+        self._set_refreshing(False)
         self.refreshed.emit()
 
-    def _fill_from_scratch(
+    def _cancel_build(self) -> None:
+        build_job, self._build_job = self._build_job, None
+        if build_job is not None:
+            build_job.cancel()
+            build_job.deleteLater()
+
+    def _on_build_finished(
+        self, fill_data: _FillData, top_items: list[QtGui.QStandardItem]
+    ) -> None:
+        self._build_job.deleteLater()
+        self._build_job = None
+        self._fill_data = fill_data
+        # Children are already parented, only top level rows are inserted
+        #   so proxy model and view process one insert
+        if top_items:
+            self.invisibleRootItem().appendRows(top_items)
+        self._set_refreshing(False)
+        self.refreshed.emit()
+
+    def _build_from_scratch(
         self,
+        top_items: list[QtGui.QStandardItem],
         fill_data: _FillData,
         folder_items_by_id: dict[str, FolderItem],
         folder_type_icons_by_name: dict[str, QtGui.QIcon | None],
         status_icon_by_name: dict[str, QtGui.QIcon | None],
-    ) -> None:
+    ) -> typing.Generator[None, None, None]:
+        """Create items detached from the model.
+
+        Generator for 'TimeSlicedJob', yields after each created item.
+        Top level items are added to 'top_items'.
+        """
         folder_items_by_parent = defaultdict(list)
         for folder_item in folder_items_by_id.values():
             folder_items_by_parent[folder_item.parent_id].append(folder_item)
+        yield
 
         hierarchy_queue = deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+        hierarchy_queue.append((None, None, ""))
 
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
@@ -638,8 +701,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 fill_data.items_by_id[item_id] = fill_item
 
                 hierarchy_queue.append((item, item_id, folder_label_path))
+                yield
 
-            if new_items:
+            if not new_items:
+                continue
+            if parent_item is None:
+                top_items.extend(new_items)
+            else:
                 parent_item.appendRows(new_items)
 
     def _fill_update(
@@ -1044,6 +1112,15 @@ class FoldersWidget(QtWidgets.QWidget):
         if folder_id is None:
             return False
         return self.set_selected_folder(folder_id)
+
+    def set_loading_delay(self, delay: int) -> None:
+        """Delay before loading placeholder shows in folders view.
+
+        Args:
+            delay (int): Delay in milliseconds.
+
+        """
+        self._folders_view.set_loading_delay(delay)
 
     def set_deselectable(self, enabled):
         """Set deselectable mode.

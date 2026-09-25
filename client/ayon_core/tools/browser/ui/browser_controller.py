@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -24,6 +25,7 @@ from ayon_core.ui.components.table_filter import (
     EMPTY_VALUE_OPTIONS,
     HAS_VALUE,
 )
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
@@ -241,6 +243,13 @@ class BrowserWidgetController(QtCore.QObject):
         self._task_id_scope: set[str] | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
         self._requested_column_keys: set[str] | None = None
+        # Project info by project name, '(fetch time, data)'
+        self._project_info_cache: dict[str, tuple[float, dict]] = {}
+        self._project_info_requests: set[str] = set()
+        loader_controller.register_event_callback(
+            "controller.reset.finished",
+            self._on_loader_controller_reset,
+        )
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
             providers=[
@@ -445,13 +454,21 @@ class BrowserWidgetController(QtCore.QObject):
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
-        self._build_project_info()
+        # Project info needs several server requests, when not cached it
+        #   is fetched in the task queue so the switch does not block the
+        #   UI. 'project_info_changed' is emitted once it is applied.
+        project_info_data = self._get_cached_project_info(project_name)
+        if project_info_data is None:
+            self._request_project_info(project_name)
+        else:
+            self._apply_project_info(project_info_data)
         # Only the Reviews category reads the list, so a project switch
         # while Hierarchy is showing leaves it for later.
         if self._current_category == BrowserSlicerCategory.REVIEWS.value:
             self._ensure_review_session_list()
         self.project_changed.emit(project_name)
-        self.project_info_changed.emit()
+        if project_info_data is not None:
+            self.project_info_changed.emit()
 
     def set_category(self, category: str) -> None:
         """Set the active slicer category.
@@ -2622,24 +2639,71 @@ class BrowserWidgetController(QtCore.QObject):
             if item.get("entityType") == "version"
         ]
 
-    def _build_project_info(self, project_name: str | None = None) -> None:
-        """Populate project info and folder type icon mapping.
+    #: Seconds for which fetched project info is reused
+    _PROJECT_INFO_LIFETIME = 60
 
-        Sets :attr:`_project_info` in place.
+    def _get_cached_project_info(self, project_name: str) -> dict | None:
+        cached = self._project_info_cache.get(project_name)
+        if cached is None:
+            return None
+        fetch_time, data = cached
+        if time.monotonic() - fetch_time > self._PROJECT_INFO_LIFETIME:
+            self._project_info_cache.pop(project_name, None)
+            return None
+        return data
+
+    def _on_loader_controller_reset(self) -> None:
+        self._project_info_cache.clear()
+
+    def _request_project_info(self, project_name: str) -> None:
+        if not project_name or project_name in self._project_info_requests:
+            return
+        self._project_info_requests.add(project_name)
+        get_task_queue().enqueue(AsyncTask(
+            name="fetch_browser_project_info",
+            function=lambda: self._fetch_project_info_data(project_name),
+            callback=lambda data: self._on_project_info_fetched(
+                project_name, data
+            ),
+            priority=0,
+            context_id=f"browser_project_info_{id(self)}",
+            cancellable=False,
+        ))
+
+    def _on_project_info_fetched(
+        self, project_name: str, data: dict | None
+    ) -> None:
+        self._project_info_requests.discard(project_name)
+        # Fetch failed or project does not exist
+        if data is None:
+            return
+        self._project_info_cache[project_name] = (time.monotonic(), data)
+        if project_name != self._current_project:
+            return
+        self._apply_project_info(data)
+        self.project_info_changed.emit()
+
+    def _fetch_project_info_data(self, project_name: str) -> dict | None:
+        """Fetch project info from server.
+
+        Called in a worker thread, must not change controller state.
 
         Args:
-            project_name: Override for the project to query. Defaults
-                to :attr:`_current_project`.
+            project_name: Project to query.
+
+        Returns:
+            Data for '_apply_project_info', 'None' if project was not
+                found.
         """
-        name = project_name or self._current_project
-        if not name:
-            return
         # Shares the projects model's cached entity instead of issuing a
         # second identical GET /projects/{name} at startup.
-        project_entity = self._loader_controller.get_project_entity(name)
+        project_entity = self._loader_controller.get_project_entity(
+            project_name
+        )
         if not project_entity:
-            return
-        self._project_info = dict(project_entity)
+            return None
+        name = project_name
+        project_info = dict(project_entity)
         config = project_entity.get("config", {})
         product_base_types = config.get("productBaseTypes", {})
         product_type_items = (
@@ -2650,7 +2714,7 @@ class BrowserWidgetController(QtCore.QObject):
             product_base_types.get("definitions", []),
             product_type_items,
         )
-        self._project_info["by_name"] = {
+        project_info["by_name"] = {
             "folderTypes": {
                 ft["name"]: ft for ft in project_entity.get("folderTypes", [])
             },
@@ -2676,29 +2740,41 @@ class BrowserWidgetController(QtCore.QObject):
         # anatomy does not define falls back to this - the same rule the
         # web UI applies in ``getAnatomyType``.
         product_type_default = product_base_types.get("default") or {}
-        self._appearance_defaults = {
-            "productTypes": product_type_default,
-            "productBaseTypes": product_type_default,
-        }
-        self._user_full_names = self._fetch_user_full_names(name)
-        self._attributes_by_scope = {
+        attributes_by_scope = {
             scope: ayon_api.get_attributes_for_type(scope)
             for scope in (
                 "folder", "task", "product", "version", "representation"
             )
         }
-        # The server omits attributes an entity never set, so a boolean
-        # column would have no value to paint for exactly the rows where
-        # it is off. Seed every boolean attribute as False and let the
-        # fetched values overwrite it.
-        self._boolean_attr_defaults = {
-            scope: {
-                f"attr:{scope}:{name}": False
-                for name, definition in definitions.items()
-                if definition.get("type") == "boolean"
-            }
-            for scope, definitions in self._attributes_by_scope.items()
+        return {
+            "project_info": project_info,
+            "appearance_defaults": {
+                "productTypes": product_type_default,
+                "productBaseTypes": product_type_default,
+            },
+            "user_full_names": self._fetch_user_full_names(name),
+            "attributes_by_scope": attributes_by_scope,
+            # The server omits attributes an entity never set, so a
+            # boolean column would have no value to paint for exactly the
+            # rows where it is off. Seed every boolean attribute as False
+            # and let the fetched values overwrite it.
+            "boolean_attr_defaults": {
+                scope: {
+                    f"attr:{scope}:{attr_name}": False
+                    for attr_name, definition in definitions.items()
+                    if definition.get("type") == "boolean"
+                }
+                for scope, definitions in attributes_by_scope.items()
+            },
         }
+
+    def _apply_project_info(self, data: dict) -> None:
+        """Use project info fetched by '_fetch_project_info_data'."""
+        self._project_info = data["project_info"]
+        self._appearance_defaults = data["appearance_defaults"]
+        self._user_full_names = data["user_full_names"]
+        self._attributes_by_scope = data["attributes_by_scope"]
+        self._boolean_attr_defaults = data["boolean_attr_defaults"]
         self._version_attributes = self._attributes_by_scope["version"]
         self._rebuild_group_by_options()
 
