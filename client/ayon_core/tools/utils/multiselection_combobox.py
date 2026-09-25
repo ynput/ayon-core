@@ -30,6 +30,24 @@ class ComboItemDelegate(QtWidgets.QStyledItemDelegate):
         # )
         super(ComboItemDelegate, self).paint(painter, option, index)
 
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        # Reserve icon space for items without icon when other items have
+        #   icon so labels are aligned
+        if (
+            not option.features & QtWidgets.QStyleOptionViewItem.HasDecoration
+            and self._model_has_icons(index.model())
+        ):
+            option.features |= QtWidgets.QStyleOptionViewItem.HasDecoration
+
+    @staticmethod
+    def _model_has_icons(model):
+        for row in range(model.rowCount()):
+            icon = model.index(row, 0).data(QtCore.Qt.DecorationRole)
+            if icon is not None and not QtGui.QIcon(icon).isNull():
+                return True
+        return False
+
 
 class MultiSelectionComboBox(QtWidgets.QComboBox):
     value_changed = QtCore.Signal()
@@ -199,7 +217,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         self.initStyleOption(option)
         painter.drawComplexControl(QtWidgets.QStyle.CC_ComboBox, option)
 
-        items = self.checked_items_text()
+        items = self._get_checked_items()
         # draw the icon and text
         draw_text = True
         combotext = None
@@ -246,15 +264,16 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
                 + self.top_bottom_margins
             )
             left_x = option.rect.left() + self.left_offset
-            for item in items:
-                label_rect = font_metrics.boundingRect(item)
+            for text, icon in items:
+                label_rect = font_metrics.boundingRect(text)
                 label_height = label_rect.height()
+                icon_width = self._get_icon_width(icon)
 
                 label_rect.moveTop(top_y)
                 label_rect.moveLeft(left_x)
                 label_rect.setHeight(self._item_height)
                 label_rect.setWidth(
-                    label_rect.width() + self.left_right_padding
+                    label_rect.width() + self.left_right_padding + icon_width
                 )
 
                 if not draw_text:
@@ -276,10 +295,27 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
 
                 label_rect.moveLeft(label_rect.x() + self.left_right_padding)
 
+                if icon is not None:
+                    icon_size = self._get_icon_size()
+                    icon_rect = QtCore.QRect(
+                        label_rect.x(),
+                        label_rect.top() + self.top_bottom_margins + int(
+                            (
+                                label_height
+                                + (2 * self.top_bottom_padding)
+                                - icon_size
+                            ) / 2
+                        ),
+                        icon_size,
+                        icon_size,
+                    )
+                    icon.paint(painter, icon_rect)
+                    label_rect.moveLeft(label_rect.x() + icon_width)
+
                 painter.drawText(
                     label_rect,
                     QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
-                    item
+                    text
                 )
 
     def resizeEvent(self, *args, **kwargs):
@@ -292,7 +328,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
             return
         self._lines = {}
 
-        items = self.checked_items_text()
+        items = self._get_checked_items()
         if not items:
             self.update()
             self.repaint()
@@ -314,8 +350,13 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         default_left_x = 0 + self.left_offset
         left_x = int(default_left_x)
         for item in items:
-            rect = font_metrics.boundingRect(item)
-            width = rect.width() + (2 * self.left_right_padding)
+            text, icon = item
+            rect = font_metrics.boundingRect(text)
+            width = (
+                rect.width()
+                + (2 * self.left_right_padding)
+                + self._get_icon_width(icon)
+            )
             right_x = left_x + width
             if right_x > total_width:
                 left_x = int(default_left_x)
@@ -382,14 +423,35 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         return items
 
     def checked_items_text(self):
+        return [text for text, _ in self._get_checked_items()]
+
+    def _get_checked_items(self):
+        """Get text and icon of checked items.
+
+        Returns:
+            list[tuple[str, Optional[QtGui.QIcon]]]: Text and icon of checked
+                items. Icon is 'None' if item does not have icon.
+
+        """
         items = list()
         for idx in range(self.count()):
             state = checkstate_int_to_enum(
                 self.itemData(idx, role=QtCore.Qt.CheckStateRole)
             )
             if state == QtCore.Qt.Checked:
-                items.append(self.itemText(idx))
+                icon = self.itemIcon(idx)
+                if icon.isNull():
+                    icon = None
+                items.append((self.itemText(idx), icon))
         return items
+
+    def _get_icon_size(self):
+        return self.fontMetrics().height()
+
+    def _get_icon_width(self, icon):
+        if icon is None:
+            return 0
+        return self._get_icon_size() + self.left_right_padding
 
     def wheelEvent(self, event):
         event.ignore()
