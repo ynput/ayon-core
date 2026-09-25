@@ -7,13 +7,10 @@ import logging
 import queue
 from logging.handlers import (
     QueueHandler,
-    QueueListener,
     TimedRotatingFileHandler,
 )
 import os
 import platform
-import requests
-import requests.adapters
 import socket
 import sys
 import time
@@ -22,7 +19,6 @@ from collections.abc import Callable
 from typing import Any
 import warnings
 
-import urllib3.util
 
 from . import Terminal
 from .local_settings import get_launcher_local_dir
@@ -34,6 +30,57 @@ try:
     import structlog
 except ImportError:
     structlog: Any = None  # type: ignore[no-redef]
+
+
+# Record attribute holding the structlog logger, method name and event
+#   dict, see '_render_for_stdlib' and '_EventDictProcessorFormatter'.
+# - must not be '_logger' and '_name' used by 'wrap_for_formatter', plain
+#   'ProcessorFormatter' would expect the event dict in 'record.msg'
+_EVENT_DICT_ATTR = "_ayon_event_dict"
+
+
+def _render_for_stdlib(logger, method_name, event_dict):
+    """Last structlog processor handing the event over to stdlib logging.
+
+    Unlike 'ProcessorFormatter.wrap_for_formatter', which stores the event
+    dict in 'record.msg', the record keeps a plain string message. Handlers
+    not using AYON formatters (DCC script editors, pyblish, the publisher
+    report) show the message instead of a dict repr. The event dict is
+    attached to the record for '_EventDictProcessorFormatter'.
+    """
+    kwargs: dict[str, Any] = {
+        "extra": {
+            _EVENT_DICT_ATTR: (logger, method_name, event_dict),
+        }
+    }
+    exc_info = event_dict.get("exc_info")
+    if exc_info:
+        # Let foreign handlers show the traceback too
+        kwargs["exc_info"] = exc_info
+    return (str(event_dict.get("event", "")),), kwargs
+
+
+if structlog is not None:
+    class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
+        """ProcessorFormatter reading the event dict from the record.
+
+        Counterpart of '_render_for_stdlib'. Other handlers may modify
+        'record.msg' (pyblish does), the event dict is not affected.
+        Records from 'wrap_for_formatter' and foreign stdlib records are
+        processed as by 'ProcessorFormatter'.
+        """
+
+        def format(self, record):
+            structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
+            if structlog_data is not None:
+                logger, method_name, event_dict = structlog_data
+                # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
+                record = logging.makeLogRecord(record.__dict__)
+                record._logger = logger
+                record._name = method_name
+                record.msg = event_dict
+                record.args = ()
+            return super().format(record)
 
 
 def bind_contextvars(**kwargs):
@@ -52,6 +99,34 @@ def unbind_contextvars(*keys):
         structlog.contextvars.unbind_contextvars(*keys)
 
 
+def get_log_level_from_env() -> int:
+    """Resolve the AYON log level from environment variables.
+
+    'AYON_LOG_LEVEL' has precedence and accepts a numeric ('10') or
+    a named ('DEBUG') level. When it is not set, or is invalid,
+    'AYON_DEBUG' greater than 0 enables DEBUG. Defaults to INFO.
+
+    Returns:
+        int: Log level.
+
+    """
+    log_level = os.getenv("AYON_LOG_LEVEL", "").strip()
+    if log_level:
+        if log_level.isdigit():
+            level = int(log_level)
+        else:
+            level = logging.getLevelName(log_level.upper())
+        if isinstance(level, int) and level > 0:
+            return level
+
+    try:
+        if int(os.getenv("AYON_DEBUG", "0")) > 0:
+            return logging.DEBUG
+    except ValueError:
+        pass
+    return logging.INFO
+
+
 VECTOR_LOG_URL = os.getenv("AYON_VECTOR_LOG_URL", None)
 LOG_FILE_ENABLED = os.getenv("AYON_LOG_FILE") == "1"
 try:
@@ -62,11 +137,58 @@ try:
     )
 except ValueError:
     LOG_FILE_RETENTION_DAYS = 1
-LOG_FILE_NAME = "ayon.ndjson"
+# Each process writes its own file, see '_get_log_file_path'
+LOG_FILE_PREFIX = "ayon_"
+LOG_FILE_EXT = ".ndjson"
+
+
+def _get_log_file_path(log_dir: str) -> str:
+    """Log file path unique for the current process.
+
+    Multiple AYON processes (tray, hosts, publish jobs) log at the same
+    time. They must not share one file: writes would interleave and
+    rotation of a shared file fails on Windows when another process has
+    the file open.
+    """
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    return os.path.join(
+        log_dir,
+        f"{LOG_FILE_PREFIX}{timestamp}_{os.getpid()}{LOG_FILE_EXT}"
+    )
+
+
+def _remove_old_log_files(log_dir: str, retention_days: int) -> None:
+    """Remove AYON log files not modified within retention period.
+
+    Includes files of other processes, and rotated files of this one.
+    """
+    threshold = time.time() - (retention_days * 24 * 60 * 60)
+    try:
+        filenames = os.listdir(log_dir)
+    except OSError:
+        return
+    for filename in filenames:
+        if (
+            not filename.startswith(LOG_FILE_PREFIX)
+            or LOG_FILE_EXT not in filename
+        ):
+            continue
+        path = os.path.join(log_dir, filename)
+        try:
+            if os.path.getmtime(path) < threshold:
+                os.remove(path)
+        except OSError:
+            # Removed meanwhile or still open by other process on Windows
+            pass
+
 
 # Max records buffered for Vector delivery. Beyond this, new records are
 # dropped rather than growing memory unbounded during an outage.
 VECTOR_QUEUE_MAX_SIZE = 10_000
+# Max records sent to Vector in one request.
+VECTOR_BATCH_SIZE = 500
+# Max seconds a record waits for more records to be batched with it.
+VECTOR_FLUSH_INTERVAL = 1.0
 # Consecutive send failures after which the circuit opens (stop trying
 # HTTP calls for a while, just drop records fast).
 VECTOR_FAILURE_THRESHOLD = 5
@@ -75,6 +197,9 @@ VECTOR_CIRCUIT_COOLDOWN = 30.0
 # Minimum time between "records are being dropped" warnings, to avoid
 # flooding the console/log file during a prolonged outage.
 VECTOR_WARN_INTERVAL = 30.0
+# Logger for problems of Vector delivery. Its records are not sent to
+# Vector, see '_DroppingQueueHandler'.
+_VECTOR_LOGGER_NAME = "ayon.vector_log"
 
 
 class _RateLimitedLogger:
@@ -85,29 +210,40 @@ class _RateLimitedLogger:
         self._interval = interval
         self._last_emit = 0.0
 
-    def warning(self, msg, **kwargs):
+    def warning(self, msg, *args):
         now = time.monotonic()
         if now - self._last_emit < self._interval:
             return
         self._last_emit = now
-        self._logger.warning(msg, **kwargs)
+        # Only positional arguments - the wrapped logger is a plain
+        #   stdlib logger which raises 'TypeError' on unknown kwargs.
+        self._logger.warning(msg, *args)
 
 
 _vector_warn_logger = _RateLimitedLogger(
-    logging.getLogger("ayon.vector_log"), VECTOR_WARN_INTERVAL
+    logging.getLogger(_VECTOR_LOGGER_NAME), VECTOR_WARN_INTERVAL
 )
 
 
-class _RawQueueHandler(QueueHandler):
-    """QueueHandler that does not pre-format/stringify the record.
+class _DroppingQueueHandler(QueueHandler):
+    """QueueHandler rendering records for Vector, dropping on overflow.
 
-    The stdlib's default 'prepare' stringifies 'record.msg', which
-    destroys the structlog event dict before it reaches the listener's
-    handlers.
+    Records are rendered with the handler's formatter in the logging
+    thread and the resulting JSON string is queued. Rendering in the
+    sender thread instead would race with other handlers mutating the
+    shared record (e.g. pyblish's 'MessageHandler' replaces 'record.msg')
+    and with later changes of mutable log arguments.
+
+    Records about Vector delivery itself are not queued, they would only
+    add load to an endpoint that is already failing.
     """
 
+    def __init__(self, log_queue):
+        super().__init__(log_queue)
+        self.addFilter(lambda record: record.name != _VECTOR_LOGGER_NAME)
+
     def prepare(self, record):
-        return record
+        return self.format(record)
 
     def enqueue(self, record):
         # handle full queue gracefully by dropping
@@ -120,23 +256,47 @@ class _RawQueueHandler(QueueHandler):
             )
 
 
-class VectorHTTPHandler(logging.Handler):
-    """Forward formatted log records to a Vector HTTP source."""
+class VectorHTTPSender:
+    """Send rendered log records from a queue to a Vector HTTP source.
+
+    A daemon thread collects up to 'batch_size' records, or what arrived
+    within 'flush_interval' seconds, and sends them as one JSON array per
+    request. Vector's 'json' decoding creates one event per array item.
+
+    A circuit breaker stops sending for 'cooldown' seconds after
+    'failure_threshold' consecutive failed requests. Records are dropped
+    meanwhile so a dead endpoint cannot slow down the process.
+    """
+
+    _stop_sentinel = object()
 
     def __init__(
         self,
         url,
+        log_queue,
+        batch_size=VECTOR_BATCH_SIZE,
+        flush_interval=VECTOR_FLUSH_INTERVAL,
         failure_threshold=VECTOR_FAILURE_THRESHOLD,
         cooldown=VECTOR_CIRCUIT_COOLDOWN,
     ):
-        super().__init__()
         self._url = url
+        self._queue = log_queue
+        self._batch_size = batch_size
+        self._flush_interval = flush_interval
         self._failure_threshold = failure_threshold
         self._cooldown = cooldown
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0
+        self._thread = None
+
+        # Import only when Vector is used, to not slow down import of
+        #   'ayon_core.lib' in every process.
+        import requests
+        import requests.adapters
+        import urllib3.util
+
         # Reuse a single session so repeated POSTs reuse pooled
-        # connections instead of opening a new one per log record.
+        # connections instead of opening a new one per request.
         self._session = requests.Session()
         retry = urllib3.util.Retry(
             total=2,
@@ -145,44 +305,106 @@ class VectorHTTPHandler(logging.Handler):
             allowed_methods=("POST",),
         )
         adapter = requests.adapters.HTTPAdapter(
-            pool_connections=1, pool_maxsize=10, max_retries=retry
+            pool_connections=1, pool_maxsize=1, max_retries=retry
         )
         self._session.mount("http://", adapter)
         self._session.mount("https://", adapter)
 
-    def emit(self, record):
+    def start(self):
+        self._thread = threading.Thread(
+            target=self._run, name="AYONVectorSender", daemon=True
+        )
+        self._thread.start()
+
+    def stop(self, timeout=5.0):
+        """Send records remaining in the queue and stop the thread."""
+        if self._thread is None:
+            return
+        try:
+            self._queue.put(self._stop_sentinel, timeout=timeout)
+        except queue.Full:
+            pass
+        self._thread.join(timeout)
+        self._thread = None
+        self._session.close()
+
+    def _run(self):
+        stop = False
+        while not stop:
+            item = self._queue.get()
+            if item is self._stop_sentinel:
+                break
+            batch = [item]
+            deadline = time.monotonic() + self._flush_interval
+            while len(batch) < self._batch_size:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    item = self._queue.get(timeout=remaining)
+                except queue.Empty:
+                    break
+                if item is self._stop_sentinel:
+                    stop = True
+                    break
+                batch.append(item)
+            self._send(batch)
+
+    def _send(self, batch):
         now = time.monotonic()
         if now < self._circuit_open_until:
             # Circuit is open - skip the HTTP attempt entirely so a dead
             # Vector endpoint cannot slow down the sender thread.
             return
         try:
-            self._session.post(
+            response = self._session.post(
                 self._url,
-                data=self.format(record),
+                data="[{}]".format(",".join(batch)).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
-                timeout=(0.3, 1.0),
+                timeout=(0.3, 2.0),
             )
+            response.raise_for_status()
         except Exception:
             self._consecutive_failures += 1
             if self._consecutive_failures >= self._failure_threshold:
                 self._circuit_open_until = now + self._cooldown
                 self._consecutive_failures = 0
                 _vector_warn_logger.warning(
-                    "Vector endpoint unreachable, pausing log delivery.",
-                    cooldown=self._cooldown,
+                    "Vector endpoint unreachable, pausing log delivery"
+                    " for %s seconds.",
+                    self._cooldown,
                 )
-            self.handleError(record)
+            else:
+                # Rate-limit warnings in case of Vector outage.
+                _vector_warn_logger.warning(
+                    "Failed to send %s log records to Vector.", len(batch)
+                )
         else:
             self._consecutive_failures = 0
 
-    def handleError(self, record):
-        # Rate-limit warnings in case of Vector outage.
-        _vector_warn_logger.warning("Failed to send log record to Vector.")
 
-    def close(self):
-        self._session.close()
-        super().close()
+class _StderrHandler(logging.StreamHandler):
+    """StreamHandler writing to the current 'sys.stderr'.
+
+    Hosts and AYON tools replace 'sys.stderr' after logging is configured.
+    'logging.StreamHandler' would keep writing to the stream it received
+    on creation. Same approach as stdlib 'logging._StderrHandler'.
+
+    Logs go to stderr so stdout of AYON CLI commands stays usable for
+    their output, same as the previous 'LogStreamHandler' default.
+    """
+
+    def __init__(self, level=logging.NOTSET):
+        logging.Handler.__init__(self, level)
+
+    @property
+    def stream(self):
+        return sys.stderr
+
+    def emit(self, record):
+        # 'sys.stderr' is None in GUI processes without console
+        if sys.stderr is not None:
+            super().emit(record)
 
 
 class LogStreamHandler(logging.StreamHandler):
@@ -373,36 +595,21 @@ class Logger:
         cls.initialized = False
         cls.configure_logger()
 
-        info_level = logging.getLevelNamesMapping()['INFO']
-
-        # Define what is logging level
-        try:
-            log_level = int(os.getenv("AYON_LOG_LEVEL", info_level))
-        except (TypeError, ValueError):
-            log_level = None
-
-        try:
-            op_debug = int(os.getenv("AYON_DEBUG", "0"))
-        except (TypeError, ValueError):
-            op_debug = 0
-
-        if not log_level:
-            # Check AYON_DEBUG for debug level
-            if op_debug > 0:
-                log_level = 10
-            else:
-                log_level = 20
-        cls.log_level = log_level
+        cls.log_level = get_log_level_from_env()
         root_logger = logging.getLogger("AYON")
-        # root_logger.propagate = False
         root_logger.setLevel(cls.log_level)
         # Skip own handler when structlog already owns the output pipeline
         # to avoid double-formatting/handling the same records.
+        # - with structlog the records must propagate to the root logger
+        #   where the structlog handlers are.
         if structlog is None or not structlog.is_configured():
+            # Records are already printed by the own handler, don't pass
+            #   them to root logger handlers too (e.g. DCC script editor).
+            root_logger.propagate = False
             root_logger.addHandler(cls._get_console_handler())
         cls._root_logger = root_logger
 
-        if op_debug > 0 or log_level < info_level:
+        if cls.log_level < logging.INFO:
             # force silence for some very noisy loggers
             logging.getLogger("urllib3").setLevel(logging.WARNING)
             logging.getLogger("requests").setLevel(logging.WARNING)
@@ -528,18 +735,21 @@ class Logger:
 
         structlog.configure(
             processors=shared_processors + [
-                # Prepares details if sent to standard logging
-                structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+                # Support '%s' style arguments, e.g.
+                #   'log.info("Loaded %s", name)'. Records from plain
+                #   stdlib loggers are already formatted by
+                #   'ProcessorFormatter' via 'record.getMessage()'.
+                structlog.stdlib.PositionalArgumentsFormatter(),
+                # Hand over to standard logging, rendered by formatters
+                _render_for_stdlib,
             ],
             logger_factory=structlog.stdlib.LoggerFactory(),
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
 
-        console_formatter = structlog.stdlib.ProcessorFormatter(
-            foreign_pre_chain=shared_processors + [
-                structlog.stdlib.PositionalArgumentsFormatter(),
-            ],
+        console_formatter = _EventDictProcessorFormatter(
+            foreign_pre_chain=shared_processors,
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 _drop_log_context,
@@ -548,7 +758,7 @@ class Logger:
                 ),
             ],
         )
-        json_formatter = structlog.stdlib.ProcessorFormatter(
+        json_formatter = _EventDictProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
@@ -557,14 +767,15 @@ class Logger:
             ],
         )
 
-        handler = logging.StreamHandler(sys.stdout)
+        handler = _StderrHandler()
         handler.setFormatter(console_formatter)
 
         if LOG_FILE_ENABLED:
             log_dir = get_launcher_local_dir("logs")
             os.makedirs(log_dir, exist_ok=True)
+            _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
             file_handler = TimedRotatingFileHandler(
-                os.path.join(log_dir, LOG_FILE_NAME),
+                _get_log_file_path(log_dir),
                 when="midnight",
                 backupCount=LOG_FILE_RETENTION_DAYS,
                 encoding="utf-8",
@@ -574,20 +785,17 @@ class Logger:
         if VECTOR_LOG_URL:
             # Send logs to Vector asynchronously so HTTP calls
             # don't block the app.
-            vector_handler = VectorHTTPHandler(VECTOR_LOG_URL)
-            vector_handler.setFormatter(json_formatter)
             # Queue is bounded so a Vector outage drops records instead of
             # growing memory without bound.
             log_queue: queue.Queue = queue.Queue(VECTOR_QUEUE_MAX_SIZE)
-            queue_handler = _RawQueueHandler(log_queue)
-            queue_listener = QueueListener(
-                log_queue, vector_handler, respect_handler_level=True
-            )
-            queue_listener.start()
-            # The listener thread is non-daemon by default and otherwise
-            # would keep the process alive/delay shutdown since
-            # 'queue_listener.stop()' is never called explicitly elsewhere.
-            atexit.register(queue_listener.stop)
+            queue_handler = _DroppingQueueHandler(log_queue)
+            queue_handler.setFormatter(json_formatter)
+            vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
+            vector_sender.start()
+            # The sender thread is a daemon thread, it would be killed on
+            # interpreter exit with records still in the queue. Stopping it
+            # at exit delivers the queued records first.
+            atexit.register(vector_sender.stop)
 
         root_logger = logging.getLogger()
         root_logger.addHandler(handler)
@@ -595,19 +803,4 @@ class Logger:
             root_logger.addHandler(file_handler)
         if VECTOR_LOG_URL:
             root_logger.addHandler(queue_handler)
-        # set default logging level to INFO, but
-        # allow override via AYON_LOG_LEVEL or AYON_DEBUG
-        root_logger.setLevel(logging.INFO)
-        if os.getenv("AYON_LOG_LEVEL") is not None:
-            try:
-                log_level = int(os.getenv("AYON_LOG_LEVEL", logging.INFO))
-                root_logger.setLevel(log_level)
-            except (TypeError, ValueError):
-                pass
-        if os.getenv("AYON_DEBUG") is not None:
-            try:
-                op_debug = int(os.getenv("AYON_DEBUG", "0"))
-                if op_debug > 0:
-                    root_logger.setLevel(logging.DEBUG)
-            except (TypeError, ValueError):
-                pass
+        root_logger.setLevel(get_log_level_from_env())

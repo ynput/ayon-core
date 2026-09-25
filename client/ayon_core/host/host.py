@@ -4,7 +4,7 @@ import os
 import contextlib
 import typing
 from typing import Optional, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 import ayon_api
 
@@ -13,7 +13,6 @@ from ayon_core.lib.log import (
     Logger,
     bind_contextvars,
     clear_contextvars,
-    unbind_contextvars,
 )
 
 from .constants import ContextChangeReason
@@ -32,13 +31,6 @@ class ContextChangeData:
     task_entity: dict[str, Any]
     reason: ContextChangeReason
     anatomy: Anatomy
-
-
-@dataclass
-class AyonLogContext:
-    project: str
-    folder: str
-    task: str
 
 
 class HostBase(AbstractHost):
@@ -245,12 +237,12 @@ class HostBase(AbstractHost):
         self._before_context_change(context_change_data)
         self._set_current_context(context_change_data)
         self._after_context_change(context_change_data)
-        unbind_contextvars("ayon_context")
-        bind_contextvars(ayon_context=asdict(AyonLogContext(
+        # Same 'project' key as bound by 'install_host'
+        bind_contextvars(
             project=project_name,
             folder=folder_path,
             task=task_name,
-        )))
+        )
         return self._emit_context_change_event(
             project_name,
             folder_path,
