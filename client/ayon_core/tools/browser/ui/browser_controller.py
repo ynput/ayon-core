@@ -54,9 +54,10 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     build_attribute_groups,
 )
 from ayon_core.tools.browser.ui.browser_queries import (
-    COLUMN_TO_SORT_BY,
     EMPTY_ROW,
     GET_PRODUCTS_QUERY,
+    get_product_sort_by,
+    get_sort_by,
     get_version_group_counts_query,
     server_supports_representation_filter,
     get_versions_query,
@@ -208,10 +209,10 @@ class BrowserWidgetController(QtCore.QObject):
         self._user_full_names: dict[str, str] = {}
         self._review_sessions_cache: list[dict[str, Any]] = []
         self._review_sessions_loaded: bool = False
-        self._graphql_has_more: bool = False
-        self._graphql_cursor: str = ""
-        self._folder_cursors: dict[str, str] = {}
-        self._folder_has_more: dict[str, bool] = {}
+        # Cursor of every page that can be fetched next, keyed by
+        # ``_page_key()`` + page number.
+        self._page_cursors: dict[tuple[Any, ...], str] = {}
+        self._pagination_generation: int = 0
         self._tree_mode = (
             BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
         )
@@ -1152,12 +1153,99 @@ class BrowserWidgetController(QtCore.QObject):
     ) -> tuple[bool, str]:
         """Return the has-more flag and cursor for the traversal direction.
 
-        Descending pages walk backwards through the connection, so the
-        next page is the one before the current window.
+        Descending pages are requested with ``last``/``before``. The AYON
+        server answers those with ``ORDER BY ... DESC`` and returns the
+        edges in that (descending) order without reversing them, so the
+        ``startCursor`` is the *highest* row of the page and the
+        ``endCursor`` the *lowest* one. The next descending page is
+        everything ``before`` the lowest row, i.e. ``endCursor`` - the
+        same cursor the AYON frontend uses. Using ``startCursor`` would
+        refetch the current page shifted by a single row.
+
+        Args:
+            page_info: ``pageInfo`` of the connection.
+            descending: Whether the page was fetched descending.
+
+        Returns:
+            Tuple of (has more pages, cursor of the next page).
         """
         if descending:
-            return page_info["hasPreviousPage"], page_info["startCursor"]
+            return page_info["hasPreviousPage"], page_info["endCursor"]
         return page_info["hasNextPage"], page_info["endCursor"]
+
+    def _page_key(
+        self,
+        parent_id: str | None,
+        sort_by: str | None,
+        descending: bool,
+    ) -> tuple[Any, ...]:
+        """Return the key pagination state of one listing is stored under.
+
+        The key holds everything that defines the order of the listing.
+        A cursor encodes the values of the sort columns of the last row,
+        so a cursor of one sort order must never be used with another.
+        Fetches run in parallel worker threads, so a slow page of the
+        previous sort (or selection) can finish after the new listing
+        already started. With the sort and generation in the key, such a
+        page stores its cursor where the new listing never looks.
+
+        Args:
+            parent_id: Parent row id, ``None`` for the root listing.
+            sort_by: GraphQL ``sortBy`` value, or ``None``.
+            descending: Whether the listing is descending.
+
+        Returns:
+            Hashable key, to be extended with the page number.
+        """
+        return (
+            self._pagination_generation, parent_id, sort_by, descending
+        )
+
+    def _get_page_cursor(
+        self, page_key: tuple[Any, ...], page_number: int
+    ) -> str | None:
+        """Return the cursor to fetch a page with.
+
+        Args:
+            page_key: Key from :meth:`_page_key`.
+            page_number: Zero-based page index.
+
+        Returns:
+            Cursor of the page, an empty string for the first page, or
+            ``None`` when there is no such page to fetch.
+        """
+        if page_number == 0:
+            return ""
+        return self._page_cursors.get((*page_key, page_number))
+
+    def _store_next_page_cursor(
+        self,
+        page_key: tuple[Any, ...],
+        page_number: int,
+        cursor: str,
+        page_info: dict[str, Any],
+        descending: bool,
+    ) -> None:
+        """Remember the cursor of the page following a fetched page.
+
+        Args:
+            page_key: Key from :meth:`_page_key`.
+            page_number: Zero-based index of the fetched page.
+            cursor: Cursor the fetched page was requested with.
+            page_info: ``pageInfo`` of the fetched page.
+            descending: Whether the page was fetched descending.
+        """
+        has_more, next_cursor = self._page_cursor(page_info, descending)
+        if not has_more:
+            return
+        if not next_cursor or next_cursor == cursor:
+            self.log.warning(
+                "Stopping version pagination because the cursor did not "
+                "advance from %r.",
+                cursor,
+            )
+            return
+        self._page_cursors[(*page_key, page_number + 1)] = next_cursor
 
     def fetch_versions_page(
         self,
@@ -1191,8 +1279,8 @@ class BrowserWidgetController(QtCore.QObject):
         """Fetch a page of version rows for the table.
 
         Translates the UI ``sort_key`` column name to a valid GraphQL
-        ``sortBy`` value using :data:`COLUMN_TO_SORT_BY`.  Columns not
-        present in that mapping are unsortable server-side; the call
+        ``sortBy`` value using :func:`get_sort_by`.  Columns without
+        a ``sortBy`` value are unsortable server-side; the call
         proceeds without a sort parameter so the server falls back to
         its default ordering (``creation_order``).
 
@@ -1201,8 +1289,8 @@ class BrowserWidgetController(QtCore.QObject):
         version rows for that folder using a per-folder pagination cursor.
 
         Args:
-            page_number: Zero-based page index (used to determine
-                whether to reset the cursor).
+            page_number: Zero-based page index (used to look up the
+                pagination cursor).
             page_size: Number of rows per page.
             sort_key: Column key to sort by, or ``None``.
             descending: Whether to sort in descending order.
@@ -1226,14 +1314,9 @@ class BrowserWidgetController(QtCore.QObject):
             )
             return []
 
-        if page_number == 0:
-            if parent_id is not None:
-                self._folder_cursors.pop(parent_id, None)
-                self._folder_has_more.pop(parent_id, None)
-            else:
-                self._reset_pagination()
-
-        sort_by = COLUMN_TO_SORT_BY.get(sort_key) if sort_key else None
+        sort_by = get_sort_by(sort_key)
+        page_key = self._page_key(parent_id, sort_by, descending)
+        cursor = self._get_page_cursor(page_key, page_number)
         query_filters = self._get_query_filters()
         self.log.debug(
             "fetch_versions_page: page=%d sort_key=%r sort_by=%r "
@@ -1242,7 +1325,7 @@ class BrowserWidgetController(QtCore.QObject):
             sort_key,
             sort_by,
             descending,
-            self._graphql_cursor,
+            cursor,
             parent_id,
         )
 
@@ -1256,7 +1339,7 @@ class BrowserWidgetController(QtCore.QObject):
                 # Group headers are computed in one shot; only page 0 is valid.
                 if page_number > 0:
                     return []
-                return self._fetch_group_headers()
+                return self._fetch_group_headers(sort_by, descending)
 
             # Expanding a group header: fetch filtered versions.
             if parent_id.startswith("grp:"):
@@ -1279,10 +1362,7 @@ class BrowserWidgetController(QtCore.QObject):
                     query_filters["product_filter"], product_filter
                 )
 
-                cursor = self._folder_cursors.get(parent_id, "")
-                if page_number > 0 and not self._folder_has_more.get(
-                    parent_id, False
-                ):
+                if cursor is None:
                     return []
                 folder_ids = self._selected_folder_ids or None
 
@@ -1305,10 +1385,9 @@ class BrowserWidgetController(QtCore.QObject):
                     self._transform_version_edge(e)
                     for e in edges
                 ]
-                (
-                    self._folder_has_more[parent_id],
-                    self._folder_cursors[parent_id],
-                ) = self._page_cursor(page_info, descending)
+                self._store_next_page_cursor(
+                    page_key, page_number, cursor, page_info, descending
+                )
                 return rows
 
         # -- Default hierarchy / flat mode --------------------------------
@@ -1323,6 +1402,8 @@ class BrowserWidgetController(QtCore.QObject):
 
         # Child versions for a specific folder (tree-mode expand).
         if parent_id is not None:
+            if cursor is None:
+                return []
             # On the first page, prepend direct sub-folder rows so that
             # the tree can be navigated depth-first all the way down to
             # version leaves.
@@ -1332,11 +1413,6 @@ class BrowserWidgetController(QtCore.QObject):
                 else []
             )
 
-            cursor = self._folder_cursors.get(parent_id, "")
-            if page_number > 0 and not self._folder_has_more.get(
-                parent_id, False
-            ):
-                return []
             query_folder_ids = [parent_id]
             edges, page_info = self._get_versions_page(
                 self._current_project,
@@ -1353,10 +1429,9 @@ class BrowserWidgetController(QtCore.QObject):
                 self._transform_version_edge(e)
                 for e in edges
             ]
-            (
-                self._folder_has_more[parent_id],
-                self._folder_cursors[parent_id],
-            ) = self._page_cursor(page_info, descending)
+            self._store_next_page_cursor(
+                page_key, page_number, cursor, page_info, descending
+            )
             self.log.debug(
                 "Received %d sub-folders and %d child version edges for "
                 "folder %r, page info: %s",
@@ -1378,10 +1453,9 @@ class BrowserWidgetController(QtCore.QObject):
             folder_ids = self._selected_folder_ids or None
             version_ids = None
 
-        if page_number > 0 and not self._graphql_has_more:
+        if cursor is None:
             return []
 
-        cursor = self._graphql_cursor
         edges, page_info = self._get_versions_page(
             self._current_project,
             None,
@@ -1401,19 +1475,9 @@ class BrowserWidgetController(QtCore.QObject):
             self._transform_version_edge(e)
             for e in edges
         ]
-
-        has_more, next_cursor = self._page_cursor(page_info, descending)
-
-        cursor_advanced = bool(next_cursor) and next_cursor != cursor
-        self._graphql_has_more = bool(has_more and cursor_advanced)
-        self._graphql_cursor = next_cursor or cursor
-        if has_more and not cursor_advanced:
-            self.log.warning(
-                "Stopping version pagination because the cursor did not "
-                "advance from %r.",
-                cursor,
-            )
-
+        self._store_next_page_cursor(
+            page_key, page_number, cursor, page_info, descending
+        )
         return page
 
     def fetch_versions_page_batch(
@@ -1494,18 +1558,14 @@ class BrowserWidgetController(QtCore.QObject):
                 continue
 
             parent_id = req.parent_id
-            sort_by = (
-                COLUMN_TO_SORT_BY.get(req.sort_key) if req.sort_key else None
-            )
+            sort_by = get_sort_by(req.sort_key)
 
-            if req.page == 0:
-                self._folder_cursors.pop(parent_id, None)
-                self._folder_has_more.pop(parent_id, None)
-            elif not self._folder_has_more.get(parent_id, False):
+            page_key = self._page_key(parent_id, sort_by, req.descending)
+            cursor = self._get_page_cursor(page_key, req.page)
+            if cursor is None:
                 result[parent_id] = []
                 continue
 
-            cursor = self._folder_cursors.get(parent_id, "")
             query_folder_ids = [parent_id]
             edges, page_info = self._get_versions_page(
                 self._current_project,
@@ -1529,10 +1589,9 @@ class BrowserWidgetController(QtCore.QObject):
                 else []
             )
 
-            (
-                self._folder_has_more[parent_id],
-                self._folder_cursors[parent_id],
-            ) = self._page_cursor(page_info, req.descending)
+            self._store_next_page_cursor(
+                page_key, req.page, cursor, page_info, req.descending
+            )
 
             result[parent_id] = folder_rows + version_rows
 
@@ -1684,12 +1743,13 @@ class BrowserWidgetController(QtCore.QObject):
     # ------------------------------------------------------------------
 
     def _reset_pagination(self) -> None:
-        """Reset the GraphQL pagination cursor, has-more flag, and all
-        per-folder pagination state."""
-        self._graphql_cursor = ""
-        self._graphql_has_more = False
-        self._folder_cursors = {}
-        self._folder_has_more = {}
+        """Drop all pagination state.
+
+        Bumping the generation makes any fetch that is still running in
+        a worker thread store its cursor under a key nobody reads again.
+        """
+        self._pagination_generation += 1
+        self._page_cursors = {}
 
     def _fetch_root_folders(
         self, selected_folder_ids: list[str] | None = None
@@ -1901,8 +1961,17 @@ class BrowserWidgetController(QtCore.QObject):
             row["updatedAt__tooltip"] = _timestamp_to_date(row["updatedAt"])
         return row
 
-    def _fetch_group_headers(self) -> list[dict[str, Any]]:
+    def _fetch_group_headers(
+        self,
+        sort_by: str | None = None,
+        descending: bool = False,
+    ) -> list[dict[str, Any]]:
         """Dispatch to the appropriate group-header fetcher.
+
+        Args:
+            sort_by: Versions ``sortBy`` value of the table's sort, used
+                for group headers that are entities (products).
+            descending: Whether the table is sorted descending.
 
         Returns:
             List of expandable group-header rows.
@@ -1930,7 +1999,9 @@ class BrowserWidgetController(QtCore.QObject):
                 appearance_category="productBaseTypes",
             )
         elif self.group_by_key == GROUP_BY_PRODUCT_KEY:
-            rows = self._fetch_product_group_headers(group_counts)
+            rows = self._fetch_product_group_headers(
+                group_counts, sort_by, descending
+            )
         elif self.group_by_key == GROUP_BY_TAGS_KEY:
             rows = self._fetch_simple_group_headers(
                 "tags", GROUP_BY_TAGS_KEY, "label", group_counts
@@ -2323,6 +2394,8 @@ class BrowserWidgetController(QtCore.QObject):
     def _fetch_product_group_headers(
         self,
         group_counts: dict[str, int] | None,
+        sort_by: str | None = None,
+        descending: bool = False,
     ) -> list[dict[str, Any]]:
         """Return one expandable row per product in the current scope.
 
@@ -2331,6 +2404,15 @@ class BrowserWidgetController(QtCore.QObject):
         builds group-header rows using product ID as the group value and
         product name as the display label.
 
+        The products are sorted by the table's sort column, like the
+        frontend's Products page. Columns products cannot be sorted by
+        fall back to the product path, ascending.
+
+        Args:
+            group_counts: Version count per product ID, or ``None``.
+            sort_by: Versions ``sortBy`` value of the table's sort.
+            descending: Whether the table is sorted descending.
+
         Returns:
             List of expandable group-header rows keyed by product ID.
         """
@@ -2338,6 +2420,10 @@ class BrowserWidgetController(QtCore.QObject):
         query_filters = self._get_query_filters()
         all_edges: list[dict[str, Any]] = []
         cursor: str | None = None
+        product_sort_by = get_product_sort_by(sort_by)
+        if product_sort_by is None:
+            product_sort_by = "path"
+            descending = False
 
         for _page in range(_MAX_GROUP_PAGES):
             edges, page_info = self._get_products_page(
@@ -2345,7 +2431,8 @@ class BrowserWidgetController(QtCore.QObject):
                 folder_id=None,
                 page_size=1000,
                 cursor=cursor,
-                sort_by="path",
+                sort_by=product_sort_by,
+                descending=descending,
                 folder_ids=folder_ids,
                 product_filter=query_filters["product_filter"],
                 version_filter=(
@@ -2364,9 +2451,10 @@ class BrowserWidgetController(QtCore.QObject):
             )
             all_edges.extend(edges)
 
-            if not page_info.get("hasNextPage"):
+            # See _page_cursor: descending pages continue from endCursor.
+            has_more, cursor = self._page_cursor(page_info, descending)
+            if not has_more:
                 break
-            cursor = page_info.get("endCursor")
             if not cursor:
                 break
         else:
