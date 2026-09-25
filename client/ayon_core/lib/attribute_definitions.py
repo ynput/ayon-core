@@ -37,6 +37,7 @@ if typing.TYPE_CHECKING:
 
     class EnumItemDict(_EnumItemDictRequired, total=False):
         icon: Optional[IconBase]
+        tooltip: Optional[str]
 
     EnumItemsInputType = Union[
         Dict[Any, str],
@@ -631,7 +632,7 @@ class EnumDef(AbstractAttrDef):
             multiselection enumeration.
 
     Items defined as dictionaries can optionally define an 'icon'
-    (`IconBase` or its serialized data) to show in UI.
+    (`IconBase` or its serialized data) and a 'tooltip' to show in UI.
 
     """
     type = "enum"

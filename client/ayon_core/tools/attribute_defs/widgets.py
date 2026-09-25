@@ -713,6 +713,12 @@ class EnumAttrWidget(BaseAttrDefWidget):
             else:
                 input_widget.addItem(item["label"], item["value"])
 
+            tooltip = item.get("tooltip")
+            if tooltip:
+                input_widget.setItemData(
+                    input_widget.count() - 1, tooltip, QtCore.Qt.ToolTipRole
+                )
+
         if not self.attr_def.items:
             self._add_empty_item(input_widget)
 
