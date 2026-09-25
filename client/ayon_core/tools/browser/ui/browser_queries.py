@@ -6,6 +6,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ayon_core.tools.browser.server_capabilities import (
+    get_server_versions_sort_options,
     server_supports_representation_filter,
 )
 
@@ -323,8 +324,7 @@ query GetProducts(
 #: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
 #: the AYON versions resolver.  The combined Product/Version column maps to
 #: the version path, matching the frontend's ``name -> path`` sort mapping.
-#: Columns that originate from related entities cannot be sorted
-#: server-side and are intentionally absent.
+#: Columns that cannot be sorted server-side are intentionally absent.
 COLUMN_TO_SORT_BY: dict[str, str] = {
     "product/version": "path",
     "version": "version",
@@ -341,6 +341,63 @@ COLUMN_TO_SORT_BY: dict[str, str] = {
     "source": "attrib.source",
     "comment": "attrib.comment",
 }
+
+#: Maps table column keys to ``sortBy`` values that only newer servers
+#: accept (the server rejects unknown values), matching the frontend's
+#: mapping. They are used only when the server lists them, see
+#: :func:`get_sort_by`.
+OPTIONAL_COLUMN_TO_SORT_BY: dict[str, str] = {
+    "author": "author",
+    "tags": "tags",
+    "productName": "productName",
+    "productType": "productType",
+    "productBaseType": "productBaseType",
+    "folderName": "folderName",
+    "task": "taskName",
+    "taskType": "taskType",
+}
+
+#: Prefix of version attribute column keys (``attr:version:<name>``).
+_VERSION_ATTRIBUTE_COLUMN_PREFIX = "attr:version:"
+
+
+def get_sort_by(
+    sort_key: str | None,
+    server_sort_options: frozenset[str] | None = None,
+) -> str | None:
+    """Return the GraphQL ``sortBy`` value for a table column.
+
+    A sortable column without a ``sortBy`` value is listed in the
+    server's default order (creation order), which is not the order
+    the header claims. This shows the most when rows of several folders
+    are listed together, e.g. sorting by Folder or Product.
+
+    Args:
+        sort_key: Key of the sorted table column, or ``None``.
+        server_sort_options: ``sortBy`` values the server lists. Queried
+            from the server when not passed.
+
+    Returns:
+        The ``sortBy`` value, or ``None`` when the column cannot be
+        sorted server-side.
+    """
+    if not sort_key:
+        return None
+    sort_by = COLUMN_TO_SORT_BY.get(sort_key)
+    if sort_by is not None:
+        return sort_by
+    if sort_key.startswith(_VERSION_ATTRIBUTE_COLUMN_PREFIX):
+        attr_name = sort_key[len(_VERSION_ATTRIBUTE_COLUMN_PREFIX):]
+        return f"attrib.{attr_name}" if attr_name else None
+    sort_by = OPTIONAL_COLUMN_TO_SORT_BY.get(sort_key)
+    if sort_by is None:
+        return None
+    if server_sort_options is None:
+        server_sort_options = get_server_versions_sort_options()
+    if sort_by in server_sort_options:
+        return sort_by
+    return None
+
 
 # A template for building version and folder rows.
 EMPTY_ROW: MappingProxyType[str, Any] = MappingProxyType(
