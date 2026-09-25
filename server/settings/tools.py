@@ -100,7 +100,7 @@ class CreatorToolModel(BaseSettingsModel):
         default_factory=list,
         title="Filter creator profiles",
         description=(
-            "Limit which creators are shown per context\n\n"
+            "Limit which creators are shown per context.\n\n"
             "Allowed list of creator labels that will be only shown if the"
             " profile matches the context."
         ),
@@ -403,7 +403,7 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
 
 
 class DiscoverValidationModel(BaseSettingsModel):
-    """Strictly validate publish plugins discovery
+    """Strictly validate publish plugins discovery.
 
     Artist won't be able to publish if path to publish plugin fails to be
         imported.

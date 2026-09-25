@@ -217,7 +217,7 @@ class ContributionLayersModel(BaseSettingsModel):
 
 
 class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
-    """Profile to define USD contribution attribute defaults"""
+    """Profile to define USD contribution attribute defaults."""
     _layout = "expanded"
     product_base_types: list[str] = SettingsField(
         default_factory=list,
@@ -315,7 +315,7 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     contribution_layers: list[ContributionLayersModel] = SettingsField(
         title="Department Layer Orders",
         description=(
-            "Available department layers and their order\n\n"
+            "Available department layers and their order.\n\n"
             "Define the department layers available in the USD contribution"
             " workflow and their strength ordering."
         ),
@@ -324,7 +324,7 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
         default_factory=list,
         title="Profiles",
         description=(
-            "Default USD contribution attributes per context\n\n"
+            "Default USD contribution attributes per context.\n\n"
             "Define attribute defaults for USD contributions on publish"
             " instances."
         ),
@@ -351,7 +351,7 @@ def list_folder_scope_def():
 
 
 class EntityListFolderModel(BaseSettingsModel):
-    """Folder must have label and can be scoped to views
+    """Folder must have label and can be scoped to views.
 
     Scope of the folder can be defined for all views or use just the view
         matching list type of created list. In case the list folder already
@@ -430,7 +430,7 @@ class CollectVersionToListProfileModel(BaseSettingsModel):
         default_factory=list,
         title="List folders",
         description=(
-            "Folders to place the list in\n\n"
+            "Folders to place the list in.\n\n"
             "Folder hierarchy formed from top to bottom."
         ),
     )
@@ -505,7 +505,7 @@ class CollectExplicitResolutionModel(BaseSettingsModel):
         default_factory=list,
         title="Resolution choices",
         description=(
-            "Resolutions the artist can pick from\n\n"
+            "Resolutions the artist can pick from.\n\n"
             "Available resolution choices to be displayed in the publisher"
             " attribute."
         ),
@@ -578,7 +578,7 @@ class PluginStateByHostModel(BaseSettingsModel):
     plugin_state_profiles: list[PluginStateByHostModelProfile] = SettingsField(
         default_factory=list,
         title="Plugin enable state profiles",
-        description="Change plugin state per host",
+        description="Change plugin state per host.",
     )
 
 
@@ -602,7 +602,7 @@ class ValidateIntentProfile(BaseSettingsModel):
 
 
 class ValidateIntentModel(BaseSettingsModel):
-    """Validate if Publishing intent was selected
+    """Validate if Publishing intent was selected.
 
     It is possible to disable validation for specific publishing context
     with profiles.
@@ -789,7 +789,7 @@ class UseDisplayViewModel(BaseSettingsModel):
 
 
 class ExtractThumbnailFromSourceModel(BaseSettingsModel):
-    """Thumbnail extraction from source files using ffmpeg and oiiotool"""
+    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
     enabled: bool = SettingsField(True)
 
     target_size: ResizeModel = SettingsField(
@@ -916,7 +916,7 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
 
 
 class ExtractOIIOTranscodeModel(BaseSettingsModel):
-    """Transcode images to another colorspace using OIIO
+    """Transcode images to another colorspace using OIIO.
 
     Mostly aimed at transcoding for reviewables (it'll process and output
     only RGBA channels).
@@ -1026,7 +1026,7 @@ class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
 
 
 class ExtractOIIOPostProcessModel(BaseSettingsModel):
-    """Process representation images with `oiiotool` on publish
+    """Process representation images with `oiiotool` on publish.
 
     This could be used to convert images to different formats, convert to
     scanline images or flatten deep images.
@@ -1286,7 +1286,7 @@ class ExtractReviewProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Output Definitions",
         description=(
-            "Review files to create\n\n"
+            "Review files to create.\n\n"
             "Each output creates an additional review representation, e.g."
             " an `h264` movie and a `png` for single frames."
         ),
@@ -1305,7 +1305,7 @@ class ExtractReviewModel(BaseSettingsModel):
         default_factory=list,
         title="Profiles",
         description=(
-            "Review outputs per context\n\n"
+            "Review outputs per context.\n\n"
             "The first profile matching the product base type, host and task"
             " type is used. Empty filters match everything."
         ),
@@ -1339,7 +1339,7 @@ class ExtractBurninOptionsModel(BaseSettingsModel):
         default_factory=MultiplatformPathModel,
         title="Font file path",
         description=(
-            "Custom font file per platform\n\n"
+            "Custom font file per platform.\n\n"
             "Path to a font file, e.g. `.ttf`. When empty, the default font"
             " is used."
         ),
@@ -1429,7 +1429,7 @@ class ExtractBurninProfile(BaseSettingsModel):
         default_factory=list,
         title="Burnins",
         description=(
-            "Burnin text layouts\n\n"
+            "Burnin text layouts.\n\n"
             "Each burnin creates a copy of the review output with the text"
             " overlays applied."
         ),
@@ -1448,13 +1448,13 @@ class ExtractBurninModel(BaseSettingsModel):
     options: ExtractBurninOptionsModel = SettingsField(
         default_factory=ExtractBurninOptionsModel,
         title="Burnin formatting options",
-        description="Font and text box styling for all burnins",
+        description="Font and text box styling for all burnins.",
     )
     profiles: list[ExtractBurninProfile] = SettingsField(
         default_factory=list,
         title="Profiles",
         description=(
-            "Burnins per context\n\n"
+            "Burnins per context.\n\n"
             "The first profile matching the product, host and task is used."
             " Empty filters match everything."
         ),
@@ -1485,7 +1485,7 @@ class PreIntegrateThumbnailsProfile(BaseSettingsModel):
 
 
 class PreIntegrateThumbnailsModel(BaseSettingsModel):
-    """Explicitly set if Thumbnail representation should be integrated
+    """Explicitly set if Thumbnail representation should be integrated.
 
     If no matching profile set, existing state from Host implementation
     is kept.
@@ -1563,7 +1563,7 @@ class CollectStatusModel(BaseSettingsModel):
 
 
 class IntegrateProductGroupModel(BaseSettingsModel):
-    """Group published products by filtering logic
+    """Group published products by filtering logic.
 
     Set all published instances as a part of specific group named according
      to 'Template'.
@@ -1652,7 +1652,7 @@ class PublishPuginsModel(BaseSettingsModel):
             default_factory=CollectAnatomyInstanceDataModel,
             title="Collect Anatomy Instance Data",
             description=(
-                "Define the version number of published products\n\n"
+                "Define the version number of published products.\n\n"
                 "Collects the data (folder, task, version, etc.) used to"
                 " build the publish paths from the project anatomy templates."
             ),
@@ -1666,7 +1666,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectSceneVersionModel,
         title="Collect Version from Workfile",
         description=(
-            "Read the version number from the workfile name\n\n"
+            "Read the version number from the workfile name.\n\n"
             "For example, `v012` from `sh010_lighting_v012.ma`. Required for"
             " *Follow workfile version* in *Collect Anatomy Instance Data*."
         ),
@@ -1703,7 +1703,7 @@ class PublishPuginsModel(BaseSettingsModel):
     )
     CollectVersionTags: CollectVersionTagsModel = SettingsField(
         title="Collect Version Tags",
-        description="Let artists pick version tags in the publisher",
+        description="Let artists pick version tags in the publisher.",
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -1713,7 +1713,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=PluginStateByHostModel,
         title="Validate Version",
         description=(
-            "Validate the published version is the newest\n\n"
+            "Validate the published version is the newest.\n\n"
             "Validate that the product version to integrate is newer than"
             " the latest version in AYON."
         ),
@@ -1734,7 +1734,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractThumbnailFromSourceModel,
         title="Extract Thumbnail from source",
         description=(
-            "Create thumbnails from an artist provided image\n\n"
+            "Create thumbnails from an artist provided image.\n\n"
             "Extract thumbnails from the file set in"
             " `instance.data['thumbnailSource']` using oiiotool or ffmpeg."
         ),
@@ -1751,7 +1751,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractReviewModel,
         title="Extract Review",
         description=(
-            "Create review media like h264 movies\n\n"
+            "Create review media like h264 movies.\n\n"
             "Converts renders and playblasts into review media using FFmpeg."
             " Only representations tagged `review` are processed."
         ),
@@ -1760,7 +1760,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractBurninModel,
         title="Extract Burnin",
         description=(
-            "Burn text overlays into review media\n\n"
+            "Burn text overlays into review media.\n\n"
             "For example version, frame number or artist name. Only review"
             " outputs that have the `burnin` tag are processed."
         ),
@@ -1769,7 +1769,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=AyonEntityURIModel,
         title="Extract USD Asset Contribution",
         description=(
-            "Add department layers to the USD asset or shot\n\n"
+            "Add department layers to the USD asset or shot.\n\n"
             "Adds department layers (e.g. model, look) published with the"
             " USD contribution workflow into the target `usdAsset` or"
             " `usdShot` product. Defines how the paths to those layers are"
@@ -1794,7 +1794,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=IntegrateHeroVersionModel,
         title="Integrate Hero Version",
         description=(
-            "Keep an unversioned copy of the latest publish\n\n"
+            "Keep an unversioned copy of the latest publish.\n\n"
             "Copies each newly published version to a fixed 'hero' version"
             " at a path without a version number, so other scenes can"
             " reference it and always get the latest publish. Requires a"
@@ -1805,7 +1805,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=EnabledModel,
         title="Attach Reviewables",
         description=(
-            "Allow attaching reviewables to other instances\n\n"
+            "Allow attaching reviewables to other instances.\n\n"
             "When enabled, expose an 'Attach Reviewables' attribute on"
             " review and render instances in the publisher to allow including"
             " the media to be attached to another instance.\n\n"
@@ -1821,7 +1821,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CleanUpModel,
         title="Clean Up",
         description=(
-            "Delete temporary files after publish\n\n"
+            "Delete temporary files after publish.\n\n"
             "After a successful publish, delete the staging folder if it is"
             " in the system temp folder. Optionally also delete the source"
             " render files."
@@ -1831,7 +1831,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CleanUpFarmModel,
         title="Clean Up Farm",
         description=(
-            "Delete staging files after farm publish\n\n"
+            "Delete staging files after farm publish.\n\n"
             "After a successful farm publish, delete the staging folders the"
             " rendered files were published from, unless marked as"
             " persistent. Currently only applies to jobs submitted from Maya."

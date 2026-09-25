@@ -94,7 +94,7 @@ class CoreImageIOFileRulesModel(BaseSettingsModel):
         default_factory=list,
         title="Rules",
         description=(
-            "Rules to match files to a colorspace\n\n"
+            "Rules to match files to a colorspace.\n\n"
             "A rule applies when a file matches both its extension and its"
             " regex pattern. If multiple rules match, the last one in the"
             " list wins."
@@ -267,7 +267,7 @@ class CoreImageIOBaseModel(BaseSettingsModel):
         default_factory=CoreImageIOFileRulesModel,
         title="File Rules",
         description=(
-            "Assign a colorspace to files by their path\n\n"
+            "Assign a colorspace to files by their path.\n\n"
             "For example, mark all `.exr` plates as `ACEScg`. Used when the"
             " colorspace of a published or loaded file is not otherwise"
             " known."
@@ -314,7 +314,7 @@ class VersionStartCategoryModel(BaseSettingsModel):
         default_factory=list,
         title="Profiles",
         description=(
-            "Version start per context\n\n"
+            "Version start per context.\n\n"
             "The first profile matching the host, task and product is used."
             " Empty filters match everything. Without a matching profile"
             " versions start at 1."
@@ -378,7 +378,7 @@ class FilterEnvsProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Replace values in environment",
         description=(
-            "Modify environment variable values\n\n"
+            "Modify environment variable values.\n\n"
             "For example, replace a local path with one valid on the render"
             " nodes."
         ),
@@ -404,7 +404,7 @@ class CoreSettings(BaseSettingsModel):
         default_factory=DiskMappingModel,
         title="Disk mapping",
         description=(
-            "Map paths per platform on launcher start\n\n"
+            "Map paths per platform on launcher start.\n\n"
             "Makes project files reachable under the same path on every"
             " machine, e.g. map a network share to drive `P:` on Windows."
         ),
@@ -417,7 +417,7 @@ class CoreSettings(BaseSettingsModel):
         default_factory=VersionStartCategoryModel,
         title="Version start",
         description=(
-            "Define version number a new product starts with\n\n"
+            "Define version number a new product starts with.\n\n"
             "Applies to both products and workfiles, e.g. start at `v000`"
             " instead of `v001` for some tasks or products."
         ),
@@ -426,7 +426,7 @@ class CoreSettings(BaseSettingsModel):
         default_factory=ReviewLayersModel,
         title="Default reviewable layers",
         description=(
-            "Define which layer to use as reviewable\n\n"
+            "Define which layer to use as reviewable.\n\n"
             "Ordered list of layer names used to determine the reviewable"
             " channel. The first matching layer in the list is used. If the"
             " list is empty, review layers use the default sorting behavior."
@@ -444,7 +444,7 @@ class CoreSettings(BaseSettingsModel):
         default_factory=MultiplatformPathListModel,
         title="Additional Project Plugin Paths",
         description=(
-            "Add paths to custom studio or project plugins\n\n"
+            "Add paths to custom studio or project plugins.\n\n"
             "Folders with custom create, publish and load plugins that are"
             " registered when working in this project. Environment variables"
             " can be used, e.g. `{STUDIO_ROOT}/plugins`. Paths that do not"
@@ -477,7 +477,7 @@ class CoreSettings(BaseSettingsModel):
         default_factory=list,
         title="Filter farm environment",
         description=(
-            "Remove or modify environment variables of farm jobs\n\n"
+            "Remove or modify environment variables of farm jobs.\n\n"
             "Applies to publish jobs sent to the render farm. The first"
             " profile matching the host, task and folder is used."
         ),
