@@ -82,7 +82,6 @@ def _context_slicer(folder_paths):
         _folder_selection_attempt=0,
         _folder_selection_timer=Mock(),
         _select_folder_chain=Mock(),
-        _request_project=Mock(),
         _MAX_SELECTION_ATTEMPTS=BrowserSlicer._MAX_SELECTION_ATTEMPTS,
     )
     slicer._clear_pending_selection = (
