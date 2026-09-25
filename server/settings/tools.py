@@ -99,8 +99,11 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="Allowed list of creator labels that will be only shown"
-                    " if profile matches context."
+        description=(
+            "Limit which creators are shown per context.\n\n"
+            "Allowed list of creator labels that will be only shown if the"
+            " profile matches the context."
+        ),
     )
 
     @validator("product_types_smart_select")
