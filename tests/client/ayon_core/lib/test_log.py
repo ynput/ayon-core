@@ -1,7 +1,6 @@
 """Tests for structured logging in 'ayon_core.lib.log'.
 
-Tests requiring structlog are skipped when it is not installed. Vector
-delivery is tested against a local HTTP stub, no Vector is needed.
+Vector delivery is tested against a local HTTP stub, no Vector is needed.
 """
 import importlib
 import io
@@ -16,6 +15,7 @@ import types
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
+import structlog
 
 import ayon_core.lib.log
 
@@ -26,31 +26,36 @@ def log_module(monkeypatch):
 
     Environment variables are read on import, set them with 'monkeypatch'
     before calling the returned function.
+
+    Root logger handlers are detached during the test. Those are handlers
+    of pytest (live logging re-installs its capture as 'sys.stderr' on
+    each record) and of AYON logging initialized on import of other
+    modules during collection.
     """
     root = logging.getLogger()
     ayon_root = logging.getLogger("AYON")
     orig_root_handlers = list(root.handlers)
     orig_root_level = root.level
     orig_ayon_handlers = list(ayon_root.handlers)
-    orig_ayon_propagate = ayon_root.propagate
+    for handler in orig_root_handlers:
+        root.removeHandler(handler)
     for key in (
         "AYON_LOG_LEVEL",
         "AYON_DEBUG",
         "AYON_LOG_FILE",
         "AYON_VECTOR_LOG_URL",
+        "AYON_EXECUTABLE",
+        "NO_COLOR",
+        "FORCE_COLOR",
     ):
         monkeypatch.delenv(key, raising=False)
 
     def _reset_structlog():
-        structlog = sys.modules.get("structlog")
-        if structlog is not None:
-            structlog.reset_defaults()
-            structlog.contextvars.clear_contextvars()
+        structlog.reset_defaults()
+        structlog.contextvars.clear_contextvars()
 
-    def _load(without_structlog=False):
+    def _load():
         _reset_structlog()
-        if without_structlog:
-            monkeypatch.setitem(sys.modules, "structlog", None)
         module = importlib.reload(ayon_core.lib.log)
         module.Logger.initialize()
         return module
@@ -58,15 +63,15 @@ def log_module(monkeypatch):
     yield _load
 
     for handler in list(root.handlers):
-        if handler not in orig_root_handlers:
-            root.removeHandler(handler)
-            handler.close()
+        root.removeHandler(handler)
+        handler.close()
+    for handler in orig_root_handlers:
+        root.addHandler(handler)
     for handler in list(ayon_root.handlers):
         if handler not in orig_ayon_handlers:
             ayon_root.removeHandler(handler)
             handler.close()
     root.setLevel(orig_root_level)
-    ayon_root.propagate = orig_ayon_propagate
     monkeypatch.undo()
     _reset_structlog()
     importlib.reload(ayon_core.lib.log)
@@ -117,16 +122,7 @@ def test_log_level_from_env(log_module, monkeypatch, env, expected):
     assert level == expected
 
 
-def test_fallback_without_structlog_does_not_propagate(log_module):
-    module = log_module(without_structlog=True)
-    module.Logger.get_logger("ayon_core.tests.fallback")
-
-    assert module.structlog is None
-    assert logging.getLogger("AYON").propagate is False
-
-
 def test_positional_arguments_are_formatted(log_module, foreign_handler):
-    pytest.importorskip("structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.args")
 
@@ -136,7 +132,6 @@ def test_positional_arguments_are_formatted(log_module, foreign_handler):
 
 
 def test_foreign_handlers_get_plain_message(log_module, foreign_handler):
-    pytest.importorskip("structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.foreign")
 
@@ -154,7 +149,6 @@ def test_console_formatter_ignores_mutated_record_msg(
     log_module, foreign_handler
 ):
     """Other handlers may replace 'record.msg', e.g. pyblish does."""
-    pytest.importorskip("structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.mutated")
     handler = next(
@@ -175,7 +169,6 @@ def test_foreign_processor_formatter_formats_ayon_records(
     log_module, foreign_handler
 ):
     """Other tools in the process may use plain 'ProcessorFormatter'."""
-    structlog = pytest.importorskip("structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.foreign_structlog")
     formatter = structlog.stdlib.ProcessorFormatter(
@@ -189,7 +182,6 @@ def test_foreign_processor_formatter_formats_ayon_records(
 
 
 def test_console_handler_uses_current_stderr(log_module, monkeypatch):
-    pytest.importorskip("structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.stderr")
 
@@ -203,8 +195,73 @@ def test_console_handler_uses_current_stderr(log_module, monkeypatch):
     log.info("No crash")
 
 
+def _raise_with_local(log):
+    # Built at runtime, the source line shown in tracebacks differs
+    secret_local = "-".join(("secret", "local", "value"))  # noqa: F841
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        log.exception("Failed")
+
+
+@pytest.mark.parametrize("from_sources", [True, False])
+@pytest.mark.parametrize("force_color", [True, False])
+def test_console_traceback(log_module, monkeypatch, from_sources, force_color):
+    executable = "python.exe" if from_sources else "ayon.exe"
+    monkeypatch.setenv("AYON_EXECUTABLE", executable)
+    if force_color:
+        monkeypatch.setenv("FORCE_COLOR", "1")
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.traceback")
+
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+    _raise_with_local(log)
+    output = stream.getvalue()
+
+    assert "ValueError" in output
+    assert "boom" in output
+    assert "secret-local-value" not in output
+    assert ("\x1b[" in output) is force_color
+    # Plain traceback frames look like 'File "<path>", line <n>, in <name>'
+    assert ('", line ' in output) is not from_sources
+
+
+def test_console_without_tty_has_no_colors(log_module, monkeypatch):
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.no_tty")
+
+    class _TTYStream(io.StringIO):
+        def isatty(self):
+            return True
+
+    stream = _TTYStream()
+    monkeypatch.setattr(sys, "stderr", stream)
+    monkeypatch.setenv("NO_COLOR", "1")
+    log.info("No color")
+    assert "\x1b[" not in stream.getvalue()
+
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+    monkeypatch.delenv("NO_COLOR")
+    log.info("Not a terminal")
+    assert "\x1b[" not in stream.getvalue()
+
+
+def test_console_unencodable_characters(log_module, monkeypatch):
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.encoding")
+
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="ascii")
+    monkeypatch.setattr(sys, "stderr", stream)
+    log.info("Asset \u010dau")
+    stream.flush()
+
+    assert b"Asset \\u010dau" in buffer.getvalue()
+
+
 def test_log_file_per_process_and_cleanup(log_module, monkeypatch, tmp_path):
-    pytest.importorskip("structlog")
     logs_dir = tmp_path / "logs"
     logs_dir.mkdir()
     old_file = logs_dir / "ayon_20200101-000000_1.ndjson"
@@ -241,7 +298,6 @@ def test_log_file_per_process_and_cleanup(log_module, monkeypatch, tmp_path):
 
 
 def test_vector_queue_renders_in_logging_thread(log_module):
-    structlog = pytest.importorskip("structlog")
     module = log_module()
     log_queue = queue.Queue()
     handler = module._DroppingQueueHandler(log_queue)
@@ -427,7 +483,6 @@ def test_publish_message_handler_does_not_mutate_record():
 
 
 def test_host_context_change_binds_flat_keys(log_module):
-    structlog = pytest.importorskip("structlog")
     log_module()
     from ayon_core.host.host import HostBase
 

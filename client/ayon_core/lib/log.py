@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import atexit
 import copy
+import functools
 import getpass
 import logging
 import queue
@@ -19,17 +20,9 @@ from collections.abc import Callable
 from typing import Any
 import warnings
 
+import structlog
 
-from . import Terminal
 from .local_settings import get_launcher_local_dir
-
-
-# If structlog is missing (ayon-launcher is outdated),
-# the library will fall back to standard logging.
-try:
-    import structlog
-except ImportError:
-    structlog: Any = None  # type: ignore[no-redef]
 
 
 # Record attribute holding the structlog logger, method name and event
@@ -39,7 +32,10 @@ except ImportError:
 _EVENT_DICT_ATTR = "_ayon_event_dict"
 
 
-def _render_for_stdlib(logger, method_name, event_dict):
+def _render_for_stdlib(
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: dict[str, Any]) -> tuple[tuple[str], dict[str, Any]]:
     """Last structlog processor handing the event over to stdlib logging.
 
     Unlike 'ProcessorFormatter.wrap_for_formatter', which stores the event
@@ -47,6 +43,17 @@ def _render_for_stdlib(logger, method_name, event_dict):
     not using AYON formatters (DCC script editors, pyblish, the publisher
     report) show the message instead of a dict repr. The event dict is
     attached to the record for '_EventDictProcessorFormatter'.
+
+    Args:
+            logger (logging.Logger): The standard library logger.
+            method_name (str): The logging method name (e.g., "info", "error").
+            event_dict (dict[str, Any]): The structlog event dictionary.
+
+    Returns:
+        tuple[tuple[str], dict[str, Any]]: A tuple containing
+            the message tuple and keyword arguments for
+            the standard library logger.
+
     """
     kwargs: dict[str, Any] = {
         "extra": {
@@ -60,43 +67,63 @@ def _render_for_stdlib(logger, method_name, event_dict):
     return (str(event_dict.get("event", "")),), kwargs
 
 
-if structlog is not None:
-    class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
-        """ProcessorFormatter reading the event dict from the record.
+class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
+    """ProcessorFormatter reading the event dict from the record.
 
-        Counterpart of '_render_for_stdlib'. Other handlers may modify
-        'record.msg' (pyblish does), the event dict is not affected.
-        Records from 'wrap_for_formatter' and foreign stdlib records are
-        processed as by 'ProcessorFormatter'.
+    Counterpart of '_render_for_stdlib'. Other handlers may modify
+    'record.msg' (pyblish does), the event dict is not affected.
+    Records from 'wrap_for_formatter' and foreign stdlib records are
+    processed as by 'ProcessorFormatter'.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format the log record, extracting the event dict if present.
+        Args:
+            record (logging.LogRecord): The log record to format.
+
+        Returns:
+            str: The formatted log message.
+
         """
-
-        def format(self, record):
-            structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
-            if structlog_data is not None:
-                logger, method_name, event_dict = structlog_data
-                # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
-                record = logging.makeLogRecord(record.__dict__)
-                record._logger = logger
-                record._name = method_name
-                record.msg = event_dict
-                record.args = ()
-            return super().format(record)
+        structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
+        if structlog_data is not None:
+            logger, method_name, event_dict = structlog_data
+            # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
+            record = logging.makeLogRecord(record.__dict__)
+            record._logger = logger
+            record._name = method_name
+            record.msg = event_dict
+            record.args = ()
+        return super().format(record)
 
 
 def bind_contextvars(**kwargs):
-    if structlog is None:
-        return {}
     return structlog.contextvars.bind_contextvars(**kwargs)
 
 
 def clear_contextvars():
-    if structlog is not None:
-        structlog.contextvars.clear_contextvars()
+    structlog.contextvars.clear_contextvars()
 
 
 def unbind_contextvars(*keys):
-    if structlog is not None:
-        structlog.contextvars.unbind_contextvars(*keys)
+    structlog.contextvars.unbind_contextvars(*keys)
+
+
+def _get_level_names_mapping() -> dict[str, int]:
+    """Level name to level mapping, including custom levels.
+
+    'logging.getLevelName' is deprecated for name to level lookup.
+    'logging.getLevelNamesMapping' is available since Python 3.11,
+    older interpreters in DCCs fall back to the private mapping.
+
+    Returns:
+        dict[str, int]: Level name to level mapping.
+
+    """
+    getter = getattr(logging, "getLevelNamesMapping", None)
+    if getter is not None:
+        return getter()
+    return dict(logging._nameToLevel)
 
 
 def get_log_level_from_env() -> int:
@@ -115,8 +142,8 @@ def get_log_level_from_env() -> int:
         if log_level.isdigit():
             level = int(log_level)
         else:
-            level = logging.getLevelName(log_level.upper())
-        if isinstance(level, int) and level > 0:
+            level = _get_level_names_mapping().get(log_level.upper(), 0)
+        if level > 0:
             return level
 
     try:
@@ -203,14 +230,28 @@ _VECTOR_LOGGER_NAME = "ayon.vector_log"
 
 
 class _RateLimitedLogger:
-    """Log a warning at most once per 'interval' seconds."""
+    """Log a warning at most once per 'interval' seconds.
 
-    def __init__(self, logger, interval):
+    Used in logging to vector to prevent flooding the log
+    with repeated warnings when there is vector delivery failure.
+
+    """
+    def __init__(self, logger: logging.Logger, interval: float):
         self._logger = logger
         self._interval = interval
         self._last_emit = 0.0
 
-    def warning(self, msg, *args):
+    def warning(self, msg: str, *args: Any) -> None:
+        """Log a warning message if the rate limit allows.
+
+        Args:
+            msg (str): The warning message.
+            *args (Any): Positional arguments for the log message.
+
+        Returns:
+            None
+
+        """
         now = time.monotonic()
         if now - self._last_emit < self._interval:
             return
@@ -238,14 +279,14 @@ class _DroppingQueueHandler(QueueHandler):
     add load to an endpoint that is already failing.
     """
 
-    def __init__(self, log_queue):
+    def __init__(self, log_queue: queue.Queue):
         super().__init__(log_queue)
         self.addFilter(lambda record: record.name != _VECTOR_LOGGER_NAME)
 
-    def prepare(self, record):
+    def prepare(self, record: logging.LogRecord) -> str:
         return self.format(record)
 
-    def enqueue(self, record):
+    def enqueue(self, record: logging.LogRecord) -> None:
         # handle full queue gracefully by dropping
         # the record instead of raising.
         try:
@@ -266,18 +307,18 @@ class VectorHTTPSender:
     A circuit breaker stops sending for 'cooldown' seconds after
     'failure_threshold' consecutive failed requests. Records are dropped
     meanwhile so a dead endpoint cannot slow down the process.
-    """
 
-    _stop_sentinel = object()
+    'None' in the queue is the stop sentinel, see 'stop'.
+    """
 
     def __init__(
         self,
-        url,
-        log_queue,
-        batch_size=VECTOR_BATCH_SIZE,
-        flush_interval=VECTOR_FLUSH_INTERVAL,
-        failure_threshold=VECTOR_FAILURE_THRESHOLD,
-        cooldown=VECTOR_CIRCUIT_COOLDOWN,
+        url: str,
+        log_queue: queue.Queue[str | None],
+        batch_size: int = VECTOR_BATCH_SIZE,
+        flush_interval: float = VECTOR_FLUSH_INTERVAL,
+        failure_threshold: int = VECTOR_FAILURE_THRESHOLD,
+        cooldown: float = VECTOR_CIRCUIT_COOLDOWN,
     ):
         self._url = url
         self._queue = log_queue
@@ -287,7 +328,7 @@ class VectorHTTPSender:
         self._cooldown = cooldown
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0
-        self._thread = None
+        self._thread: threading.Thread | None = None
 
         # Import only when Vector is used, to not slow down import of
         #   'ayon_core.lib' in every process.
@@ -310,29 +351,29 @@ class VectorHTTPSender:
         self._session.mount("http://", adapter)
         self._session.mount("https://", adapter)
 
-    def start(self):
+    def start(self) -> None:
         self._thread = threading.Thread(
             target=self._run, name="AYONVectorSender", daemon=True
         )
         self._thread.start()
 
-    def stop(self, timeout=5.0):
+    def stop(self, timeout: float = 5.0) -> None:
         """Send records remaining in the queue and stop the thread."""
         if self._thread is None:
             return
         try:
-            self._queue.put(self._stop_sentinel, timeout=timeout)
+            self._queue.put(None, timeout=timeout)
         except queue.Full:
             pass
         self._thread.join(timeout)
         self._thread = None
         self._session.close()
 
-    def _run(self):
+    def _run(self) -> None:
         stop = False
         while not stop:
             item = self._queue.get()
-            if item is self._stop_sentinel:
+            if item is None:
                 break
             batch = [item]
             deadline = time.monotonic() + self._flush_interval
@@ -344,13 +385,13 @@ class VectorHTTPSender:
                     item = self._queue.get(timeout=remaining)
                 except queue.Empty:
                     break
-                if item is self._stop_sentinel:
+                if item is None:
                     stop = True
                     break
                 batch.append(item)
             self._send(batch)
 
-    def _send(self, batch):
+    def _send(self, batch: list[str]) -> None:
         now = time.monotonic()
         if now < self._circuit_open_until:
             # Circuit is open - skip the HTTP attempt entirely so a dead
@@ -383,6 +424,111 @@ class VectorHTTPSender:
             self._consecutive_failures = 0
 
 
+def _is_running_from_sources() -> bool:
+    """AYON launcher runs from sources, not from a build.
+
+    Same check as 'ayon_info.is_running_from_build', which can't be
+    imported here because of an import cycle.
+
+    Returns:
+        bool: True if running from sources, False otherwise.
+
+    """
+    executable = os.environ.get("AYON_EXECUTABLE") or sys.executable
+    return "python" in os.path.basename(executable).lower()
+
+
+def _get_console_exception_formatter(
+        colors: bool) -> structlog.types.Processor:
+    """Exception formatter for console output.
+
+    Rich tracebacks are used only when running from sources. Builds use
+    plain tracebacks. Locals are never shown, they may hold large or
+    sensitive values (e.g. credentials).
+
+    Returns:
+        structlog.types.Processor: The exception formatter for console output.
+
+    """
+    if _is_running_from_sources():
+        try:
+            import rich  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            return structlog.dev.RichTracebackFormatter(
+                color_system="truecolor" if colors else None,
+                show_locals=False,
+            )
+    return structlog.dev.plain_traceback
+
+
+class _ConsoleRenderer(structlog.dev.ConsoleRenderer):
+    """ConsoleRenderer not initializing colorama on Windows.
+
+    'colorama.init()' replaces 'sys.stdout' and 'sys.stderr' of the whole
+    process, which breaks hosts redirecting them. Whether the stream
+    supports colors is resolved by '_StderrHandler' instead.
+    """
+
+    @classmethod
+    def get_default_column_styles(cls, colors, force_colors=False):
+        if colors:
+            return structlog.dev._colorful_styles
+        return structlog.dev._plain_styles
+
+
+# Console mode flag enabling ANSI escape sequences on Windows
+_ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+
+@functools.lru_cache(maxsize=None)
+def _enable_windows_ansi(fileno: int) -> bool:
+    """Enable ANSI escape sequences in Windows console of 'fileno'.
+
+    Returns:
+        bool: The console supports ANSI escape sequences.
+
+    """
+    try:
+        import ctypes
+        import msvcrt
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = msvcrt.get_osfhandle(fileno)  # type: ignore[attr-defined]
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        if mode.value & _ENABLE_VIRTUAL_TERMINAL_PROCESSING:
+            return True
+        return bool(kernel32.SetConsoleMode(
+            handle, mode.value | _ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        ))
+    except Exception:
+        return False
+
+
+def _stream_supports_colors(stream) -> bool:
+    """Stream is a terminal able to show ANSI colors.
+
+    'NO_COLOR' and 'FORCE_COLOR' environment variables have precedence,
+    see https://no-color.org and https://force-color.org.
+    """
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    try:
+        if not stream.isatty():
+            return False
+        if sys.platform == "win32":
+            return _enable_windows_ansi(stream.fileno())
+    except (AttributeError, ValueError, OSError):
+        # Replaced streams may not implement 'isatty' or 'fileno'
+        return False
+    return os.environ.get("TERM") != "dumb"
+
+
 class _StderrHandler(logging.StreamHandler):
     """StreamHandler writing to the current 'sys.stderr'.
 
@@ -391,104 +537,53 @@ class _StderrHandler(logging.StreamHandler):
     on creation. Same approach as stdlib 'logging._StderrHandler'.
 
     Logs go to stderr so stdout of AYON CLI commands stays usable for
-    their output, same as the previous 'LogStreamHandler' default.
+    their output.
+
+    Records are formatted with 'color_formatter' when the current stream
+    supports colors, otherwise with the handler's formatter.
     """
 
-    def __init__(self, level=logging.NOTSET):
+    def __init__(self, level=logging.NOTSET, color_formatter=None):
         logging.Handler.__init__(self, level)
+        self.color_formatter = color_formatter
 
     @property
     def stream(self):
         return sys.stderr
 
+    def format(self, record):
+        if (
+            self.color_formatter is not None
+            and _stream_supports_colors(sys.stderr)
+        ):
+            return self.color_formatter.format(record)
+        return super().format(record)
+
     def emit(self, record):
+        stream = sys.stderr
         # 'sys.stderr' is None in GUI processes without console
-        if sys.stderr is not None:
-            super().emit(record)
-
-
-class LogStreamHandler(logging.StreamHandler):
-    """StreamHandler class.
-
-    This was originally designed to handle UTF errors in python 2.x hosts,
-    however currently solely remains for backwards compatibility.
-
-    """
-
-    def __init__(self, stream=None):
-        super(LogStreamHandler, self).__init__(stream)
-        self.enabled = True
-
-    def enable(self):
-        """Enable StreamHandler
-
-        Make StreamHandler output again
-        """
-        self.enabled = True
-
-    def disable(self):
-        """Disable StreamHandler
-
-        Used to silence output
-        """
-        self.enabled = False
-
-    def emit(self, record):
-        if not self.enabled or self.stream is None:
+        if stream is None:
             return
         try:
-            msg = self.format(record)
-            msg = Terminal.log(msg)
-            stream = self.stream
-            stream.write(f"{msg}\n")
+            msg = self.format(record) + self.terminator
+            try:
+                stream.write(msg)
+            except UnicodeEncodeError:
+                # Stream encoding can't represent some characters, e.g.
+                #   non-latin names on a 'cp1252' Windows console.
+                encoding = getattr(stream, "encoding", None) or "ascii"
+                stream.write(
+                    msg.encode(encoding, "backslashreplace").decode(encoding)
+                )
             self.flush()
-        except (KeyboardInterrupt, SystemExit):
+        except RecursionError:
             raise
-
-        except OSError:
-            self.handleError(record)
-
         except Exception:
-            sys.stderr.write(f"{record!r}\n")
             self.handleError(record)
-
-
-class LogFormatter(logging.Formatter):
-
-    DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ]'
-    default_formatter = logging.Formatter(DFT)
-
-    def __init__(self, formats):
-        super(LogFormatter, self).__init__()
-        self.formatters = {}
-        for loglevel in formats:
-            self.formatters[loglevel] = logging.Formatter(formats[loglevel])
-
-    def format(self, record):
-        formatter = self.formatters.get(record.levelno, self.default_formatter)
-
-        _exc_info = record.exc_info
-        record.exc_info = None
-
-        out = formatter.format(record)
-        record.exc_info = _exc_info
-
-        if record.exc_info is not None:
-            line_len = len(str(record.exc_info[1]))
-            if line_len > 30:
-                line_len = 30
-            out = "{}\n{}\n{}\n{}\n{}".format(
-                out,
-                line_len * "=",
-                str(record.exc_info[1]),
-                line_len * "=",
-                self.formatException(record.exc_info)
-            )
-        return out
 
 
 def _deprecated_getter(func):
-    def _get_logger_deprecate(cls, name: str | None = None) -> logging.Logger:
+    def _get_logger_deprecate(cls, name: str | None = None) -> Any:
         if name is None:
             warnings.warn(
                 "DEPRECATION: 'Logger.get_logger' without passed name is"
@@ -501,21 +596,6 @@ def _deprecated_getter(func):
 
 
 class Logger:
-    DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
-    DBG = "  - { %(name)s }: [ %(message)s ] "
-    INF = ">>> [ %(message)s ] "
-    WRN = "*** WRN: >>> { %(name)s }: [ %(message)s ] "
-    ERR = "!!! ERR: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
-    CRI = "!!! CRI: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
-
-    FORMAT_FILE = {
-        logging.INFO: INF,
-        logging.DEBUG: DBG,
-        logging.WARNING: WRN,
-        logging.ERROR: ERR,
-        logging.CRITICAL: CRI,
-    }
-
     # Is static class initialized
     initialized = False
     _init_lock = threading.Lock()
@@ -531,7 +611,7 @@ class Logger:
 
     @classmethod
     @_deprecated_getter
-    def get_logger(cls, name: str) -> Any | logging.Logger:
+    def get_logger(cls, name: str) -> Any:
         """Get a logger by name, initializing the logging system if necessary.
 
         Reparent the underlying stdlib logger under the "AYON" root so
@@ -543,7 +623,8 @@ class Logger:
             name (str): The name of the logger to retrieve.
 
         Returns:
-            logging.Logger: The logger instance associated with the given name.
+            structlog.stdlib.BoundLogger: The logger associated with
+                the given name.
 
         """
         if not cls.initialized:
@@ -555,27 +636,13 @@ class Logger:
         if logger is not cls._root_logger:
             logger.parent = cls._root_logger
 
-        # Delegate to structlog when configured so records share the same
-        # processors (e.g. 'site_id', timestamps) as the rest of the app.
-        if structlog is not None and structlog.is_configured():
-            return structlog.get_logger(name)
-
-        return logger
+        return structlog.get_logger(name)
 
     @classmethod
     def get_root_logger(cls) -> logging.Logger:
         if not cls.initialized:
             cls.initialize()
         return cls._root_logger  # type: ignore[invalid-return-type, return-value]
-
-    @classmethod
-    def _get_console_handler(cls):
-        formatter = LogFormatter(cls.FORMAT_FILE)
-        console_handler = LogStreamHandler()
-
-        console_handler.set_name("LogStreamHandler")
-        console_handler.setFormatter(formatter)
-        return console_handler
 
     @classmethod
     def initialize(cls):
@@ -598,15 +665,8 @@ class Logger:
         cls.log_level = get_log_level_from_env()
         root_logger = logging.getLogger("AYON")
         root_logger.setLevel(cls.log_level)
-        # Skip own handler when structlog already owns the output pipeline
-        # to avoid double-formatting/handling the same records.
-        # - with structlog the records must propagate to the root logger
-        #   where the structlog handlers are.
-        if structlog is None or not structlog.is_configured():
-            # Records are already printed by the own handler, don't pass
-            #   them to root logger handlers too (e.g. DCC script editor).
-            root_logger.propagate = False
-            root_logger.addHandler(cls._get_console_handler())
+        # Records propagate to the stdlib root logger which holds
+        #   the handlers, see 'configure_logger'.
         cls._root_logger = root_logger
 
         if cls.log_level < logging.INFO:
@@ -696,9 +756,6 @@ class Logger:
         duplicate handlers.
 
         """
-        if structlog is None:
-            return
-
         # 'structlog.is_configured()' is process-wide, so it also guards
         # against other packages configuring logging first.
         if structlog.is_configured():
@@ -748,16 +805,21 @@ class Logger:
             cache_logger_on_first_use=True,
         )
 
-        console_formatter = _EventDictProcessorFormatter(
-            foreign_pre_chain=shared_processors,
-            processors=[
-                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                _drop_log_context,
-                structlog.dev.ConsoleRenderer(
-                    exception_formatter=structlog.dev.rich_traceback,
-                ),
-            ],
-        )
+        def _create_console_formatter(colors):
+            return _EventDictProcessorFormatter(
+                foreign_pre_chain=shared_processors,
+                processors=[
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    _drop_log_context,
+                    _ConsoleRenderer(
+                        colors=colors,
+                        exception_formatter=(
+                            _get_console_exception_formatter(colors)
+                        ),
+                    ),
+                ],
+            )
+
         json_formatter = _EventDictProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processors=[
@@ -767,8 +829,10 @@ class Logger:
             ],
         )
 
-        handler = _StderrHandler()
-        handler.setFormatter(console_formatter)
+        handler = _StderrHandler(
+            color_formatter=_create_console_formatter(colors=True)
+        )
+        handler.setFormatter(_create_console_formatter(colors=False))
 
         if LOG_FILE_ENABLED:
             log_dir = get_launcher_local_dir("logs")
@@ -787,7 +851,9 @@ class Logger:
             # don't block the app.
             # Queue is bounded so a Vector outage drops records instead of
             # growing memory without bound.
-            log_queue: queue.Queue = queue.Queue(VECTOR_QUEUE_MAX_SIZE)
+            log_queue: queue.Queue[str | None] = queue.Queue(
+                VECTOR_QUEUE_MAX_SIZE
+            )
             queue_handler = _DroppingQueueHandler(log_queue)
             queue_handler.setFormatter(json_formatter)
             vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
