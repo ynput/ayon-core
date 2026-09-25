@@ -94,6 +94,7 @@ class CoreImageIOFileRulesModel(BaseSettingsModel):
         default_factory=list,
         title="Rules",
         description=(
+            "Rules to match files to a colorspace\n\n"
             "A rule applies when a file matches both its extension and its"
             " regex pattern. If multiple rules match, the last one in the"
             " list wins."
@@ -266,9 +267,10 @@ class CoreImageIOBaseModel(BaseSettingsModel):
         default_factory=CoreImageIOFileRulesModel,
         title="File Rules",
         description=(
-            "Assign a colorspace to files based on their file path, e.g."
-            " mark all `.exr` plates as `ACEScg`. Used when the colorspace"
-            " of a published or loaded file is not otherwise known."
+            "Assign a colorspace to files by their path\n\n"
+            "For example, mark all `.exr` plates as `ACEScg`. Used when the"
+            " colorspace of a published or loaded file is not otherwise"
+            " known."
         ),
     )
 
@@ -312,6 +314,7 @@ class VersionStartCategoryModel(BaseSettingsModel):
         default_factory=list,
         title="Profiles",
         description=(
+            "Version start per context\n\n"
             "The first profile matching the host, task and product is used."
             " Empty filters match everything. Without a matching profile"
             " versions start at 1."
@@ -375,8 +378,9 @@ class FilterEnvsProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Replace values in environment",
         description=(
-            "Modify values of environment variables for the farm job, e.g."
-            " replace a local path with one valid on the render nodes."
+            "Modify environment variable values\n\n"
+            "For example, replace a local path with one valid on the render"
+            " nodes."
         ),
     )
 
@@ -400,8 +404,8 @@ class CoreSettings(BaseSettingsModel):
         default_factory=DiskMappingModel,
         title="Disk mapping",
         description=(
-            "Map paths per platform when the AYON launcher starts, so that"
-            " project files are reachable under the same path on every"
+            "Map paths per platform on launcher start\n\n"
+            "Makes project files reachable under the same path on every"
             " machine, e.g. map a network share to drive `P:` on Windows."
         ),
     )
@@ -413,20 +417,20 @@ class CoreSettings(BaseSettingsModel):
         default_factory=VersionStartCategoryModel,
         title="Version start",
         description=(
-            "Define the version number that new products and workfiles"
-            " start at, e.g. start at `v000` instead of `v001` for some"
-            " tasks or products."
+            "Define version number a new product starts with\n\n"
+            "Applies to both products and workfiles, e.g. start at `v000`"
+            " instead of `v001` for some tasks or products."
         ),
     )
     reviewable_layers: ReviewLayersModel = SettingsField(
         default_factory=ReviewLayersModel,
         title="Default reviewable layers",
         description=(
-            "Ordered list of layer names used to determine reviewable channel"
-            "The list order defines review layer priority (the first matching "
-            "layer is prioritized first). If the list is empty, review layers "
-            "use the default sorting behavior."
-        )
+            "Define which layer to use as reviewable\n\n"
+            "Ordered list of layer names used to determine the reviewable"
+            " channel. The first matching layer in the list is used. If the"
+            " list is empty, review layers use the default sorting behavior."
+        ),
     )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
@@ -440,10 +444,11 @@ class CoreSettings(BaseSettingsModel):
         default_factory=MultiplatformPathListModel,
         title="Additional Project Plugin Paths",
         description=(
-            "Folders with custom studio or project plugins (create, publish"
-            " and load) that are registered when working in this project."
-            " Environment variables can be used, e.g. `{STUDIO_ROOT}/plugins`."
-            " Paths that do not exist are skipped."
+            "Add paths to custom studio or project plugins\n\n"
+            "Folders with custom create, publish and load plugins that are"
+            " registered when working in this project. Environment variables"
+            " can be used, e.g. `{STUDIO_ROOT}/plugins`. Paths that do not"
+            " exist are skipped."
         ),
     )
     project_folder_structure: str = SettingsField(
@@ -472,9 +477,9 @@ class CoreSettings(BaseSettingsModel):
         default_factory=list,
         title="Filter farm environment",
         description=(
-            "Remove or modify environment variables of publish jobs sent"
-            " to the render farm. The first profile matching the host, task"
-            " and folder is used."
+            "Remove or modify environment variables of farm jobs\n\n"
+            "Applies to publish jobs sent to the render farm. The first"
+            " profile matching the host, task and folder is used."
         ),
     )
 
