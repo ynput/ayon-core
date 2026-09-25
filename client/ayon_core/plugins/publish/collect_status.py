@@ -2,7 +2,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyblish.api
-from ayon_core.lib import EnumDef, TextDef, filter_profiles
+from ayon_core.lib import (
+    EnumDef,
+    TextDef,
+    MaterialSymbolsIcon,
+    filter_profiles,
+)
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 if TYPE_CHECKING:
@@ -57,11 +62,21 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             return output
 
         project_entity = create_context.get_current_project_entity()
-        statuses = [
-            status["name"]
-            for status in project_entity["statuses"]
-            if "version" in status["scope"]
-        ]
+        status_items = []
+        for status in project_entity["statuses"]:
+            if "version" not in status["scope"]:
+                continue
+            status_item = {"value": status["name"], "label": status["name"]}
+            icon_name = status.get("icon")
+            if icon_name:
+                icon_kwargs = {}
+                if status.get("color"):
+                    icon_kwargs["color"] = status["color"]
+                status_item["icon"] = MaterialSymbolsIcon(
+                    icon_name, **icon_kwargs
+                )
+            status_items.append(status_item)
+        statuses = [status_item["value"] for status_item in status_items]
         if not statuses:
             cls.log.warning("No version statuses found in current project.")
             cls._set_instance_state(instance, status_state_attr, "dont_use")
@@ -121,7 +136,7 @@ class CollectStatus(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         output.append(EnumDef(
            "status",
             label="Version status",
-            items=statuses,
+            items=status_items,
             default=default_status,
         ))
         return output
