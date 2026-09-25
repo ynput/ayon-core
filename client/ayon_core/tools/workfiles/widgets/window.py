@@ -196,11 +196,11 @@ class WorkfilesToolWindow(AYContainer):
         go_to_current_btn = AYButton(
             icon="arrow_downward",
             variant=AYButton.Variants.Surface,
-            tooltip="Go to current",
+            tooltip="Select the current context in the hierarchy",
             parent=header_widget,
         )
         refresh_btn = AYButton(
-            icon="refresh",
+            icon="sync",
             variant=AYButton.Variants.Surface,
             tooltip="Refresh",
             parent=header_widget,

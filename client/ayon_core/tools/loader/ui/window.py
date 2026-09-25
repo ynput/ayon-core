@@ -178,6 +178,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         context_top_layout = QtWidgets.QHBoxLayout(context_top_widget)
         context_top_layout.setContentsMargins(0, 0, 0, 0,)
+        context_top_layout.setSpacing(4)
         context_top_layout.addWidget(projects_combobox, 1)
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
