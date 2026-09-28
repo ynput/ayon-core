@@ -31,17 +31,16 @@ def test_refresh_during_collection_keeps_items_consistent():
     model._get_webactions = Mock(return_value=[])
 
     items_collected = threading.Event()
-    get_action_items = model._get_action_items
+    build_action_items = model._build_action_items
 
-    def _slow_get_action_items(project_name):
-        # Refresh from another thread happens right after items are
-        #   collected, before action objects are used
-        action_items = get_action_items(project_name)
+    def _slow_build_action_items(*args):
+        # Refresh from another thread happens while items are collected
+        action_items = build_action_items(*args)
         items_collected.set()
         time.sleep(0.2)
         return action_items
 
-    model._get_action_items = _slow_get_action_items
+    model._build_action_items = _slow_build_action_items
 
     results = []
     errors = []
@@ -62,3 +61,17 @@ def test_refresh_during_collection_keeps_items_consistent():
 
     assert errors == []
     assert len(results[0]) == 1
+
+
+def test_server_queries_happen_outside_of_lock():
+    controller = Mock()
+    model = ActionsModel(controller)
+    model._discover_action_classes = lambda: [_action_class("action")]
+    lock_held = []
+    controller.get_project_settings.side_effect = lambda _name: (
+        lock_held.append(model._lock._is_owned()) or {}
+    )
+
+    model._get_actions_snapshot("demo")
+
+    assert lock_held == [False]
