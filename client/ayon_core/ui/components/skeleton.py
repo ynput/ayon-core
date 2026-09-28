@@ -141,10 +141,10 @@ class AYSkeletonLoader(QWidget):
             self._fade_to(0.0)
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if obj is self._geometry_source() and event.type() in (
+        if event.type() in (
             QEvent.Type.Resize,
             QEvent.Type.Move,
-        ):
+        ) and obj is self._geometry_source():
             self._update_geometry()
         return super().eventFilter(obj, event)
 
