@@ -795,7 +795,9 @@ class BrowserTable(AYContainer):
         )
         self._add_column_btn.set_columns(self._model.columns)
         self._apply_preserved_column_state(current_states)
-        self._update_empty_state()
+        # Project info is fetched in background and can arrive after a
+        #   folder was selected, fetch rows with the new columns
+        self.reset_data()
 
     def on_category_changed(self, category: str) -> None:
         """Reset the table when the slicer category changes.
