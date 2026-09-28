@@ -482,7 +482,7 @@ class _IconsCache:
     _default = None
     _qtawesome_cache = {}
     # Downloaded content of url icons by '(icon type, url)'
-    _content_cache: dict[tuple[str, str], bytes | None] = {}
+    _content_cache: dict[tuple[str, str], bytes] = {}
 
     @classmethod
     def _get_url_icon_info(
@@ -503,12 +503,13 @@ class _IconsCache:
         """Download content of url icon, cached.
 
         Does not create any Qt object, safe to call from worker threads.
+        Failed downloads are not cached so they are tried again later.
         """
         key = (icon_type, url)
-        if key in cls._content_cache:
-            return cls._content_cache[key]
+        content = cls._content_cache.get(key)
+        if content is not None:
+            return content
 
-        content = None
         try:
             if icon_type == "url":
                 content = urllib.request.urlopen(url).read()
@@ -521,6 +522,7 @@ class _IconsCache:
             log.warning(
                 "Failed to download image '%s'", url, exc_info=True
             )
+            return None
         cls._content_cache[key] = content
         return content
 
