@@ -274,3 +274,46 @@ def test_failed_build_leaves_model_empty(qtbot):
     assert _tree(model) == {}
     assert not model.get_index_by_id("hero").isValid()
     assert not model.is_loading()
+
+
+def _labels(model, parent=None) -> list[str]:
+    parent = parent or QtCore.QModelIndex()
+    return [
+        model.index(row, 0, parent).data()
+        for row in range(model.rowCount(parent))
+    ]
+
+
+def test_fill_orders_siblings_ignoring_case(qtbot):
+    model = _model(qtbot)
+    _fill(qtbot, model, _folder_items({
+        "a": (None, "beta"),
+        "b": (None, "Alpha"),
+        "c": (None, "gamma"),
+        "d": ("a", "z-child"),
+        "e": ("a", "A-child"),
+    }))
+
+    assert _labels(model) == ["Alpha", "beta", "gamma"]
+    assert _labels(model, model.get_index_by_id("a")) == [
+        "A-child", "z-child"
+    ]
+
+
+def test_update_keeps_siblings_ordered(qtbot):
+    model = _model(qtbot)
+    _fill(qtbot, model, _folder_items({
+        "a": (None, "beta"),
+        "b": (None, "Alpha"),
+        "c": (None, "gamma"),
+    }))
+
+    # Added folder and a renamed one move to their sorted position
+    _fill(qtbot, model, _folder_items({
+        "a": (None, "delta"),
+        "b": (None, "Alpha"),
+        "c": (None, "gamma"),
+        "d": (None, "Beta"),
+    }))
+
+    assert _labels(model) == ["Alpha", "Beta", "delta", "gamma"]

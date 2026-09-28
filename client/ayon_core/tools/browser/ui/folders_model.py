@@ -38,6 +38,7 @@ FOLDER_TYPE_ROLE = Qt.ItemDataRole.UserRole + 4
 FOLDER_STATUS_ROLE = Qt.ItemDataRole.UserRole + 5
 FOLDER_STATUS_ICON_ROLE = Qt.ItemDataRole.UserRole + 6
 FOLDER_PATH_FILTER_ROLE = Qt.ItemDataRole.UserRole + 7
+FOLDER_SORT_KEY_ROLE = Qt.ItemDataRole.UserRole + 8
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 
 
@@ -121,6 +122,7 @@ class BrowserFoldersModel(QStandardItemModel):
         self.setColumnCount(2)
         self.setHeaderData(0, Qt.Orientation.Horizontal, "Folders")
         self.setHeaderData(1, Qt.Orientation.Horizontal, "")
+        self.setSortRole(FOLDER_SORT_KEY_ROLE)
 
         self._ui_controller = ui_controller
         self._be_controller = be_controller
@@ -342,6 +344,7 @@ class BrowserFoldersModel(QStandardItemModel):
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, Qt.ItemDataRole.DisplayRole)
+        item.setData(folder_item.label.casefold(), FOLDER_SORT_KEY_ROLE)
         item.setData(icon, Qt.ItemDataRole.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
         status_icon = status_icon_by_name.get(folder_item.status)
@@ -370,6 +373,10 @@ class BrowserFoldersModel(QStandardItemModel):
 
         """
         item = old_fill_item.item
+        if new_fill_item.label != old_fill_item.label:
+            item.setData(
+                new_fill_item.label.casefold(), FOLDER_SORT_KEY_ROLE
+            )
         update_icon = folder_types_changed
         if new_fill_item.folder_type != old_fill_item.folder_type:
             update_icon = True
@@ -586,7 +593,11 @@ class BrowserFoldersModel(QStandardItemModel):
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
             parent_item, parent_id, parent_path = item
-            folder_items = folder_items_by_parent[parent_id]
+            # Created in the final order, so the model needs no sorting
+            folder_items = sorted(
+                folder_items_by_parent[parent_id],
+                key=lambda folder_item: folder_item.label.casefold(),
+            )
 
             new_items = []
             for folder_item in folder_items:
@@ -658,6 +669,8 @@ class BrowserFoldersModel(QStandardItemModel):
         )
         hierarchy_queue = deque()
         hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+        # Order of the rows changes only with added, moved or renamed items
+        needs_sort = False
 
         # Keep pointers to removed items until the refresh finishes
         #   - some children of the items could be moved and reused elsewhere
@@ -691,6 +704,8 @@ class BrowserFoldersModel(QStandardItemModel):
                     )
                     if fill_item.parent_id != parent_id:
                         new_items.append(item)
+                    if fill_item.label != folder_item.label:
+                        needs_sort = True
                     self._update_item_data(
                         statuses_changed,
                         folder_types_changed,
@@ -705,7 +720,11 @@ class BrowserFoldersModel(QStandardItemModel):
                 hierarchy_queue.append((item, item_id, folder_label_path))
 
             if new_items:
+                needs_sort = True
                 parent_item.appendRows(new_items)
+
+        if needs_sort:
+            self.sort(0)
 
 
 class BrowserFoldersProxyModel(QSortFilterProxyModel):
@@ -713,7 +732,6 @@ class BrowserFoldersProxyModel(QSortFilterProxyModel):
         super().__init__()
 
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setRecursiveFilteringEnabled(True)
 
         self._folder_ids_filter = None
