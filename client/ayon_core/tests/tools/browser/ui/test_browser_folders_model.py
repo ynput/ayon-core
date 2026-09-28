@@ -61,6 +61,7 @@ def _model(qtbot) -> BrowserFoldersModel:
 
 
 def _fill(
+    qtbot,
     model: BrowserFoldersModel,
     folder_items: dict[str, FolderItem],
     project_name: str = PROJECT_NAME,
@@ -70,13 +71,16 @@ def _fill(
         for name in {item.folder_type for item in folder_items.values()}
     ]
     model._on_data_fetched(
+        project_name,
         FetchData(
             project_name=project_name,
             folder_items_by_id=folder_items,
             folder_type_items=folder_type_items,
             status_items=[],
-        )
+        ),
     )
+    # Filling an empty model creates the items in time slices
+    qtbot.waitUntil(lambda: model._build_job is None)
 
 
 def _tree(model, parent=None) -> dict[str, dict]:
@@ -100,7 +104,7 @@ _HIERARCHY = {
 def test_fill_builds_hierarchy_with_filter_text(qtbot):
     model = _model(qtbot)
 
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
 
     assert _tree(model) == {
         "assets": {"char": {"hero": {}}},
@@ -115,12 +119,12 @@ def test_fill_builds_hierarchy_with_filter_text(qtbot):
 
 def test_update_keeps_existing_items(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
     hero_item = model.itemFromIndex(model.get_index_by_id("hero"))
     resets = Mock()
     model.modelReset.connect(resets)
 
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
 
     # Same item objects, no model reset - so the view keeps its
     # expanded and selected state.
@@ -130,12 +134,12 @@ def test_update_keeps_existing_items(qtbot):
 
 def test_update_removes_deleted_folders(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
     hierarchy = dict(_HIERARCHY)
     del hierarchy["char"]
     del hierarchy["hero"]
 
-    _fill(model, _folder_items(hierarchy))
+    _fill(qtbot, model, _folder_items(hierarchy))
 
     assert _tree(model) == {"assets": {}, "shots": {}}
     assert not model.get_index_by_id("hero").isValid()
@@ -143,12 +147,12 @@ def test_update_removes_deleted_folders(qtbot):
 
 def test_update_moves_folder_with_its_children(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
     hero_item = model.itemFromIndex(model.get_index_by_id("hero"))
     hierarchy = dict(_HIERARCHY)
     hierarchy["char"] = ("shots", "Characters")
 
-    _fill(model, _folder_items(hierarchy))
+    _fill(qtbot, model, _folder_items(hierarchy))
 
     assert _tree(model) == {
         "assets": {},
@@ -159,23 +163,23 @@ def test_update_moves_folder_with_its_children(qtbot):
 
 def test_update_moves_folder_out_of_deleted_parent(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
     hierarchy = dict(_HIERARCHY)
     del hierarchy["char"]
     hierarchy["hero"] = ("shots", "Hero")
 
-    _fill(model, _folder_items(hierarchy))
+    _fill(qtbot, model, _folder_items(hierarchy))
 
     assert _tree(model) == {"assets": {}, "shots": {"hero": {}}}
 
 
 def test_update_relabel_updates_display_and_filter_text(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
     hierarchy = dict(_HIERARCHY)
     hierarchy["char"] = ("assets", "Characters v2")
 
-    _fill(model, _folder_items(hierarchy))
+    _fill(qtbot, model, _folder_items(hierarchy))
 
     assert model.get_index_by_id("char").data() == "Characters v2"
     assert "characters v2" in model.get_index_by_id("hero").data(
@@ -185,13 +189,13 @@ def test_update_relabel_updates_display_and_filter_text(qtbot):
 
 def test_update_folder_type_change(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(
+    _fill(qtbot, model, _folder_items(
         _HIERARCHY, {"hero": "Asset", "shots": "Episode"}
     ))
 
     # Same set of project folder types, only the folder's own type
     # differs - so the folder must be detected as changed by itself.
-    _fill(model, _folder_items(
+    _fill(qtbot, model, _folder_items(
         _HIERARCHY, {"hero": "Episode", "shots": "Asset"}
     ))
 
@@ -201,9 +205,9 @@ def test_update_folder_type_change(qtbot):
 
 def test_result_for_other_project_is_ignored(qtbot):
     model = _model(qtbot)
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
 
-    _fill(model, _folder_items({"other": (None, "Other")}), "other")
+    _fill(qtbot, model, _folder_items({"other": (None, "Other")}), "other")
 
     assert "other" not in _tree(model)
 
@@ -213,7 +217,7 @@ def test_fill_emits_reset_finished(qtbot):
     finished = Mock()
     model.reset_finished.connect(finished)
 
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
 
     finished.assert_called_once_with()
 
@@ -222,7 +226,7 @@ def test_get_folder_id_path_from_filled_items(qtbot):
     model = _model(qtbot)
     assert model.get_folder_id_path(PROJECT_NAME, "hero") is None
 
-    _fill(model, _folder_items(_HIERARCHY))
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
 
     assert model.get_folder_id_path(PROJECT_NAME, "hero") == [
         "assets", "char", "hero"
