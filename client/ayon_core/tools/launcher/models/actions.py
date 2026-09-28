@@ -163,8 +163,12 @@ class ActionsModel:
             project_name, folder_id, task_id, workfile_id
         )
         output = []
-        action_items = self._get_action_items(project_name)
-        for identifier, action in self._get_action_objects().items():
+        # Items and actions must come from the same discovery, a refresh
+        #   from another thread could change them in between
+        with self._lock:
+            action_items = self._get_action_items(project_name)
+            actions = self._get_action_objects()
+        for identifier, action in actions.items():
             if action.is_compatible(selection):
                 output.append(action_items[identifier])
         output.extend(self._get_webactions(selection))
@@ -185,10 +189,12 @@ class ActionsModel:
         failed = False
         error_message = None
         action_label = identifier
-        action_items = self._get_action_items(project_name)
+        with self._lock:
+            action_items = self._get_action_items(project_name)
+            actions = self._get_action_objects()
         trigger_id = uuid.uuid4().hex
         try:
-            action = self._actions[identifier]
+            action = actions[identifier]
             action_item = action_items[identifier]
             action_label = action_item.full_label
             self._controller.emit_event(
@@ -614,6 +620,10 @@ class ActionsModel:
             return self._actions
 
     def _get_action_items(self, project_name):
+        with self._lock:
+            return self._collect_action_items(project_name)
+
+    def _collect_action_items(self, project_name):
         action_items = self._action_items.get(project_name)
         if action_items is not None:
             return action_items
