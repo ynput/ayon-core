@@ -1354,7 +1354,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             )
         if error is not None:
             log.warning((
-                "Couldn't switch asset."
+                "Couldn't switch asset. "
                 "See traceback for more information."
             ), exc_info=True)
             dialog = QtWidgets.QMessageBox(self)

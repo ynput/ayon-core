@@ -138,7 +138,8 @@ class IntegrateHeroVersion(
         self, instance, project_name, template_key, hero_template
     ):
         anatomy = instance.context.data["anatomy"]
-        published_repres = instance.data["published_representations"]
+        # Copy to not remove filtered representations from instance data
+        published_repres = dict(instance.data["published_representations"])
         hero_publish_dir = self.get_publish_dir(instance, template_key)
 
         src_version_entity = instance.data.get("versionEntity")

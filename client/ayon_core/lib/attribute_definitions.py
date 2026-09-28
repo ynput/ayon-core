@@ -505,7 +505,7 @@ class NumberDef(AbstractAttrDef):
                 return False
         elif not isinstance(value, float):
             return False
-        if self.minimum > value > self.maximum:
+        if not self.minimum <= value <= self.maximum:
             return False
         return True
 
@@ -526,7 +526,7 @@ class NumberDef(AbstractAttrDef):
     def _def_type_compare(self, other: "NumberDef") -> bool:
         return (
             self.decimals == other.decimals
-            and self.maximum == other.maximum
+            and self.minimum == other.minimum
             and self.maximum == other.maximum
         )
 
@@ -1087,7 +1087,7 @@ class FileDef(AbstractAttrDef):
                 elif isinstance(default, str):
                     default = FileDefItem.from_paths(
                         [default.strip()], allow_sequences
-                    )[0]
+                    )[0].to_dict()
 
                 else:
                     raise TypeError((
@@ -1123,6 +1123,12 @@ class FileDef(AbstractAttrDef):
             and self.extensions == other.extensions
             and self.allow_sequences == other.allow_sequences
         )
+
+    def serialize(self) -> Dict[str, Any]:
+        data = super().serialize()
+        # Make sure output is JSON serializable
+        data["extensions"] = sorted(self.extensions)
+        return data
 
     def is_value_valid(self, value: Any) -> bool:
         if self.single_item:
