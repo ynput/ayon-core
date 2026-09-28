@@ -231,8 +231,8 @@ class ProjectData:
 
 
 @dataclass
-class VersionData:
-    """Model to pass enhanced version data"""
+class EntityData:
+    """Common header data for Folder, Task, and Version entities."""
 
     id: str
     name: str
@@ -247,11 +247,13 @@ class VersionData:
     attrib: dict[str, str]
     thumbnail_id: str = ""
     thumbnail_local_path: str = ""
+    entity_type: str = "version"
+    folder_type: str = ""
 
     @staticmethod
     def not_set():
-        ns = "VERSION NOT SET"
-        return VersionData(
+        ns = "ENTITY NOT SET"
+        return EntityData(
             id=ns,
             name=ns,
             author=ns,
@@ -266,7 +268,6 @@ class VersionData:
             thumbnail_id="",
             thumbnail_local_path="",
         )
-
 
 if __name__ == "__main__":
     # test objects are hashable

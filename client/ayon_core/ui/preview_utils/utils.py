@@ -18,7 +18,7 @@ from ayon_core.ui.data_models import (
     User,
     Team,
     CommentCategory,
-    VersionData,
+    EntityData,
     ActivityData,
 )
 
@@ -124,9 +124,9 @@ def process_test_project_data(project_data: dict) -> ProjectData:
     return data_model
 
 
-def process_test_version_data(version_data: dict) -> VersionData:
-    vd = VersionData(**version_data)
-    return vd
+def process_test_entity_data(entity_data: dict) -> EntityData:
+    """Create entity header data from the preview fixture."""
+    return EntityData(**entity_data)
 
 
 def process_test_activity_data(activity_data) -> ActivityData:
@@ -161,11 +161,11 @@ def get_test_project_data() -> ProjectData:
     return process_test_project_data(project_data)
 
 
-def get_test_version_data() -> VersionData:
-    version_data_file = CURRENT_DIR / "sample_version_data.json"
-    version_data = _read_json_file(version_data_file)
-    print(f"[test]  read: {version_data_file}")  # noqa: T201
-    return process_test_version_data(version_data)
+def get_test_entity_data() -> EntityData:
+    entity_data_file = CURRENT_DIR / "sample_version_data.json"
+    entity_data = _read_json_file(entity_data_file)
+    print(f"[test]  read: {entity_data_file}")  # noqa: T201
+    return process_test_entity_data(entity_data)
 
 
 def get_test_activity_data() -> ActivityData:
