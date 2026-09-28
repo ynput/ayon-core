@@ -262,3 +262,15 @@ def test_outdated_fetch_of_same_project_is_ignored(qtbot):
         "assets": {"char": {"hero": {}}},
         "shots": {},
     }
+
+
+def test_failed_build_leaves_model_empty(qtbot):
+    model = _model(qtbot)
+    model._set_loading(True)
+    model._fill_item_data = Mock(side_effect=ValueError("Failed"))
+
+    _fill(qtbot, model, _folder_items(_HIERARCHY))
+
+    assert _tree(model) == {}
+    assert not model.get_index_by_id("hero").isValid()
+    assert not model.is_loading()

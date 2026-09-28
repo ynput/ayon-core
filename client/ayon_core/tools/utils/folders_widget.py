@@ -616,7 +616,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 parent=self,
             )
             build_job.finished.connect(
-                lambda: self._on_build_finished(fill_data, top_items)
+                lambda success: self._on_build_finished(
+                    success, fill_data, top_items
+                )
             )
             self._build_job = build_job
             build_job.start()
@@ -641,10 +643,19 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             build_job.deleteLater()
 
     def _on_build_finished(
-        self, fill_data: _FillData, top_items: list[QtGui.QStandardItem]
+        self,
+        success: bool,
+        fill_data: _FillData,
+        top_items: list[QtGui.QStandardItem],
     ) -> None:
         self._build_job.deleteLater()
         self._build_job = None
+        # Do not show partially created hierarchy
+        if not success:
+            self._clear_items()
+            self._set_refreshing(False)
+            self.refreshed.emit()
+            return
         self._fill_data = fill_data
         # Children are already parented, only top level rows are inserted
         #   so proxy model and view process one insert

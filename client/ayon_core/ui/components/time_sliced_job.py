@@ -14,6 +14,10 @@ Example:
             self._items.append(create_item(data))
             yield
 
+    def _on_items_built(self, success):
+        if not success:
+            self._items.clear()
+
     job = TimeSlicedJob(self._build_items(), parent=self)
     job.finished.connect(self._on_items_built)
     job.start()
@@ -43,9 +47,10 @@ class TimeSlicedJob(QObject):
         parent: Parent object.
     """
 
-    #: Emitted when the generator is exhausted or failed. Not emitted
-    #:   if cancelled, so a failure never leaves a caller waiting forever.
-    finished = Signal()
+    #: Emitted when the job ends with 'True' when the generator was
+    #:   exhausted, 'False' when it raised an exception. Not emitted if
+    #:   the job is cancelled.
+    finished = Signal(bool)
 
     def __init__(
         self,
@@ -95,11 +100,12 @@ class TimeSlicedJob(QObject):
             while time.perf_counter() < end:
                 next(self._generator)
         except StopIteration:
-            pass
+            success = True
         except Exception:
             log.warning("Time sliced job failed", exc_info=True)
+            success = False
         else:
             self._timer.start()
             return
         self._running = False
-        self.finished.emit()
+        self.finished.emit(success)
