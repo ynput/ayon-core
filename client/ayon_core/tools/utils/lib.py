@@ -540,12 +540,19 @@ class _IconsCache:
         """Download content of icons which need it.
 
         Meant to be called from a worker thread so that 'get_icon' on the
-        UI thread does not wait for network.
+        UI thread does not wait for network. Invalid icon definitions are
+        skipped, 'get_icon' handles them.
         """
         for icon_def in icon_defs:
             if icon_def is None:
                 continue
-            info = cls._get_url_icon_info(icon_def)
+            try:
+                info = cls._get_url_icon_info(icon_def)
+            except Exception:
+                log.debug(
+                    "Invalid icon definition %s", icon_def, exc_info=True
+                )
+                continue
             if info is not None:
                 cls._get_url_content(*info)
 
