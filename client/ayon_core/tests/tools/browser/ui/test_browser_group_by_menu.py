@@ -10,7 +10,10 @@ if "qargparse" not in sys.modules:
     sys.modules["qargparse"] = types.ModuleType("qargparse")
 
 from ayon_core.tools.browser.ui._browser_toolbar import GroupByMenu
-from ayon_core.tools.browser.ui.browser_group_by import BUILTIN_GROUPS
+from ayon_core.tools.browser.ui.browser_group_by import (
+    BUILTIN_GROUPS,
+    GroupByOption,
+)
 
 
 def _menu(qtbot) -> GroupByMenu:
@@ -57,4 +60,18 @@ def test_removing_tag_clears_dropdown_highlight(qtbot):
     menu._handle_tag_removed("product")
 
     assert menu.get_selected_keys() == ["none"]
+    assert _checked_keys(menu) == ["none"]
+
+
+def test_set_options_rebuilds_buttons_when_dropdown_opens(qtbot):
+    menu = _menu(qtbot)
+    options = [*BUILTIN_GROUPS, GroupByOption("attrib:fps", "FPS")]
+
+    menu.set_options(options, "attrib:fps")
+    # Buttons are not recreated yet, removing the tag must still work
+    menu._handle_tag_removed("attrib:fps")
+    menu._on_toggle_dropdown()
+
+    assert menu.get_selected_keys() == ["none"]
+    assert len(menu._menu_grp.buttons()) == len(options)
     assert _checked_keys(menu) == ["none"]

@@ -793,9 +793,9 @@ class GroupByMenu(AYFilter):
             self._filters[default_key].selected = True
         elif "none" in self._filters:
             self._filters["none"].selected = True
-        # Option widgets are created when the dropdown is opened, options
-        #   change on each project switch and creating them is slow
-        self._list_dirty = True
+        # Options change on each project switch and creating their
+        #   widgets is slow, they are recreated when the dropdown opens
+        self._list_dirty = False
 
         super().__init__(parent=parent, label="Group By")
         self._sync_tags()
@@ -812,6 +812,8 @@ class GroupByMenu(AYFilter):
             parent=self._dropdown,
         )
         lyt.addWidget(self._filterable_list, stretch=10)
+
+        self._populate_list()
         return self._dropdown
 
     def _on_toggle_dropdown(self) -> None:
