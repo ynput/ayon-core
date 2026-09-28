@@ -233,3 +233,32 @@ def test_get_folder_id_path_from_filled_items(qtbot):
     ]
     assert model.get_folder_id_path(PROJECT_NAME, "missing") == []
     assert model.get_folder_id_path("other", "hero") is None
+
+
+def test_outdated_fetch_of_same_project_is_ignored(qtbot):
+    # Switching project A -> B -> A leaves two fetches of A in flight,
+    #   only the last one may fill the model.
+    model = _model(qtbot)
+    model._fetch_id = 2
+    stale = FetchData(
+        project_name=PROJECT_NAME,
+        folder_items_by_id=_folder_items({"stale": (None, "Stale")}),
+        folder_type_items=[],
+        status_items=[],
+    )
+    model._on_fetch_finished(1, PROJECT_NAME, stale)
+    assert model._build_job is None
+
+    current = FetchData(
+        project_name=PROJECT_NAME,
+        folder_items_by_id=_folder_items(_HIERARCHY),
+        folder_type_items=[],
+        status_items=[],
+    )
+    model._on_fetch_finished(2, PROJECT_NAME, current)
+    qtbot.waitUntil(lambda: model._build_job is None)
+
+    assert _tree(model) == {
+        "assets": {"char": {"hero": {}}},
+        "shots": {},
+    }

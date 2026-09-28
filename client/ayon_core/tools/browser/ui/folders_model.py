@@ -132,6 +132,8 @@ class BrowserFoldersModel(QStandardItemModel):
         # Project with a fetch in flight, a reset for it does not start
         #   another fetch
         self._fetching_project_name: str | None = None
+        # Only result of the last started fetch is used
+        self._fetch_id = 0
         self._context_id: str = f"folders_model_{id(self)}_v0"
 
     def is_loading(self) -> bool:
@@ -157,6 +159,7 @@ class BrowserFoldersModel(QStandardItemModel):
             project_name = self._ui_controller.current_project
         if not project_name:
             self._fetching_project_name = None
+            self._fetch_id += 1
             self._last_project_name = project_name
             self._fill_items(
                 project_name, {}, [], []
@@ -170,11 +173,13 @@ class BrowserFoldersModel(QStandardItemModel):
         if self._fetching_project_name == project_name:
             return
         self._fetching_project_name = project_name
+        self._fetch_id += 1
+        fetch_id = self._fetch_id
         task = AsyncTask(
             name="fetch_all_folders",
             function=lambda: self._fetch_folders_data(project_name),
-            callback=lambda result: self._on_data_fetched(
-                project_name, result
+            callback=lambda result: self._on_fetch_finished(
+                fetch_id, project_name, result
             ),
             # Folders are the entry point of the browser, fetch them before
             #   other queued tasks (e.g. thumbnails of the previous project)
@@ -257,6 +262,16 @@ class BrowserFoldersModel(QStandardItemModel):
         self._is_loading = loading
         self.loading_changed.emit(loading)
 
+    def _on_fetch_finished(
+        self, fetch_id: int, project_name: str, result: FetchData | None
+    ) -> None:
+        # A newer fetch was started meanwhile, e.g. when switching
+        #   project A -> B -> A the first result for A is outdated
+        if fetch_id != self._fetch_id:
+            return
+        self._fetching_project_name = None
+        self._on_data_fetched(project_name, result)
+
     def _on_data_fetched(
         self, project_name: str, result: FetchData | None
     ) -> None:
@@ -270,8 +285,6 @@ class BrowserFoldersModel(QStandardItemModel):
             result (FetchData | None): Result from refresh.
 
         """
-        if self._fetching_project_name == project_name:
-            self._fetching_project_name = None
         if self._last_project_name != project_name:
             return
 
