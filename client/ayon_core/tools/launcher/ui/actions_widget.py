@@ -120,13 +120,11 @@ class ActionsQtModel(QtGui.QStandardItemModel):
     """
 
     refreshed = QtCore.Signal()
-    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller):
         self._log = Logger.get_logger(self.__class__.__name__)
         super().__init__()
 
-        self._is_loading = False
         self._refresh_id = 0
         # Selection for which shown actions were collected
         self._filled_context = None
@@ -205,14 +203,6 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         root = self.invisibleRootItem()
         root.removeRows(0, root.rowCount())
 
-    def is_loading(self) -> bool:
-        """Shown actions do not match current selection yet.
-
-        Returns:
-            bool: Actions are being collected.
-        """
-        return self._is_loading
-
     def is_outdated(self) -> bool:
         """Shown actions were collected for a different selection.
 
@@ -238,7 +228,6 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._refresh_id += 1
         refresh_id = self._refresh_id
         context = self._get_context()
-        self._set_loading(True)
         task_queue = get_task_queue()
         # Drop pending collections of previous selection
         task_queue.clear_context_tasks(self._context_id)
@@ -262,12 +251,6 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         prefetch_qt_icons([item.icon for item in items])
         return items
 
-    def _set_loading(self, loading: bool) -> None:
-        if self._is_loading == loading:
-            return
-        self._is_loading = loading
-        self.loading_changed.emit(loading)
-
     def _on_items_collected(self, refresh_id: int, context, items) -> None:
         # Selection changed meanwhile, newer refresh is running
         if refresh_id != self._refresh_id:
@@ -275,7 +258,6 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         # 'None' means collection failed
         self._filled_context = context
         self._fill(items or [])
-        self._set_loading(False)
 
     def _fill(self, items):
         if not items:
