@@ -6,6 +6,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
 
+
 try:
     import markdown
 except Exception:
@@ -17,8 +18,9 @@ from ayon_core.style import (
     get_default_tools_icon_color,
 )
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
+from ayon_core.lib import MaterialSymbolsIcon
 
-from .lib import get_qta_icon_by_name_and_color, set_style_property
+from .lib import get_qt_icon, set_style_property
 
 log = logging.getLogger(__name__)
 
@@ -1166,14 +1168,20 @@ class PressHoverButton(QtWidgets.QPushButton):
 
 
 def get_refresh_icon():
-    return get_qta_icon_by_name_and_color(
-        "fa.refresh", get_default_tools_icon_color()
+    return get_qt_icon(
+        MaterialSymbolsIcon(
+            name="sync",
+            color=get_default_tools_icon_color(),
+        )
     )
 
 
 def get_go_to_current_icon():
-    return get_qta_icon_by_name_and_color(
-        "fa.arrow-down", get_default_tools_icon_color()
+    return get_qt_icon(
+        MaterialSymbolsIcon(
+            name="my_location",
+            color=get_default_tools_icon_color(),
+        )
     )
 
 
@@ -1230,10 +1238,12 @@ class SquareButton(QtWidgets.QPushButton):
 class RefreshButton(VerticalExpandButton):
     def __init__(self, parent=None):
         super(RefreshButton, self).__init__(parent)
+        self.setToolTip("Refresh")
         self.setIcon(get_refresh_icon())
 
 
 class GoToCurrentButton(VerticalExpandButton):
     def __init__(self, parent=None):
         super(GoToCurrentButton, self).__init__(parent)
+        self.setToolTip("Select the current context")
         self.setIcon(get_go_to_current_icon())

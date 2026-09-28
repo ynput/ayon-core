@@ -76,7 +76,7 @@ class LauncherWindow(AYContainer):
         )
 
         refresh_btn = AYButton(
-            icon="refresh",
+            icon="sync",
             variant=AYButton.Variants.Surface,
             tooltip="Refresh projects",
             parent=projects_header_widget,

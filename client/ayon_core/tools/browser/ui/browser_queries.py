@@ -6,6 +6,8 @@ from types import MappingProxyType
 from typing import Any
 
 from ayon_core.tools.browser.server_capabilities import (
+    get_server_products_sort_options,
+    get_server_versions_sort_options,
     server_supports_representation_filter,
 )
 
@@ -321,12 +323,10 @@ query GetProducts(
 """
 
 #: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
-#: the AYON versions resolver.  The combined Product/Version column maps to
-#: the version path, matching the frontend's ``name -> path`` sort mapping.
-#: Columns that originate from related entities cannot be sorted
-#: server-side and are intentionally absent.
+#: the AYON versions resolver. The combined Product/Version column is
+#: handled by :func:`get_sort_by`. Columns that cannot be sorted
+#: server-side are intentionally absent.
 COLUMN_TO_SORT_BY: dict[str, str] = {
-    "product/version": "path",
     "version": "version",
     "status": "status",
     "createdAt": "createdAt",
@@ -341,6 +341,116 @@ COLUMN_TO_SORT_BY: dict[str, str] = {
     "source": "attrib.source",
     "comment": "attrib.comment",
 }
+
+#: Maps table column keys to ``sortBy`` values that only newer servers
+#: accept (the server rejects unknown values), matching the frontend's
+#: mapping. They are used only when the server lists them, see
+#: :func:`get_sort_by`.
+OPTIONAL_COLUMN_TO_SORT_BY: dict[str, str] = {
+    "author": "author",
+    "tags": "tags",
+    "productName": "productName",
+    "productType": "productType",
+    "productBaseType": "productBaseType",
+    "folderName": "folderName",
+    "task": "taskName",
+    "taskType": "taskType",
+}
+
+#: Key of the combined Product/Version column.
+_PRODUCT_VERSION_COLUMN_KEY = "product/version"
+
+#: Prefix of version attribute column keys (``attr:version:<name>``).
+_VERSION_ATTRIBUTE_COLUMN_PREFIX = "attr:version:"
+
+
+def get_sort_by(
+    sort_key: str | None,
+    server_sort_options: frozenset[str] | None = None,
+) -> str | None:
+    """Return the GraphQL ``sortBy`` value for a table column.
+
+    A sortable column without a ``sortBy`` value is listed in the
+    server's default order (creation order), which is not the order
+    the header claims. This shows the most when rows of several folders
+    are listed together, e.g. sorting by Folder or Product.
+
+    Args:
+        sort_key: Key of the sorted table column, or ``None``.
+        server_sort_options: ``sortBy`` values the server lists. Queried
+            from the server when not passed.
+
+    Returns:
+        The ``sortBy`` value, or ``None`` when the column cannot be
+        sorted server-side.
+    """
+    if not sort_key:
+        return None
+    if sort_key == _PRODUCT_VERSION_COLUMN_KEY:
+        # Sort by the product name rather than the path, which sorts by
+        # the folder path first. Older servers can't sort by product
+        # name, so fall back to the path there.
+        if server_sort_options is None:
+            server_sort_options = get_server_versions_sort_options()
+        if "productName" in server_sort_options:
+            return "productName"
+        return "path"
+    sort_by = COLUMN_TO_SORT_BY.get(sort_key)
+    if sort_by is not None:
+        return sort_by
+    if sort_key.startswith(_VERSION_ATTRIBUTE_COLUMN_PREFIX):
+        attr_name = sort_key[len(_VERSION_ATTRIBUTE_COLUMN_PREFIX):]
+        return f"attrib.{attr_name}" if attr_name else None
+    sort_by = OPTIONAL_COLUMN_TO_SORT_BY.get(sort_key)
+    if sort_by is None:
+        return None
+    if server_sort_options is None:
+        server_sort_options = get_server_versions_sort_options()
+    if sort_by in server_sort_options:
+        return sort_by
+    return None
+
+
+#: Version ``sortBy`` values that the products resolver names
+#: differently.
+VERSION_TO_PRODUCT_SORT_BY: dict[str, str] = {
+    "productName": "name",
+}
+
+
+def get_product_sort_by(
+    version_sort_by: str | None,
+    server_sort_options: frozenset[str] | None = None,
+) -> str | None:
+    """Return the products ``sortBy`` value for a versions ``sortBy``.
+
+    Product rows (e.g. the Group By Product headers) are sorted by the
+    same column as the versions, like the frontend's Products page does.
+    Only values the server lists are returned - it rejects unknown ones
+    and some version sorts (e.g. ``author``) have no product equivalent.
+
+    Args:
+        version_sort_by: ``sortBy`` value used for the versions.
+        server_sort_options: ``sortBy`` values the products resolver
+            lists. Queried from the server when not passed.
+
+    Returns:
+        The products ``sortBy`` value, or ``None`` when products cannot
+        be sorted by it.
+    """
+    if not version_sort_by:
+        return None
+    sort_by = VERSION_TO_PRODUCT_SORT_BY.get(
+        version_sort_by, version_sort_by
+    )
+    if sort_by.startswith("attrib."):
+        return sort_by
+    if server_sort_options is None:
+        server_sort_options = get_server_products_sort_options()
+    if sort_by in server_sort_options:
+        return sort_by
+    return None
+
 
 # A template for building version and folder rows.
 EMPTY_ROW: MappingProxyType[str, Any] = MappingProxyType(
