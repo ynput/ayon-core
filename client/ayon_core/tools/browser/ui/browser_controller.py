@@ -247,6 +247,8 @@ class BrowserWidgetController(QtCore.QObject):
         # Project info by project name, '(fetch time, data)'
         self._project_info_cache: dict[str, tuple[float, dict]] = {}
         self._project_info_requests: set[str] = set()
+        # Increased on reset, results of fetches started before are ignored
+        self._project_info_generation = 0
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_loader_controller_reset,
@@ -2741,17 +2743,22 @@ class BrowserWidgetController(QtCore.QObject):
         return data
 
     def _on_loader_controller_reset(self) -> None:
+        self._project_info_generation += 1
         self._project_info_cache.clear()
+        self._project_info_requests.clear()
+        # Refresh info of current project, 'set_project' is not called again
+        self._request_project_info(self._current_project)
 
     def _request_project_info(self, project_name: str) -> None:
         if not project_name or project_name in self._project_info_requests:
             return
         self._project_info_requests.add(project_name)
+        generation = self._project_info_generation
         get_task_queue().enqueue(AsyncTask(
             name="fetch_browser_project_info",
             function=lambda: self._fetch_project_info_data(project_name),
             callback=lambda data: self._on_project_info_fetched(
-                project_name, data
+                generation, project_name, data
             ),
             priority=0,
             context_id=f"browser_project_info_{id(self)}",
@@ -2759,8 +2766,11 @@ class BrowserWidgetController(QtCore.QObject):
         ))
 
     def _on_project_info_fetched(
-        self, project_name: str, data: dict | None
+        self, generation: int, project_name: str, data: dict | None
     ) -> None:
+        # Fetch started before reset
+        if generation != self._project_info_generation:
+            return
         self._project_info_requests.discard(project_name)
         # Fetch failed or project does not exist
         if data is None:
