@@ -17,7 +17,10 @@ from typing import Optional
 import clique
 
 from ayon_core.lib import filter_profiles
-from ayon_core.lib.transcoding import MissingRGBAChannelsError, oiio_color_convert
+from ayon_core.lib.transcoding import (
+    MissingRGBAChannelsError,
+    oiio_color_convert,
+)
 from ayon_core.pipeline import get_temp_dir
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 

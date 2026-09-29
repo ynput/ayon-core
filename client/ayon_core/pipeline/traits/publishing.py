@@ -587,18 +587,15 @@ def get_template_data_from_representation(
     template_data["version"] = instance.data["version"]
     # template_data["hierarchy"] = instance.data["hierarchy"]
 
-    # add colorspace data to template data
+    # add colorspace data to template data - same as legacy integrator,
+    # only the colorspace name with spaces replaced by underscores
+    # (pipeline.colorspace.parse_colorspace_from_filepath expects them)
     if representation.contains_trait(ColorManaged):
         colorspace_data: ColorManaged = representation.get_trait(
             ColorManaged)
-
-        template_data["colorspace"] = {
-            "colorspace": colorspace_data.color_space,
-            "config": {
-                "path": colorspace_data.config_path,
-                "template": colorspace_data.config_template,
-            }
-        }
+        template_data["colorspace"] = (
+            colorspace_data.color_space.replace(" ", "_")
+        )
 
     # add explicit list of traits properties to template data
     # there must be some better way to handle this.

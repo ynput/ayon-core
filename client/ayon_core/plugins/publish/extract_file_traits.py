@@ -1,4 +1,9 @@
-"""Optional collector that fills in trait gaps from file inspection alone.
+"""Optional late extractor that fills in trait gaps from file inspection.
+
+Representations are usually created during extraction, so this can't be a
+collector. It runs as late as possible in the extraction phase (after every
+other extractor, right before integration) and only fills traits that the
+specific extractors didn't set.
 
 This is deliberately host-agnostic Tier 1 inference only: extension/mimetype,
 filename-sequence detection, and (opt-in, since it's the expensive/fragile
@@ -9,7 +14,7 @@ and when OIIO isn't available. Anything that needs scene state or creator
 intent (Spatial, SourceApplication, real colorspace, IntendedUse) belongs
 in host/creator addons, not here - this plugin never invents those.
 
-Never overwrites a trait a creator/host already set - only fills traits
+Never overwrites a trait an extractor/host already set - only fills traits
 that are missing on a representation.
 """
 from __future__ import annotations
@@ -20,7 +25,10 @@ from pathlib import Path
 import pyblish.api
 
 from ayon_core.lib import is_oiio_supported
-from ayon_core.lib.transcoding import get_ffprobe_streams, get_oiio_info_for_input
+from ayon_core.lib.transcoding import (
+    get_ffprobe_streams,
+    get_oiio_info_for_input,
+)
 from ayon_core.pipeline.publish import (
     get_publish_instance_label,
     get_trait_representations,
@@ -223,7 +231,7 @@ def fill_pixel_based(representation: Representation, log) -> None:
     _fill_pixel_based_from_ffprobe(representation, path, log)
 
 
-class CollectFileTraits(pyblish.api.InstancePlugin):
+class ExtractFileTraits(pyblish.api.InstancePlugin):
     """Optionally fill missing traits by inspecting representation files.
 
     Disabled by default - this is a convenience for hosts/creators that
@@ -231,8 +239,11 @@ class CollectFileTraits(pyblish.api.InstancePlugin):
     doing so. Never overwrites a trait that is already present.
     """
 
-    label = "Collect File Traits"
-    order = pyblish.api.CollectorOrder + 0.49
+    label = "Extract File Traits"
+    # As late as possible in the extraction phase - after other extractors
+    # (including ExtractorOrder + 0.49 ones like ExtractColorspaceDataTraits)
+    # have created/filled their representations, before integration.
+    order = pyblish.api.ExtractorOrder + 0.499
     families = ["*"]
 
     settings_category = "core"
@@ -243,9 +254,22 @@ class CollectFileTraits(pyblish.api.InstancePlugin):
     # filename/extension-only inferences, so it doesn't ride along with
     # `enabled` alone.
     probe_pixel_data = False
+    # Opt-in per workflow - only instances with these product base types
+    # are processed, nothing runs when empty.
+    product_base_types = []
 
     def process(self, instance):
         if not self.enabled:
+            return
+
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
+        if product_base_type not in self.product_base_types:
+            self.log.debug(
+                f"Product base type \"{product_base_type}\" is not"
+                " enabled for file traits, skipping."
+            )
             return
 
         if not has_trait_representations(instance):
@@ -253,7 +277,7 @@ class CollectFileTraits(pyblish.api.InstancePlugin):
 
         instance_label = get_publish_instance_label(instance)
         self.log.debug(
-            f"Collecting file traits for instance \"{instance_label}\""
+            f"Filling missing file traits for instance \"{instance_label}\""
         )
 
         for representation in get_trait_representations(instance):

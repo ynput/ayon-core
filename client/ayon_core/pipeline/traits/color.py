@@ -24,6 +24,9 @@ class ColorManaged(TraitBase):
         config_template (Optional[str]): Anatomy template (with tokens)
             pointing at the same OCIO config, for contexts where the
             resolved absolute path isn't portable (e.g. remote publishing).
+        display (Optional[str]): OCIO display, set when the data were
+            produced through a display/view transform.
+        view (Optional[str]): OCIO view, paired with `display`.
     """
 
     id: ClassVar[str] = "ayon.color.ColorManaged.v1"
@@ -33,3 +36,5 @@ class ColorManaged(TraitBase):
     persistent: ClassVar[bool] = True
     config_path: Optional[str] = None
     config_template: Optional[str] = None
+    display: Optional[str] = None
+    view: Optional[str] = None

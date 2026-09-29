@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import re
+from enum import Enum
 from pathlib import Path
 from pprint import pformat
 from typing import TYPE_CHECKING, Any
@@ -131,7 +133,8 @@ def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
     """Prepare data for JSON serialization.
 
     If there are values that json cannot serialize, this function will
-    convert them to strings.
+    convert them to strings - paths to posix paths, regex patterns to the
+    pattern string and enums to their name.
 
     Args:
         data (dict[str, Any]): Data to prepare.
@@ -143,17 +146,26 @@ def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
         TypeError: If the data cannot be converted to JSON.
 
     """
-    prepared = {}
-    for key, value in data.items():
-        if isinstance(value, dict):
-            value = prepare_for_json(value)
-        try:
-            json.dumps(value)
-        except TypeError:
-            value = value.as_posix() if issubclass(
-                value.__class__, Path) else str(value)
-        prepared[key] = value
-    return prepared
+    return {key: _prepare_value_for_json(value) for key, value in data.items()}
+
+
+def _prepare_value_for_json(value: Any) -> Any:
+    """Convert value to JSON serializable value, recursively."""
+    if isinstance(value, dict):
+        return prepare_for_json(value)
+    if isinstance(value, (list, tuple)):
+        return [_prepare_value_for_json(item) for item in value]
+    try:
+        json.dumps(value)
+    except TypeError:
+        if isinstance(value, Path):
+            return value.as_posix()
+        if isinstance(value, re.Pattern):
+            return value.pattern
+        if isinstance(value, Enum):
+            return value.name
+        return str(value)
+    return value
 
 
 class IntegrateTraits(pyblish.api.InstancePlugin):
@@ -240,9 +252,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         self.log.debug(
             "Transferred files %s", [file_transactions.transferred])
 
-        # replace original paths with the destination in traits.
+        # replace original paths with the destination in traits and store
+        # size and checksum computed for the transfer (content is the same)
         for transfer in transfers:
             transfer.related_trait.file_path = transfer.destination
+            transfer.related_trait.file_size = transfer.size
+            transfer.related_trait.file_hash = transfer.checksum
 
         # 9) Create representation entities
         for representation in representations:

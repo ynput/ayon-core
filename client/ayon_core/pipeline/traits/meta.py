@@ -32,6 +32,33 @@ class Tagged(TraitBase):
 
 
 @dataclass
+class CustomTags(TraitBase):
+    """Custom tags trait model.
+
+    User defined tags used to match output definitions in publish
+    plugins settings (e.g. "Custom tags" filter of Extract Review outputs).
+    Kept separate from `Tagged`, which holds tags driving the publishing
+    logic ("review", "delete", "thumbnail", output names, ...).
+
+    Example::
+
+        CustomTags(tags=["client", "hdr"])
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be a namespaced trait name with version
+        tags (List[str]): Custom tags.
+    """
+
+    name: ClassVar[str] = "CustomTags"
+    description: ClassVar[str] = "Custom Tags Trait Model"
+    id: ClassVar[str] = "ayon.meta.CustomTags.v1"
+    persistent: ClassVar[bool] = True
+    tags: List[str]
+
+
+@dataclass
 class TemplatePath(TraitBase):
     """TemplatePath trait model.
 

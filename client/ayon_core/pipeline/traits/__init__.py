@@ -13,6 +13,7 @@ from .content import (
 from .cryptography import DigitallySigned, PGPSigned
 from .lifecycle import Persistent, Transient
 from .meta import (
+    CustomTags,
     IntendedUse,
     KeepOriginalLocation,
     SourceApplication,
@@ -83,6 +84,7 @@ __all__ = [  # noqa: RUF022
     "Transient",
 
     # meta
+    "CustomTags",
     "IntendedUse",
     "KeepOriginalLocation",
     "SourceApplication",

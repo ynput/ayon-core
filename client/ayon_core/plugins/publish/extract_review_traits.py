@@ -8,8 +8,9 @@ process the same representation: this plugin only looks at
 `instance.data["representations"]`.
 
 Boundary conversion (`representation_to_legacy_dict` /
-`legacy_dict_to_representation`) now lives in `trait_repre_dict.py`, shared
-with `extract_color_transcode_traits.py`.
+`legacy_dict_to_representation`) now lives in
+`pipeline/publish/trait_conversion.py`, shared with
+`extract_color_transcode_traits.py`.
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.traits import (
+    CustomTags,
     FileLocation,
     FileLocations,
     Representation,
@@ -40,10 +42,9 @@ from ayon_core.pipeline.publish.review_utils import (
     ReviewRenderer,
     filter_outputs_by_custom_tags,
     get_profile_outputs_for_instance,
-    split_custom_tags,
     review_repre_tag_filter,
 )
-from ayon_core.plugins.publish.trait_repre_dict import (
+from ayon_core.pipeline.publish.trait_conversion import (
     legacy_dict_to_representation,
     representation_to_legacy_dict,
 )
@@ -136,7 +137,13 @@ class ExtractReviewTraits(pyblish.api.InstancePlugin):
 
         """
         outputs_per_representations = []
-        for representation in get_trait_representations(instance):
+        representations = get_trait_representations(instance)
+        self.log.debug(
+            "Trait representations: {}".format(
+                [representation.name for representation in representations]
+            )
+        )
+        for representation in representations:
             tags: list[str] = []
             if representation.contains_trait(Tagged):
                 tags = representation.get_trait(Tagged).tags
@@ -156,12 +163,18 @@ class ExtractReviewTraits(pyblish.api.InstancePlugin):
                 )
                 continue
 
-            # Non-control tags from the same flat Tagged.tags list stand
-            # in for legacy's custom_tags, see representation_to_legacy_dict.
+            custom_tags: list[str] = []
+            if representation.contains_trait(CustomTags):
+                custom_tags = representation.get_trait(CustomTags).tags
             outputs = filter_outputs_by_custom_tags(
-                profile_outputs, split_custom_tags(tags), self.log
+                profile_outputs, custom_tags, self.log
             )
             if not outputs:
+                self.log.info(
+                    "Skipped representation. All output definitions from"
+                    " selected profile does not match to representation's"
+                    f" custom tags. \"{custom_tags}\""
+                )
                 continue
 
             outputs_per_representations.append((representation, outputs))

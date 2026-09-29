@@ -9,9 +9,9 @@ two never process the same representation: this plugin only looks at
 
 Boundary conversion (`representation_to_legacy_dict` /
 `legacy_dict_to_representation`) is shared with `extract_review_traits.py`
-via `trait_repre_dict.py` - this file's only new logic is applying
-`apply_original_repre_disposition` to the source representation's `Tagged`
-trait and deciding which source representations survive.
+via `pipeline/publish/trait_conversion.py` - this file's only new logic is
+applying `apply_original_repre_disposition` to the source representation's
+`Tagged` trait and deciding which source representations survive.
 """
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ import pyblish.api
 from ayon_core.lib import is_oiio_supported
 from ayon_core.pipeline.publish import (
     PublishError,
-    add_trait_representations,
     get_trait_representations,
     has_trait_representations,
 )
@@ -36,7 +35,7 @@ from ayon_core.plugins.publish.color_transcode_utils import (
     get_profile_for_instance,
     repre_is_valid,
 )
-from ayon_core.plugins.publish.trait_repre_dict import (
+from ayon_core.pipeline.publish.trait_conversion import (
     legacy_dict_to_representation,
     representation_to_legacy_dict,
 )

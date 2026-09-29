@@ -362,26 +362,6 @@ def filter_outputs_by_custom_tags(outputs, custom_tags, log) -> list[dict]:
     return filtered_outputs
 
 
-#: Tags legacy code treats as control/plumbing tags on a *source*
-#: representation (checked or stripped by `_get_outputs_per_representations`
-#: / `ExtractReview.process`), as opposed to arbitrary matching tags. Used
-#: to derive a custom_tags-equivalent from a trait Representation's single
-#: flat `Tagged.tags` list without every representation's mandatory
-#: "review" tag masquerading as a custom tag.
-CONTROL_TAGS = frozenset({"review", "thumbnail", "passing", "delete",
-                           "need_thumbnail"})
-
-
-def split_custom_tags(tags: list[str]) -> list[str]:
-    """Everything in `tags` that isn't a known control tag.
-
-    For trait representations, `Tagged.tags` is the only tag list - this
-    is what stands in for legacy's separate `custom_tags` field when
-    calling `filter_outputs_by_custom_tags`.
-    """
-    return [tag for tag in tags if tag not in CONTROL_TAGS]
-
-
 def review_repre_tag_filter(tags: list[str]) -> tuple[bool, Optional[str]]:
     """Layer B tag-vocabulary check, decoupled from dict/trait storage.
 

@@ -21,6 +21,9 @@ from ayon_core.pipeline.publish import (
     get_trait_representations,
     has_trait_representations,
 )
+from ayon_core.pipeline.publish.trait_conversion import (
+    color_managed_from_colorspace_data,
+)
 from ayon_core.pipeline.traits import (
     ColorManaged,
     Representation,
@@ -54,19 +57,16 @@ def fill_colorspace_data(
     }
     set_colorspace_data_to_representation(shim, context_data, log=log)
 
-    colorspace_data = shim.get("colorspaceData")
-    if not colorspace_data:
+    color_managed = color_managed_from_colorspace_data(
+        shim.get("colorspaceData")
+    )
+    if color_managed is None:
         return
 
-    config = colorspace_data.get("config") or {}
-    representation.add_trait(ColorManaged(
-        color_space=colorspace_data["colorspace"],
-        config_path=config.get("path"),
-        config_template=config.get("template"),
-    ))
+    representation.add_trait(color_managed)
     log.debug(
         f"Repre '{representation.name}': inferred ColorManaged"
-        f" '{colorspace_data['colorspace']}' from host colorspace rules."
+        f" '{color_managed.color_space}' from host colorspace rules."
     )
 
 

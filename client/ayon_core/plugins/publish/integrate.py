@@ -30,6 +30,7 @@ from ayon_core.lib.file_transaction import (
 from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
+    has_trait_representations,
 )
 from ayon_core.pipeline import is_product_base_type_supported
 from ayon_core.pipeline.anatomy import (
@@ -144,6 +145,15 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Instance is marked to not get integrated
         if not instance.data.get("integrate", True):
             self.log.debug("Instance is marked to skip integrating. Skipping")
+            return
+
+        # Trait representations are integrated by 'IntegrateTraits'. An
+        # instance must not be integrated by both, it would create
+        # two versions.
+        if has_trait_representations(instance):
+            self.log.debug(
+                "Instance has trait representations, those are integrated"
+                " by 'IntegrateTraits'. Skipping")
             return
 
         filtered_repres = self.filter_representations(instance)
